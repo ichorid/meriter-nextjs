@@ -1,0 +1,8 @@
+import { ChatMessage, IChatMessage } from 'bots/chatmessages/chatmessage.model'
+import { mongooseTypes } from 'utils/mongooseconnect'
+
+export async function createChatMessage(chatMessage: IChatMessage) {
+  const _id = mongooseTypes.ObjectId()
+  await ChatMessage.create({ _id, ...chatMessage })
+  return _id
+}

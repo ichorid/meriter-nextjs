@@ -1,0 +1,36 @@
+.meriter {
+    .communities {
+        display: block;
+    }
+    .card-community {
+        background: white;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 20px;
+        cursor: pointer;
+
+        .h {
+            font-weight: 700;
+        }
+    }
+
+    .page.community {
+        .community-header {
+            .h {
+                font-weight: 700;
+                font-size: 28px;
+                color: #247fcc;
+            }
+        }
+        .space-card {
+            margin-top: 20px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            .h {
+                font-weight: 700;
+            }
+        }
+    }
+}

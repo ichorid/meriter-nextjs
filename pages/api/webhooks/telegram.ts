@@ -1,0 +1,5 @@
+import { handlerTelegramWebhook } from 'bots/telegram/handler'
+import { NextApiRequest, NextApiResponse } from 'next'
+export default async (req: NextApiRequest, res: NextApiResponse) => {
+    return await handlerTelegramWebhook(req, res)
+}

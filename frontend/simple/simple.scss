@@ -1,0 +1,354 @@
+$background-color: #fff;
+$background-color-2: #272727;
+$background-color-0: rgba($background-color, 0);
+$background-color-05: rgba($background-color, 0.5);
+$background-color-1: rgba($background-color, 1);
+$background-color-2-0: #27272700;
+$background-color-2-05: #27272788;
+$background-color-2-1: #272727ff;
+$background-color-block: rgb(245, 245, 245);
+$dark-overlay: rgba(0, 0, 0, 0.7);
+$max-page-width: 700px;
+$pads: 40px;
+body {
+    overflow-x: hidden;
+    background-color: #272727;
+}
+.simple-page {
+    .heading {
+        font-weight: bold;
+    }
+    width: 100%;
+    font-size: 22px;
+    background: $background-color-2;
+    overflow-x: hidden;
+    max-width: 100vw;
+    .simple-page-inner {
+        min-height: 100vh;
+        //   overflow-x: hidden;
+        margin: 0 auto;
+        max-width: $max-page-width;
+        padding-left: $pads;
+        padding-right: $pads;
+        position: relative;
+        z-index: 2;
+        background: $background-color;
+    }
+    .simple-page-cover {
+        position: absolute;
+        z-index: 0;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 100vw;
+        background-size: cover;
+        transform: scale(1) translateY(-20px);
+        //@debug: -2.5vw;
+        //margin-right: -2.5vw;
+    }
+    .simple-page-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 100vw;
+        background: linear-gradient(
+                to bottom,
+                $background-color-2-0 0%,
+                $background-color-2-0 70%,
+                $background-color-2-05 95%,
+                $background-color-2-1
+            ),
+            linear-gradient(
+                to bottom,
+                $background-color-2-0 0%,
+                $background-color-2-0 70%,
+                $background-color-2-05 90%,
+                $background-color-2-1
+            );
+
+        z-index: 1;
+    }
+    a {
+        cursor: pointer;
+        font-weight: bold;
+    }
+    a.button {
+        border: solid 2px;
+        border-radius: 5px;
+        text-decoration: none;
+        padding: 5px 10px 3px 10px;
+    }
+
+    a.noaccent {
+        font-weight: normal;
+    }
+    img {
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    .img-wrapper.fullwidth {
+        margin-left: -$pads;
+        margin-right: -$pads;
+    }
+
+    background-color: $background-color-2;
+    li {
+        margin-block-start: 1em;
+        margin-block-end: 1em;
+        margin-left: $pads;
+    }
+    h1,
+    h2,
+    h3,
+    h4,
+    p {
+        position: relative;
+        z-index: 1;
+    }
+    li::marker {
+        content: "";
+    }
+    p.accent,
+    span.accent {
+        font-weight: bold;
+    }
+    .edge-bloom {
+        width: 100%;
+        height: 120px;
+        background: linear-gradient(
+                to bottom,
+                $background-color-0 0%,
+                $background-color-05 95%,
+                $background-color-1 100%
+            ),
+            linear-gradient(
+                to bottom,
+                $background-color-0 0%,
+                $background-color-0 45%,
+                $background-color-1 95%,
+                $background-color-1 100%
+            );
+        margin-top: -120px;
+        position: relative;
+    }
+    .edge-margin {
+        position: relative;
+        z-index: 0;
+        margin-bottom: -60px;
+    }
+    div.div {
+        padding: 0.1px 20px;
+        background-color: $background-color-block;
+        margin-block-start: 1em;
+        margin-block-end: 1em;
+    }
+    div.accent {
+        background-color: rgb(255, 251, 214);
+    }
+    .right {
+        text-align: right;
+    }
+    .center {
+        text-align: center;
+    }
+    .shadowblur-wrapper {
+        position: relative;
+        margin-top: 60px;
+        margin-bottom: 60px;
+        .shadowblur {
+            position: absolute;
+            background-position: center;
+            background-size: cover;
+            height: $max-page-width/4;
+            max-height: 25vw;
+            width: $max-page-width/4;
+            max-width: 25vw;
+            filter: blur(3px);
+            transform: scale(3) translateX(50%) translateY(30%);
+
+            z-index: 1;
+        }
+        .img-wrapper {
+            position: relative;
+            padding: 20px;
+            z-index: 2;
+        }
+    }
+    .panel-bottom {
+        position: fixed;
+        right: 0;
+        left: 0;
+        bottom: 0;
+        z-index: 900;
+
+        overflow-y: scroll;
+        display: flex;
+        flex-direction: column-reverse;
+        .panel-close-overlay {
+            background-color: $dark-overlay;
+            position: fixed;
+            right: 0;
+            left: 0;
+            bottom: 0;
+            top: 0;
+            z-index: 910;
+        }
+
+        .panel-screen {
+            background-color: $background-color;
+            max-height: 80vh;
+            padding-left: $pads;
+            padding-right: $pads;
+            box-sizing: border-box;
+            z-index: 920;
+            margin: 0 auto;
+            width: $max-page-width;
+            max-width: 100vw;
+        }
+        .panel-screen.scroll {
+            overflow-y: scroll;
+        }
+    }
+    input,
+    textarea {
+        font-size: 18px;
+        padding: 5px 10px;
+        min-width: 275px;
+    }
+    input {
+        border: solid 1px #666666;
+    }
+    textarea.big-textarea {
+        width: 100%;
+        height: 250px;
+        box-sizing: border-box;
+        outline: 0;
+        padding: 15px;
+        font-size: 16px;
+        outline: 0;
+        border-radius: 5px;
+        background-color: rgba(0, 0, 0, 0.05);
+        resize: none;
+    }
+    .react-tel-input .form-control {
+        font-size: 18px;
+        border: solid 1px #666666;
+    }
+    .flag-dropdown {
+        border: solid 1px #666666;
+    }
+    .op0 {
+        opacity: 0;
+    }
+    .op01 {
+        opacity: 0.1;
+    }
+    .op05 {
+        opacity: 0.5;
+    }
+    .op08 {
+        opacity: 0.8;
+    }
+    .thin {
+        font-weight: 100;
+    }
+    .regular {
+        font-weight: 400;
+    }
+    .medium {
+        font-weight: 500;
+    }
+    .mt0 {
+        margin-block-start: 0;
+    }
+    .mb0 {
+        margin-block-end: 0;
+    }
+    .little {
+        font-size: 0.8em;
+    }
+    .underline {
+        border-bottom: dotted 1px black;
+    }
+
+    .about-author {
+        display: grid;
+        grid-template-columns: 70px 1fr;
+        gap: 20px;
+        .bg-img {
+            height: 70px;
+            width: 70px;
+            border-radius: 100%;
+            background-size: cover;
+            background-position: 50% 50%;
+        }
+        padding-bottom: 20px;
+    }
+    .red {
+        color: #bb0000;
+    }
+    .strike {
+        text-decoration: line-through;
+    }
+    .input-wrapper {
+        margin-top: 0.3em;
+    }
+}
+
+@media (max-width: $max-page-width) {
+    .simple-page {
+        font-size: 18px;
+
+        $pads: 20px;
+        .simple-page-cover {
+            display: none;
+        }
+        .simple-page-inner {
+            overflow-x: hidden;
+            padding-left: $pads;
+            padding-right: $pads;
+        }
+        .shadowblur-wrapper {
+            margin-top: 60px;
+            margin-bottom: 60px;
+            .shadowblur {
+                height: $max-page-width/4;
+                max-height: 25vw;
+                width: $max-page-width/4;
+                max-width: 25vw;
+                filter: blur(2px);
+                transform: scale(3) translateX(80%) translateY(22%);
+
+                z-index: 1;
+            }
+        }
+        .img-wrapper.fullwidth {
+            margin-left: -$pads;
+            margin-right: -$pads;
+        }
+        panel-screen {
+            padding-left: $pads;
+            padding-right: $pads;
+        }
+    }
+}
+
+@import "./simple-andor.scss";
+
+.sevaprem.simple-page {
+    h1,
+    h2,
+    h3,
+    h4,
+    p,
+    span,
+    b,
+    input,
+    textarea,
+    a {
+        font-family: "El Messiri";
+        line-height: 1.3em;
+    }
+}
+

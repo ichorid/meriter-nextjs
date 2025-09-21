@@ -1,0 +1,75 @@
+.card-comment-vote-outer {
+    margin-left: 15px;
+    margin-right: 15px;
+}
+
+.card-comment-vote {
+    /* Rectangle 34 */
+
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    .rate {
+        font-size: 16px;
+        margin-top: 25px;
+        color: #8b8b8b;
+    }
+    .inner {
+        .content {
+            padding: 10px 20px;
+        }
+        .header {
+            .author {
+                padding-left: 20px;
+                padding-right: 20px;
+                padding-top: 20px;
+                display: grid;
+                grid-template-columns: 30px 1fr;
+                gap: 10px;
+                .info {
+                    .name {
+                        font-size: 12px;
+                    }
+                }
+                .avatar img {
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 100%;
+                }
+                .subtitle {
+                    font-size: 10px;
+                }
+            }
+            .description {
+                text-align: right;
+                margin-right: 20px;
+                margin-top: 15px;
+                opacity: 0.3;
+            }
+        }
+    }
+}
+
+.comment-vote-wrapper:last-child {
+    .line-shadow {
+        display: none;
+    }
+}
+
+.highlight{
+    background: #ffeeee;
+}
+
+.comment-vote-wrapper > .card-comment-vote-outer{
+    transform:scale(.8);
+    opacity: .6;
+    transition:transform 1s, opacity 1s;
+}
+.comment-vote-wrapper.reply > .card-comment-vote-outer{
+    transform:scale(1);
+    opacity: 1;
+}
+
+.comment-vote-wrapper.noreply > .card-comment-vote-outer{
+    transform:scale(1);
+    opacity: 1;
+}

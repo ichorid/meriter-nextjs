@@ -1,0 +1,35 @@
+.meriter.page.balance {
+    .balance-inpublications {
+        .heading {
+            font-size: 24px;
+        }
+        .tip {
+            opacity: 0.7;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .switch{
+            margin-top: 50px;
+            margin-bottom: 50px;
+            .accent{
+                font-weight: 700;
+            }
+        }
+    }
+    .balance-inpublications-publications {
+        padding-top: 50px;
+        display: grid;
+        gap: 50px;
+    }
+    .publication-status {
+        display: grid;
+        gap: 5px;
+        text-align: center;
+        grid-template-columns: 100px 1fr 100px;
+    }
+    .select-currency {
+        padding-top: 5px;
+        padding-bottom: 5px;
+    }
+    
+}

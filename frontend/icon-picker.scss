@@ -1,0 +1,22 @@
+.icon-picker {
+    .header img {
+        height: 1em;
+        margin-right: 1em;
+    }
+    .header a {
+        opacity: 0.8;
+        text-decoration: underline;
+    }
+    input {
+        margin-top: 10px;
+        width: 100%;
+    }
+    .icons {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(10, 1fr);
+        img {
+            width: 20px;
+        }
+    }
+}
