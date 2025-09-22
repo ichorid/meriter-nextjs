@@ -1,3 +1,4 @@
+require('dotenv').config()
 module.exports = {
     publicRuntimeConfig: {
         APP_ENV: process.env.APP_ENV,

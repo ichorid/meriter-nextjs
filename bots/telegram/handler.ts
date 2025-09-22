@@ -1,6 +1,7 @@
 import { createChatMessage } from 'bots/chatmessages/actions'
-import { Chat } from 'bots/chats/chat.model'
+import { Chat, IChat } from 'bots/chats/chat.model'
 import { linkResolveShort } from 'transactions/links/links'
+import { Model } from 'mongoose'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { userAccessCreateLink } from 'users/useraccess/auth'
 
@@ -89,7 +90,7 @@ export const handlerTelegramWebhook = async (req: NextApiRequest, res: NextApiRe
             })
 
             if (hashtags) {
-                const chat = await Chat.findOne({ chatId: message.chat.id })
+                const chat = await (Chat as Model<IChat>).findOne({ chatId: message.chat.id })
                 const keywords = chat.keywords ?? []
                 const commontag = arraysHasIntersection(keywords, hashtags)
                 if (commontag) {
@@ -105,7 +106,7 @@ export const handlerTelegramWebhook = async (req: NextApiRequest, res: NextApiRe
 
             const [chatPhoto, admins] = await Promise.all([promiseChatPhoto, promiseAdmins])
 
-            await Chat.findOneAndUpdate(
+            await (Chat as Model<IChat>).findOneAndUpdate(
                 { messenger: 'telegram', botName: bot, chatId: chat_id },
                 {
                     messenger: 'telegram',

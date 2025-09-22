@@ -15,10 +15,9 @@ export const BOT_USERNAME = CORP ? "meritercorpbot" : "meriterdevbot";
         ? "meritercorpbot"
         : "meritterrabot";*/
 
-export const BOT_TOKEN =
-    publicRuntimeConfig?.APP_ENV === "PRODUCTION_CORP" ? "1" : "1";
+export const BOT_TOKEN = process.env.MERITER_BOT_TOKEN;
 
-export const BOT_URL = "https://api.telegram.org/bot" + BOT_TOKEN;
+export const BOT_URL = "https://api.telegram.org/bot" + process.env.MERITER_BOT_TOKEN;
 
 export const WELCOME_LEADER_MESSAGE = `Добро пожаловать в Меритерру!
 

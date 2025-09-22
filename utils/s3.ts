@@ -3,8 +3,8 @@ const stream = require('stream')
 
 export const uploadStream = ({ Bucket, Key }) => {
     const s3 = new S3({
-        accessKeyId: '123123',
-        secretAccessKey: '123123',
+        accessKeyId: process.env.S3_ACCESS_KEY_ID,
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
         endpoint: 'https://hb.bizmrg.com',
     })
     const pass = new stream.PassThrough()

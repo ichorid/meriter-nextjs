@@ -6,7 +6,7 @@ const { publicRuntimeConfig } = getConfig();
 
 const paths = {};
 export const mongooseConnect = (path) => {
-    let dbpath = "mongodb://user:7Uyvs}36G4AG34o5@84.23.54.76/meritterra";
+    let dbpath = process.env.DATABASE_URL;
     if (!dbpath) throw "no such database";
     try {
         const conn = mongoose.createConnection(dbpath, {

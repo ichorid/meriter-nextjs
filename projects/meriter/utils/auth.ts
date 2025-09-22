@@ -5,7 +5,7 @@ import { User } from "projects/meriter/schema/index.schema";
 import uid from "uid";
 import { tgGetChatMember } from "../actions/telegram";
 
-process.env.JWT_SECRET = "123123";
+//process.env.JWT_SECRET = "123123";
 
 export function getFromCookiesOrRequest(req: NextApiRequest, key: string) {
     if (req?.query?.[key]) return req.query[key];

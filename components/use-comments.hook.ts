@@ -84,10 +84,10 @@ export const useComments = (
     };
 
     const currentPlus = round(
-        parseInt(plusGiven) + parseInt(deltaPlus as any) ?? 0
+        parseInt(plusGiven) + parseInt(deltaPlus as any)
     );
     const currentMinus = round(
-        parseInt(minusGiven) + parseInt(deltaMinus as any) ?? 0
+        parseInt(minusGiven) + parseInt(deltaMinus as any)
     );
     const formCommentProps = {
         key: uid,

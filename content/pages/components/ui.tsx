@@ -57,7 +57,7 @@ export const Elem = ({ data, className, exceptKeys, plugins }: ElemProps) => {
                             return (
                                 <div>
                                     <Collapse h={(elem as any).collapsed}>
-                                        <ReactStories {...elem} isPaused={true} />
+                                        {typeof elem === 'object' && <ReactStories {...elem} isPaused={true} />}
                                     </Collapse>
                                 </div>
                             );

@@ -1,10 +1,10 @@
 export const Bots = {
     telegram: {
         "@meritterrabot": {
-            token: "TOKEN",
+            token: process.env.TELEGRAM_BOT_TOKEN_MERITTERRABOT,
         },
         "@meriterrabot": {
-            token: "TOKEN",
+            token: process.env.TELEGRAM_BOT_TOKEN_MERITERRABOT,
         },
     },
 };

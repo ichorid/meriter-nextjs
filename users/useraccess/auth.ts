@@ -17,7 +17,7 @@ import { telegramSendMessageFromScope } from 'bots/telegram/telegramapi'
 import { unisenderSendMailFromScope } from 'bots/sendqueue/unisender/unisender'
 import { smsSend } from 'bots/sendqueue/sms/smsru'
 
-process.env.JWT_SECRET = '123123'
+//process.env.JWT_SECRET = '123123'
 
 export async function userAccessCreate(query) {
     const token = uid(32)

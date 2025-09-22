@@ -3,6 +3,7 @@ import { telegramSendMessage } from "bots/telegram/telegramapi";
 import { textToHTML, textToTelegramHTML } from "utils/text";
 import { Sendqueue } from "./sendqueue.model";
 import { ISendqueue } from "./sendqueue.type";
+import { Model } from 'mongoose'
 
 export async function sendqueueSendSomeOfMeantTo(
     now = Date.now(),
@@ -37,7 +38,7 @@ export async function sendTelegram(telegram: ISendqueue) {
 }
 
 export async function sendqueuePush(message: ISendqueue) {
-    return await Sendqueue.create(message);
+    return await (Sendqueue as Model<ISendqueue>).create(message);
 }
 
 export const senqueueProjectParams = {
