@@ -7,7 +7,6 @@ beforeAll(async () => {
     await mongoose.connect(MONGO_URL, {
         useNewUrlParser: true,
         useUnifiedTopology: true,
-        useFindAndModify: false,
     });
     let Entity =
         mongoose.models.Entity ||

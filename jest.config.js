@@ -7,6 +7,9 @@ module.exports = {
     transform: {
       "^.+\\.(js|jsx|ts|tsx)$": "<rootDir>/node_modules/babel-jest"
     },
+    transformIgnorePatterns: [
+        "/node_modules/(?!uuid)"
+    ],
     moduleDirectories: [
         "node_modules",
         "<rootDir>"

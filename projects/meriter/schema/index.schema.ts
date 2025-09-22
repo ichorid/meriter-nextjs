@@ -18,7 +18,6 @@ if (process.env.NODE_ENV === "test")
 //     const db = mongoose.connect(MONGO_URL, {
 //         useNewUrlParser: true,
 //         useUnifiedTopology: true,
-//         useFindAndModify: false,
 //     });
 // } catch (e) {}
 

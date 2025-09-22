@@ -12,7 +12,6 @@ export const mongooseConnect = (path) => {
         const conn = mongoose.createConnection(dbpath, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
-            useFindAndModify: false,
         });
         return conn;
     } catch (e) {}
