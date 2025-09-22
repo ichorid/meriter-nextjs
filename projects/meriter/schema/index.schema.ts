@@ -14,13 +14,13 @@ if (publicRuntimeConfig?.APP_ENV === "PRODUCTION_CORP")
 if (process.env.NODE_ENV === "test")
     MONGO_URL = "mongodb://REPLACE_ME";
 
-try {
-    const db = mongoose.connect(MONGO_URL, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        useFindAndModify: false,
-    });
-} catch (e) {}
+// try {
+//     const db = mongoose.connect(MONGO_URL, {
+//         useNewUrlParser: true,
+//         useUnifiedTopology: true,
+//         useFindAndModify: false,
+//     });
+// } catch (e) {}
 
 export const Entity =
     mongoose.models.Entity ||

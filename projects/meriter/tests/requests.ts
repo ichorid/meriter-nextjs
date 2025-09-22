@@ -83,7 +83,7 @@ export function emulateTgLeftChatMember() {
                 username: "username",
                 language_code: "en",
             },
-            chat: { id: -, title: "Тест", type: "supergroup" },
+            chat: { id: -1001234567890, title: "Тест", type: "supergroup" },
             date: 1597612343,
             left_chat_participant: {
                 id: 123123123,
