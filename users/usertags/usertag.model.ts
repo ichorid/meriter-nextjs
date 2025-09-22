@@ -5,8 +5,8 @@ const connection = mongooseConnect('meriterra/mcs/neptune/meriterra')
 //console.log(connection);
 
 export const UserTag =
-    connection.models.UserTag ||
-    connection.model(
+    connection?.models?.UserTag ||
+    connection?.model(
         'UserTag',
         new mongooseSchema({
             token: { type: String, index: true },

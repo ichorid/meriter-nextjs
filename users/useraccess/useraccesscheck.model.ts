@@ -5,8 +5,8 @@ const connection = mongooseConnect(USERACCESS_SOURCE)
 
 //console.log(connection);
 export const UserAccessCheck =
-    connection.models.UserAccessCheck ||
-    connection.model(
+    connection?.models?.UserAccessCheck ||
+    connection?.model(
         'UserAccessCheck',
         new mongooseSchema({
             checkId: String,

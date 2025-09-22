@@ -12,7 +12,7 @@ export const ChatsManagedByMe = () => {
     return <div></div>
 }
 
-export const ChatsList = ({ onSelectChat }) => {
+export const ChatsList = ({ onSelectChat }: { onSelectChat: (chat: IChat, keyword: string) => void }) => {
     const [chats] = useApiPOST('/api/chats', [], { action: 'list', query: {} })
     return (
         <div>
@@ -23,7 +23,7 @@ export const ChatsList = ({ onSelectChat }) => {
     )
 }
 
-export const Chat = (props) => {
+export const Chat = (props: IChat & { onSelectChat: (chat: IChat, keyword: string) => void }) => {
     return (
         <div className="chat">
             <div className="avatar">
@@ -49,13 +49,18 @@ export const Chat = (props) => {
     )
 }
 
-export const ChatEdit = (props: any) => {
-    const [spaces, setSpaces] = useState(props.spaces ?? [])
+interface ISpace {
+    keyword: string
+    description: string
+}
+
+export const ChatEdit = (props: IChat & { onSelectChat: (chat: IChat, keyword: string) => void }) => {
+    const [spaces, setSpaces] = useState<ISpace[]>(props.spaces ?? [])
     const [icon, setIconW] = useState(props.icon)
-    const saveSpaces = (newSpaces, icon = undefined) => {
+    const saveSpaces = (newSpaces: ISpace[], icon: string | undefined = undefined) => {
         apiPOST('/api/chats', fillDefined({ action: 'saveSpaces', spaces: newSpaces, chatId: props.chatId, icon }))
     }
-    const setIcon = (iconSvg) => {
+    const setIcon = (iconSvg: string) => {
         console.log(iconSvg)
         setIconW(iconSvg)
         saveSpaces(spaces, iconSvg)
@@ -79,7 +84,7 @@ export const ChatEdit = (props: any) => {
                 <div>
                     <a
                         onClick={() => {
-                            setSpaces([...spaces, {}])
+                                setSpaces([...spaces, { keyword: '', description: '' }])
                         }}>
                         добавить ценность
                     </a>
@@ -93,7 +98,13 @@ export const ChatEdit = (props: any) => {
     )
 }
 
-const ChatSpace = ({ keyword: keywordInit, description: descriptionInit, onSave }) => {
+interface IChatSpaceProps {
+    keyword?: string
+    description?: string
+    onSave: (space: { keyword: string; description: string }) => void
+}
+
+const ChatSpace = ({ keyword: keywordInit, description: descriptionInit, onSave }: IChatSpaceProps) => {
     const [edit, setEdit] = useState(false || !keywordInit)
     const [keyword, setKeyword] = useState(keywordInit)
     const [description, setDescription] = useState(descriptionInit)
@@ -111,7 +122,7 @@ const ChatSpace = ({ keyword: keywordInit, description: descriptionInit, onSave 
                     <button
                         onClick={() => {
                             setEdit(false)
-                            onSave({ keyword, description })
+                            onSave({ keyword: keyword ?? '', description: description ?? '' })
                         }}>
                         Сохранить
                     </button>

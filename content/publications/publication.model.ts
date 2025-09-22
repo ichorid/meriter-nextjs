@@ -5,8 +5,8 @@ const connection = mongooseConnect(USERACCESS_SOURCE)
 
 //console.log(connection);
 export const PublicationElement =
-    connection.models.PublicationElement ||
-    connection.model(
+    connection?.models?.PublicationElement ||
+    connection?.model(
         'PublicationElement',
         new mongooseSchema({
             type: String,

@@ -4,8 +4,8 @@ const connection = mongooseConnect('meriterra/mcs/neptune/meriterra')
 
 //console.log(connection);
 export const Userdata =
-    connection.models.Userdata ||
-    connection.model(
+    connection?.models?.Userdata ||
+    connection?.model(
         'Userdata',
         new mongooseSchema({
             //identies

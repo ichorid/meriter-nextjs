@@ -4,8 +4,8 @@ const connection = mongooseConnect('meriterra/mcs/neptune/meriterra')
 
 //console.log(connection);
 export const Link =
-    connection.models.Link ||
-    connection.model(
+    connection?.models?.Link ||
+    connection?.model(
         'Link',
         new mongooseSchema({
             short_id: String,

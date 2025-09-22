@@ -1,0 +1,22 @@
+
+> services@1.0.0 build
+> next build
+
+[dotenv@17.2.2] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+   ▲ Next.js 15.5.3
+
+   Linting and checking validity of types ...
+Failed to compile.
+
+./bots/components/BotList.tsx:36:52
+Type error: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+
+[0m [90m 34 |[39m                     [33m<[39m[33mbutton[39m onClick[33m=[39m{() [33m=>[39m setBotName(b)}[33m>[39m{b}[33m<[39m[33m/[39m[33mbutton[39m[33m>[39m
+ [90m 35 |[39m
+[31m[1m>[22m[39m[90m 36 |[39m                     [33m<[39m[33mbutton[39m onClick[33m=[39m{() [33m=>[39m doSetWH([33mBots[39m[33m.[39mtelegram[b][33m.[39mtoken[33m,[39m b)}[33m>[39m[33mSet[39m [33mWebhook[39m[33m<[39m[33m/[39m[33mbutton[39m[33m>[39m
+ [90m    |[39m                                                    [31m[1m^[22m[39m
+ [90m 37 |[39m                 [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m 38 |[39m             ))}
+ [90m 39 |[39m         [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m[0m
+Next.js build worker exited with code: 1 and signal: null

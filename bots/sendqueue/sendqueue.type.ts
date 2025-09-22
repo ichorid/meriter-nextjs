@@ -1,8 +1,3 @@
-import { mongooseConnect, mongooseSchema } from '../../utils/mongooseconnect'
-
-const connection = mongooseConnect('meriterra/mcs/neptune/meriterra')
-
-//console.log(connection);
 export interface ISendqueue {
     uid: string
     proto: string

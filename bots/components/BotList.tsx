@@ -7,9 +7,9 @@ export const BotList = () => {
     const botsTelegram = Object.keys(Bots.telegram)
     const [baseUrl, setBaseUrl] = useState('https://')
     const [botName, setBotName] = useState('@meriterrabot')
-    const [success, setSuccess] = useState(undefined)
+    const [success, setSuccess] = useState<boolean | undefined>(undefined)
     const wh = `${baseUrl}/api/webhooks/telegram?bot=${botName}`
-    const doSetWH = (token, b) => {
+    const doSetWH = (token: string, b: string) => {
         setBotName(b)
         if (wh && token) {
             telegramSetWebook(token, wh)
@@ -33,7 +33,15 @@ export const BotList = () => {
                 <div key={i}>
                     <button onClick={() => setBotName(b)}>{b}</button>
 
-                    <button onClick={() => doSetWH(Bots.telegram[b].token, b)}>Set Webhook</button>
+                    <button
+                        onClick={() => {
+                            const token = Bots.telegram[b].token
+                            if (token) {
+                                doSetWH(token, b)
+                            }
+                        }}>
+                        Set Webhook
+                    </button>
                 </div>
             ))}
         </div>

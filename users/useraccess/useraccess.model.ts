@@ -5,8 +5,8 @@ const connection = mongooseConnect(USERACCESS_SOURCE)
 
 //console.log(connection);
 export const UserAccess =
-    connection.models.UserAccess ||
-    connection.model(
+    connection?.models?.UserAccess ||
+    connection?.model(
         'UserAccess',
         new mongooseSchema({
             uuid: String,

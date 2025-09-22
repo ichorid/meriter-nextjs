@@ -5,8 +5,8 @@ const connection = mongooseConnect("meriterra/mcs/neptune/meriterra");
 
 //console.log(connection);
 export const LegacyUserdata =
-    connection.models.Userdata ||
-    connection.model(
+    connection?.models?.Userdata ||
+    connection?.model(
         "Userdata",
         new mongooseSchema({
             //identies
@@ -28,8 +28,8 @@ export const LegacyUserdata =
 
 //token is id
 export const LegacyUsers =
-    connection.models.Users ||
-    connection.model(
+    connection?.models?.Users ||
+    connection?.model(
         "Users",
         new mongooseSchema({
             phone: { type: String, index: true },
@@ -60,8 +60,8 @@ export interface iUser {
 }
 
 export const LegacyChannels =
-    connection.models.Channels ||
-    connection.model(
+    connection?.models?.Channels ||
+    connection?.model(
         "Channels",
         new mongooseSchema({
             token: { type: String, index: true },
@@ -84,8 +84,8 @@ export const LegacyChannels =
     );
 
 export const LegacyUserProfiles =
-    connection.models.Users ||
-    connection.model(
+    connection?.models?.Users ||
+    connection?.model(
         "UserProfiles",
         new mongooseSchema({
             token: { type: String, index: true },

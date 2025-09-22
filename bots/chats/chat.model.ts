@@ -3,8 +3,8 @@ import { mongooseConnect, mongooseSchema } from "../../utils/mongooseconnect";
 const connection = mongooseConnect("meriterra/mcs/neptune/test");
 
 export const Chat =
-    connection.models.Chat ||
-    connection.model(
+    connection?.models?.Chat ||
+    connection?.model(
         "Chat",
         new mongooseSchema({
             messenger: String,

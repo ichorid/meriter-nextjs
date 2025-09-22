@@ -13,8 +13,8 @@ const mRelation = {
 }
 
 export const Relation =
-    connection.models.Relation ||
-    connection.model(
+    connection?.models?.Relation ||
+    connection?.model(
         'Relation',
         new mongooseSchema({
             _from: mRelation,
