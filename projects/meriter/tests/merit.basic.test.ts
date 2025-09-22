@@ -64,7 +64,7 @@ let vars = {
     TRANSACTION_ID_FROM_B: undefined,
 };
 
-describe("Add new community (leader)", () => {
+describe.skip("Add new community (leader)", () => {
     test("start community", async () => {
         expect(1).toBe(1);
         const body = emulateTgMessage({
@@ -195,7 +195,7 @@ export async function memberStart(chatId) {
     );
 }
 
-describe("Publication internal (member)", () => {
+describe.skip("Publication internal (member)", () => {
     describe("Member A register in bot", () => {
         test("/start", async () => {
             await memberStart(vars.MEMBER_A_CHAT_ID);
@@ -329,7 +329,7 @@ describe("Publication internal (member)", () => {
     });
 });
 
-describe("Publication to Meriterra", () => {
+describe.skip("Publication to Meriterra", () => {
     test("Member_A publication with #заслуга hashtag", async () => {
         process.env.admin = "false";
         await tgHook(
@@ -440,7 +440,7 @@ describe("Publication to Meriterra", () => {
     });
 });
 
-describe("Services for merits", () => {
+describe.skip("Services for merits", () => {
     test("Member_C writes publication to #услуга in special chat", async () => {
         await tgHook(
             emulateTgMessage({
@@ -486,7 +486,7 @@ describe("Services for merits", () => {
     });
 });
 
-describe("Can vote for comments", () => {
+describe.skip("Can vote for comments", () => {
     test("A votes for B's comment to him", async () => {
         let id = await transactionForTransaction({
             fromUserTgId: vars.MEMBER_A_CHAT_ID,

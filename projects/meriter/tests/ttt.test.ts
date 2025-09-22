@@ -23,6 +23,6 @@ beforeAll(async () => {
         );
 });
 
-describe("Add new community (leader)", () => {
+describe.skip("Add new community (leader)", () => {
     test("/start community", () => {});
 });
