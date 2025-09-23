@@ -3,9 +3,11 @@ module.exports = {
     preset: 'ts-jest',
     testEnvironment: 'node',
     testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/"],
-    setupFilesAfterEnv: ["<rootDir>/projects/meriter/tests/setup.ts"],
+    globalSetup: "<rootDir>/projects/meriter/tests/globalSetup.ts",
+    globalTeardown: "<rootDir>/projects/meriter/tests/globalTeardown.ts",
     transform: {
-      "^.+\\.(js|jsx|ts|tsx)$": "<rootDir>/node_modules/babel-jest"
+      "^.+\\.(js|jsx)$": "<rootDir>/node_modules/babel-jest",
+      "^.+\\.(ts|tsx)$": "ts-jest"
     },
     transformIgnorePatterns: [
         "/node_modules/(?!uuid)"
@@ -13,5 +15,12 @@ module.exports = {
     moduleDirectories: [
         "node_modules",
         "<rootDir>"
-      ]
+    ],
+    moduleNameMapper: {
+        "\\.(scss|sass|css)$": "identity-obj-proxy"
+    },
+    rootDir: ".",
+    modulePaths: [
+        "<rootDir>"
+    ]
   };

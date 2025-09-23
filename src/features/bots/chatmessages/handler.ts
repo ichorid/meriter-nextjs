@@ -1,8 +1,8 @@
-import { ChatMessage, IChatMessage } from 'bots/chatmessages/chatmessage.model'
+import { ChatMessage, IChatMessage } from './chatmessage.model'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { useEffect } from 'react'
-import { fillDefined } from 'utils/object'
-import { useApiGET } from 'utils/fetch'
+import { fillDefined } from 'lib/utils/object'
+import { useApiGET } from 'lib/utils/fetch'
 import { Model } from 'mongoose'
 
 export const handlerChatMessages = async (req: NextApiRequest, res: NextApiResponse) => {

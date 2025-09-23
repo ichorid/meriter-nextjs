@@ -1,4 +1,4 @@
-import { Bots } from "bots/bots.data";
+import { Bots } from "features/bots/bots.data";
 import fileDownload from "js-file-download";
 import {
     telegramGetChat,
@@ -6,7 +6,7 @@ import {
     telegramPrepareFile,
 } from "./telegramapi";
 import fs from "fs";
-import { uploadStream } from "utils/s3";
+import { uploadStream } from "lib/utils/s3";
 import Axios from "axios";
 import sharp from "sharp";
 

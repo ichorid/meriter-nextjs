@@ -10,12 +10,11 @@ jest.mock('next/config', () => () => ({
 let mongo: MongoMemoryServer;
 
 beforeAll(async () => {
+  console.log('Setting up mongo memory server...');
   mongo = await MongoMemoryServer.create();
   const mongoUri = mongo.getUri();
-  await mongoose.connect(mongoUri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  });
+  console.log(`Mongo memory server running at: ${mongoUri}`);
+  await mongoose.connect(mongoUri);
 });
 
 beforeEach(async () => {

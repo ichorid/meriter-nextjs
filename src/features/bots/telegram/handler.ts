@@ -1,11 +1,11 @@
-import { createChatMessage } from 'bots/chatmessages/actions'
-import { Chat, IChat } from 'bots/chats/chat.model'
+import { createChatMessage } from 'features/bots/chatmessages/actions'
+import { Chat, IChat } from 'features/bots/chats/chat.model'
 import { linkResolveShort } from 'transactions/links/links'
 import { Model } from 'mongoose'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { userAccessCreateLink } from 'users/useraccess/auth'
 
-import { arraysHasIntersection } from 'utils/object'
+import { arraysHasIntersection } from 'lib/utils/object'
 import { telegramGetBotToken, telegramGetChatPhotoUrl } from './actions'
 
 import {
@@ -15,7 +15,7 @@ import {
     telegramChatGetAdmins,
     telegramSendMessage,
 } from './telegramapi'
-import { Bots } from 'bots/bots.data'
+import { Bots } from 'features/bots/bots.data'
 import { usertagsSubscribe } from 'users/usertags/usertags'
 export const handlerTelegram = async (req: NextApiRequest, res: NextApiResponse) => {
     const { actions } = req.query

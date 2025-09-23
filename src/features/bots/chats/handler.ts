@@ -1,7 +1,7 @@
-import { ChatMessage } from 'bots/chatmessages/chatmessage.model'
+import { ChatMessage } from 'features/bots/chatmessages/chatmessage.model'
 import { NextApiRequest, NextApiResponse } from 'next'
-import { fillDefined } from 'utils/object'
-import { noMongoInjection } from 'utils/security'
+import { fillDefined } from 'lib/utils/object'
+import { noMongoInjection } from 'lib/utils/security'
 import { Chat, IChat } from './chat.model'
 import { Model } from 'mongoose'
 

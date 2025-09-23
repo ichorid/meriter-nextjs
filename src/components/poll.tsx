@@ -1,5 +1,6 @@
-import { A } from "frontend/simple/simple-elements";
+import { A } from "../../frontend/simple/simple-elements";
 import { useState } from "react";
+import styles from "./poll.module.scss";
 
 interface IPollProps {
     tagRoot?: string;
@@ -22,15 +23,15 @@ interface IPollResults {
 
 const Checkbox = ({ tagName, h, d, selectItem }) => {
     return (
-        <div className="checkbox-wrapper">
+        <div className={styles.checkboxWrapper}>
             <label>
                 <input
                     type="checkbox"
                     onChange={(e) => selectItem(tagName, e.target.checked)}
                 />
-                <span className="checkmark"></span>
-                {h && <span className="heading">{h}</span>}
-                {d && <span className="description">{d}</span>}
+                <span className={styles.checkmark}></span>
+                {h && <span className={styles.heading}>{h}</span>}
+                {d && <span className={styles.description}>{d}</span>}
             </label>
         </div>
     );
@@ -53,11 +54,11 @@ export const Poll = ({
             : useState({});
 
     return (
-        <div className="poll">
+        <div className={styles.poll}>
             {options.map(({ tagName, h, d, options }) => {
                 const fullTag = (tagRoot ?? "") + tagName;
                 return (
-                    <div className="poll-item" key={fullTag}>
+                    <div className={styles.pollItem} key={fullTag}>
                         <Checkbox
                             h={h}
                             d={d}
@@ -89,7 +90,7 @@ export const Poll = ({
                 );
             })}
             {!folded && Object.keys(results).length > 0 && (
-                <div className="submit">
+                <div className={styles.submit}>
                     <A center button onClick={() => onSubmit(results)}>
                         Подтвердить
                     </A>

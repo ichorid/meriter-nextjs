@@ -25,7 +25,7 @@ import {
 import { publicationAdd, publicationApprovePending } from './publication'
 import uid from 'uid'
 import { getAuthLink } from './community'
-import { telegramGetChatPhotoUrl } from 'bots/telegram/actions'
+import { telegramGetChatPhotoUrl } from 'features/telegram/actions'
 import { userdataUpdateFromTelegramWebook } from 'users/userdata/userdata'
 import { Userdata } from 'users/userdata/userdata.model'
 import { IUserdata } from 'users/userdata/userdata.type'

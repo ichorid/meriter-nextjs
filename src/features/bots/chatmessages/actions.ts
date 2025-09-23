@@ -1,5 +1,5 @@
-import { ChatMessage, IChatMessage } from 'bots/chatmessages/chatmessage.model'
-import { mongooseTypes } from 'utils/mongooseconnect'
+import { ChatMessage, IChatMessage } from './chatmessage.model'
+import { mongooseTypes } from 'lib/utils/mongooseconnect'
 import { Model } from 'mongoose'
 
 export async function createChatMessage(chatMessage: IChatMessage) {
