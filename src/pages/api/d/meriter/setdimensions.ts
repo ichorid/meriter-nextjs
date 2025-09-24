@@ -9,7 +9,7 @@ export default async (req, res) => {
     const {publicationSlug,transactionId,dimensions} = req.body;
 
     if (publicationSlug){
-        const isMy = await Publication.count({slug:String(publicationSlug),tgAuthorId:user.tgUserId});
+        const isMy = await Publication.countDocuments({slug:String(publicationSlug),tgAuthorId:user.tgUserId});
         if (!isMy) return res.status(403).json({error:"not your publication"}) 
 
         await Publication.updateOne({slug:String(publicationSlug)},{dimensions})
@@ -18,7 +18,7 @@ export default async (req, res) => {
     }
 
     if (transactionId){
-        const isMy = await Transaction.count({_id:String(transactionId),tgAuthorId:user.tgUserId});
+        const isMy = await Transaction.countDocuments({_id:String(transactionId),tgAuthorId:user.tgUserId});
         if (!isMy) return res.status(403).json({error:"not your publication"}) 
 
         await Transaction.updateOne({slug:String(publicationSlug)},{dimensions})

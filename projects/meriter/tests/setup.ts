@@ -1,4 +1,3 @@
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 
 jest.mock('next/config', () => () => ({
@@ -7,14 +6,13 @@ jest.mock('next/config', () => () => ({
     },
   }));
 
-let mongo: MongoMemoryServer;
-
 beforeAll(async () => {
-  console.log('Setting up mongo memory server...');
-  mongo = await MongoMemoryServer.create();
-  const mongoUri = mongo.getUri();
-  console.log(`Mongo memory server running at: ${mongoUri}`);
-  await mongoose.connect(mongoUri);
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL not set');
+  }
+  process.env.JWT_SECRET = 'test-secret';
+  process.env.noAxios = "true";
+  await mongoose.connect(process.env.DATABASE_URL);
 });
 
 beforeEach(async () => {
@@ -25,8 +23,5 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  if (mongo) {
-    await mongo.stop();
-  }
   await mongoose.connection.close();
 });

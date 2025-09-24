@@ -1,4 +1,7 @@
-import { mongooseConnect, mongooseSchema } from '../../utils/mongooseconnect'
+import {
+    mongooseConnect,
+    mongooseSchema,
+} from "../../src/lib/utils/mongooseconnect";
 
 const connection = mongooseConnect('meriterra/mcs/neptune/meriterra')
 

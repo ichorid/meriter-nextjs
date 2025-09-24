@@ -1,6 +1,6 @@
 import Axios from "axios";
-import { TgChat, SentTGMessageLog } from "projects/meriter/schema/index.schema";
-import { BOT_URL, URL } from "projects/meriter/config";
+import { TgChat, SentTGMessageLog } from "../schema/index.schema";
+import { BOT_URL, URL } from "../config";
 
 export async function tgReplyMessage({ reply_to_message_id, chat_id, text }) {
     try {

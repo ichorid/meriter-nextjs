@@ -21,11 +21,11 @@ import {
     LEADER_MESSAGE_AFTER_ADDED,
     BOT_URL,
     BOT_TOKEN,
-} from 'projects/meriter/config'
+} from '../config'
 import { publicationAdd, publicationApprovePending } from './publication'
-import uid from 'uid'
+import { uid } from 'uid'
 import { getAuthLink } from './community'
-import { telegramGetChatPhotoUrl } from 'features/telegram/actions'
+import { telegramGetChatPhotoUrl } from '../../../src/features/bots/telegram/actions'
 import { userdataUpdateFromTelegramWebook } from 'users/userdata/userdata'
 import { Userdata } from 'users/userdata/userdata.model'
 import { IUserdata } from 'users/userdata/userdata.type'
@@ -224,7 +224,7 @@ export async function tgHookRecieveMessageFromUser({ tgUserId, messageText, tgUs
     let auth = messageText.match('/auth')
 
     if (referal !== false) {
-        const c = await User.count({ tgUserId })
+        const c = await User.countDocuments({ tgUserId })
         if (c === 0) {
             let token = uid(32)
             const newUser = { tgUserId, name: tgUserName, token }

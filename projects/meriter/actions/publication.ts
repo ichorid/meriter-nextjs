@@ -2,7 +2,7 @@ import {
     Publication,
     Space,
     Transaction,
-} from "projects/meriter/schema/index.schema";
+} from "../schema/index.schema";
 import shortid from "shortid";
 import {
     MERITERRA_HASHTAG,
@@ -11,7 +11,7 @@ import {
     MERITERRA_TG_CHAT_ID,
     MERITERRA_INCOMMING_FROM_COMMUNITY,
     MARKET_INCOMMING_FROM_COMMUNITY,
-} from "projects/meriter/config";
+} from "../config";
 import { notifyMeriterra } from "./community";
 import { iPublication } from "../schema/types";
 
@@ -177,7 +177,7 @@ export async function findPublicationsInf(
 }
 
 export async function publicationApprovePending({ tgMessageId, tgChatId }) {
-    return await Publication.update(
+    return await Publication.updateOne(
         { tgChatId, tgMessageId },
         { pending: false }
     );

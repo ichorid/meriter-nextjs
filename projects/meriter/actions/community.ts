@@ -5,9 +5,9 @@ import {
     Entity,
     iEntity,
     Space,
-} from "projects/meriter/schema/index.schema";
+} from "../schema/index.schema";
 import { tgChatIsAdmin, tgSend } from "./telegram";
-import * as config from "projects/meriter/config";
+import * as config from "../config";
 import { signJWT } from "../utils/auth";
 import { iSpace } from "../schema/types";
 

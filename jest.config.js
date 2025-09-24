@@ -5,6 +5,7 @@ module.exports = {
     testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/"],
     globalSetup: "<rootDir>/projects/meriter/tests/globalSetup.ts",
     globalTeardown: "<rootDir>/projects/meriter/tests/globalTeardown.ts",
+    setupFilesAfterEnv: ["<rootDir>/projects/meriter/tests/setup.ts"],
     transform: {
       "^.+\\.(js|jsx)$": "<rootDir>/node_modules/babel-jest",
       "^.+\\.(ts|tsx)$": "ts-jest"

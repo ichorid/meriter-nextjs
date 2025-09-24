@@ -41,7 +41,7 @@ export const usertagsSetTag = async (useraccess, tag, rewrite = false) => {
         timeSet: Date.now(),
     };
 
-    const count = await UserTag.count(query);
+    const count = await UserTag.countDocuments(query);
     if (!rewrite && count > 0) {
         console.log("attempt to re-assign tag");
         return { error: "tag was already set" };

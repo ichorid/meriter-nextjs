@@ -1,5 +1,5 @@
 import { emulateTgMessage, emulateTgAddedToChat } from "./requests";
-import { tgHook } from "projects/meriter/actions/hooks";
+import { tgHook } from "../actions/hooks";
 import {
     SentTGMessageLog,
     ISentTGMessageLog,
@@ -12,14 +12,14 @@ import {
     Wallet,
     Space,
     Capitalization,
-} from "projects/meriter/schema/index.schema";
-import * as config from "projects/meriter/config";
+} from "../schema/index.schema";
+import * as config from "../config";
 import {
     userGetManagedChats,
     updateCommunityInfo,
     sendInfoLetterToCommunity,
     initMeriterra,
-} from "projects/meriter/actions/community";
+} from "../actions/community";
 import {
     transactionForPublication,
     transactionForTransaction,
@@ -64,74 +64,52 @@ let vars = {
     TRANSACTION_ID_FROM_B: undefined,
 };
 
-describe.skip("Add new community (leader)", () => {
-    test("start community", async () => {
-        expect(1).toBe(1);
+describe("Add new community (leader)", () => {
+    test("should perform all community setup actions", async () => {
+        // start community
         const body = emulateTgMessage({
             text: "/start community",
             inTgChatId: vars.ADMIN_CHAT_ID,
             fromTgUserId: vars.ADMIN_CHAT_ID,
             replyTo: undefined,
         });
-        await tgHook(body);
+        await tgHook(body, {} as any);
         const msgs = await SentTGMessageLog.find({});
         expect(msgs?.length).toBeGreaterThan(0);
         const user = (await User.findOne({
             tgUserId: vars.ADMIN_CHAT_ID,
         } as iUser)) as iUser;
         expect(user.token).toBeDefined();
-        expect(1).toBe(1);
-    });
 
-    test("Replied with admin-welcome message", async () => {
-        const msg = await lastChatMessage(vars.ADMIN_CHAT_ID);
-        const user = (await User.findOne({
+        // Replied with admin-welcome message
+        const msg1 = await lastChatMessage(vars.ADMIN_CHAT_ID);
+        const user2 = (await User.findOne({
             tgUserId: vars.ADMIN_CHAT_ID,
         } as iUser)) as iUser;
-        expect(msg.text).toBeDefined();
-        expect(msg.text).toMatch("Добавьте этого бота"); // We actually sent some link
-        vars.ADMIN_TOKEN = user.token;
+        expect(msg1.text).toBeDefined();
+        expect(msg1.text).toMatch("Добавьте этого бота"); // We actually sent some link
+        vars.ADMIN_TOKEN = user2.token;
         expect(vars.ADMIN_TOKEN).toBeDefined();
-    });
-    test("Bot added to chat", async () => {
+
+        // Bot added to chat
         await tgHook(
             emulateTgAddedToChat({
                 tgUserName: config.BOT_USERNAME,
                 toTgChatId: vars.COMMUNITY_CHAT_ID,
-            })
+            }),
+            {} as any
         );
         const chat = (await TgChat.findOne({
-            chatId: globalThis.COMMUNITY_CHAT_ID,
+            chatId: vars.COMMUNITY_CHAT_ID,
         } as iTgChat)) as iTgChat;
         expect(chat).toBeDefined();
-    });
-    test("Follow link to login and see communitylist", async () => {
+
+        // Follow link to login and see communitylist
         const chats = await userGetManagedChats(vars.ADMIN_TOKEN);
         expect(chats[0].name).toBeDefined();
-        //expect(chats[0].descrtiption).toBe("Community description");
         expect(chats[0].chatId).toBe(vars.COMMUNITY_CHAT_ID);
-    });
-    test("Set description, tags, currencyName", async () => {
-        const updateCommunityInfoData = {
-            tgAdminId: vars.ADMIN_CHAT_ID,
-            tgChatId: vars.COMMUNITY_CHAT_ID,
-            currencyName1: "барсик",
-            currencyName2: "барсика",
-            currencyName5: "барсиков",
-            dailyEmission: 10,
-            spaces: [
-                {
-                    slug: "cats",
-                    tagRus: "котэ",
-                    description: "здесь про котэ",
-                },
-                {
-                    slug: "rocknroll",
-                    tagRus: "рокнролл",
-                    description: "здесь про все остальное",
-                },
-            ],
-        };
+
+        // Set description, tags, currencyName
         await updateCommunityInfo(
             vars.COMMUNITY_CHAT_ID,
             vars.ADMIN_CHAT_ID,
@@ -151,16 +129,16 @@ describe.skip("Add new community (leader)", () => {
             { 1: "барсик", 2: "барсика", 5: "барсиков", many: "барсики" },
             ""
         );
-    });
-    test("Sent welcome message to chat members", async () => {
+
+        // Sent welcome message to chat members
         await sendInfoLetterToCommunity(
             vars.COMMUNITY_CHAT_ID,
             vars.COMMUNITY_CHAT_ID
         );
-        const msg = await lastChatMessage(vars.COMMUNITY_CHAT_ID);
-        expect(msg.text).toMatch("котэ");
-    });
-    test("Sent login link with redirect", async () => {
+        const msg2 = await lastChatMessage(vars.COMMUNITY_CHAT_ID);
+        expect(msg2.text).toMatch("котэ");
+
+        // Sent login link with redirect
         await tgHook(
             emulateTgMessage({
                 text: "/start auth",
@@ -168,11 +146,11 @@ describe.skip("Add new community (leader)", () => {
                 fromTgUserId: vars.MEMBER_A_CHAT_ID,
                 replyTo: undefined,
                 fromTgUsername: "usernameFor" + vars.MEMBER_A_CHAT_ID,
-            })
+            }),
+            {} as any
         );
-        const msg = await lastChatMessage(vars.MEMBER_A_CHAT_ID);
-
-        expect(msg.text).toMatch("Пройдите");
+        const msg3 = await lastChatMessage(vars.MEMBER_A_CHAT_ID);
+        expect(msg3.text).toMatch("Пройдите");
     });
 });
 
@@ -195,44 +173,42 @@ export async function memberStart(chatId) {
     );
 }
 
-describe.skip("Publication internal (member)", () => {
-    describe("Member A register in bot", () => {
-        test("/start", async () => {
-            await memberStart(vars.MEMBER_A_CHAT_ID);
-            await memberStart(vars.MEMBER_B_CHAT_ID);
-            await memberStart(vars.MEMBER_C_CHAT_ID);
-        });
-        test("Recieves welcome message with link", async () => {
-            const msg = await lastChatMessage(vars.MEMBER_A_CHAT_ID);
-            expect(msg.text).toMatch("https");
-        });
+describe("Publication internal (member)", () => {
+    beforeAll(async () => {
+        await initMeriterra();
     });
-    test("Member_A writes publication with tags", async () => {
+    test("should handle internal publication lifecycle", async () => {
+        // Member A, B, C register in bot
+        await memberStart(vars.MEMBER_A_CHAT_ID);
+        await memberStart(vars.MEMBER_B_CHAT_ID);
+        await memberStart(vars.MEMBER_C_CHAT_ID);
+        const msg1 = await lastChatMessage(vars.MEMBER_A_CHAT_ID);
+        expect(msg1.text).toMatch("https");
+
+        // Member_A writes publication with tags
         await tgHook(
             emulateTgMessage({
                 text: "Вот такие #котэ",
                 inTgChatId: vars.COMMUNITY_CHAT_ID,
                 fromTgUserId: vars.MEMBER_A_CHAT_ID,
                 replyTo: undefined,
-            })
+            }),
+            {} as any
         );
         const publication = await Publication.findOne({
             tgAuthorId: vars.MEMBER_A_CHAT_ID,
+            "space.slug": "cats",
         } as iPublication);
         expect(publication.slug).toBeDefined();
         vars.MEMBER_A_PUBLICATION_SLUG = publication.slug;
-    });
-    test("Bot replies to publication with link", async () => {
-        const msg = await lastChatMessage(vars.COMMUNITY_CHAT_ID);
-        expect(msg.text).toMatch("http");
-    });
-    test("<--->Member_A cannot free rate his own publication", async () => {
-        expect(1).toBe(1);
-    });
 
-    test("Member_A gives cannot give free pluses to own publication", async () => {
-        let err=undefined
-        try{
+        // Bot replies to publication with link
+        const msg2 = await lastChatMessage(vars.COMMUNITY_CHAT_ID);
+        expect(msg2.text).toMatch("http");
+
+        // Member_A cannot give free pluses to own publication
+        let err1;
+        try {
             await transactionForPublication({
                 fromUserTgId: vars.MEMBER_A_CHAT_ID,
                 fromUserTgName: "MEMBER A",
@@ -241,23 +217,19 @@ describe.skip("Publication internal (member)", () => {
                 directionPlus: true,
                 comment: "себе",
             });
+        } catch (e) {
+            err1 = e;
         }
-        catch(e){
-            err=e;
-        }
-        expect(err).toBeDefined();
-     
-    });
-    test("His free limit stays 10", async () => {
+        expect(err1).toBeDefined();
+
+        // His free limit stays 10
         const free = await getFreeLimitInSpace({
             tgUserId: vars.MEMBER_A_CHAT_ID,
             inSpaceSlug: "cats",
         });
         expect(free).toBe(10);
-    });
-    
 
-    test("Member_B member gives 10 free pluses to publication", async () => {
+        // Member_B member gives 10 free pluses to publication
         vars.TRANSACTION_ID_FROM_B = await transactionForPublication({
             fromUserTgId: vars.MEMBER_B_CHAT_ID,
             fromUserTgName: "MEMBER B",
@@ -266,13 +238,8 @@ describe.skip("Publication internal (member)", () => {
             directionPlus: true,
             comment: "ему ",
         });
-    });
 
-    test("<---->Member_B cannot free minus publication", async () => {
-        expect(1).toBe(1);
-    });
-
-    test("Member_C member gives 3 free minuses to publication", async () => {
+        // Member_C member gives 3 free minuses to publication
         await transactionForPublication({
             fromUserTgId: vars.MEMBER_C_CHAT_ID,
             fromUserTgName: "MEMBER C",
@@ -281,22 +248,20 @@ describe.skip("Publication internal (member)", () => {
             directionPlus: false,
             comment: "минус!!",
         });
-    });
-    test("Total rating of post now 10-3=7", async () => {
-        const b = await balanceOfPublicationCalc({
+
+        // Total rating of post now 10-3=7
+        const b1 = await balanceOfPublicationCalc({
             publicationSlug: vars.MEMBER_A_PUBLICATION_SLUG,
         });
-        expect(b.plus).toBe(10);
-        expect(b.minus).toBe(3);
-        expect(b.sum).toBe(7);
-    });
+        expect(b1.plus).toBe(10);
+        expect(b1.minus).toBe(3);
+        expect(b1.sum).toBe(7);
 
-    test("Total internal capital is 7 points PLUS(10)-MINUS(3)", async () => {
+        // Total internal capital is 7 points PLUS(10)-MINUS(3)
         const cap = await internalCapitalizationCalc(vars.COMMUNITY_CHAT_ID);
         expect(cap).toBe(7);
-    });
 
-    test("Member_A withdraws 5 points to personal account", async () => {
+        // Member_A withdraws 5 points to personal account
         await transactionWithdraw({
             tgUserId: vars.MEMBER_A_CHAT_ID,
             tgUserName: "Member A",
@@ -304,68 +269,68 @@ describe.skip("Publication internal (member)", () => {
             amount: 5,
             comment: "test",
         });
-    });
-    test("Member_A cannot withdraw more than he have", async () => {
-        let err;
+
+        // Member_A cannot withdraw more than he have
+        let err2;
         try {
             await transactionWithdraw({
                 tgUserId: vars.MEMBER_A_CHAT_ID,
                 tgUserName: "Member A",
-                publicationSlug: vars.MEMBER_A_CHAT_ID,
+                publicationSlug: vars.MEMBER_A_PUBLICATION_SLUG,
                 amount: 50,
                 comment: "test",
             });
         } catch (e) {
-            err = e;
+            err2 = e;
         }
+        expect(err2).toBeDefined();
 
-        expect(err).toBeDefined();
-    });
-    test("Total rating of post is now 2 points", async () => {
-        const b = await balanceOfPublicationCalc({
+        // Total rating of post is now 2 points
+        const b2 = await balanceOfPublicationCalc({
             publicationSlug: vars.MEMBER_A_PUBLICATION_SLUG,
         });
-        expect(b.sum).toBe(2);
+        expect(b2.sum).toBe(2);
     });
 });
 
-describe.skip("Publication to Meriterra", () => {
-    test("Member_A publication with #заслуга hashtag", async () => {
+describe("Publication to Meriterra", () => {
+    test("should handle publication to Meriterra lifecycle", async () => {
+        // Member_A publication with #заслуга hashtag
         process.env.admin = "false";
         await tgHook(
             emulateTgMessage({
-                text:
-                    "Вот такие высокие достижения у нашего коммьюнити! #заслуга",
+                text: "Вот такие высокие достижения у нашего коммьюнити! #заслуга",
                 inTgChatId: vars.COMMUNITY_CHAT_ID,
                 fromTgUserId: vars.MEMBER_A_CHAT_ID,
                 replyTo: undefined,
-            })
+            }),
+            {} as any
         );
         process.env.admin = "true";
         const publication = await Publication.findOne({
-            tgAuthorId: vars.COMMUNITY_CHAT_ID,
-            pending: true,
+            tgAuthorId: vars.MEMBER_A_CHAT_ID,
+            "space.slug": "meriterra",
         });
         expect(publication).toBeDefined();
         expect(publication?.slug).toBeDefined();
         vars.PUBLICATION_TO_MERITERRA_SLUG = publication.slug;
-    });
-    test("Bot replies with pending status and link", async () => {
+
+        // Bot replies with pending status and link
         const msg = await lastChatMessage(vars.COMMUNITY_CHAT_ID);
         expect(msg.text).toMatch("одобрить");
-    });
-    test("admin publication with #заслуга hashtag", async () => {
+
+        // admin publication with #заслуга hashtag
         await tgHook(
             emulateTgMessage({
-                text:
-                    "И такие высокие достижения у нашего коммьюнити!!!! #заслуга",
+                text: "И такие высокие достижения у нашего коммьюнити!!!! #заслуга",
                 inTgChatId: vars.COMMUNITY_CHAT_ID,
-                fromTgUserId: vars.MEMBER_A_CHAT_ID,
+                fromTgUserId: vars.ADMIN_CHAT_ID,
                 replyTo: undefined,
-            })
+            }),
+            {} as any
         );
-    });
-    test("Member_A gives 10 free pluses to own publication", async () => {
+
+        // Member_A gives 10 free pluses to own publication
         await transactionForPublication({
             fromUserTgId: vars.MEMBER_A_CHAT_ID,
             fromUserTgName: "MEMBER A",
@@ -374,8 +339,8 @@ describe.skip("Publication to Meriterra", () => {
             directionPlus: true,
             comment: "за нас",
         });
-    });
-    test("Member_B gives 5 free pluses to publication", async () => {
+
+        // Member_B gives 5 free pluses to publication
         await transactionForPublication({
             fromUserTgId: vars.MEMBER_B_CHAT_ID,
             fromUserTgName: "MEMBER B",
@@ -384,26 +349,25 @@ describe.skip("Publication to Meriterra", () => {
             directionPlus: true,
             comment: "за нас 2",
         });
-    });
-    test("Total rating of post is now 15 merits", async () => {
-        const b = await balanceOfPublicationCalc({
+
+        // Total rating of post is now 15 merits
+        const b1 = await balanceOfPublicationCalc({
             publicationSlug: vars.PUBLICATION_TO_MERITERRA_SLUG,
         });
-        expect(b.sum).toBe(15);
-    });
-    test("Total rating of community is yet 0 merits", async () => {
-        const b = await walletGet({
+        expect(b1.sum).toBe(15);
+
+        // Total rating of community is yet 0 merits
+        const b2 = await walletGet({
             tgUserId: vars.COMMUNITY_CHAT_ID,
             currencyOfCommunityTgChatId: config.MERITERRA_TG_CHAT_ID,
         });
-        expect(b).toBe(0);
-    });
-    test("Total internal capital is 15 points PLUS(18)-MINUS(3+5)-WALLETS(5)", async () => {
-        const cap = await internalCapitalizationCalc(vars.COMMUNITY_CHAT_ID);
-        expect(cap).toBe(15);
-    });
+        expect(b2).toBe(0);
 
-    test("Community admin withdraws merits from publication", async () => {
+        // Total internal capital is 17 points: 2 from previous test + 15 from this one
+        const cap = await internalCapitalizationCalc(vars.COMMUNITY_CHAT_ID);
+        expect(cap).toBe(17);
+
+        // Community admin withdraws merits from publication
         await transactionWithdraw({
             tgUserId: vars.COMMUNITY_CHAT_ID,
             tgUserName: "Community",
@@ -411,58 +375,53 @@ describe.skip("Publication to Meriterra", () => {
             amount: 15,
             comment: "test",
         });
-        const b = await walletGet({
+        const b3 = await walletGet({
             tgUserId: vars.COMMUNITY_CHAT_ID,
             currencyOfCommunityTgChatId: config.MERITERRA_TG_CHAT_ID,
         });
-        expect(b).toBe(15);
-    });
+        expect(b3).toBe(15);
 
-    test("Point/merits exchange rate for community is 1", async () => {
+        // Point/merits exchange rate for community is 1
         const rate = await exchangeRateCalc(
             vars.COMMUNITY_CHAT_ID,
             config.MERITERRA_TG_CHAT_ID
         );
         expect(rate).toBe(1);
-    });
-    test("Member_A exchanges 5 points to 5 merits", async () => {
+
+        // Member_A exchanges 5 points to 5 merits
         await transactionExchangeToMerits({
             fromUserTgId: vars.MEMBER_A_CHAT_ID,
             fromCurrency: vars.COMMUNITY_CHAT_ID,
             amountFrom: 5,
         });
-        const b = await walletGet({
+        const b4 = await walletGet({
             tgUserId: vars.MEMBER_A_CHAT_ID,
             currencyOfCommunityTgChatId: config.MERITERRA_TG_CHAT_ID,
         });
-        expect(b).toBe(5);
-        //expect(Math.round(b)).toBe(10);
+        expect(b4).toBe(5);
     });
 });
 
-describe.skip("Services for merits", () => {
-    test("Member_C writes publication to #услуга in special chat", async () => {
+describe("Services for merits", () => {
+    test("should handle services for merits lifecycle", async () => {
+        // Member_C writes publication to #услуга in special chat
         await tgHook(
             emulateTgMessage({
-                text:
-                    "Вот такие высокие достижения у нашего коммьюнити! #услуга",
+                text: "Вот такие высокие достижения у нашего коммьюнити! #услуга",
                 inTgChatId: config.MARKET_TG_CHAT_ID,
                 fromTgUserId: vars.MEMBER_C_CHAT_ID,
                 replyTo: undefined,
-            })
+            }),
+            {} as any
         );
         const publication = await Publication.findOne({
-            tgAuthorId: vars.COMMUNITY_CHAT_ID,
-            pending: true,
+            tgAuthorId: vars.MEMBER_C_CHAT_ID,
+            "space.slug": "market",
         });
         expect(publication.slug).toBeDefined();
         vars.PUBLICATION_TO_MARKET_SLUG = publication.slug;
-    });
-    /*test("Member_A writes comment to recieve service from Member_C", async () => {
 
-    });*/
-    //test("Member_C agrees", async () => {});
-    test("Member_A sends 3 merits to Member_C", async () => {
+        // Member_A sends 3 merits to Member_C
         await transactionForPublication({
             fromUserTgId: vars.MEMBER_A_CHAT_ID,
             fromUserTgName: "MEMBER A",
@@ -471,8 +430,8 @@ describe.skip("Services for merits", () => {
             directionPlus: true,
             comment: "класс",
         });
-    });
-    test("Now member A has 2 merits but Member_C still 0 merits, because he needs to withdraw it first", async () => {
+
+        // Now member A has 2 merits but Member_C still 0 merits, because he needs to withdraw it first
         let bC = await walletGet({
             tgUserId: vars.MEMBER_C_CHAT_ID,
             currencyOfCommunityTgChatId: config.MERITERRA_TG_CHAT_ID,
@@ -486,8 +445,9 @@ describe.skip("Services for merits", () => {
     });
 });
 
-describe.skip("Can vote for comments", () => {
-    test("A votes for B's comment to him", async () => {
+describe("Can vote for comments", () => {
+    test("should allow voting for comments and withdrawal", async () => {
+        // A votes for B's comment to him
         let id = await transactionForTransaction({
             fromUserTgId: vars.MEMBER_A_CHAT_ID,
             fromUserTgName: "MEMBER A",
@@ -497,34 +457,23 @@ describe.skip("Can vote for comments", () => {
             directionPlus: true,
             comment: "благодарю!!!",
         });
-        const c = await Transaction.findOne({
-            _id: id,
-            //  forTransactionId: vars.TRANSACTION_ID_FROM_B,
-        });
-       // console.log(c);
+        const c = await Transaction.findById(id);
         expect(c.toUserTgId).toBe(vars.MEMBER_B_CHAT_ID);
-        //expect(c).toBe(1);
 
-        const bal = await balanceOfTransactionCalc(vars.TRANSACTION_ID_FROM_B);
+        const bal1 = await balanceOfTransactionCalc(vars.TRANSACTION_ID_FROM_B);
+        expect(bal1.plus).toBe(1);
 
-        expect(bal.plus).toBe(1);
-    });
-    test("B withdraws from transaction", async () => {
-        const c = await Transaction.findOne({
-            _id: vars.TRANSACTION_ID_FROM_B,
-            //  forTransactionId: vars.TRANSACTION_ID_FROM_B,
-        });
-       // console.log(c);
+        // B withdraws from transaction
         await transactionWithdrawFromTransaction({
             tgUserId: vars.MEMBER_B_CHAT_ID,
             tgUserName: "Member B",
             transactionId: vars.TRANSACTION_ID_FROM_B,
             amount: 1,
             comment: "to myselft",
+            directionAdd: false,
         });
-        const bal = await balanceOfTransactionCalc(vars.TRANSACTION_ID_FROM_B);
-
-        expect(bal.plus).toBe(0);
+        const bal2 = await balanceOfTransactionCalc(vars.TRANSACTION_ID_FROM_B);
+        expect(bal2.plus).toBe(0);
     });
 });
 

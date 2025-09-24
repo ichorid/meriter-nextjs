@@ -7,7 +7,7 @@ import {
     getChatIdbyName,
     getChat,
 } from "./community";
-import { iEntity } from "projects/meriter/schema/index.schema";
+import { iEntity } from "../schema/index.schema";
 import {
     findPublications,
     findUserPublications,

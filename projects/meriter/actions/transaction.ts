@@ -6,13 +6,13 @@ import {
     Wallet,
     iCapitalization,
     Space,
-} from "projects/meriter/schema/index.schema";
+} from "../schema/index.schema";
 import {
     MERITERRA_SLUG,
     MARKET_HASHTAG,
     MARKET_TG_CHAT_ID,
     MERITERRA_TG_CHAT_ID,
-} from "projects/meriter/config";
+} from "../config";
 import mongoose from "mongoose";
 import { iPublication, iTransaction } from "../schema/types";
 import { NextApiRequest, NextApiResponse } from "next";
@@ -91,7 +91,7 @@ export async function transactionForPublication(
     );
 
     //const toUserTgId;
-    const transactionId = mongoose.Types.ObjectId();
+    const transactionId = new mongoose.Types.ObjectId();
 
     if (fromUserTgId == toUserTgId) throw "cannot vote for self";
 
@@ -177,7 +177,7 @@ export async function transactionForTransaction(
 
     const allow = await userJWTgetAccessToTgChatId(req, res, currency);
     if (!allow) throw "not a member";
-    const transactionId = mongoose.Types.ObjectId();
+    const transactionId = new mongoose.Types.ObjectId();
     const newTransaction: iTransaction = {
         _id: transactionId,
         fromUserTgId,
@@ -272,7 +272,7 @@ export async function walletUpdate({
     let currency = currencyOfCommunityTgChatId;
     if (currencyOfCommunityTgChatId === MARKET_TG_CHAT_ID)
         currency = MERITERRA_TG_CHAT_ID;
-    return await Wallet.update(
+    return await Wallet.updateOne(
         { tgUserId, currencyOfCommunityTgChatId: currency },
         { $inc: { amount: delta } as any },
         { upsert: true }
@@ -519,7 +519,7 @@ export async function transactionRewardOnce({
         comment,
     };
 
-    const was = await Transaction.count({
+    const was = await Transaction.countDocuments({
         reason: "reward",
         toUserTgId: tgUserId,
         comment,

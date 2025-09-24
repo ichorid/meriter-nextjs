@@ -1,8 +1,8 @@
-import mongoose from 'mongoose';
+import { MongoMemoryServer } from 'mongodb-memory-server';
 
 module.exports = async () => {
-  if ((global as any).__MONGO_INSTANCE__) {
-    await (global as any).__MONGO_INSTANCE__.stop();
+  const mongo = (global as any).__MONGO_INSTANCE__ as MongoMemoryServer;
+  if (mongo) {
+    await mongo.stop();
   }
-  await mongoose.connection.close();
 };

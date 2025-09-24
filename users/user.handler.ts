@@ -67,7 +67,7 @@ export const userHandler = async (req: NextApiRequest, res: NextApiResponse) => 
         const { email: _email, scope } = req.query
         const email = String(_email).toLowerCase()
 
-        const hasnameonscope = await Userdata.count(fillDefined({ email, scope, firstName: { $exists: true } }))
+        const hasnameonscope = await Userdata.countDocuments(fillDefined({ email, scope, firstName: { $exists: true } }))
         return res.json({ count: hasnameonscope })
     }
     if (action === 'checkmytag') {
@@ -75,7 +75,7 @@ export const userHandler = async (req: NextApiRequest, res: NextApiResponse) => 
         if (!user) res.status(403).json({})
         const { tag } = req.query
 
-        const hastag = await UserTag.count({ tag, token: user.token })
+        const hastag = await UserTag.countDocuments({ tag, token: user.token })
 
         return res.json({ hastag })
     }
@@ -83,7 +83,7 @@ export const userHandler = async (req: NextApiRequest, res: NextApiResponse) => 
     if (action === 'hasmesssengeronscope') {
         const { email: _email, scope } = req.query
         const email = String(_email).toLowerCase()
-        const hastelegramonscope = await Userdata.count(fillDefined({ email, scope, telegramUserId: { $exists: true } }))
+        const hastelegramonscope = await Userdata.countDocuments(fillDefined({ email, scope, telegramUserId: { $exists: true } }))
         if (hastelegramonscope) return res.json({ messenger: 'telegram' })
         else res.json({})
     }
@@ -112,7 +112,7 @@ export const userHandler = async (req: NextApiRequest, res: NextApiResponse) => 
         const email = String(_email).toLowerCase()
         if (!email) return res.status(400).json({})
         if (!scope) return res.status(400).json({})
-        const extuser = await UserAccess.count({ $or: [{ email }, { phone }] })
+        const extuser = await UserAccess.countDocuments({ $or: [{ email }, { phone }] })
         await usertagsSubscribe(email, scope, tags, firstName, lastName, phone, undefined, utm)
         if (!extuser) {
             const user = await useraccessCreateByEmail(res, email)
@@ -148,7 +148,7 @@ export const userHandler = async (req: NextApiRequest, res: NextApiResponse) => 
     if (action === 'adminSetUserTagOnce') {
         const { tag, token } = req.query
         if (!(tag && token)) return res.status(400).json({})
-        if ((await UserTag.count({ token, tag })) > 0) return res.json({ error: 'already set' })
+        if ((await UserTag.countDocuments({ token, tag })) > 0) return res.json({ error: 'already set' })
         const access = await UserAccess.findOne({ token })
         const userdata = await Userdata.findOne({ token })
         if (!(access && userdata)) return res.status(404).json({ error: 'not found' })
@@ -211,7 +211,7 @@ export const userHandler = async (req: NextApiRequest, res: NextApiResponse) => 
 
     if (action === 'admin_userdata') {
         const userdata = await Userdata.find({})
-        const count = await Userdata.count({})
+        const count = await Userdata.countDocuments({})
         return res.json({ count, userdata })
     }
     if (action === 'admin_createaccesslink') {

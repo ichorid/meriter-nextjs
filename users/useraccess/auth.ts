@@ -70,7 +70,7 @@ export async function userAccessSendConfirmation(email, scope, forceEmail = fals
                 telegramUserId: accessTelegram.telegramUserId,
             }*/
         if (accessPhone && !forceEmail) {
-            const min = await UserAccessCheck.count({ phone: accessPhone.phone, ts: { $gte: Date.now() - 1000 * 60 } })
+            const min = await UserAccessCheck.countDocuments({ phone: accessPhone.phone, ts: { $gte: Date.now() - 1000 * 60 } })
             if (min > 0)
                 return {
                     error: 'too many',
