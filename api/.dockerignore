@@ -1,0 +1,56 @@
+# Dependencies
+node_modules
+
+# Build artifacts
+dist
+build
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+.env*.local
+env.example
+
+# Git
+.git
+.gitignore
+.github
+
+# Testing
+coverage
+test
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# Documentation
+README.md
+*.md
+docs
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.tgz
+
+# NestJS specific
+webpack-hmr.config.js
+

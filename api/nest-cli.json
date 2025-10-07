@@ -1,0 +1,64 @@
+{
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "apps/meriter/src",
+  "monorepo": true,
+  "root": "apps/meriter",
+  "compilerOptions": {
+    "webpack": true,
+    "tsConfigPath": "apps/meriter/tsconfig.app.json",
+    "assets": [
+      {
+        "include": "**/*.yml"
+      }
+    ]
+  },
+  "projects": {
+    "meriter": {
+      "type": "application",
+      "root": "apps/meriter",
+      "entryFile": "main",
+      "sourceRoot": "apps/meriter/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/meriter/tsconfig.app.json"
+      }
+    },
+
+    "abstracts": {
+      "type": "library",
+      "root": "libs/abstracts",
+      "entryFile": "index",
+      "sourceRoot": "libs/abstracts/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/abstracts/tsconfig.lib.json"
+      }
+    },
+    "extapis": {
+      "type": "library",
+      "root": "libs/extapis",
+      "entryFile": "index",
+      "sourceRoot": "libs/extapis/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/extapis/tsconfig.lib.json"
+      }
+    },
+    "lambdas": {
+      "type": "library",
+      "root": "libs/lambdas",
+      "entryFile": "index",
+      "sourceRoot": "libs/lambdas/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/lambdas/tsconfig.lib.json"
+      }
+    },
+
+    "tg-sync": {
+      "type": "library",
+      "root": "libs/tg-sync",
+      "entryFile": "index",
+      "sourceRoot": "libs/tg-sync/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/tg-sync/tsconfig.lib.json"
+      }
+    }
+  }
+}

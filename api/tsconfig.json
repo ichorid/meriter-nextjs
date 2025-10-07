@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2022",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@common/abstracts": [
+        "libs/abstracts/src"
+      ],
+      "@common/abstracts/*": [
+        "libs/abstracts/src/*"
+      ],
+      "@common/extapis": [
+        "libs/extapis/src"
+      ],
+      "@common/extapis/*": [
+        "libs/extapis/src/*"
+      ],
+      "@common/lambdas": [
+        "libs/lambdas/src"
+      ],
+      "@common/lambdas/*": [
+        "libs/lambdas/src/*"
+      ],
+      "@common/tg-sync": [
+        "libs/tg-sync/src"
+      ],
+      "@common/tg-sync/*": [
+        "libs/tg-sync/src/*"
+      ]
+    }
+  }
+}

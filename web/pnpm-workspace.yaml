@@ -1,0 +1,5 @@
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - core-js
+  - mongodb-memory-server
+  - sharp
