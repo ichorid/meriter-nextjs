@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["apps/aggregor/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
