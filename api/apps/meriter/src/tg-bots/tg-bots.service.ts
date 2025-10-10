@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { TgChatsService } from "../tg-chats/tg-chats.service";
 import { uid } from "uid";
 import * as sharp from "sharp";
@@ -13,22 +13,16 @@ import {
   BOT_URL,
   BOT_USERNAME,
   LEADER_MESSAGE_AFTER_ADDED,
-  MARKET_HASHTAG,
-  MARKET_INCOMMING_FROM_COMMUNITY,
-  MARKET_TG_CHAT_ID,
-  MERITERRA_HASHTAG,
-  MERITERRA_TG_CHAT_ID,
+  GLOBAL_FEED_HASHTAG,
+  GLOBAL_FEED_TG_CHAT_ID,
   WELCOME_LEADER_MESSAGE,
   WELCOME_USER_MESSAGE,
 } from "../config";
 import * as TelegramTypes from "@common/extapis/telegram/telegram.types";
 import Axios from "axios";
-import { mapOldTgChatToTgChat } from "../rest-api/schemas/old-tg-chat.schema";
 import { TgChat } from "../tg-chats/model/tg-chat.model";
 import { UsersService } from "../users/users.service";
 import { PublicationsService } from "../publications/publications.service";
-import { mapOldPublicationToPublication } from "../rest-api/schemas/old-publication.schema";
-import { mapOldUserToUser } from "../rest-api/schemas/old-user.schema";
 
 import * as config from "../config";
 
@@ -41,6 +35,7 @@ import { WalletsService } from "../wallets/wallets.service";
 
 @Injectable()
 export class TgBotsService {
+  private readonly logger = new Logger(TgBotsService.name);
   telegramApiUrl: string;
   s3;
   constructor(
@@ -139,21 +134,25 @@ export class TgBotsService {
         {
           identities: "telegram://" + chatId,
         },
-        mapOldTgChatToTgChat(
-          {
-            chatId,
-            type,
-            title,
-            username,
-            first_name,
-            last_name,
-            description,
-            administratorsIds: admins.map((a) => String(a.id)),
-            name: chat_username,
+        {
+          profile: {
+            name: title,
+            description: description,
+            avatarUrl: null,
+            scope: 'meriter',
           },
-          BOT_USERNAME,
-          10
-        ),
+          domainName: 'tg-chat',
+          identities: [`telegram://${chatId}`],
+          administrators: admins.map((a) => `telegram://${String(a.id)}`),
+          meta: {
+            iconUrl: null,
+            tgUsername: username,
+            tgBotUsername: BOT_USERNAME,
+            hashtagLabels: [],
+            dailyEmission: 10,
+            chatAccessLink: null,
+          },
+        },
         { new: true, upsert: true }
       );
 
@@ -186,7 +185,7 @@ export class TgBotsService {
       keywords = await this.tgChatGetKeywords({ tgChatId });
     } catch (e) {
       if (e.toString().includes('chatNotFound')) {
-        console.log(`Chat ${tgChatId} not found, creating it...`);
+        this.logger.log(`Chat ${tgChatId} not found, creating it...`);
         await this.processAddedToChat({ chatId: tgChatId, chat_username: tgChatUsername });
         keywords = await this.tgChatGetKeywords({ tgChatId });
       } else {
@@ -194,11 +193,10 @@ export class TgBotsService {
       }
     }
 
-    const kw = [...keywords, ...[MERITERRA_HASHTAG, MARKET_HASHTAG]].find((k) =>
+    const kw = [...keywords, ...[GLOBAL_FEED_HASHTAG]].find((k) =>
       (messageText ?? "").match("#" + k)
     );
-    const sendToMeriterra = (messageText ?? "").match("#" + MERITERRA_HASHTAG);
-    const sendToMarket = (messageText ?? "").match("#" + MARKET_HASHTAG);
+    const sendToGlobalFeed = (messageText ?? "").match("#" + GLOBAL_FEED_HASHTAG);
 
     if (replyMessageId) {
       const approved = APPROVED_PEDNDING_WORDS.map((word) =>
@@ -219,7 +217,7 @@ export class TgBotsService {
 
     const pending = false;
     const isAdmin = false;
-    const external = sendToMeriterra || sendToMarket ? true : false;
+    const external = sendToGlobalFeed ? true : false;
     /* if (external) {
       isAdmin = await tgChatIsAdmin({ tgChatId, tgUserId });
       if (!isAdmin) pending = true;
@@ -249,9 +247,7 @@ export class TgBotsService {
     const promisePublication = this.publicationAdd({
       tgChatId: !external
         ? tgChatId
-        : sendToMeriterra
-        ? MERITERRA_TG_CHAT_ID
-        : MARKET_TG_CHAT_ID,
+        : GLOBAL_FEED_TG_CHAT_ID,
       authorPhotoUrl,
       fromTgChatId: tgChatId,
       tgAuthorId,
@@ -313,7 +309,7 @@ export class TgBotsService {
 
   async processRecieveMessageFromUser({ tgUserId, messageText, tgUserName }) {
     const referal = await this.tgMessageTextParseReferal({ messageText });
-    console.log("processRecieveMessageFromUser");
+    this.logger.log("processRecieveMessageFromUser");
     let authJWT;
     let redirect;
     const auth = messageText.match("/auth");
@@ -324,41 +320,30 @@ export class TgBotsService {
       });
       if (c === 0) {
         const token = uid(32);
-        const newUser = { tgUserId, name: tgUserName, token };
-
-        await this.usersService.model.create(mapOldUserToUser(newUser));
+        
+        await this.usersService.model.create({
+          domainName: 'user',
+          token: token,
+          identities: [`telegram://${tgUserId}`],
+          profile: {
+            name: tgUserName,
+          },
+        });
       }
     }
 
     if (referal === "community") {
       await this.tgSend({ tgChatId: tgUserId, text: WELCOME_LEADER_MESSAGE });
     } else if ((referal && referal.match("auth")) || auth) {
-      if (referal) {
-        const [a, ...red] = referal.split("__");
-        redirect = red.join("/");
-      }
-
       await this.tgSend({
         tgChatId: tgUserId,
-        text: AUTH_USER_MESSAGE.replace(
-          "{authJWT}",
-          await this.usersService.getAuthLink(
-            tgUserId,
-            "365d",
-            redirect,
-            referal
-          )
-        ),
+        text: AUTH_USER_MESSAGE,
       });
     } else {
-      const r = await this.tgSend({
+      await this.tgSend({
         tgChatId: tgUserId,
-        text: WELCOME_USER_MESSAGE.replace(
-          "{authJWT}",
-          await this.usersService.getAuthLink(tgUserId)
-        ),
+        text: WELCOME_USER_MESSAGE,
       });
-      //console.log(r);
     }
   }
   async tgReplyMessage({ reply_to_message_id, chat_id, text }) {
@@ -384,7 +369,7 @@ export class TgBotsService {
           }),
       ]);
     } catch (e) {
-      console.log(
+      this.logger.error(
         "error",
         { reply_to_message_id, chat_id, text },
         e.response.data
@@ -450,7 +435,7 @@ export class TgBotsService {
           }),
       ]);
     } catch (e) {
-      console.log(e);
+      this.logger.error(e);
     }
 
     return "ok";
@@ -475,7 +460,7 @@ export class TgBotsService {
       .then((d) => {
         return d.result.map(({ user }) => ({ id: user.id }));
       })
-      .catch((e) => console.log(e));
+      .catch((e) => this.logger.error(e));
   }
 
   async tgChatIsAdmin({ tgChatId, tgUserId }) {
@@ -507,14 +492,13 @@ export class TgBotsService {
       if (status === 200)
         return `${avatarBaseUrl}/${chat_id}.jpg`;
     } catch (e) {
-      console.log("not found ", chat_id);
+      this.logger.warn("not found ", chat_id);
     }
 
     const chat = await this.telegramGetChat(token, chat_id).then((d) => d.data);
 
     const photo = chat?.result?.photo;
-    console.log("chat", chat);
-    //    console.log(chat)
+    // Removed chat object log to avoid exposing user data
     if (!photo) {
       try {
         const photoUrl2 = `telegram_small_avatars/${chat_id}.jpg`;
@@ -541,7 +525,7 @@ export class TgBotsService {
 
         return `${avatarBaseUrl}/${chat_id}.jpg`;
       } catch (err) {
-        console.log(`Failed to generate avatar for ${chat_id} (no photo):`, err.message);
+        this.logger.warn(`Failed to generate avatar for ${chat_id} (no photo):`, err.message);
         return null;
       }
     }
@@ -572,7 +556,7 @@ export class TgBotsService {
 
       return `${avatarBaseUrl}/${chat_id}.jpg`;
     } catch (e) {
-      console.log(`Failed to download photo for ${chat_id}, generating fallback avatar:`, e.message);
+      this.logger.warn(`Failed to download photo for ${chat_id}, generating fallback avatar:`, e.message);
       // If photo download fails (410, 403, etc), generate a fallback avatar
       try {
         const photoUrl2 = `telegram_small_avatars/${chat_id}.jpg`;
@@ -598,7 +582,7 @@ export class TgBotsService {
 
         return `${avatarBaseUrl}/${chat_id}.jpg`;
       } catch (fallbackError) {
-        console.log(`Failed to generate fallback avatar for ${chat_id}:`, fallbackError.message);
+        this.logger.error(`Failed to generate fallback avatar for ${chat_id}:`, fallbackError.message);
         // Return null if even the fallback fails
         return null;
       }
@@ -619,10 +603,7 @@ export class TgBotsService {
     });
   }
   async telegramGetChat(token, chat_id) {
-    console.log(
-      "${this.telegramApiUrl}/bot${token}/getChat",
-      `${this.telegramApiUrl}/bot${token}/getChat`
-    );
+    // Removed debug log to avoid exposing bot token in logs
     return await Axios.get(`${this.telegramApiUrl}/bot${token}/getChat`, {
       params: { chat_id },
     });
@@ -675,7 +656,7 @@ export class TgBotsService {
         }),
       ]);
     } catch (e) {
-      console.log(e);
+      this.logger.error(e);
     }
 
     return { ok: true };
@@ -712,9 +693,8 @@ export class TgBotsService {
     authorPhotoUrl,
     entities,
   }) {
-    const toMeriterra = keyword === MERITERRA_HASHTAG;
-    const toMarket = keyword === MARKET_HASHTAG;
-    const external = toMeriterra || toMarket;
+    const toGlobalFeed = keyword === GLOBAL_FEED_HASHTAG;
+    const external = toGlobalFeed;
     const tgChatId = String(tgChatIdInt);
     const space = await this.hashtagsService.model.findOne({
       "meta.parentTgChatId": tgChatId,
@@ -723,12 +703,13 @@ export class TgBotsService {
 
     //const space = await Space.findOne({ chatId: tgChatId, tagRus: keyword });
     if (!space) {
-      console.log({
+      this.logger.log({
         "meta.parentTgChatId": tgChatId,
         "profile.name": keyword.replace("#", ""),
       });
       throw `space not found for ${tgChatId} and keword ${keyword}`;
     }
+    const publicationUid = uid(8);
     const newPublication = {
       tgMessageId,
       fromTgChatId,
@@ -741,7 +722,7 @@ export class TgBotsService {
       tgChatId,
       keyword,
       pending,
-      slug: uid(8),
+      slug: publicationUid,
       fromCommunity,
       messageText,
       authorPhotoUrl,
@@ -749,18 +730,35 @@ export class TgBotsService {
       canceled: false,
       entities,
     };
-    const publication = await this.publicationsService.model.create(
-      mapOldPublicationToPublication(newPublication)
-    );
+    const publication = await this.publicationsService.model.create({
+      domainName: 'publication',
+      extUri: `telegram://${fromTgChatId}/${tgMessageId}`,
+      createdAt: new Date(),
+      meta: {
+        hashtagName: keyword,
+        hashtagSlug: space.slug,
+        comment: messageText,
+        commentTgEntities: entities,
+        origin: {
+          telegramChatId: fromTgChatId,
+          telegramChatName: fromTgChatId,
+          messageId: tgMessageId,
+        },
+        author: {
+          name: tgAuthorName,
+          username: tgAuthorUsername,
+          photoUrl: authorPhotoUrl,
+          telegramId: tgAuthorId,
+        },
+        metrics: {
+          plus: 0,
+          minus: 0,
+          sum: 0,
+        },
+      },
+      uid: publicationUid,
+    });
 
-    if (external && !pending) {
-      if (toMarket)
-        await this.notifyMeriterra(
-          MARKET_INCOMMING_FROM_COMMUNITY.replace("{link}", publication.uid)
-            .replace("{name}", tgAuthorName)
-            .replace("{text}", text)
-        );
-    }
     return newPublication;
   }
 
@@ -802,19 +800,15 @@ export class TgBotsService {
     await this.tgSend({ tgChatId: toTgChatId, text });
   }
 
-  async notifyMeriterra(text) {
-    return await this.tgSend({ tgChatId: MERITERRA_TG_CHAT_ID, text });
-  }
-  async notifyMarket(text) {
-    return await this.tgSend({ tgChatId: MARKET_TG_CHAT_ID, text });
+  async notifyGlobalFeed(text) {
+    return await this.tgSend({ tgChatId: GLOBAL_FEED_TG_CHAT_ID, text });
   }
 
-  async updateCredentialsForChatId(tgChatId, tgUserId, path = "") {
+  async updateUserChatMembership(tgChatId: string, tgUserId: string): Promise<boolean> {
     const isMember = await this.tgGetChatMember(tgChatId, tgUserId);
     if (!isMember) return false;
 
     await this.usersService.pushTag(`telegram://${tgUserId}`, tgChatId);
-    const jwt = await this.usersService.getAuthLink(tgUserId, "365d", path);
-    return jwt;
+    return true;
   }
 }

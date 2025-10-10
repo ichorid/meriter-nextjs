@@ -1,6 +1,15 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { TransactionsService } from '../../../transactions/transactions.service';
-import { mapUserToOldUser } from '../../schemas/old-user.schema';
+
+// Helper function to map user to old format for API backward compatibility
+function mapUserToOldFormat(user: any) {
+  if (!user) return null;
+  return {
+    tgUserId: user.identities?.[0]?.replace('telegram://', ''),
+    token: user.token,
+    name: user.profile?.name,
+  };
+}
 
 class RestRankResponse {
   aggr: { _id: string; rating: number }[];
@@ -22,7 +31,7 @@ export class RestRankController {
         _id: a._id?.[0]?.replace('actor.user://telegram', ''),
         rating: a.rating,
       })),
-      users: rank.users.map(mapUserToOldUser),
+      users: rank.users.map(mapUserToOldFormat),
       rank: rank.rank,
     };
   }

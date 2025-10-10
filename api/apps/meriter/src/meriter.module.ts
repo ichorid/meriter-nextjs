@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { MeriterController } from './meriter.controller';
 import { MeriterService } from './meriter.service';
 
@@ -6,9 +7,9 @@ import { join } from 'path';
 
 import { RestApiModule } from './rest-api/rest-api.module';
 import { DatabaseModule } from '@common/abstracts/helpers/database/database.module';
+import configuration from './config/configuration';
+import { validationSchema } from './config/validation.schema';
 
-import { TelegramModule } from 'nestjs-telegram';
-import { BOT_TOKEN } from './config';
 import { TelegramHookController } from './tg-bots/hook/hook.controller';
 import { TgBotsService } from './tg-bots/tg-bots.service';
 import { TgChatsService } from './tg-chats/tg-chats.service';
@@ -31,6 +32,15 @@ import { TransactionsModule } from './transactions/transactions.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [configuration],
+      validationSchema,
+      validationOptions: {
+        allowUnknown: true,
+        abortEarly: false,
+      },
+    }),
     AssetsModule,
     CountersModule,
     ActorsModule,

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Document, Model } from 'mongoose';
 
 import { Transaction } from './model/transaction.model';
@@ -18,6 +18,9 @@ import { UpdatesConductorsService } from '../updates-conductors/updates-conducto
 
 @Injectable()
 export class TransactionsService {
+  private readonly logger = new Logger(TransactionsService.name);
+  model: Model<Transaction & Document>;
+
   constructor(
     private walletsService: WalletsService,
     private agreementsService: AgreementsService,
@@ -30,8 +33,6 @@ export class TransactionsService {
       Transaction & Document
     >;
   }
-
-  model: Model<Transaction & Document>;
 
   async rankInHashtag(hashtagUid: string) {
     const aggr = await this.agreementsService.model
@@ -213,7 +214,7 @@ export class TransactionsService {
 
     if (dto.fromUserTgId == toUserTgId) throw 'cannot vote for self';
 
-    //const currency = getCurrencyOrMeriterra(tgChatId);
+    //const currency = getCurrencyOrGlobalFeed(tgChatId);
     const currency = tgChatId;
 
     //  const allow = await userJWTgetAccessToTgChatId(req, res, currency);
@@ -312,7 +313,7 @@ export class TransactionsService {
     //const toUserTgId;
     if (dto.fromUserTgId == toUserTgId) throw 'cannot vote for self';
 
-    //const currency = getCurrencyOrMeriterra(tgChatId);
+    //const currency = getCurrencyOrGlobalFeed(tgChatId);
 
     //const allow = await userJWTgetAccessToTgChatId(req, res, currency);
     //if (!allow) throw 'not a member';
@@ -532,12 +533,11 @@ export class TransactionsService {
   }
 
   async getFreeLimit(telegramUserId: string, inHashtag: string) {
-    //if (inSpaceSlug === MARKET_HASHTAG) return 0;
-    console.log('getFreeLimit',telegramUserId, inHashtag)
+    this.logger.log('getFreeLimit', telegramUserId, inHashtag)
     const hashtag = await this.hashtagsService.model.findOne({
       slug: inHashtag,
     });
-    console.log('hashtag',hashtag)
+    this.logger.log('hashtag slug:', hashtag?.slug)
     const parentTgChatId = hashtag.meta.parentTgChatId;
 
 

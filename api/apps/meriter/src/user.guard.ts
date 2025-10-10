@@ -1,50 +1,65 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { sign, verify } from 'jsonwebtoken';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+  Logger,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { verify } from 'jsonwebtoken';
 
 import { UsersService } from './users/users.service';
-import { tsconfigPathsBeforeHookFactory } from '@nestjs/cli/lib/compiler/hooks/tsconfig-paths.hook';
 
 @Injectable()
 export class UserGuard implements CanActivate {
-  constructor(private userService: UsersService) {}
+  private readonly logger = new Logger(UserGuard.name);
+
+  constructor(
+    private userService: UsersService,
+    private configService: ConfigService,
+  ) {}
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const jwt = request.cookies?.jwt;
-    if (jwt) {
-      try {
-        const data: any = verify(jwt, process.env.JWT_SECRET);
-        
-        const token = data.token;
-        //console.log('token',token);
-        const user = await this.userService.getByToken(token);
-        //console.log('user',user);
-        
-        if (!user) {
-          console.warn(`[UserGuard] Valid JWT but user not found for token: ${token?.substring(0, 10)}...`);
-          console.warn('[UserGuard] This may indicate a deleted user, invalid token, or database issue');
-          request.user = {};
-          return false;
-        }
-        
-        const tgUserId = user?.identities?.[0]?.replace('telegram://', '');
-        const tgUserName = user?.profile?.name;
 
-        request.user = {
-          ...user.toObject(),
-          chatsIds: data.tags ?? user.tags ?? [],
-          tgUserId,
-          tgUserName,
-        };
-        return true;
-      } catch (e) {
-        console.log('error in jwt');
-        console.log(e);
-        request.user={}
-        return false;
-      }
+    if (!jwt) {
+      throw new UnauthorizedException('No JWT token provided');
     }
-    
-    return false;
+
+    try {
+      const jwtSecret = this.configService.get<string>('jwt.secret');
+      const data: any = verify(jwt, jwtSecret);
+
+      const token = data.token;
+      const user = await this.userService.getByToken(token);
+
+      if (!user) {
+        this.logger.warn(
+          `Valid JWT but user not found for token: ${token?.substring(0, 10)}...`,
+        );
+        this.logger.warn(
+          'This may indicate a deleted user, invalid token, or database issue',
+        );
+        throw new UnauthorizedException('User not found');
+      }
+
+      const tgUserId = user?.identities?.[0]?.replace('telegram://', '');
+      const tgUserName = user?.profile?.name;
+
+      request.user = {
+        ...user.toObject(),
+        chatsIds: data.tags ?? user.tags ?? [],
+        tgUserId,
+        tgUserName,
+      };
+      return true;
+    } catch (e) {
+      this.logger.error('Error verifying JWT', e.stack);
+      if (e instanceof UnauthorizedException) {
+        throw e;
+      }
+      throw new UnauthorizedException('Invalid JWT token');
+    }
   }
 }

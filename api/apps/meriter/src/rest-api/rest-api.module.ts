@@ -29,6 +29,8 @@ import { UpdatesConductorsModule } from '../updates-conductors/updates-conductor
 import { DatabaseModule } from '@common/abstracts/helpers/database/database.module';
 import { SendmemoController } from './rest/sendmemo/sendmemo.controller';
 import { RestFreqController } from './rest/rest-freq/rest-freq.controller';
+import { RestPollsController } from './rest/rest-polls/rest-polls.controller';
+import { TelegramAuthController } from './rest/telegram-auth/telegram-auth.controller';
 import { UsersModule } from '../users/users.module';
 import { TgBotsModule } from '../tg-bots/tg-bots.module';
 import { TgChatsModule } from '../tg-chats/tg-chats.module';
@@ -70,6 +72,8 @@ import { WalletsModule } from '../wallets/wallets.module';
     RestRankController,
     SendmemoController,
     RestFreqController,
+    RestPollsController,
+    TelegramAuthController,
   ],
   exports: [],
 })

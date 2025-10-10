@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import {
   UpdatesConductor,
@@ -21,6 +21,9 @@ export class PushUpdateDto {
 
 @Injectable()
 export class UpdatesConductorsService {
+  private readonly logger = new Logger(UpdatesConductorsService.name);
+  model: Model<UpdatesConductorDocument>;
+
   constructor(
     @InjectModel(UpdatesConductor.name, 'default')
     updatesConductorModel: Model<UpdatesConductorDocument>,
@@ -29,7 +32,6 @@ export class UpdatesConductorsService {
   ) {
     this.model = updatesConductorModel;
   }
-  model: Model<UpdatesConductorDocument>;
 
   async pushUpdate(dto: PushUpdateDto) {
     const upd = await this.model.findOneAndUpdate(
@@ -71,7 +73,7 @@ export class UpdatesConductorsService {
   }
   // @Cron('* * * * *')
   async testCron() {
-    console.log('test cron' + Date.now());
+    this.logger.log('test cron' + Date.now());
   }
   @Cron('* * * * *')
   async maybeTrigger() {
@@ -95,7 +97,7 @@ export class UpdatesConductorsService {
             upd.counterMinus !== 0 ||
             upd.counterSum !== 0
           ) {
-            console.log(
+            this.logger.log(
               upd,
               upd.counterPlus !== 0 ||
                 upd.counterMinus !== 0 ||
@@ -162,7 +164,7 @@ export class UpdatesConductorsService {
   }
   async getFrequency(actorUri: string) {
     const fr = await this.model.findOne({ actorUri });
-    if (!fr) console.log('freq not found for ',actorUri)
+    if (!fr) this.logger.warn('freq not found for ',actorUri)
     return fr?.updateFrequencyMs;
   }
 }

@@ -146,6 +146,38 @@ DOMAIN=localhost
    docker-compose logs -f
    ```
 
+### S3 CORS Configuration (Required for Image Loading)
+
+If you're using S3-compatible storage for avatar images, you need to configure CORS to avoid browser blocking errors:
+
+1. **Set up environment variables**
+   ```bash
+   cd api
+   # Make sure your .env file has S3 credentials:
+   # S3_ACCESS_KEY_ID=your_key
+   # S3_SECRET_ACCESS_KEY=your_secret
+   # S3_ENDPOINT=https://hb.bizmrg.com
+   ```
+
+2. **Load credentials and run configuration script**
+   ```bash
+   export $(grep -E 'S3_ACCESS_KEY_ID|S3_SECRET_ACCESS_KEY|S3_ENDPOINT' .env | xargs)
+   node scripts/configure-s3-cors.js telegram your-domain.com
+   ```
+
+3. **For multiple environments**
+   ```bash
+   # Production
+   node scripts/configure-s3-cors.js telegram meriter.pro
+   
+   # Staging
+   node scripts/configure-s3-cors.js telegram staging.meriter.pro
+   ```
+
+See `api/scripts/README.md` for detailed documentation on the CORS configuration utility.
+
+**Note**: This only needs to be done once per environment/domain. The configuration persists on the S3 bucket.
+
 ### Updating to Latest Images
 
 When new images are built and pushed by GitHub Actions:

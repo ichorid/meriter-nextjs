@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { RestWithdrawController } from './rest-withdraw.controller';
 import { TransactionsService } from '../../../transactions/transactions.service';
 import { UsersService } from '../../../users/users.service';
@@ -20,6 +21,15 @@ describe('RestWithdrawController', () => {
         {
           provide: UsersService,
           useValue: { getByToken: jest.fn() },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) => {
+              if (key === 'jwt.secret') return 'test-secret';
+              return null;
+            }),
+          },
         },
       ],
     }).compile();

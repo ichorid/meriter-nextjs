@@ -1,0 +1,256 @@
+import {
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { UserGuard } from '../../../user.guard';
+import { PublicationsService } from '../../../publications/publications.service';
+import { TransactionsService } from '../../../transactions/transactions.service';
+import { WalletsService } from '../../../wallets/wallets.service';
+
+interface IPollOption {
+  id: string;
+  text: string;
+  votes: number;
+  voterCount: number;
+}
+
+interface IPollData {
+  title: string;
+  description?: string;
+  options: IPollOption[];
+  expiresAt: string;
+  createdAt: string;
+  totalVotes: number;
+  communityId: string;
+}
+
+class CreatePollDto {
+  title: string;
+  description?: string;
+  options: IPollOption[];
+  expiresAt: string;
+  communityId: string;
+}
+
+class VotePollDto {
+  pollId: string;
+  optionId: string;
+  amount: number;
+}
+
+@Controller('api/rest/poll')
+@UseGuards(UserGuard)
+export class RestPollsController {
+  constructor(
+    private publicationsService: PublicationsService,
+    private transactionsService: TransactionsService,
+    private walletsService: WalletsService,
+  ) {}
+
+  @Post('create')
+  async createPoll(@Body() dto: CreatePollDto, @Req() req) {
+    const tgUserId = req.user.tgUserId;
+    const username = req.user.username || 'User';
+
+    // Validate input
+    if (!dto.title || dto.title.trim().length === 0) {
+      throw new HttpException('Title is required', HttpStatus.BAD_REQUEST);
+    }
+
+    if (!dto.options || dto.options.length < 2 || dto.options.length > 10) {
+      throw new HttpException(
+        'Poll must have between 2 and 10 options',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (!dto.expiresAt) {
+      throw new HttpException('Expiration date is required', HttpStatus.BAD_REQUEST);
+    }
+
+    const expiresAt = new Date(dto.expiresAt);
+    if (expiresAt <= new Date()) {
+      throw new HttpException(
+        'Expiration date must be in the future',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Create poll data
+    const pollData: IPollData = {
+      title: dto.title.trim(),
+      description: dto.description?.trim(),
+      options: dto.options.map((opt) => ({
+        id: opt.id,
+        text: opt.text,
+        votes: 0,
+        voterCount: 0,
+      })),
+      expiresAt: expiresAt.toISOString(),
+      createdAt: new Date().toISOString(),
+      totalVotes: 0,
+      communityId: dto.communityId,
+    };
+
+    // Create publication with type 'poll'
+    const publication = await this.publicationsService.model.create({
+      type: 'poll',
+      content: pollData,
+      meta: {
+        author: {
+          telegramId: tgUserId,
+          username: username,
+        },
+        origin: {
+          telegramChatId: dto.communityId,
+        },
+        metrics: {
+          plus: 0,
+          minus: 0,
+          sum: 0,
+        },
+      },
+    });
+
+    return publication;
+  }
+
+  @Post('vote')
+  async voteOnPoll(@Body() dto: VotePollDto, @Req() req) {
+    const tgUserId = req.user.tgUserId;
+    const username = req.user.username || 'User';
+
+    // Validate input
+    if (!dto.pollId || !dto.optionId) {
+      throw new HttpException('Poll ID and option ID are required', HttpStatus.BAD_REQUEST);
+    }
+
+    if (!dto.amount || dto.amount <= 0) {
+      throw new HttpException('Amount must be greater than 0', HttpStatus.BAD_REQUEST);
+    }
+
+    // Get poll
+    const poll = await this.publicationsService.model.findById(dto.pollId);
+    if (!poll || poll.type !== 'poll') {
+      throw new HttpException('Poll not found', HttpStatus.NOT_FOUND);
+    }
+
+    const pollData = poll.content as IPollData;
+
+    // Check if poll is expired
+    if (new Date(pollData.expiresAt) <= new Date()) {
+      throw new HttpException('Poll has expired', HttpStatus.BAD_REQUEST);
+    }
+
+    // Check if user already voted
+    const existingVote = await this.transactionsService.model.findOne({
+      type: 'pollVote',
+      'meta.from.telegramUserId': tgUserId,
+      'meta.parentPublicationUri': poll.uid,
+    });
+
+    if (existingVote) {
+      throw new HttpException('You have already voted on this poll', HttpStatus.BAD_REQUEST);
+    }
+
+    // Check if user has sufficient balance
+    const walletQuery = {
+      'meta.telegramUserId': tgUserId,
+      'meta.currencyOfCommunityTgChatId': pollData.communityId,
+    };
+
+    const walletValue = await this.walletsService.getValue(walletQuery);
+    if (walletValue === null || walletValue < dto.amount) {
+      throw new HttpException('Insufficient balance', HttpStatus.BAD_REQUEST);
+    }
+
+    // Validate option exists
+    const optionIndex = pollData.options.findIndex((opt) => opt.id === dto.optionId);
+    if (optionIndex === -1) {
+      throw new HttpException('Invalid option ID', HttpStatus.BAD_REQUEST);
+    }
+
+    // Deduct amount from wallet (burn it)
+    await this.walletsService.delta(-dto.amount, walletQuery);
+
+    // Update poll vote counts
+    pollData.options[optionIndex].votes += dto.amount;
+    pollData.options[optionIndex].voterCount += 1;
+    pollData.totalVotes += dto.amount;
+
+    await this.publicationsService.model.updateOne(
+      { _id: dto.pollId },
+      { $set: { content: pollData } },
+    );
+
+    // Create transaction record
+    const transaction = await this.transactionsService.model.create({
+      type: 'pollVote',
+      meta: {
+        from: {
+          telegramUserId: tgUserId,
+          telegramUserName: username,
+        },
+        amounts: {
+          personal: 0,
+          free: dto.amount,
+          total: dto.amount,
+          currencyOfCommunityTgChatId: pollData.communityId,
+        },
+        comment: `Voted on poll: ${pollData.title}`,
+        parentPublicationUri: poll.uid,
+        metrics: {
+          plus: 0,
+          minus: 0,
+          sum: 0,
+        },
+      },
+      content: {
+        optionId: dto.optionId,
+        amount: dto.amount,
+        votedAt: new Date().toISOString(),
+      },
+    });
+
+    // Return updated poll data
+    const updatedPoll = await this.publicationsService.model.findById(dto.pollId);
+    return {
+      poll: updatedPoll,
+      transaction,
+    };
+  }
+
+  @Get('get')
+  async getPoll(@Query('pollId') pollId: string, @Req() req) {
+    const tgUserId = req.user.tgUserId;
+
+    if (!pollId) {
+      throw new HttpException('Poll ID is required', HttpStatus.BAD_REQUEST);
+    }
+
+    const poll = await this.publicationsService.model.findById(pollId);
+    if (!poll || poll.type !== 'poll') {
+      throw new HttpException('Poll not found', HttpStatus.NOT_FOUND);
+    }
+
+    // Check if user has voted
+    const userVote = await this.transactionsService.model.findOne({
+      type: 'pollVote',
+      'meta.from.telegramUserId': tgUserId,
+      'meta.parentPublicationUri': poll.uid,
+    });
+
+    return {
+      poll,
+      userVote: userVote ? userVote.content : null,
+    };
+  }
+}
+

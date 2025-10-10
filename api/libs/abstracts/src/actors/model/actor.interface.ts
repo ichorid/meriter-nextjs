@@ -5,7 +5,7 @@ export interface IActor {
 
   slug: string;
 
-  identities: string[]; //telegramId://-18092344 phone://+79778752110 email://nickerlan0@gmail.com
+  identities: string[]; //telegramId://-18092344 phone://+79778752110 email://user@example.com
 
   administrators: string[];
 

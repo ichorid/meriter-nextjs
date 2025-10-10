@@ -10,7 +10,8 @@ export class Transaction extends Agreement {
     | 'exchange'
     | 'forTransaction'
     | 'withdrawalFromTransaction'
-    | 'reward';
+    | 'reward'
+    | 'pollVote';
 }
 
 export abstract class TransactionMeta {

@@ -11,15 +11,62 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { TgChatsService } from '../../../tg-chats/tg-chats.service';
-import { mapTgChatToOldTgChat } from '../../schemas/old-tg-chat.schema';
 import { HashtagsService } from '../../../hashtags/hashtags.service';
-import {
-  mapHashtagToOldSpace,
-  mapOldSpaceToHashtag,
-} from '../../schemas/old-space.schema';
 import { TgChat } from '../../../tg-chats/model/tg-chat.model';
 import { UserGuard } from '../../../user.guard';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
+
+// Helper functions to map between formats for API backward compatibility
+function mapTgChatToOldFormat(chat: any) {
+  if (!chat) return null;
+  return {
+    _id: chat.uid,
+    photo: chat.profile?.avatarUrl,
+    title: chat.profile?.name,
+    description: chat.profile?.description,
+    icon: chat.meta?.iconUrl,
+    chatId: chat.identities?.[0]?.replace('telegram://', ''),
+    tags: chat.meta?.hashtagLabels || [],
+    url: chat.meta?.url,
+    helpUrl: chat.meta?.helpUrl,
+    administratorsIds: (chat.administrators || []).map(a => a.replace('telegram://', '')),
+    first_name: null,
+    last_name: null,
+    name: chat.profile?.name,
+    type: 'group',
+    username: chat.meta?.tgUsername,
+  };
+}
+
+function mapHashtagToOldFormat(hashtag: any) {
+  if (!hashtag) return null;
+  return {
+    chatId: hashtag.meta?.parentTgChatId,
+    name: hashtag.profile?.name,
+    tagRus: hashtag.profile?.name,
+    slug: hashtag.slug,
+    description: hashtag.profile?.description,
+    rating: 0,
+    deleted: hashtag.deleted ?? false,
+    dimensionConfig: hashtag.meta?.dimensionConfig,
+  };
+}
+
+function mapOldSpaceToHashtag(oldSpace: any) {
+  return {
+    profile: {
+      name: oldSpace.tagRus || oldSpace.name,
+      description: oldSpace.description,
+    },
+    slug: oldSpace.slug,
+    meta: {
+      parentTgChatId: oldSpace.chatId,
+      dimensionConfig: oldSpace.dimensionConfig,
+      isDeleted: false,
+      dailyEmission: 10,
+    },
+  };
+}
 
 class RestChatObject {
   administratorsIds: string[];
@@ -87,7 +134,6 @@ export class RestCommunityifoController {
     const allowedChatsIds: string[] = req.user.chatsIds;
     const tgUserId = req.user.tgUserId;
     const telegramCommunityChatId = chatId;
-    let setJwt;
 
     const info = await this.tgChatsService.getInfo(chatId);
     if (!info) return null;
@@ -95,17 +141,17 @@ export class RestCommunityifoController {
     const spaces = hashtags
       .map((h) => h.toObject())
 
-      .map(mapHashtagToOldSpace);
+      .map(mapHashtagToOldFormat);
 
-    //console.log(chatId, mapTgChatToOldTgChat(info));
+    //console.log(chatId, mapTgChatToOldFormat(info));
     if (!allowedChatsIds.includes(telegramCommunityChatId)) {
-      setJwt = await this.tgBotsService.updateCredentialsForChatId(
+      const isMember = await this.tgBotsService.updateUserChatMembership(
         telegramCommunityChatId,
         tgUserId,
       );
-      if (!setJwt)
+      if (!isMember)
         return {
-          chat: mapTgChatToOldTgChat(info),
+          chat: mapTgChatToOldFormat(info),
           icon: info.meta.iconUrl,
           dailyEmission: 0,
           spaces: [],
@@ -113,12 +159,11 @@ export class RestCommunityifoController {
         };
     }
     const resp = {
-      chat: mapTgChatToOldTgChat(info),
+      chat: mapTgChatToOldFormat(info),
       icon: info.meta.iconUrl,
       spaces,
       dailyEmission: 10,
       currencyNames: info.meta.currencyNames,
-      setJwt,
     };
     return resp;
   }

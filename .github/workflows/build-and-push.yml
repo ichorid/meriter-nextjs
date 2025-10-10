@@ -1,5 +1,10 @@
 name: Build and Push Docker Images
 
+# This workflow only runs when the repository variable ENABLE_DOCKER_BUILDS is set to 'true'
+# To enable: Go to Settings > Secrets and variables > Actions > Variables tab
+# Create a new repository variable named ENABLE_DOCKER_BUILDS with value 'true'
+# This prevents forks from accidentally triggering builds and pushes
+
 on:
   push:
     branches:
@@ -9,12 +14,12 @@ on:
       build_web:
         description: 'Build web image'
         required: false
-        default: 'true'
+        default: true
         type: boolean
       build_api:
         description: 'Build api image'
         required: false
-        default: 'true'
+        default: true
         type: boolean
 
 env:
@@ -26,7 +31,9 @@ jobs:
   build-web:
     name: Build and Push Web Image
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_web == 'true')
+    if: |
+      vars.ENABLE_DOCKER_BUILDS == 'true' &&
+      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_web == 'true'))
     permissions:
       contents: read
       packages: write
@@ -85,7 +92,9 @@ jobs:
   build-api:
     name: Build and Push API Image
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_api == 'true')
+    if: |
+      vars.ENABLE_DOCKER_BUILDS == 'true' &&
+      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_api == 'true'))
     permissions:
       contents: read
       packages: write

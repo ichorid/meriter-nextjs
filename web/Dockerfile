@@ -49,17 +49,14 @@ COPY --from=builder /app/.npmrc ./.npmrc
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 
-# Additional required directories for Next.js
-COPY --from=builder --chown=nextjs:nodejs /app/pages ./pages
+# Copy source directory (required for App Router)
+COPY --from=builder --chown=nextjs:nodejs /app/src ./src
+
+# Copy styles directory
 COPY --from=builder --chown=nextjs:nodejs /app/styles ./styles
-COPY --from=builder --chown=nextjs:nodejs /app/components ./components
-COPY --from=builder --chown=nextjs:nodejs /app/bots ./bots
-COPY --from=builder --chown=nextjs:nodejs /app/content ./content
-COPY --from=builder --chown=nextjs:nodejs /app/frontend ./frontend
-COPY --from=builder --chown=nextjs:nodejs /app/projects ./projects
-COPY --from=builder --chown=nextjs:nodejs /app/transactions ./transactions
-COPY --from=builder --chown=nextjs:nodejs /app/users ./users
-COPY --from=builder --chown=nextjs:nodejs /app/utils ./utils
+
+# Copy config directory if it exists
+COPY --from=builder --chown=nextjs:nodejs /app/config ./config
 
 USER nextjs
 

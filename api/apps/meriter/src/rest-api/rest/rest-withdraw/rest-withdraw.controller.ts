@@ -9,23 +9,14 @@ import {
 } from '@nestjs/common';
 import { UserGuard } from '../../../user.guard';
 import { TransactionsService } from '../../../transactions/transactions.service';
-
-class RestWithdrawDTO {
-  amount: number; //1;
-  amountInternal: number; //1;
-  comment: string; //'Пробное снятие';
-  directionAdd: boolean; //false;
-  publicationSlug?: string; //'gLGaM3047';
-  transactionId?: string; //'gLGaM3047';
-  withdrawMerits: boolean; //false;
-}
+import { RestWithdrawDto } from './dto/rest-withdraw.dto';
 
 @Controller('api/rest/withdraw')
 @UseGuards(UserGuard)
 export class RestWithdrawController {
   constructor(private transactionsService: TransactionsService) {}
   @Post()
-  rest_withdraw(@Body() dto: RestWithdrawDTO, @Req() req) {
+  rest_withdraw(@Body() dto: RestWithdrawDto, @Req() req) {
     if (dto.transactionId)
       return this.transactionsService.withdrawFromTransaction({
         amount: dto.directionAdd ? -dto.amount : dto.amount,

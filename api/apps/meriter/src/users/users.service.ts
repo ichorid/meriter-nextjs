@@ -34,24 +34,6 @@ export class UsersService {
     return this.actorsService.upsert('user', condition, data);
   }
 
-  async getAuthLink(
-    tgUserId: string,
-    expiresIn = '365d',
-    redirect = '',
-    referal = '',
-  ) {
-    const authInfo = await this.model
-      .findOne({
-        identities: 'telegram://' + tgUserId,
-      })
-      .lean();
-
-    const jwt = this.actorsService.signJWT(
-      { ...authInfo, action: 'ALLOW_AUTH', redirect, referal },
-      expiresIn,
-    );
-    return jwt;
-  }
   async pushTag(identity, value: string) {
     const user = await this.actorsService.model
       .findOne({ identities: identity })

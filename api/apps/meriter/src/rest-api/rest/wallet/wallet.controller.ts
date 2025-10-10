@@ -1,7 +1,17 @@
 import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { WalletsService } from '../../../wallets/wallets.service';
-import { mapWalletToOldWallet } from '../../schemas/old-wallet.schema';
 import { UserGuard } from '../../../user.guard';
+
+// Helper function to map wallet to old format for API backward compatibility
+function mapWalletToOldFormat(wallet: any) {
+  return {
+    amount: wallet.value ?? 0,
+    tgUserId: wallet.meta?.telegramUserId,
+    currencyOfCommunityTgChatId: wallet.meta?.currencyOfCommunityTgChatId,
+    currencyNames: wallet.meta?.currencyNames,
+    _id: wallet._id,
+  };
+}
 
 class RestWalletObject {
   amount: number; //1
@@ -12,7 +22,7 @@ class RestWalletObject {
     many: string; //"баллы"
   };
   currencyOfCommunityTgChatId: string; //"-400774319"
-  tgUserId: string; //"415615274"
+  tgUserId: string; //"123456789"
 
   _id: string; //"5ff8287bc939316d833ced30"
 }
@@ -43,7 +53,7 @@ export class RestWalletController {
         'meta.telegramUserId': req.user.tgUserId,
       });
 
-      return { wallets: wallets.map(mapWalletToOldWallet) };
+      return { wallets: wallets.map(mapWalletToOldFormat) };
     }
 
     //return new RestWalletResponse();

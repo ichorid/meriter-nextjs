@@ -33,6 +33,9 @@ export class Agreement implements IAgreement {
 
   @Prop(Date)
   createdAt: Date;
+  
+  @Prop({ type: Object })
+  content?: Record<string, any>;
 }
 
 export const AgreementSchema = SchemaFactory.createForClass(Agreement);

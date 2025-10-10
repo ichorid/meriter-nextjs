@@ -8,18 +8,30 @@
         format console
     }
 
-    # Reverse proxy all traffic to Next.js web application
-    reverse_proxy web:8001 {
-        # Health check
-        health_uri /
-        health_interval 30s
-        health_timeout 10s
-        
-        # Headers
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
+    # Route /api/* directly to NestJS backend
+    handle /api/* {
+        reverse_proxy api:8002 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Everything else goes to Next.js web application
+    handle {
+        reverse_proxy web:8001 {
+            # Health check
+            health_uri /
+            health_interval 30s
+            health_timeout 10s
+            
+            # Headers
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
     }
 
     # Enable compression

@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { PublicationsinfController } from './publicationsinf.controller';
 import { PublicationsService } from '../../../publications/publications.service';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
@@ -22,12 +23,21 @@ describe('PublicationsinfController', () => {
         {
           provide: TgBotsService,
           useValue: {
-            updateCredentialsForChatId: jest.fn(),
+            updateUserChatMembership: jest.fn(),
           },
         },
         {
           provide: UsersService,
           useValue: { getByToken: jest.fn() },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) => {
+              if (key === 'jwt.secret') return 'test-secret';
+              return null;
+            }),
+          },
         },
       ],
       controllers: [PublicationsinfController],

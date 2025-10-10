@@ -11,13 +11,42 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PublicationsService } from '../../../publications/publications.service';
-import { mapPublicationToOldPublication } from '../../schemas/old-publication.schema';
 import { Publication } from '../../../publications/model/publication.model';
 import { UserGuard } from '../../../user.guard';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
 
+// Helper function to map publication to old format for API backward compatibility
+function mapPublicationToOldFormat(publication: any) {
+  return {
+    authorPhotoUrl: publication.meta?.author?.photoUrl,
+    canceled: false,
+    fromCommunity: false,
+    fromTgChatId: publication.meta?.origin?.telegramChatId,
+    keyword: publication.meta?.hashtagName,
+    messageText: publication.meta?.comment,
+    entities: publication.meta?.commentTgEntities,
+    minus: publication.meta?.metrics?.minus ?? 0,
+    pending: false,
+    plus: publication.meta?.metrics?.plus ?? 0,
+    slug: publication.uid,
+    spaceSlug: publication.meta?.hashtagSlug,
+    sum: publication.meta?.metrics?.sum ?? 0,
+    tgAuthorId: publication.meta?.author?.telegramId,
+    tgAuthorName: publication.meta?.author?.name,
+    tgAuthorUsername: publication.meta?.author?.username,
+    tgChatId: publication.meta?.origin?.telegramChatId,
+    tgChatName: publication.meta?.origin?.telegramChatName,
+    tgChatUsername: '',
+    tgMessageId: publication.meta?.origin?.messageId,
+    ts: publication.createdAt?.toString(),
+    _id: publication.uid,
+    type: (publication as any).type,
+    content: (publication as any).content,
+  };
+}
+
 class RestPublicationObject {
-  authorPhotoUrl: string; //"https://telegram.hb.bizmrg.com/telegram_small_avatars/853551.jpg"
+  authorPhotoUrl: string; //"https://example.com/telegram_avatars/987654321.jpg"
   classTags: string[]; //[]
   fromCommunity: boolean; //false
   fromTgChatId: string; //"-400774319"
@@ -29,8 +58,8 @@ class RestPublicationObject {
   slug: string; //"rkTNLkb5n"
   spaceSlug: string; //"bql0fbmi"
   sum: number; //10
-  tgAuthorId: string; //"853551"
-  tgAuthorName: string; //"Nick Erlan"
+  tgAuthorId: string; //"987654321"
+  tgAuthorName: string; //"Example User"
   tgChatId: string; //"-400774319"
   tgChatName: string; //"MERITER CORP ТЕСТИРОВАНИЕ"
   tgMessageId: string; //"35"
@@ -68,7 +97,7 @@ export class PublicationsinfController {
         positive,
       );
       return {
-        publications: publ.map((p) => mapPublicationToOldPublication(p)),
+        publications: publ.map((p) => mapPublicationToOldFormat(p)),
       };
     } else if (path.match('/c/')) {
       const telegramCommunityChatId = path.replace('/c/', '');
@@ -78,22 +107,19 @@ export class PublicationsinfController {
         limit,
         skip,
       );
-      let setJwt;
       if (!allowedChatsIds.includes(telegramCommunityChatId)) {
-        setJwt = await this.tgBotsService.updateCredentialsForChatId(
+        const isMember = await this.tgBotsService.updateUserChatMembership(
           telegramCommunityChatId,
           tgUserId,
-          'fullPath:///mt' + path,
         );
-        if (!setJwt)
+        if (!isMember)
           throw new HttpException(
             'not authorized to see this chat',
             HttpStatus.FORBIDDEN,
           );
       }
       return {
-        publications: publ.map((p) => mapPublicationToOldPublication(p)),
-        setJwt,
+        publications: publ.map((p) => mapPublicationToOldFormat(p)),
       };
       //
     } else if (path.replace('/', '').match('/')) {
@@ -103,13 +129,12 @@ export class PublicationsinfController {
         uid: publicationSlug,
       });
       const telegramCommunityChatId = publ.meta.origin.telegramChatId;
-      let setJwt;
       if (!allowedChatsIds.includes(telegramCommunityChatId)) {
-        setJwt = await this.tgBotsService.updateCredentialsForChatId(
+        const isMember = await this.tgBotsService.updateUserChatMembership(
           telegramCommunityChatId,
           tgUserId,
         );
-        if (!setJwt)
+        if (!isMember)
           throw new HttpException(
             'not authorized to see this chat',
             HttpStatus.FORBIDDEN,
@@ -117,9 +142,8 @@ export class PublicationsinfController {
       }
       if (skip > 0) return { publications: [] };
       return {
-        publications: [mapPublicationToOldPublication(publ)],
+        publications: [mapPublicationToOldFormat(publ)],
         publicationSlug,
-        setJwt,
       };
     } else {
       const spaceSlug = path.replace('/', '');
@@ -129,23 +153,22 @@ export class PublicationsinfController {
         skip,
       );
       const telegramCommunityChatId = publ?.[0]?.meta?.origin?.telegramChatId;
-      let setJwt;
       if (
         telegramCommunityChatId &&
         !allowedChatsIds.includes(telegramCommunityChatId)
       ) {
-        setJwt = await this.tgBotsService.updateCredentialsForChatId(
+        const isMember = await this.tgBotsService.updateUserChatMembership(
           telegramCommunityChatId,
           tgUserId,
         );
-        if (!setJwt)
+        if (!isMember)
           throw new HttpException(
             'not authorized to see this chat',
             HttpStatus.FORBIDDEN,
           );
       }
       return {
-        publications: publ.map((p) => mapPublicationToOldPublication(p)),
+        publications: publ.map((p) => mapPublicationToOldFormat(p)),
       };
     }
 
