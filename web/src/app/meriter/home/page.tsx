@@ -124,6 +124,7 @@ const PageHome = () => {
                 onClick={() => {
                     router.push("/meriter/home");
                 }}
+                userName={user?.name || 'User'}
             >
                 <MenuBreadcrumbs>
                     <div>Главная</div>

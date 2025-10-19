@@ -165,6 +165,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 onClick={() => {
                     router.push("/meriter/home");
                 }}
+                userName={user?.name || 'User'}
             >
                 <MenuBreadcrumbs
                     chatId={chatId}
@@ -200,6 +201,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                     <CardWithAvatar
                                         key={space.slug}
                                         avatarUrl=""
+                                        userName={space.tagRus || 'Space'}
                                         onClick={() =>
                                             router.push("/meriter/spaces/" + space.slug)
                                         }

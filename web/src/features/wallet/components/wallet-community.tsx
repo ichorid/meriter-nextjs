@@ -24,6 +24,7 @@ export const WalletCommunity = ({
             onClick={() =>
                 (document.location.href = "/meriter/communities/" + info?.chat?.chatId)
             }
+            userName={title || 'Community'}
         >
             <div className="title">{title}</div>
             <div className="amount flex items-center gap-2">

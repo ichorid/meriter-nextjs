@@ -19,7 +19,7 @@ import { ThemeToggle } from "@shared/components/theme-toggle";
 const CommunityCard = ({ chatId, title, description, tags }: any) => {
     return (
         <Link href={`/meriter/communities/${chatId}/settings`} className="block">
-            <CardWithAvatar>
+            <CardWithAvatar userName={title || 'Community'}>
                 <div className="text-lg font-semibold mb-1">{title}</div>
                 <div className="text-sm text-base-content/70 mb-2">{description}</div>
                 {tags && tags.length > 0 && (
@@ -86,6 +86,7 @@ const ManagePage = () => {
                 onClick={() => {
                     router.push("/meriter/home");
                 }}
+                userName={user?.name || 'User'}
             >
                 <MenuBreadcrumbs>
                     <div>Communities</div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { classList } from '@lib/classList';
+import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
 
 export const WidgetAvatarBalance = ({
     balance1,
@@ -8,6 +9,7 @@ export const WidgetAvatarBalance = ({
     avatarUrl,
     onAvatarUrlNotFound,
     onClick,
+    userName,
 }) => (
     <div className="cursor-pointer" onClick={onClick}>
         <div className="bg-base-100 shadow-md rounded-2xl p-4 flex items-center gap-3">
@@ -26,11 +28,12 @@ export const WidgetAvatarBalance = ({
                     </div>
                 )}
             </div>
-            <div className="avatar">
-                <div className="w-12 h-12 rounded-full">
-                    <img src={avatarUrl || undefined} onError={onAvatarUrlNotFound} alt="Avatar" className="w-full h-full object-cover rounded-full" />
-                </div>
-            </div>
+            <AvatarWithPlaceholder
+                avatarUrl={avatarUrl}
+                name={userName || 'User'}
+                size={48}
+                onError={onAvatarUrlNotFound}
+            />
         </div>
     </div>
 );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from "react";
+import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
 
 export const CardWithAvatar = ({
     avatarUrl,
@@ -9,6 +10,7 @@ export const CardWithAvatar = ({
     iconOnClick,
     children,
     onClick,
+    userName,
 }: {
     avatarUrl?: string;
     iconUrl?: string;
@@ -16,8 +18,8 @@ export const CardWithAvatar = ({
     children: React.ReactNode;
     onClick?: () => any;
     avatarUrlUpd?: (any) => any;
+    userName?: string;
 }) => {
-    const [error, setError] = useState(false);
     const [retryCount, setRetryCount] = useState(0);
     
     const baseClasses = "card bg-base-100 shadow-md rounded-2xl mb-5 p-5";
@@ -57,28 +59,17 @@ export const CardWithAvatar = ({
             onClick={onClick}
         >
             <div className="flex items-start gap-4">
-                <div className="avatar">
-                    <div className="w-12 h-12 rounded-full">
-                        {avatarUrl && !error && (
-                            <img 
-                                onError={(e) => {
-                                    if (retryCount < 1 && avatarUrlUpd) {
-                                        avatarUrlUpd(e);
-                                        setTimeout(() => {
-                                            setRetryCount(retryCount + 1);
-                                            e.currentTarget.src = `${avatarUrl}?t=${Date.now()}`;
-                                        }, 2000);
-                                    } else {
-                                        setError(true);
-                                    }
-                                }} 
-                                src={avatarUrl}
-                                alt="Avatar"
-                                className="w-full h-full object-cover rounded-full"
-                            />
-                        )}
-                    </div>
-                </div>
+                <AvatarWithPlaceholder
+                    avatarUrl={avatarUrl}
+                    name={userName || 'User'}
+                    size={48}
+                    onError={() => {
+                        if (retryCount < 1 && avatarUrlUpd) {
+                            avatarUrlUpd({});
+                            setRetryCount(retryCount + 1);
+                        }
+                    }}
+                />
                 <div className="flex-1">{children}</div>
             </div>
         </div>

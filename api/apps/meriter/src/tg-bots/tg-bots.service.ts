@@ -514,6 +514,46 @@ export class TgBotsService {
     return chat.meta?.hashtagLabels ?? [];
   }
 
+  /**
+   * Download and upload a photo from a Telegram CDN URL (e.g., from web auth photo_url)
+   * @param photoUrl - Direct URL to the photo from Telegram
+   * @param telegramId - Telegram user/chat ID for storage
+   * @returns Public S3 URL of the uploaded avatar
+   */
+  async downloadAndUploadTelegramPhoto(photoUrl: string, telegramId: string): Promise<string> {
+    const avatarBaseUrl = process.env.TELEGRAM_AVATAR_BASE_URL || 'https://telegram.hb.bizmrg.com/telegram_small_avatars';
+    const s3Key = `telegram_small_avatars/${telegramId}.jpg`;
+
+    try {
+      this.logger.log(`Downloading avatar from ${photoUrl} for user ${telegramId}`);
+      
+      const { writeStream, promise } = this.awsUploadStream({
+        Bucket: "telegram",
+        Key: s3Key,
+      });
+
+      const toJpeg = sharp()
+        .resize(200, 200)
+        .jpeg({ quality: 100 });
+
+      // Download from Telegram CDN and pipe through sharp to S3
+      const response = await Axios({
+        method: "get",
+        url: photoUrl,
+        responseType: "stream",
+      });
+
+      response.data.pipe(toJpeg).pipe(writeStream);
+      await promise;
+
+      this.logger.log(`Successfully uploaded avatar for user ${telegramId}`);
+      return `${avatarBaseUrl}/${telegramId}.jpg`;
+    } catch (error) {
+      this.logger.error(`Failed to download and upload photo for ${telegramId}:`, error.message);
+      throw error;
+    }
+  }
+
   async telegramGetChatPhotoUrl(token, chat_id, revalidate = false) {
     //if (process.env.NODE_ENV === 'test') return ``;
 

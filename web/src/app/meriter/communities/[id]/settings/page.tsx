@@ -227,6 +227,7 @@ const CommunitySettingsPage = () => {
                 onClick={() => {
                     router.push("/meriter/home");
                 }}
+                userName={user?.name || 'User'}
             >
                 <MenuBreadcrumbs>
                     <div>

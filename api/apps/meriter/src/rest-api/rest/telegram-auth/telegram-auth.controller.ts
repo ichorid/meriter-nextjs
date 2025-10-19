@@ -11,6 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../../../users/users.service';
 import { ActorsService } from '@common/abstracts/actors/actors.service';
 import { TgChatsService } from '../../../tg-chats/tg-chats.service';
+import { TgBotsService } from '../../../tg-bots/tg-bots.service';
 import * as crypto from 'crypto';
 
 interface TelegramAuthData {
@@ -32,6 +33,7 @@ export class TelegramAuthController {
     private actorsService: ActorsService,
     private configService: ConfigService,
     private tgChatsService: TgChatsService,
+    private tgBotsService: TgBotsService,
   ) {}
 
   private verifyTelegramAuth(data: TelegramAuthData, botToken: string): boolean {
@@ -119,6 +121,44 @@ export class TelegramAuthController {
       const telegramId = authData.id.toString();
       const identity = `telegram://${telegramId}`;
 
+      // Get existing user to compare avatar
+      const existingUser = await this.usersService.model.findOne({
+        identities: identity,
+      });
+
+      let avatarUrl = existingUser?.profile?.avatarUrl;
+
+      // Try to get user's profile photo using Bot API on every login
+      // This allows us to update the avatar when it changes in Telegram
+      // Works if the user has posted in a group where the bot is present
+      // or if their privacy settings allow the bot to see their profile photo
+      this.logger.log(`Attempting to fetch/update avatar via Bot API for user ${telegramId}`);
+      try {
+        const newAvatarUrl = await this.tgBotsService.telegramGetChatPhotoUrl(
+          botToken,
+          telegramId,
+          true, // revalidate - force refresh
+        );
+        
+        if (newAvatarUrl) {
+          // Add cache-busting timestamp to ensure browser fetches updated image
+          const timestamp = Date.now();
+          avatarUrl = `${newAvatarUrl}?t=${timestamp}`;
+          this.logger.log(`Avatar fetched/updated successfully for user ${telegramId}`);
+        } else {
+          this.logger.log(`No avatar available via Bot API for user ${telegramId} (privacy settings or no photo)`);
+          // Set to null to trigger placeholder on frontend
+          // Don't keep old Telegram web auth URLs as they're not accessible
+          avatarUrl = null;
+        }
+      } catch (error) {
+        this.logger.warn(`Failed to fetch avatar via Bot API for user ${telegramId}:`, error.message);
+        // On error, check if existing avatar is a working S3 URL
+        const existingIsS3 = existingUser?.profile?.avatarUrl?.includes('telegram_small_avatars');
+        // Only keep existing if it's our S3 URL, otherwise set to null for placeholder
+        avatarUrl = existingIsS3 ? existingUser.profile.avatarUrl : null;
+      }
+
       const user = await this.usersService.upsert(
         { identities: identity },
         {
@@ -127,7 +167,7 @@ export class TelegramAuthController {
             name: authData.username || authData.first_name,
             firstName: authData.first_name,
             lastName: authData.last_name,
-            avatarUrl: authData.photo_url,
+            avatarUrl: avatarUrl,
           },
         },
       );

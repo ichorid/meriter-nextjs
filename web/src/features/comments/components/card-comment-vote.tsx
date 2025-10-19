@@ -1,6 +1,7 @@
 'use client';
 
 import { classList } from '@lib/classList';
+import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
 
 export const CardCommentVote = ({
     title,
@@ -20,11 +21,12 @@ export const CardCommentVote = ({
                 </div>
                 <div className="flex-1 p-4">
                     <div className="flex gap-2 mb-2">
-                        <div className="avatar">
-                            <div className="w-8 h-8 rounded-full">
-                                <img src={avatarUrl || undefined} onError={onAvatarUrlNotFound} alt={title} className="w-full h-full object-cover rounded-full"/>
-                            </div>
-                        </div>
+                        <AvatarWithPlaceholder
+                            avatarUrl={avatarUrl}
+                            name={title}
+                            size={32}
+                            onError={onAvatarUrlNotFound}
+                        />
                         <div className="info">
                             <div className="text-xs font-medium">{title}</div>
                             <div className="text-[10px] opacity-60">{subtitle}</div>

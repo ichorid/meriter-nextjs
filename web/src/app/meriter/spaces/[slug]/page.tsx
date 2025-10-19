@@ -181,6 +181,7 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                 onClick={() => {
                     router.push("/meriter/home");
                 }}
+                userName={user?.name || 'User'}
             >
                 <MenuBreadcrumbs
                     chatId={chatId}
@@ -223,6 +224,7 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                             <CardWithAvatar
                                 key={r.tgUserId}
                                 avatarUrl={telegramGetAvatarLink(r.tgUserId)}
+                                userName={r.name}
                             >
                                 <div className="font-medium">{r.name}</div>
                                 <div className="text-sm opacity-60">

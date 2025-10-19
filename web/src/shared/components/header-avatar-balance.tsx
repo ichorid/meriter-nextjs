@@ -9,6 +9,7 @@ export const HeaderAvatarBalance = ({
     onAvatarUrlNotFound,
     children,
     onClick,
+    userName,
 }) => (
     <div className="mb-6">
         <div className="grid grid-cols-2 gap-4 mb-4">
@@ -19,6 +20,7 @@ export const HeaderAvatarBalance = ({
                 avatarUrl={avatarUrl}
                 onAvatarUrlNotFound={onAvatarUrlNotFound}
                 onClick={onClick}
+                userName={userName}
             />
         </div>
         <div className="description">{children?.[1] ?? null}</div>

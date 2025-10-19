@@ -1,6 +1,7 @@
 'use client';
 
 import { classList } from '@lib/classList';
+import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
 
 export const CardPublication = ({
     title,
@@ -23,11 +24,12 @@ export const CardPublication = ({
         <div className="card-body p-0">
             <div className="grid grid-cols-2 px-5 pt-5">
                 <div className="flex gap-2.5">
-                    <div className="avatar">
-                        <div className="w-8 h-8 rounded-full">
-                            <img src={avatarUrl || undefined} onError={onAvatarUrlNotFound} alt={title} />
-                        </div>
-                    </div>
+                    <AvatarWithPlaceholder
+                        avatarUrl={avatarUrl}
+                        name={title}
+                        size={32}
+                        onError={onAvatarUrlNotFound}
+                    />
                     <div className="info">
                         <div className="text-xs font-medium">{title}</div>
                         <div className="text-[10px] opacity-60">{subtitle}</div>
