@@ -35,5 +35,32 @@
   [data-theme="dark"] img[src*="/meriter/1468522.svg"] {
     filter: invert(1) brightness(0.9);
   }
+
+  /* Dark mode card shadows - Material Design elevation */
+  [data-theme="dark"] .shadow-md {
+    box-shadow: 0 4px 6px -1px rgba(255, 255, 255, 0.1), 0 2px 4px -1px rgba(255, 255, 255, 0.06);
+  }
+  
+  [data-theme="dark"] .shadow-lg {
+    box-shadow: 0 10px 15px -3px rgba(255, 255, 255, 0.1), 0 4px 6px -2px rgba(255, 255, 255, 0.05);
+  }
+  
+  [data-theme="dark"] .shadow-xl {
+    box-shadow: 0 20px 25px -5px rgba(255, 255, 255, 0.1), 0 10px 10px -5px rgba(255, 255, 255, 0.04);
+  }
+  
+  /* Hover shadow effects for dark mode */
+  [data-theme="dark"] .hover\:shadow-lg:hover {
+    box-shadow: 0 10px 15px -3px rgba(255, 255, 255, 0.15), 0 4px 6px -2px rgba(255, 255, 255, 0.1);
+  }
+  
+  [data-theme="dark"] .hover\:shadow-xl:hover {
+    box-shadow: 0 20px 25px -5px rgba(255, 255, 255, 0.15), 0 10px 10px -5px rgba(255, 255, 255, 0.1);
+  }
+
+  /* Enhanced dark mode card styling */
+  [data-theme="dark"] .card {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
 }
 

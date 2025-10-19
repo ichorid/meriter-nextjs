@@ -26,6 +26,7 @@ export function middleware(request: NextRequest) {
         '/meriter/setup-community',
         '/meriter/communities',
         '/meriter/spaces',
+        '/meriter/settings',
     ];
     
     if (pathname.startsWith('/meriter/') && 
