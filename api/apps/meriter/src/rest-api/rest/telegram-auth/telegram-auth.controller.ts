@@ -169,5 +169,24 @@ export class TelegramAuthController {
       );
     }
   }
+
+  @Post('logout')
+  async logout(@Res() res: any) {
+    this.logger.log('User logout request');
+
+    // Clear the JWT cookie
+    res.cookie('jwt', '', {
+      httpOnly: true,
+      secure: this.configService.get<string>('app.env') === 'production',
+      sameSite: 'lax',
+      maxAge: 0, // Expire immediately
+      path: '/',
+    });
+
+    return res.json({
+      success: true,
+      message: 'Logged out successfully',
+    });
+  }
 }
 

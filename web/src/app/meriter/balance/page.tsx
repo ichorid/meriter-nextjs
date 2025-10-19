@@ -18,6 +18,7 @@ import { UpdatesFrequency } from "@shared/components/updates-frequency";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { ThemeToggle } from "@shared/components/theme-toggle";
+import { LogoutButton } from "@shared/components/logout-button";
 
 interface iCommunityProps {
     name: string;
@@ -98,7 +99,8 @@ const PageBalance = () => {
 
     return (
         <Page className="balance">
-            <div className="flex justify-end mb-2">
+            <div className="flex justify-end gap-2 mb-2">
+                <LogoutButton className="btn btn-sm btn-ghost" />
                 <ThemeToggle />
             </div>
             <HeaderAvatarBalance
