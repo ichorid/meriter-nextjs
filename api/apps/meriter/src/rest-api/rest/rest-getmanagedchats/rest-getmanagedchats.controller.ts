@@ -3,7 +3,7 @@ import { TgChatsService } from '../../../tg-chats/tg-chats.service';
 import { UserGuard } from '../../../user.guard';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
 class RestGMCDto {
-  'chats': {
+  chats: {
     administratorsIds: string[]; //['123456789'];
     tags: string[];
     _id: string; //'5ff81388c939316d833cc591';

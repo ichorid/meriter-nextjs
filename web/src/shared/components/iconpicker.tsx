@@ -1,54 +1,66 @@
 'use client';
 
-import { useEffect, useState } from 'react'
-import useDebounce from '@lib/debounce'
-import { getIconsLogojoy, getIconsLogojoyProxy } from '@lib/getIcon'
-import { etv } from '@shared/lib/input-utils'
+import { useState } from 'react'
+import dynamic from 'next/dynamic'
+import type { EmojiClickData } from 'emoji-picker-react'
+
+// Dynamically import EmojiPicker to avoid SSR issues
+const EmojiPicker = dynamic(
+    () => import('emoji-picker-react'),
+    { ssr: false }
+)
 
 export const IconPicker = ({ icon, cta, setIcon }) => {
     const [opened, setOpened] = useState(false)
-    const [search, setSearch] = useState('')
-    const [icons, setIcons] = useState([])
-    const serachDebounced = useDebounce(search, 500, true)
-    const [error, setError] = useState('')
-    useEffect(() => {
-        if (serachDebounced && serachDebounced.length > 1) {
-            getIconsLogojoyProxy(serachDebounced, 1).then((d) => {
-                if (!d.symbols || d.symbols.length == 0) {
-                    setError('не найдено, попробуйте другое слово')
-                } else {
-                    setIcons(d.symbols)
-                    setError('')
-                }
-            })
-        }
-    }, [serachDebounced])
+
+    const onEmojiClick = (emojiData: EmojiClickData) => {
+        // Convert emoji to data URL for consistent storage
+        const emoji = emojiData.emoji
+        const svgDataUrl = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">${encodeURIComponent(emoji)}</text></svg>`
+        setIcon(svgDataUrl)
+        setOpened(false)
+    }
 
     return (
-        <div className="icon-picker">
-            <div className="header">
-                {icon && <img src={icon} className="icon-points" />}
-                <a className="clickable" onClick={() => setOpened(true)}>
-                    {cta}
-                </a>
+        <div className="space-y-4">
+            <div className="flex items-center gap-3">
+                {icon && (
+                    <div className="w-12 h-12 flex items-center justify-center border border-base-300 rounded-lg bg-base-200">
+                        <img src={icon} className="w-8 h-8 object-contain" alt="selected emoji" />
+                    </div>
+                )}
+                <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => setOpened(!opened)}
+                >
+                    {icon ? 'Изменить символ' : cta}
+                </button>
             </div>
+            
             {opened && (
-                <div>
-                    <div>
-                        <input placeholder="Введите слово на английском" {...etv(search, setSearch)} />
+                <div className="relative">
+                    <div className="card bg-base-100 border border-base-300 shadow-lg p-2">
+                        <div className="flex justify-between items-center mb-2 px-2">
+                            <span className="text-sm font-medium">Выберите эмодзи</span>
+                            <button
+                                type="button"
+                                className="btn btn-ghost btn-xs btn-circle"
+                                onClick={() => setOpened(false)}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <EmojiPicker
+                            onEmojiClick={onEmojiClick}
+                            width="100%"
+                            height={400}
+                            searchPlaceHolder="Поиск эмодзи..."
+                            previewConfig={{
+                                showPreview: false
+                            }}
+                        />
                     </div>
-                    <div className="icons">
-                        {icons.map((icon, i) => (
-                            <div
-                                key={i}
-                                onClick={() => {
-                                    setIcon(icon.svgUrl)
-                                }}>
-                                <img src={icon.preview} />
-                            </div>
-                        ))}
-                    </div>
-                    {error && <div>{error}</div>}
                 </div>
             )}
         </div>

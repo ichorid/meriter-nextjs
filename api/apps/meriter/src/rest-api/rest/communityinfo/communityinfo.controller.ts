@@ -41,6 +41,7 @@ function mapTgChatToOldFormat(chat: any) {
 function mapHashtagToOldFormat(hashtag: any) {
   if (!hashtag) return null;
   return {
+    uid: hashtag.uid,
     chatId: hashtag.meta?.parentTgChatId,
     name: hashtag.profile?.name,
     tagRus: hashtag.profile?.name,
@@ -54,6 +55,7 @@ function mapHashtagToOldFormat(hashtag: any) {
 
 function mapOldSpaceToHashtag(oldSpace: any) {
   return {
+    uid: oldSpace.uid,
     profile: {
       name: oldSpace.tagRus || oldSpace.name,
       description: oldSpace.description,
@@ -102,20 +104,21 @@ class RestCommunityinfoResponse {
 }
 
 class RestUpdateGMCDto {
-  'spaces': {
-    _id: '5ff82235c939316d833ce179';
-    chatId: '-400774319';
-    slug: 'bql0fbmi';
-    description: '';
-    name: null;
-    tagRus: 'хочуделать';
+  spaces: {
+    _id?: string;
+    chatId?: string;
+    slug: string;
+    description: string;
+    name?: string;
+    tagRus: string;
+    deleted?: boolean;
   }[];
 
-  'icon': string; //'https://symbols.production.logojoy.com/symbol/865697';
-  'currencyNames': {
-    '1': string; //'медалька';
-    '2': string; //'медали';
-    '5': string; //'медалей'
+  icon: string;
+  currencyNames: {
+    '1': string;
+    '2': string;
+    '5': string;
   };
 }
 @UseGuards(UserGuard)
@@ -169,22 +172,36 @@ export class RestCommunityifoController {
   }
 
   @Post()
-  async update(@Body() dto: RestUpdateGMCDto, @Query('chatId') chatId: string) {
+  async update(@Body() dto: any, @Query('chatId') chatId: string) {
     if (!chatId) throw 'no chatId given';
+    
+    const spaces = dto.spaces || [];
+    
+    // Add chatId to each space before mapping
+    const spacesWithChatId = spaces.map(s => ({ ...s, chatId }));
+    
+    const hashtagLabels = spaces
+      .filter((s) => s.tagRus && !s.deleted)
+      .map((s) => s.tagRus.replace(/^#/, ''));
+    
     await this.hashtagsService.upsertList(
       chatId,
-      dto.spaces.map(mapOldSpaceToHashtag),
+      spacesWithChatId.map(mapOldSpaceToHashtag),
     );
 
-    return this.tgChatsService.model.updateOne(
+    const updateData = {
+      'meta.iconUrl': dto.icon,
+      'meta.currencyNames': dto.currencyNames,
+      'meta.hashtagLabels': hashtagLabels,
+    };
+
+    const updateResult = await this.tgChatsService.model.updateOne(
       {
         identities: 'telegram://' + chatId,
       },
-      {
-        'meta.iconUrl': dto.icon,
-        'meta.currencyNames': dto.currencyNames,
-        'meta.hashtagLabels': dto.spaces.map((s) => s.tagRus.replace('#', '')),
-      },
+      updateData,
     );
+    
+    return updateResult;
   }
 }
