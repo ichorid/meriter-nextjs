@@ -19,14 +19,23 @@ export class TelegramHookController {
     @Param('botUsername') botUsername: string,
     @Body() update: Update,
   ) {
+    this.logger.log(`🌐 Webhook received: bot=${botUsername}, update_id=${update.update_id}`);
+    
     // Block messages from bots and specific banned chat
     const bannedChatId = process.env.BANNED_CHAT_ID || '-1001765280630';
     if (update?.message?.from?.is_bot==true||update?.message?.chat?.id==Number(bannedChatId)) {
-      this.logger.warn('banned message from bot');
+      this.logger.warn(`🚫 Blocked: bot=${update?.message?.from?.is_bot}, chat=${update?.message?.chat?.id}`);
       return "ok"
     }
-    // Log webhook receipt without sensitive user data
-    this.logger.log(`Received webhook for bot: ${botUsername}, update_id: ${update.update_id}`);
+    
+    // Log basic message info
+    if (update?.message) {
+      const msgType = update.message.text ? 'text' : 
+                      update.message.new_chat_members ? 'new_members' : 
+                      update.message.photo ? 'photo' : 'other';
+      this.logger.log(`📬 Message type: ${msgType}, from: ${update.message.from?.id}, chat: ${update.message.chat?.id}`);
+    }
+    
     return this.tgBotsService.processHookBody(update, botUsername);
   }
 }

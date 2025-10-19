@@ -325,7 +325,7 @@ const ManagePage = () => {
 
     useEffect(() => {
         if (!user.tgUserId && !user.init) {
-            router.push("/mt/login?manage");
+            router.push("/meriter/login?returnTo=/meriter/manage");
         }
     }, [user]);
 
@@ -356,7 +356,7 @@ const ManagePage = () => {
                     telegramGetAvatarLinkUpd(user?.tgUserId)
                 }
                 onClick={() => {
-                    router.push("/mt/balance");
+                    router.push("/meriter/balance");
                 }}
             >
                 <MenuBreadcrumbs>

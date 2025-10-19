@@ -7,24 +7,15 @@ import { useEffect, useState, useRef } from "react";
 import { ThemeToggle } from "@shared/components/theme-toggle";
 import { useRouter } from 'next/navigation';
 
-const PageMeriterLogin = () => {
+const PageSetupCommunity = () => {
     const router = useRouter();
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
     const telegramWidgetRef = useRef<HTMLDivElement>(null);
-    const [returnTo, setReturnTo] = useState<string | null>(null);
 
     useEffect(() => {
-        console.log('🟢 Login page mounted. BOT_USERNAME:', BOT_USERNAME);
-        
-        // Extract returnTo query parameter
-        const params = new URLSearchParams(window.location.search);
-        const returnToParam = params.get('returnTo');
-        if (returnToParam) {
-            setReturnTo(returnToParam);
-            console.log('🟢 returnTo parameter found:', returnToParam);
-        }
+        console.log('🟢 Setup community page mounted. BOT_USERNAME:', BOT_USERNAME);
         
         // Define the global callback function that Telegram will call
         (window as any).onTelegramAuth = async (user: any) => {
@@ -55,19 +46,9 @@ const PageMeriterLogin = () => {
                 console.log('🔵 Auth successful!', data);
 
                 if (data.success) {
-                    // Determine redirect based on pending communities or returnTo
-                    let redirectPath = '/meriter/balance'; // default
-                    
-                    if (data.hasPendingCommunities) {
-                        console.log('🔵 User has pending communities, redirecting to /meriter/manage');
-                        redirectPath = '/meriter/manage';
-                    } else if (returnTo) {
-                        console.log('🔵 Using returnTo parameter:', returnTo);
-                        redirectPath = returnTo;
-                    }
-                    
-                    console.log('🔵 Redirecting to:', redirectPath);
-                    router.push(redirectPath);
+                    // Always redirect to manage page for community setup
+                    console.log('🔵 Redirecting to /meriter/manage for community setup...');
+                    router.push('/meriter/manage');
                 } else {
                     setAuthError('Ошибка авторизации');
                 }
@@ -104,8 +85,8 @@ const PageMeriterLogin = () => {
 
     useEffect(() => {
         if (user?.token) {
-            console.log('🟢 User already authenticated, redirecting...');
-            router.push('/meriter/balance');
+            console.log('🟢 User already authenticated, redirecting to manage...');
+            router.push('/meriter/manage');
         }
     }, [user, router]);
 
@@ -117,7 +98,7 @@ const PageMeriterLogin = () => {
                     <ThemeToggle />
                 </div>
                 <div className="center">
-                    <div>Переход на главную...</div>
+                    <div>Переход на страницу настройки...</div>
                 </div>
             </Page>
         );
@@ -133,7 +114,19 @@ const PageMeriterLogin = () => {
                     <img src="/meriter/merit.svg" alt="Meriter" />
                 </div>
 
-                <div className="mar-80">
+                <div className="mar-40">
+                    <h2 style={{ fontSize: '24px', marginBottom: '20px', textAlign: 'center' }}>
+                        Настройка сообщества
+                    </h2>
+                    <p style={{ marginBottom: '20px', textAlign: 'center', maxWidth: '500px' }}>
+                        Вы добавили бота Meriter в свою группу! Сейчас мы настроим его работу.
+                    </p>
+                    <p style={{ marginBottom: '30px', textAlign: 'center', maxWidth: '500px' }}>
+                        Для начала авторизуйтесь через Telegram:
+                    </p>
+                </div>
+
+                <div className="mar-40">
                     {isAuthenticating ? (
                         <div>Авторизация...</div>
                     ) : (
@@ -143,9 +136,22 @@ const PageMeriterLogin = () => {
                         <div className="text-red-500 mt-4">{authError}</div>
                     )}
                 </div>
+
+                <div className="mar-40">
+                    <p style={{ fontSize: '14px', color: '#666', textAlign: 'center', maxWidth: '500px' }}>
+                        После авторизации вы сможете:
+                    </p>
+                    <ul style={{ fontSize: '14px', color: '#666', textAlign: 'left', maxWidth: '500px', margin: '10px auto' }}>
+                        <li>✓ Настроить ценности сообщества (хештеги)</li>
+                        <li>✓ Задать название баллов</li>
+                        <li>✓ Выбрать символ для баллов</li>
+                        <li>✓ Отправить памятку участникам</li>
+                    </ul>
+                </div>
             </div>
         </Page>
     );
 };
 
-export default PageMeriterLogin;
+export default PageSetupCommunity;
+

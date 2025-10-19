@@ -10,6 +10,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../../../users/users.service';
 import { ActorsService } from '@common/abstracts/actors/actors.service';
+import { TgChatsService } from '../../../tg-chats/tg-chats.service';
 import * as crypto from 'crypto';
 
 interface TelegramAuthData {
@@ -30,6 +31,7 @@ export class TelegramAuthController {
     private usersService: UsersService,
     private actorsService: ActorsService,
     private configService: ConfigService,
+    private tgChatsService: TgChatsService,
   ) {}
 
   private verifyTelegramAuth(data: TelegramAuthData, botToken: string): boolean {
@@ -59,6 +61,23 @@ export class TelegramAuthController {
     const timeValid = currentTime - authDate < 86400; // 24 hours
 
     return hashValid && timeValid;
+  }
+
+  /**
+   * Check if user has pending communities (communities where they're admin but haven't configured hashtags)
+   */
+  private async hasPendingCommunities(telegramId: string): Promise<boolean> {
+    const chats = await this.tgChatsService.model.find({
+      administrators: 'telegram://' + telegramId,
+    });
+
+    // Check if any community has no hashtags configured
+    const hasPending = chats.some(chat => {
+      const hashtagLabels = chat.meta?.hashtagLabels || [];
+      return hashtagLabels.length === 0;
+    });
+
+    return hasPending;
   }
 
   @Post()
@@ -125,6 +144,9 @@ export class TelegramAuthController {
         userToken: user.token,
       });
 
+      // Check if user has pending communities to configure
+      const hasPending = await this.hasPendingCommunities(telegramId);
+
       // Generate JWT with user data
       const jwtSecret = this.configService.get<string>('jwt.secret');
       const jwt = this.actorsService.signJWT(
@@ -150,6 +172,7 @@ export class TelegramAuthController {
       // Return user data
       return res.json({
         success: true,
+        hasPendingCommunities: hasPending,
         user: {
           tgUserId: telegramId,
           name: user.profile?.name,

@@ -119,3 +119,143 @@ cat .env | grep S3_
 - Only affects the specified bucket
 - Does not modify bucket contents or permissions
 
+## setup-webhook.js
+
+Configure webhook for Telegram bot to receive updates.
+
+### Purpose
+
+This script manages the webhook configuration for your Telegram bot:
+- **Check** current webhook status and configuration
+- **Set** webhook to your application URL
+- **Delete** webhook (switch back to long polling)
+
+### When to Use
+
+- Initial deployment setup
+- Changing domains or server URLs
+- Debugging webhook issues
+- Switching between webhook and polling modes
+
+### Prerequisites
+
+1. Telegram bot token from @BotFather
+2. Bot username (without @)
+3. Publicly accessible HTTPS URL
+4. Application deployed and running
+
+### Usage
+
+```bash
+# Navigate to api directory
+cd api
+
+# Load credentials from .env file
+export $(grep -E 'BOT_TOKEN|BOT_USERNAME|APP_URL' .env | xargs)
+
+# Check current webhook status
+node scripts/setup-webhook.js check
+
+# Set webhook to your application URL
+node scripts/setup-webhook.js set
+
+# Delete webhook (use long polling instead)
+node scripts/setup-webhook.js delete
+```
+
+### Examples
+
+**Check webhook status:**
+```bash
+node scripts/setup-webhook.js check
+```
+
+**Configure webhook for production:**
+```bash
+export BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
+export BOT_USERNAME=meriterbot
+export APP_URL=https://meriter.ru
+node scripts/setup-webhook.js set
+```
+
+**Remove webhook:**
+```bash
+node scripts/setup-webhook.js delete
+```
+
+### Environment Variables
+
+The script requires these environment variables:
+
+| Variable | Description | Required For |
+|----------|-------------|--------------|
+| `BOT_TOKEN` | Bot token from @BotFather | All commands |
+| `BOT_USERNAME` | Bot username (without @) | set |
+| `APP_URL` | Application URL (must be HTTPS) | set |
+
+### What It Does
+
+**check** command:
+- Retrieves current webhook configuration
+- Shows webhook URL (if configured)
+- Displays pending update count
+- Shows any recent errors
+
+**set** command:
+- Validates HTTPS requirement
+- Constructs webhook URL: `{APP_URL}/api/telegram/hooks/{BOT_USERNAME}`
+- Registers webhook with Telegram
+- Verifies configuration
+
+**delete** command:
+- Removes webhook configuration
+- Switches bot to long polling mode
+
+### Verification
+
+After setting the webhook:
+
+1. Send a test message to your bot
+2. Check application logs for webhook receipt
+3. Look for log messages like: `🌐 Webhook received: bot=meriterbot`
+4. Verify no errors in webhook info: `node scripts/setup-webhook.js check`
+
+### Troubleshooting
+
+**Error: URL must use HTTPS**
+```bash
+# Telegram requires HTTPS for webhooks
+# Make sure APP_URL starts with https://
+export APP_URL=https://meriter.ru  # ✓ Correct
+export APP_URL=http://meriter.ru   # ✗ Wrong
+```
+
+**Error: BOT_TOKEN not set**
+```bash
+# Check your .env file has the bot token
+cat .env | grep BOT_TOKEN
+
+# Load it manually
+export BOT_TOKEN=your_token_here
+```
+
+**Webhook shows last error**
+- Check your server is running and accessible
+- Verify the webhook endpoint returns 200 OK
+- Check application logs for errors processing updates
+- Ensure SSL certificate is valid
+
+**No updates received**
+- Verify webhook is set: `node scripts/setup-webhook.js check`
+- Ensure your server is publicly accessible
+- Check firewall allows incoming HTTPS connections
+- Test webhook URL manually in browser
+
+### Additional Notes
+
+- Webhook registration persists until changed or deleted
+- Only one webhook URL can be active per bot
+- Safe to run `set` command multiple times
+- Telegram retries failed webhook deliveries
+- Use `check` command to debug webhook issues
+

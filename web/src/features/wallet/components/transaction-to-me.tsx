@@ -58,7 +58,7 @@ export const TransactionToMe = ({
                         <div>
                             В ответ на:{" "}
                             <a
-                                href={`/mt/${transaction.inSpaceSlug}/${
+                                href={`/meriter/${transaction.inSpaceSlug}/${
                                     transaction.inPublicationSlug
                                 }${
                                     transaction.forTransactionId

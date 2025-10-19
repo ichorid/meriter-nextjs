@@ -56,9 +56,13 @@ export class TgBotsService {
     this.telegramApiUrl = process.env.TELEGRAM_API_URL || "https://api.telegram.org";
   }
   async processHookBody(body: TelegramTypes.Update, botUsername: string) {
+    // Log all incoming updates for debugging
+    this.logger.log('📨 Received Telegram update:', JSON.stringify(body, null, 2));
+    
     const { message } = body;
 
     if (!message) {
+      this.logger.log('⚠️  No message in update, skipping');
       return;
     }
     const {
@@ -73,14 +77,18 @@ export class TgBotsService {
     const { id: user_id, username, first_name, last_name } = from;
     const { id: chat_id, username: chat_username } = chat;
 
+    this.logger.log(`📝 Message details: from=${user_id} (${username || first_name}), chat=${chat_id}, text="${text || caption}"`);
+
     //ADDED TO NEW CHAT
 
     if (new_chat_members?.[0]?.username == BOT_USERNAME) {
+      this.logger.log(`🤖 Bot added to chat: ${chat_id} (${chat_username || chat.title})`);
       await this.processAddedToChat({ chatId: chat_id, chat_username });
     }
 
     //MESSAGE TO CHAT
     if ((text || caption) && user_id && chat_id && chat_id !== user_id) {
+      this.logger.log(`💬 Group message: chat=${chat_id}, user=${user_id}, text="${text || caption}"`);
       await this.processRecieveMessageFromGroup({
         tgChatId: chat_id,
         tgUserId: user_id,
@@ -100,6 +108,7 @@ export class TgBotsService {
     }
     //USER WROTE TO BOT
     if (text && user_id && chat_id && chat_id == user_id) {
+      this.logger.log(`👤 Direct message to bot: user=${user_id}, text="${text}"`);
       await this.processRecieveMessageFromUser({
         tgUserId: user_id,
         messageText: text || caption,
@@ -110,6 +119,8 @@ export class TgBotsService {
 
   async processAddedToChat({ chatId, chat_username }) {
     try {
+      this.logger.log(`🔧 Processing bot added to chat ${chatId}`);
+      
       const [admins, chatInfo] = await Promise.all([
         this.tgChatGetAdmins({ tgChatId: chatId }),
         this.tgGetChat(chatId),
@@ -117,10 +128,14 @@ export class TgBotsService {
 
       const { type, title, username, first_name, last_name, description } =
         (chatInfo as any) ?? {};
+      
+      this.logger.log(`📊 Chat info: title="${title}", admins=${admins.length}, type=${type}`);
+      
       const p = [];
       admins
         .map((a) => String(a.id))
         .map((admin, i) => {
+          this.logger.log(`✉️  Sending setup message to admin ${admin}`);
           p[i] = this.tgSend({
             tgChatId: admin,
             text: LEADER_MESSAGE_AFTER_ADDED.replace("{username}", title),
@@ -128,7 +143,10 @@ export class TgBotsService {
         });
       try {
         await Promise.all(p);
-      } catch (e) {}
+        this.logger.log(`✅ Setup messages sent to ${admins.length} admin(s)`);
+      } catch (e) {
+        this.logger.error('❌ Error sending setup messages:', e);
+      }
 
       const r = await this.tgChatsService.model.findOneAndUpdate(
         {
@@ -198,6 +216,9 @@ export class TgBotsService {
     );
     const sendToGlobalFeed = (messageText ?? "").match("#" + GLOBAL_FEED_HASHTAG);
 
+    this.logger.log(`🏷️  Chat keywords: ${keywords.join(', ')}`);
+    this.logger.log(`🔍 Found keyword: ${kw || 'none'}, sendToGlobalFeed: ${!!sendToGlobalFeed}`);
+
     if (replyMessageId) {
       const approved = APPROVED_PEDNDING_WORDS.map((word) =>
         (messageText as string).toLowerCase().match(word) ? true : false
@@ -213,7 +234,10 @@ export class TgBotsService {
       }
     }
 
-    if (!kw || kw?.length == 0) return;
+    if (!kw || kw?.length == 0) {
+      this.logger.log(`⏭️  No matching keyword found, skipping message`);
+      return;
+    }
 
     const pending = false;
     const isAdmin = false;
@@ -271,9 +295,12 @@ export class TgBotsService {
 
     const { slug, spaceSlug } = publication;
     const link = `${spaceSlug}/${slug}`;
+    
+    this.logger.log(`✅ Publication created: slug=${slug}, spaceSlug=${spaceSlug}, external=${external}`);
 
     if (!external) {
       const text = ADDED_PUBLICATION_REPLY.replace("{link}", link);
+      this.logger.log(`💬 Sending reply to group ${tgChatId} with link: ${link}`);
 
       await this.tgReplyMessage({
         reply_to_message_id: messageId,
@@ -309,7 +336,9 @@ export class TgBotsService {
 
   async processRecieveMessageFromUser({ tgUserId, messageText, tgUserName }) {
     const referal = await this.tgMessageTextParseReferal({ messageText });
-    this.logger.log("processRecieveMessageFromUser");
+    this.logger.log(`👤 Processing direct message from user ${tgUserId}: "${messageText}"`);
+    this.logger.log(`🔍 Parsed referral: ${referal || 'none'}`);
+    
     let authJWT;
     let redirect;
     const auth = messageText.match("/auth");
@@ -333,13 +362,16 @@ export class TgBotsService {
     }
 
     if (referal === "community") {
+      this.logger.log(`📧 Sending WELCOME_LEADER_MESSAGE to ${tgUserId}`);
       await this.tgSend({ tgChatId: tgUserId, text: WELCOME_LEADER_MESSAGE });
     } else if ((referal && referal.match("auth")) || auth) {
+      this.logger.log(`📧 Sending AUTH_USER_MESSAGE to ${tgUserId}`);
       await this.tgSend({
         tgChatId: tgUserId,
         text: AUTH_USER_MESSAGE,
       });
     } else {
+      this.logger.log(`📧 Sending WELCOME_USER_MESSAGE to ${tgUserId}`);
       await this.tgSend({
         tgChatId: tgUserId,
         text: WELCOME_USER_MESSAGE,

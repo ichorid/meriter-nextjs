@@ -136,7 +136,7 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
 
     useEffect(() => {
         if (!user?.tgUserId && !user.init)
-            router.push("/mt/login?" + document.location.pathname);
+            router.push("/meriter/login?returnTo=" + encodeURIComponent(document.location.pathname));
     }, [user, user?.init]);
     const [userdata] = swr(
         () =>
@@ -227,7 +227,7 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
                 avatarUrl={telegramGetAvatarLink(tgAuthorId)}
                 onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
                 onClick={() => {
-                    router.push("/mt/balance");
+                    router.push("/meriter/balance");
                 }}
             >
                 <MenuBreadcrumbs
@@ -284,7 +284,7 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
                                         key={space.slug}
                                         avatarUrl=""
                                         onClick={() =>
-                                            router.push("/mt/" + space.slug)
+                                            router.push("/meriter/" + space.slug)
                                         }
                                     >
                                         <div className="heading">

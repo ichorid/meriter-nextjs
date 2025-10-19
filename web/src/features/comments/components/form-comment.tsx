@@ -42,7 +42,7 @@ export const FormComment = ({
         {maxMinus == 0 && amount < 0 && (
             <div className="notice" style={{ padding: "20px" }}>
                 Минусовое голосование возможно только с Баланса.{" "}
-                <Link href="/mt/balance">
+                <Link href="/meriter/balance">
                     Cнимите баллы с публикаций на свой Баланс
                 </Link>{" "}
             </div>
@@ -51,7 +51,7 @@ export const FormComment = ({
         {maxMinus == 0 && amount < 0 ? null : !hasPoints ? (
             <div className="notice" style={{ padding: "20px" }}>
                 Недостаточно баллов.{" "}
-                <Link href="/mt/balance">Добавьте их на свой Баланс</Link>{" "}
+                <Link href="/meriter/balance">Добавьте их на свой Баланс</Link>{" "}
             </div>
         ) : (
             <FormCommentVote

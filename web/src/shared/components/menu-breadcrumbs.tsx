@@ -25,14 +25,14 @@ export const MenuBreadcrumbs = ({
                             src={"/meriter/home.svg"}
                             alt="Home"
                         />
-                        <Link href={"/mt/c/" + chatId} className="link link-hover">
+                        <Link href={"/meriter/c/" + chatId} className="link link-hover">
                             {chatNameVerb}
                         </Link>
                     </li>
                 )}
                 {spaceSlug && (
                     <li>
-                        <Link href={"/mt/" + spaceSlug} className="link link-hover">
+                        <Link href={"/meriter/" + spaceSlug} className="link link-hover">
                             {"#" + tagRus}
                         </Link>
                     </li>

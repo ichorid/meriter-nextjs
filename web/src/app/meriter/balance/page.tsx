@@ -111,7 +111,7 @@ const PageBalance = () => {
                 }
                 onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
                 onClick={() => {
-                    router.push("/mt/balance");
+                    router.push("/meriter/balance");
                 }}
             >
                 <MenuBreadcrumbs>
