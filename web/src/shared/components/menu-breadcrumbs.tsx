@@ -7,6 +7,7 @@ export const MenuBreadcrumbs = ({
     chatId,
     tagRus,
     chatNameVerb,
+    postText,
     children,
 }: any) => {
     return (
@@ -22,14 +23,14 @@ export const MenuBreadcrumbs = ({
                         <span>Главная</span>
                     </Link>
                 </li>
-                {chatId && !tagRus && (
+                {chatId && !tagRus && !postText && (
                     <li>
                         <Link href={"/meriter/communities/" + chatId} className="link link-hover">
                             {chatNameVerb}
                         </Link>
                     </li>
                 )}
-                {chatId && tagRus && (
+                {chatId && (tagRus || postText) && (
                     <li>
                         <Link href={"/meriter/communities/" + chatId} className="link link-hover">
                             {chatNameVerb}
@@ -39,6 +40,11 @@ export const MenuBreadcrumbs = ({
                 {tagRus && (
                     <li>
                         <span>#{tagRus}</span>
+                    </li>
+                )}
+                {postText && (
+                    <li>
+                        <span>{postText}</span>
                     </li>
                 )}
             </ul>

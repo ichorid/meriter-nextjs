@@ -311,7 +311,7 @@ export class TgBotsService {
     ]);
 
     const { slug, spaceSlug } = publication;
-    const link = `${spaceSlug}/${slug}`;
+    const link = `communities/${tgChatId}/posts/${slug}`;
     
     this.logger.log(`✅ Publication created: slug=${slug}, spaceSlug=${spaceSlug}, external=${external}`);
 

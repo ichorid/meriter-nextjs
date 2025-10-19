@@ -4,7 +4,10 @@ import useSWR from 'swr'
 import { encode } from 'querystring'
 
 export const apiGET = async (addr: string, params = {}) => {
-    const response = await axios.get(addr, { params })
+    const response = await axios.get(addr, { 
+        params,
+        withCredentials: true, // Include cookies in requests
+    })
     return response.data
 }
 
@@ -21,7 +24,9 @@ export const useApiGET = (addr: string, initial: any, params = {}) => {
 }
 
 export const apiPOST = async (addr: string, data = {}) => {
-    const response = await axios.post(addr, data)
+    const response = await axios.post(addr, data, {
+        withCredentials: true, // Include cookies in requests
+    })
     return response.data
 }
 
@@ -38,7 +43,10 @@ export const useApiPOST = (addr: string, initial: any, params = {}) => {
 }
 
 const fetchJSON = async function (input: RequestInfo, init?: RequestInit) {
-    const res = await fetch(input, init)
+    const res = await fetch(input, {
+        ...init,
+        credentials: 'include', // Include cookies in requests
+    })
     return res.json()
 }
 //const prefix="http://localhost:3000"

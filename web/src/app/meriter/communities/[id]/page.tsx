@@ -228,6 +228,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                             <Publication
                                 key={p._id}
                                 {...p}
+                                tgChatId={chatId}
                                 balance={balance}
                                 updBalance={updBalance}
                                 activeCommentHook={activeCommentHook}
@@ -235,6 +236,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                 myId={user?.tgUserId}
                                 onlyPublication={onlyPublication}
                                 highlightTransactionId={findTransaction}
+                                isDetailPage={false}
                             />
                         ))}
                 {!paginationEnd && publications.length > 1 && (

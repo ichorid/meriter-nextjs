@@ -19,6 +19,7 @@ import { Comment } from "@features/comments/components/comment";
 import { PollVoting } from "@features/polls/components/poll-voting";
 import type { IPollData } from "@features/polls/types";
 import { apiPOST, apiGET } from "@shared/lib/fetch";
+import { useRouter } from "next/navigation";
 
 export interface IPublication {
     tgChatName;
@@ -42,6 +43,7 @@ export interface IPublication {
 
 export const Publication = ({
     tgChatName,
+    tgChatId,
     tgMessageId,
     minus,
     plus,
@@ -66,8 +68,10 @@ export const Publication = ({
     type,
     content,
     _id,
+    isDetailPage,
 }: any) => {
     if (!tgChatName && type !== 'poll') return null;
+    const router = useRouter();
     const {
         comments,
         showPlus,
@@ -92,8 +96,11 @@ export const Publication = ({
     );
 
     useEffect(() => {
-        if (onlyPublication) showPlus();
-    }, [onlyPublication]);
+        if (onlyPublication || isDetailPage) {
+            showPlus();
+            setShowComments(true);
+        }
+    }, [onlyPublication, isDetailPage]);
 
     const publicationUnderReply = activeCommentHook[0] == slug;
     const nobodyUnderReply = activeCommentHook[0] === null;
@@ -212,11 +219,10 @@ export const Publication = ({
                     }
                 }}
                 description={tagsStr}
-                onClick={!(myId == tgAuthorId) ? () => {
-                    if (showComments) {
-                        setShowComments(false);
-                    } else {
-                        showPlus();
+                onClick={!(myId == tgAuthorId) && !isDetailPage ? () => {
+                    // Navigate to post detail page
+                    if (tgChatId && slug) {
+                        router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
                     }
                 } : undefined}
                 onDescriptionClick={
@@ -228,11 +234,14 @@ export const Publication = ({
                         minus={currentMinus}
                         onPlus={showPlus}
                         onMinus={showMinus}
-                        onLeft={
-                            showComments
-                                ? () => setShowComments(false)
-                                : () => setShowComments(true)
-                        }
+                        onLeft={!isDetailPage ? () => {
+                            // Navigate to post detail page
+                            if (tgChatId && slug) {
+                                router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
+                            }
+                        } : () => {
+                            // On detail page, comment counter is visible but not clickable
+                        }}
                         commentCount={comments?.length || 0}
                     />
                 }
