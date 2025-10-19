@@ -26,5 +26,14 @@
   .currency-icon {
     @apply w-8 h-8 object-contain;
   }
+
+  /* Invert black icons in dark mode */
+  [data-theme="dark"] img[src*="/meriter/home.svg"],
+  [data-theme="dark"] img[src*="/meriter/comment.svg"],
+  [data-theme="dark"] img[src*="/meriter/help.svg"],
+  [data-theme="dark"] img[src*="/meriter/send.svg"],
+  [data-theme="dark"] img[src*="/meriter/1468522.svg"] {
+    filter: invert(1) brightness(0.9);
+  }
 }
 
