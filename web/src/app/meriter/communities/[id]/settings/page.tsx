@@ -15,6 +15,7 @@ import { IconPicker } from '@shared/components/iconpicker';
 import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
 import { CardWithAvatar } from '@shared/components/card-with-avatar';
+import { CommunityAvatarWithBadge } from '@shared/components/community-avatar-with-badge';
 import {
     telegramGetAvatarLink,
     telegramGetAvatarLinkUpd,
@@ -244,7 +245,32 @@ const CommunitySettingsPage = () => {
                     Manage settings for {communityData?.chat?.title || 'this community'}
                 </div>
             </HeaderAvatarBalance>
-            <div className="mar-40"></div>
+
+            {/* Community Profile Section */}
+            {communityData?.chat && (
+                <div className="card bg-base-100 shadow-xl mb-6">
+                    <div className="card-body">
+                        <h2 className="card-title">Community Profile</h2>
+                        <div className="flex items-center gap-4">
+                            <CommunityAvatarWithBadge
+                                avatarUrl={communityData.chat.photo}
+                                communityName={communityData.chat.title || 'Community'}
+                                iconUrl={communityData.icon}
+                                size={80}
+                            />
+                            <div>
+                                <div className="text-xl font-semibold">{communityData.chat.title}</div>
+                                <div className="text-sm opacity-60">
+                                    {communityData.chat.description || 'No description'}
+                                </div>
+                                <div className="text-xs opacity-50 mt-1">
+                                    Avatar updates automatically when you save settings
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Currency Names Section */}
             <div className="card bg-base-100 shadow-xl mb-6">

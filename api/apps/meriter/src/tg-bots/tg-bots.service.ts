@@ -131,6 +131,23 @@ export class TgBotsService {
       
       this.logger.log(`📊 Chat info: title="${title}", admins=${admins.length}, type=${type}`);
       
+      // Fetch chat avatar from Telegram Bot API
+      let chatAvatarUrl = null;
+      try {
+        this.logger.log(`🖼️  Attempting to fetch avatar for chat ${chatId}`);
+        const avatarUrl = await this.telegramGetChatPhotoUrl(BOT_TOKEN, chatId, true);
+        if (avatarUrl) {
+          // Add cache-busting timestamp
+          const timestamp = Date.now();
+          chatAvatarUrl = `${avatarUrl}?t=${timestamp}`;
+          this.logger.log(`✅ Chat avatar fetched successfully: ${chatAvatarUrl}`);
+        } else {
+          this.logger.log(`ℹ️  No avatar available for chat ${chatId}`);
+        }
+      } catch (error) {
+        this.logger.warn(`⚠️  Failed to fetch chat avatar for ${chatId}:`, error.message);
+      }
+      
       const p = [];
       admins
         .map((a) => String(a.id))
@@ -156,7 +173,7 @@ export class TgBotsService {
           profile: {
             name: title,
             description: description,
-            avatarUrl: null,
+            avatarUrl: chatAvatarUrl,
             scope: 'meriter',
           },
           domainName: 'tg-chat',

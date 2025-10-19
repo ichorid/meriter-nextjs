@@ -9,7 +9,9 @@ import {
   Query,
   Req,
   UseGuards,
+  Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { TgChatsService } from '../../../tg-chats/tg-chats.service';
 import { HashtagsService } from '../../../hashtags/hashtags.service';
 import { TgChat } from '../../../tg-chats/model/tg-chat.model';
@@ -124,10 +126,13 @@ class RestUpdateGMCDto {
 @UseGuards(UserGuard)
 @Controller('api/rest/communityinfo')
 export class RestCommunityifoController {
+  private readonly logger = new Logger(RestCommunityifoController.name);
+
   constructor(
     private tgChatsService: TgChatsService,
     private tgBotsService: TgBotsService,
     private hashtagsService: HashtagsService,
+    private configService: ConfigService,
   ) {}
   @Get()
   async rest_communityinfo(
@@ -189,11 +194,40 @@ export class RestCommunityifoController {
       spacesWithChatId.map(mapOldSpaceToHashtag),
     );
 
-    const updateData = {
+    // Refresh chat avatar when admin saves settings
+    let chatAvatarUrl = null;
+    try {
+      this.logger.log(`🖼️  Refreshing avatar for chat ${chatId} during settings save`);
+      const botToken = this.configService.get<string>('bot.token');
+      const avatarUrl = await this.tgBotsService.telegramGetChatPhotoUrl(
+        botToken,
+        chatId,
+        true, // revalidate - force refresh
+      );
+      
+      if (avatarUrl) {
+        // Add cache-busting timestamp
+        const timestamp = Date.now();
+        chatAvatarUrl = `${avatarUrl}?t=${timestamp}`;
+        this.logger.log(`✅ Chat avatar refreshed: ${chatAvatarUrl}`);
+      } else {
+        this.logger.log(`ℹ️  No avatar available for chat ${chatId}`);
+      }
+    } catch (error) {
+      this.logger.warn(`⚠️  Failed to refresh chat avatar for ${chatId}:`, error.message);
+      // Non-critical - continue with settings save even if avatar refresh fails
+    }
+
+    const updateData: any = {
       'meta.iconUrl': dto.icon,
       'meta.currencyNames': dto.currencyNames,
       'meta.hashtagLabels': hashtagLabels,
     };
+
+    // Update avatar if we successfully fetched a new one
+    if (chatAvatarUrl) {
+      updateData['profile.avatarUrl'] = chatAvatarUrl;
+    }
 
     const updateResult = await this.tgChatsService.model.updateOne(
       {

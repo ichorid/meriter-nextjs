@@ -8,7 +8,7 @@ import { Spinner } from '@shared/components/misc';
 import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
 import { useRouter } from "next/navigation";
-import { CardWithAvatar } from '@shared/components/card-with-avatar';
+import { CommunityAvatarWithBadge } from '@shared/components/community-avatar-with-badge';
 import Link from "next/link";
 import {
     telegramGetAvatarLink,
@@ -16,23 +16,33 @@ import {
 } from '@lib/telegram';
 import { ThemeToggle } from "@shared/components/theme-toggle";
 
-const CommunityCard = ({ chatId, title, description, tags }: any) => {
+const CommunityCard = ({ chatId, title, description, tags, avatarUrl, icon }: any) => {
     return (
         <Link href={`/meriter/communities/${chatId}/settings`} className="block">
-            <CardWithAvatar userName={title || 'Community'}>
-                <div className="text-lg font-semibold mb-1">{title}</div>
-                <div className="text-sm text-base-content/70 mb-2">{description}</div>
-                {tags && tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                        {tags.map((tag: string, i: number) => (
-                            <span key={i} className="badge badge-primary badge-sm">#{tag}</span>
-                        ))}
+            <div className="card bg-base-100 shadow-md rounded-2xl mb-5 p-5 cursor-pointer hover:shadow-lg transition-shadow">
+                <div className="flex items-start gap-4">
+                    <CommunityAvatarWithBadge
+                        avatarUrl={avatarUrl}
+                        communityName={title || 'Community'}
+                        iconUrl={icon}
+                        size={56}
+                    />
+                    <div className="flex-1">
+                        <div className="text-lg font-semibold mb-1">{title}</div>
+                        <div className="text-sm text-base-content/70 mb-2">{description}</div>
+                        {tags && tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                                {tags.map((tag: string, i: number) => (
+                                    <span key={i} className="badge badge-primary badge-sm">#{tag}</span>
+                                ))}
+                            </div>
+                        )}
+                        <div className="text-xs text-base-content/50 mt-2">
+                            Click to view settings
+                        </div>
                     </div>
-                )}
-                <div className="text-xs text-base-content/50 mt-2">
-                    Click to view settings
                 </div>
-            </CardWithAvatar>
+            </div>
         </Link>
     );
 };
@@ -123,6 +133,8 @@ const ManagePage = () => {
                             title={chat.title}
                             description={chat.description}
                             tags={chat.tags}
+                            avatarUrl={chat.photo}
+                            icon={chat.icon}
                         />
                     ))}
                 </div>
