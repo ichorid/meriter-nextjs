@@ -36,7 +36,7 @@ const verb = (w) => {
     else return `${amount} ${currencyNames[5]}`;
 };
 
-const PageBalance = () => {
+const PageHome = () => {
     const router = useRouter();
     const balance = [];
     const [myPublications, updatePublications] = swr(
@@ -97,6 +97,16 @@ const PageBalance = () => {
     );
     const tgAuthorId = user?.tgUserId;
 
+    useEffect(() => {
+        if (!user?.tgUserId && !user.init) {
+            router.push("/meriter/login");
+        }
+    }, [user, user?.init, router]);
+
+    if (!user.token) {
+        return null; // Loading or not authenticated
+    }
+
     return (
         <Page className="balance">
             <div className="flex justify-end gap-2 mb-2">
@@ -107,15 +117,15 @@ const PageBalance = () => {
                 balance1={{ icon: "", amount: balance }}
                 balance2={undefined}
                 avatarUrl={
-                    user?.authorPhotoUrl ?? telegramGetAvatarLink(tgAuthorId)
+                    user?.avatarUrl ?? telegramGetAvatarLink(tgAuthorId)
                 }
                 onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
                 onClick={() => {
-                    router.push("/meriter/balance");
+                    router.push("/meriter/home");
                 }}
             >
                 <MenuBreadcrumbs>
-                    <div>Баланс</div>
+                    <div>Главная</div>
                 </MenuBreadcrumbs>
 
                 <div>
@@ -136,43 +146,40 @@ const PageBalance = () => {
                 ))}
             </div>
             <div className="balance-inpublications">
-                <div className="switch">
-                    <span
-                        style={{ display: "inline-block" }}
+                <div className="tabs tabs-boxed mb-4">
+                    <a
                         className={classList(
-                            "heading",
-                            tab === "publications" ? "accent" : undefined
+                            "tab",
+                            tab === "publications" && "tab-active"
                         )}
                         onClick={() => {
                             setTab("publications");
                         }}
                     >
                         Мои публикации
-                    </span>
-                    <span
-                        style={{ display: "inline-block" }}
+                    </a>
+                    <a
                         className={classList(
-                            "heading",
-                            tab === "comments" ? "accent" : undefined
+                            "tab",
+                            tab === "comments" && "tab-active"
                         )}
                         onClick={() => {
                             setTab("comments");
                         }}
                     >
                         Мои комментарии
-                    </span>
-                    <span
-                        style={{ display: "inline-block" }}
+                    </a>
+                    <a
                         className={classList(
-                            "heading",
-                            tab === "updates" ? "accent" : undefined
+                            "tab",
+                            tab === "updates" && "tab-active"
                         )}
                         onClick={() => {
                             setTab("updates");
                         }}
                     >
                         Обновления
-                    </span>
+                    </a>
                 </div>
                 {tab === "updates" && (
                     <div className="balance-inpublications-list">
@@ -274,4 +281,5 @@ const PageBalance = () => {
     );
 };
 
-export default PageBalance;
+export default PageHome;
+

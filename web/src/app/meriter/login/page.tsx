@@ -56,7 +56,7 @@ const PageMeriterLogin = () => {
 
                 if (data.success) {
                     // Determine redirect based on pending communities or returnTo
-                    let redirectPath = '/meriter/balance'; // default
+                    let redirectPath = '/meriter/home'; // default
                     
                     if (data.hasPendingCommunities) {
                         console.log('🔵 User has pending communities, redirecting to /meriter/manage');
@@ -105,9 +105,10 @@ const PageMeriterLogin = () => {
     useEffect(() => {
         if (user?.token) {
             console.log('🟢 User already authenticated, redirecting...');
-            router.push('/meriter/balance');
+            const redirectPath = returnTo || '/meriter/home';
+            router.push(redirectPath);
         }
-    }, [user, router]);
+    }, [user, router, returnTo]);
 
     // If already authenticated, don't show login
     if (user?.token) {

@@ -9,35 +9,38 @@ export const MenuBreadcrumbs = ({
     chatNameVerb,
     children,
 }: any) => {
-    const path = pathname && pathname.split("/");
-    let spaceSlug = path && path[1] !== "c" && path[1];
-    let publication = path && path[1] !== "c" && path[2];
     return (
         <div className="breadcrumbs text-sm mb-4">
             <ul>
-                <li className="hidden">
-                    <a href="/">@главная</a>
-                </li>
-                {chatId && (
-                    <li className="flex items-center gap-1">
+                <li className="flex items-center gap-1">
+                    <Link href="/meriter/home" className="link link-hover flex items-center gap-1">
                         <img
                             className="w-5 h-5"
                             src={"/meriter/home.svg"}
                             alt="Home"
                         />
-                        <Link href={"/meriter/c/" + chatId} className="link link-hover">
+                        <span>Главная</span>
+                    </Link>
+                </li>
+                {chatId && !tagRus && (
+                    <li>
+                        <Link href={"/meriter/communities/" + chatId} className="link link-hover">
                             {chatNameVerb}
                         </Link>
                     </li>
                 )}
-                {spaceSlug && (
+                {chatId && tagRus && (
                     <li>
-                        <Link href={"/meriter/" + spaceSlug} className="link link-hover">
-                            {"#" + tagRus}
+                        <Link href={"/meriter/communities/" + chatId} className="link link-hover">
+                            {chatNameVerb}
                         </Link>
                     </li>
                 )}
-                {publication && <li>публикация</li>}
+                {tagRus && (
+                    <li>
+                        <span>#{tagRus}</span>
+                    </li>
+                )}
             </ul>
             {children}
         </div>

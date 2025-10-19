@@ -18,7 +18,7 @@ import { ThemeToggle } from "@shared/components/theme-toggle";
 
 const CommunityCard = ({ chatId, title, description, tags }: any) => {
     return (
-        <Link href={`/meriter/${chatId}/settings`} className="block">
+        <Link href={`/meriter/communities/${chatId}/settings`} className="block">
             <CardWithAvatar>
                 <div className="text-lg font-semibold mb-1">{title}</div>
                 <div className="text-sm text-base-content/70 mb-2">{description}</div>
@@ -84,7 +84,7 @@ const ManagePage = () => {
                     telegramGetAvatarLinkUpd(user?.tgUserId)
                 }
                 onClick={() => {
-                    router.push("/meriter/balance");
+                    router.push("/meriter/home");
                 }}
             >
                 <MenuBreadcrumbs>

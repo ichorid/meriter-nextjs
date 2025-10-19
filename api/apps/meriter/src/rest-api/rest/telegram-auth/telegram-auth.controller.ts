@@ -127,7 +127,7 @@ export class TelegramAuthController {
             name: authData.username || authData.first_name,
             firstName: authData.first_name,
             lastName: authData.last_name,
-            photoUrl: authData.photo_url,
+            avatarUrl: authData.photo_url,
           },
         },
       );

@@ -1,4 +1,4 @@
-import { IsString } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 
 export class RestGetmeDto {
   @IsString()
@@ -12,5 +12,9 @@ export class RestGetmeDto {
 
   @IsString()
   token: string;
+
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
 }
 

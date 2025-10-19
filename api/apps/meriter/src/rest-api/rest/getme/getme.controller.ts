@@ -12,6 +12,7 @@ export class RestGetmeController {
       name: req.user?.profile?.name,
       tgUserId: req.user?.identities?.[0]?.replace('telegram://', ''),
       token: req.user?.token,
+      avatarUrl: req.user?.profile?.avatarUrl,
     };
   }
 }

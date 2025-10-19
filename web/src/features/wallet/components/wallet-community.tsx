@@ -22,7 +22,7 @@ export const WalletCommunity = ({
     return (
         <CardWithAvatar
             onClick={() =>
-                (document.location.href = "/meriter/c/" + info?.chat?.chatId)
+                (document.location.href = "/meriter/communities/" + info?.chat?.chatId)
             }
         >
             <div className="title">{title}</div>

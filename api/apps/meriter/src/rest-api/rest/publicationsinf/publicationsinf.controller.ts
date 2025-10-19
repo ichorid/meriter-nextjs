@@ -80,15 +80,16 @@ export class PublicationsinfController {
 
   @Get()
   async publicationsinf(
-    @Query('path') path: string, // /c/-400774319   /bql0fbmi
-    @Query('my') my: string, // /c/-400774319   /bql0fbmi
-    @Query('positive') positive: boolean, // /c/-400774319   /bql0fbmi
+    @Query('path') path: string, // /meriter/communities/-400774319 or /meriter/spaces/bql0fbmi
+    @Query('my') my: string,
+    @Query('positive') positive: boolean,
     @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Req() req,
   ) {
     const allowedChatsIds: string[] = req.user.chatsIds;
     const tgUserId = req.user.tgUserId;
+    
     if (my != undefined) {
       const publ = await this.publicationService.getPublicationsOfAuthorTgId(
         tgUserId,
@@ -99,8 +100,14 @@ export class PublicationsinfController {
       return {
         publications: publ.map((p) => mapPublicationToOldFormat(p)),
       };
-    } else if (path.match('/c/')) {
-      const telegramCommunityChatId = path.replace('/c/', '');
+    } 
+    
+    // Handle new route format: /meriter/communities/[id] (or old format: /c/[id])
+    else if (path.match('/meriter/communities/') || path.match('/c/')) {
+      const telegramCommunityChatId = path
+        .replace('/meriter/communities/', '')
+        .replace('/c/', '')
+        .split('/')[0]; // Get first segment in case there's a publication slug
 
       const publ = await this.publicationService.getPublicationsInTgChat(
         telegramCommunityChatId,
@@ -121,8 +128,36 @@ export class PublicationsinfController {
       return {
         publications: publ.map((p) => mapPublicationToOldFormat(p)),
       };
-      //
-    } else if (path.replace('/', '').match('/')) {
+    } 
+    
+    // Handle new route format: /meriter/spaces/[slug]/[publicationSlug] or old format with slashes
+    else if (path.includes('/meriter/spaces/') && path.split('/').length > 4) {
+      const publicationSlug = path.split('/')?.[4]; // /meriter/spaces/[slug]/[publicationSlug]
+
+      const publ = await this.publicationService.model.findOne({
+        uid: publicationSlug,
+      });
+      const telegramCommunityChatId = publ.meta.origin.telegramChatId;
+      if (!allowedChatsIds.includes(telegramCommunityChatId)) {
+        const isMember = await this.tgBotsService.updateUserChatMembership(
+          telegramCommunityChatId,
+          tgUserId,
+        );
+        if (!isMember)
+          throw new HttpException(
+            'not authorized to see this chat',
+            HttpStatus.FORBIDDEN,
+          );
+      }
+      if (skip > 0) return { publications: [] };
+      return {
+        publications: [mapPublicationToOldFormat(publ)],
+        publicationSlug,
+      };
+    }
+    
+    // Handle old route format for individual publications: /[slug]/[publicationSlug]
+    else if (path.replace('/', '').match('/')) {
       const publicationSlug = path.split('/')?.[2];
 
       const publ = await this.publicationService.model.findOne({
@@ -145,8 +180,14 @@ export class PublicationsinfController {
         publications: [mapPublicationToOldFormat(publ)],
         publicationSlug,
       };
-    } else {
-      const spaceSlug = path.replace('/', '');
+    } 
+    
+    // Handle new route format: /meriter/spaces/[slug] (or old format: /[slug])
+    else {
+      const spaceSlug = path
+        .replace('/meriter/spaces/', '')
+        .replace('/', '');
+        
       const publ = await this.publicationService.getPublicationsInHashtagSlug(
         spaceSlug,
         limit,

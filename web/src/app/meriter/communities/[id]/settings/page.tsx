@@ -24,7 +24,7 @@ import { ThemeToggle } from "@shared/components/theme-toggle";
 const CommunitySettingsPage = () => {
     const router = useRouter();
     const params = useParams();
-    const chatId = params.chatId as string;
+    const chatId = params.id as string;
 
     // Form state
     const [formData, setFormData] = useState({
@@ -225,7 +225,7 @@ const CommunitySettingsPage = () => {
                     telegramGetAvatarLinkUpd(user?.tgUserId)
                 }
                 onClick={() => {
-                    router.push("/meriter/balance");
+                    router.push("/meriter/home");
                 }}
             >
                 <MenuBreadcrumbs>

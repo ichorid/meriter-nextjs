@@ -13,41 +13,15 @@ import {
 } from '@lib/telegram';
 import { Publication } from "@features/feed";
 import type { Publication as IPublication } from "@features/feed/types";
-import axios from "axios";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { ThemeToggle } from "@shared/components/theme-toggle";
 
-// App Router: Props come from params directly
-
-const { round } = Math;
-
-const classList = (
-    ...classes: (string | { [key: string]: boolean })[]
-) => {
-    return (
-        classes &&
-        classes
-            .filter((cls) => cls && typeof cls !== "undefined")
-            .map((cls) =>
-                typeof cls == "object"
-                    ? cls[Object.keys(cls)[0]]
-                        ? Object.keys(cls)[0]
-                        : "undefined"
-                    : cls
-            )
-            .filter((c) => c != "undefined")
-            .map((c) => c.toLowerCase())
-            .join(" ")
-    );
-};
-
-const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
+const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
     const router = useRouter();
     const resolvedParams = use(params);
-    // slug is now an array of segments from the catch-all route
-    const page = resolvedParams.slug;
-    const pathname = "/" + page.join("/");
+    const spaceSlug = resolvedParams.slug;
+    const pathname = `/meriter/spaces/${spaceSlug}`;
 
     const [paginationEnd, setPaginationEnd] = useState(false);
     const [showPollCreate, setShowPollCreate] = useState(false);
@@ -56,16 +30,12 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
         if (previousPageData && !previousPageData?.publications.length) {
             setPaginationEnd(true);
             return null;
-        } // reached the end}}
+        }
         return `/api/rest/publicationsinf?path=${pathname}&skip=${
             5 * pageIndex
-        }&limit=5`; // SWR key
+        }&limit=5`;
     };
 
-    const comm = page?.[0] === "c";
-    const isPublication = page && page?.[0] !== "c" && page?.[1];
-
-    const spaceSlug = comm ? null : page?.[0];
     const [space] = swr(
         () => spaceSlug && "/api/rest/space?spaceSlug=" + spaceSlug,
         {},
@@ -75,13 +45,7 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
         }
     );
 
-    const contentId = page?.[1];
-    const chatId = space?.chatId ?? page?.[1];
-
-    const [comms] = swr(
-        () => comm && "/api/rest/communityinfo?chatId=" + page[1],
-        {}
-    );
+    const chatId = space?.chatId;
 
     const [content, size, setSize, err]: any = swrInfinite(
         getKeyPublications(pathname),
@@ -92,7 +56,6 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
         .map((c) => (c as any).publications)
         .flat()
         .filter((p, index, self) => 
-            // Deduplicate by _id to prevent duplicate keys
             index === self.findIndex((t) => t?._id === p?._id)
         );
 
@@ -110,12 +73,8 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
             ? false
             : undefined;
 
-    /*const [content] = swr(() => '/api/d/meriter/publications?path=' + pathname, {
-        publications: [],
-    })*/
-
     const [balance, updBalance] = swr(
-        () => "/api/rest/wallet?tgChatId=" + chatId,
+        () => chatId ? `/api/rest/wallet?tgChatId=${chatId}` : null,
         0,
         { key: "balance" }
     );
@@ -138,6 +97,7 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
         if (!user?.tgUserId && !user.init)
             router.push("/meriter/login?returnTo=" + encodeURIComponent(document.location.pathname));
     }, [user, user?.init]);
+
     const [userdata] = swr(
         () =>
             "/api/userdata?action=userdataGetByTelegramId&telegramUserId=" +
@@ -152,10 +112,6 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
             setFindTransaction(document.location.search?.replace("#", ""));
     }, []);
 
-    /* const [pathname, setPathname] = useState('')
-    useEffect(() => {
-        setPathname(document.location.pathname)
-    }, [])*/
     const cooldown = useRef(false);
     const sizeRef = useRef(size);
     useEffect(() => {
@@ -164,7 +120,6 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
                 window.innerHeight + window.scrollY >=
                 document.body.offsetHeight
             ) {
-                // you're at the bottom of the page
                 if (!paginationEnd && !cooldown.current) {
                     setSize(sizeRef.current + 1);
                     sizeRef.current++;
@@ -182,7 +137,7 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
 
     const tagRus = space?.tagRus ?? "";
     const [chat] = swr(
-        "/api/rest/getchat?chatId=" + chatId,
+        () => chatId ? `/api/rest/getchat?chatId=${chatId}` : null,
         {},
         { key: "chat" }
     );
@@ -190,13 +145,9 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
     const chatUrl = chat?.url;
     const defaultHelpUrl = process.env.NEXT_PUBLIC_HELP_URL || "https://info.meriter.ru";
     const chatHelpUrl = chat?.helpUrl ?? defaultHelpUrl;
-    //const chatId = chat?.id
     const chatNameVerb = String(chat?.title ?? "");
     const activeCommentHook = useState(null);
     const [rankLimit, setRankLimit] = useState(2 + 1);
-    //const [portalContent,setPortalContent] = useState(null);
-
-    //const path = document.location.pathname.split('/');
 
     if (!user.token) return null;
 
@@ -227,11 +178,10 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
                 avatarUrl={telegramGetAvatarLink(tgAuthorId)}
                 onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
                 onClick={() => {
-                    router.push("/meriter/balance");
+                    router.push("/meriter/home");
                 }}
             >
                 <MenuBreadcrumbs
-                    pathname={pathname}
                     chatId={chatId}
                     tagRus={tagRus}
                     chatNameVerb={chatNameVerb}
@@ -240,12 +190,10 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
                 {error === false && (
                     <>
                         <div>
-                            {!comm && (
-                                <div className="description">
-                                    {space?.description}
-                                </div>
-                            )}
-                            {!comm && chatUrl && (
+                            <div className="description">
+                                {space?.description}
+                            </div>
+                            {chatUrl && (
                                 <div className="tip">
                                     Чтобы добавить сюда публикацию,{" "}
                                     <a href={chatUrl}>
@@ -257,44 +205,6 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
                                     <br />
                                 </div>
                             )}
-                            {comm && chatUrl && (
-                                <div className="tip">
-                                    Чтобы добавить сюда публикацию,{" "}
-                                    <a href={chatUrl}>
-                                        {" "}
-                                        напишите сообщение в корпоративный чат
-                                    </a>{" "}
-                                    <br />
-                                    <br />
-                                </div>
-                            )}
-                            {comms.spaces && (
-                                <div
-                                    style={{
-                                        paddingBottom: "15px",
-                                        opacity: ".5",
-                                    }}
-                                >
-                                    Фильтр публикаций по ценностям:
-                                </div>
-                            )}
-                            {comms.spaces &&
-                                comms.spaces.map((space) => (
-                                    <CardWithAvatar
-                                        key={space.slug}
-                                        avatarUrl=""
-                                        onClick={() =>
-                                            router.push("/meriter/" + space.slug)
-                                        }
-                                    >
-                                        <div className="heading">
-                                            #{space.tagRus}
-                                        </div>
-                                        <div className="description">
-                                            {space.description}
-                                        </div>
-                                    </CardWithAvatar>
-                                ))}
                         </div>
                     </>
                 )}
@@ -302,11 +212,10 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
             {error === true && <div>Нет доступа</div>}
 
             <div className="mb-6">
-                {spaceSlug && !isPublication && (
+                {spaceSlug && (
                     <h3 className="text-xl font-bold mb-4">Топ людей:</h3>
                 )}
                 {spaceSlug &&
-                    !isPublication &&
                     rank
                         ?.filter((r, i) => i < rankLimit)
                         ?.map((r) => (
@@ -321,7 +230,6 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
                             </CardWithAvatar>
                         ))}
                 {spaceSlug &&
-                    !isPublication &&
                     rank &&
                     rankLimit < rank.length && (
                         <button
@@ -332,7 +240,7 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
                         </button>
                     )}
 
-                {spaceSlug && !isPublication && rank && rankLimit > 3 && (
+                {spaceSlug && rank && rankLimit > 3 && (
                     <button
                         onClick={() => setRankLimit(2 + 1)}
                         className="btn btn-ghost btn-sm opacity-50 ml-2"
@@ -343,7 +251,7 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
             </div>
 
             <div className="space-y-4">
-                {spaceSlug && !isPublication && (
+                {spaceSlug && (
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-xl font-bold">Топ публикаций:</h3>
                         {user.token && wallets.length > 0 && (
@@ -396,4 +304,5 @@ const MeriterPage = ({ params }: { params: Promise<{ slug: string[] }> }) => {
     );
 };
 
-export default MeriterPage;
+export default SpacePage;
+
