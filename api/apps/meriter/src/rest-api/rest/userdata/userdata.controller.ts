@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Param } from '@nestjs/common';
 import { UsersService } from '../../../users/users.service';
 
 class UserdataResponse {
@@ -8,34 +8,27 @@ class UserdataResponse {
   photoUrl?: string;
 }
 
-@Controller('api/userdata')
+@Controller('api/rest/users')
 export class RestUserdataController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Get()
-  async rest_userdata(
-    @Query('action') action: string,
-    @Query('telegramUserId') telegramUserId: string,
-  ) {
-    if (action === 'userdataGetByTelegramId') {
-      const profile = await this.usersService.getProfileByTelegramId(
-        telegramUserId,
-      );
-      
-      if (!profile) {
-        return { userdata: null };
-      }
+  @Get('telegram/:telegramUserId/profile')
+  async getUserProfile(@Param('telegramUserId') telegramUserId: string) {
+    const profile = await this.usersService.getProfileByTelegramId(
+      telegramUserId,
+    );
 
-      const userdata: UserdataResponse = {
-        firstName: profile.name?.split(' ')[0],
-        lastName: profile.name?.split(' ').slice(1).join(' '),
-        avatarUrl: profile.avatarUrl,
-        photoUrl: profile.avatarUrl, // Using avatarUrl for photoUrl as well
-      };
-
-      return { userdata };
+    if (!profile) {
+      return { userdata: null };
     }
 
-    return { noaction: true };
+    const userdata: UserdataResponse = {
+      firstName: profile.name?.split(' ')[0],
+      lastName: profile.name?.split(' ').slice(1).join(' '),
+      avatarUrl: profile.avatarUrl,
+      photoUrl: profile.avatarUrl, // Using avatarUrl for photoUrl as well
+    };
+
+    return { userdata };
   }
 }

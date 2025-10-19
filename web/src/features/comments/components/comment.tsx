@@ -41,7 +41,7 @@ export const Comment = ({
         true,
         inPublicationSlug,
         _id,
-        "/api/rest/transaction?forTransactionId=" + _id,
+        "/api/rest/transactions/" + _id + "/replies",
         "/api/rest/free?inSpaceSlug=" + spaceSlug,
         balance,
         updBalance,

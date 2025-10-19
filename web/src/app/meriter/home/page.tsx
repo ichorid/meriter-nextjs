@@ -40,7 +40,7 @@ const PageHome = () => {
     const router = useRouter();
     const balance = [];
     const [myPublications, updatePublications] = swr(
-        "/api/rest/publicationsinf?my&skip=0&limit=100",
+        "/api/rest/publications/my?skip=0&limit=100",
         [],
         {
             key: "publications",
@@ -48,7 +48,7 @@ const PageHome = () => {
         }
     );
     const [myComments, updateComments] = swr(
-        "/api/rest/transaction?my&positive=true",
+        "/api/rest/transactions/my?positive=true",
         [],
         {
             key: "transactions",
@@ -56,7 +56,7 @@ const PageHome = () => {
         }
     );
     const [myUpdates, updateUpdates] = swr(
-        "/api/rest/transaction?updates=true",
+        "/api/rest/transactions/updates",
         [],
         {
             key: "transactions",
@@ -90,8 +90,9 @@ const PageHome = () => {
 
     const [userdata] = swr(
         () =>
-            "/api/userdata?action=userdataGetByTelegramId&telegramUserId=" +
-            user.tgUserId,
+            user.tgUserId
+                ? `/api/rest/users/telegram/${user.tgUserId}/profile`
+                : null,
         0,
         { key: "userdata" }
     );

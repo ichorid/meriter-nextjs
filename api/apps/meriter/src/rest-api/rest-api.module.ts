@@ -1,5 +1,5 @@
 import { forwardRef, Module } from '@nestjs/common';
-import { PublicationsinfController } from './rest/publicationsinf/publicationsinf.controller';
+import { RestPublicationsController } from './rest/publications/publications.controller';
 import { RestCommunityifoController } from './rest/communityinfo/communityinfo.controller';
 import { PublicationsService } from '../publications/publications.service';
 import { AssetsModule } from '@common/abstracts/assets/assets.module';
@@ -57,7 +57,7 @@ import { WalletsModule } from '../wallets/wallets.module';
   ],
   providers: [],
   controllers: [
-    PublicationsinfController,
+    RestPublicationsController,
     RestCommunityifoController,
     RestGetmeController,
     RestFreeController,

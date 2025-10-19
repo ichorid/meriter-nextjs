@@ -26,12 +26,12 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
     const [paginationEnd, setPaginationEnd] = useState(false);
     const [showPollCreate, setShowPollCreate] = useState(false);
 
-    const getKeyPublications = (pathname) => (pageIndex, previousPageData) => {
+    const getKeyPublications = (spaceSlug) => (pageIndex, previousPageData) => {
         if (previousPageData && !previousPageData?.publications.length) {
             setPaginationEnd(true);
             return null;
         }
-        return `/api/rest/publicationsinf?path=${pathname}&skip=${
+        return `/api/rest/publications/spaces/${spaceSlug}?skip=${
             5 * pageIndex
         }&limit=5`;
     };
@@ -48,7 +48,7 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
     const chatId = space?.chatId;
 
     const [content, size, setSize, err]: any = swrInfinite(
-        getKeyPublications(pathname),
+        getKeyPublications(spaceSlug),
         []
     );
 
@@ -100,8 +100,9 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
 
     const [userdata] = swr(
         () =>
-            "/api/userdata?action=userdataGetByTelegramId&telegramUserId=" +
-            user?.tgUserId,
+            user?.tgUserId
+                ? `/api/rest/users/telegram/${user.tgUserId}/profile`
+                : null,
         0,
         { key: "userdata" }
     );

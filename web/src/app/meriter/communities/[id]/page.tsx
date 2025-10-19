@@ -26,12 +26,12 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const [paginationEnd, setPaginationEnd] = useState(false);
     const [showPollCreate, setShowPollCreate] = useState(false);
 
-    const getKeyPublications = (pathname) => (pageIndex, previousPageData) => {
+    const getKeyPublications = (chatId) => (pageIndex, previousPageData) => {
         if (previousPageData && !previousPageData?.publications.length) {
             setPaginationEnd(true);
             return null;
         }
-        return `/api/rest/publicationsinf?path=${pathname}&skip=${
+        return `/api/rest/publications/communities/${chatId}?skip=${
             5 * pageIndex
         }&limit=5`;
     };
@@ -42,7 +42,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     );
 
     const [content, size, setSize, err]: any = swrInfinite(
-        getKeyPublications(pathname),
+        getKeyPublications(chatId),
         []
     );
 
@@ -86,8 +86,9 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     const [userdata] = swr(
         () =>
-            "/api/userdata?action=userdataGetByTelegramId&telegramUserId=" +
-            user?.tgUserId,
+            user?.tgUserId
+                ? `/api/rest/users/telegram/${user.tgUserId}/profile`
+                : null,
         0,
         { key: "userdata" }
     );

@@ -92,7 +92,7 @@ class RestTransactionObject {
   _id: string; //"5ff8287bbb626e366c0a69a0"
 }
 
-@Controller('api/rest/transaction')
+@Controller('api/rest/transactions')
 @UseGuards(UserGuard)
 export class RestTransactionsController {
   private readonly logger = new Logger(RestTransactionsController.name);
@@ -102,83 +102,94 @@ export class RestTransactionsController {
     private publicationsService: PublicationsService,
     private tgBotsService: TgBotsService,
   ) {}
-  @Get()
-  async rest_transactions(
-    @Query('forPublicationSlug') forPublicationSlug: string,
-    @Query('forTransactionId') forTransactionId: string,
-    @Query('my') my: string,
-    @Query('updates') updates: boolean,
+
+  @Get('my')
+  async getMyTransactions(
+    @Query('positive') positive: boolean,
+    @Req() req,
+  ) {
+    this.logger.log('search my trans', req.user.tgUserId, positive);
+    const t = await this.transactionsService.findFromUserTgId(
+      req.user.tgUserId,
+      positive,
+    );
+    this.logger.log('found comments:', t?.length);
+    return { transactions: t.map(mapTransactionToOldFormat) };
+  }
+
+  @Get('updates')
+  async getUpdates(
+    @Query('positive') positive: boolean,
+    @Req() req,
+  ) {
+    const t = await this.transactionsService.findToUserTgId(
+      req.user.tgUserId,
+      positive,
+    );
+    return { transactions: t.map(mapTransactionToOldFormat) };
+  }
+
+  @Get('publications/:publicationSlug')
+  async getPublicationTransactions(
+    @Param('publicationSlug') publicationSlug: string,
     @Query('positive') positive: boolean,
     @Req() req,
   ) {
     const allowedChatsIds: string[] = req.user.chatsIds;
     const tgUserId = req.user.tgUserId;
 
-    if (forPublicationSlug) {
-      const t = await this.transactionsService.findForPublication(
-        forPublicationSlug,
-        positive,
+    const t = await this.transactionsService.findForPublication(
+      publicationSlug,
+      positive,
+    );
+
+    const telegramCommunityChatId =
+      t?.[0]?.meta?.amounts?.currencyOfCommunityTgChatId;
+
+    if (!allowedChatsIds.includes(telegramCommunityChatId)) {
+      const isMember = await this.tgBotsService.updateUserChatMembership(
+        telegramCommunityChatId,
+        tgUserId,
       );
-
-      const telegramCommunityChatId =
-        t?.[0]?.meta?.amounts?.currencyOfCommunityTgChatId;
-
-      if (!allowedChatsIds.includes(telegramCommunityChatId)) {
-        const isMember = await this.tgBotsService.updateUserChatMembership(
-          telegramCommunityChatId,
-          tgUserId,
+      if (!isMember)
+        throw new HttpException(
+          'not authorized to see this chat',
+          HttpStatus.FORBIDDEN,
         );
-        if (!isMember)
-          throw new HttpException(
-            'not authorized to see this chat',
-            HttpStatus.FORBIDDEN,
-          );
-      }
-
-      return { transactions: t.map(mapTransactionToOldFormat) };
     }
-    if (forTransactionId) {
-      const t = await this.transactionsService.findForTransaction(
-        forTransactionId,
-        positive,
+
+    return { transactions: t.map(mapTransactionToOldFormat) };
+  }
+
+  @Get(':transactionId/replies')
+  async getTransactionReplies(
+    @Param('transactionId') transactionId: string,
+    @Query('positive') positive: boolean,
+    @Req() req,
+  ) {
+    const allowedChatsIds: string[] = req.user.chatsIds;
+    const tgUserId = req.user.tgUserId;
+
+    const t = await this.transactionsService.findForTransaction(
+      transactionId,
+      positive,
+    );
+
+    const telegramCommunityChatId =
+      t?.[0]?.meta?.amounts?.currencyOfCommunityTgChatId;
+
+    if (t.length > 0 && !allowedChatsIds.includes(telegramCommunityChatId)) {
+      const isMember = await this.tgBotsService.updateUserChatMembership(
+        telegramCommunityChatId,
+        tgUserId,
       );
-
-      const telegramCommunityChatId =
-        t?.[0]?.meta?.amounts?.currencyOfCommunityTgChatId;
-
-      //console.log('t[0]', t?.[0]);
-      //console.log('telegramCommunityChatId', telegramCommunityChatId);
-
-      if (t.length > 0 && !allowedChatsIds.includes(telegramCommunityChatId)) {
-        const isMember = await this.tgBotsService.updateUserChatMembership(
-          telegramCommunityChatId,
-          tgUserId,
+      if (!isMember)
+        throw new HttpException(
+          'not authorized to see this chat',
+          HttpStatus.FORBIDDEN,
         );
-        if (!isMember)
-          throw new HttpException(
-            'not authorized to see this chat',
-            HttpStatus.FORBIDDEN,
-          );
-      }
-      return { transactions: t.map(mapTransactionToOldFormat) };
     }
-    if (updates !== undefined) {
-      const t = await this.transactionsService.findToUserTgId(
-        req.user.tgUserId,
-        positive,
-      );
-      return { transactions: t.map(mapTransactionToOldFormat) };
-    }
-    if (my !== undefined) {
-      this.logger.log('search my trans', req.user.tgUserId, positive);
-      const t = await this.transactionsService.findFromUserTgId(
-        req.user.tgUserId,
-        positive,
-      );
-      this.logger.log('found comments:',t?.length)
-      return { transactions: t.map(mapTransactionToOldFormat) };
-    }
-    return new RestTransactionsResponse();
+    return { transactions: t.map(mapTransactionToOldFormat) };
   }
 
   @Post()
