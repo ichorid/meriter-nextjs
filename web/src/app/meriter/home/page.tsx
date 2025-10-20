@@ -69,14 +69,21 @@ const PageHome = () => {
     const [showPollCreate, setShowPollCreate] = useState(false);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
+    const updateWalletBalance = (currencyOfCommunityTgChatId: string, amountChange: number) => {
+        // Optimistically update wallet balance without reloading
+        const updatedWallets = wallets.map((wallet) => {
+            if (wallet.currencyOfCommunityTgChatId === currencyOfCommunityTgChatId) {
+                return {
+                    ...wallet,
+                    amount: wallet.amount + amountChange,
+                };
+            }
+            return wallet;
+        });
+        updateWallets(updatedWallets, false); // Update without revalidation
+    };
+
     const updateAll = async () => {
-        // Revalidate all data sources without page reload
-        await Promise.all([
-            updatePublications(undefined, true), // Revalidate publications
-            updateComments(undefined, true),     // Revalidate comments
-            updateUpdates(undefined, true),      // Revalidate updates
-            updateWallets(undefined, true),      // Revalidate wallets
-        ]);
         // Close the active withdraw slider after successful update
         setActiveWithdrawPost(null);
     };
@@ -246,6 +253,7 @@ const PageHome = () => {
                                             key={i}
                                             {...p}
                                             updateAll={updateAll}
+                                            updateWalletBalance={updateWalletBalance}
                                             wallets={wallets}
                                             showCommunityAvatar={true}
                                             activeWithdrawPost={activeWithdrawPost}
@@ -268,6 +276,7 @@ const PageHome = () => {
                                             {...p}
                                             transactionId={p._id}
                                             updateAll={updateAll}
+                                            updateWalletBalance={updateWalletBalance}
                                             wallets={wallets}
                                             showCommunityAvatar={true}
                                             activeWithdrawPost={activeWithdrawPost}

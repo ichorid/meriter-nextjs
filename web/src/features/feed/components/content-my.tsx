@@ -17,7 +17,7 @@ export const ContentMY = (props) => {
         tgMessageId,
         plus,
         minus,
-        sum,
+        sum: initialSum,
         currency,
         inMerits,
         messageText,
@@ -26,6 +26,7 @@ export const ContentMY = (props) => {
         ts,
         keyword,
         updateAll,
+        updateWalletBalance,
         transactionId,
         wallets,
         currencyOfCommunityTgChatId,
@@ -33,6 +34,15 @@ export const ContentMY = (props) => {
         activeWithdrawPost,
         setActiveWithdrawPost,
     } = props;
+    
+    // Local state to track optimistic sum updates
+    const [optimisticSum, setOptimisticSum] = useState(initialSum);
+    const sum = optimisticSum ?? initialSum;
+    
+    // Update optimistic sum when initial sum changes (on mount or parent update)
+    useEffect(() => {
+        setOptimisticSum(initialSum);
+    }, [initialSum]);
     const curr = currencyOfCommunityTgChatId || fromTgChatId;
     const currentBalance =
         (wallets &&
@@ -69,6 +79,26 @@ export const ContentMY = (props) => {
     const disabled = withdrawMerits ? !amountInMerits : !amount;
     const submit = async () => {
         setLoading(true);
+        
+        // Calculate the change in balance (in community points)
+        const changeAmount = amount; // The slider always sets 'amount' which is in community points
+        
+        // Optimistically update the post sum immediately
+        const newSum = directionAdd 
+            ? optimisticSum + changeAmount  // Adding to post increases post balance
+            : optimisticSum - changeAmount; // Withdrawing from post decreases post balance
+        
+        setOptimisticSum(newSum);
+        
+        // Optimistically update the wallet balance immediately (inverse of post change)
+        const walletChange = directionAdd 
+            ? -changeAmount  // Adding to post decreases wallet balance
+            : changeAmount;  // Withdrawing from post increases wallet balance
+        
+        if (updateWalletBalance && curr) {
+            updateWalletBalance(curr, walletChange);
+        }
+        
         try {
             await Axios.post("/api/rest/withdraw", {
                 publicationSlug,
@@ -90,10 +120,15 @@ export const ContentMY = (props) => {
             setAmountInMerits(0);
             setComment("");
             
-            // Update all data
+            // Close slider (no need to reload data)
             await updateAll();
         } catch (error) {
             console.error("Withdrawal failed:", error);
+            // Revert optimistic updates on error
+            setOptimisticSum(initialSum);
+            if (updateWalletBalance && curr) {
+                updateWalletBalance(curr, -walletChange); // Revert wallet change
+            }
         } finally {
             setLoading(false);
         }
