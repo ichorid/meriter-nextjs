@@ -30,6 +30,8 @@ export const ContentMY = (props) => {
         wallets,
         currencyOfCommunityTgChatId,
         fromTgChatId,
+        activeWithdrawPost,
+        setActiveWithdrawPost,
     } = props;
     const curr = currencyOfCommunityTgChatId || fromTgChatId;
     const currentBalance =
@@ -49,11 +51,19 @@ export const ContentMY = (props) => {
         { key: "rate", revalidateOnFocus: false }
     );
 
+    // Create a unique identifier for this post
+    const postId = publicationSlug || transactionId;
+    
+    // Parse the activeWithdrawPost to get post ID and direction
+    const isThisPostActive = activeWithdrawPost && activeWithdrawPost.startsWith(postId + ':');
+    const directionAdd = isThisPostActive 
+        ? activeWithdrawPost === postId + ':add' 
+        : undefined;
+    
     const [amount, setAmount] = useState(0);
     const [comment, setComment] = useState("");
     const [amountInMerits, setAmountInMerits] = useState(0);
     const [withdrawMerits, setWithdrawMerits] = useState(isMerit);
-    const [directionAdd, setDirectionAdd] = useState(undefined);
     const [loading, setLoading] = useState(false);
     const doWhat = directionAdd ? "Добавить" : "Снять";
     const disabled = withdrawMerits ? !amountInMerits : !amount;
@@ -92,8 +102,24 @@ export const ContentMY = (props) => {
             10 * (withdrawMerits ? rate * currentBalance : currentBalance)
         ) / 10;
 
+    // Create a wrapper function that handles the centralized state
+    const handleSetDirectionAdd = (direction: boolean | undefined) => {
+        if (direction === undefined) {
+            // Close the slider
+            setActiveWithdrawPost(null);
+        } else {
+            const newState = postId + ':' + (direction ? 'add' : 'withdraw');
+            // Toggle: if clicking the same button again, close it
+            if (activeWithdrawPost === newState) {
+                setActiveWithdrawPost(null);
+            } else {
+                setActiveWithdrawPost(newState);
+            }
+        }
+    };
+
     const params = {
-        setDirectionAdd,
+        setDirectionAdd: handleSetDirectionAdd,
         meritsAmount,
         showselector,
         withdrawMerits,
@@ -102,82 +128,69 @@ export const ContentMY = (props) => {
         setWithdrawMerits,
     };
 
+    // Render the withdraw slider content
+    const withdrawSliderContent = directionAdd !== undefined && (
+        <>
+            {withdrawMerits &&
+                (loading ? (
+                    <Spinner />
+                ) : (
+                    <FormWithdraw
+                        comment={comment}
+                        setComment={setComment}
+                        amount={amount}
+                        setAmount={setAmount}
+                        maxWithdrawAmount={maxWithdrawAmount}
+                        maxTopUpAmount={maxTopUpAmount}
+                        isWithdrawal={!directionAdd}
+                        onSubmit={() => !disabled && submit()}
+                    >
+                        <div>
+                            {doWhat} меритов: {amount}
+                        </div>
+                    </FormWithdraw>
+                ))}
+
+            {!withdrawMerits &&
+                (loading ? (
+                    <Spinner />
+                ) : (
+                    <FormWithdraw
+                        comment={comment}
+                        setComment={setComment}
+                        amount={amount}
+                        setAmount={setAmount}
+                        maxWithdrawAmount={maxWithdrawAmount}
+                        maxTopUpAmount={maxTopUpAmount}
+                        isWithdrawal={!directionAdd}
+                        onSubmit={() => !disabled && submit()}
+                    >
+                        <div>
+                            {doWhat} баллов сообщества: {amount}
+                        </div>
+                    </FormWithdraw>
+                ))}
+        </>
+    );
+
     return (
-        <div className="publication-my">
-            {publicationSlug && <PublicationMy {...props} {...params} showCommunityAvatar={props.showCommunityAvatar} />}
-            {!publicationSlug && <CommentMy {...props} {...params} showCommunityAvatar={props.showCommunityAvatar} />}
-
-            {false && (
-                <div className="publication-status">
-                    <button
-                        onClick={() => {
-                            setDirectionAdd(false);
-                            setAmount(0);
-                        }}
-                    >
-                        Снять
-                    </button>
-
-                    <span className="sum">
-                        Доступно {meritsAmount}{" "}
-                        {inMerits && (
-                            <img className="inline" src={"/merit.svg"} />
-                        )}
-                    </span>
-
-                    <button
-                        onClick={() => {
-                            setDirectionAdd(true);
-                            setAmount(0);
-                        }}
-                    >
-                        Пополнить
-                    </button>
-                </div>
+        <>
+            {publicationSlug && (
+                <PublicationMy 
+                    {...props} 
+                    {...params} 
+                    showCommunityAvatar={props.showCommunityAvatar}
+                    withdrawSliderContent={withdrawSliderContent}
+                />
             )}
-            {directionAdd !== undefined && (
-                <div className="publication-withdraw">
-                    {withdrawMerits &&
-                        (loading ? (
-                            <Spinner />
-                        ) : (
-                            <FormWithdraw
-                                comment={comment}
-                                setComment={setComment}
-                                amount={amount}
-                                setAmount={setAmount}
-                                maxWithdrawAmount={maxWithdrawAmount}
-                                maxTopUpAmount={maxTopUpAmount}
-                                isWithdrawal={!directionAdd}
-                                onSubmit={() => !disabled && submit()}
-                            >
-                                <div>
-                                    {doWhat} меритов: {amount}
-                                </div>
-                            </FormWithdraw>
-                        ))}
-
-                    {!withdrawMerits &&
-                        (loading ? (
-                            <Spinner />
-                        ) : (
-                            <FormWithdraw
-                                comment={comment}
-                                setComment={setComment}
-                                amount={amount}
-                                setAmount={setAmount}
-                                maxWithdrawAmount={maxWithdrawAmount}
-                                maxTopUpAmount={maxTopUpAmount}
-                                isWithdrawal={!directionAdd}
-                                onSubmit={() => !disabled && submit()}
-                            >
-                                <div>
-                                    {doWhat} баллов сообщества: {amount}
-                                </div>
-                            </FormWithdraw>
-                        ))}
-                </div>
+            {!publicationSlug && (
+                <CommentMy 
+                    {...props} 
+                    {...params} 
+                    showCommunityAvatar={props.showCommunityAvatar}
+                    withdrawSliderContent={withdrawSliderContent}
+                />
             )}
-        </div>
+        </>
     );
 };

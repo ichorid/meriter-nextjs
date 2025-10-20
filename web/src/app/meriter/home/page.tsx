@@ -67,6 +67,7 @@ const PageHome = () => {
     const [tab, setTab] = useState("publications");
     const [sortBy, setSortBy] = useState<"recent" | "voted">("recent");
     const [showPollCreate, setShowPollCreate] = useState(false);
+    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
     const updateAll = () => {
         //updatePublications({ publications: myPublications })
@@ -85,6 +86,11 @@ const PageHome = () => {
             );
         }
     }, [wallets]);
+
+    // Reset active withdraw slider when switching tabs
+    useEffect(() => {
+        setActiveWithdrawPost(null);
+    }, [tab]);
 
     const [userdata] = swr(
         () =>
@@ -236,6 +242,8 @@ const PageHome = () => {
                                             updateAll={updateAll}
                                             wallets={wallets}
                                             showCommunityAvatar={true}
+                                            activeWithdrawPost={activeWithdrawPost}
+                                            setActiveWithdrawPost={setActiveWithdrawPost}
                                         />
                                     ))}
                         </div>
@@ -256,6 +264,8 @@ const PageHome = () => {
                                             updateAll={updateAll}
                                             wallets={wallets}
                                             showCommunityAvatar={true}
+                                            activeWithdrawPost={activeWithdrawPost}
+                                            setActiveWithdrawPost={setActiveWithdrawPost}
                                         />
                                     ))}
                         </div>

@@ -19,6 +19,7 @@ export const CardPublication = ({
     communityName,
     communityIconUrl,
     onCommunityClick,
+    withdrawSliderContent,
 }) => {
     const clickableClass = onClick ? " cursor-pointer hover:shadow-xl" : "";
     
@@ -75,6 +76,14 @@ export const CardPublication = ({
             <div className="bottom" onClick={(e) => e.stopPropagation()}>
                 {bottom}
             </div>
+            {withdrawSliderContent && (
+                <>
+                    <div className="divider my-0"></div>
+                    <div className="withdraw-slider-section px-5 py-4" onClick={(e) => e.stopPropagation()}>
+                        {withdrawSliderContent}
+                    </div>
+                </>
+            )}
         </div>
     </div>
 );};  

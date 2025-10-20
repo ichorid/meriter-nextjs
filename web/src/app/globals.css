@@ -62,5 +62,33 @@
   [data-theme="dark"] .card {
     border: 1px solid rgba(255, 255, 255, 0.05);
   }
+
+  /* Withdraw slider integration styles */
+  .withdraw-slider-section {
+    animation: slideDown 300ms ease-out;
+    background: transparent;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      max-height: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      max-height: 500px;
+      transform: translateY(0);
+    }
+  }
+
+  /* Divider styling for withdraw slider */
+  .card .divider {
+    @apply border-base-300;
+  }
+
+  [data-theme="dark"] .card .divider {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
 }
 

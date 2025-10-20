@@ -36,6 +36,7 @@ export const CommentMy = ({
     showCommunityAvatar,
     currencyOfCommunityTgChatId,
     fromTgChatId,
+    withdrawSliderContent,
 }: any) => {
     const avatarUrl = telegramGetAvatarLink(fromUserTgId);
     
@@ -103,6 +104,7 @@ export const CommentMy = ({
                     window.location.href = `/meriter/communities/${communityId}`;
                 }
             }}
+            withdrawSliderContent={withdrawSliderContent}
         />
     );
 };

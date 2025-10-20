@@ -42,6 +42,7 @@ export const PublicationMy = ({
     _id,
     showCommunityAvatar,
     wallets,
+    withdrawSliderContent,
 }: any) => {
     const [pollUserVote, setPollUserVote] = useState(null);
     const [pollData, setPollData] = useState<IPollData | null>(type === 'poll' ? content : null);
@@ -120,6 +121,7 @@ export const PublicationMy = ({
                         window.location.href = `/meriter/communities/${communityId}`;
                     }
                 }}
+                withdrawSliderContent={withdrawSliderContent}
             >
                 <PollVoting
                     pollData={pollData}
@@ -189,6 +191,7 @@ export const PublicationMy = ({
                     window.location.href = `/meriter/communities/${communityId}`;
                 }
             }}
+            withdrawSliderContent={withdrawSliderContent}
         >
             <WithTelegramEntities entities={entities}>
                 {messageText}
