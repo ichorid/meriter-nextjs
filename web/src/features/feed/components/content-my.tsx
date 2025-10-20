@@ -67,29 +67,36 @@ export const ContentMY = (props) => {
     const [loading, setLoading] = useState(false);
     const doWhat = directionAdd ? "Добавить" : "Снять";
     const disabled = withdrawMerits ? !amountInMerits : !amount;
-    const submit = () => {
+    const submit = async () => {
         setLoading(true);
-        Axios.post("/api/rest/withdraw", {
-            publicationSlug,
-            transactionId,
-            amount: withdrawMerits ? amountInMerits : amount,
-            currency: withdrawMerits ? "merit" : currency,
-            directionAdd,
-            withdrawMerits,
-            comment,
-            amountInternal: withdrawMerits
-                ? rate > 0
-                    ? amountInMerits / rate
-                    : 0
-                : amount,
-        })
-            .then((d) => d.data)
-            .then((d) => {
-                setLoading(false);
-                updateAll();
+        try {
+            await Axios.post("/api/rest/withdraw", {
+                publicationSlug,
+                transactionId,
+                amount: withdrawMerits ? amountInMerits : amount,
+                currency: withdrawMerits ? "merit" : currency,
+                directionAdd,
+                withdrawMerits,
+                comment,
+                amountInternal: withdrawMerits
+                    ? rate > 0
+                        ? amountInMerits / rate
+                        : 0
+                    : amount,
             });
-        setAmount(0);
-        setAmountInMerits(0);
+            
+            // Reset form state after successful withdrawal
+            setAmount(0);
+            setAmountInMerits(0);
+            setComment("");
+            
+            // Update all data
+            await updateAll();
+        } catch (error) {
+            console.error("Withdrawal failed:", error);
+        } finally {
+            setLoading(false);
+        }
     };
     const meritsAmount =
         Math.floor(10 * (withdrawMerits ? rate * sum : sum)) / 10;

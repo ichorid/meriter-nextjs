@@ -69,10 +69,16 @@ const PageHome = () => {
     const [showPollCreate, setShowPollCreate] = useState(false);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
-    const updateAll = () => {
-        //updatePublications({ publications: myPublications })
-        //updateWallets({ wallets: wallets })
-        document.location.reload();
+    const updateAll = async () => {
+        // Revalidate all data sources without page reload
+        await Promise.all([
+            updatePublications(undefined, true), // Revalidate publications
+            updateComments(undefined, true),     // Revalidate comments
+            updateUpdates(undefined, true),      // Revalidate updates
+            updateWallets(undefined, true),      // Revalidate wallets
+        ]);
+        // Close the active withdraw slider after successful update
+        setActiveWithdrawPost(null);
     };
     useEffect(() => {
         if (document.location.search.match("updates")) {
