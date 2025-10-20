@@ -64,7 +64,8 @@ const PageHome = () => {
         key: "wallets",
     });
     const [user] = swr("/api/rest/getme", {});
-    const [tab, setTab] = useState("updates");
+    const [tab, setTab] = useState("publications");
+    const [sortBy, setSortBy] = useState<"recent" | "voted">("recent");
     const [showPollCreate, setShowPollCreate] = useState(false);
 
     const updateAll = () => {
@@ -105,6 +106,17 @@ const PageHome = () => {
         return null; // Loading or not authenticated
     }
 
+    const sortItems = (items: any[]) => {
+        if (!items) return [];
+        return [...items].sort((a, b) => {
+            if (sortBy === "recent") {
+                return new Date(b.ts).getTime() - new Date(a.ts).getTime();
+            } else {
+                return (b.sum || 0) - (a.sum || 0);
+            }
+        });
+    };
+
     return (
         <Page className="balance">
             <HeaderAvatarBalance
@@ -141,11 +153,11 @@ const PageHome = () => {
                 ))}
             </div>
             <div className="balance-inpublications">
-                <div className="tabs tabs-boxed mb-4">
+                <div className="tabs tabs-boxed mb-4 p-1 bg-base-200 rounded-lg shadow-sm">
                     <a
                         className={classList(
-                            "tab",
-                            tab === "publications" && "tab-active"
+                            "tab tab-lg gap-2 font-medium transition-all duration-200 hover:text-primary",
+                            tab === "publications" && "tab-active bg-primary text-primary-content shadow-md"
                         )}
                         onClick={() => {
                             setTab("publications");
@@ -155,8 +167,8 @@ const PageHome = () => {
                     </a>
                     <a
                         className={classList(
-                            "tab",
-                            tab === "comments" && "tab-active"
+                            "tab tab-lg gap-2 font-medium transition-all duration-200 hover:text-primary",
+                            tab === "comments" && "tab-active bg-primary text-primary-content shadow-md"
                         )}
                         onClick={() => {
                             setTab("comments");
@@ -166,8 +178,8 @@ const PageHome = () => {
                     </a>
                     <a
                         className={classList(
-                            "tab",
-                            tab === "updates" && "tab-active"
+                            "tab tab-lg gap-2 font-medium transition-all duration-200 hover:text-primary",
+                            tab === "updates" && "tab-active bg-primary text-primary-content shadow-md"
                         )}
                         onClick={() => {
                             setTab("updates");
@@ -176,12 +188,34 @@ const PageHome = () => {
                         Обновления
                     </a>
                 </div>
+                <div className="flex justify-end mb-4">
+                    <div className="join shadow-sm">
+                        <button 
+                            className={classList(
+                                "join-item btn btn-sm font-medium transition-all duration-200",
+                                sortBy === "recent" && "btn-active btn-primary"
+                            )}
+                            onClick={() => setSortBy("recent")}
+                        >
+                            По дате
+                        </button>
+                        <button 
+                            className={classList(
+                                "join-item btn btn-sm font-medium transition-all duration-200",
+                                sortBy === "voted" && "btn-active btn-primary"
+                            )}
+                            onClick={() => setSortBy("voted")}
+                        >
+                            По рейтингу
+                        </button>
+                    </div>
+                </div>
                 {tab === "updates" && (
                     <div className="balance-inpublications-list">
                         <div className="balance-inpublications-filters"></div>
                         <div className="balance-inpublications-publications">
                             {myUpdates &&
-                                myUpdates
+                                sortItems(myUpdates)
                                     .filter((p) => p.comment)
                                     .map((p: any, i) => (
                                         <TransactionToMe key={i} transaction={p} />
@@ -193,7 +227,7 @@ const PageHome = () => {
                     <div className="balance-inpublications-list">
                         <div className="balance-inpublications-publications">
                             {myPublications &&
-                                myPublications
+                                sortItems(myPublications)
                                     .filter((p) => p.messageText || p.type === 'poll')
                                     .map((p, i) => (
                                         <ContentMY
@@ -211,7 +245,7 @@ const PageHome = () => {
                         <div className="balance-inpublications-filters"></div>
                         <div className="balance-inpublications-publications">
                             {myComments &&
-                                myComments
+                                sortItems(myComments)
                                     .filter((p) => p.comment)
                                     .map((p, i) => (
                                         <ContentMY
