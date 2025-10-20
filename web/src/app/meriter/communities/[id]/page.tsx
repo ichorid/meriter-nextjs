@@ -220,6 +220,24 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             </HeaderAvatarBalance>
             {error === true && <div>Нет доступа</div>}
 
+            <button
+                className="create-poll-button"
+                onClick={() => setShowPollCreate(true)}
+                style={{
+                    padding: "10px 20px",
+                    background: "#4CAF50",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    marginBottom: "15px",
+                    width: "100%"
+                }}
+            >
+                📊 Создать опрос
+            </button>
+
             <div className="space-y-4">
                 {user.token &&
                     publications
@@ -249,7 +267,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 <BottomPortal>
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-5 overflow-y-auto">
                         <FormPollCreate
-                            wallets={wallets}
+                            communityId={chatId}
                             onSuccess={(pollId) => {
                                 setShowPollCreate(false);
                                 window.location.reload();

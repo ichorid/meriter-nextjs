@@ -124,6 +124,7 @@ export class RestPublicationsController {
       limit,
       skip,
     );
+    
     return {
       publications: publ.map((p) => mapPublicationToOldFormat(p)),
     };

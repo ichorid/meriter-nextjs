@@ -75,7 +75,7 @@ export const useComments = (
             directionPlus: plusSignRewrite ?? plusSign,
         };
         
-        Axios.post("/api/rest/transaction", payload, {
+        Axios.post("/api/rest/transactions", payload, {
             headers: {
                 'Content-Type': 'application/json'
             }

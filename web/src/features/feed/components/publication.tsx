@@ -72,6 +72,82 @@ export const Publication = ({
 }: any) => {
     if (!tgChatName && type !== 'poll') return null;
     const router = useRouter();
+    
+    // State for polls
+    const [pollUserVote, setPollUserVote] = useState(null);
+    const [pollUserVoteSummary, setPollUserVoteSummary] = useState(null);
+    const [pollData, setPollData] = useState<IPollData | null>(type === 'poll' ? content : null);
+    
+    // Fetch poll vote status if this is a poll
+    useEffect(() => {
+        if (type === 'poll' && _id) {
+            apiGET("/api/rest/poll/get", { pollId: _id }).then((response) => {
+                if (response.poll && response.poll.content) {
+                    setPollData(response.poll.content);
+                }
+                if (response.userVotes) {
+                    setPollUserVote(response.userVotes[0] || null);
+                }
+                if (response.userVoteSummary) {
+                    setPollUserVoteSummary(response.userVoteSummary);
+                }
+            });
+        }
+    }, [type, _id]);
+
+    const handlePollVoteSuccess = () => {
+        // Refresh poll data after voting
+        if (type === 'poll' && _id) {
+            apiGET("/api/rest/poll/get", { pollId: _id }).then((response) => {
+                if (response.poll && response.poll.content) {
+                    setPollData(response.poll.content);
+                }
+                if (response.userVotes) {
+                    setPollUserVote(response.userVotes[0] || null);
+                }
+                if (response.userVoteSummary) {
+                    setPollUserVoteSummary(response.userVoteSummary);
+                }
+            });
+        }
+    };
+
+    // Render poll publication (early return to avoid hooks)
+    if (type === 'poll' && pollData) {
+        const avatarUrl = authorPhotoUrl || telegramGetAvatarLink(tgAuthorId);
+        return (
+            <div className="mb-5" key={slug}>
+                <CardPublication
+                    title={tgAuthorName}
+                    subtitle={dateVerbose(ts)}
+                    avatarUrl={avatarUrl}
+                    onAvatarUrlNotFound={() => {
+                        const fallbackUrl = telegramGetAvatarLinkUpd(tgAuthorId);
+                        if (fallbackUrl !== avatarUrl) {
+                            // Force re-render with fallback avatar
+                            const imgElement = document.querySelector(`img[src="${avatarUrl}"]`) as HTMLImageElement;
+                            if (imgElement) imgElement.src = fallbackUrl;
+                        }
+                    }}
+                    description="📊 Опрос"
+                    onClick={undefined}
+                    onDescriptionClick={undefined}
+                    bottom={undefined}
+                >
+                    <PollVoting
+                        pollData={pollData}
+                        pollId={_id || slug}
+                        userVote={pollUserVote}
+                        userVoteSummary={pollUserVoteSummary}
+                        balance={balance}
+                        onVoteSuccess={handlePollVoteSuccess}
+                    />
+                </CardPublication>
+            </div>
+        );
+    }
+    
+    // Regular publication code below - use comments hook
     const {
         comments,
         showPlus,
@@ -105,8 +181,6 @@ export const Publication = ({
     const publicationUnderReply = activeCommentHook[0] == slug;
     const nobodyUnderReply = activeCommentHook[0] === null;
     const [showDimensionsEditor, setShowDimensionsEditor] = useState(false);
-    const [pollUserVote, setPollUserVote] = useState(null);
-    const [pollData, setPollData] = useState<IPollData | null>(type === 'poll' ? content : null);
     
     const tagsStr = [
         "#" + keyword,
@@ -114,76 +188,6 @@ export const Publication = ({
             .map(([slug, dim]) => "#" + dim)
             .flat(),
     ].join(" ");
-
-    // Fetch poll vote status if this is a poll
-    useEffect(() => {
-        if (type === 'poll' && _id) {
-            apiGET("/api/rest/poll/get", { pollId: _id }).then((response) => {
-                if (response.poll && response.poll.content) {
-                    setPollData(response.poll.content);
-                }
-                if (response.userVote) {
-                    setPollUserVote(response.userVote);
-                }
-            });
-        }
-    }, [type, _id]);
-
-    const handlePollVoteSuccess = () => {
-        // Refresh poll data after voting
-        if (type === 'poll' && _id) {
-            apiGET("/api/rest/poll/get", { pollId: _id }).then((response) => {
-                if (response.poll && response.poll.content) {
-                    setPollData(response.poll.content);
-                }
-                if (response.userVote) {
-                    setPollUserVote(response.userVote);
-                }
-            });
-        }
-    };
-
-    // Render poll publication
-    if (type === 'poll' && pollData) {
-        const avatarUrl = authorPhotoUrl || telegramGetAvatarLink(tgAuthorId);
-        return (
-            <div
-                className={classList(
-                    "publication",
-                    "poll-publication",
-                    publicationUnderReply && "reply",
-                    nobodyUnderReply && "noreply"
-                )}
-                key={slug}
-            >
-                <CardPublication
-                    title={tgAuthorName}
-                    subtitle={dateVerbose(ts)}
-                    avatarUrl={avatarUrl}
-                    onAvatarUrlNotFound={() => {
-                        const fallbackUrl = telegramGetAvatarLinkUpd(tgAuthorId);
-                        if (fallbackUrl !== avatarUrl) {
-                            // Force re-render with fallback avatar
-                            const imgElement = document.querySelector(`img[src="${avatarUrl}"]`) as HTMLImageElement;
-                            if (imgElement) imgElement.src = fallbackUrl;
-                        }
-                    }}
-                    description="📊 Опрос"
-                    onClick={undefined}
-                    onDescriptionClick={undefined}
-                    bottom={undefined}
-                >
-                    <PollVoting
-                        pollData={pollData}
-                        pollId={_id || slug}
-                        userVote={pollUserVote}
-                        balance={balance}
-                        onVoteSuccess={handlePollVoteSuccess}
-                    />
-                </CardPublication>
-            </div>
-        );
-    }
 
     const avatarUrl = authorPhotoUrl || telegramGetAvatarLink(tgAuthorId);
     

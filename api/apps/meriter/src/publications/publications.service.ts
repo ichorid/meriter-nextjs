@@ -19,7 +19,7 @@ export class PublicationsService {
     return this.model.find(
       { 'meta.origin.telegramChatId': telegramChatId },
       {},
-      { skip, limit, sort: { 'meta.metrics.sum': -1 } },
+      { skip, limit, sort: { createdAt: -1 } },
     );
   }
 

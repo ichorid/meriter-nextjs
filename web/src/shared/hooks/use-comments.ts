@@ -61,7 +61,7 @@ export const useComments = (
         setDelta(delta + (plusSign ? absAmount : -absAmount));
         plusSign && setDeltaPlus(deltaPlus + absAmount);
         !plusSign && setDeltaMinus(deltaMinus + absAmount);
-        Axios.post("/api/rest/transaction", {
+        Axios.post("/api/rest/transactions", {
             amountPoints: absAmount,
             comment,
             inPublicationSlug: publicationSlug,

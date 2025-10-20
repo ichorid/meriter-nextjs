@@ -43,11 +43,17 @@ export class RestWalletController {
     @Req() req,
   ) {
     if (tgChatId) {
-      const wallet = await this.walletsService.model.findOne({
-        'meta.currencyOfCommunityTgChatId': tgChatId,
-        'meta.telegramUserId': req.user.tgUserId,
-      });
-      return { balance: wallet?.value ?? 0 };
+      // getValue uses objectSpreadMeta which adds 'meta.' prefix, so don't include it here
+      const walletQuery = {
+        currencyOfCommunityTgChatId: tgChatId,
+        telegramUserId: req.user.tgUserId,
+        domainName: 'wallet',  // Ensure we're querying the wallet counter, not daily balance
+      };
+      
+      // Use getValue to get the actual wallet balance (with domainName filter)
+      const balance = await this.walletsService.getValue(walletQuery);
+      
+      return { balance };
     } else {
       const wallets = await this.walletsService.model.find({
         'meta.telegramUserId': req.user.tgUserId,

@@ -257,14 +257,6 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                 {spaceSlug && (
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-xl font-bold">Топ публикаций:</h3>
-                        {user.token && wallets.length > 0 && (
-                            <button
-                                onClick={() => setShowPollCreate(true)}
-                                className="btn btn-success btn-sm gap-2"
-                            >
-                                📊 Создать опрос
-                            </button>
-                        )}
                     </div>
                 )}
                 {user.token &&

@@ -16,4 +16,7 @@ export interface IAsset {
   deleteableWithTags: string[];
 
   meta: Record<string, any>;
+  
+  type?: string;
+  content?: Record<string, any>;
 }

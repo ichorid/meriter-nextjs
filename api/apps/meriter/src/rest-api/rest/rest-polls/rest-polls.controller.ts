@@ -9,10 +9,29 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { IsString, IsOptional, IsArray, IsNumber, IsNotEmpty, ValidateNested, ArrayMinSize, ArrayMaxSize } from 'class-validator';
+import { Type } from 'class-transformer';
+import { uid } from 'uid';
 import { UserGuard } from '../../../user.guard';
 import { PublicationsService } from '../../../publications/publications.service';
 import { TransactionsService } from '../../../transactions/transactions.service';
 import { WalletsService } from '../../../wallets/wallets.service';
+
+class PollOptionDto {
+  @IsString()
+  @IsNotEmpty()
+  id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  text: string;
+
+  @IsNumber()
+  votes: number;
+
+  @IsNumber()
+  voterCount: number;
+}
 
 interface IPollOption {
   id: string;
@@ -32,16 +51,40 @@ interface IPollData {
 }
 
 class CreatePollDto {
+  @IsString()
+  @IsNotEmpty()
   title: string;
+
+  @IsString()
+  @IsOptional()
   description?: string;
-  options: IPollOption[];
+
+  @IsArray()
+  @ArrayMinSize(2)
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => PollOptionDto)
+  options: PollOptionDto[];
+
+  @IsString()
+  @IsNotEmpty()
   expiresAt: string;
+
+  @IsString()
+  @IsNotEmpty()
   communityId: string;
 }
 
 class VotePollDto {
+  @IsString()
+  @IsNotEmpty()
   pollId: string;
+
+  @IsString()
+  @IsNotEmpty()
   optionId: string;
+
+  @IsNumber()
   amount: number;
 }
 
@@ -58,6 +101,8 @@ export class RestPollsController {
   async createPoll(@Body() dto: CreatePollDto, @Req() req) {
     const tgUserId = req.user.tgUserId;
     const username = req.user.username || 'User';
+    const name = req.user.name || req.user.username || 'User';
+
 
     // Validate input
     if (!dto.title || dto.title.trim().length === 0) {
@@ -100,11 +145,19 @@ export class RestPollsController {
     };
 
     // Create publication with type 'poll'
+    const now = new Date();
+    const pollUid = uid(8);
+    
     const publication = await this.publicationsService.model.create({
       type: 'poll',
       content: pollData,
+      uid: pollUid,
+      createdAt: now,
+      updatedAt: now,
+      domainName: 'publication',
       meta: {
         author: {
+          name: name,
           telegramId: tgUserId,
           username: username,
         },
@@ -136,8 +189,8 @@ export class RestPollsController {
       throw new HttpException('Amount must be greater than 0', HttpStatus.BAD_REQUEST);
     }
 
-    // Get poll
-    const poll = await this.publicationsService.model.findById(dto.pollId);
+    // Get poll by uid (not MongoDB _id)
+    const poll = await this.publicationsService.model.findOne({ uid: dto.pollId });
     if (!poll || poll.type !== 'poll') {
       throw new HttpException('Poll not found', HttpStatus.NOT_FOUND);
     }
@@ -149,26 +202,21 @@ export class RestPollsController {
       throw new HttpException('Poll has expired', HttpStatus.BAD_REQUEST);
     }
 
-    // Check if user already voted
-    const existingVote = await this.transactionsService.model.findOne({
-      type: 'pollVote',
-      'meta.from.telegramUserId': tgUserId,
-      'meta.parentPublicationUri': poll.uid,
-    });
-
-    if (existingVote) {
-      throw new HttpException('You have already voted on this poll', HttpStatus.BAD_REQUEST);
-    }
-
     // Check if user has sufficient balance
+    // getValue uses objectSpreadMeta which adds 'meta.' prefix, so don't include it here
     const walletQuery = {
-      'meta.telegramUserId': tgUserId,
-      'meta.currencyOfCommunityTgChatId': pollData.communityId,
+      telegramUserId: tgUserId,
+      currencyOfCommunityTgChatId: pollData.communityId,
+      domainName: 'wallet',  // Ensure we're querying the wallet counter, not daily balance
     };
 
     const walletValue = await this.walletsService.getValue(walletQuery);
+    
     if (walletValue === null || walletValue < dto.amount) {
-      throw new HttpException('Insufficient balance', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        `Недостаточно меритов для голосования. Доступно: ${walletValue ?? 0}, требуется: ${dto.amount}`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     // Validate option exists
@@ -186,7 +234,7 @@ export class RestPollsController {
     pollData.totalVotes += dto.amount;
 
     await this.publicationsService.model.updateOne(
-      { _id: dto.pollId },
+      { uid: dto.pollId },
       { $set: { content: pollData } },
     );
 
@@ -220,7 +268,7 @@ export class RestPollsController {
     });
 
     // Return updated poll data
-    const updatedPoll = await this.publicationsService.model.findById(dto.pollId);
+    const updatedPoll = await this.publicationsService.model.findOne({ uid: dto.pollId });
     return {
       poll: updatedPoll,
       transaction,
@@ -235,21 +283,39 @@ export class RestPollsController {
       throw new HttpException('Poll ID is required', HttpStatus.BAD_REQUEST);
     }
 
-    const poll = await this.publicationsService.model.findById(pollId);
+    const poll = await this.publicationsService.model.findOne({ uid: pollId });
     if (!poll || poll.type !== 'poll') {
       throw new HttpException('Poll not found', HttpStatus.NOT_FOUND);
     }
 
-    // Check if user has voted
-    const userVote = await this.transactionsService.model.findOne({
+    // Get all user votes for this poll
+    const userVotes = await this.transactionsService.model.find({
       type: 'pollVote',
       'meta.from.telegramUserId': tgUserId,
       'meta.parentPublicationUri': poll.uid,
     });
 
+    // Calculate total votes per option and overall total
+    const voteSummary = userVotes.reduce((acc, vote) => {
+      const optionId = vote.content.optionId;
+      const amount = vote.content.amount;
+      if (!acc[optionId]) {
+        acc[optionId] = 0;
+      }
+      acc[optionId] += amount;
+      return acc;
+    }, {});
+
+    const totalVoteAmount = userVotes.reduce((sum, vote) => sum + vote.content.amount, 0);
+
     return {
       poll,
-      userVote: userVote ? userVote.content : null,
+      userVotes: userVotes.map(v => v.content),
+      userVoteSummary: {
+        voteCount: userVotes.length,
+        totalAmount: totalVoteAmount,
+        byOption: voteSummary,
+      },
     };
   }
 }

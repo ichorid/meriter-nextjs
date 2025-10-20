@@ -24,6 +24,12 @@ export interface IPollVote {
     votedAt: Date | string;
 }
 
+export interface IPollUserVoteSummary {
+    voteCount: number;
+    totalAmount: number;
+    byOption: Record<string, number>; // optionId -> total amount
+}
+
 export interface Poll {
     _id: string;
     data: IPollData;

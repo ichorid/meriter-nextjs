@@ -44,6 +44,12 @@ export class Asset implements IAsset {
 
   @Prop([String])
   viewableWithTags: string[];
+  
+  @Prop()
+  type?: string;
+  
+  @Prop({ type: Object })
+  content?: Record<string, any>;
 }
 
 export const AssetSchema = SchemaFactory.createForClass(Asset);

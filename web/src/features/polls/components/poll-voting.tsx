@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { IPollData, IPollVote } from "../types";
+import { IPollData, IPollVote, IPollUserVoteSummary } from "../types";
 import { apiPOST } from "@shared/lib/fetch";
 
 interface IPollVotingProps {
     pollData: IPollData;
     pollId: string;
     userVote?: IPollVote;
+    userVoteSummary?: IPollUserVoteSummary;
     balance: number;
     onVoteSuccess?: () => void;
 }
@@ -16,12 +17,11 @@ export const PollVoting = ({
     pollData,
     pollId,
     userVote,
+    userVoteSummary,
     balance,
     onVoteSuccess,
 }: IPollVotingProps) => {
-    const [selectedOptionId, setSelectedOptionId] = useState<string | null>(
-        userVote?.optionId || null
-    );
+    const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
     const [voteAmount, setVoteAmount] = useState<number>(1);
     const [isVoting, setIsVoting] = useState(false);
     const [error, setError] = useState<string>("");
@@ -29,7 +29,6 @@ export const PollVoting = ({
     const now = new Date();
     const expiresAt = new Date(pollData.expiresAt);
     const isExpired = now > expiresAt;
-    const hasVoted = !!userVote;
 
     // Calculate time remaining
     const getTimeRemaining = () => {
@@ -76,8 +75,9 @@ export const PollVoting = ({
             } else {
                 onVoteSuccess && onVoteSuccess();
             }
-        } catch (err) {
-            setError("Ошибка при голосовании");
+        } catch (err: any) {
+            const errorMessage = err?.response?.data?.message || err?.message || "Ошибка при голосовании";
+            setError(errorMessage);
         } finally {
             setIsVoting(false);
         }
@@ -112,15 +112,15 @@ export const PollVoting = ({
                 {pollData.options.map((option) => {
                     const percentage = getOptionPercentage(option.votes);
                     const isSelected = selectedOptionId === option.id;
-                    const isUserVoted = userVote?.optionId === option.id;
+                    const userVotedAmount = userVoteSummary?.byOption?.[option.id] || 0;
 
                     return (
                         <div
                             key={`poll-option-${option.id}`}
                             className={`card bg-base-200 shadow-md p-4 ${
                                 isSelected ? "ring-2 ring-primary" : ""
-                            } ${isUserVoted ? "bg-primary/10" : ""} ${
-                                isExpired || hasVoted ? "opacity-70" : "hover:shadow-lg transition-shadow"
+                            } ${userVotedAmount > 0 ? "bg-primary/10" : ""} ${
+                                isExpired ? "opacity-70" : "hover:shadow-lg transition-shadow"
                             }`}
                         >
                             <div className="flex justify-between items-start mb-2">
@@ -130,10 +130,10 @@ export const PollVoting = ({
                                         name="poll-option"
                                         value={option.id}
                                         checked={isSelected}
-                                        disabled={isExpired || hasVoted}
+                                        disabled={isExpired}
                                         className="radio radio-primary"
                                         onChange={(e) => {
-                                            if (!isExpired && !hasVoted) {
+                                            if (!isExpired) {
                                                 setSelectedOptionId(e.target.value);
                                                 setError("");
                                             }
@@ -141,9 +141,9 @@ export const PollVoting = ({
                                     />
                                     <span className="font-medium">{option.text}</span>
                                 </label>
-                                {isUserVoted && (
+                                {userVotedAmount > 0 && (
                                     <span className="badge badge-primary badge-sm">
-                                        Вы: {userVote.amount}
+                                        Вы: {userVotedAmount}
                                     </span>
                                 )}
                             </div>
@@ -164,7 +164,7 @@ export const PollVoting = ({
                 })}
             </div>
 
-            {!isExpired && !hasVoted && (
+            {!isExpired && (
                 <div className="card bg-base-200 shadow-md p-4">
                     <div className="form-control mb-3">
                         <label className="label" htmlFor="vote-amount">
@@ -193,14 +193,13 @@ export const PollVoting = ({
                 </div>
             )}
 
-            {hasVoted && (
-                <div className="alert alert-success">
-                    <span>✓ Вы проголосовали за "{pollData.options.find(o => o.id === userVote.optionId)?.text}" 
-                    {" "}с {userVote.amount} баллами</span>
+            {userVoteSummary && userVoteSummary.voteCount > 0 && (
+                <div className="alert alert-info">
+                    <span>✓ Вы проголосовали {userVoteSummary.voteCount} раз(а) на общую сумму {userVoteSummary.totalAmount} баллов</span>
                 </div>
             )}
 
-            {isExpired && !hasVoted && (
+            {isExpired && (
                 <div className="alert alert-warning">
                     <span>Опрос завершен. Голосование больше недоступно.</span>
                 </div>

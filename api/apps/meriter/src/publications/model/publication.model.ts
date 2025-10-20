@@ -34,10 +34,4 @@ export class PublicationMeta {
 
 export class Publication extends Asset {
   declare meta: Typify<PublicationMeta>;
-  
-  @Prop()
-  type?: string;
-  
-  @Prop({ type: Object })
-  content?: Record<string, any>;
 }

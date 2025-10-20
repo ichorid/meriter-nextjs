@@ -191,24 +191,6 @@ const PageHome = () => {
                 )}
                 {tab === "publications" && (
                     <div className="balance-inpublications-list">
-                        <div className="balance-inpublications-filters">
-                            <button
-                                className="create-poll-button"
-                                onClick={() => setShowPollCreate(true)}
-                                style={{
-                                    padding: "10px 20px",
-                                    background: "#4CAF50",
-                                    color: "white",
-                                    border: "none",
-                                    borderRadius: "4px",
-                                    cursor: "pointer",
-                                    fontWeight: "600",
-                                    marginBottom: "15px"
-                                }}
-                            >
-                                📊 Создать опрос
-                            </button>
-                        </div>
                         <div className="balance-inpublications-publications">
                             {myPublications &&
                                 myPublications
