@@ -280,7 +280,7 @@ export class TgBotsService {
       }
     );
 
-    const promiseInitWallet = this.walletsService.initWallet(10, {
+    const promiseInitWallet = this.walletsService.initWallet(0, {
       currencyOfCommunityTgChatId: tgChatId,
       telegramUserId: tgUserId,
     });

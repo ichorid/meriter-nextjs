@@ -98,6 +98,10 @@ export const Publication = ({
     const handlePollVoteSuccess = () => {
         // Refresh poll data after voting
         if (type === 'poll' && _id) {
+            // Refresh balance
+            updBalance();
+            
+            // Refresh poll data
             apiGET("/api/rest/poll/get", { pollId: _id }).then((response) => {
                 if (response.poll && response.poll.content) {
                     setPollData(response.poll.content);

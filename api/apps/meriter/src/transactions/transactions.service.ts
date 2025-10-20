@@ -272,7 +272,7 @@ export class TransactionsService {
       telegramUserId: dto.fromUserTgId,
       currencyOfCommunityTgChatId: currency,
     });
-    const promiseInitWallet = this.walletsService.initWallet(10, {
+    const promiseInitWallet = this.walletsService.initWallet(0, {
       currencyOfCommunityTgChatId: tgChatId,
       telegramUserId: dto.fromUserTgId,
     });
@@ -369,7 +369,7 @@ export class TransactionsService {
       currencyOfCommunityTgChatId: tgChatId,
     });
 
-    const promiseInitWallet = this.walletsService.initWallet(10, {
+    const promiseInitWallet = this.walletsService.initWallet(0, {
       currencyOfCommunityTgChatId: tgChatId,
       telegramUserId: dto.fromUserTgId,
     });

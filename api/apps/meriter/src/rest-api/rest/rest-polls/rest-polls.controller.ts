@@ -204,13 +204,13 @@ export class RestPollsController {
 
     // Check if user has sufficient balance
     // getValue uses objectSpreadMeta which adds 'meta.' prefix, so don't include it here
-    const walletQuery = {
+    const walletQueryForGet = {
       telegramUserId: tgUserId,
       currencyOfCommunityTgChatId: pollData.communityId,
       domainName: 'wallet',  // Ensure we're querying the wallet counter, not daily balance
     };
 
-    const walletValue = await this.walletsService.getValue(walletQuery);
+    const walletValue = await this.walletsService.getValue(walletQueryForGet);
     
     if (walletValue === null || walletValue < dto.amount) {
       throw new HttpException(
@@ -226,7 +226,12 @@ export class RestPollsController {
     }
 
     // Deduct amount from wallet (burn it)
-    await this.walletsService.delta(-dto.amount, walletQuery);
+    // delta() already sets domainName: 'wallet', so don't include it here
+    const walletQueryForDelta = {
+      telegramUserId: tgUserId,
+      currencyOfCommunityTgChatId: pollData.communityId,
+    };
+    await this.walletsService.delta(-dto.amount, walletQueryForDelta);
 
     // Update poll vote counts
     pollData.options[optionIndex].votes += dto.amount;
