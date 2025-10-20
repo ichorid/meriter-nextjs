@@ -4,6 +4,24 @@ import { classList } from '@lib/classList';
 import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
 import { CommunityAvatarWithBadge } from '@shared/components/community-avatar-with-badge';
 
+interface CardPublicationProps {
+    title: any;
+    subtitle: any;
+    description: any;
+    avatarUrl: any;
+    children: any;
+    bottom?: any;
+    onClick?: any;
+    onAvatarUrlNotFound?: any;
+    onDescriptionClick?: any;
+    showCommunityAvatar?: any;
+    communityAvatarUrl?: any;
+    communityName?: any;
+    communityIconUrl?: any;
+    onCommunityClick?: any;
+    withdrawSliderContent?: any;
+}
+
 export const CardPublication = ({
     title,
     subtitle,
@@ -20,7 +38,7 @@ export const CardPublication = ({
     communityIconUrl,
     onCommunityClick,
     withdrawSliderContent,
-}) => {
+}: CardPublicationProps) => {
     const clickableClass = onClick ? " cursor-pointer hover:shadow-xl" : "";
     
     return (

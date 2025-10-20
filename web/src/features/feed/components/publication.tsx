@@ -176,6 +176,7 @@ export const Publication = ({
                         userVoteSummary={pollUserVoteSummary}
                         balance={effectiveBalance}
                         onVoteSuccess={handlePollVoteSuccess}
+                        initiallyExpanded={isDetailPage}
                     />
                 </CardPublication>
             </div>

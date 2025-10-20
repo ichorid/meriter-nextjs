@@ -13,6 +13,7 @@ interface IPollVotingProps {
     onVoteSuccess?: () => void;
     updateWalletBalance?: (currencyOfCommunityTgChatId: string, amountChange: number) => void;
     communityId?: string;
+    initiallyExpanded?: boolean;
 }
 
 export const PollVoting = ({
@@ -24,7 +25,9 @@ export const PollVoting = ({
     onVoteSuccess,
     updateWalletBalance,
     communityId,
+    initiallyExpanded = false,
 }: IPollVotingProps) => {
+    const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
     const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
     const [voteAmount, setVoteAmount] = useState<number>(1);
     const [isVoting, setIsVoting] = useState(false);
@@ -105,10 +108,67 @@ export const PollVoting = ({
         return (votes / pollData.totalVotes) * 100;
     };
 
+    // Collapsed view
+    if (!isExpanded) {
+        return (
+            <div 
+                className="p-4 bg-accent/5 border-l-4 border-accent cursor-pointer hover:bg-accent/10 transition-all duration-300 ease-in-out"
+                onClick={() => setIsExpanded(true)}
+            >
+                <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-lg">📊</span>
+                            <h3 className="text-base font-bold">{pollData.title}</h3>
+                        </div>
+                        {pollData.description && (
+                            <p className="text-sm opacity-70 line-clamp-2">{pollData.description}</p>
+                        )}
+                    </div>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                    <span className={`badge badge-sm ${isExpired ? "badge-error" : "badge-success"}`}>
+                        {isExpired ? "Завершен" : "Активен"}
+                    </span>
+                    <span className="badge badge-sm badge-ghost">
+                        {isExpired ? "Опрос завершен" : `⏱ ${getTimeRemaining()}`}
+                    </span>
+                    <span className="badge badge-sm badge-ghost">
+                        🗳 {pollData.totalVotes} голосов
+                    </span>
+                    {userVoteSummary && userVoteSummary.voteCount > 0 && (
+                        <span className="badge badge-sm badge-primary">
+                            ✓ Вы проголосовали
+                        </span>
+                    )}
+                </div>
+                <div className="text-xs opacity-50 mt-2 text-center">
+                    Нажмите для просмотра
+                </div>
+            </div>
+        );
+    }
+
+    // Expanded view
     return (
-        <div className="p-5 bg-base-100">
-            <div className="mb-5">
-                <h3 className="text-lg font-bold mb-2">{pollData.title}</h3>
+        <div className="p-5 bg-accent/5 border-l-4 border-accent transition-all duration-300 ease-in-out">
+            <div className="mb-5 animate-in fade-in duration-300">
+                <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2 flex-1">
+                        <span className="text-lg">📊</span>
+                        <h3 className="text-lg font-bold">{pollData.title}</h3>
+                    </div>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsExpanded(false);
+                        }}
+                        className="btn btn-ghost btn-sm btn-circle hover:bg-accent/20"
+                        aria-label="Свернуть опрос"
+                    >
+                        ▲
+                    </button>
+                </div>
                 {pollData.description && (
                     <p className="text-sm opacity-70 mb-3">{pollData.description}</p>
                 )}
