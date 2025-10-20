@@ -99,6 +99,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                         onlyPublication={true}
                         highlightTransactionId={undefined}
                         isDetailPage={true}
+                        showCommunityAvatar={false}
                     />
                 )}
             </div>

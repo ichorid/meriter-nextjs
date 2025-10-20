@@ -16,6 +16,8 @@ import type { Publication as IPublication } from "@features/feed/types";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { ThemeToggle } from "@shared/components/theme-toggle";
+import { CommunityAvatarWithBadge } from "@shared/components/community-avatar-with-badge";
+import { classList } from "@lib/classList";
 
 const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
@@ -25,6 +27,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     const [paginationEnd, setPaginationEnd] = useState(false);
     const [showPollCreate, setShowPollCreate] = useState(false);
+    const [sortBy, setSortBy] = useState<"recent" | "voted">("recent");
 
     const getKeyPublications = (chatId) => (pageIndex, previousPageData) => {
         if (previousPageData && !previousPageData?.publications.length) {
@@ -141,6 +144,17 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const onlyPublication =
         publications.filter((p) => p?.messageText)?.length == 1;
 
+    const sortItems = (items: any[]) => {
+        if (!items) return [];
+        return [...items].sort((a, b) => {
+            if (sortBy === "recent") {
+                return new Date(b.ts).getTime() - new Date(a.ts).getTime();
+            } else {
+                return (b.sum || 0) - (a.sum || 0);
+            }
+        });
+    };
+
     return (
         <Page className="feed">
             <div className="flex justify-end items-center gap-2 opacity-50">
@@ -171,6 +185,19 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     chatId={chatId}
                     chatNameVerb={chatNameVerb}
                 />
+                
+                {/* Community Header */}
+                {chat?.title && (
+                    <div className="flex items-center gap-3 py-3 border-b border-base-300 mb-4">
+                        <CommunityAvatarWithBadge
+                            avatarUrl={chat?.photo}
+                            communityName={chat?.title}
+                            iconUrl={comms?.icon}
+                            size={48}
+                        />
+                        <h1 className="text-xl font-semibold">{chat?.title}</h1>
+                    </div>
+                )}
 
                 {error === false && (
                     <>
@@ -238,9 +265,32 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 📊 Создать опрос
             </button>
 
+            <div className="flex justify-end mb-4">
+                <div className="join shadow-sm">
+                    <button 
+                        className={classList(
+                            "join-item btn btn-sm font-medium transition-all duration-200",
+                            sortBy === "recent" && "btn-active btn-primary"
+                        )}
+                        onClick={() => setSortBy("recent")}
+                    >
+                        По дате
+                    </button>
+                    <button 
+                        className={classList(
+                            "join-item btn btn-sm font-medium transition-all duration-200",
+                            sortBy === "voted" && "btn-active btn-primary"
+                        )}
+                        onClick={() => setSortBy("voted")}
+                    >
+                        По рейтингу
+                    </button>
+                </div>
+            </div>
+
             <div className="space-y-4">
                 {user.token &&
-                    publications
+                    sortItems(publications)
                         .filter((p) => p?.messageText || p?.type === 'poll')
                         .map((p) => (
                             <Publication
@@ -255,6 +305,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                 onlyPublication={onlyPublication}
                                 highlightTransactionId={findTransaction}
                                 isDetailPage={false}
+                                showCommunityAvatar={false}
                             />
                         ))}
                 {!paginationEnd && publications.length > 1 && (

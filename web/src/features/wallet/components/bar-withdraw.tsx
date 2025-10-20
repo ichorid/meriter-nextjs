@@ -1,16 +1,20 @@
 'use client';
 
-export const BarWithdraw = ({ onWithdraw, onTopup, balance, children }) => (
-    <div className="bar-withdraw">
-        <div className="left-info">{children}</div>
-        <div className="withdraw-widget clickable" onClick={onWithdraw}>
-            <span className="withdraw clickable">%</span>
-            <span className="count">{balance ?? 0}</span>
-            {false && (
-                <span className="topup clickable" onClick={onTopup}>
-                    <img src="/meriter/uparrow.svg"></img>
-                </span>
-            )}
+export const BarWithdraw = ({ onWithdraw, onTopup, balance, children }) => {
+    const displayBalance = balance ?? 0;
+    
+    return (
+        <div className="flex items-center justify-between p-3 border-t border-base-200">
+            <div className="left-info">{children}</div>
+            <button 
+                className="btn btn-sm btn-outline btn-primary gap-2 font-medium hover:btn-primary transition-all"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onWithdraw();
+                }}
+            >
+                Снять: <span className="font-bold">{displayBalance}</span>
+            </button>
         </div>
-    </div>
-);
+    );
+};

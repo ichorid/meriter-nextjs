@@ -235,6 +235,7 @@ const PageHome = () => {
                                             {...p}
                                             updateAll={updateAll}
                                             wallets={wallets}
+                                            showCommunityAvatar={true}
                                         />
                                     ))}
                         </div>
@@ -254,6 +255,7 @@ const PageHome = () => {
                                             transactionId={p._id}
                                             updateAll={updateAll}
                                             wallets={wallets}
+                                            showCommunityAvatar={true}
                                         />
                                     ))}
                         </div>

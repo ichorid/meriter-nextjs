@@ -2,6 +2,7 @@
 
 import { classList } from '@lib/classList';
 import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
+import { CommunityAvatarWithBadge } from '@shared/components/community-avatar-with-badge';
 
 export const CardPublication = ({
     title,
@@ -13,6 +14,11 @@ export const CardPublication = ({
     onClick,
     onAvatarUrlNotFound,
     onDescriptionClick,
+    showCommunityAvatar,
+    communityAvatarUrl,
+    communityName,
+    communityIconUrl,
+    onCommunityClick,
 }) => {
     const clickableClass = onClick ? " cursor-pointer hover:shadow-xl" : "";
     
@@ -35,14 +41,32 @@ export const CardPublication = ({
                         <div className="text-[10px] opacity-60">{subtitle}</div>
                     </div>
                 </div>
-                <div
-                    className="description text-right mt-4 mr-5 opacity-30 cursor-pointer hover:opacity-50"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        if (onDescriptionClick) onDescriptionClick();
-                    }}
-                >
-                    {description}
+                <div className="flex flex-col items-end gap-2">
+                    {showCommunityAvatar && communityName && (
+                        <div 
+                            className="cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onCommunityClick) onCommunityClick();
+                            }}
+                        >
+                            <CommunityAvatarWithBadge
+                                avatarUrl={communityAvatarUrl}
+                                communityName={communityName}
+                                iconUrl={communityIconUrl}
+                                size={32}
+                            />
+                        </div>
+                    )}
+                    <div
+                        className="description text-right opacity-30 cursor-pointer hover:opacity-50"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (onDescriptionClick) onDescriptionClick();
+                        }}
+                    >
+                        {description}
+                    </div>
                 </div>
             </div>
             <div className="content px-5 py-5 overflow-hidden">
@@ -53,4 +77,4 @@ export const CardPublication = ({
             </div>
         </div>
     </div>
-);};
+);};  

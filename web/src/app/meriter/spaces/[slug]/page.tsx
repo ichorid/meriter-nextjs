@@ -273,6 +273,7 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                                 myId={user?.tgUserId}
                                 onlyPublication={onlyPublication}
                                 highlightTransactionId={findTransaction}
+                                showCommunityAvatar={true}
                             />
                         ))}
                 {!paginationEnd && publications.length > 1 && (

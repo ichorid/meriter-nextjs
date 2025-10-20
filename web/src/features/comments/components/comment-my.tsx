@@ -7,6 +7,7 @@ import {
     telegramGetAvatarLinkUpd,
 } from "@lib/telegram";
 import { BarWithdraw } from "@features/wallet/components/bar-withdraw";
+import { swr } from "@lib/swr";
 
 export const CommentMy = ({
     slug: publicationSlug,
@@ -32,8 +33,19 @@ export const CommentMy = ({
     setWithdrawMerits,
     comment,
     fromUserTgId,
+    showCommunityAvatar,
+    currencyOfCommunityTgChatId,
+    fromTgChatId,
 }: any) => {
     const avatarUrl = telegramGetAvatarLink(fromUserTgId);
+    
+    // Fetch community info for displaying community avatar
+    const communityId = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
+    const [communityInfo] = swr(
+        () => communityId && showCommunityAvatar ? `/api/rest/communityinfo?chatId=${communityId}` : null,
+        {},
+        { revalidateOnFocus: false }
+    );
     
     return (
         <CardCommentVote
@@ -48,7 +60,7 @@ export const CommentMy = ({
                     if (imgElement) imgElement.src = fallbackUrl;
                 }
             }}
-            onClick={() => setDirectionAdd(false)}
+            onClick={undefined}
             content={comment}
             bottom={
                 <BarWithdraw
@@ -82,6 +94,15 @@ export const CommentMy = ({
                     )}
                 </BarWithdraw>
             }
+            showCommunityAvatar={showCommunityAvatar}
+            communityAvatarUrl={communityInfo?.chat?.photo}
+            communityName={communityInfo?.chat?.title || tgChatName}
+            communityIconUrl={communityInfo?.icon}
+            onCommunityClick={() => {
+                if (communityId) {
+                    window.location.href = `/meriter/communities/${communityId}`;
+                }
+            }}
         />
     );
 };

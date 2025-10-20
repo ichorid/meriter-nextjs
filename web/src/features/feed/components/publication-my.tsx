@@ -12,6 +12,7 @@ import { PollVoting } from "@features/polls/components/poll-voting";
 import type { IPollData } from "@features/polls/types";
 import { useEffect, useState } from "react";
 import { apiPOST, apiGET } from "@shared/lib/fetch";
+import { swr } from "@lib/swr";
 
 export const PublicationMy = ({
     slug: publicationSlug,
@@ -39,9 +40,25 @@ export const PublicationMy = ({
     type,
     content,
     _id,
+    showCommunityAvatar,
+    wallets,
 }: any) => {
     const [pollUserVote, setPollUserVote] = useState(null);
     const [pollData, setPollData] = useState<IPollData | null>(type === 'poll' ? content : null);
+    
+    // For polls, get the wallet balance for the specific community from the wallets array
+    const pollCommunityId = type === 'poll' ? content?.communityId : null;
+    const pollWalletBalance = pollCommunityId && wallets
+        ? (wallets.find((w: any) => w.currencyOfCommunityTgChatId === pollCommunityId)?.amount || 0)
+        : 0;
+    
+    // Fetch community info for displaying community avatar
+    const communityId = tgChatId || pollCommunityId;
+    const [communityInfo] = swr(
+        () => communityId && showCommunityAvatar ? `/api/rest/communityinfo?chatId=${communityId}` : null,
+        {},
+        { revalidateOnFocus: false }
+    );
 
     // Fetch poll vote status if this is a poll
     useEffect(() => {
@@ -75,6 +92,8 @@ export const PublicationMy = ({
     
     // Render poll publication
     if (type === 'poll' && pollData) {
+        // Use pollWalletBalance when on home/dashboard (showCommunityAvatar=true), otherwise use meritsAmount
+        const effectiveBalance = showCommunityAvatar ? pollWalletBalance : (meritsAmount || 0);
         return (
             <CardPublication
                 title={tgAuthorName}
@@ -92,12 +111,21 @@ export const PublicationMy = ({
                 onClick={undefined}
                 onDescriptionClick={undefined}
                 bottom={undefined}
+                showCommunityAvatar={showCommunityAvatar}
+                communityAvatarUrl={communityInfo?.chat?.photo}
+                communityName={communityInfo?.chat?.title || tgChatName}
+                communityIconUrl={communityInfo?.icon}
+                onCommunityClick={() => {
+                    if (communityId) {
+                        window.location.href = `/meriter/communities/${communityId}`;
+                    }
+                }}
             >
                 <PollVoting
                     pollData={pollData}
                     pollId={_id || publicationSlug}
                     userVote={pollUserVote}
-                    balance={meritsAmount || 0}
+                    balance={effectiveBalance}
                     onVoteSuccess={handlePollVoteSuccess}
                 />
             </CardPublication>
@@ -118,7 +146,7 @@ export const PublicationMy = ({
                 }
             }}
             description={"#" + keyword}
-            onClick={() => setDirectionAdd(false)}
+            onClick={undefined}
             onDescriptionClick={() => {}}
             bottom={
                 <BarWithdraw
@@ -152,6 +180,15 @@ export const PublicationMy = ({
                     )}
                 </BarWithdraw>
             }
+            showCommunityAvatar={showCommunityAvatar}
+            communityAvatarUrl={communityInfo?.chat?.photo}
+            communityName={communityInfo?.chat?.title || tgChatName}
+            communityIconUrl={communityInfo?.icon}
+            onCommunityClick={() => {
+                if (communityId) {
+                    window.location.href = `/meriter/communities/${communityId}`;
+                }
+            }}
         >
             <WithTelegramEntities entities={entities}>
                 {messageText}

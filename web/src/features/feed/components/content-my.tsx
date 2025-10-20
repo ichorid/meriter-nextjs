@@ -104,8 +104,8 @@ export const ContentMY = (props) => {
 
     return (
         <div className="publication-my">
-            {publicationSlug && <PublicationMy {...props} {...params} />}
-            {!publicationSlug && <CommentMy {...props} {...params} />}
+            {publicationSlug && <PublicationMy {...props} {...params} showCommunityAvatar={props.showCommunityAvatar} />}
+            {!publicationSlug && <CommentMy {...props} {...params} showCommunityAvatar={props.showCommunityAvatar} />}
 
             {false && (
                 <div className="publication-status">

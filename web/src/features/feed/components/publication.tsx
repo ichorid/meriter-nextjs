@@ -20,6 +20,7 @@ import { PollVoting } from "@features/polls/components/poll-voting";
 import type { IPollData } from "@features/polls/types";
 import { apiPOST, apiGET } from "@shared/lib/fetch";
 import { useRouter } from "next/navigation";
+import { swr } from "@lib/swr";
 
 export interface IPublication {
     tgChatName;
@@ -69,6 +70,7 @@ export const Publication = ({
     content,
     _id,
     isDetailPage,
+    showCommunityAvatar,
 }: any) => {
     if (!tgChatName && type !== 'poll') return null;
     const router = useRouter();
@@ -77,6 +79,24 @@ export const Publication = ({
     const [pollUserVote, setPollUserVote] = useState(null);
     const [pollUserVoteSummary, setPollUserVoteSummary] = useState(null);
     const [pollData, setPollData] = useState<IPollData | null>(type === 'poll' ? content : null);
+    
+    // For polls, fetch the wallet balance for the specific community ONLY when not on community page
+    // When on community page (showCommunityAvatar=false), the balance prop is already correct
+    const pollCommunityId = type === 'poll' ? content?.communityId : null;
+    const [pollBalanceResponse] = swr(
+        () => pollCommunityId && showCommunityAvatar ? `/api/rest/wallet?tgChatId=${pollCommunityId}` : null,
+        { balance: 0 },
+        { key: "poll-balance-" + pollCommunityId }
+    );
+    const pollBalance = pollBalanceResponse?.balance || 0;
+    
+    // Fetch community info for displaying community avatar
+    const communityId = tgChatId || pollCommunityId;
+    const [communityInfo] = swr(
+        () => communityId && showCommunityAvatar ? `/api/rest/communityinfo?chatId=${communityId}` : null,
+        {},
+        { revalidateOnFocus: false }
+    );
     
     // Fetch poll vote status if this is a poll
     useEffect(() => {
@@ -119,6 +139,8 @@ export const Publication = ({
     // Render poll publication (early return to avoid hooks)
     if (type === 'poll' && pollData) {
         const avatarUrl = authorPhotoUrl || telegramGetAvatarLink(tgAuthorId);
+        // Use pollBalance when on home/spaces (showCommunityAvatar=true), otherwise use passed balance
+        const effectiveBalance = showCommunityAvatar ? (pollBalance || 0) : balance;
         return (
             <div className="mb-5" key={slug}>
                 <CardPublication
@@ -137,13 +159,22 @@ export const Publication = ({
                     onClick={undefined}
                     onDescriptionClick={undefined}
                     bottom={undefined}
+                    showCommunityAvatar={showCommunityAvatar}
+                    communityAvatarUrl={communityInfo?.chat?.photo}
+                    communityName={communityInfo?.chat?.title || tgChatName}
+                    communityIconUrl={communityInfo?.icon}
+                    onCommunityClick={() => {
+                        if (communityId) {
+                            router.push(`/meriter/communities/${communityId}`);
+                        }
+                    }}
                 >
                     <PollVoting
                         pollData={pollData}
                         pollId={_id || slug}
                         userVote={pollUserVote}
                         userVoteSummary={pollUserVoteSummary}
-                        balance={balance}
+                        balance={effectiveBalance}
                         onVoteSuccess={handlePollVoteSuccess}
                     />
                 </CardPublication>
@@ -253,6 +284,15 @@ export const Publication = ({
                         commentCount={comments?.length || 0}
                     />
                 }
+                showCommunityAvatar={showCommunityAvatar}
+                communityAvatarUrl={communityInfo?.chat?.photo}
+                communityName={communityInfo?.chat?.title || tgChatName}
+                communityIconUrl={communityInfo?.icon}
+                onCommunityClick={() => {
+                    if (communityId) {
+                        router.push(`/meriter/communities/${communityId}`);
+                    }
+                }}
             >
                 <WithTelegramEntities entities={entities}>
                     {messageText}
