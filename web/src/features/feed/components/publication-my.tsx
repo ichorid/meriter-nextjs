@@ -30,6 +30,7 @@ export const PublicationMy = ({
     ts,
     keyword,
     updateAll,
+    updateWalletBalance,
     setDirectionAdd,
     meritsAmount,
     showselector,
@@ -129,6 +130,8 @@ export const PublicationMy = ({
                     userVote={pollUserVote}
                     balance={effectiveBalance}
                     onVoteSuccess={handlePollVoteSuccess}
+                    updateWalletBalance={updateWalletBalance}
+                    communityId={pollCommunityId}
                 />
             </CardPublication>
         );

@@ -11,6 +11,8 @@ interface IPollVotingProps {
     userVoteSummary?: IPollUserVoteSummary;
     balance: number;
     onVoteSuccess?: () => void;
+    updateWalletBalance?: (currencyOfCommunityTgChatId: string, amountChange: number) => void;
+    communityId?: string;
 }
 
 export const PollVoting = ({
@@ -20,6 +22,8 @@ export const PollVoting = ({
     userVoteSummary,
     balance,
     onVoteSuccess,
+    updateWalletBalance,
+    communityId,
 }: IPollVotingProps) => {
     const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
     const [voteAmount, setVoteAmount] = useState<number>(1);
@@ -63,6 +67,11 @@ export const PollVoting = ({
         setIsVoting(true);
         setError("");
 
+        // Optimistically update the wallet balance (voting decreases balance)
+        if (updateWalletBalance && communityId) {
+            updateWalletBalance(communityId, -voteAmount);
+        }
+
         try {
             const response = await apiPOST("/api/rest/poll/vote", {
                 pollId,
@@ -72,12 +81,20 @@ export const PollVoting = ({
 
             if (response.error) {
                 setError(response.error);
+                // Revert optimistic update on error
+                if (updateWalletBalance && communityId) {
+                    updateWalletBalance(communityId, voteAmount);
+                }
             } else {
                 onVoteSuccess && onVoteSuccess();
             }
         } catch (err: any) {
             const errorMessage = err?.response?.data?.message || err?.message || "Ошибка при голосовании";
             setError(errorMessage);
+            // Revert optimistic update on error
+            if (updateWalletBalance && communityId) {
+                updateWalletBalance(communityId, voteAmount);
+            }
         } finally {
             setIsVoting(false);
         }
