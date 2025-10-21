@@ -1,7 +1,6 @@
 // Comments feature exports
 export * from './types';
 export { Comment } from './components/comment';
-export { CommentMy } from './components/comment-my';
 export { FormComment } from './components/form-comment';
 export { CardCommentVote } from './components/card-comment-vote';
 export { FormCommentVote } from './components/form-comment-vote';

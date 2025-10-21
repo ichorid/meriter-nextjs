@@ -9,6 +9,7 @@ import {
     telegramGetAvatarLinkUpd,
 } from "@lib/telegram";
 import { BarVote } from "@shared/components/bar-vote";
+import { BarWithdraw } from "@features/wallet/components/bar-withdraw";
 import { WithTelegramEntities } from "@shared/components/withTelegramEntities";
 import { FormDimensionsEditor } from "@features/communities/components/form-dimensions-editor";
 import Axios from "axios";
@@ -21,6 +22,9 @@ import type { IPollData } from "@features/polls/types";
 import { apiPOST, apiGET } from "@shared/lib/fetch";
 import { useRouter } from "next/navigation";
 import { swr } from "@lib/swr";
+import { GLOBAL_FEED_TG_CHAT_ID } from "@config/meriter";
+import { Spinner } from "@shared/components/misc";
+import { FormWithdraw } from "@features/wallet/components/form-withdraw";
 
 export interface IPublication {
     tgChatName;
@@ -31,7 +35,7 @@ export interface IPublication {
     slug;
     spaceSlug;
     balance;
-    updBalance;
+    updBalance?;
     messageText;
     authorPhotoUrl;
     tgAuthorName;
@@ -52,7 +56,7 @@ export const Publication = ({
     slug,
     spaceSlug,
     balance,
-    updBalance,
+    updBalance = () => {}, // Default no-op function
     messageText,
     authorPhotoUrl,
     tgAuthorName,
@@ -71,9 +75,140 @@ export const Publication = ({
     _id,
     isDetailPage,
     showCommunityAvatar,
+    // New props for author withdraw functionality
+    wallets,
+    updateWalletBalance,
+    activeWithdrawPost,
+    setActiveWithdrawPost,
+    updateAll,
+    currency,
+    inMerits,
+    currencyOfCommunityTgChatId,
+    fromTgChatId,
 }: any) => {
     if (!tgChatName && type !== 'poll') return null;
     const router = useRouter();
+    
+    // Check if current user is the author
+    const isAuthor = myId === tgAuthorId;
+    
+    // Withdrawal state management (for author's own posts)
+    const [optimisticSum, setOptimisticSum] = useState(sum);
+    const effectiveSum = optimisticSum ?? sum;
+    
+    useEffect(() => {
+        setOptimisticSum(sum);
+    }, [sum]);
+    
+    const curr = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
+    const currentBalance =
+        (Array.isArray(wallets) &&
+            wallets.find((w) => w.currencyOfCommunityTgChatId == curr)
+                ?.amount) ||
+        0;
+    const isMerit = tgChatId === GLOBAL_FEED_TG_CHAT_ID;
+    const [showselector, setShowselector] = useState(false);
+    
+    const [rate] = swr(
+        () => isAuthor && !isMerit && curr ? "/api/rest/rate?fromCurrency=" + curr : null,
+        0,
+        { key: "rate-" + curr, revalidateOnFocus: false }
+    );
+    
+    // Create a unique identifier for this post
+    const postId = slug || _id;
+    
+    // Parse the activeWithdrawPost to get post ID and direction
+    const isThisPostActive = activeWithdrawPost && activeWithdrawPost.startsWith(postId + ':');
+    const directionAdd = isThisPostActive 
+        ? activeWithdrawPost === postId + ':add' 
+        : undefined;
+    
+    const [amount, setAmount] = useState(0);
+    const [comment, setComment] = useState("");
+    const [amountInMerits, setAmountInMerits] = useState(0);
+    const [withdrawMerits, setWithdrawMerits] = useState(isMerit);
+    const [loading, setLoading] = useState(false);
+    
+    const submitWithdrawal = async () => {
+        if (!isAuthor) return;
+        
+        setLoading(true);
+        const changeAmount = amount;
+        const newSum = directionAdd 
+            ? optimisticSum + changeAmount
+            : optimisticSum - changeAmount;
+        
+        setOptimisticSum(newSum);
+        
+        const walletChange = directionAdd 
+            ? -changeAmount
+            : changeAmount;
+        
+        if (updateWalletBalance && curr) {
+            updateWalletBalance(curr, walletChange);
+        }
+        
+        try {
+            await Axios.post("/api/rest/withdraw", {
+                publicationSlug: slug,
+                // Don't send transactionId for publications - slug is sufficient
+                amount: withdrawMerits ? amountInMerits : amount,
+                currency: withdrawMerits ? "merit" : currency,
+                directionAdd,
+                withdrawMerits,
+                comment,
+                amountInternal: withdrawMerits
+                    ? rate > 0
+                        ? amountInMerits / rate
+                        : 0
+                    : amount,
+            });
+            
+            setAmount(0);
+            setAmountInMerits(0);
+            setComment("");
+            
+            if (updateAll) await updateAll();
+        } catch (error) {
+            console.error("Withdrawal failed:", error);
+            setOptimisticSum(sum);
+            if (updateWalletBalance && curr) {
+                updateWalletBalance(curr, -walletChange);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    const meritsAmount = isAuthor
+        ? Math.floor(10 * (withdrawMerits ? rate * effectiveSum : effectiveSum)) / 10
+        : 0;
+    
+    const maxWithdrawAmount = isAuthor
+        ? Math.floor(10 * (withdrawMerits ? rate * effectiveSum : effectiveSum)) / 10
+        : 0;
+    
+    const maxTopUpAmount = isAuthor
+        ? Math.floor(
+            10 * (withdrawMerits ? rate * currentBalance : currentBalance)
+        ) / 10
+        : 0;
+    
+    const handleSetDirectionAdd = (direction: boolean | undefined) => {
+        if (!setActiveWithdrawPost) return;
+        
+        if (direction === undefined) {
+            setActiveWithdrawPost(null);
+        } else {
+            const newState = postId + ':' + (direction ? 'add' : 'withdraw');
+            if (activeWithdrawPost === newState) {
+                setActiveWithdrawPost(null);
+            } else {
+                setActiveWithdrawPost(newState);
+            }
+        }
+    };
     
     // State for polls
     const [pollUserVote, setPollUserVote] = useState(null);
@@ -139,8 +274,63 @@ export const Publication = ({
     // Render poll publication (early return to avoid hooks)
     if (type === 'poll' && pollData) {
         const avatarUrl = authorPhotoUrl || telegramGetAvatarLink(tgAuthorId);
-        // Use pollBalance when on home/spaces (showCommunityAvatar=true), otherwise use passed balance
-        const effectiveBalance = showCommunityAvatar ? (pollBalance || 0) : balance;
+        // For author: use wallet balance from wallets array; for others: use pollBalance or passed balance
+        let effectiveBalance = balance;
+        if (isAuthor && Array.isArray(wallets) && pollCommunityId) {
+            const pollWalletBalance = wallets.find((w: any) => w.currencyOfCommunityTgChatId === pollCommunityId)?.amount || 0;
+            effectiveBalance = showCommunityAvatar ? pollWalletBalance : meritsAmount;
+        } else {
+            effectiveBalance = showCommunityAvatar ? (pollBalance || 0) : balance;
+        }
+        
+        const disabled = withdrawMerits ? !amountInMerits : !amount;
+        const doWhat = directionAdd ? "Добавить" : "Снять";
+        
+        // Prepare withdraw slider content for author's polls
+        const withdrawSliderContent = isAuthor && directionAdd !== undefined && (
+            <>
+                {withdrawMerits &&
+                    (loading ? (
+                        <Spinner />
+                    ) : (
+                        <FormWithdraw
+                            comment={comment}
+                            setComment={setComment}
+                            amount={amount}
+                            setAmount={setAmount}
+                            maxWithdrawAmount={maxWithdrawAmount}
+                            maxTopUpAmount={maxTopUpAmount}
+                            isWithdrawal={!directionAdd}
+                            onSubmit={() => !disabled && submitWithdrawal()}
+                        >
+                            <div>
+                                {doWhat} меритов: {amount}
+                            </div>
+                        </FormWithdraw>
+                    ))}
+
+                {!withdrawMerits &&
+                    (loading ? (
+                        <Spinner />
+                    ) : (
+                        <FormWithdraw
+                            comment={comment}
+                            setComment={setComment}
+                            amount={amount}
+                            setAmount={setAmount}
+                            maxWithdrawAmount={maxWithdrawAmount}
+                            maxTopUpAmount={maxTopUpAmount}
+                            isWithdrawal={!directionAdd}
+                            onSubmit={() => !disabled && submitWithdrawal()}
+                        >
+                            <div>
+                                {doWhat} баллов сообщества: {amount}
+                            </div>
+                        </FormWithdraw>
+                    ))}
+            </>
+        );
+        
         return (
             <div className="mb-5" key={slug}>
                 <CardPublication
@@ -155,7 +345,7 @@ export const Publication = ({
                             if (imgElement) imgElement.src = fallbackUrl;
                         }
                     }}
-                    description="📊 Опрос"
+                    description={isAuthor ? "📊 Опрос (Мой)" : "📊 Опрос"}
                     onClick={undefined}
                     onDescriptionClick={undefined}
                     bottom={undefined}
@@ -168,6 +358,7 @@ export const Publication = ({
                             router.push(`/meriter/communities/${communityId}`);
                         }
                     }}
+                    withdrawSliderContent={withdrawSliderContent}
                 >
                     <PollVoting
                         pollData={pollData}
@@ -176,6 +367,8 @@ export const Publication = ({
                         userVoteSummary={pollUserVoteSummary}
                         balance={effectiveBalance}
                         onVoteSuccess={handlePollVoteSuccess}
+                        updateWalletBalance={updateWalletBalance}
+                        communityId={pollCommunityId}
                         initiallyExpanded={isDetailPage}
                     />
                 </CardPublication>
@@ -227,6 +420,54 @@ export const Publication = ({
 
     const avatarUrl = authorPhotoUrl || telegramGetAvatarLink(tgAuthorId);
     
+    // Prepare withdraw slider content for author's regular posts
+    const disabled = withdrawMerits ? !amountInMerits : !amount;
+    const doWhat = directionAdd ? "Добавить" : "Снять";
+    
+    const withdrawSliderContent = isAuthor && directionAdd !== undefined && (
+        <>
+            {withdrawMerits &&
+                (loading ? (
+                    <Spinner />
+                ) : (
+                    <FormWithdraw
+                        comment={comment}
+                        setComment={setComment}
+                        amount={amount}
+                        setAmount={setAmount}
+                        maxWithdrawAmount={maxWithdrawAmount}
+                        maxTopUpAmount={maxTopUpAmount}
+                        isWithdrawal={!directionAdd}
+                        onSubmit={() => !disabled && submitWithdrawal()}
+                    >
+                        <div>
+                            {doWhat} меритов: {amount}
+                        </div>
+                    </FormWithdraw>
+                ))}
+
+            {!withdrawMerits &&
+                (loading ? (
+                    <Spinner />
+                ) : (
+                    <FormWithdraw
+                        comment={comment}
+                        setComment={setComment}
+                        amount={amount}
+                        setAmount={setAmount}
+                        maxWithdrawAmount={maxWithdrawAmount}
+                        maxTopUpAmount={maxTopUpAmount}
+                        isWithdrawal={!directionAdd}
+                        onSubmit={() => !disabled && submitWithdrawal()}
+                    >
+                        <div>
+                            {doWhat} баллов сообщества: {amount}
+                        </div>
+                    </FormWithdraw>
+                ))}
+        </>
+    );
+    
     return (
         <div
             className={classList(
@@ -269,21 +510,54 @@ export const Publication = ({
                     myId == tgAuthorId ? () => setShowDimensionsEditor(true) : undefined
                 }
                 bottom={
-                    <BarVote
-                        plus={currentPlus}
-                        minus={currentMinus}
-                        onPlus={showPlus}
-                        onMinus={showMinus}
-                        onLeft={!isDetailPage ? () => {
-                            // Navigate to post detail page
-                            if (tgChatId && slug) {
-                                router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
-                            }
-                        } : () => {
-                            // On detail page, comment counter is visible but not clickable
-                        }}
-                        commentCount={comments?.length || 0}
-                    />
+                    isAuthor ? (
+                        <BarWithdraw
+                            balance={meritsAmount}
+                            onWithdraw={() => handleSetDirectionAdd(false)}
+                            onTopup={() => handleSetDirectionAdd(true)}
+                        >
+                            {showselector && (
+                                <div className="select-currency">
+                                    <span
+                                        className={
+                                            !withdrawMerits
+                                                ? "clickable bar-withdraw-select"
+                                                : "bar-withdraw-select-active"
+                                        }
+                                        onClick={() => setWithdrawMerits(true)}
+                                    >
+                                        Мериты{" "}
+                                    </span>
+                                    <span
+                                        className={
+                                            withdrawMerits
+                                                ? "clickable bar-withdraw-select"
+                                                : "bar-withdraw-select-active"
+                                        }
+                                        onClick={() => setWithdrawMerits(false)}
+                                    >
+                                        Баллы
+                                    </span>
+                                </div>
+                            )}
+                        </BarWithdraw>
+                    ) : (
+                        <BarVote
+                            plus={currentPlus}
+                            minus={currentMinus}
+                            onPlus={showPlus}
+                            onMinus={showMinus}
+                            onLeft={!isDetailPage ? () => {
+                                // Navigate to post detail page
+                                if (tgChatId && slug) {
+                                    router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
+                                }
+                            } : () => {
+                                // On detail page, comment counter is visible but not clickable
+                            }}
+                            commentCount={comments?.length || 0}
+                        />
+                    )
                 }
                 showCommunityAvatar={showCommunityAvatar}
                 communityAvatarUrl={communityInfo?.chat?.photo}
@@ -294,6 +568,7 @@ export const Publication = ({
                         router.push(`/meriter/communities/${communityId}`);
                     }
                 }}
+                withdrawSliderContent={withdrawSliderContent}
             >
                 <WithTelegramEntities entities={entities}>
                     {messageText}
@@ -325,6 +600,11 @@ export const Publication = ({
                                 activeCommentHook={activeCommentHook}
                                 myId={myId}
                                 highlightTransactionId={highlightTransactionId}
+                                wallets={wallets}
+                                updateWalletBalance={updateWalletBalance}
+                                activeWithdrawPost={activeWithdrawPost}
+                                setActiveWithdrawPost={setActiveWithdrawPost}
+                                updateAll={updateAll}
                             />
                         ))}
                     </div>

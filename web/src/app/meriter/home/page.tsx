@@ -13,7 +13,8 @@ import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
 import { classList } from '@lib/classList';
 import { TransactionToMe } from "@features/wallet/components/transaction-to-me";
 import { WalletCommunity } from "@features/wallet/components/wallet-community";
-import { ContentMY } from "@features/feed/components/content-my";
+import { Publication } from "@features/feed/components/publication";
+import { Comment } from "@features/comments/components/comment";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 
@@ -71,6 +72,8 @@ const PageHome = () => {
 
     const updateWalletBalance = (currencyOfCommunityTgChatId: string, amountChange: number) => {
         // Optimistically update wallet balance without reloading
+        if (!Array.isArray(wallets)) return;
+        
         const updatedWallets = wallets.map((wallet) => {
             if (wallet.currencyOfCommunityTgChatId === currencyOfCommunityTgChatId) {
                 return {
@@ -249,15 +252,17 @@ const PageHome = () => {
                                 sortItems(myPublications)
                                     .filter((p) => p.messageText || p.type === 'poll')
                                     .map((p, i) => (
-                                        <ContentMY
+                                        <Publication
                                             key={i}
                                             {...p}
+                                            myId={user?.tgUserId}
                                             updateAll={updateAll}
                                             updateWalletBalance={updateWalletBalance}
                                             wallets={wallets}
                                             showCommunityAvatar={true}
                                             activeWithdrawPost={activeWithdrawPost}
                                             setActiveWithdrawPost={setActiveWithdrawPost}
+                                            activeCommentHook={[null, () => {}]}
                                         />
                                     ))}
                         </div>
@@ -271,16 +276,18 @@ const PageHome = () => {
                                 sortItems(myComments)
                                     .filter((p) => p.comment)
                                     .map((p, i) => (
-                                        <ContentMY
+                                        <Comment
                                             key={i}
                                             {...p}
-                                            transactionId={p._id}
+                                            _id={p._id}
+                                            myId={user?.tgUserId}
                                             updateAll={updateAll}
                                             updateWalletBalance={updateWalletBalance}
                                             wallets={wallets}
                                             showCommunityAvatar={true}
                                             activeWithdrawPost={activeWithdrawPost}
                                             setActiveWithdrawPost={setActiveWithdrawPost}
+                                            activeCommentHook={[null, () => {}]}
                                         />
                                     ))}
                         </div>

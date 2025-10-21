@@ -77,9 +77,10 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     );
     const [user] = swr("/api/rest/getme", { init: true });
 
-    const [wallets] = swr(
+    const [wallets, updateWallets] = swr(
         () => user.token ? "/api/rest/wallet" : null,
-        []
+        [],
+        { key: "wallets" }
     );
 
     useEffect(() => {
@@ -136,6 +137,32 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const chatHelpUrl = chat?.helpUrl ?? defaultHelpUrl;
     const chatNameVerb = String(chat?.title ?? "");
     const activeCommentHook = useState(null);
+    
+    // State for withdrawal functionality
+    const [activeWithdrawPost, setActiveWithdrawPost] = useState(null);
+    
+    // Wallet update function for optimistic updates
+    const updateWalletBalance = (currencyId: string, change: number) => {
+        // Optimistically update wallet balance in SWR cache
+        if (!Array.isArray(wallets)) return;
+        
+        const updatedWallets = wallets.map((wallet: any) => {
+            if (wallet.currencyOfCommunityTgChatId === currencyId) {
+                return {
+                    ...wallet,
+                    amount: wallet.amount + change,
+                };
+            }
+            return wallet;
+        });
+        updateWallets(updatedWallets, false); // Update SWR cache without revalidation
+    };
+    
+    const updateAll = async () => {
+        // Trigger SWR revalidation
+        await updateWallets();
+        await updBalance();
+    };
 
     if (!user.token) return null;
 
@@ -306,6 +333,11 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                 highlightTransactionId={findTransaction}
                                 isDetailPage={false}
                                 showCommunityAvatar={false}
+                                wallets={wallets}
+                                updateWalletBalance={updateWalletBalance}
+                                activeWithdrawPost={activeWithdrawPost}
+                                setActiveWithdrawPost={setActiveWithdrawPost}
+                                updateAll={updateAll}
                             />
                         ))}
                 {!paginationEnd && publications.length > 1 && (
