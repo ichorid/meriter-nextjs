@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { IPollData, IPollVote, IPollUserVoteSummary } from "../types";
 import { apiPOST } from "@shared/lib/fetch";
+import { useTranslation } from 'react-i18next';
 
 interface IPollVotingProps {
     pollData: IPollData;
@@ -27,6 +28,7 @@ export const PollVoting = ({
     communityId,
     initiallyExpanded = false,
 }: IPollVotingProps) => {
+    const { t } = useTranslation('polls');
     const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
     const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
     const [voteAmount, setVoteAmount] = useState<number>(1);
@@ -40,30 +42,30 @@ export const PollVoting = ({
     // Calculate time remaining
     const getTimeRemaining = () => {
         const diff = expiresAt.getTime() - now.getTime();
-        if (diff <= 0) return "Завершен";
+        if (diff <= 0) return t('finished');
 
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-        if (days > 0) return `${days} дн ${hours} ч`;
-        if (hours > 0) return `${hours} ч ${minutes} мин`;
-        return `${minutes} мин`;
+        if (days > 0) return `${days} ${t('days')} ${hours} ${t('hours')}`;
+        if (hours > 0) return `${hours} ${t('hours')} ${minutes} ${t('minutes')}`;
+        return `${minutes} ${t('minutes')}`;
     };
 
     const handleVote = async () => {
         if (!selectedOptionId) {
-            setError("Выберите вариант ответа");
+            setError(t('selectOption'));
             return;
         }
 
         if (voteAmount <= 0) {
-            setError("Укажите количество баллов");
+            setError(t('specifyAmount'));
             return;
         }
 
         if (voteAmount > balance) {
-            setError("Недостаточно баллов");
+            setError(t('insufficientPoints'));
             return;
         }
 
@@ -92,7 +94,7 @@ export const PollVoting = ({
                 onVoteSuccess && onVoteSuccess();
             }
         } catch (err: any) {
-            const errorMessage = err?.response?.data?.message || err?.message || "Ошибка при голосовании";
+            const errorMessage = err?.response?.data?.message || err?.message || t('voteError');
             setError(errorMessage);
             // Revert optimistic update on error
             if (updateWalletBalance && communityId) {
@@ -128,22 +130,22 @@ export const PollVoting = ({
                 </div>
                 <div className="flex flex-wrap gap-2 text-xs">
                     <span className={`badge badge-sm ${isExpired ? "badge-error" : "badge-success"}`}>
-                        {isExpired ? "Завершен" : "Активен"}
+                        {isExpired ? t('finished') : t('active')}
                     </span>
                     <span className="badge badge-sm badge-ghost">
-                        {isExpired ? "Опрос завершен" : `⏱ ${getTimeRemaining()}`}
+                        {isExpired ? t('pollFinished') : `${t('timeRemaining')} ${getTimeRemaining()}`}
                     </span>
                     <span className="badge badge-sm badge-ghost">
-                        🗳 {pollData.totalVotes} голосов
+                        🗳 {pollData.totalVotes} {t('votes')}
                     </span>
                     {userVoteSummary && userVoteSummary.voteCount > 0 && (
                         <span className="badge badge-sm badge-primary">
-                            ✓ Вы проголосовали
+                            {t('youVoted')}
                         </span>
                     )}
                 </div>
                 <div className="text-xs opacity-50 mt-2 text-center">
-                    Нажмите для просмотра
+                    {t('clickToView')}
                 </div>
             </div>
         );
@@ -164,7 +166,7 @@ export const PollVoting = ({
                             setIsExpanded(false);
                         }}
                         className="btn btn-ghost btn-sm btn-circle hover:bg-accent/20"
-                        aria-label="Свернуть опрос"
+                        aria-label={t('collapseAria')}
                     >
                         ▲
                     </button>
@@ -174,13 +176,13 @@ export const PollVoting = ({
                 )}
                 <div className="flex flex-wrap gap-2 text-xs">
                     <span className={`badge ${isExpired ? "badge-error" : "badge-success"}`}>
-                        {isExpired ? "🔴 Завершен" : "🟢 Активен"}
+                        {isExpired ? `🔴 ${t('finished')}` : `🟢 ${t('active')}`}
                     </span>
                     <span className="badge badge-ghost">
-                        {isExpired ? "Опрос завершен" : `Осталось: ${getTimeRemaining()}`}
+                        {isExpired ? t('pollFinished') : `${t('timeRemaining')}: ${getTimeRemaining()}`}
                     </span>
                     <span className="badge badge-ghost">
-                        Всего голосов: {pollData.totalVotes}
+                        {t('totalVotes')}: {pollData.totalVotes}
                     </span>
                 </div>
             </div>
@@ -220,7 +222,7 @@ export const PollVoting = ({
                                 </label>
                                 {userVotedAmount > 0 && (
                                     <span className="badge badge-primary badge-sm">
-                                        Вы: {userVotedAmount}
+                                        {t('you')}: {userVotedAmount}
                                     </span>
                                 )}
                             </div>
@@ -232,8 +234,7 @@ export const PollVoting = ({
                                     />
                                 </div>
                                 <span className="text-xs opacity-60">
-                                    {option.votes} баллов ({percentage.toFixed(1)}%) от{" "}
-                                    {option.voterCount} голосов
+                                    {option.votes} {t('points')} ({percentage.toFixed(1)}%) / {option.voterCount} {t('voters')}
                                 </span>
                             </div>
                         </div>
@@ -245,8 +246,8 @@ export const PollVoting = ({
                 <div className="card bg-base-200 shadow-md p-4">
                     <div className="form-control mb-3">
                         <label className="label" htmlFor="vote-amount">
-                            <span className="label-text">Количество баллов:</span>
-                            <span className="label-text-alt">Доступно: {balance}</span>
+                            <span className="label-text">{t('amountLabel')}</span>
+                            <span className="label-text-alt">{t('available')}: {balance}</span>
                         </label>
                         <input
                             id="vote-amount"
@@ -265,20 +266,20 @@ export const PollVoting = ({
                         onClick={handleVote}
                         disabled={isVoting || !selectedOptionId}
                     >
-                        {isVoting ? "Голосую..." : "Проголосовать"}
+                        {isVoting ? t('voting') : t('vote')}
                     </button>
                 </div>
             )}
 
             {userVoteSummary && userVoteSummary.voteCount > 0 && (
                 <div className="alert alert-info">
-                    <span>✓ Вы проголосовали {userVoteSummary.voteCount} раз(а) на общую сумму {userVoteSummary.totalAmount} баллов</span>
+                    <span>{t('youVotedSummary', { count: userVoteSummary.voteCount, amount: userVoteSummary.totalAmount })}</span>
                 </div>
             )}
 
             {isExpired && (
                 <div className="alert alert-warning">
-                    <span>Опрос завершен. Голосование больше недоступно.</span>
+                    <span>{t('pollExpired')}</span>
                 </div>
             )}
         </div>

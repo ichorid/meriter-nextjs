@@ -25,6 +25,7 @@ import { swr } from "@lib/swr";
 import { GLOBAL_FEED_TG_CHAT_ID } from "@config/meriter";
 import { Spinner } from "@shared/components/misc";
 import { FormWithdraw } from "@features/wallet/components/form-withdraw";
+import { useTranslation } from 'react-i18next';
 
 export interface IPublication {
     tgChatName;
@@ -95,6 +96,7 @@ export const Publication = ({
     currencyOfCommunityTgChatId,
     fromTgChatId,
 }: any) => {
+    const { t } = useTranslation('feed');
     if (!tgChatName && type !== 'poll') return null;
     const router = useRouter();
     
@@ -106,7 +108,7 @@ export const Publication = ({
     
     // Determine the title based on beneficiary
     const displayTitle = hasBeneficiary 
-        ? `${tgAuthorName} для ${beneficiaryName}`
+        ? t('forBeneficiary', { author: tgAuthorName, beneficiary: beneficiaryName })
         : tgAuthorName;
     
     // Withdrawal state management (for author's own posts)
@@ -301,7 +303,6 @@ export const Publication = ({
         }
         
         const disabled = withdrawMerits ? !amountInMerits : !amount;
-        const doWhat = directionAdd ? "Добавить" : "Снять";
         
         // Prepare withdraw slider content for author's polls
         const withdrawSliderContent = isAuthor && directionAdd !== undefined && (
@@ -321,7 +322,7 @@ export const Publication = ({
                             onSubmit={() => !disabled && submitWithdrawal()}
                         >
                             <div>
-                                {doWhat} меритов: {amount}
+                                {directionAdd ? t('addMerits', { amount }) : t('removeMerits', { amount })}
                             </div>
                         </FormWithdraw>
                     ))}
@@ -341,7 +342,7 @@ export const Publication = ({
                             onSubmit={() => !disabled && submitWithdrawal()}
                         >
                             <div>
-                                {doWhat} баллов сообщества: {amount}
+                                {directionAdd ? t('addCommunityPoints', { amount }) : t('removeCommunityPoints', { amount })}
                             </div>
                         </FormWithdraw>
                     ))}
@@ -362,7 +363,7 @@ export const Publication = ({
                             if (imgElement) imgElement.src = fallbackUrl;
                         }
                     }}
-                    description={isAuthor ? "📊 Опрос (Мой)" : "📊 Опрос"}
+                    description={isAuthor ? t('pollMy') : t('poll')}
                     onClick={undefined}
                     onDescriptionClick={undefined}
                     bottom={undefined}
@@ -439,7 +440,6 @@ export const Publication = ({
     
     // Prepare withdraw slider content for author's regular posts
     const disabled = withdrawMerits ? !amountInMerits : !amount;
-    const doWhat = directionAdd ? "Добавить" : "Снять";
     
     const withdrawSliderContent = isAuthor && directionAdd !== undefined && (
         <>
@@ -458,7 +458,7 @@ export const Publication = ({
                         onSubmit={() => !disabled && submitWithdrawal()}
                     >
                         <div>
-                            {doWhat} меритов: {amount}
+                            {directionAdd ? t('addMerits', { amount }) : t('removeMerits', { amount })}
                         </div>
                     </FormWithdraw>
                 ))}
@@ -478,7 +478,7 @@ export const Publication = ({
                         onSubmit={() => !disabled && submitWithdrawal()}
                     >
                         <div>
-                            {doWhat} баллов сообщества: {amount}
+                            {directionAdd ? t('addCommunityPoints', { amount }) : t('removeCommunityPoints', { amount })}
                         </div>
                     </FormWithdraw>
                 ))}
@@ -543,7 +543,7 @@ export const Publication = ({
                                         }
                                         onClick={() => setWithdrawMerits(true)}
                                     >
-                                        Мериты{" "}
+                                        {t('merits')}{" "}
                                     </span>
                                     <span
                                         className={
@@ -553,7 +553,7 @@ export const Publication = ({
                                         }
                                         onClick={() => setWithdrawMerits(false)}
                                     >
-                                        Баллы
+                                        {t('points')}
                                     </span>
                                 </div>
                             )}

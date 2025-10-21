@@ -2,6 +2,7 @@
 
 import { A } from '@shared/components/simple/simple-elements';
 import { useState } from "react";
+import { useTranslation } from 'react-i18next';
 
 interface IPollProps {
     tagRoot?: string;
@@ -47,6 +48,7 @@ export const Poll = ({
     folded,
     onSubmit,
 }: IPollProps) => {
+    const { t } = useTranslation('polls');
     const [expanded, setExpanded] = useState({});
 
     const [results, setResults] =
@@ -93,7 +95,7 @@ export const Poll = ({
             {!folded && Object.keys(results).length > 0 && (
                 <div className="submit">
                     <A center button onClick={() => onSubmit(results)}>
-                        Подтвердить
+                        {t('confirm')}
                     </A>
                 </div>
             )}

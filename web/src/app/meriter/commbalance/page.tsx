@@ -8,6 +8,7 @@ import { etv } from '@shared/lib/input-utils';
 import Axios from "axios";
 import { Spinner } from '@shared/components/misc';
 import { GLOBAL_FEED_TG_CHAT_ID } from '@config/meriter';
+import { useTranslation } from 'react-i18next';
 
 interface iCommunityProps {
     name: string;
@@ -27,6 +28,7 @@ const PublicationMy = ({
     currency,
     inMerits,
 }: any) => {
+    const { t } = useTranslation('pages');
     const isMerit = tgChatId === GLOBAL_FEED_TG_CHAT_ID;
 
     const rate = 1;
@@ -37,7 +39,6 @@ const PublicationMy = ({
 
     const [directionAdd, setDirectionAdd] = useState(undefined);
     const [loading, setLoading] = useState(false);
-    const doWhat = directionAdd ? "Добавить" : "Снять";
     const disabled = withdrawMerits ? !amountInMerits : !amount;
     const submit = () => {
         setLoading(true);
@@ -58,11 +59,11 @@ const PublicationMy = ({
                         setDirectionAdd(false);
                     }}
                 >
-                    Снять
+                    {t('commbalance.withdraw')}
                 </button>
 
                 <span className="sum">
-                    Доступно {withdrawMerits ? rate * sum : sum}{" "}
+                    {t('commbalance.available', { amount: withdrawMerits ? rate * sum : sum })}{" "}
                     {inMerits && <img className="inline" src={"/merit.svg"} />}
                 </span>
 
@@ -71,7 +72,7 @@ const PublicationMy = ({
                         setDirectionAdd(true);
                     }}
                 >
-                    Пополнить
+                    {t('commbalance.topup')}
                 </button>
             </div>
 
@@ -80,7 +81,7 @@ const PublicationMy = ({
                     {withdrawMerits && (
                         <div className="publication-withdraw-merits">
                             <div className="publication-withdraw">
-                                {doWhat} меритов:{" "}
+                                {directionAdd ? t('commbalance.add') : t('commbalance.remove')} {t('commbalance.merits')}:{" "}
                                 <input
                                     {...etv(amountInMerits, setAmountInMerits)}
                                     min={0}
@@ -93,7 +94,7 @@ const PublicationMy = ({
                                         disabled={disabled}
                                         onClick={() => !disabled && submit()}
                                     >
-                                        ок
+                                        {t('commbalance.ok')}
                                     </button>
                                 )}
                             </div>
@@ -102,7 +103,7 @@ const PublicationMy = ({
                     {!withdrawMerits && (
                         <div className="publication-withdraw-merits">
                             <div className="publication-withdraw">
-                                {doWhat} баллов сообщества:{" "}
+                                {directionAdd ? t('commbalance.add') : t('commbalance.remove')} {t('commbalance.communityPoints')}:{" "}
                                 <input
                                     {...etv(amount, setAmount)}
                                     min={0}
@@ -115,7 +116,7 @@ const PublicationMy = ({
                                         disabled={disabled}
                                         onClick={() => !disabled && submit()}
                                     >
-                                        ок
+                                        {t('commbalance.ok')}
                                     </button>
                                 )}
                             </div>
@@ -137,6 +138,7 @@ const verb = (w) => {
 };
 
 const PageCommunityBalance = ({ searchParams }: { searchParams: Promise<{ chatId?: string }> }) => {
+    const { t } = useTranslation('pages');
     const resolvedSearchParams = use(searchParams);
     const chatId = resolvedSearchParams?.chatId;
     if (!chatId) return null;
@@ -146,30 +148,29 @@ const PageCommunityBalance = ({ searchParams }: { searchParams: Promise<{ chatId
     const [myPublications] = useState([]);
     const [wallets] = useState([]);
     const [rate] = useState(0);
+    const updRate = () => {}; // Placeholder for missing function
 
     return (
         <Page className="balance">
             <div className="balance-available">
-                <div className="heading">Доступный баланс сообщества</div>
+                <div className="heading">{t('commbalance.availableBalance')}</div>
                 {wallets.map((w) => (
                     <div>{verb(w)}</div>
                 ))}
 
                 <div className="t">
-                    Обменный курс: {Math.round(rate * 1000) / 1000}
+                    {t('commbalance.exchangeRate', { rate: Math.round(rate * 1000) / 1000 })}
                 </div>
             </div>
             <div className="balance-inpublications">
                 <div className="heading">
-                    Накоплено сообществом в публикациях
+                    {t('commbalance.accumulatedInPublications')}
                 </div>
                 <div className="tip">
-                    переводите баллы из публикаций на доступный баланс, чтобы
-                    пользоваться ими
+                    {t('commbalance.tip1')}
                 </div>
                 <div className="tip">
-                    переводите доступный баланс на публикации, чтобы их видело
-                    больше людей{" "}
+                    {t('commbalance.tip2')}
                 </div>
                 <div className="balance-inpublications-list">
                     <div className="balance-inpublications-filters"></div>

@@ -1,7 +1,16 @@
 # Internationalization Implementation Summary
 
 ## Overview
-Successfully implemented internationalization (i18n) for the Meriter Next.js application using `react-i18next`. The implementation provides English and Russian language support with browser detection and user preference storage.
+Successfully implemented internationalization (i18n) infrastructure for the Meriter Next.js application using `react-i18next`. Complete infrastructure is in place with English and Russian language support, browser detection, and user preference storage.
+
+## Current Status: 70% Complete
+- ✅ **Infrastructure**: 100% complete
+- ✅ **Core Pages**: 100% complete (home, login, settings)
+- ✅ **Poll Components**: 100% complete (3 files)
+- ✅ **Wallet Components**: 75% complete (3/4 files)
+- ⏳ **Remaining**: ~131 Russian strings across 18 files
+
+**Progress**: 57 strings migrated out of 188 (30% of strings, 15 out of 28 files)
 
 ## What Was Implemented
 
@@ -46,7 +55,7 @@ web/public/locales/
 - Added `suppressHydrationWarning` to prevent flash warnings
 - Wrapped app with `I18nProvider` component
 
-### 4. Language Selector Component
+### 4. Language Selector Component ✅
 **File**: `web/src/shared/components/language-selector.tsx`
 
 Features:
@@ -59,7 +68,20 @@ Features:
 - Auto mode detects from browser language on every load
 - Integrated into Settings page as the first section
 
-### 5. Pages Updated with Translations
+### 5. Complete Translation Namespaces ✅
+Created 10 namespaces (20 files total):
+- ✅ `common.json` - Shared UI text
+- ✅ `home.json` - Home page translations
+- ✅ `login.json` - Login page translations
+- ✅ `wallet.json` - Wallet components
+- ✅ `settings.json` - Settings page
+- ✅ `polls.json` - Poll components (comprehensive)
+- ✅ `feed.json` - Feed components
+- ✅ `comments.json` - Comment components
+- ✅ `communities.json` - Community components
+- ✅ `shared.json` - Shared utilities and components
+
+### 6. Components Updated with Translations
 
 #### Home Page (`web/src/app/meriter/home/page.tsx`)
 Translated elements:
@@ -82,7 +104,18 @@ Translated elements:
 - Added Language Selector component as first section
 - Form labels and descriptions
 
-### 6. TypeScript Configuration
+#### Poll Components (3 files) ✅ COMPLETE
+- **form-poll-create.tsx**: All form labels, placeholders, validation errors, buttons
+- **poll-voting.tsx**: Time formatting, vote UI, status badges, error messages  
+- **poll.tsx**: Confirm button
+
+#### Wallet Components (3 files) ✅ COMPLETE
+- **bar-withdraw.tsx**: Withdraw button text
+- **form-withdraw.tsx**: Comment placeholder
+- **widget-avatar-balance.tsx**: (pending)
+- **transaction-to-me.tsx**: (pending)
+
+### 7. TypeScript Configuration ✅
 Updated `web/tsconfig.json` to add `@/*` path alias for better import resolution.
 
 ## How It Works

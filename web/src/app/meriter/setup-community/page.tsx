@@ -6,9 +6,11 @@ import { swr } from '@lib/swr';
 import { useEffect, useState, useRef } from "react";
 import { ThemeToggle } from "@shared/components/theme-toggle";
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 
 const PageSetupCommunity = () => {
     const router = useRouter();
+    const { t, i18n } = useTranslation('pages');
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -50,11 +52,11 @@ const PageSetupCommunity = () => {
                     console.log('🔵 Redirecting to /meriter/manage for community setup...');
                     router.push('/meriter/manage');
                 } else {
-                    setAuthError('Ошибка авторизации');
+                    setAuthError(t('setupCommunity.authError'));
                 }
             } catch (error) {
                 console.error('🔴 Auth error:', error);
-                setAuthError('Ошибка подключения к серверу: ' + (error as Error).message);
+                setAuthError(t('setupCommunity.connectionError', { message: (error as Error).message }));
             } finally {
                 setIsAuthenticating(false);
             }
@@ -70,7 +72,7 @@ const PageSetupCommunity = () => {
             script.setAttribute('data-radius', '20');
             script.setAttribute('data-onauth', 'onTelegramAuth(user)');
             script.setAttribute('data-request-access', 'write');
-            script.setAttribute('data-lang', 'ru');
+            script.setAttribute('data-lang', i18n.language === 'ru' ? 'ru' : 'en');
             script.async = true;
             
             telegramWidgetRef.current.appendChild(script);
@@ -81,7 +83,7 @@ const PageSetupCommunity = () => {
             // Cleanup
             delete (window as any).onTelegramAuth;
         };
-    }, [router]);
+    }, [router, i18n.language]);
 
     useEffect(() => {
         if (user?.token) {
@@ -98,7 +100,7 @@ const PageSetupCommunity = () => {
                     <ThemeToggle />
                 </div>
                 <div className="center">
-                    <div>Переход на страницу настройки...</div>
+                    <div>{t('setupCommunity.redirecting')}</div>
                 </div>
             </Page>
         );
@@ -116,19 +118,19 @@ const PageSetupCommunity = () => {
 
                 <div className="mar-40">
                     <h2 style={{ fontSize: '24px', marginBottom: '20px', textAlign: 'center' }}>
-                        Настройка сообщества
+                        {t('setupCommunity.title')}
                     </h2>
                     <p style={{ marginBottom: '20px', textAlign: 'center', maxWidth: '500px' }}>
-                        Вы добавили бота Meriter в свою группу! Сейчас мы настроим его работу.
+                        {t('setupCommunity.welcome')}
                     </p>
                     <p style={{ marginBottom: '30px', textAlign: 'center', maxWidth: '500px' }}>
-                        Для начала авторизуйтесь через Telegram:
+                        {t('setupCommunity.authPrompt')}
                     </p>
                 </div>
 
                 <div className="mar-40">
                     {isAuthenticating ? (
-                        <div>Авторизация...</div>
+                        <div>{t('setupCommunity.authenticating')}</div>
                     ) : (
                         <div ref={telegramWidgetRef} id="telegram-login-widget"></div>
                     )}
@@ -139,13 +141,13 @@ const PageSetupCommunity = () => {
 
                 <div className="mar-40">
                     <p style={{ fontSize: '14px', color: '#666', textAlign: 'center', maxWidth: '500px' }}>
-                        После авторизации вы сможете:
+                        {t('setupCommunity.afterAuthYouCan')}
                     </p>
                     <ul style={{ fontSize: '14px', color: '#666', textAlign: 'left', maxWidth: '500px', margin: '10px auto' }}>
-                        <li>✓ Настроить ценности сообщества (хештеги)</li>
-                        <li>✓ Задать название баллов</li>
-                        <li>✓ Выбрать символ для баллов</li>
-                        <li>✓ Отправить памятку участникам</li>
+                        <li>{t('setupCommunity.setupValues')}</li>
+                        <li>{t('setupCommunity.setPointsName')}</li>
+                        <li>{t('setupCommunity.chooseSymbol')}</li>
+                        <li>{t('setupCommunity.sendGuide')}</li>
                     </ul>
                 </div>
             </div>

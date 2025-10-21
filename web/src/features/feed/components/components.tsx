@@ -6,8 +6,10 @@ import ReactMarkdown from 'react-markdown'
 import useDebounce from '@lib/debounce'
 import { swr } from '@lib/swr'
 import { IPublicationElement } from '../types'
+import { useTranslation } from 'react-i18next'
 
 const PublicationElement = ({ content, _id: initial_Id, edit }: IPublicationElement & { edit: boolean }) => {
+    const { t } = useTranslation('feed');
     const [mode, setMode] = useState(edit ? 'edit' : 'view')
     const [_id, set_Id] = useState(initial_Id)
     const [markdown, setMarkdown] = useState(content?.md ?? '')
@@ -66,15 +68,16 @@ const PublicationElement = ({ content, _id: initial_Id, edit }: IPublicationElem
                 </div>
 
                 {saving === true ? (
-                    <div className="saving">Сохраняю...</div>
+                    <div className="saving">{t('saving')}</div>
                 ) : saving === false ? (
-                    <div className="saving">Сохранено!</div>
+                    <div className="saving">{t('saved')}</div>
                 ) : null}
             </div>
         )
 }
 
 export const PublicationsEditor = () => {
+    const { t } = useTranslation('feed');
     const [publications, mutate] = swr('/api/publication/list', [], { key: 'publications' })
     const [editIdx, setEditIdx] = useState<number | undefined>(undefined)
     
@@ -87,7 +90,7 @@ export const PublicationsEditor = () => {
                         setEditIdx(undefined)
                         mutate([])
                     }}>
-                    ← Назад
+                    {t('back')}
                 </button>
                 <PublicationElement {...publications[editIdx]} edit={true} />
             </div>
@@ -101,7 +104,7 @@ export const PublicationsEditor = () => {
                     mutate([{ content: { md: '' } }, ...publications], false)
                     setEditIdx(0)
                 }}>
-                + Добавить публикацию
+                {t('addPublication')}
             </button>
             <div className="publications">
                 {publications.map((p: IPublicationElement, i: number) => (

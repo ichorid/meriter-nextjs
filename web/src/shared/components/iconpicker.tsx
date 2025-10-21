@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import type { EmojiClickData } from 'emoji-picker-react'
+import { useTranslation } from 'react-i18next'
 
 // Dynamically import EmojiPicker to avoid SSR issues
 const EmojiPicker = dynamic(
@@ -11,6 +12,7 @@ const EmojiPicker = dynamic(
 )
 
 export const IconPicker = ({ icon, cta, setIcon }) => {
+    const { t } = useTranslation('pages');
     const [opened, setOpened] = useState(false)
 
     const onEmojiClick = (emojiData: EmojiClickData) => {
@@ -34,7 +36,7 @@ export const IconPicker = ({ icon, cta, setIcon }) => {
                     className="btn btn-outline btn-sm"
                     onClick={() => setOpened(!opened)}
                 >
-                    {icon ? 'Изменить символ' : cta}
+                    {icon ? t('iconPicker.changeIcon') : cta}
                 </button>
             </div>
             
@@ -42,7 +44,7 @@ export const IconPicker = ({ icon, cta, setIcon }) => {
                 <div className="relative">
                     <div className="card bg-base-100 border border-base-300 shadow-lg p-2">
                         <div className="flex justify-between items-center mb-2 px-2">
-                            <span className="text-sm font-medium">Выберите эмодзи</span>
+                            <span className="text-sm font-medium">{t('iconPicker.selectEmoji')}</span>
                             <button
                                 type="button"
                                 className="btn btn-ghost btn-xs btn-circle"
@@ -55,7 +57,7 @@ export const IconPicker = ({ icon, cta, setIcon }) => {
                             onEmojiClick={onEmojiClick}
                             width="100%"
                             height={400}
-                            searchPlaceHolder="Поиск эмодзи..."
+                            searchPlaceHolder={t('iconPicker.searchPlaceholder')}
                             previewConfig={{
                                 showPreview: false
                             }}

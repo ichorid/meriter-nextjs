@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { apiPOST } from "@shared/lib/fetch";
 import { A } from "@shared/components/simple/simple-elements";
+import { useTranslation } from 'react-i18next';
 
 interface IPollOption {
     id: string;
@@ -22,6 +23,7 @@ export const FormPollCreate = ({
     onSuccess,
     onCancel,
 }: IFormPollCreateProps) => {
+    const { t } = useTranslation('polls');
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [options, setOptions] = useState<IPollOption[]>([
@@ -36,7 +38,7 @@ export const FormPollCreate = ({
 
     const addOption = () => {
         if (options.length >= 10) {
-            setError("Максимум 10 вариантов ответа");
+            setError(t('errorMaxOptions'));
             return;
         }
         const newId = (Math.max(...options.map((o) => parseInt(o.id))) + 1).toString();
@@ -46,7 +48,7 @@ export const FormPollCreate = ({
 
     const removeOption = (id: string) => {
         if (options.length <= 2) {
-            setError("Минимум 2 варианта ответа");
+            setError(t('errorMinOptions'));
             return;
         }
         setOptions(options.filter((opt) => opt.id !== id));
@@ -59,23 +61,23 @@ export const FormPollCreate = ({
 
     const validate = () => {
         if (!title.trim()) {
-            setError("Введите название опроса");
+            setError(t('errorTitleRequired'));
             return false;
         }
 
         const filledOptions = options.filter((opt) => opt.text.trim());
         if (filledOptions.length < 2) {
-            setError("Необходимо заполнить минимум 2 варианта ответа");
+            setError(t('errorMinOptionsFilled'));
             return false;
         }
 
         if (!selectedWallet) {
-            setError("Выберите сообщество");
+            setError(t('errorSelectCommunity'));
             return false;
         }
 
         if (timeValue <= 0) {
-            setError("Укажите корректное время");
+            setError(t('errorInvalidTime'));
             return false;
         }
 
@@ -135,7 +137,7 @@ export const FormPollCreate = ({
             }
         } catch (err) {
             console.error('📊 Poll creation error:', err);
-            const errorMessage = err.response?.data?.message || err.message || "Ошибка при создании опроса";
+            const errorMessage = err.response?.data?.message || err.message || t('errorCreating');
             setError(errorMessage);
         } finally {
             setIsCreating(false);
@@ -145,15 +147,15 @@ export const FormPollCreate = ({
     return (
         <div className="card bg-base-100 shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="card-body">
-                <h2 className="card-title text-2xl mb-4">Создать опрос</h2>
+                <h2 className="card-title text-2xl mb-4">{t('createTitle')}</h2>
 
                 {/* Poll Title Section */}
                 <div className="card bg-base-100 shadow-md mb-4">
                     <div className="card-body">
-                        <h3 className="card-title text-lg">Название опроса</h3>
+                        <h3 className="card-title text-lg">{t('pollTitle')}</h3>
                         <div className="form-control">
                             <label className="label" htmlFor="poll-title">
-                                <span className="label-text">Введите название опроса *</span>
+                                <span className="label-text">{t('pollTitleLabel')}</span>
                             </label>
                             <input
                                 id="poll-title"
@@ -161,7 +163,7 @@ export const FormPollCreate = ({
                                 className="input input-bordered w-full"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                placeholder="Название опроса"
+                                placeholder={t('pollTitlePlaceholder')}
                                 disabled={isCreating}
                             />
                         </div>
@@ -171,17 +173,17 @@ export const FormPollCreate = ({
                 {/* Description Section */}
                 <div className="card bg-base-100 shadow-md mb-4">
                     <div className="card-body">
-                        <h3 className="card-title text-lg">Описание</h3>
+                        <h3 className="card-title text-lg">{t('description')}</h3>
                         <div className="form-control">
                             <label className="label" htmlFor="poll-description">
-                                <span className="label-text">Добавьте описание (необязательно)</span>
+                                <span className="label-text">{t('descriptionLabel')}</span>
                             </label>
                             <textarea
                                 id="poll-description"
                                 className="textarea textarea-bordered w-full"
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Добавьте описание опроса"
+                                placeholder={t('descriptionPlaceholder')}
                                 disabled={isCreating}
                                 rows={3}
                             />
@@ -192,7 +194,7 @@ export const FormPollCreate = ({
                 {/* Poll Options Section */}
                 <div className="card bg-base-100 shadow-md mb-4">
                     <div className="card-body">
-                        <h3 className="card-title text-lg">Варианты ответа</h3>
+                        <h3 className="card-title text-lg">{t('options')}</h3>
                         <div className="space-y-3">
                             {options.map((option, index) => (
                                 <div key={`option-${option.id}`} className="border border-base-300 rounded-lg p-3 bg-base-100">
@@ -203,7 +205,7 @@ export const FormPollCreate = ({
                                             className="input input-bordered flex-1"
                                             value={option.text}
                                             onChange={(e) => updateOption(option.id, e.target.value)}
-                                            placeholder={`Вариант ${index + 1}`}
+                                            placeholder={t('optionPlaceholder', { number: index + 1 })}
                                             disabled={isCreating}
                                         />
                                         {options.length > 2 && (
@@ -213,7 +215,7 @@ export const FormPollCreate = ({
                                                 onClick={() => removeOption(option.id)}
                                                 disabled={isCreating}
                                             >
-                                                Удалить
+                                                {t('removeOption')}
                                             </button>
                                         )}
                                     </div>
@@ -227,7 +229,7 @@ export const FormPollCreate = ({
                                     onClick={addOption}
                                     disabled={isCreating}
                                 >
-                                    + Добавить вариант
+                                    {t('addOption')}
                                 </button>
                             )}
                         </div>
@@ -238,10 +240,10 @@ export const FormPollCreate = ({
                 {!communityId && (
                     <div className="card bg-base-100 shadow-md mb-4">
                         <div className="card-body">
-                            <h3 className="card-title text-lg">Сообщество</h3>
+                            <h3 className="card-title text-lg">{t('community')}</h3>
                             <div className="form-control">
                                 <label className="label" htmlFor="poll-community">
-                                    <span className="label-text">Выберите сообщество *</span>
+                                    <span className="label-text">{t('selectCommunity')}</span>
                                 </label>
                                 <select
                                     id="poll-community"
@@ -250,13 +252,13 @@ export const FormPollCreate = ({
                                     onChange={(e) => setSelectedWallet(e.target.value)}
                                     disabled={isCreating}
                                 >
-                                    <option value="">Выберите сообщество</option>
+                                    <option value="">{t('selectCommunityPlaceholder')}</option>
                                     {wallets.map((wallet) => (
                                         <option
                                             key={wallet._id}
                                             value={wallet.meta?.currencyOfCommunityTgChatId}
                                         >
-                                            {wallet.name || wallet.meta?.currencyNames?.many || "Сообщество"}
+                                            {wallet.name || wallet.meta?.currencyNames?.many || t('communityFallback')}
                                         </option>
                                     ))}
                                 </select>
@@ -268,10 +270,10 @@ export const FormPollCreate = ({
                 {/* Duration Section */}
                 <div className="card bg-base-100 shadow-md mb-4">
                     <div className="card-body">
-                        <h3 className="card-title text-lg">Длительность опроса</h3>
+                        <h3 className="card-title text-lg">{t('duration')}</h3>
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text">Сколько времени будет доступен опрос *</span>
+                                <span className="label-text">{t('durationLabel')}</span>
                             </label>
                             <div className="flex gap-2">
                                 <input
@@ -290,9 +292,9 @@ export const FormPollCreate = ({
                                     }
                                     disabled={isCreating}
                                 >
-                                    <option value="minutes">минут</option>
-                                    <option value="hours">часов</option>
-                                    <option value="days">дней</option>
+                                    <option value="minutes">{t('minutes')}</option>
+                                    <option value="hours">{t('hours')}</option>
+                                    <option value="days">{t('days')}</option>
                                 </select>
                             </div>
                         </div>
@@ -316,7 +318,7 @@ export const FormPollCreate = ({
                                     onClick={onCancel} 
                                     disabled={isCreating}
                                 >
-                                    Отмена
+                                    {t('cancel')}
                                 </button>
                             )}
                             <button
@@ -327,10 +329,10 @@ export const FormPollCreate = ({
                                 {isCreating ? (
                                     <>
                                         <span className="loading loading-spinner loading-sm"></span>
-                                        Создаю...
+                                        {t('creating')}
                                     </>
                                 ) : (
-                                    'Создать опрос'
+                                    t('createPoll')
                                 )}
                             </button>
                         </div>

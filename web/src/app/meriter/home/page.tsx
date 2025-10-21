@@ -169,7 +169,7 @@ const PageHome = () => {
                 </div>
             </HeaderAvatarBalance>
             <div className="balance-available">
-                {false && <div className="heading">Доступный баланс</div>}
+                {false && <div className="heading">{t('availableBalance')}</div>}
                 {wallets && wallets.map((w) => (
                     <WalletCommunity key={w._id} {...w} />
                 ))}

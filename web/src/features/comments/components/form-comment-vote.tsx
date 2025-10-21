@@ -4,6 +4,7 @@ import { useState } from "react";
 import { etv } from '@shared/lib/input-utils';
 import Slider from "rc-slider";
 import { classList } from '@lib/classList';
+import { useTranslation } from 'react-i18next';
 
 interface iFormCommentVoteProps {
     comment: string;
@@ -32,6 +33,7 @@ export const FormCommentVote = ({
     error,
     reason,
 }: iFormCommentVoteProps) => {
+    const { t } = useTranslation('comments');
     const [selected, setSelected] = useState(false);
     const overflow = amount >= 0 ? amount > freePlus : amount < -freeMinus;
     const directionPlus = amount > 0 ? true : false;
@@ -47,30 +49,28 @@ export const FormCommentVote = ({
             <div className="border-t-2 border-base-300 w-full mb-4"></div>
             {directionPlus && (
                 <div className="text-sm mb-2 text-success">
-                    Плюсануть на {Math.min(freePlus, Math.abs(amount))}/
-                    {freePlus} суточной квоты
+                    {t('upvoteQuota', { used: Math.min(freePlus, Math.abs(amount)), total: freePlus })}
                 </div>
             )}
             {directionPlus && (
                 <div className="text-sm mb-2 text-success">
-                    Плюсануть на {overflow ? amount - freePlus : 0} с Баланса
+                    {t('upvoteBalance', { amount: overflow ? amount - freePlus : 0 })}
                 </div>
             )}
             {amount === 0 && (
-                <div className="text-sm mb-2 opacity-60">Слайдер вправо - плюсануть</div>
+                <div className="text-sm mb-2 opacity-60">{t('sliderUpvote')}</div>
             )}
             {amount === 0 && maxMinus != 0 && (
-                <div className="text-sm mb-2 opacity-60">Слайдер влево - минусануть</div>
+                <div className="text-sm mb-2 opacity-60">{t('sliderDownvote')}</div>
             )}
             {directionMinus && freeMinus > 0 && (
                 <div className="text-sm mb-2 text-error">
-                    Минусануть на {Math.min(freeMinus, Math.abs(amount))}/
-                    {freeMinus} суточной квоты
+                    {t('downvoteQuota', { used: Math.min(freeMinus, Math.abs(amount)), total: freeMinus })}
                 </div>
             )}
             {directionMinus && (
                 <div className="text-sm mb-2 text-error">
-                    Минусануть на {overflow ? amount - freeMinus : 0} с Баланса
+                    {t('downvoteBalance', { amount: overflow ? amount - freeMinus : 0 })}
                 </div>
             )}
 
@@ -89,8 +89,8 @@ export const FormCommentVote = ({
                     style={selected ? { height: "100px" } : { height: "75px" }}
                     placeholder={
                         reason ?? amount == 0
-                            ? "Двигайте слайдер, чтобы выбрать количество баллов"
-                            : "Расскажите, почему вы поставили такую оценку. Нам ценно ваше мнение"
+                            ? t('sliderHint')
+                            : t('commentHint')
                     }
                     {...etv(comment, setComment)}
                 />

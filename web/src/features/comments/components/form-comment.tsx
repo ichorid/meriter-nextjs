@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormCommentVote } from "./form-comment-vote";
+import { useTranslation } from 'react-i18next';
 
 export const FormComment = ({
     uid,
@@ -16,8 +17,9 @@ export const FormComment = ({
     commentAdd,
     error,
     onClose,
-}) => (
-    <div
+}) => {
+    const { t } = useTranslation('comments');
+    return (<div
         key={uid + "_unable"}
         onClick={(e) => {
             if (e.stopPropagation) {
@@ -36,22 +38,22 @@ export const FormComment = ({
             }}
         >
             <span style={{ cursor: "pointer" }} onClick={onClose}>
-                закрыть[x]
+                {t('close')}
             </span>
         </div>
         {maxMinus == 0 && amount < 0 && (
             <div className="notice" style={{ padding: "20px" }}>
-                Минусовое голосование возможно только с Баланса.{" "}
+                {t('downvoteRequiresBalance')}{" "}
                 <Link href="/meriter/home">
-                    Cнимите баллы с публикаций на свой Баланс
+                    {t('withdrawToBalance')}
                 </Link>{" "}
             </div>
         )}
 
         {maxMinus == 0 && amount < 0 ? null : !hasPoints ? (
             <div className="notice" style={{ padding: "20px" }}>
-                Недостаточно баллов.{" "}
-                <Link href="/meriter/home">Добавьте их на свой Баланс</Link>{" "}
+                {t('insufficientPoints')}{" "}
+                <Link href="/meriter/home">{t('addToBalance')}</Link>{" "}
             </div>
         ) : (
             <FormCommentVote
@@ -69,4 +71,5 @@ export const FormComment = ({
             />
         )}
     </div>
-);
+    );
+};

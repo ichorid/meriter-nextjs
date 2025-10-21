@@ -12,10 +12,12 @@ import {
 } from '@lib/telegram';
 import { Publication } from "@features/feed";
 import { ThemeToggle } from "@shared/components/theme-toggle";
+import { useTranslation } from 'react-i18next';
 import { ellipsize } from "@shared/lib/text";
 
 const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> }) => {
     const router = useRouter();
+    const { t } = useTranslation('pages');
     const resolvedParams = use(params);
     const chatId = resolvedParams.id;
     const slug = resolvedParams.slug;
@@ -75,7 +77,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                         src={"/meriter/help.svg"}
                         alt="Help"
                     />
-                    Помощь
+                    {t('communities.help')}
                 </span>
             </div>
             <HeaderAvatarBalance

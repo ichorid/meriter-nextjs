@@ -1,6 +1,9 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
+
 export const BarWithdraw = ({ onWithdraw, onTopup, balance, children }) => {
+    const { t } = useTranslation('shared');
     const displayBalance = balance ?? 0;
     
     // Don't show withdraw bar if there's nothing to withdraw
@@ -18,7 +21,7 @@ export const BarWithdraw = ({ onWithdraw, onTopup, balance, children }) => {
                     onWithdraw();
                 }}
             >
-                Снять: <span className="font-bold">{displayBalance}</span>
+                {t('withdraw')} <span className="font-bold">{displayBalance}</span>
             </button>
         </div>
     );

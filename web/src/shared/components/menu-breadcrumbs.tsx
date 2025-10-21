@@ -1,6 +1,7 @@
 'use client';
 
 import Link from "next/link";
+import { useTranslation } from 'react-i18next';
 
 export const MenuBreadcrumbs = ({
     pathname,
@@ -10,6 +11,7 @@ export const MenuBreadcrumbs = ({
     postText,
     children,
 }: any) => {
+    const { t } = useTranslation('common');
     return (
         <div className="breadcrumbs text-sm mb-4">
             <ul>
@@ -20,7 +22,7 @@ export const MenuBreadcrumbs = ({
                             src={"/meriter/home.svg"}
                             alt="Home"
                         />
-                        <span>Главная</span>
+                        <span>{t('home')}</span>
                     </Link>
                 </li>
                 {chatId && !tagRus && !postText && (

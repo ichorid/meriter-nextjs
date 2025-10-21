@@ -3,6 +3,7 @@
 import { CardCommentVote } from "@features/comments/components/card-comment-vote";
 import { telegramGetAvatarLink } from "@lib/telegram";
 import { BarVote } from "@shared/components/bar-vote";
+import { useTranslation } from 'react-i18next';
 
 class RestTransactionObject {
     amount: number; //0
@@ -34,15 +35,16 @@ export const TransactionToMe = ({
 }: {
     transaction: RestTransactionObject;
 }) => {
+    const { t } = useTranslation('shared');
     const parentTextCut = transaction.parentText
         ? transaction.parentText.length < 80
             ? transaction.parentText
             : transaction.parentText?.substr(0, 80) + "..."
-        : "эту запись";
+        : t('thisPost');
     return (
         <div>
             <CardCommentVote
-                title={"от " + transaction.fromUserTgName}
+                title={`${t('from')} ${transaction.fromUserTgName}`}
                 subtitle={new Date(transaction.ts).toLocaleString()}
                 content={transaction.comment}
                 rate={`${transaction.directionPlus ? "+" : "-"} ${Math.abs(
@@ -56,7 +58,7 @@ export const TransactionToMe = ({
                 bottom={
                     transaction.inPublicationSlug && (
                         <div>
-                            В ответ на:{" "}
+                            {t('inReplyTo')}{" "}
                             <a
                                 href={`/meriter/${transaction.inSpaceSlug}/${
                                     transaction.inPublicationSlug
@@ -66,7 +68,7 @@ export const TransactionToMe = ({
                                         : ""
                                 }`}
                             >
-                                {parentTextCut ? parentTextCut : "эту запись"}
+                                {parentTextCut ? parentTextCut : t('thisPost')}
                             </a>
                         </div>
                     )

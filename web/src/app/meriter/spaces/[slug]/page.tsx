@@ -16,9 +16,11 @@ import type { Publication as IPublication } from "@features/feed/types";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { ThemeToggle } from "@shared/components/theme-toggle";
+import { useTranslation } from 'react-i18next';
 
 const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
     const router = useRouter();
+    const { t } = useTranslation('pages');
     const resolvedParams = use(params);
     const spaceSlug = resolvedParams.slug;
     const pathname = `/meriter/spaces/${spaceSlug}`;
@@ -170,7 +172,7 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                         src={"/meriter/help.svg"}
                         alt="Help"
                     />
-                    Помощь
+                    {t('spaces.help')}
                 </span>
             </div>
             <HeaderAvatarBalance
@@ -197,12 +199,12 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                             </div>
                             {chatUrl && (
                                 <div className="tip">
-                                    Чтобы добавить сюда публикацию,{" "}
+                                    {t('spaces.toAddPublication')}{" "}
                                     <a href={chatUrl}>
                                         {" "}
-                                        напишите сообщение в корпоративный чат
+                                        {t('spaces.writeMessageInChat')}
                                     </a>{" "}
-                                    с тэгом #{space?.tagRus}
+                                    {t('spaces.withTag')} #{space?.tagRus}
                                     <br />
                                     <br />
                                 </div>
@@ -211,11 +213,11 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                     </>
                 )}
             </HeaderAvatarBalance>
-            {error === true && <div>Нет доступа</div>}
+            {error === true && <div>{t('spaces.noAccess')}</div>}
 
             <div className="mb-6">
                 {spaceSlug && (
-                    <h3 className="text-xl font-bold mb-4">Топ людей:</h3>
+                    <h3 className="text-xl font-bold mb-4">{t('spaces.topPeople')}</h3>
                 )}
                 {spaceSlug &&
                     rank
@@ -228,7 +230,7 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                             >
                                 <div className="font-medium">{r.name}</div>
                                 <div className="text-sm opacity-60">
-                                    Рейтинг: {r.rating}
+                                    {t('spaces.rating', { rating: r.rating })}
                                 </div>
                             </CardWithAvatar>
                         ))}
@@ -239,7 +241,7 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                             onClick={() => setRankLimit(rankLimit + 20)}
                             className="btn btn-ghost btn-sm opacity-50"
                         >
-                            Показать больше
+                            {t('spaces.showMore')}
                         </button>
                     )}
 
@@ -248,7 +250,7 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                         onClick={() => setRankLimit(2 + 1)}
                         className="btn btn-ghost btn-sm opacity-50 ml-2"
                     >
-                        Свернуть
+                        {t('spaces.collapse')}
                     </button>
                 )}
             </div>
@@ -256,7 +258,7 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
             <div className="space-y-4">
                 {spaceSlug && (
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-bold">Топ публикаций:</h3>
+                        <h3 className="text-xl font-bold">{t('spaces.topPublications')}</h3>
                     </div>
                 )}
                 {user.token &&
@@ -278,7 +280,7 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                         ))}
                 {!paginationEnd && publications.length > 1 && (
                     <button onClick={() => setSize(size + 1)} className="btn btn-primary btn-wide mx-auto block">
-                        Загрузить еще
+                        {t('spaces.loadMore')}
                     </button>
                 )}
             </div>

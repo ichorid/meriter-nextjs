@@ -129,7 +129,7 @@ const SettingsPage = () => {
                             {isSyncing ? t('syncing') : t('syncCommunities')}
                         </button>
                         {syncMessage && (
-                            <div className={`mt-2 text-sm ${syncMessage.includes('Ошибка') ? 'text-error' : 'text-success'}`}>
+                            <div className={`mt-2 text-sm ${syncMessage.includes(t('syncError')) ? 'text-error' : 'text-success'}`}>
                                 {syncMessage}
                             </div>
                         )}

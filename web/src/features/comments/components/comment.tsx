@@ -14,6 +14,7 @@ import { swr } from "@lib/swr";
 import Axios from "axios";
 import { Spinner } from "@shared/components/misc";
 import { FormWithdraw } from "@features/wallet/components/form-withdraw";
+import { useTranslation } from 'react-i18next';
 
 export const Comment = ({
     _id,
@@ -48,6 +49,8 @@ export const Comment = ({
     tgChatId,
     showCommunityAvatar,
 }) => {
+    const { t } = useTranslation('comments');
+    
     // Check if current user is the author
     const isAuthor = myId === fromUserTgId;
     
@@ -204,7 +207,6 @@ export const Comment = ({
     
     // Prepare withdraw slider content for author's comments
     const disabled = withdrawMerits ? !amountInMerits : !amount;
-    const doWhat = directionAdd ? "Добавить" : "Снять";
     
     const withdrawSliderContent = isAuthor && directionAdd !== undefined && (
         <>
@@ -223,7 +225,7 @@ export const Comment = ({
                         onSubmit={() => !disabled && submitWithdrawal()}
                     >
                         <div>
-                            {doWhat} меритов: {amount}
+                            {directionAdd ? t('addMerits', { amount }) : t('removeMerits', { amount })}
                         </div>
                     </FormWithdraw>
                 ))}
@@ -243,7 +245,7 @@ export const Comment = ({
                         onSubmit={() => !disabled && submitWithdrawal()}
                     >
                         <div>
-                            {doWhat} баллов сообщества: {amount}
+                            {directionAdd ? t('addCommunityPoints', { amount }) : t('removeCommunityPoints', { amount })}
                         </div>
                     </FormWithdraw>
                 ))}
@@ -300,7 +302,7 @@ export const Comment = ({
                                         }
                                         onClick={() => setWithdrawMerits(true)}
                                     >
-                                        Мериты{" "}
+                                        {t('merits')}{" "}
                                     </span>
                                     <span
                                         className={
@@ -310,7 +312,7 @@ export const Comment = ({
                                         }
                                         onClick={() => setWithdrawMerits(false)}
                                     >
-                                        Баллы
+                                        {t('points')}
                                     </span>
                                 </div>
                             )}

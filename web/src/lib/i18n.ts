@@ -25,7 +25,19 @@ i18n.use(initReactI18next).init({
     resources: {}, // Loaded dynamically
     lng: getBrowserLanguage(),
     fallbackLng: 'en',
-    ns: ['common', 'home', 'login', 'wallet', 'settings'],
+    ns: [
+        'common',
+        'home',
+        'login',
+        'wallet',
+        'settings',
+        'polls',
+        'feed',
+        'comments',
+        'communities',
+        'shared',
+        'pages',
+    ],
     defaultNS: 'common',
     interpolation: {
         escapeValue: false,

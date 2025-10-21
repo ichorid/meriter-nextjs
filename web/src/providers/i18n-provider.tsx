@@ -11,7 +11,19 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
         // Load translations dynamically
         const loadTranslations = async () => {
             const locales = ['en', 'ru'];
-            const namespaces = ['common', 'home', 'login', 'wallet', 'settings'];
+            const namespaces = [
+                'common',
+                'home',
+                'login',
+                'wallet',
+                'settings',
+                'polls',
+                'feed',
+                'comments',
+                'communities',
+                'shared',
+                'pages',
+            ];
 
             for (const locale of locales) {
                 for (const ns of namespaces) {

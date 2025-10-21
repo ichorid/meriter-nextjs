@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { etv } from '@shared/lib/input-utils';
 import Slider from "rc-slider";
+import { useTranslation } from 'react-i18next';
 
 export const FormWithdraw = ({
     comment,
@@ -15,6 +16,7 @@ export const FormWithdraw = ({
     children,
     isWithdrawal,
 }) => {
+    const { t } = useTranslation('shared');
     const [selected, setSelected] = useState(false);
 
     return (
@@ -47,7 +49,7 @@ export const FormWithdraw = ({
                                     ? { height: "100px" }
                                     : { height: "50px" }
                             }
-                            placeholder="Напишите комментарий"
+                            placeholder={t('writeComment')}
                             {...etv(comment, setComment)}
                         />
                         <button

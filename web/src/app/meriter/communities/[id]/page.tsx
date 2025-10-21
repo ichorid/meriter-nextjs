@@ -15,12 +15,14 @@ import { Publication } from "@features/feed";
 import type { Publication as IPublication } from "@features/feed/types";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
+import { useTranslation } from 'react-i18next';
 import { ThemeToggle } from "@shared/components/theme-toggle";
 import { CommunityAvatarWithBadge } from "@shared/components/community-avatar-with-badge";
 import { classList } from "@lib/classList";
 
 const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
+    const { t } = useTranslation('pages');
     const resolvedParams = use(params);
     const chatId = resolvedParams.id;
     const pathname = `/meriter/communities/${chatId}`;
@@ -195,7 +197,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                         src={"/meriter/help.svg"}
                         alt="Help"
                     />
-                    Помощь
+                    {t('communities.help')}
                 </span>
             </div>
             <HeaderAvatarBalance
@@ -231,10 +233,10 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                         <div>
                             {chatUrl && (
                                 <div className="tip">
-                                    Чтобы добавить сюда публикацию,{" "}
+                                    {t('communities.toAddPublication')}{" "}
                                     <a href={chatUrl}>
                                         {" "}
-                                        напишите сообщение в корпоративный чат
+                                        {t('communities.writeMessageInChat')}
                                     </a>{" "}
                                     <br />
                                     <br />
@@ -247,7 +249,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                         opacity: ".5",
                                     }}
                                 >
-                                    Фильтр публикаций по ценностям:
+                                    {t('communities.filterByValues')}
                                 </div>
                             )}
                             {comms.spaces &&
@@ -272,7 +274,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     </>
                 )}
             </HeaderAvatarBalance>
-            {error === true && <div>Нет доступа</div>}
+            {error === true && <div>{t('communities.noAccess')}</div>}
 
             <button
                 className="create-poll-button"
@@ -289,7 +291,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     width: "100%"
                 }}
             >
-                📊 Создать опрос
+                {t('communities.createPoll')}
             </button>
 
             <div className="flex justify-end mb-4">
@@ -301,7 +303,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                         )}
                         onClick={() => setSortBy("recent")}
                     >
-                        По дате
+                        {t('communities.byDate')}
                     </button>
                     <button 
                         className={classList(
@@ -310,7 +312,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                         )}
                         onClick={() => setSortBy("voted")}
                     >
-                        По рейтингу
+                        {t('communities.byRating')}
                     </button>
                 </div>
             </div>
@@ -342,7 +344,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                         ))}
                 {!paginationEnd && publications.length > 1 && (
                     <button onClick={() => setSize(size + 1)} className="btn btn-primary btn-wide mx-auto block">
-                        Загрузить еще
+                        {t('communities.loadMore')}
                     </button>
                 )}
             </div>

@@ -3,6 +3,7 @@
 import { classList } from '@lib/classList';
 import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 
 export const WidgetAvatarBalance = ({
     balance1,
@@ -12,6 +13,7 @@ export const WidgetAvatarBalance = ({
     onClick,
     userName,
 }) => {
+    const { t } = useTranslation('shared');
     const router = useRouter();
 
     const handleSettingsClick = (e: React.MouseEvent) => {
@@ -25,7 +27,7 @@ export const WidgetAvatarBalance = ({
             <div className="flex-1 text-right text-sm">
                 {balance1 && (
                     <div className="flex items-center justify-end gap-1 mb-1">
-                        {balance1.icon && <span className="text-xs opacity-60">Баланс: </span>}
+                        {balance1.icon && <span className="text-xs opacity-60">{t('balance')} </span>}
                         {balance1.icon && <img className="w-4 h-4 inline" src={balance1.icon} alt="Currency" />}
                         <span className="font-medium">{balance1.amount}</span>
                     </div>

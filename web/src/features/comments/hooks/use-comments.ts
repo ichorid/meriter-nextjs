@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { swr } from "@lib/swr";
 import Axios from "axios";
+import { useTranslation } from 'react-i18next';
 const { round } = Math;
 
 export const useComments = (
@@ -16,6 +17,7 @@ export const useComments = (
     activeCommentHook,
     onlyPublication = false
 ) => {
+    const { t } = useTranslation('comments');
     const uid = transactionId || publicationSlug;
     const [showComments, setShowComments] = useState(!!onlyPublication);
     const [comment, setCommentW] = useState("");
@@ -55,8 +57,8 @@ export const useComments = (
     const [activeComment, setActiveComment] = activeCommentHook;
 
     const commentAdd = (plusSignRewrite: boolean | undefined = undefined) => {
-        if (!comment) return setError("Введите комментарий!");
-        if (!amount) return setError("Введите положительное количество");
+        if (!comment) return setError(t('enterComment'));
+        if (!amount) return setError(t('enterPositiveAmount'));
 
         setDelta(delta + (plusSign ? absAmount : -absAmount));
         plusSign && setDeltaPlus(deltaPlus + absAmount);
@@ -94,7 +96,7 @@ export const useComments = (
             })
             .catch((error) => {
                 console.error('Transaction error:', error);
-                setError("Ошибка при отправке: " + (error.response?.data?.message || error.message));
+                setError(t('sendError', { message: error.response?.data?.message || error.message }));
             });
         setComment("");
         setAmount(Math.min(1, maxPlus));

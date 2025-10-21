@@ -3,24 +3,10 @@
 import { swr } from "@lib/swr";
 import axios from "axios";
 import { ChangeEvent } from "react";
-
-const options = [
-    {
-        updateFrequencyMs: 1000 * 60,
-        label: "Сразу же",
-    },
-    {
-        updateFrequencyMs: 1000 * 60 * 60,
-        label: "Не чаще раза в час",
-        default: true,
-    },
-    {
-        updateFrequencyMs: 1000 * 60 * 60 * 24,
-        label: "Не чаще раза в сутки",
-    },
-];
+import { useTranslation } from 'react-i18next';
 
 export const UpdatesFrequency = () => {
+    const { t } = useTranslation('pages');
     const endpoint = "/api/rest/freq";
     const [frequency, mutateFrequency] = swr(endpoint, 0);
 
@@ -29,9 +15,25 @@ export const UpdatesFrequency = () => {
         mutateFrequency(freq);
     };
 
+    const options = [
+        {
+            updateFrequencyMs: 1000 * 60,
+            label: t('updateFrequency.immediately'),
+        },
+        {
+            updateFrequencyMs: 1000 * 60 * 60,
+            label: t('updateFrequency.oncePerHour'),
+            default: true,
+        },
+        {
+            updateFrequencyMs: 1000 * 60 * 60 * 24,
+            label: t('updateFrequency.oncePerDay'),
+        },
+    ];
+
     return (
         <div id={"updates-frequency"}>
-            Выберите частоту обновлений:{" "}
+            {t('updateFrequency.selectFrequency')}{" "}
             <select
                 value={
                     frequency ||
