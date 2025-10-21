@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@shared/lib/theme-provider';
+import { I18nProvider } from '@/providers/i18n-provider';
 
 export const metadata: Metadata = {
     title: 'Meriter',
@@ -13,7 +14,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="ru" suppressHydrationWarning>
+        <html lang="en" suppressHydrationWarning>
             <head>
                 <script
                     dangerouslySetInnerHTML={{
@@ -41,7 +42,9 @@ export default function RootLayout({
                 />
             </head>
             <body suppressHydrationWarning>
-                <ThemeProvider>{children}</ThemeProvider>
+                <I18nProvider>
+                    <ThemeProvider>{children}</ThemeProvider>
+                </I18nProvider>
             </body>
         </html>
     );

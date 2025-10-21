@@ -3,6 +3,7 @@
 import Page from '@shared/components/page';
 import { swr } from '@lib/swr';
 import { useEffect, useState } from "react";
+import { useTranslation } from 'react-i18next';
 import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { useRouter } from "next/navigation";
 import {
@@ -36,6 +37,7 @@ const verb = (w) => {
 
 const PageHome = () => {
     const router = useRouter();
+    const { t } = useTranslation('home');
     const balance = [];
     const [myPublications, updatePublications] = swr(
         "/api/rest/publications/my?skip=0&limit=100",
@@ -154,17 +156,15 @@ const PageHome = () => {
                 userName={user?.name || 'User'}
             >
                 <MenuBreadcrumbs>
-                    <div>Главная</div>
+                    <div>{t('breadcrumb')}</div>
                 </MenuBreadcrumbs>
 
                 <div>
                     <div className="tip">
-                        переводите баллы из публикаций и комментариев на
-                        доступный баланс, чтобы пользоваться ими
+                        {t('tip1')}
                     </div>
                     <div className="tip">
-                        переводите доступный баланс на публикации и комментарии,
-                        чтобы их видело больше людей{" "}
+                        {t('tip2')}
                     </div>
                 </div>
             </HeaderAvatarBalance>
@@ -185,7 +185,7 @@ const PageHome = () => {
                             setTab("publications");
                         }}
                     >
-                        Мои публикации
+                        {t('tabs.publications')}
                     </a>
                     <a
                         className={classList(
@@ -196,7 +196,7 @@ const PageHome = () => {
                             setTab("comments");
                         }}
                     >
-                        Мои комментарии
+                        {t('tabs.comments')}
                     </a>
                     <a
                         className={classList(
@@ -207,7 +207,7 @@ const PageHome = () => {
                             setTab("updates");
                         }}
                     >
-                        Обновления
+                        {t('tabs.updates')}
                     </a>
                 </div>
                 <div className="flex justify-end mb-4">
@@ -219,7 +219,7 @@ const PageHome = () => {
                             )}
                             onClick={() => setSortBy("recent")}
                         >
-                            По дате
+                            {t('sort.recent')}
                         </button>
                         <button 
                             className={classList(
@@ -228,7 +228,7 @@ const PageHome = () => {
                             )}
                             onClick={() => setSortBy("voted")}
                         >
-                            По рейтингу
+                            {t('sort.voted')}
                         </button>
                     </div>
                 </div>

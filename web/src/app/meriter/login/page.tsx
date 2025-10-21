@@ -6,9 +6,11 @@ import { swr } from '@lib/swr';
 import { useEffect, useState, useRef } from "react";
 import { ThemeToggle } from "@shared/components/theme-toggle";
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 
 const PageMeriterLogin = () => {
     const router = useRouter();
+    const { t, i18n } = useTranslation('login');
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -75,11 +77,11 @@ const PageMeriterLogin = () => {
                     console.log('🔵 Redirecting to:', redirectPath);
                     router.push(redirectPath);
                 } else {
-                    setAuthError('Ошибка авторизации');
+                    setAuthError(t('authError'));
                 }
             } catch (error) {
                 console.error('🔴 Auth error:', error);
-                setAuthError('Ошибка подключения к серверу: ' + (error as Error).message);
+                setAuthError(t('connectionError', { message: (error as Error).message }));
             } finally {
                 setIsAuthenticating(false);
                 setDiscoveryStatus('');
@@ -96,7 +98,7 @@ const PageMeriterLogin = () => {
             script.setAttribute('data-radius', '20');
             script.setAttribute('data-onauth', 'onTelegramAuth(user)');
             script.setAttribute('data-request-access', 'write');
-            script.setAttribute('data-lang', 'ru');
+            script.setAttribute('data-lang', i18n.language === 'ru' ? 'ru' : 'en');
             script.async = true;
             
             telegramWidgetRef.current.appendChild(script);
@@ -107,7 +109,7 @@ const PageMeriterLogin = () => {
             // Cleanup
             delete (window as any).onTelegramAuth;
         };
-    }, [router]);
+    }, [router, i18n.language]);
 
     useEffect(() => {
         if (user?.token) {
@@ -125,7 +127,7 @@ const PageMeriterLogin = () => {
                     <ThemeToggle />
                 </div>
                 <div className="center">
-                    <div>Переход на главную...</div>
+                    <div>{t('redirecting')}</div>
                 </div>
             </Page>
         );
@@ -157,7 +159,7 @@ const PageMeriterLogin = () => {
                         <div className="flex flex-col items-center gap-4">
                             <span className="loading loading-spinner loading-lg"></span>
                             <p className="text-lg font-medium">
-                                {discoveryStatus || 'Discovering your communities...'}
+                                {discoveryStatus || t('discoveringCommunities')}
                             </p>
                         </div>
                     </div>

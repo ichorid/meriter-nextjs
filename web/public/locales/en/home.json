@@ -1,0 +1,16 @@
+{
+  "breadcrumb": "Home",
+  "tip1": "Transfer points from publications and comments to your available balance to use them",
+  "tip2": "Transfer your available balance to publications and comments to increase their visibility",
+  "availableBalance": "Available Balance",
+  "tabs": {
+    "publications": "My Publications",
+    "comments": "My Comments",
+    "updates": "Updates"
+  },
+  "sort": {
+    "recent": "By Date",
+    "voted": "By Rating"
+  }
+}
+

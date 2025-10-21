@@ -1,0 +1,23 @@
+{
+  "title": "Settings",
+  "breadcrumb": "Settings",
+  "subtitle": "Manage your profile settings",
+  "language": "Language",
+  "languageSection": "Interface Language",
+  "languageAuto": "Auto (Browser Default)",
+  "languageDescription": "Choose your preferred interface language",
+  "theme": "Theme",
+  "themeSection": "Theme",
+  "themeToggle": "Toggle theme:",
+  "updatesFrequency": "Update Frequency",
+  "communities": "Communities",
+  "communitiesDescription": "Update your community list by checking membership in Telegram groups",
+  "syncCommunities": "🔄 Sync Communities",
+  "syncing": "Syncing...",
+  "syncSuccess": "Found {{count}} communities!",
+  "syncError": "Error syncing communities",
+  "account": "Account",
+  "profile": "Profile",
+  "preferences": "Preferences"
+}
+
