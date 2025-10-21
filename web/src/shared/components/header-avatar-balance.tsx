@@ -11,8 +11,8 @@ export const HeaderAvatarBalance = ({
     onClick,
     userName,
 }) => (
-    <div className="mb-6">
-        <div className="grid grid-cols-2 gap-4 mb-4">
+    <div className="mb-3 sm:mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4 mb-2 sm:mb-4">
             <div className="content">{children?.[0] ?? children ?? null}</div>
             <WidgetAvatarBalance
                 balance1={balance1}

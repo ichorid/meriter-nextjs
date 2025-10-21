@@ -9,7 +9,7 @@ import {
     telegramGetAvatarLink,
     telegramGetAvatarLinkUpd,
 } from '@lib/telegram';
-import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
+import Link from 'next/link';
 import { UpdatesFrequency } from '@shared/components/updates-frequency';
 import { ThemeToggle } from '@shared/components/theme-toggle';
 import { LogoutButton } from '@shared/components/logout-button';
@@ -72,9 +72,23 @@ const SettingsPage = () => {
                 }}
                 userName={user?.name || 'User'}
             >
-                <MenuBreadcrumbs>
-                    <div>{t('breadcrumb')}</div>
-                </MenuBreadcrumbs>
+                <div>
+                    <div className="breadcrumbs text-sm mb-2 sm:mb-4">
+                        <ul>
+                            <li className="flex items-center gap-1">
+                                <Link href="/meriter/home" className="link link-hover flex items-center gap-1">
+                                    <img
+                                        className="w-5 h-5"
+                                        src={"/meriter/home.svg"}
+                                        alt="Home"
+                                    />
+                                    <span>{t('breadcrumb', { ns: 'home' })}</span>
+                                </Link>
+                            </li>
+                            <li>{t('breadcrumb')}</li>
+                        </ul>
+                    </div>
+                </div>
                 <div>
                     <div className="tip">
                         {t('subtitle')}
