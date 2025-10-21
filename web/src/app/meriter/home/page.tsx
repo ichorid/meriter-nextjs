@@ -266,8 +266,8 @@ const PageHome = () => {
                             {myUpdates &&
                                 sortItems(myUpdates)
                                     .filter((p) => p.comment)
-                                    .map((p: any, i) => (
-                                        <TransactionToMe key={i} transaction={p} />
+                                    .map((p: any) => (
+                                        <TransactionToMe key={p._id} transaction={p} />
                                     ))}
                         </div>
                     </div>
@@ -278,9 +278,9 @@ const PageHome = () => {
                             {myPublications &&
                                 sortItems(myPublications)
                                     .filter((p) => p.messageText || p.type === 'poll')
-                                    .map((p, i) => (
+                                    .map((p) => (
                                         <Publication
-                                            key={i}
+                                            key={p._id || p.slug}
                                             {...p}
                                             myId={user?.tgUserId}
                                             updateAll={updateAll}
@@ -302,9 +302,9 @@ const PageHome = () => {
                             {myComments &&
                                 sortItems(myComments)
                                     .filter((p) => p.comment)
-                                    .map((p, i) => (
+                                    .map((p) => (
                                         <Comment
-                                            key={i}
+                                            key={p._id}
                                             {...p}
                                             _id={p._id}
                                             myId={user?.tgUserId}

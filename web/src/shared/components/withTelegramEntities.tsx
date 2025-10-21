@@ -22,6 +22,12 @@ export const WithTelegramEntities = ({
     children: string;
 }) => {
     const messageText = children;
+    
+    // Handle undefined or null messageText
+    if (!messageText) {
+        return null;
+    }
+    
     function onlyUnique(value, index, self) {
         return self.indexOf(value) === index;
     }
