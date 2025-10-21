@@ -20,7 +20,6 @@ import {
     telegramGetAvatarLink,
     telegramGetAvatarLinkUpd,
 } from '@lib/telegram';
-import { ThemeToggle } from "@shared/components/theme-toggle";
 
 const CommunitySettingsPage = () => {
     const router = useRouter();
@@ -215,9 +214,6 @@ const CommunitySettingsPage = () => {
 
     return (
         <Page>
-            <div className="flex justify-end mb-2">
-                <ThemeToggle />
-            </div>
             <HeaderAvatarBalance
                 balance1={undefined}
                 balance2={undefined}

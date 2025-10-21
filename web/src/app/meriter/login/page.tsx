@@ -4,7 +4,6 @@ import { BOT_USERNAME } from '@config/meriter';
 import Page from '@shared/components/page';
 import { swr } from '@lib/swr';
 import { useEffect, useState, useRef } from "react";
-import { ThemeToggle } from "@shared/components/theme-toggle";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { useTelegramWebApp } from '@shared/hooks/useTelegramWebApp';
@@ -198,9 +197,6 @@ const PageMeriterLogin = () => {
     if (user?.token) {
         return (
             <Page className="index">
-                <div className="flex justify-end mb-2">
-                    <ThemeToggle />
-                </div>
                 <div className="center">
                     <div>{t('redirecting')}</div>
                 </div>
@@ -210,9 +206,6 @@ const PageMeriterLogin = () => {
 
     return (
         <Page className="index">
-            <div className="flex justify-end mb-2">
-                <ThemeToggle />
-            </div>
             <div className="center">
                 <div>
                     <img src="/meriter/merit.svg" alt="Meriter" />

@@ -16,7 +16,6 @@ import type { Publication as IPublication } from "@features/feed/types";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useTranslation } from 'react-i18next';
-import { ThemeToggle } from "@shared/components/theme-toggle";
 import { CommunityAvatarWithBadge } from "@shared/components/community-avatar-with-badge";
 import { classList } from "@lib/classList";
 
@@ -135,8 +134,6 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     );
     const chatName = chat?.username;
     const chatUrl = chat?.url;
-    const defaultHelpUrl = process.env.NEXT_PUBLIC_HELP_URL || "https://info.meriter.ru";
-    const chatHelpUrl = chat?.helpUrl ?? defaultHelpUrl;
     const chatNameVerb = String(chat?.title ?? "");
     const activeCommentHook = useState(null);
     
@@ -186,20 +183,6 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     return (
         <Page className="feed">
-            <div className="flex justify-end items-center gap-2 opacity-50">
-                <ThemeToggle />
-                <span
-                    className="cursor-pointer inline-flex items-center gap-1 hover:opacity-70"
-                    onClick={() => (document.location.href = chatHelpUrl)}
-                >
-                    <img
-                        className="h-5 w-5"
-                        src={"/meriter/help.svg"}
-                        alt="Help"
-                    />
-                    {t('communities.help')}
-                </span>
-            </div>
             <HeaderAvatarBalance
                 balance1={{ icon: chat?.icon, amount: balance }}
                 balance2={undefined}

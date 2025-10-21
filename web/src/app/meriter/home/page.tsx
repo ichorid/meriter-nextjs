@@ -71,6 +71,7 @@ const PageHome = () => {
     const [sortBy, setSortBy] = useState<"recent" | "voted">("recent");
     const [showPollCreate, setShowPollCreate] = useState(false);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
+    const [showHelpCard, setShowHelpCard] = useState(true);
 
     const updateWalletBalance = (currencyOfCommunityTgChatId: string, amountChange: number) => {
         // Optimistically update wallet balance without reloading
@@ -126,6 +127,19 @@ const PageHome = () => {
         }
     }, [user, user?.init, router]);
 
+    // Check if help card was dismissed
+    useEffect(() => {
+        const dismissed = localStorage.getItem('help-card-dismissed');
+        if (dismissed === 'true') {
+            setShowHelpCard(false);
+        }
+    }, []);
+
+    const dismissHelpCard = () => {
+        localStorage.setItem('help-card-dismissed', 'true');
+        setShowHelpCard(false);
+    };
+
     if (!user.token) {
         return null; // Loading or not authenticated
     }
@@ -156,16 +170,31 @@ const PageHome = () => {
                 userName={user?.name || 'User'}
             >
                 <MenuBreadcrumbs />
+            </HeaderAvatarBalance>
 
-                <div>
-                    <div className="tip">
-                        {t('tip1')}
-                    </div>
-                    <div className="tip">
-                        {t('tip2')}
+            {/* Help Card */}
+            {showHelpCard && (
+                <div className="card bg-primary/10 border border-primary/20 shadow-lg mb-6">
+                    <div className="card-body">
+                        <div className="flex justify-between items-start">
+                            <h3 className="card-title text-primary mb-2">{t('helpCard.title')}</h3>
+                            <button 
+                                onClick={dismissHelpCard}
+                                className="btn btn-ghost btn-sm btn-circle"
+                                aria-label="Close"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <p className="text-sm mb-2">
+                            {t('helpCard.content')}
+                        </p>
+                        <p className="text-xs opacity-70">
+                            {t('helpCard.reviewInSettings')}
+                        </p>
                     </div>
                 </div>
-            </HeaderAvatarBalance>
+            )}
             <div className="balance-available">
                 {false && <div className="heading">{t('availableBalance')}</div>}
                 {wallets && wallets.map((w) => (

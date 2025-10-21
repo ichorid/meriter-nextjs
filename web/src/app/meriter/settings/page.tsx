@@ -151,6 +151,22 @@ const SettingsPage = () => {
                 </div>
             </div>
 
+            {/* Help Section */}
+            <div className="card bg-base-100 shadow-xl mb-6">
+                <div className="card-body">
+                    <details className="collapse collapse-arrow bg-base-100">
+                        <summary className="collapse-title text-xl font-medium cursor-pointer px-0">
+                            {t('helpSection')}
+                        </summary>
+                        <div className="collapse-content px-0">
+                            <p className="text-sm mt-2">
+                                {t('helpContent')}
+                            </p>
+                        </div>
+                    </details>
+                </div>
+            </div>
+
             {/* Account Section */}
             <div className="card bg-base-100 shadow-xl mb-6">
                 <div className="card-body">

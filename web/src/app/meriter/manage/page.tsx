@@ -14,7 +14,6 @@ import {
     telegramGetAvatarLink,
     telegramGetAvatarLinkUpd,
 } from '@lib/telegram';
-import { ThemeToggle } from "@shared/components/theme-toggle";
 
 const CommunityCard = ({ chatId, title, description, tags, avatarUrl, icon }: any) => {
     return (
@@ -83,9 +82,6 @@ const ManagePage = () => {
     
     return (
         <Page>
-            <div className="flex justify-end mb-2">
-                <ThemeToggle />
-            </div>
             <HeaderAvatarBalance
                 balance1={undefined}
                 balance2={undefined}

@@ -11,7 +11,6 @@ import {
     telegramGetAvatarLinkUpd,
 } from '@lib/telegram';
 import { Publication } from "@features/feed";
-import { ThemeToggle } from "@shared/components/theme-toggle";
 import { useTranslation } from 'react-i18next';
 import { ellipsize } from "@shared/lib/text";
 
@@ -48,8 +47,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     );
 
     const chatNameVerb = String(chat?.title ?? "");
-    const defaultHelpUrl = process.env.NEXT_PUBLIC_HELP_URL || "https://info.meriter.ru";
-    const chatHelpUrl = chat?.helpUrl ?? defaultHelpUrl;
 
     useEffect(() => {
         if (!user?.tgUserId && !user.init) {
@@ -72,20 +69,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
 
     return (
         <Page className="feed">
-            <div className="flex justify-end items-center gap-2 opacity-50">
-                <ThemeToggle />
-                <span
-                    className="cursor-pointer inline-flex items-center gap-1 hover:opacity-70"
-                    onClick={() => (document.location.href = chatHelpUrl)}
-                >
-                    <img
-                        className="h-5 w-5"
-                        src={"/meriter/help.svg"}
-                        alt="Help"
-                    />
-                    {t('communities.help')}
-                </span>
-            </div>
             <HeaderAvatarBalance
                 balance1={{ icon: chat?.icon, amount: balance }}
                 balance2={undefined}
