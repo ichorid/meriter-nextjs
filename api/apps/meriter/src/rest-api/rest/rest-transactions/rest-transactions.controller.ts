@@ -138,25 +138,39 @@ export class RestTransactionsController {
     const allowedChatsIds: string[] = req.user.chatsIds;
     const tgUserId = req.user.tgUserId;
 
-    const t = await this.transactionsService.findForPublication(
-      publicationSlug,
-      positive,
-    );
+    // First, fetch the publication to get the chat ID (not from transactions!)
+    const publication = await this.publicationsService.model.findOne({
+      uid: publicationSlug,
+    });
 
-    const telegramCommunityChatId =
-      t?.[0]?.meta?.amounts?.currencyOfCommunityTgChatId;
+    if (!publication) {
+      throw new HttpException(
+        `Publication not found`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
 
+    const telegramCommunityChatId = publication.meta.origin.telegramChatId;
+
+    // Check authorization based on the publication's chat
     if (!allowedChatsIds.includes(telegramCommunityChatId)) {
       const isMember = await this.tgBotsService.updateUserChatMembership(
         telegramCommunityChatId,
         tgUserId,
       );
-      if (!isMember)
+      if (!isMember) {
         throw new HttpException(
           'not authorized to see this chat',
           HttpStatus.FORBIDDEN,
         );
+      }
     }
+
+    // Only fetch transactions after authorization check passes
+    const t = await this.transactionsService.findForPublication(
+      publicationSlug,
+      positive,
+    );
 
     return { transactions: t.map(mapTransactionToOldFormat) };
   }
@@ -170,25 +184,41 @@ export class RestTransactionsController {
     const allowedChatsIds: string[] = req.user.chatsIds;
     const tgUserId = req.user.tgUserId;
 
+    // First, fetch the parent transaction to get the chat ID
+    const parentTransaction = await this.transactionsService.model.findOne({
+      uid: transactionId,
+    });
+
+    if (!parentTransaction) {
+      throw new HttpException(
+        `Transaction not found`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const telegramCommunityChatId =
+      parentTransaction.meta?.amounts?.currencyOfCommunityTgChatId;
+
+    // Check authorization based on the parent transaction's chat
+    if (!allowedChatsIds.includes(telegramCommunityChatId)) {
+      const isMember = await this.tgBotsService.updateUserChatMembership(
+        telegramCommunityChatId,
+        tgUserId,
+      );
+      if (!isMember) {
+        throw new HttpException(
+          'not authorized to see this chat',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+    }
+
+    // Only fetch replies after authorization check passes
     const t = await this.transactionsService.findForTransaction(
       transactionId,
       positive,
     );
 
-    const telegramCommunityChatId =
-      t?.[0]?.meta?.amounts?.currencyOfCommunityTgChatId;
-
-    if (t.length > 0 && !allowedChatsIds.includes(telegramCommunityChatId)) {
-      const isMember = await this.tgBotsService.updateUserChatMembership(
-        telegramCommunityChatId,
-        tgUserId,
-      );
-      if (!isMember)
-        throw new HttpException(
-          'not authorized to see this chat',
-          HttpStatus.FORBIDDEN,
-        );
-    }
     return { transactions: t.map(mapTransactionToOldFormat) };
   }
 
