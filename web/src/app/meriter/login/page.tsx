@@ -5,28 +5,27 @@ import Page from '@shared/components/page';
 import { swr } from '@lib/swr';
 import { useEffect, useState, useRef } from "react";
 import { ThemeToggle } from "@shared/components/theme-toggle";
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 
 const PageMeriterLogin = () => {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { t, i18n } = useTranslation('login');
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
     const [discoveryStatus, setDiscoveryStatus] = useState('');
     const telegramWidgetRef = useRef<HTMLDivElement>(null);
-    const [returnTo, setReturnTo] = useState<string | null>(null);
+    
+    // Extract returnTo query parameter using Next.js hook
+    const returnTo = searchParams.get('returnTo');
 
     useEffect(() => {
         console.log('🟢 Login page mounted. BOT_USERNAME:', BOT_USERNAME);
         
-        // Extract returnTo query parameter
-        const params = new URLSearchParams(window.location.search);
-        const returnToParam = params.get('returnTo');
-        if (returnToParam) {
-            setReturnTo(returnToParam);
-            console.log('🟢 returnTo parameter found:', returnToParam);
+        if (returnTo) {
+            console.log('🟢 returnTo parameter found:', returnTo);
         }
         
         // Define the global callback function that Telegram will call
@@ -109,7 +108,7 @@ const PageMeriterLogin = () => {
             // Cleanup
             delete (window as any).onTelegramAuth;
         };
-    }, [router, i18n.language]);
+    }, [returnTo, router, i18n.language]);
 
     useEffect(() => {
         if (user?.token) {

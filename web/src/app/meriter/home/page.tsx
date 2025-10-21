@@ -155,9 +155,7 @@ const PageHome = () => {
                 }}
                 userName={user?.name || 'User'}
             >
-                <MenuBreadcrumbs>
-                    <div>{t('breadcrumb')}</div>
-                </MenuBreadcrumbs>
+                <MenuBreadcrumbs />
 
                 <div>
                     <div className="tip">

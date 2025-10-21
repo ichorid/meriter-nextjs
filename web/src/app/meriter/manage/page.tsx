@@ -7,7 +7,7 @@ import Page from '@shared/components/page';
 import { Spinner } from '@shared/components/misc';
 import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CommunityAvatarWithBadge } from '@shared/components/community-avatar-with-badge';
 import Link from "next/link";
 import {
@@ -49,19 +49,19 @@ const CommunityCard = ({ chatId, title, description, tags, avatarUrl, icon }: an
 
 const ManagePage = () => {
     const router = useRouter();
-    const [refreshChatId, setRefreshChatId] = useState(undefined);
+    const searchParams = useSearchParams();
     const [successMessage, setSuccessMessage] = useState('');
     
+    // Extract query parameters using Next.js hook
+    const refreshChatId = searchParams.get('refreshChatId') || undefined;
+    const showSuccess = searchParams.get('success') === 'saved';
+    
     useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        setRefreshChatId(params.get('refreshChatId') || undefined);
-        
-        // Check for success message
-        if (params.get('success') === 'saved') {
+        if (showSuccess) {
             setSuccessMessage('Settings saved successfully!');
             setTimeout(() => setSuccessMessage(''), 5000);
         }
-    }, []);
+    }, [showSuccess]);
     
     const [chats] = swr(
         () =>
