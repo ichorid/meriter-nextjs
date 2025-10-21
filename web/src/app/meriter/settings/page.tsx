@@ -2,7 +2,7 @@
 
 import Page from '@shared/components/page';
 import { swr } from '@lib/swr';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { useRouter } from 'next/navigation';
 import {
@@ -17,12 +17,37 @@ import { LogoutButton } from '@shared/components/logout-button';
 const SettingsPage = () => {
     const router = useRouter();
     const [user] = swr('/api/rest/getme', {});
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncMessage, setSyncMessage] = useState('');
 
     useEffect(() => {
         if (!user?.tgUserId && !user.init) {
             router.push('/meriter/login');
         }
     }, [user, user?.init, router]);
+
+    const handleSyncCommunities = async () => {
+        setIsSyncing(true);
+        setSyncMessage('');
+        
+        try {
+            const response = await fetch('/api/rest/sync-communities', {
+                method: 'POST',
+                credentials: 'include',
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                setSyncMessage(`Найдено ${data.count} сообществ!`);
+                setTimeout(() => setSyncMessage(''), 3000);
+            }
+        } catch (error) {
+            setSyncMessage('Ошибка синхронизации сообществ');
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     if (!user.token) {
         return null; // Loading or not authenticated
@@ -71,6 +96,30 @@ const SettingsPage = () => {
                     <div className="py-2 flex items-center gap-4">
                         <span className="text-sm">Переключение темы:</span>
                         <ThemeToggle />
+                    </div>
+                </div>
+            </div>
+
+            {/* Communities Section */}
+            <div className="card bg-base-100 shadow-xl mb-6">
+                <div className="card-body">
+                    <h2 className="card-title">Сообщества</h2>
+                    <p className="text-sm opacity-70 mb-2">
+                        Обновите список ваших сообществ, проверив членство в Telegram группах
+                    </p>
+                    <div className="py-2">
+                        <button 
+                            className={`btn btn-primary ${isSyncing ? 'loading' : ''}`}
+                            onClick={handleSyncCommunities}
+                            disabled={isSyncing}
+                        >
+                            {isSyncing ? 'Обновление...' : '🔄 Обновить сообщества'}
+                        </button>
+                        {syncMessage && (
+                            <div className={`mt-2 text-sm ${syncMessage.includes('Ошибка') ? 'text-error' : 'text-success'}`}>
+                                {syncMessage}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

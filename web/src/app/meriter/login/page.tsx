@@ -12,6 +12,7 @@ const PageMeriterLogin = () => {
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
+    const [discoveryStatus, setDiscoveryStatus] = useState('');
     const telegramWidgetRef = useRef<HTMLDivElement>(null);
     const [returnTo, setReturnTo] = useState<string | null>(null);
 
@@ -30,10 +31,13 @@ const PageMeriterLogin = () => {
         (window as any).onTelegramAuth = async (user: any) => {
             console.log('🔵 Telegram callback received!', user);
             setIsAuthenticating(true);
+            setDiscoveryStatus('Authenticating...');
             setAuthError(null);
 
             try {
                 console.log('🔵 Sending auth request to backend...');
+                setDiscoveryStatus('Discovering your communities...');
+                
                 const authResponse = await fetch('/api/rest/telegram-auth', {
                     method: 'POST',
                     headers: {
@@ -55,6 +59,8 @@ const PageMeriterLogin = () => {
                 console.log('🔵 Auth successful!', data);
 
                 if (data.success) {
+                    setDiscoveryStatus('Discovery complete!');
+                    
                     // Determine redirect based on pending communities or returnTo
                     let redirectPath = '/meriter/home'; // default
                     
@@ -76,6 +82,7 @@ const PageMeriterLogin = () => {
                 setAuthError('Ошибка подключения к серверу: ' + (error as Error).message);
             } finally {
                 setIsAuthenticating(false);
+                setDiscoveryStatus('');
             }
         };
 
@@ -135,9 +142,7 @@ const PageMeriterLogin = () => {
                 </div>
 
                 <div className="mar-80">
-                    {isAuthenticating ? (
-                        <div>Авторизация...</div>
-                    ) : (
+                    {!isAuthenticating && (
                         <div ref={telegramWidgetRef} id="telegram-login-widget"></div>
                     )}
                     {authError && (
@@ -145,6 +150,19 @@ const PageMeriterLogin = () => {
                     )}
                 </div>
             </div>
+
+            {isAuthenticating && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="card bg-base-100 shadow-xl p-8 max-w-md">
+                        <div className="flex flex-col items-center gap-4">
+                            <span className="loading loading-spinner loading-lg"></span>
+                            <p className="text-lg font-medium">
+                                {discoveryStatus || 'Discovering your communities...'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Page>
     );
 };

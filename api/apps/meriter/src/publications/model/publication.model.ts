@@ -28,6 +28,7 @@ export class PublicationMeta {
   comment: string;
   commentTgEntities: Record<string, unknown>;
   author: PublicationMetaAuthor;
+  beneficiary?: PublicationMetaAuthor; // Optional: who receives points from votes
   origin: PublicationMetaOrigin;
   metrics: EntityMetrics;
 }

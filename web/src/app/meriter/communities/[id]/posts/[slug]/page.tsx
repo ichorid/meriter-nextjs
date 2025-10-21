@@ -52,6 +52,15 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     if (!user.token) return null;
 
     const tgAuthorId = user?.tgUserId;
+    
+    // Clean post text for breadcrumb: remove hashtags and /ben: commands
+    const getCleanPostText = (text: string) => {
+        if (!text) return '';
+        return text
+            .replace(/#\w+/g, '') // Remove hashtags
+            .replace(/\/ben:@?\w+/g, '') // Remove /ben: commands
+            .trim();
+    };
 
     return (
         <Page className="feed">
@@ -82,7 +91,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                 <MenuBreadcrumbs
                     chatId={chatId}
                     chatNameVerb={chatNameVerb}
-                    postText={publication?.messageText ? ellipsize(publication.messageText, 40) : ''}
+                    postText={publication?.messageText ? ellipsize(getCleanPostText(publication.messageText), 40) : ''}
                 />
             </HeaderAvatarBalance>
 

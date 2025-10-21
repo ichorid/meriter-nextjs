@@ -39,6 +39,11 @@ export interface IPublication {
     messageText;
     authorPhotoUrl;
     tgAuthorName;
+    tgAuthorId?;
+    beneficiaryName?;
+    beneficiaryPhotoUrl?;
+    beneficiaryId?;
+    beneficiaryUsername?;
     keyword;
     ts;
     type?: string;
@@ -64,6 +69,10 @@ export const Publication = ({
     ts,
     activeCommentHook,
     tgAuthorId,
+    beneficiaryName,
+    beneficiaryPhotoUrl,
+    beneficiaryId,
+    beneficiaryUsername,
     dimensions,
     dimensionConfig,
     myId,
@@ -91,6 +100,14 @@ export const Publication = ({
     
     // Check if current user is the author
     const isAuthor = myId === tgAuthorId;
+    
+    // Check if there's a beneficiary and it's different from the author
+    const hasBeneficiary = beneficiaryId && beneficiaryId !== tgAuthorId;
+    
+    // Determine the title based on beneficiary
+    const displayTitle = hasBeneficiary 
+        ? `${tgAuthorName} для ${beneficiaryName}`
+        : tgAuthorName;
     
     // Withdrawal state management (for author's own posts)
     const [optimisticSum, setOptimisticSum] = useState(sum);
@@ -278,7 +295,7 @@ export const Publication = ({
         let effectiveBalance = balance;
         if (isAuthor && Array.isArray(wallets) && pollCommunityId) {
             const pollWalletBalance = wallets.find((w: any) => w.currencyOfCommunityTgChatId === pollCommunityId)?.amount || 0;
-            effectiveBalance = showCommunityAvatar ? pollWalletBalance : meritsAmount;
+            effectiveBalance = pollWalletBalance;
         } else {
             effectiveBalance = showCommunityAvatar ? (pollBalance || 0) : balance;
         }
@@ -334,7 +351,7 @@ export const Publication = ({
         return (
             <div className="mb-5" key={slug}>
                 <CardPublication
-                    title={tgAuthorName}
+                    title={displayTitle}
                     subtitle={dateVerbose(ts)}
                     avatarUrl={avatarUrl}
                     onAvatarUrlNotFound={() => {
@@ -488,7 +505,7 @@ export const Publication = ({
             key={slug}
         >
             <CardPublication
-                title={tgAuthorName}
+                title={displayTitle}
                 subtitle={dateVerbose(ts)}
                 avatarUrl={avatarUrl}
                 onAvatarUrlNotFound={() => {

@@ -33,6 +33,10 @@ function mapPublicationToOldFormat(publication: any) {
     tgAuthorId: publication.meta?.author?.telegramId,
     tgAuthorName: publication.meta?.author?.name,
     tgAuthorUsername: publication.meta?.author?.username,
+    beneficiaryName: publication.meta?.beneficiary?.name,
+    beneficiaryPhotoUrl: publication.meta?.beneficiary?.photoUrl,
+    beneficiaryId: publication.meta?.beneficiary?.telegramId,
+    beneficiaryUsername: publication.meta?.beneficiary?.username,
     tgChatId: publication.meta?.origin?.telegramChatId,
     tgChatName: publication.meta?.origin?.telegramChatName,
     tgChatUsername: '',
@@ -206,5 +210,41 @@ export class RestPublicationsController {
     return {
       publications: publ.map((p) => mapPublicationToOldFormat(p)),
     };
+  }
+
+  // This route must be last as it's a catch-all pattern
+  @Get(':slug')
+  async getPublication(
+    @Param('slug') slug: string,
+    @Req() req,
+  ) {
+    const allowedChatsIds: string[] = req.user.chatsIds;
+    const tgUserId = req.user.tgUserId;
+
+    const publ = await this.publicationService.model.findOne({
+      uid: slug,
+    });
+
+    if (!publ) {
+      throw new HttpException(
+        `Publication with slug '${slug}' not found`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const telegramCommunityChatId = publ.meta.origin.telegramChatId;
+    if (!allowedChatsIds.includes(telegramCommunityChatId)) {
+      const isMember = await this.tgBotsService.updateUserChatMembership(
+        telegramCommunityChatId,
+        tgUserId,
+      );
+      if (!isMember)
+        throw new HttpException(
+          'not authorized to see this publication',
+          HttpStatus.FORBIDDEN,
+        );
+    }
+
+    return mapPublicationToOldFormat(publ);
   }
 }

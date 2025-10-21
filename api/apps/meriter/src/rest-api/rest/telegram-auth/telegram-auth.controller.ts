@@ -82,6 +82,36 @@ export class TelegramAuthController {
     return hasPending;
   }
 
+  /**
+   * Discover which communities the user is a member of by checking against all registered communities
+   */
+  private async discoverUserCommunities(telegramId: string): Promise<number> {
+    const allCommunities = await this.tgChatsService.model
+      .find({ domainName: 'tg-chat' })
+      .limit(30)
+      .lean();
+
+    const membershipChecks = allCommunities.map(async (community) => {
+      const chatId = community.identities?.[0]?.replace('telegram://', '');
+      if (!chatId) return;
+
+      try {
+        await this.tgBotsService.updateUserChatMembership(chatId, telegramId);
+      } catch (error) {
+        this.logger.warn(`Failed to check membership for ${chatId}:`, error.message);
+      }
+    });
+
+    await Promise.all(membershipChecks);
+
+    // Get updated user to count tags
+    const updatedUser = await this.usersService.model.findOne({
+      identities: `telegram://${telegramId}`,
+    });
+
+    return updatedUser?.tags?.length || 0;
+  }
+
   @Post()
   async authenticate(
     @Body() authData: TelegramAuthData,
@@ -159,16 +189,17 @@ export class TelegramAuthController {
         avatarUrl = existingIsS3 ? existingUser.profile.avatarUrl : null;
       }
 
+      const displayName = [authData.first_name, authData.last_name].filter((a) => a).join(' ');
+      this.logger.log(`Setting user profile.name to: "${displayName}" (from first_name="${authData.first_name}", last_name="${authData.last_name}")`);
+
       const user = await this.usersService.upsert(
         { identities: identity },
         {
           identities: [identity],
-          profile: {
-            name: authData.username || authData.first_name,
-            firstName: authData.first_name,
-            lastName: authData.last_name,
-            avatarUrl: avatarUrl,
-          },
+          'profile.name': displayName,
+          'profile.firstName': authData.first_name,
+          'profile.lastName': authData.last_name,
+          'profile.avatarUrl': avatarUrl,
         },
       );
 
@@ -183,6 +214,11 @@ export class TelegramAuthController {
         userId: telegramId,
         userToken: user.token,
       });
+
+      // Discover user's communities eagerly
+      this.logger.log(`Starting community discovery for user ${telegramId}`);
+      const discoveredCount = await this.discoverUserCommunities(telegramId);
+      this.logger.log(`Community discovery complete: ${discoveredCount} communities found`);
 
       // Check if user has pending communities to configure
       const hasPending = await this.hasPendingCommunities(telegramId);

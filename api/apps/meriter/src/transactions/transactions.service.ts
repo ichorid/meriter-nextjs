@@ -197,7 +197,8 @@ export class TransactionsService {
     });
 
     const tgChatId = publication.meta.origin.telegramChatId;
-    const toUserTgId = publication.meta.author.telegramId;
+    // Use beneficiary if present, otherwise use author
+    const toUserTgId = publication.meta.beneficiary?.telegramId || publication.meta.author.telegramId;
     const hashtagSlug = publication.meta.hashtagSlug;
 
     if (!tgChatId) throw 'notgchatid';

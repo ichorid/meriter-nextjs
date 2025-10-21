@@ -13,6 +13,13 @@ export interface IPublicationElement {
     ts?: number;
 }
 
+export interface PublicationAuthor {
+    name: string;
+    photoUrl?: string;
+    telegramId: string;
+    username?: string;
+}
+
 export interface Publication {
     _id: string;
     slug: string;
@@ -20,7 +27,12 @@ export interface Publication {
     tgChatName?: string;
     tgMessageId?: number;
     tgAuthorName?: string;
+    tgAuthorId?: string;
     authorPhotoUrl?: string;
+    beneficiaryName?: string;
+    beneficiaryPhotoUrl?: string;
+    beneficiaryId?: string;
+    beneficiaryUsername?: string;
     messageText: string;
     keyword?: string;
     plus: number;

@@ -197,6 +197,94 @@ export class TgBotsService {
     }
   }
 
+  /**
+   * Parse and validate beneficiary from message text
+   * Format: /ben:@username or /ben:123456
+   * Returns { beneficiary: {...}, cleanedText: "...", error: null } 
+   *      or { beneficiary: null, cleanedText: "...", error: "error message" }
+   */
+  async parseBeneficiary(messageText: string, tgChatId: string) {
+    if (!messageText) return { beneficiary: null, cleanedText: messageText, error: null };
+
+    // Match /ben:@username or /ben:123456
+    const benMatch = messageText.match(/\/ben:@?(\w+)/);
+    if (!benMatch) {
+      return { beneficiary: null, cleanedText: messageText, error: null };
+    }
+
+    const beneficiaryIdentifier = benMatch[1];
+    this.logger.log(`🎯 Beneficiary identifier found: ${beneficiaryIdentifier}`);
+
+    // Remove the /ben:@username from the message text
+    const cleanedText = messageText.replace(/\/ben:@?\w+\s*/, '').trim();
+
+    // Try to find user by username or telegram ID
+    let beneficiaryUser;
+    
+    // Check if it's a numeric ID
+    if (/^\d+$/.test(beneficiaryIdentifier)) {
+      // It's a user ID
+      beneficiaryUser = await this.usersService.model.findOne({
+        identities: `telegram://${beneficiaryIdentifier}`,
+      });
+    } else {
+      // It's a username - search in profile name or meta
+      beneficiaryUser = await this.usersService.model.findOne({
+        $or: [
+          { 'profile.name': new RegExp(beneficiaryIdentifier, 'i') },
+          { 'meta.username': beneficiaryIdentifier },
+        ],
+      });
+    }
+
+    if (!beneficiaryUser) {
+      this.logger.warn(`⚠️ Beneficiary user not found: ${beneficiaryIdentifier}`);
+      return { 
+        beneficiary: null, 
+        cleanedText,
+        error: `⚠️ Пользователь @${beneficiaryIdentifier} не найден в Meriter.\n\nПолучатель баллов должен сначала войти на сайт https://meriter.pro через Telegram.`
+      };
+    }
+
+    // Extract telegram ID from identities
+    const beneficiaryTgId = beneficiaryUser.identities?.[0]?.replace('telegram://', '');
+    if (!beneficiaryTgId) {
+      this.logger.warn(`⚠️ Could not extract telegram ID from beneficiary user`);
+      return { 
+        beneficiary: null, 
+        cleanedText,
+        error: `⚠️ Ошибка при обработке пользователя @${beneficiaryIdentifier}.`
+      };
+    }
+
+    // Validate that beneficiary is a member of the chat
+    const isMember = await this.tgGetChatMember(tgChatId, beneficiaryTgId);
+    if (!isMember) {
+      this.logger.warn(`⚠️ Beneficiary ${beneficiaryTgId} is not a member of chat ${tgChatId}`);
+      return { 
+        beneficiary: null, 
+        cleanedText,
+        error: `⚠️ Пользователь @${beneficiaryIdentifier} не является участником этого сообщества.`
+      };
+    }
+
+    // Get beneficiary's photo
+    const beneficiaryPhotoUrl = await this.telegramGetChatPhotoUrl(
+      BOT_TOKEN,
+      beneficiaryTgId
+    );
+
+    const beneficiary = {
+      name: beneficiaryUser.profile?.name || beneficiaryIdentifier,
+      photoUrl: beneficiaryPhotoUrl,
+      telegramId: beneficiaryTgId,
+      username: beneficiaryIdentifier,
+    };
+
+    this.logger.log(`✅ Beneficiary validated: ${beneficiary.name} (${beneficiaryTgId})`);
+    return { beneficiary, cleanedText, error: null };
+  }
+
   async processRecieveMessageFromGroup({
     tgChatId: numTgChatId,
     tgUserId: numTgUserId,
@@ -256,6 +344,22 @@ export class TgBotsService {
       return;
     }
 
+    // Parse and validate beneficiary
+    const { beneficiary, cleanedText, error } = await this.parseBeneficiary(messageText, tgChatId);
+    
+    // If there's an error with the beneficiary, send error message and abort
+    if (error) {
+      this.logger.warn(`❌ Beneficiary error, sending error message to chat`);
+      await this.tgReplyMessage({
+        reply_to_message_id: messageId,
+        chat_id: tgChatId,
+        text: error,
+      });
+      return; // Don't create the publication
+    }
+    
+    const finalMessageText = cleanedText || messageText;
+
     const pending = false;
     const isAdmin = false;
     const external = sendToGlobalFeed ? true : false;
@@ -299,10 +403,11 @@ export class TgBotsService {
       tgChatUsername,
       tgChatName: tgChatName,
       pending,
-      text: messageText,
+      text: finalMessageText,
       fromCommunity: external,
-      messageText,
+      messageText: finalMessageText,
       entities,
+      beneficiary,
     });
     const [publication, updUserdata, initWallet] = await Promise.all([
       promisePublication,
@@ -781,6 +886,7 @@ export class TgBotsService {
     messageText,
     authorPhotoUrl,
     entities,
+    beneficiary,
   }) {
     const toGlobalFeed = keyword === GLOBAL_FEED_HASHTAG;
     const external = toGlobalFeed;
@@ -839,6 +945,7 @@ export class TgBotsService {
           photoUrl: authorPhotoUrl,
           telegramId: tgAuthorId,
         },
+        ...(beneficiary && { beneficiary }),
         metrics: {
           plus: 0,
           minus: 0,

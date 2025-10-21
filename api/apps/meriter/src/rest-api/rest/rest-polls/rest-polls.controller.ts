@@ -4,11 +4,13 @@ import {
   Get,
   HttpException,
   HttpStatus,
+  Logger,
   Post,
   Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { IsString, IsOptional, IsArray, IsNumber, IsNotEmpty, ValidateNested, ArrayMinSize, ArrayMaxSize } from 'class-validator';
 import { Type } from 'class-transformer';
 import { uid } from 'uid';
@@ -16,6 +18,7 @@ import { UserGuard } from '../../../user.guard';
 import { PublicationsService } from '../../../publications/publications.service';
 import { TransactionsService } from '../../../transactions/transactions.service';
 import { WalletsService } from '../../../wallets/wallets.service';
+import { TgBotsService } from '../../../tg-bots/tg-bots.service';
 
 class PollOptionDto {
   @IsString()
@@ -91,17 +94,25 @@ class VotePollDto {
 @Controller('api/rest/poll')
 @UseGuards(UserGuard)
 export class RestPollsController {
+  private readonly logger = new Logger(RestPollsController.name);
+
   constructor(
     private publicationsService: PublicationsService,
     private transactionsService: TransactionsService,
     private walletsService: WalletsService,
+    private tgBotsService: TgBotsService,
+    private configService: ConfigService,
   ) {}
 
   @Post('create')
   async createPoll(@Body() dto: CreatePollDto, @Req() req) {
     const tgUserId = req.user.tgUserId;
-    const username = req.user.username || 'User';
-    const name = req.user.name || req.user.username || 'User';
+    const name = req.user.tgUserName || req.user.profile?.name || 'User';
+    const username = req.user.profile?.username || '';
+    const photoUrl = req.user.profile?.avatarUrl || '';
+
+    // Debug logging
+    this.logger.log(`Creating poll - User data: tgUserName="${req.user.tgUserName}", profile.name="${req.user.profile?.name}", will use: "${name}"`);
 
 
     // Validate input
@@ -160,6 +171,7 @@ export class RestPollsController {
           name: name,
           telegramId: tgUserId,
           username: username,
+          photoUrl: photoUrl,
         },
         origin: {
           telegramChatId: dto.communityId,
@@ -172,13 +184,38 @@ export class RestPollsController {
       },
     });
 
+    // Send Telegram announcement to the community
+    try {
+      const appUrl = this.configService.get<string>('app.url') || 'https://meriter.ru';
+      const pollLink = `${appUrl}/meriter/communities/${dto.communityId}`;
+      
+      const message = `📊 <b>Новый опрос!</b>
+
+<b>${pollData.title}</b>
+
+Автор: ${name}
+
+Голосуйте на сайте Meriter:
+${pollLink}`;
+
+      await this.tgBotsService.tgSend({
+        tgChatId: dto.communityId,
+        text: message,
+      });
+
+      this.logger.log(`📢 Poll announcement sent to Telegram chat ${dto.communityId} for poll ${pollUid}`);
+    } catch (error) {
+      // Don't fail poll creation if Telegram message fails
+      this.logger.error(`Failed to send poll announcement to Telegram: ${error.message}`);
+    }
+
     return publication;
   }
 
   @Post('vote')
   async voteOnPoll(@Body() dto: VotePollDto, @Req() req) {
     const tgUserId = req.user.tgUserId;
-    const username = req.user.username || 'User';
+    const username = req.user.tgUserName || req.user.profile?.name || 'User';
 
     // Validate input
     if (!dto.pollId || !dto.optionId) {
