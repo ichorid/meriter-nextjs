@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from "react";
+import { use, useEffect } from "react";
 import { swr } from '@lib/swr';
 import Page from '@shared/components/page';
 import { useRouter } from "next/navigation";
@@ -50,6 +50,12 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     const chatNameVerb = String(chat?.title ?? "");
     const defaultHelpUrl = process.env.NEXT_PUBLIC_HELP_URL || "https://info.meriter.ru";
     const chatHelpUrl = chat?.helpUrl ?? defaultHelpUrl;
+
+    useEffect(() => {
+        if (!user?.tgUserId && !user.init) {
+            router.push("/meriter/login?returnTo=" + encodeURIComponent(window.location.pathname));
+        }
+    }, [user, user?.init, router]);
 
     if (!user.token) return null;
 

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { apiPOST } from "@shared/lib/fetch";
 import { A } from "@shared/components/simple/simple-elements";
 import { useTranslation } from 'react-i18next';
+import { useTelegramWebApp } from '@shared/hooks/useTelegramWebApp';
 
 interface IPollOption {
     id: string;
@@ -24,6 +25,7 @@ export const FormPollCreate = ({
     onCancel,
 }: IFormPollCreateProps) => {
     const { t } = useTranslation('polls');
+    const { isInTelegram, webApp, hapticFeedback } = useTelegramWebApp();
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [options, setOptions] = useState<IPollOption[]>([
@@ -84,11 +86,18 @@ export const FormPollCreate = ({
         return true;
     };
 
-    const handleCreate = async () => {
-        if (!validate()) return;
+    const handleCreate = useCallback(async () => {
+        if (!validate()) {
+            hapticFeedback?.notification('error');
+            return;
+        }
 
         setIsCreating(true);
         setError("");
+        
+        if (isInTelegram && webApp) {
+            webApp.MainButton.showProgress();
+        }
 
         try {
             // Calculate expiration time in milliseconds
@@ -132,17 +141,48 @@ export const FormPollCreate = ({
 
             if (response.error) {
                 setError(response.error);
+                hapticFeedback?.notification('error');
             } else if (response._id) {
+                hapticFeedback?.notification('success');
                 onSuccess && onSuccess(response._id);
             }
         } catch (err) {
             console.error('📊 Poll creation error:', err);
             const errorMessage = err.response?.data?.message || err.message || t('errorCreating');
             setError(errorMessage);
+            hapticFeedback?.notification('error');
         } finally {
             setIsCreating(false);
+            if (isInTelegram && webApp) {
+                webApp.MainButton.hideProgress();
+            }
         }
-    };
+    }, [title, description, options, timeValue, timeUnit, selectedWallet, isInTelegram, webApp, hapticFeedback, t, onSuccess]);
+
+    // Telegram MainButton integration
+    useEffect(() => {
+        if (isInTelegram && webApp) {
+            webApp.MainButton.setText(t('createPoll'));
+            webApp.MainButton.show();
+            webApp.MainButton.enable();
+            webApp.MainButton.onClick(handleCreate);
+            
+            // Setup back button if cancel is available
+            if (onCancel) {
+                webApp.BackButton.show();
+                webApp.BackButton.onClick(onCancel);
+            }
+            
+            return () => {
+                webApp.MainButton.hide();
+                webApp.MainButton.offClick(handleCreate);
+                if (onCancel) {
+                    webApp.BackButton.hide();
+                    webApp.BackButton.offClick(onCancel);
+                }
+            };
+        }
+    }, [isInTelegram, webApp, handleCreate, onCancel, t]);
 
     return (
         <div className="card bg-base-100 shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -308,36 +348,38 @@ export const FormPollCreate = ({
                     </div>
                 )}
 
-                {/* Action Buttons */}
-                <div className="card bg-base-100 shadow-md">
-                    <div className="card-body">
-                        <div className="flex gap-4">
-                            {onCancel && (
-                                <button 
-                                    className="btn btn-ghost" 
-                                    onClick={onCancel} 
+                {/* Action Buttons - Hidden in Telegram (uses MainButton) */}
+                {!isInTelegram && (
+                    <div className="card bg-base-100 shadow-md">
+                        <div className="card-body">
+                            <div className="flex gap-4">
+                                {onCancel && (
+                                    <button 
+                                        className="btn btn-ghost" 
+                                        onClick={onCancel} 
+                                        disabled={isCreating}
+                                    >
+                                        {t('cancel')}
+                                    </button>
+                                )}
+                                <button
+                                    className="btn btn-primary flex-1"
+                                    onClick={handleCreate}
                                     disabled={isCreating}
                                 >
-                                    {t('cancel')}
+                                    {isCreating ? (
+                                        <>
+                                            <span className="loading loading-spinner loading-sm"></span>
+                                            {t('creating')}
+                                        </>
+                                    ) : (
+                                        t('createPoll')
+                                    )}
                                 </button>
-                            )}
-                            <button
-                                className="btn btn-primary flex-1"
-                                onClick={handleCreate}
-                                disabled={isCreating}
-                            >
-                                {isCreating ? (
-                                    <>
-                                        <span className="loading loading-spinner loading-sm"></span>
-                                        {t('creating')}
-                                    </>
-                                ) : (
-                                    t('createPoll')
-                                )}
-                            </button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );

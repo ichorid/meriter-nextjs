@@ -65,6 +65,65 @@ export class TelegramAuthController {
     return hashValid && timeValid;
   }
 
+  private verifyTelegramWebAppData(initData: string, botToken: string): { valid: boolean; user?: any } {
+    try {
+      const urlParams = new URLSearchParams(initData);
+      const hash = urlParams.get('hash');
+      urlParams.delete('hash');
+      
+      if (!hash) {
+        this.logger.warn('No hash found in initData');
+        return { valid: false };
+      }
+      
+      // Create data check string
+      const dataCheckString = Array.from(urlParams.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => `${key}=${value}`)
+        .join('\n');
+      
+      // Create secret key for Web App (different from widget)
+      // Uses "WebAppData" as the constant string per Telegram documentation
+      const secretKey = crypto
+        .createHmac('sha256', 'WebAppData')
+        .update(botToken)
+        .digest();
+      
+      // Verify hash
+      const calculatedHash = crypto
+        .createHmac('sha256', secretKey)
+        .update(dataCheckString)
+        .digest('hex');
+      
+      if (calculatedHash !== hash) {
+        this.logger.warn('Hash validation failed for Web App initData');
+        return { valid: false };
+      }
+      
+      // Check auth_date is within 24 hours
+      const authDate = parseInt(urlParams.get('auth_date') || '0');
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (currentTime - authDate >= 86400) {
+        this.logger.warn('Auth date expired (older than 24 hours)');
+        return { valid: false };
+      }
+      
+      // Parse user data
+      const userJson = urlParams.get('user');
+      if (!userJson) {
+        this.logger.warn('No user data found in initData');
+        return { valid: false };
+      }
+      
+      const user = JSON.parse(userJson);
+      
+      return { valid: true, user };
+    } catch (error) {
+      this.logger.error('Error verifying Telegram Web App data:', error);
+      return { valid: false };
+    }
+  }
+
   /**
    * Check if user has pending communities (communities where they're admin but haven't configured hashtags)
    */
@@ -262,6 +321,151 @@ export class TelegramAuthController {
       }
 
       this.logger.error('Authentication error', error.stack);
+      throw new HttpException(
+        'Authentication failed',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('webapp')
+  async authenticateWebApp(
+    @Body() body: { initData: string },
+    @Res() res: any,
+  ) {
+    try {
+      this.logger.log('Telegram Web App auth request received');
+      
+      const botToken = this.configService.get<string>('bot.token');
+      if (!botToken) {
+        this.logger.error('BOT_TOKEN environment variable not set!');
+        throw new HttpException(
+          'Bot token not configured',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+      
+      const { valid, user: webAppUser } = this.verifyTelegramWebAppData(body.initData, botToken);
+      
+      if (!valid || !webAppUser) {
+        this.logger.warn('Invalid Telegram Web App data');
+        throw new HttpException(
+          'Invalid Web App authentication data',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      this.logger.log('Web App data validated successfully', {
+        userId: webAppUser.id,
+        username: webAppUser.username,
+      });
+
+      // Reuse existing user creation and session logic
+      const telegramId = webAppUser.id.toString();
+      const identity = `telegram://${telegramId}`;
+
+      // Get existing user to compare avatar
+      const existingUser = await this.usersService.model.findOne({
+        identities: identity,
+      });
+
+      let avatarUrl = existingUser?.profile?.avatarUrl;
+
+      // Try to get user's profile photo using Bot API
+      this.logger.log(`Attempting to fetch/update avatar via Bot API for user ${telegramId}`);
+      try {
+        const newAvatarUrl = await this.tgBotsService.telegramGetChatPhotoUrl(
+          botToken,
+          telegramId,
+          true, // revalidate - force refresh
+        );
+        
+        if (newAvatarUrl) {
+          const timestamp = Date.now();
+          avatarUrl = `${newAvatarUrl}?t=${timestamp}`;
+          this.logger.log(`Avatar fetched/updated successfully for user ${telegramId}`);
+        } else {
+          this.logger.log(`No avatar available via Bot API for user ${telegramId}`);
+          avatarUrl = null;
+        }
+      } catch (error) {
+        this.logger.warn(`Failed to fetch avatar via Bot API for user ${telegramId}:`, error.message);
+        const existingIsS3 = existingUser?.profile?.avatarUrl?.includes('telegram_small_avatars');
+        avatarUrl = existingIsS3 ? existingUser.profile.avatarUrl : null;
+      }
+
+      const displayName = [webAppUser.first_name, webAppUser.last_name].filter((a) => a).join(' ');
+      this.logger.log(`Setting user profile.name to: "${displayName}"`);
+
+      const user = await this.usersService.upsert(
+        { identities: identity },
+        {
+          identities: [identity],
+          'profile.name': displayName,
+          'profile.firstName': webAppUser.first_name,
+          'profile.lastName': webAppUser.last_name,
+          'profile.avatarUrl': avatarUrl,
+        },
+      );
+
+      if (!user) {
+        throw new HttpException(
+          'Failed to create user session',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      this.logger.log('User authenticated successfully via Web App', {
+        userId: telegramId,
+        userToken: user.token,
+      });
+
+      // Discover user's communities
+      this.logger.log(`Starting community discovery for user ${telegramId}`);
+      const discoveredCount = await this.discoverUserCommunities(telegramId);
+      this.logger.log(`Community discovery complete: ${discoveredCount} communities found`);
+
+      // Check if user has pending communities to configure
+      const hasPending = await this.hasPendingCommunities(telegramId);
+
+      // Generate JWT with user data
+      const jwt = this.actorsService.signJWT(
+        {
+          token: user.token,
+          uid: user.uid,
+          telegramId,
+          tags: user.tags || [],
+        },
+        '365d',
+      );
+
+      // Set JWT in HTTP-only cookie
+      const isProduction = this.configService.get<string>('app.env') === 'production';
+      res.cookie('jwt', jwt, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
+        path: '/',
+      });
+
+      // Return user data
+      return res.json({
+        success: true,
+        hasPendingCommunities: hasPending,
+        user: {
+          tgUserId: telegramId,
+          name: user.profile?.name,
+          token: user.token,
+          chatsIds: user.tags || [],
+        },
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      this.logger.error('Web App authentication error', error.stack);
       throw new HttpException(
         'Authentication failed',
         HttpStatus.INTERNAL_SERVER_ERROR,

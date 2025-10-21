@@ -25,7 +25,7 @@ const SettingsPage = () => {
 
     useEffect(() => {
         if (!user?.tgUserId && !user.init) {
-            router.push('/meriter/login');
+            router.push('/meriter/login?returnTo=' + encodeURIComponent(window.location.pathname));
         }
     }, [user, user?.init, router]);
 

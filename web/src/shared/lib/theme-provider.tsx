@@ -15,17 +15,55 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [theme, setThemeState] = useState<Theme>('auto');
     const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+    const [isInTelegram, setIsInTelegram] = useState(false);
 
-    // Initialize theme from localStorage
+    // Initialize theme from localStorage or Telegram
     useEffect(() => {
+        // Check if in Telegram Web App
+        const tg = (window as any).Telegram?.WebApp;
+        if (tg && tg.initData) {
+            setIsInTelegram(true);
+            // Use Telegram's theme if available
+            if (tg.colorScheme) {
+                const telegramTheme = tg.colorScheme === 'dark' ? 'dark' : 'light';
+                setResolvedTheme(telegramTheme);
+                return;
+            }
+        }
+        
+        // Otherwise use localStorage
         const stored = localStorage.getItem('theme') as Theme | null;
         if (stored && ['light', 'dark', 'auto'].includes(stored)) {
             setThemeState(stored);
         }
     }, []);
 
+    // Listen for Telegram theme changes
+    useEffect(() => {
+        if (!isInTelegram) return;
+        
+        const tg = (window as any).Telegram?.WebApp;
+        if (tg) {
+            const handleThemeChange = () => {
+                if (tg.colorScheme) {
+                    const telegramTheme = tg.colorScheme === 'dark' ? 'dark' : 'light';
+                    setResolvedTheme(telegramTheme);
+                }
+            };
+            
+            tg.onEvent('themeChanged', handleThemeChange);
+            
+            return () => {
+                tg.offEvent('themeChanged', handleThemeChange);
+            };
+        }
+    }, [isInTelegram]);
+
     // Update resolved theme based on theme setting and system preference
     useEffect(() => {
+        // Skip if using Telegram theme
+        if (isInTelegram) return;
+        
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         
         const updateResolvedTheme = () => {
@@ -47,7 +85,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
         mediaQuery.addEventListener('change', handler);
         return () => mediaQuery.removeEventListener('change', handler);
-    }, [theme]);
+    }, [theme, isInTelegram]);
 
     // Apply theme to document
     useEffect(() => {

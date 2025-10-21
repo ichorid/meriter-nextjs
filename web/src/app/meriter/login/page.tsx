@@ -7,25 +7,101 @@ import { useEffect, useState, useRef } from "react";
 import { ThemeToggle } from "@shared/components/theme-toggle";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
+import { useTelegramWebApp } from '@shared/hooks/useTelegramWebApp';
 
 const PageMeriterLogin = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { t, i18n } = useTranslation('login');
+    const { isInTelegram, initData } = useTelegramWebApp();
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
     const [discoveryStatus, setDiscoveryStatus] = useState('');
     const telegramWidgetRef = useRef<HTMLDivElement>(null);
+    const webAppAuthAttempted = useRef(false);
     
     // Extract returnTo query parameter using Next.js hook
     const returnTo = searchParams.get('returnTo');
 
+    // Function to handle Telegram Web App authentication
+    const authenticateWithTelegramWebApp = async (initData: string) => {
+        console.log('🟣 Telegram Web App auth detected, authenticating...');
+        setIsAuthenticating(true);
+        setDiscoveryStatus('Authenticating...');
+        setAuthError(null);
+
+        try {
+            setDiscoveryStatus('Discovering your communities...');
+            
+            const authResponse = await fetch('/api/rest/telegram-auth/webapp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ initData }),
+                credentials: 'include',
+            });
+
+            console.log('🟣 Backend response status:', authResponse.status);
+
+            if (!authResponse.ok) {
+                const errorData = await authResponse.json().catch(() => ({}));
+                console.error('🔴 Web App auth failed:', errorData);
+                throw new Error('Authentication failed');
+            }
+
+            const data = await authResponse.json();
+            console.log('🟣 Web App auth successful!', data);
+
+            if (data.success) {
+                setDiscoveryStatus('Discovery complete!');
+                
+                // Determine redirect based on pending communities or returnTo
+                let redirectPath = '/meriter/home'; // default
+                
+                if (data.hasPendingCommunities) {
+                    console.log('🟣 User has pending communities, redirecting to /meriter/manage');
+                    redirectPath = '/meriter/manage';
+                } else if (returnTo) {
+                    console.log('🟣 Using returnTo parameter:', returnTo);
+                    redirectPath = returnTo;
+                }
+                
+                console.log('🟣 Redirecting to:', redirectPath);
+                router.push(redirectPath);
+            } else {
+                setAuthError(t('authError'));
+            }
+        } catch (error) {
+            console.error('🔴 Web App auth error:', error);
+            setAuthError(t('connectionError', { message: (error as Error).message }));
+        } finally {
+            setIsAuthenticating(false);
+            setDiscoveryStatus('');
+        }
+    };
+
+    // Auto-authenticate if opened in Telegram Web App
+    useEffect(() => {
+        if (isInTelegram && initData && !webAppAuthAttempted.current && !user?.token) {
+            webAppAuthAttempted.current = true;
+            authenticateWithTelegramWebApp(initData);
+        }
+    }, [isInTelegram, initData, user?.token]);
+
     useEffect(() => {
         console.log('🟢 Login page mounted. BOT_USERNAME:', BOT_USERNAME);
+        console.log('🟢 Telegram Web App mode:', isInTelegram);
         
         if (returnTo) {
             console.log('🟢 returnTo parameter found:', returnTo);
+        }
+        
+        // Skip widget loading if in Telegram Web App mode
+        if (isInTelegram) {
+            console.log('🟢 Skipping widget load - using Web App authentication');
+            return;
         }
         
         // Define the global callback function that Telegram will call
@@ -108,7 +184,7 @@ const PageMeriterLogin = () => {
             // Cleanup
             delete (window as any).onTelegramAuth;
         };
-    }, [returnTo, router, i18n.language]);
+    }, [returnTo, router, i18n.language, isInTelegram]);
 
     useEffect(() => {
         if (user?.token) {
@@ -143,8 +219,13 @@ const PageMeriterLogin = () => {
                 </div>
 
                 <div className="mar-80">
-                    {!isAuthenticating && (
+                    {!isAuthenticating && !isInTelegram && (
                         <div ref={telegramWidgetRef} id="telegram-login-widget"></div>
+                    )}
+                    {!isAuthenticating && isInTelegram && (
+                        <div className="text-center text-base-content/70">
+                            {t('authenticatingWebApp', 'Authenticating via Telegram...')}
+                        </div>
                     )}
                     {authError && (
                         <div className="text-red-500 mt-4">{authError}</div>
