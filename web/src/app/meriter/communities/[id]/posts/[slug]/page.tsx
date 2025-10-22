@@ -119,7 +119,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                     chatId={chatId}
                     chatNameVerb={chatNameVerb}
                     chatIcon={comms?.icon}
-                    postText={publication?.messageText ? ellipsize(getCleanPostText(publication.messageText), 40) : ''}
+                    postText={publication?.messageText ? ellipsize(getCleanPostText(publication.messageText), 60) : ''}
                 />
             </HeaderAvatarBalance>
 

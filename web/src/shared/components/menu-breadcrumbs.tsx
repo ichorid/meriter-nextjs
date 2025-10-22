@@ -15,7 +15,7 @@ export const MenuBreadcrumbs = ({
     const { t } = useTranslation('common');
     return (
         <div className="breadcrumbs text-sm mb-4">
-            <ul>
+            <ul className="flex flex-wrap items-center gap-1">
                 <li className="flex items-center gap-1">
                     <Link href="/meriter/home" className="link link-hover flex items-center gap-1">
                         <img
@@ -48,8 +48,10 @@ export const MenuBreadcrumbs = ({
                     </li>
                 )}
                 {postText && (
-                    <li>
-                        <span>{postText}</span>
+                    <li className="max-w-xs">
+                        <span className="block break-words line-clamp-2 text-ellipsis overflow-hidden">
+                            {postText}
+                        </span>
                     </li>
                 )}
             </ul>

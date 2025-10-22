@@ -259,6 +259,7 @@ export class TelegramAuthController {
           'profile.firstName': authData.first_name,
           'profile.lastName': authData.last_name,
           'profile.avatarUrl': avatarUrl,
+          'meta.username': authData.username, // Store Telegram username for better lookup
         },
       );
 

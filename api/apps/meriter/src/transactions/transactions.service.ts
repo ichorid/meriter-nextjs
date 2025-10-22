@@ -217,7 +217,10 @@ export class TransactionsService {
 
     const transactionId = new mongoose.Types.ObjectId();
 
-    if (dto.fromUserTgId == toUserTgId) throw 'cannot vote for self';
+    // Allow voting if there's a beneficiary (even if voter is the author)
+    // Only prevent voting for self when there's no beneficiary
+    const hasBeneficiary = publication.meta.beneficiary?.telegramId;
+    if (!hasBeneficiary && dto.fromUserTgId == toUserTgId) throw 'cannot vote for self';
 
     //const currency = getCurrencyOrGlobalFeed(tgChatId);
     const currency = tgChatId;

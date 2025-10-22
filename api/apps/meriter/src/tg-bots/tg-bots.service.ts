@@ -235,6 +235,23 @@ export class TgBotsService {
           { 'meta.username': beneficiaryIdentifier },
         ],
       });
+
+      // If not found in database, try to resolve via Telegram API
+      if (!beneficiaryUser) {
+        this.logger.log(`🔍 Username ${beneficiaryIdentifier} not found in DB, trying Telegram API resolution`);
+        try {
+          const telegramUserInfo = await this.tgGetUserByUsername(beneficiaryIdentifier);
+          if (telegramUserInfo) {
+            this.logger.log(`✅ Found user via Telegram API: ${telegramUserInfo.id} (${telegramUserInfo.first_name} ${telegramUserInfo.last_name || ''})`);
+            // Now search by the resolved Telegram ID
+            beneficiaryUser = await this.usersService.model.findOne({
+              identities: `telegram://${telegramUserInfo.id}`,
+            });
+          }
+        } catch (error) {
+          this.logger.warn(`⚠️ Failed to resolve username ${beneficiaryIdentifier} via Telegram API:`, error.message);
+        }
+      }
     }
 
     if (!beneficiaryUser) {
@@ -568,6 +585,35 @@ export class TgBotsService {
         return st === "member" || st === "administrator" || st === "creator";
       })
       .catch((e) => false);
+  }
+
+  async tgGetUserByUsername(username: string) {
+    // Remove @ prefix if present
+    const cleanUsername = username.replace(/^@/, '');
+    
+    if (process.env.noAxios) return null;
+    
+    try {
+      const response = await Axios.get(BOT_URL + "/getChat", {
+        params: { chat_id: `@${cleanUsername}` },
+      });
+      
+      const result = response.data?.result;
+      if (result && result.type === 'private') {
+        // This is a user, return their info
+        return {
+          id: result.id,
+          first_name: result.first_name,
+          last_name: result.last_name,
+          username: result.username,
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      this.logger.warn(`Failed to get user info for @${cleanUsername}:`, error.message);
+      return null;
+    }
   }
 
   async tgSend({ tgChatId, text }) {
