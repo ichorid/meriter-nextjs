@@ -15,7 +15,7 @@ import { IconPicker } from '@shared/components/iconpicker';
 import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
 import { CardWithAvatar } from '@shared/components/card-with-avatar';
-import { CommunityAvatarWithBadge } from '@shared/components/community-avatar-with-badge';
+import { CommunityAvatar } from '@shared/components/community-avatar';
 import {
     telegramGetAvatarLink,
     telegramGetAvatarLinkUpd,
@@ -248,10 +248,9 @@ const CommunitySettingsPage = () => {
                     <div className="card-body">
                         <h2 className="card-title">Community Profile</h2>
                         <div className="flex items-center gap-4">
-                            <CommunityAvatarWithBadge
+                            <CommunityAvatar
                                 avatarUrl={communityData.chat.photo}
                                 communityName={communityData.chat.title || 'Community'}
-                                iconUrl={communityData.icon}
                                 size={80}
                             />
                             <div>

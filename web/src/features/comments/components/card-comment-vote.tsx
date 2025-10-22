@@ -2,7 +2,7 @@
 
 import { classList } from '@lib/classList';
 import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
-import { CommunityAvatarWithBadge } from '@shared/components/community-avatar-with-badge';
+import { CommunityAvatar } from '@shared/components/community-avatar';
 
 export const CardCommentVote = ({
     title,
@@ -49,10 +49,9 @@ export const CardCommentVote = ({
                                         if (onCommunityClick) onCommunityClick();
                                     }}
                                 >
-                                    <CommunityAvatarWithBadge
+                                    <CommunityAvatar
                                         avatarUrl={communityAvatarUrl}
                                         communityName={communityName}
-                                        iconUrl={communityIconUrl}
                                         size={28}
                                     />
                                 </div>

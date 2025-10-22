@@ -8,7 +8,7 @@ import { Spinner } from '@shared/components/misc';
 import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
 import { useRouter, useSearchParams } from "next/navigation";
-import { CommunityAvatarWithBadge } from '@shared/components/community-avatar-with-badge';
+import { CommunityAvatar } from '@shared/components/community-avatar';
 import Link from "next/link";
 import {
     telegramGetAvatarLink,
@@ -20,14 +20,20 @@ const CommunityCard = ({ chatId, title, description, tags, avatarUrl, icon }: an
         <Link href={`/meriter/communities/${chatId}/settings`} className="block">
             <div className="card bg-base-100 shadow-md rounded-2xl mb-5 p-5 cursor-pointer hover:shadow-lg transition-shadow">
                 <div className="flex items-start gap-4">
-                    <CommunityAvatarWithBadge
+                    <CommunityAvatar
                         avatarUrl={avatarUrl}
                         communityName={title || 'Community'}
-                        iconUrl={icon}
                         size={56}
                     />
                     <div className="flex-1">
-                        <div className="text-lg font-semibold mb-1">{title}</div>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div className="text-lg font-semibold mb-1">{title}</div>
+                            {icon && (
+                                <div className="flex items-center gap-2">
+                                    <img className="w-5 h-5" src={icon} alt="Currency" />
+                                </div>
+                            )}
+                        </div>
                         <div className="text-sm text-base-content/70 mb-2">{description}</div>
                         {tags && tags.length > 0 && (
                             <div className="flex flex-wrap gap-1">

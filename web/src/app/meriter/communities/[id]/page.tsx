@@ -16,7 +16,7 @@ import type { Publication as IPublication } from "@features/feed/types";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useTranslation } from 'react-i18next';
-import { CommunityAvatarWithBadge } from "@shared/components/community-avatar-with-badge";
+import { CommunityAvatar } from "@shared/components/community-avatar";
 import { classList } from "@lib/classList";
 
 const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
@@ -184,7 +184,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     return (
         <Page className="feed">
             <HeaderAvatarBalance
-                balance1={{ icon: chat?.icon, amount: balance }}
+                balance1={undefined}
                 balance2={undefined}
                 avatarUrl={telegramGetAvatarLink(tgAuthorId)}
                 onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
@@ -200,14 +200,30 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 
                 {/* Community Header */}
                 {chat?.title && (
-                    <div className="flex items-center gap-3 py-3 border-b border-base-300 mb-4">
-                        <CommunityAvatarWithBadge
-                            avatarUrl={chat?.photo}
-                            communityName={chat?.title}
-                            iconUrl={comms?.icon}
-                            size={48}
-                        />
-                        <h1 className="text-xl font-semibold">{chat?.title}</h1>
+                    <div className="py-3 border-b border-base-300 mb-4">
+                        <div className="flex items-center gap-3 mb-2">
+                            <CommunityAvatar
+                                avatarUrl={chat?.photo}
+                                communityName={chat?.title}
+                                size={48}
+                            />
+                            <h1 className="text-xl font-semibold">{chat?.title}</h1>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {comms?.icon && (
+                                <div className="flex items-center gap-2">
+                                    <img className="w-5 h-5" src={comms.icon} alt="Currency" />
+                                    <span className="text-lg font-semibold">{balance}</span>
+                                </div>
+                            )}
+                            {comms?.chat?.tags && comms.chat.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                    {comms.chat.tags.map((tag: string, i: number) => (
+                                        <span key={i} className="badge badge-primary badge-sm">#{tag}</span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 

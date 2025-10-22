@@ -1,7 +1,7 @@
 'use client';
 
 import { swr } from "@lib/swr";
-import { CommunityAvatarWithBadge } from "@shared/components/community-avatar-with-badge";
+import { CommunityAvatar } from "@shared/components/community-avatar";
 
 export const WalletCommunity = ({
     amount,
@@ -28,18 +28,20 @@ export const WalletCommunity = ({
             onClick={() => (document.location.href = "/meriter/communities/" + info?.chat?.chatId)}
         >
             <div className="flex items-start gap-4">
-                <CommunityAvatarWithBadge
+                <CommunityAvatar
                     avatarUrl={chatPhoto}
                     communityName={title}
-                    iconUrl={icon}
                     size={48}
                 />
                 <div className="flex-1">
-                    <div className="title font-medium">{title}</div>
-                    <div className="amount flex items-center gap-2 text-lg font-semibold">
-                        {amount}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div className="title font-medium">{title}</div>
+                        <div className="flex items-center gap-2">
+                            {icon && <img className="w-5 h-5" src={icon} alt="Currency" />}
+                            <span className="text-lg font-semibold">{amount}</span>
+                        </div>
                     </div>
-                    <div className="description text-sm opacity-60">
+                    <div className="description text-sm opacity-60 mt-2">
                         {tags && tags.map((t) => "#" + t).join(" ")}
                     </div>
                 </div>

@@ -2,7 +2,7 @@
 
 import { classList } from '@lib/classList';
 import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
-import { CommunityAvatarWithBadge } from '@shared/components/community-avatar-with-badge';
+import { CommunityAvatar } from '@shared/components/community-avatar';
 
 interface CardPublicationProps {
     title: any;
@@ -69,10 +69,9 @@ export const CardPublication = ({
                                 if (onCommunityClick) onCommunityClick();
                             }}
                         >
-                            <CommunityAvatarWithBadge
+                            <CommunityAvatar
                                 avatarUrl={communityAvatarUrl}
                                 communityName={communityName}
-                                iconUrl={communityIconUrl}
                                 size={32}
                             />
                         </div>
