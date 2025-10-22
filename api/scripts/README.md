@@ -174,7 +174,7 @@ node scripts/setup-webhook.js check
 ```bash
 export BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
 export BOT_USERNAME=meriterbot
-export APP_URL=https://meriter.ru
+export APP_URL=https://meriter.pro
 node scripts/setup-webhook.js set
 ```
 
@@ -226,8 +226,8 @@ After setting the webhook:
 ```bash
 # Telegram requires HTTPS for webhooks
 # Make sure APP_URL starts with https://
-export APP_URL=https://meriter.ru  # ✓ Correct
-export APP_URL=http://meriter.ru   # ✗ Wrong
+export APP_URL=https://meriter.pro  # ✓ Correct
+export APP_URL=http://meriter.pro   # ✗ Wrong
 ```
 
 **Error: BOT_TOKEN not set**

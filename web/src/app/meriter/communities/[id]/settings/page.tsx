@@ -7,6 +7,7 @@ import { etv } from '@shared/lib/input-utils';
 import { nanoid } from "nanoid";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from 'react-i18next';
 
 import { DivFade } from '@shared/components/transitions';
 import Page from '@shared/components/page';
@@ -25,6 +26,7 @@ const CommunitySettingsPage = () => {
     const router = useRouter();
     const params = useParams();
     const chatId = params.id as string;
+    const { t } = useTranslation('pages');
 
     // Form state
     const [formData, setFormData] = useState({
@@ -74,7 +76,7 @@ const CommunitySettingsPage = () => {
             })
             .catch((error) => {
                 console.error('Failed to load community data:', error);
-                setCommunityError(error.response?.status === 404 ? 'Community not found' : 'Failed to load community data');
+                setCommunityError(error.response?.status === 404 ? t('communitySettings.communityNotFound') : t('communitySettings.failedToLoad'));
             })
             .finally(() => {
                 setCommunityLoading(false);
@@ -85,14 +87,14 @@ const CommunitySettingsPage = () => {
     const validateForm = (): Record<string, string> => {
         const errors: Record<string, string> = {};
         if (!formData.currencyNames[1]?.trim()) {
-            errors.currencyName = 'Currency name (singular) is required';
+            errors.currencyName = t('communitySettings.validation.currencyNameRequired');
         }
         if (!formData.icon) {
-            errors.icon = 'Currency icon is required';
+            errors.icon = t('communitySettings.validation.iconRequired');
         }
         const validHashtags = formData.spaces.filter(s => s.tagRus?.trim() && !s.deleted);
         if (validHashtags.length === 0) {
-            errors.hashtags = 'At least one hashtag is required';
+            errors.hashtags = t('communitySettings.validation.hashtagsRequired');
         }
         return errors;
     };
@@ -151,7 +153,7 @@ const CommunitySettingsPage = () => {
             await Axios.post(`/api/rest/communityinfo?chatId=${chatId}`, saveData);
 
             setIsDirty(false);
-            setSaveSuccess('Settings saved successfully!');
+            setSaveSuccess(t('communitySettings.settingsSaved'));
             setTimeout(() => {
                 setSaveSuccess('');
                 router.push('/meriter/manage?success=saved');
@@ -195,10 +197,10 @@ const CommunitySettingsPage = () => {
         return (
             <Page>
                 <div className="text-center py-8">
-                    <h2 className="text-xl font-semibold mb-4">Error</h2>
+                    <h2 className="text-xl font-semibold mb-4">{t('communitySettings.error')}</h2>
                     <p className="text-base-content/70 mb-4">{communityError}</p>
                     <Link href="/meriter/manage" className="btn btn-primary">
-                        Back to Communities
+                        {t('communitySettings.backToCommunities')}
                     </Link>
                 </div>
             </Page>
@@ -231,14 +233,14 @@ const CommunitySettingsPage = () => {
                         <div className="breadcrumbs text-sm">
                             <ul>
                                 <li><Link href="/meriter/manage">Communities</Link></li>
-                                <li><Link href={`/meriter/${chatId}/settings`}>{communityData?.chat?.title || 'Community'}</Link></li>
-                                <li>Settings</li>
+                                <li><Link href={`/meriter/communities/${chatId}/settings`}>{communityData?.chat?.title || 'Community'}</Link></li>
+                                <li>{t('communitySettings.breadcrumb')}</li>
                             </ul>
                         </div>
                     </div>
                 </MenuBreadcrumbs>
                 <div>
-                    Manage settings for {communityData?.chat?.title || 'this community'}
+                    {t('communitySettings.subtitle', { communityName: communityData?.chat?.title || 'this community' })}
                 </div>
             </HeaderAvatarBalance>
 
@@ -246,7 +248,7 @@ const CommunitySettingsPage = () => {
             {communityData?.chat && (
                 <div className="card bg-base-100 shadow-xl mb-6">
                     <div className="card-body">
-                        <h2 className="card-title">Community Profile</h2>
+                        <h2 className="card-title">{t('communitySettings.communityProfile')}</h2>
                         <div className="flex items-center gap-4">
                             <CommunityAvatar
                                 avatarUrl={communityData.chat.photo}
@@ -256,10 +258,10 @@ const CommunitySettingsPage = () => {
                             <div>
                                 <div className="text-xl font-semibold">{communityData.chat.title}</div>
                                 <div className="text-sm opacity-60">
-                                    {communityData.chat.description || 'No description'}
+                                    {communityData.chat.description || t('communitySettings.noDescription')}
                                 </div>
                                 <div className="text-xs opacity-50 mt-1">
-                                    Avatar updates automatically when you save settings
+                                    {t('communitySettings.avatarUpdateNote')}
                                 </div>
                             </div>
                         </div>
@@ -270,15 +272,15 @@ const CommunitySettingsPage = () => {
             {/* Currency Names Section */}
             <div className="card bg-base-100 shadow-xl mb-6">
                 <div className="card-body">
-                    <h2 className="card-title">Currency Names</h2>
+                    <h2 className="card-title">{t('communitySettings.currencyNames')}</h2>
                     <div className="space-y-4">
                         <div>
                             <label className="label">
-                                <span className="label-text">Singular form (required)</span>
+                                <span className="label-text">{t('communitySettings.singularForm')}</span>
                             </label>
                             <input
                                 className={`input input-bordered w-full ${touched && currentErrors.currencyName ? 'input-error' : ''}`}
-                                placeholder="e.g., merit"
+                                placeholder={t('communitySettings.singularPlaceholder')}
                                 value={formData.currencyNames[1]}
                                 onChange={(e) => setCurrencyName(1)(e.target.value)}
                                 onBlur={() => setTouched(true)}
@@ -290,11 +292,11 @@ const CommunitySettingsPage = () => {
                         
                         <div>
                             <label className="label">
-                                <span className="label-text">Dual form (optional)</span>
+                                <span className="label-text">{t('communitySettings.dualForm')}</span>
                             </label>
                             <input
                                 className="input input-bordered w-full"
-                                placeholder="e.g., merits"
+                                placeholder={t('communitySettings.dualPlaceholder')}
                                 value={formData.currencyNames[2]}
                                 onChange={(e) => setCurrencyName(2)(e.target.value)}
                                 onBlur={() => setTouched(true)}
@@ -303,11 +305,11 @@ const CommunitySettingsPage = () => {
                         
                         <div>
                             <label className="label">
-                                <span className="label-text">Plural form (optional)</span>
+                                <span className="label-text">{t('communitySettings.pluralForm')}</span>
                             </label>
                             <input
                                 className="input input-bordered w-full"
-                                placeholder="e.g., merits"
+                                placeholder={t('communitySettings.pluralPlaceholder')}
                                 value={formData.currencyNames[5]}
                                 onChange={(e) => setCurrencyName(5)(e.target.value)}
                                 onBlur={() => setTouched(true)}
@@ -320,11 +322,11 @@ const CommunitySettingsPage = () => {
             {/* Currency Icon Section */}
             <div className="card bg-base-100 shadow-xl mb-6">
                 <div className="card-body">
-                    <h2 className="card-title">Currency Icon</h2>
+                    <h2 className="card-title">{t('communitySettings.currencyIcon')}</h2>
                     <div className={`${touched && currentErrors.icon ? 'border border-error rounded-lg p-4' : ''}`}>
                         <IconPicker
                             icon={formData.icon}
-                            cta="Select a currency icon"
+                            cta={t('communitySettings.selectIcon')}
                             setIcon={setIcon}
                         />
                         {touched && currentErrors.icon && (
@@ -337,7 +339,7 @@ const CommunitySettingsPage = () => {
             {/* Community Values Section */}
             <div className="card bg-base-100 shadow-xl mb-6">
                 <div className="card-body">
-                    <h2 className="card-title">Community Values (Hashtags)</h2>
+                    <h2 className="card-title">{t('communitySettings.communityValues')}</h2>
                     <div className="space-y-4">
                         {formData.spaces.map((space, i) => {
                             if (space.deleted) return null;
@@ -345,27 +347,27 @@ const CommunitySettingsPage = () => {
                             return (
                                 <div key={i} className="border border-base-300 rounded-lg p-4 bg-base-100 space-y-3">
                                     <div className="text-sm font-medium text-base-content/70 uppercase">
-                                        Hashtag for tracking in chat
+                                        {t('communitySettings.hashtagForTracking')}
                                     </div>
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-1">
                                             <span className="text-lg font-bold text-primary">#</span>
                                             <input
                                                 className="input input-bordered flex-1"
-                                                placeholder="Enter hashtag name"
+                                                placeholder={t('communitySettings.hashtagPlaceholder')}
                                                 value={space.tagRus || ''}
                                                 onChange={(e) => setVal(i, 'tagRus')(e.target.value)}
                                                 onBlur={() => setTouched(true)}
                                             />
                                         </div>
                                         <div className="text-xs text-base-content/50 pl-2">
-                                            Any message with this hashtag in the community chat will automatically appear on the site
+                                            {t('communitySettings.hashtagDescription')}
                                         </div>
                                     </div>
                                     <div>
                                         <textarea
                                             className="textarea textarea-bordered w-full"
-                                            placeholder="Description of this value"
+                                            placeholder={t('communitySettings.descriptionPlaceholder')}
                                             rows={3}
                                             value={space.description || ''}
                                             onChange={(e) => setVal(i, 'description')(e.target.value)}
@@ -376,7 +378,7 @@ const CommunitySettingsPage = () => {
                                         className="btn btn-error btn-sm"
                                         onClick={() => deleteHashtag(i)}
                                     >
-                                        Delete
+                                        {t('communitySettings.delete')}
                                     </button>
                                 </div>
                             );
@@ -386,7 +388,7 @@ const CommunitySettingsPage = () => {
                             className="btn btn-outline btn-primary"
                             onClick={addHashtag}
                         >
-                            + Add Value
+                            {t('communitySettings.addValue')}
                         </button>
                         
                         {touched && currentErrors.hashtags && (
@@ -423,7 +425,7 @@ const CommunitySettingsPage = () => {
                     
                     <div className="flex gap-4">
                         <Link href="/meriter/manage" className="btn btn-ghost">
-                            Cancel
+                            {t('communitySettings.cancel')}
                         </Link>
                         <button
                             className="btn btn-primary flex-1"
@@ -434,10 +436,10 @@ const CommunitySettingsPage = () => {
                             {saving ? (
                                 <>
                                     <span className="loading loading-spinner loading-sm"></span>
-                                    Saving...
+                                    {t('communitySettings.saving')}
                                 </>
                             ) : (
-                                'Save Settings'
+                                t('communitySettings.saveSettings')
                             )}
                         </button>
                     </div>

@@ -22,7 +22,7 @@ export interface AppConfig {
 
 export default (): AppConfig => ({
   app: {
-    url: process.env.APP_URL || 'https://meriter.ru',
+    url: process.env.APP_URL || 'https://meriter.pro',
     port: parseInt(process.env.PORT, 10) || 8002,
     env: process.env.NODE_ENV || 'development',
   },

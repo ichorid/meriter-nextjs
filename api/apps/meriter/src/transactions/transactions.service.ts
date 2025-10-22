@@ -237,6 +237,7 @@ export class TransactionsService {
     const p1 = this.model.create({
       _id: transactionId,
       uid: uid(32),
+      domainName: 'transaction',
       initiatorsActorUris: [initiatorActorUri],
       subjectsActorUris: [subjectActorUri],
       meta: {
@@ -335,6 +336,7 @@ export class TransactionsService {
     });
     const p1 = this.model.create({
       _id: transactionId,
+      domainName: 'transaction',
       initiatorsActorUris: ['actor.user://telegram' + dto.fromUserTgId],
       subjectsActorUris: ['actor.user://telegram' + toUserTgId],
       uid: uid(32),
@@ -404,6 +406,7 @@ export class TransactionsService {
       throw 'not enough funds to top up';
 
     const p1 = this.model.create({
+      domainName: 'transaction',
       initiatorsActorUris: ['actor.user://telegram' + dto.userTgId],
       subjectsActorUris: ['actor.user://telegram' + dto.userTgId],
       meta: {
@@ -481,6 +484,7 @@ export class TransactionsService {
       throw 'not enough funds to top up';
 
     const p1 = this.model.create({
+      domainName: 'transaction',
       initiatorsActorUris: ['actor.user://telegram' + dto.userTgId],
       subjectsActorUris: ['actor.user://telegram' + dto.userTgId],
       meta: {

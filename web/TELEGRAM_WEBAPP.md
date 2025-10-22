@@ -57,7 +57,7 @@ In @BotFather, set your bot's Web App URL:
 /setmenubutton
 <select your bot>
 Web App
-https://meriter.ru/meriter/login
+https://meriter.pro/meriter/login
 ```
 
 This adds a menu button that opens your app directly.
@@ -74,7 +74,7 @@ BOT_TOKEN=your_bot_token_here
 NEXT_PUBLIC_BOT_USERNAME=meriterbot
 
 # App URL
-APP_URL=https://meriter.ru
+APP_URL=https://meriter.pro
 ```
 
 ### Testing

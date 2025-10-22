@@ -265,7 +265,7 @@ const PageHome = () => {
                         <div className="balance-inpublications-publications">
                             {myUpdates &&
                                 sortItems(myUpdates)
-                                    .filter((p) => p.comment)
+                                    .filter((p) => p.fromUserTgId !== user?.tgUserId)
                                     .map((p: any) => (
                                         <TransactionToMe key={p._id} transaction={p} />
                                     ))}
@@ -301,7 +301,6 @@ const PageHome = () => {
                         <div className="balance-inpublications-publications">
                             {myComments &&
                                 sortItems(myComments)
-                                    .filter((p) => p.comment)
                                     .map((p) => (
                                         <Comment
                                             key={p._id}

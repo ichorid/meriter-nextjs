@@ -1,4 +1,4 @@
-export const URL = process.env.APP_URL || "https://meriter.ru";
+export const URL = process.env.APP_URL || "https://meriter.pro";
 
 export const BOT_USERNAME = process.env.NEXT_PUBLIC_BOT_USERNAME || "meriterbot";
 

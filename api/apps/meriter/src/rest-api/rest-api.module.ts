@@ -32,6 +32,7 @@ import { RestFreqController } from './rest/rest-freq/rest-freq.controller';
 import { RestPollsController } from './rest/rest-polls/rest-polls.controller';
 import { TelegramAuthController } from './rest/telegram-auth/telegram-auth.controller';
 import { SyncCommunitiesController } from './rest/sync-communities/sync-communities.controller';
+import { CheckAdminController } from './rest/check-admin/check-admin.controller';
 import { UsersModule } from '../users/users.module';
 import { TgBotsModule } from '../tg-bots/tg-bots.module';
 import { TgChatsModule } from '../tg-chats/tg-chats.module';
@@ -76,6 +77,7 @@ import { WalletsModule } from '../wallets/wallets.module';
     RestPollsController,
     TelegramAuthController,
     SyncCommunitiesController,
+    CheckAdminController,
   ],
   exports: [],
 })

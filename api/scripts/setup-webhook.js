@@ -19,7 +19,7 @@
  * Environment Variables Required:
  *   BOT_TOKEN     - Your Telegram bot token from @BotFather
  *   BOT_USERNAME  - Your bot username (without @)
- *   APP_URL       - Your application URL (e.g., https://meriter.ru)
+ *   APP_URL       - Your application URL (e.g., https://meriter.pro)
  * 
  * You can load these from your .env file:
  *   export $(grep -E 'BOT_TOKEN|BOT_USERNAME|APP_URL' .env | xargs)
@@ -187,7 +187,7 @@ async function main() {
             console.error('');
             console.error('Example:');
             console.error('  export BOT_USERNAME=meriterbot');
-            console.error('  export APP_URL=https://meriter.ru');
+            console.error('  export APP_URL=https://meriter.pro');
             process.exit(1);
         }
         

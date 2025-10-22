@@ -62,6 +62,43 @@
     "byDate": "By Date",
     "byRating": "By Rating",
     "loadMore": "Load more"
+  },
+  "communitySettings": {
+    "title": "Community Settings",
+    "breadcrumb": "Settings",
+    "subtitle": "Manage settings for {{communityName}}",
+    "communityProfile": "Community Profile",
+    "noDescription": "No description",
+    "avatarUpdateNote": "Avatar updates automatically when you save settings",
+    "currencyNames": "Currency Names",
+    "singularForm": "Singular form (required)",
+    "singularPlaceholder": "e.g., merit",
+    "dualForm": "Dual form (optional)",
+    "dualPlaceholder": "e.g., merits",
+    "pluralForm": "Plural form (optional)",
+    "pluralPlaceholder": "e.g., merits",
+    "currencyIcon": "Currency Icon",
+    "selectIcon": "Select a currency icon",
+    "communityValues": "Community Values (Hashtags)",
+    "hashtagForTracking": "Hashtag for tracking in chat",
+    "hashtagPlaceholder": "Enter hashtag name",
+    "hashtagDescription": "Any message with this hashtag in the community chat will automatically appear on the site",
+    "descriptionPlaceholder": "Description of this value",
+    "delete": "Delete",
+    "addValue": "+ Add Value",
+    "cancel": "Cancel",
+    "saveSettings": "Save Settings",
+    "saving": "Saving...",
+    "settingsSaved": "Settings saved successfully!",
+    "error": "Error",
+    "communityNotFound": "Community not found",
+    "failedToLoad": "Failed to load community data",
+    "backToCommunities": "Back to Communities",
+    "validation": {
+      "currencyNameRequired": "Currency name (singular) is required",
+      "iconRequired": "Currency icon is required",
+      "hashtagsRequired": "At least one hashtag is required"
+    }
   }
 }
 

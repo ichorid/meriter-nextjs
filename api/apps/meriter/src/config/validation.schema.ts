@@ -2,7 +2,7 @@ import * as Joi from 'joi';
 
 export const validationSchema = Joi.object({
   // Application
-  APP_URL: Joi.string().default('https://meriter.ru'),
+  APP_URL: Joi.string().default('https://meriter.pro'),
   PORT: Joi.number().default(8002),
 
   // JWT

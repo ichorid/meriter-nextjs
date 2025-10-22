@@ -186,7 +186,7 @@ export class RestPollsController {
 
     // Send Telegram announcement to the community
     try {
-      const appUrl = this.configService.get<string>('app.url') || 'https://meriter.ru';
+      const appUrl = this.configService.get<string>('app.url') || 'https://meriter.pro';
       const pollLink = `${appUrl}/meriter/communities/${dto.communityId}`;
       
       const message = `📊 <b>Новый опрос!</b>

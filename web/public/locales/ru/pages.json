@@ -62,6 +62,43 @@
     "byDate": "По дате",
     "byRating": "По рейтингу",
     "loadMore": "Загрузить еще"
+  },
+  "communitySettings": {
+    "title": "Настройки сообщества",
+    "breadcrumb": "Настройки",
+    "subtitle": "Управление настройками для {{communityName}}",
+    "communityProfile": "Профиль сообщества",
+    "noDescription": "Нет описания",
+    "avatarUpdateNote": "Аватар обновляется автоматически при сохранении настроек",
+    "currencyNames": "Названия валюты",
+    "singularForm": "Единственное число (обязательно)",
+    "singularPlaceholder": "например, мерит",
+    "dualForm": "Двойственное число (необязательно)",
+    "dualPlaceholder": "например, мерита",
+    "pluralForm": "Множественное число (необязательно)",
+    "pluralPlaceholder": "например, меритов",
+    "currencyIcon": "Символ валюты",
+    "selectIcon": "Выберите символ валюты",
+    "communityValues": "Ценности сообщества (Хештеги)",
+    "hashtagForTracking": "Хештег для отслеживания в чате",
+    "hashtagPlaceholder": "Введите название хештега",
+    "hashtagDescription": "Любое сообщение с этим хештегом в чате сообщества автоматически появится на сайте",
+    "descriptionPlaceholder": "Описание этой ценности",
+    "delete": "Удалить",
+    "addValue": "+ Добавить ценность",
+    "cancel": "Отмена",
+    "saveSettings": "Сохранить настройки",
+    "saving": "Сохранение...",
+    "settingsSaved": "Настройки успешно сохранены!",
+    "error": "Ошибка",
+    "communityNotFound": "Сообщество не найдено",
+    "failedToLoad": "Не удалось загрузить данные сообщества",
+    "backToCommunities": "Назад к сообществам",
+    "validation": {
+      "currencyNameRequired": "Название валюты (единственное число) обязательно",
+      "iconRequired": "Символ валюты обязателен",
+      "hashtagsRequired": "Необходим хотя бы один хештег"
+    }
   }
 }
 

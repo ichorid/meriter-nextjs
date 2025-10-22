@@ -19,12 +19,21 @@ export const CardCommentVote = ({
     communityIconUrl,
     onCommunityClick,
     withdrawSliderContent,
+    currencyIcon,
 }:any) => (
     <div className="mb-4">
         <div className="card bg-base-100 shadow-md rounded-xl overflow-hidden">
             <div className="flex">
-                <div className="bg-secondary text-secondary-content font-bold text-center py-2 px-3 min-w-[3rem]">
-                    {rate}
+                <div className="bg-secondary text-secondary-content font-bold text-center py-2 px-3 min-w-[3rem] flex items-center justify-center gap-1">
+                    <span>{rate}</span>
+                    {currencyIcon && (
+                        <img 
+                            src={currencyIcon} 
+                            alt="Currency" 
+                            className="w-4 h-4"
+                            style={{ maxWidth: '16px', maxHeight: '16px' }}
+                        />
+                    )}
                 </div>
                 <div className="flex-1">
                     <div className="p-4">

@@ -71,11 +71,28 @@ export const Comment = ({
     const isMerit = tgChatId === GLOBAL_FEED_TG_CHAT_ID;
     const [showselector, setShowselector] = useState(false);
     
+    // Fetch community info to get currency icon
+    const [currencyCommunityInfo] = swr(
+        curr ? `/api/rest/communityinfo?chatId=${curr}` : null,
+        {},
+        { revalidateOnFocus: false }
+    );
+    
     const [rate] = swr(
         () => isAuthor && !isMerit && curr ? "/api/rest/rate?fromCurrency=" + curr : null,
         0,
         { key: "rate-comment-" + curr + "-" + _id, revalidateOnFocus: false }
     );
+    
+    // Format the rate with currency icon
+    const formatRate = () => {
+        const amount = Math.abs(amountTotal);
+        const sign = directionPlus ? "+" : "-";
+        return `${sign} ${amount}`;
+    };
+    
+    // Get currency icon for separate rendering
+    const currencyIcon = currencyCommunityInfo?.icon;
     
     // Create a unique identifier for this comment
     const postId = _id;
@@ -275,7 +292,8 @@ export const Comment = ({
                 title={fromUserTgName}
                 subtitle={new Date(ts).toLocaleString()}
                 content={comment}
-                rate={`${directionPlus ? "+" : "-"} ${amountTotal}`}
+                rate={formatRate()}
+                currencyIcon={currencyIcon}
                 avatarUrl={avatarUrl}
                 onAvatarUrlNotFound={() => {
                     const fallbackUrl = telegramGetAvatarLinkUpd(userTgId);
