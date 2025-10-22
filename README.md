@@ -1,3 +1,6 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ichorid/meriter-nextjs)
+
+
 # Meriter
 
 A merit-based community platform that integrates with Telegram to create engaging, gamified communities where members earn and distribute points through voting and contributions.
