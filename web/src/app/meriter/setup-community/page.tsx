@@ -4,12 +4,15 @@ import { BOT_USERNAME } from '@config/meriter';
 import Page from '@shared/components/page';
 import { swr } from '@lib/swr';
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
+import { useDeepLinkHandler } from '@shared/lib/deep-link-handler';
 
 const PageSetupCommunity = () => {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { t, i18n } = useTranslation('pages');
+    const { handleDeepLink } = useDeepLinkHandler(router, searchParams);
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -47,9 +50,9 @@ const PageSetupCommunity = () => {
                 console.log('🔵 Auth successful!', data);
 
                 if (data.success) {
-                    // Always redirect to manage page for community setup
-                    console.log('🔵 Redirecting to /meriter/manage for community setup...');
-                    router.push('/meriter/manage');
+                    // Use deep link handler for navigation
+                    console.log('🔵 Auth successful, handling deep link navigation...');
+                    handleDeepLink();
                 } else {
                     setAuthError(t('setupCommunity.authError'));
                 }
@@ -86,10 +89,10 @@ const PageSetupCommunity = () => {
 
     useEffect(() => {
         if (user?.token) {
-            console.log('🟢 User already authenticated, redirecting to manage...');
-            router.push('/meriter/manage');
+            console.log('🟢 User already authenticated, handling deep link navigation...');
+            handleDeepLink();
         }
-    }, [user, router]);
+    }, [user, handleDeepLink]);
 
     // If already authenticated, don't show login
     if (user?.token) {

@@ -19,23 +19,40 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     // Initialize theme from localStorage or Telegram
     useEffect(() => {
-        // Check if in Telegram Web App
-        const tg = (window as any).Telegram?.WebApp;
-        if (tg && tg.initData) {
-            setIsInTelegram(true);
-            // Use Telegram's theme if available
-            if (tg.colorScheme) {
-                const telegramTheme = tg.colorScheme === 'dark' ? 'dark' : 'light';
-                setResolvedTheme(telegramTheme);
-                return;
+        // Check if in Telegram Web App - use a more robust detection
+        const checkTelegram = () => {
+            const tg = (window as any).Telegram?.WebApp;
+            if (tg) {
+                // Check if we're in Telegram environment (even if initData isn't ready yet)
+                if (tg.platform || tg.version || tg.colorScheme !== undefined) {
+                    setIsInTelegram(true);
+                    console.log('🎨 Telegram Web App detected, using Telegram theme');
+                    
+                    // Use Telegram's theme if available
+                    if (tg.colorScheme) {
+                        const telegramTheme = tg.colorScheme === 'dark' ? 'dark' : 'light';
+                        console.log('🎨 Setting Telegram theme:', telegramTheme);
+                        setResolvedTheme(telegramTheme);
+                        return;
+                    }
+                }
             }
-        }
+            
+            // Otherwise use localStorage
+            const stored = localStorage.getItem('theme') as Theme | null;
+            if (stored && ['light', 'dark', 'auto'].includes(stored)) {
+                console.log('🎨 Using stored theme:', stored);
+                setThemeState(stored);
+            }
+        };
+
+        // Check immediately
+        checkTelegram();
         
-        // Otherwise use localStorage
-        const stored = localStorage.getItem('theme') as Theme | null;
-        if (stored && ['light', 'dark', 'auto'].includes(stored)) {
-            setThemeState(stored);
-        }
+        // Also check after a short delay in case Telegram Web App loads asynchronously
+        const timeoutId = setTimeout(checkTelegram, 100);
+        
+        return () => clearTimeout(timeoutId);
     }, []);
 
     // Listen for Telegram theme changes
@@ -45,16 +62,28 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         const tg = (window as any).Telegram?.WebApp;
         if (tg) {
             const handleThemeChange = () => {
+                console.log('🎨 Telegram theme changed');
                 if (tg.colorScheme) {
                     const telegramTheme = tg.colorScheme === 'dark' ? 'dark' : 'light';
+                    console.log('🎨 New Telegram theme:', telegramTheme);
                     setResolvedTheme(telegramTheme);
                 }
             };
             
+            // Listen for theme changes
             tg.onEvent('themeChanged', handleThemeChange);
+            
+            // Also check periodically in case the event doesn't fire
+            const intervalId = setInterval(() => {
+                if (tg.colorScheme) {
+                    const telegramTheme = tg.colorScheme === 'dark' ? 'dark' : 'light';
+                    setResolvedTheme(telegramTheme);
+                }
+            }, 1000);
             
             return () => {
                 tg.offEvent('themeChanged', handleThemeChange);
+                clearInterval(intervalId);
             };
         }
     }, [isInTelegram]);
@@ -93,8 +122,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }, [resolvedTheme]);
 
     const setTheme = (newTheme: Theme) => {
+        console.log('🎨 Setting theme:', newTheme);
         setThemeState(newTheme);
         localStorage.setItem('theme', newTheme);
+        
+        // If we're in Telegram, we should respect the Telegram theme
+        // But allow manual override for testing purposes
+        if (isInTelegram) {
+            console.log('🎨 In Telegram Web App - theme override applied');
+        }
     };
 
     return (

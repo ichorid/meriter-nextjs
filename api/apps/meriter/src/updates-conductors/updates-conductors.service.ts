@@ -110,8 +110,7 @@ export class UpdatesConductorsService {
             const text = `Для Вас есть обновления!
 Активность ${publicationsN} постов и ${transactionsN} комментариев:
 Пришла обратная связь от  ${actorsN} пользователей, из них плюсов ${upd.counterPlus} и ${upd.counterMinus} минусов
-Посмотреть подробнее ${URL}/meriter/balance?updates
-`;
+Посмотреть подробнее https://t.me/meriter_pro_bot?startapp=updates`;
             const tgPromise = this.tgBotsService.tgSend({
               tgChatId: tgUserId,
 

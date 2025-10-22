@@ -1,11 +1,20 @@
 'use client';
 
 import { useTheme } from '../lib/theme-provider';
+import { useTelegramWebApp } from '../hooks/useTelegramWebApp';
 
 export function ThemeToggle() {
     const { theme, setTheme, resolvedTheme } = useTheme();
+    const { isInTelegram } = useTelegramWebApp();
 
     const cycleTheme = () => {
+        if (isInTelegram) {
+            // In Telegram, show a message that theme follows Telegram settings
+            console.log('🎨 Theme toggle clicked in Telegram - theme follows Telegram settings');
+            // You could show a toast or alert here
+            return;
+        }
+        
         if (theme === 'light') {
             setTheme('dark');
         } else if (theme === 'dark') {
@@ -16,6 +25,9 @@ export function ThemeToggle() {
     };
 
     const getIcon = () => {
+        if (isInTelegram) {
+            return 'phone_android'; // Different icon to indicate Telegram mode
+        }
         if (theme === 'auto') {
             return 'brightness_auto';
         }
@@ -23,6 +35,9 @@ export function ThemeToggle() {
     };
 
     const getLabel = () => {
+        if (isInTelegram) {
+            return `Telegram (${resolvedTheme})`;
+        }
         if (theme === 'auto') {
             return `Auto (${resolvedTheme})`;
         }
@@ -34,7 +49,7 @@ export function ThemeToggle() {
             onClick={cycleTheme}
             className="btn btn-ghost btn-circle"
             aria-label={`Theme: ${getLabel()}`}
-            title={`Theme: ${getLabel()}`}
+            title={`Theme: ${getLabel()}${isInTelegram ? ' - Follows Telegram settings' : ''}`}
         >
             <span className="material-symbols-outlined">{getIcon()}</span>
         </button>

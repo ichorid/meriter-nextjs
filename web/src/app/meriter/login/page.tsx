@@ -7,12 +7,14 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { useTelegramWebApp } from '@shared/hooks/useTelegramWebApp';
+import { useDeepLinkHandler } from '@shared/lib/deep-link-handler';
 
 const PageMeriterLogin = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { t, i18n } = useTranslation('login');
     const { isInTelegram, initData } = useTelegramWebApp();
+    const { handleDeepLink } = useDeepLinkHandler(router, searchParams);
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -56,19 +58,8 @@ const PageMeriterLogin = () => {
             if (data.success) {
                 setDiscoveryStatus('Discovery complete!');
                 
-                // Determine redirect based on pending communities or returnTo
-                let redirectPath = '/meriter/home'; // default
-                
-                if (data.hasPendingCommunities) {
-                    console.log('🟣 User has pending communities, redirecting to /meriter/manage');
-                    redirectPath = '/meriter/manage';
-                } else if (returnTo) {
-                    console.log('🟣 Using returnTo parameter:', returnTo);
-                    redirectPath = returnTo;
-                }
-                
-                console.log('🟣 Redirecting to:', redirectPath);
-                router.push(redirectPath);
+                // Use deep link handler for navigation
+                handleDeepLink(data.hasPendingCommunities);
             } else {
                 setAuthError(t('authError'));
             }

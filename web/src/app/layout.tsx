@@ -29,13 +29,32 @@ export default async function RootLayout({
                         __html: `
                             (function() {
                                 try {
-                                    const theme = localStorage.getItem('theme') || 'auto';
-                                    let resolvedTheme = theme;
-                                    if (theme === 'auto') {
-                                        resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                                    // Check if we're in Telegram Web App
+                                    const tg = window.Telegram?.WebApp;
+                                    let resolvedTheme = 'light';
+                                    
+                                    if (tg && (tg.platform || tg.version || tg.colorScheme !== undefined)) {
+                                        // We're in Telegram Web App
+                                        console.log('🎨 Server-side: Telegram Web App detected');
+                                        if (tg.colorScheme) {
+                                            resolvedTheme = tg.colorScheme === 'dark' ? 'dark' : 'light';
+                                            console.log('🎨 Server-side: Using Telegram theme:', resolvedTheme);
+                                        }
+                                    } else {
+                                        // Not in Telegram, use localStorage or system preference
+                                        const theme = localStorage.getItem('theme') || 'auto';
+                                        if (theme === 'auto') {
+                                            resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                                        } else {
+                                            resolvedTheme = theme;
+                                        }
+                                        console.log('🎨 Server-side: Using stored/system theme:', resolvedTheme);
                                     }
+                                    
                                     document.documentElement.setAttribute('data-theme', resolvedTheme);
-                                } catch (e) {}
+                                } catch (e) {
+                                    console.error('🎨 Server-side theme initialization error:', e);
+                                }
                             })();
                         `,
                     }}

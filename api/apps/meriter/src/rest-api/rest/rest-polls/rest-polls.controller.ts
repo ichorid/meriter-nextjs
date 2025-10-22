@@ -186,8 +186,8 @@ export class RestPollsController {
 
     // Send Telegram announcement to the community
     try {
-      const appUrl = this.configService.get<string>('app.url') || 'https://meriter.pro';
-      const pollLink = `${appUrl}/meriter/communities/${dto.communityId}`;
+      const botUsername = this.configService.get<string>('bot.username') || 'meriter_pro_bot';
+      const pollLink = `https://t.me/${botUsername}?startapp=poll&id=${pollUid}`;
       
       const message = `📊 <b>Новый опрос!</b>
 
@@ -195,7 +195,7 @@ export class RestPollsController {
 
 Автор: ${name}
 
-Голосуйте на сайте Meriter:
+Голосуйте в приложении Meriter:
 ${pollLink}`;
 
       await this.tgBotsService.tgSend({

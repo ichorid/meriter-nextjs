@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, use } from "react";
 import { swr, swrInfinite } from '@lib/swr';
 import Page from '@shared/components/page';
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
 import { CardWithAvatar } from '@shared/components/card-with-avatar';
@@ -21,14 +21,19 @@ import { classList } from "@lib/classList";
 
 const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { t } = useTranslation('pages');
     const resolvedParams = use(params);
     const chatId = resolvedParams.id;
     const pathname = `/meriter/communities/${chatId}`;
+    
+    // Get the post parameter from URL for deep linking
+    const targetPostSlug = searchParams.get('post');
 
     const [paginationEnd, setPaginationEnd] = useState(false);
     const [showPollCreate, setShowPollCreate] = useState(false);
     const [sortBy, setSortBy] = useState<"recent" | "voted">("recent");
+    const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
 
     const getKeyPublications = (chatId) => (pageIndex, previousPageData) => {
         if (previousPageData && !previousPageData?.publications.length) {
@@ -63,6 +68,27 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             document.location.href = "/auth/" + setJwt;
         }
     }, [setJwt]);
+
+    // Handle deep linking to specific post
+    useEffect(() => {
+        if (targetPostSlug && publications.length > 0) {
+            const targetPost = publications.find(p => p.uid === targetPostSlug);
+            if (targetPost) {
+                console.log('🎯 Found target post for deep link:', targetPostSlug);
+                setHighlightedPostId(targetPost._id);
+                
+                // Scroll to the post after a short delay to ensure it's rendered
+                setTimeout(() => {
+                    const postElement = document.getElementById(`post-${targetPost._id}`);
+                    if (postElement) {
+                        postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // Remove highlight after 3 seconds
+                        setTimeout(() => setHighlightedPostId(null), 3000);
+                    }
+                }, 500);
+            }
+        }
+    }, [targetPostSlug, publications]);
 
     const error =
         (content??[])?.[0]?.error || err
@@ -353,27 +379,32 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     sortItems(publications)
                         .filter((p) => p?.messageText || p?.type === 'poll')
                         .map((p) => (
-                            <Publication
+                            <div
                                 key={p._id}
-                                {...p}
-                                tgChatId={chatId}
-                                balance={balance}
-                                updBalance={updBalance}
-                                activeCommentHook={activeCommentHook}
-                                activeSlider={activeSlider}
-                                setActiveSlider={setActiveSlider}
-                                dimensionConfig={undefined}
-                                myId={user?.tgUserId}
-                                onlyPublication={onlyPublication}
-                                highlightTransactionId={findTransaction}
-                                isDetailPage={false}
-                                showCommunityAvatar={false}
-                                wallets={wallets}
-                                updateWalletBalance={updateWalletBalance}
-                                activeWithdrawPost={activeWithdrawPost}
+                                id={`post-${p._id}`}
+                                className={highlightedPostId === p._id ? 'ring-2 ring-primary ring-opacity-50 rounded-lg p-2 bg-primary bg-opacity-10' : ''}
+                            >
+                                <Publication
+                                    {...p}
+                                    tgChatId={chatId}
+                                    balance={balance}
+                                    updBalance={updBalance}
+                                    activeCommentHook={activeCommentHook}
+                                    activeSlider={activeSlider}
+                                    setActiveSlider={setActiveSlider}
+                                    dimensionConfig={undefined}
+                                    myId={user?.tgUserId}
+                                    onlyPublication={onlyPublication}
+                                    highlightTransactionId={findTransaction}
+                                    isDetailPage={false}
+                                    showCommunityAvatar={false}
+                                    wallets={wallets}
+                                    updateWalletBalance={updateWalletBalance}
+                                    activeWithdrawPost={activeWithdrawPost}
                                 setActiveWithdrawPost={setActiveWithdrawPost}
                                 updateAll={updateAll}
                             />
+                            </div>
                         ))}
                 {!paginationEnd && publications.length > 1 && (
                     <button onClick={() => setSize(size + 1)} className="btn btn-primary btn-wide mx-auto block">
