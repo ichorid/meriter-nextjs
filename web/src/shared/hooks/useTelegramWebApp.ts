@@ -112,14 +112,9 @@ export function useTelegramWebApp() {
     if (typeof window !== 'undefined') {
       const tg = (window as any).Telegram?.WebApp;
       if (tg) {
-        // More robust detection - check for actual Telegram Web App properties
-        // Only consider it a Telegram environment if we have meaningful data
-        const isTelegramEnvironment = (
-          tg.initData || // Has init data (most reliable indicator)
-          (tg.platform && tg.platform !== 'unknown') || // Has a real platform
-          (tg.version && tg.version !== '6.0') || // Has a real version (not default)
-          (tg.colorScheme && (tg.colorScheme === 'light' || tg.colorScheme === 'dark')) // Has actual color scheme
-        );
+        // Very strict detection - only consider it Telegram if we have initData
+        // This is the most reliable indicator of being in a real Telegram Web App
+        const isTelegramEnvironment = !!tg.initData;
         
         if (isTelegramEnvironment) {
           console.log('🟣 Telegram Web App environment detected');
@@ -154,12 +149,7 @@ export function useTelegramWebApp() {
     initData: webApp?.initData || '',
     user: webApp?.initDataUnsafe?.user,
     startParam: webApp?.initDataUnsafe?.start_param,
-    isInTelegram: !!webApp && (
-      !!webApp.initData || 
-      (webApp.platform && webApp.platform !== 'unknown') || 
-      (webApp.version && webApp.version !== '6.0') || 
-      (webApp.colorScheme && (webApp.colorScheme === 'light' || webApp.colorScheme === 'dark'))
-    ),
+    isInTelegram: !!webApp && !!webApp.initData,
     colorScheme: webApp?.colorScheme,
     themeParams: webApp?.themeParams,
     setHeaderColor: (color: string) => webApp?.setHeaderColor(color),

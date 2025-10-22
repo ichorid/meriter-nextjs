@@ -33,12 +33,7 @@ export default async function RootLayout({
                                     const tg = window.Telegram?.WebApp;
                                     let resolvedTheme = 'light';
                                     
-                                    if (tg && (
-                                        tg.initData || // Has init data (most reliable indicator)
-                                        (tg.platform && tg.platform !== 'unknown') || // Has a real platform
-                                        (tg.version && tg.version !== '6.0') || // Has a real version (not default)
-                                        (tg.colorScheme && (tg.colorScheme === 'light' || tg.colorScheme === 'dark')) // Has actual color scheme
-                                    )) {
+                                    if (tg && tg.initData) {
                                         // We're in Telegram Web App
                                         console.log('🎨 Server-side: Telegram Web App detected');
                                         if (tg.colorScheme) {

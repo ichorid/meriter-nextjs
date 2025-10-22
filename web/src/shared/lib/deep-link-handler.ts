@@ -76,7 +76,9 @@ export function useDeepLinkHandler(
       console.log('🔗 Deep link: Redirecting to community setup');
       redirectPath = '/meriter/setup-community';
     } else if (startapp === 'poll' && id) {
-      console.log('🔗 Deep link: Redirecting to poll:', id);
+      console.log('🔗 Deep link: Poll detected, will fetch poll data and redirect to community');
+      // For polls, we need to fetch the poll data to get the community ID
+      // This will be handled by a special poll redirect page
       redirectPath = `/meriter/polls/${id}`;
     } else if (startapp === 'updates') {
       console.log('🔗 Deep link: Redirecting to updates');

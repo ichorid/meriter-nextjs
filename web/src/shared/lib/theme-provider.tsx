@@ -23,13 +23,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         const checkTelegram = () => {
             const tg = (window as any).Telegram?.WebApp;
             if (tg) {
-                // Check if we're in Telegram environment - use strict detection
-                const isTelegramEnvironment = (
-                    tg.initData || // Has init data (most reliable indicator)
-                    (tg.platform && tg.platform !== 'unknown') || // Has a real platform
-                    (tg.version && tg.version !== '6.0') || // Has a real version (not default)
-                    (tg.colorScheme && (tg.colorScheme === 'light' || tg.colorScheme === 'dark')) // Has actual color scheme
-                );
+                // Very strict detection - only consider it Telegram if we have initData
+                // This is the most reliable indicator of being in a real Telegram Web App
+                const isTelegramEnvironment = !!tg.initData;
                 
                 if (isTelegramEnvironment) {
                     setIsInTelegram(true);
