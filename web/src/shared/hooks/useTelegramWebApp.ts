@@ -111,15 +111,22 @@ export function useTelegramWebApp() {
     if (typeof window !== 'undefined') {
       const tg = (window as any).Telegram?.WebApp;
       if (tg) {
-        tg.ready();
-        tg.expand();
-        setWebApp(tg);
-        
-        // Set header and background colors if in Telegram
-        if (tg.initData && tg.themeParams) {
-          const bgColor = tg.themeParams.bg_color || (tg.colorScheme === 'dark' ? '#212121' : '#ffffff');
-          tg.setHeaderColor(bgColor);
-          tg.setBackgroundColor(bgColor);
+        // Only initialize if we have initData (which indicates we're actually in Telegram)
+        if (tg.initData) {
+          tg.ready();
+          tg.expand();
+          setWebApp(tg);
+          
+          // Set header and background colors if in Telegram
+          if (tg.themeParams) {
+            const bgColor = tg.themeParams.bg_color || (tg.colorScheme === 'dark' ? '#212121' : '#ffffff');
+            tg.setHeaderColor(bgColor);
+            tg.setBackgroundColor(bgColor);
+          }
+        } else {
+          // Telegram WebApp object exists but no initData means we're not in Telegram
+          // Don't initialize or call any Telegram methods
+          console.log('Telegram WebApp detected but not in Telegram environment');
         }
       }
     }

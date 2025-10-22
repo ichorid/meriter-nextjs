@@ -81,7 +81,7 @@ export const useComments = (
             .then((d) => d.data)
             .then((d) => {
                 upd([...comments, { comment }]);
-                setActiveComment("none");
+                setActiveComment(null);
                 updBalance();
             });
         setComment("");

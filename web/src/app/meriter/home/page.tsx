@@ -72,6 +72,7 @@ const PageHome = () => {
     const [showPollCreate, setShowPollCreate] = useState(false);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
     const [showHelpCard, setShowHelpCard] = useState(true);
+    const activeCommentHook = useState(null);
 
     const updateWalletBalance = (currencyOfCommunityTgChatId: string, amountChange: number) => {
         // Optimistically update wallet balance without reloading
@@ -289,7 +290,7 @@ const PageHome = () => {
                                             showCommunityAvatar={true}
                                             activeWithdrawPost={activeWithdrawPost}
                                             setActiveWithdrawPost={setActiveWithdrawPost}
-                                            activeCommentHook={[null, () => {}]}
+                                            activeCommentHook={activeCommentHook}
                                         />
                                     ))}
                         </div>
@@ -313,7 +314,8 @@ const PageHome = () => {
                                             showCommunityAvatar={true}
                                             activeWithdrawPost={activeWithdrawPost}
                                             setActiveWithdrawPost={setActiveWithdrawPost}
-                                            activeCommentHook={[null, () => {}]}
+                                            activeCommentHook={activeCommentHook}
+                                            isDetailPage={false}
                                         />
                                     ))}
                         </div>

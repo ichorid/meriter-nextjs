@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect } from "react";
+import { use, useEffect, useState } from "react";
 import { swr } from '@lib/swr';
 import Page from '@shared/components/page';
 import { useRouter } from "next/navigation";
@@ -47,6 +47,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     );
 
     const chatNameVerb = String(chat?.title ?? "");
+    const activeCommentHook = useState(null);
 
     useEffect(() => {
         if (!user?.tgUserId && !user.init) {
@@ -93,7 +94,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                         {...publication}
                         balance={balance}
                         updBalance={updBalance}
-                        activeCommentHook={[null, () => {}]}
+                        activeCommentHook={activeCommentHook}
                         dimensionConfig={undefined}
                         myId={user?.tgUserId}
                         onlyPublication={true}

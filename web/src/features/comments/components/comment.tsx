@@ -50,6 +50,7 @@ export const Comment = ({
     fromTgChatId,
     tgChatId,
     showCommunityAvatar,
+    isDetailPage,
 }) => {
     const { t } = useTranslation('comments');
     
@@ -238,7 +239,7 @@ export const Comment = ({
         minus,
         activeCommentHook
     );
-    const commentUnderReply = activeCommentHook[0] == _id;
+    const commentUnderReply = activeCommentHook[0] == (forTransactionId || _id);
     const nobodyUnderReply = activeCommentHook[0] === null;
     const userTgId = reason === "withdrawalFromPublication" ? toUserTgId : fromUserTgId;
     const avatarUrl = telegramGetAvatarLink(userTgId);
@@ -293,9 +294,10 @@ export const Comment = ({
     return (
         <div
             className={classList(
-                "comment-vote-wrapper",
-                commentUnderReply && "reply",
-                nobodyUnderReply && "noreply",
+                "comment-vote-wrapper transition-all duration-300",
+                commentUnderReply ? "scale-100 opacity-100" : 
+                nobodyUnderReply ? "scale-100 opacity-100" : 
+                "scale-95 opacity-60",
                 highlightTransactionId == _id && "highlight"
             )}
             key={_id}
@@ -321,12 +323,12 @@ export const Comment = ({
                 amountWallet={Math.abs(sum || 0)}
                 beneficiaryName={toUserTgName}
                 beneficiaryAvatarUrl={telegramGetAvatarLink(toUserTgId)}
-                onClick={() => {
-                    // Navigate to the post page
+                onClick={!isDetailPage ? () => {
+                    // Navigate to the post page only when not on detail page
                     if (inPublicationSlug && currencyOfCommunityTgChatId) {
                         window.location.href = `/meriter/communities/${currencyOfCommunityTgChatId}/posts/${inPublicationSlug}`;
                     }
-                }}
+                } : undefined}
                 onAvatarUrlNotFound={() => {
                     const fallbackUrl = telegramGetAvatarLinkUpd(userTgId);
                     if (fallbackUrl !== avatarUrl) {
@@ -392,7 +394,7 @@ export const Comment = ({
             {showComments && (
                 <div className="transaction-comments">
                     <div className="comments">
-                        {comments.map((c) => (
+                        {comments?.map((c) => (
                             <Comment
                                 key={c._id}
                                 {...c}
@@ -410,6 +412,7 @@ export const Comment = ({
                                 updateAll={updateAll}
                                 tgChatId={tgChatId}
                                 showCommunityAvatar={showCommunityAvatar}
+                                isDetailPage={isDetailPage}
                             />
                         ))}
                     </div>

@@ -3,22 +3,28 @@
 import { useTelegramWebApp } from '@shared/hooks/useTelegramWebApp';
 
 export const BarVote = ({ onPlus, onMinus, plus, minus, onLeft, commentCount = 0 }) => {
-    const { hapticFeedback } = useTelegramWebApp();
+    const { hapticFeedback, isInTelegram } = useTelegramWebApp();
     
     const handleMinus = (e) => {
         e.stopPropagation();
-        hapticFeedback?.impact('light');
+        if (isInTelegram && hapticFeedback) {
+            hapticFeedback.impact('light');
+        }
         onMinus();
     };
     
     const handlePlus = (e) => {
         e.stopPropagation();
-        hapticFeedback?.impact('light');
+        if (isInTelegram && hapticFeedback) {
+            hapticFeedback.impact('light');
+        }
         onPlus();
     };
     
     const handleCommentClick = () => {
-        hapticFeedback?.impact('soft');
+        if (isInTelegram && hapticFeedback) {
+            hapticFeedback.impact('soft');
+        }
         onLeft();
     };
     

@@ -91,7 +91,7 @@ export const useComments = (
                     // Fallback: refetch comments from server
                     upd();
                 }
-                setActiveComment("none");
+                setActiveComment(null);
                 updBalance();
             })
             .catch((error) => {

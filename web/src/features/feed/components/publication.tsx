@@ -427,6 +427,7 @@ export const Publication = ({
 
     const publicationUnderReply = activeCommentHook[0] == slug;
     const nobodyUnderReply = activeCommentHook[0] === null;
+    const commentUnderReply = activeCommentHook[0] && activeCommentHook[0] !== slug && activeCommentHook[0] !== null;
     const [showDimensionsEditor, setShowDimensionsEditor] = useState(false);
     
     const tagsStr = [
@@ -490,6 +491,7 @@ export const Publication = ({
             className={classList(
                 "mb-5 transition-all duration-300",
                 publicationUnderReply ? "scale-100 opacity-100" : 
+                commentUnderReply ? "scale-95 opacity-60" :
                 nobodyUnderReply ? "scale-100 opacity-100" : 
                 "scale-95 opacity-60"
             )}
@@ -517,7 +519,7 @@ export const Publication = ({
                     }
                 }}
                 description={tagsStr}
-                onClick={!(myId == tgAuthorId) && !isDetailPage ? () => {
+                onClick={!isDetailPage ? () => {
                     // Navigate to post detail page
                     if (tgChatId && slug) {
                         router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
@@ -622,6 +624,7 @@ export const Publication = ({
                                 activeWithdrawPost={activeWithdrawPost}
                                 setActiveWithdrawPost={setActiveWithdrawPost}
                                 updateAll={updateAll}
+                                isDetailPage={isDetailPage}
                             />
                         ))}
                     </div>
