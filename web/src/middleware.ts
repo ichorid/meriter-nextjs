@@ -4,6 +4,24 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     
+    // Handle locale cookie setting
+    const localeCookie = request.cookies.get('NEXT_LOCALE');
+    if (!localeCookie) {
+        // Set default locale cookie on first visit
+        const acceptLanguage = request.headers.get('accept-language');
+        const browserLang = acceptLanguage?.split(',')[0]?.split('-')[0]?.toLowerCase();
+        const detectedLocale = browserLang === 'ru' ? 'ru' : 'en';
+        
+        const response = NextResponse.next();
+        response.cookies.set('NEXT_LOCALE', detectedLocale, {
+            maxAge: 365 * 24 * 60 * 60, // 1 year
+            path: '/',
+            sameSite: 'lax',
+            httpOnly: false, // Allow client-side access
+        });
+        return response;
+    }
+    
     // Handle backward compatibility redirects
     // Redirect old /meriter/balance to new /meriter/home
     if (pathname === '/meriter/balance') {

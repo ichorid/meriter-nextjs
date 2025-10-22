@@ -2,19 +2,26 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@shared/lib/theme-provider';
 import { I18nProvider } from '@/providers/i18n-provider';
+import { getServerTranslations } from '@/lib/i18n-server';
+import { headers } from 'next/headers';
 
 export const metadata: Metadata = {
     title: 'Meriter',
     description: 'Merit-based community platform',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    // Get server-side translations
+    const headersList = await headers();
+    const acceptLanguage = headersList.get('accept-language');
+    const { locale, translations } = await getServerTranslations(acceptLanguage || undefined);
+    
     return (
-        <html lang="en" suppressHydrationWarning>
+        <html lang={locale} suppressHydrationWarning>
             <head>
                 <script src="https://telegram.org/js/telegram-web-app.js"></script>
                 <script
@@ -43,7 +50,7 @@ export default function RootLayout({
                 />
             </head>
             <body suppressHydrationWarning>
-                <I18nProvider>
+                <I18nProvider locale={locale} initialTranslations={translations}>
                     <ThemeProvider>{children}</ThemeProvider>
                 </I18nProvider>
             </body>

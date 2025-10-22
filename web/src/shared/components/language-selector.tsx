@@ -13,17 +13,42 @@ export function LanguageSelector() {
         setSelectedValue(stored);
     }, []);
 
-    const changeLanguage = (value: string) => {
+    const changeLanguage = async (value: string) => {
         setSelectedValue(value);
         localStorage.setItem('language', value);
         
-        if (value === 'auto') {
-            // Detect browser language
-            const browserLang = navigator.language.split('-')[0];
-            const detectedLang = browserLang === 'ru' ? 'ru' : 'en';
-            i18n.changeLanguage(detectedLang);
-        } else {
-            i18n.changeLanguage(value);
+        try {
+            // Set cookie via API
+            await fetch('/api/set-locale', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ locale: value }),
+            });
+            
+            // Change language immediately for instant feedback
+            if (value === 'auto') {
+                // Detect browser language
+                const browserLang = navigator.language.split('-')[0];
+                const detectedLang = browserLang === 'ru' ? 'ru' : 'en';
+                i18n.changeLanguage(detectedLang);
+            } else {
+                i18n.changeLanguage(value);
+            }
+            
+            // Reload page to get server-side rendering with new language
+            window.location.reload();
+        } catch (error) {
+            console.error('Failed to set locale:', error);
+            // Fallback to client-side only change
+            if (value === 'auto') {
+                const browserLang = navigator.language.split('-')[0];
+                const detectedLang = browserLang === 'ru' ? 'ru' : 'en';
+                i18n.changeLanguage(detectedLang);
+            } else {
+                i18n.changeLanguage(value);
+            }
         }
     };
 
