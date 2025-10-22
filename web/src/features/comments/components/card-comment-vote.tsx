@@ -24,6 +24,8 @@ export const CardCommentVote = ({
     voteType,
     amountFree,
     amountWallet,
+    beneficiaryName,
+    beneficiaryAvatarUrl,
 }:any) => {
     const { t } = useTranslation('comments');
     
@@ -42,7 +44,13 @@ export const CardCommentVote = ({
     
     return (
     <div className="mb-4">
-        <div className="card bg-base-100 shadow-md rounded-xl overflow-hidden">
+        <div 
+            className={classList(
+                "card bg-base-100 shadow-md rounded-xl overflow-hidden",
+                onClick && "cursor-pointer hover:shadow-lg transition-shadow"
+            )}
+            onClick={onClick}
+        >
             <div className="flex">
                 <div className={classList(
                     "font-bold text-center py-2 px-3 min-w-[3rem] flex items-center justify-center gap-1",
@@ -116,6 +124,18 @@ export const CardCommentVote = ({
                             )}
                         </div>
                         <div className="content text-sm mb-2">{content}</div>
+                        {/* Beneficiary information */}
+                        {beneficiaryName && (
+                            <div className="flex items-center gap-2 mb-2 text-xs opacity-70">
+                                <span>to:</span>
+                                <AvatarWithPlaceholder
+                                    avatarUrl={beneficiaryAvatarUrl}
+                                    name={beneficiaryName}
+                                    size={16}
+                                />
+                                <span>{beneficiaryName}</span>
+                            </div>
+                        )}
                         <div className="bottom" onClick={(e) => e.stopPropagation()}>{bottom}</div>
                     </div>
                     {withdrawSliderContent && (

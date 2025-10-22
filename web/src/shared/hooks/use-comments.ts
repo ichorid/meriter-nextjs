@@ -33,6 +33,9 @@ export const useComments = (
     const [comments, upd] = swr(() => showComments && getCommentsApiPath, [], {
         key: "transactions",
     });
+    
+    // Ensure comments is always an array
+    const safeComments = comments || [];
     const [free, updFree] = swr(getFreeBalanceApiPath, 0, { key: "free" });
     const [error, setError] = useState("");
     const maxPlus = free + balance;
@@ -110,7 +113,7 @@ export const useComments = (
     };
 
     return {
-        comments,
+        comments: safeComments,
         showPlus,
         setShowComments,
         currentPlus,

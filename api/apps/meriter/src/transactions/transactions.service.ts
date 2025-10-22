@@ -543,10 +543,25 @@ export class TransactionsService {
 
   async getFreeLimit(telegramUserId: string, inHashtag: string) {
     this.logger.log('getFreeLimit', telegramUserId, inHashtag)
+    
+    // Check if inHashtag is valid
+    if (!inHashtag) {
+      this.logger.warn('getFreeLimit called with undefined/null inHashtag');
+      return 0;
+    }
+    
     const hashtag = await this.hashtagsService.model.findOne({
       slug: inHashtag,
     });
+    
     this.logger.log('hashtag slug:', hashtag?.slug)
+    
+    // Check if hashtag was found
+    if (!hashtag || !hashtag.meta) {
+      this.logger.warn('Hashtag not found or missing meta:', inHashtag);
+      return 0;
+    }
+    
     const parentTgChatId = hashtag.meta.parentTgChatId;
 
 

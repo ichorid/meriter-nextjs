@@ -409,7 +409,7 @@ export const Publication = ({
         slug,
         undefined,
         "/api/rest/transactions/publications/" + slug,
-        "/api/rest/free?inSpaceSlug=" + spaceSlug,
+        spaceSlug ? "/api/rest/free?inSpaceSlug=" + spaceSlug : null,
         balance,
         updBalance,
         plus,

@@ -2,9 +2,7 @@
 
 import { CardCommentVote } from "@features/comments/components/card-comment-vote";
 import { telegramGetAvatarLink } from "@lib/telegram";
-import { BarVote } from "@shared/components/bar-vote";
 import { useTranslation } from 'react-i18next';
-import Link from "next/link";
 import { swr } from "@lib/swr";
 
 class RestTransactionObject {
@@ -47,12 +45,6 @@ export const TransactionToMe = ({
         {},
         { revalidateOnFocus: false }
     );
-    
-    const parentTextCut = transaction.parentText
-        ? transaction.parentText.length < 80
-            ? transaction.parentText
-            : transaction.parentText?.substr(0, 80) + "..."
-        : t('thisPost');
     
     // Format the rate with currency icon
     const formatRate = () => {
@@ -99,6 +91,14 @@ export const TransactionToMe = ({
                 voteType={voteType}
                 amountFree={transaction.amountFree || 0}
                 amountWallet={Math.abs(transaction.amountTotal) - Math.abs(transaction.amountFree || 0)}
+                beneficiaryName={transaction.toUserTgName}
+                beneficiaryAvatarUrl={telegramGetAvatarLink(transaction.toUserTgId)}
+                onClick={() => {
+                    // Navigate to the post page
+                    if (transaction.inPublicationSlug && transaction.currencyOfCommunityTgChatId) {
+                        window.location.href = `/meriter/communities/${transaction.currencyOfCommunityTgChatId}/posts/${transaction.inPublicationSlug}`;
+                    }
+                }}
                 showCommunityAvatar={true}
                 communityAvatarUrl={communityInfo?.chat?.photo}
                 communityName={communityInfo?.chat?.title}
@@ -108,23 +108,7 @@ export const TransactionToMe = ({
                         window.location.href = `/meriter/communities/${transaction.currencyOfCommunityTgChatId}`;
                     }
                 }}
-                bottom={
-                    transaction.inPublicationSlug && (
-                        <div>
-                            {t('inReplyTo')}{" "}
-                            <Link
-                                href={`/meriter/communities/${transaction.currencyOfCommunityTgChatId}/posts/${transaction.inPublicationSlug}${
-                                    transaction.forTransactionId
-                                        ? "#" + transaction.forTransactionId
-                                        : ""
-                                }`}
-                                className="link link-hover"
-                            >
-                                {parentTextCut ? parentTextCut : t('thisPost')}
-                            </Link>
-                        </div>
-                    )
-                }
+                bottom={null}
             />
         </div>
     );

@@ -17,9 +17,26 @@ import { UserGuard } from '../../../user.guard';
 import { create } from 'domain';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
 import { PublicationsService } from '../../../publications/publications.service';
+import { UsersService } from '../../../users/users.service';
 
 // Helper function to map transaction to old format for API backward compatibility
-function mapTransactionToOldFormat(transaction: any) {
+async function mapTransactionToOldFormat(transaction: any, usersService: any) {
+  const toUserTgId = transaction.subjectsActorUris?.[0]?.replace('actor.user://telegram', '');
+  let toUserTgName = '';
+  
+  // Get beneficiary name if we have a toUserTgId
+  if (toUserTgId) {
+    try {
+      const user = await usersService.model.findOne({
+        identities: 'telegram://' + toUserTgId,
+      });
+      toUserTgName = user?.profile?.name || '';
+    } catch (error) {
+      // If user lookup fails, leave name empty
+      toUserTgName = '';
+    }
+  }
+  
   return {
     amount: transaction.meta?.amounts?.total ?? 0,
     amountFree: transaction.meta?.amounts?.free ?? 0,
@@ -32,13 +49,14 @@ function mapTransactionToOldFormat(transaction: any) {
     fromUserTgName: transaction.meta?.from?.telegramUserName,
     inPublicationSlug: transaction.meta?.parentPublicationUri,
     forTransactionId: transaction.uid,
-    inSpaceSlug: transaction.spacesActorUris?.[0]?.replace('actor.hashtag://slug', ''),
+    inSpaceSlug: transaction.spacesActorUris?.[0]?.replace('actor.hashtag://slug', '') || '',
     minus: transaction.meta?.metrics?.minus ?? 0,
     plus: transaction.meta?.metrics?.plus ?? 0,
     publicationClassTags: [],
     reason: transaction.type,
     sum: transaction.meta?.metrics?.sum ?? 0,
-    toUserTgId: transaction.subjectsActorUris?.[0]?.replace('actor.user://telegram', ''),
+    toUserTgId: toUserTgId,
+    toUserTgName: toUserTgName,
     ts: transaction.createdAt?.toString(),
     _id: transaction._id,
   };
@@ -87,6 +105,7 @@ class RestTransactionObject {
   reason: string; //"forPublication"
   sum: number; //0
   toUserTgId: string; //"987654321"
+  toUserTgName: string; //"Beneficiary Name"
   ts: string; //"2021-01-08T09:40:11.179Z"
 
   _id: string; //"5ff8287bbb626e366c0a69a0"
@@ -101,6 +120,7 @@ export class RestTransactionsController {
     private transactionsService: TransactionsService,
     private publicationsService: PublicationsService,
     private tgBotsService: TgBotsService,
+    private usersService: UsersService,
   ) {}
 
   @Get('my')
@@ -114,7 +134,10 @@ export class RestTransactionsController {
       positive,
     );
     this.logger.log('found comments:', t?.length);
-    return { transactions: t.map(mapTransactionToOldFormat) };
+    const mappedTransactions = await Promise.all(
+      t.map(transaction => mapTransactionToOldFormat(transaction, this.usersService))
+    );
+    return { transactions: mappedTransactions };
   }
 
   @Get('updates')
@@ -126,7 +149,10 @@ export class RestTransactionsController {
       req.user.tgUserId,
       positive,
     );
-    return { transactions: t.map(mapTransactionToOldFormat) };
+    const mappedTransactions = await Promise.all(
+      t.map(transaction => mapTransactionToOldFormat(transaction, this.usersService))
+    );
+    return { transactions: mappedTransactions };
   }
 
   @Get('publications/:publicationSlug')
@@ -172,7 +198,10 @@ export class RestTransactionsController {
       positive,
     );
 
-    return { transactions: t.map(mapTransactionToOldFormat) };
+    const mappedTransactions = await Promise.all(
+      t.map(transaction => mapTransactionToOldFormat(transaction, this.usersService))
+    );
+    return { transactions: mappedTransactions };
   }
 
   @Get(':transactionId/replies')
@@ -219,7 +248,10 @@ export class RestTransactionsController {
       positive,
     );
 
-    return { transactions: t.map(mapTransactionToOldFormat) };
+    const mappedTransactions = await Promise.all(
+      t.map(transaction => mapTransactionToOldFormat(transaction, this.usersService))
+    );
+    return { transactions: mappedTransactions };
   }
 
   @Post()

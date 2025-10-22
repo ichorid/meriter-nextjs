@@ -29,12 +29,14 @@ export const Comment = ({
     directionPlus,
     reason,
     toUserTgId,
+    toUserTgName,
     fromUserTgId,
     amountTotal,
     inPublicationSlug,
     activeCommentHook,
     myId,
     highlightTransactionId,
+    forTransactionId,
     // New props for author withdraw functionality
     wallets,
     updateWalletBalance,
@@ -227,9 +229,9 @@ export const Comment = ({
     } = useComments(
         true,
         inPublicationSlug,
-        _id,
-        "/api/rest/transactions/" + _id + "/replies",
-        "/api/rest/free?inSpaceSlug=" + spaceSlug,
+        forTransactionId || _id,
+        "/api/rest/transactions/" + (forTransactionId || _id) + "/replies",
+        spaceSlug ? "/api/rest/free?inSpaceSlug=" + spaceSlug : null,
         balance,
         updBalance,
         plus,
@@ -317,6 +319,14 @@ export const Comment = ({
                 voteType={voteType}
                 amountFree={Math.abs(amountTotal) - Math.abs(sum || 0)}
                 amountWallet={Math.abs(sum || 0)}
+                beneficiaryName={toUserTgName}
+                beneficiaryAvatarUrl={telegramGetAvatarLink(toUserTgId)}
+                onClick={() => {
+                    // Navigate to the post page
+                    if (inPublicationSlug && currencyOfCommunityTgChatId) {
+                        window.location.href = `/meriter/communities/${currencyOfCommunityTgChatId}/posts/${inPublicationSlug}`;
+                    }
+                }}
                 onAvatarUrlNotFound={() => {
                     const fallbackUrl = telegramGetAvatarLinkUpd(userTgId);
                     if (fallbackUrl !== avatarUrl) {
