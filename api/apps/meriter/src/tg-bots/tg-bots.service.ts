@@ -32,6 +32,7 @@ import * as stream from "stream";
 
 import { HashtagsService } from "../hashtags/hashtags.service";
 import { WalletsService } from "../wallets/wallets.service";
+import { encodeTelegramDeepLink } from '@common/abstracts';
 
 @Injectable()
 export class TgBotsService {
@@ -438,8 +439,9 @@ export class TgBotsService {
     this.logger.log(`✅ Publication created: slug=${slug}, spaceSlug=${spaceSlug}, external=${external}`);
 
     if (!external) {
-      const text = ADDED_PUBLICATION_REPLY.replace("{link}", link);
-      this.logger.log(`💬 Sending reply to group ${tgChatId} with link: ${link}`);
+      const encodedLink = encodeTelegramDeepLink('publication', link);
+      const text = ADDED_PUBLICATION_REPLY.replace("{encodedLink}", encodedLink);
+      this.logger.log(`💬 Sending reply to group ${tgChatId} with encoded link: ${encodedLink}`);
 
       await this.tgReplyMessage({
         reply_to_message_id: messageId,
@@ -459,9 +461,10 @@ export class TgBotsService {
           text,
         });
       } else {
+        const encodedLink = encodeTelegramDeepLink('publication', link);
         const text = ADDED_EXTERNAL_PUBLICATION_PENDING_REPLY.replace(
-          "{link}",
-          link
+          "{encodedLink}",
+          encodedLink
         );
 
         await this.tgReplyMessage({
@@ -1034,10 +1037,11 @@ export class TgBotsService {
       })
       .join("\n");
 
+    const encodedCommunityLink = encodeTelegramDeepLink('community', `${aboutChatId}`);
     const text = config.WELCOME_COMMUNITY_TEXT.replace(
       "{hashtags}",
       hashtagsList
-    ).replace("{linkCommunity}", `${aboutChatId}`);
+    ).replace("{encodedCommunityLink}", encodedCommunityLink);
 
     await this.tgSend({ tgChatId: toTgChatId, text });
   }

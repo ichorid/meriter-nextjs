@@ -19,6 +19,7 @@ import { PublicationsService } from '../../../publications/publications.service'
 import { TransactionsService } from '../../../transactions/transactions.service';
 import { WalletsService } from '../../../wallets/wallets.service';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
+import { encodeTelegramDeepLink } from '@common/abstracts';
 
 class PollOptionDto {
   @IsString()
@@ -187,7 +188,8 @@ export class RestPollsController {
     // Send Telegram announcement to the community
     try {
       const botUsername = this.configService.get<string>('bot.username') || 'meriter_pro_bot';
-      const pollLink = `https://t.me/${botUsername}?startapp=poll&id=${pollUid}`;
+      const encodedPollLink = encodeTelegramDeepLink('poll', pollUid);
+      const pollLink = `https://t.me/${botUsername}?startapp=${encodedPollLink}`;
       
       const message = `📊 <b>Новый опрос!</b>
 

@@ -7,12 +7,14 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { useDeepLinkHandler } from '@shared/lib/deep-link-handler';
+import { useTelegramWebApp } from '@shared/hooks/useTelegramWebApp';
 
 const PageSetupCommunity = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { t, i18n } = useTranslation('pages');
-    const { handleDeepLink } = useDeepLinkHandler(router, searchParams);
+    const { startParam } = useTelegramWebApp();
+    const { handleDeepLink } = useDeepLinkHandler(router, searchParams, startParam);
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false);

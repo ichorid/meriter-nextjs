@@ -14,11 +14,11 @@ export const LEADER_MESSAGE_AFTER_ADDED = `Бот добавлен в сообщ
 
 export const WELCOME_USER_MESSAGE = `Добро пожаловать в Меритер! Войдите через приложение: https://t.me/${BOT_USERNAME}?startapp=login`;
 export const AUTH_USER_MESSAGE = `Войдите через приложение: https://t.me/${BOT_USERNAME}?startapp=login`;
-export const ADDED_PUBLICATION_REPLY = `Сообщение добавлено в приложение https://t.me/${BOT_USERNAME}?startapp=publication&id={link}. Перейдите, чтобы оставить своё мнение и узнать, что думают другие`;
-export const GLOBAL_FEED_INCOMMING_FROM_COMMUNITY = `Добавлена публикация от {communityName}: https://t.me/${BOT_USERNAME}?startapp=publication&id={link}\n--\n{text}`;
+export const ADDED_PUBLICATION_REPLY = `Сообщение добавлено в приложение https://t.me/${BOT_USERNAME}?startapp={encodedLink}. Перейдите, чтобы оставить своё мнение и узнать, что думают другие`;
+export const GLOBAL_FEED_INCOMMING_FROM_COMMUNITY = `Добавлена публикация от {communityName}: https://t.me/${BOT_USERNAME}?startapp={encodedLink}\n--\n{text}`;
 export const ADDED_EXTERNAL_PUBLICATION_ADMIN_REPLY =
   'Публикация от имени всего сообщества добавлена в глобальный рейтинг заслуг {link} \n\nЧем больше баллов ("меритов") сообщество наберет в общем рейтинге, тем выше будут котироваться заслуги сообщества при их обмене на товары, услуги, голосованиях.';
-export const ADDED_EXTERNAL_PUBLICATION_PENDING_REPLY = `Публикация доступна для рейтингования здесь https://t.me/${BOT_USERNAME}?startapp=publication&id={link}. Она будет одобрена для окончательной публикации, после того как администратор в ответ на это сообщение напишет "одобрить"`;
+export const ADDED_EXTERNAL_PUBLICATION_PENDING_REPLY = `Публикация доступна для рейтингования здесь https://t.me/${BOT_USERNAME}?startapp={encodedLink}. Она будет одобрена для окончательной публикации, после того как администратор в ответ на это сообщение напишет "одобрить"`;
 
 export const APPROVED_PEDNDING_WORDS = ['одобрить'];
 
@@ -47,7 +47,7 @@ export const WELCOME_COMMUNITY_TEXT = `В нашем сообществе дей
 
 Любое сообшение здесь с одним из перечисленых хэштегов будет размещено в общем рейтинге: 
 
-https://t.me/${BOT_USERNAME}?startapp=community&id={linkCommunity}
+https://t.me/${BOT_USERNAME}?startapp={encodedCommunityLink}
 
 Важные сообщения больше не потеряются, а вклад их авторов будет учтен.
 

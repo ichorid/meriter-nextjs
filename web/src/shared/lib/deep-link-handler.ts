@@ -1,4 +1,5 @@
 import { useRouter, useSearchParams } from 'next/navigation';
+import { decodeTelegramDeepLink } from './base64url';
 
 export interface DeepLinkParams {
   startapp?: string | null;
@@ -16,11 +17,31 @@ export interface DeepLinkHandler {
  * @param searchParams - URL search parameters
  * @returns Deep link handler functions
  */
-export function useDeepLinkHandler(router: any, searchParams: any): DeepLinkHandler {
+export function useDeepLinkHandler(
+  router: any, 
+  searchParams: any,
+  telegramStartParam?: string
+): DeepLinkHandler {
   const handleDeepLink = (hasPendingCommunities?: boolean) => {
-    const startapp = searchParams.get('startapp');
-    const id = searchParams.get('id');
+    let startapp = searchParams.get('startapp');
+    let id = searchParams.get('id');
     const returnTo = searchParams.get('returnTo');
+    
+    // Parse Telegram start_param (base64url encoded)
+    if (telegramStartParam) {
+      console.log('🔗 Parsing Telegram start_param (base64url):', telegramStartParam);
+      
+      try {
+        const decoded = decodeTelegramDeepLink(telegramStartParam);
+        startapp = decoded.action;
+        id = decoded.id;
+        console.log('🔗 Decoded startapp:', startapp, 'id:', id);
+      } catch (error) {
+        console.error('🔗 Failed to decode Telegram start_param:', error);
+        // Fallback to treating as simple action
+        startapp = telegramStartParam;
+      }
+    }
     
     let redirectPath = '/meriter/home'; // default
     

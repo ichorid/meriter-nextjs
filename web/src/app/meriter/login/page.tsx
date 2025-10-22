@@ -13,8 +13,8 @@ const PageMeriterLogin = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { t, i18n } = useTranslation('login');
-    const { isInTelegram, initData } = useTelegramWebApp();
-    const { handleDeepLink } = useDeepLinkHandler(router, searchParams);
+    const { isInTelegram, initData, startParam } = useTelegramWebApp();
+    const { handleDeepLink } = useDeepLinkHandler(router, searchParams, startParam);
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -72,6 +72,14 @@ const PageMeriterLogin = () => {
         }
     };
 
+    // Check if already authenticated - redirect immediately
+    useEffect(() => {
+        if (user?.token) {
+            console.log('🟢 Already authenticated, handling deep link...');
+            handleDeepLink();
+        }
+    }, [user?.token, handleDeepLink]);
+
     // Auto-authenticate if opened in Telegram Web App
     useEffect(() => {
         if (isInTelegram && initData && !webAppAuthAttempted.current && !user?.token) {
@@ -83,6 +91,7 @@ const PageMeriterLogin = () => {
     useEffect(() => {
         console.log('🟢 Login page mounted. BOT_USERNAME:', BOT_USERNAME);
         console.log('🟢 Telegram Web App mode:', isInTelegram);
+        console.log('🟢 Telegram start_param:', startParam);
         
         if (returnTo) {
             console.log('🟢 returnTo parameter found:', returnTo);

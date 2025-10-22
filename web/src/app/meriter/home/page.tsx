@@ -2,7 +2,7 @@
 
 import Page from '@shared/components/page';
 import { swr } from '@lib/swr';
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useTranslation } from 'react-i18next';
 import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { useRouter } from "next/navigation";
@@ -122,9 +122,11 @@ const PageHome = () => {
         { key: "userdata" }
     );
     const tgAuthorId = user?.tgUserId;
+    const authCheckDone = useRef(false);
 
     useEffect(() => {
-        if (!user?.tgUserId && !user.init) {
+        if (!authCheckDone.current && !user?.tgUserId && !user.init) {
+            authCheckDone.current = true;
             router.push("/meriter/login?returnTo=" + encodeURIComponent(window.location.pathname));
         }
     }, [user, user?.init, router]);

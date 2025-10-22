@@ -15,6 +15,7 @@ interface TelegramWebApp {
     };
     auth_date?: number;
     hash?: string;
+    start_param?: string;
   };
   version: string;
   platform: string;
@@ -146,6 +147,7 @@ export function useTelegramWebApp() {
     webApp,
     initData: webApp?.initData || '',
     user: webApp?.initDataUnsafe?.user,
+    startParam: webApp?.initDataUnsafe?.start_param,
     isInTelegram: !!webApp && (!!webApp.initData || !!webApp.platform || !!webApp.version),
     colorScheme: webApp?.colorScheme,
     themeParams: webApp?.themeParams,
