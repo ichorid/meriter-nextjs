@@ -23,8 +23,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         const checkTelegram = () => {
             const tg = (window as any).Telegram?.WebApp;
             if (tg) {
-                // Check if we're in Telegram environment (even if initData isn't ready yet)
-                if (tg.platform || tg.version || tg.colorScheme !== undefined) {
+                // Check if we're in Telegram environment - use strict detection
+                const isTelegramEnvironment = (
+                    tg.initData || // Has init data (most reliable indicator)
+                    (tg.platform && tg.platform !== 'unknown') || // Has a real platform
+                    (tg.version && tg.version !== '6.0') || // Has a real version (not default)
+                    (tg.colorScheme && (tg.colorScheme === 'light' || tg.colorScheme === 'dark')) // Has actual color scheme
+                );
+                
+                if (isTelegramEnvironment) {
                     setIsInTelegram(true);
                     console.log('🎨 Telegram Web App detected, using Telegram theme');
                     

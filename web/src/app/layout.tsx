@@ -33,7 +33,12 @@ export default async function RootLayout({
                                     const tg = window.Telegram?.WebApp;
                                     let resolvedTheme = 'light';
                                     
-                                    if (tg && (tg.platform || tg.version || tg.colorScheme !== undefined)) {
+                                    if (tg && (
+                                        tg.initData || // Has init data (most reliable indicator)
+                                        (tg.platform && tg.platform !== 'unknown') || // Has a real platform
+                                        (tg.version && tg.version !== '6.0') || // Has a real version (not default)
+                                        (tg.colorScheme && (tg.colorScheme === 'light' || tg.colorScheme === 'dark')) // Has actual color scheme
+                                    )) {
                                         // We're in Telegram Web App
                                         console.log('🎨 Server-side: Telegram Web App detected');
                                         if (tg.colorScheme) {
@@ -42,13 +47,20 @@ export default async function RootLayout({
                                         }
                                     } else {
                                         // Not in Telegram, use localStorage or system preference
-                                        const theme = localStorage.getItem('theme') || 'auto';
-                                        if (theme === 'auto') {
-                                            resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                                        // Check if localStorage is available (client-side only)
+                                        if (typeof localStorage !== 'undefined') {
+                                            const theme = localStorage.getItem('theme') || 'auto';
+                                            if (theme === 'auto') {
+                                                resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                                            } else {
+                                                resolvedTheme = theme;
+                                            }
+                                            console.log('🎨 Server-side: Using stored/system theme:', resolvedTheme);
                                         } else {
-                                            resolvedTheme = theme;
+                                            // Server-side fallback to system preference
+                                            resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                                            console.log('🎨 Server-side: Using system theme (localStorage not available):', resolvedTheme);
                                         }
-                                        console.log('🎨 Server-side: Using stored/system theme:', resolvedTheme);
                                     }
                                     
                                     document.documentElement.setAttribute('data-theme', resolvedTheme);

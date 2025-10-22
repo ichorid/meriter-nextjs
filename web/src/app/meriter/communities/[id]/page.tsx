@@ -72,20 +72,28 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     // Handle deep linking to specific post
     useEffect(() => {
         if (targetPostSlug && publications.length > 0) {
-            const targetPost = publications.find(p => p.uid === targetPostSlug);
+            console.log('🔍 Looking for post with slug:', targetPostSlug);
+            console.log('🔍 Available publications:', publications.map(p => ({ slug: p.slug, _id: p._id })));
+            
+            const targetPost = publications.find(p => p.slug === targetPostSlug);
             if (targetPost) {
-                console.log('🎯 Found target post for deep link:', targetPostSlug);
+                console.log('🎯 Found target post for deep link:', targetPostSlug, 'with _id:', targetPost._id);
                 setHighlightedPostId(targetPost._id);
                 
                 // Scroll to the post after a short delay to ensure it's rendered
                 setTimeout(() => {
                     const postElement = document.getElementById(`post-${targetPost._id}`);
                     if (postElement) {
+                        console.log('🎯 Scrolling to post element:', postElement);
                         postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         // Remove highlight after 3 seconds
                         setTimeout(() => setHighlightedPostId(null), 3000);
+                    } else {
+                        console.log('❌ Post element not found with id:', `post-${targetPost._id}`);
                     }
                 }, 500);
+            } else {
+                console.log('❌ Target post not found with slug:', targetPostSlug);
             }
         }
     }, [targetPostSlug, publications]);

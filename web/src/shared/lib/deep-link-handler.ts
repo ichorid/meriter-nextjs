@@ -56,7 +56,8 @@ export function useDeepLinkHandler(
           const chatId = pathParts[1];
           const slug = pathParts[3];
           console.log('🔗 Deep link: Parsed community publication path:', { chatId, slug });
-          redirectPath = `/meriter/communities/${chatId}?post=${slug}`;
+          // Redirect to dedicated post page instead of community page with highlighting
+          redirectPath = `/meriter/communities/${chatId}/posts/${slug}`;
         } else {
           console.log('🔗 Deep link: Invalid publication path format, using default');
           redirectPath = `/meriter/publications/${id}`;
