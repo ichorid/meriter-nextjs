@@ -40,23 +40,12 @@ export const FormWithdraw = ({
                             onChange={setAmount}
                         />
                     </div>
-                    <div className="relative">
-                        <textarea
-                            onClick={() => setSelected(true)}
-                            className="textarea textarea-bordered w-full bg-base-100 text-base resize-none"
-                            style={
-                                selected
-                                    ? { height: "100px" }
-                                    : { height: "50px" }
-                            }
-                            placeholder={t('writeComment')}
-                            {...etv(comment, setComment)}
-                        />
+                    <div className="flex justify-end mt-4">
                         <button
                             onClick={onSubmit}
-                            className="btn btn-circle btn-primary absolute bottom-2 right-2"
+                            className="btn btn-primary"
                         >
-                            <img src={"/meriter/send.svg"} alt="Send" className="w-5 h-5" />
+                            {t('submit')}
                         </button>
                     </div>
                 </div>

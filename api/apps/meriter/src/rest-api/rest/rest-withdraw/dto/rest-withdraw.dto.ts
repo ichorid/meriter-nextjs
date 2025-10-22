@@ -7,8 +7,9 @@ export class RestWithdrawDto {
   @IsNumber()
   amountInternal: number;
 
+  @IsOptional()
   @IsString()
-  comment: string;
+  comment?: string;
 
   @IsBoolean()
   directionAdd: boolean;

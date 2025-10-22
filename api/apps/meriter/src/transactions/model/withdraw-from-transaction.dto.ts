@@ -1,4 +1,4 @@
-import { IsString, IsNumber } from 'class-validator';
+import { IsString, IsNumber, IsOptional } from 'class-validator';
 
 export class WithdrawFromTransactionDTO {
   @IsString()
@@ -13,6 +13,7 @@ export class WithdrawFromTransactionDTO {
   @IsNumber()
   amount: number;
 
+  @IsOptional()
   @IsString()
-  comment: string;
+  comment?: string;
 }

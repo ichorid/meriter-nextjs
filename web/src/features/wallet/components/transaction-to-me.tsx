@@ -91,7 +91,7 @@ export const TransactionToMe = ({
                 voteType={voteType}
                 amountFree={transaction.amountFree || 0}
                 amountWallet={Math.abs(transaction.amountTotal) - Math.abs(transaction.amountFree || 0)}
-                beneficiaryName={transaction.toUserTgName}
+                beneficiaryName={transaction.fromUserTgName}
                 beneficiaryAvatarUrl={telegramGetAvatarLink(transaction.toUserTgId)}
                 onClick={() => {
                     // Navigate to the post page

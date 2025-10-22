@@ -534,7 +534,6 @@ describe('Telegram Bot Flow (E2E)', () => {
         .send({
           publicationSlug: vars.MEMBER_A_PUBLICATION_SLUG,
           amount: 5,
-          comment: 'test',
         });
 
       console.log('[TEST] Withdraw response:', response.status, response.body);
@@ -567,7 +566,6 @@ describe('Telegram Bot Flow (E2E)', () => {
         .send({
           publicationSlug: vars.MEMBER_A_PUBLICATION_SLUG,
           amount: 50,
-          comment: 'test',
         });
       
       // Should fail with 400, 403, or 500

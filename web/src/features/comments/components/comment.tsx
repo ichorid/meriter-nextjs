@@ -126,7 +126,6 @@ export const Comment = ({
         : undefined;
     
     const [amount, setAmount] = useState(0);
-    const [commentText, setCommentText] = useState("");
     const [amountInMerits, setAmountInMerits] = useState(0);
     const [withdrawMerits, setWithdrawMerits] = useState(isMerit);
     const [loading, setLoading] = useState(false);
@@ -157,7 +156,7 @@ export const Comment = ({
                 currency: withdrawMerits ? "merit" : currency,
                 directionAdd,
                 withdrawMerits,
-                comment: commentText,
+                comment: '', // No comment required
                 amountInternal: withdrawMerits
                     ? rate > 0
                         ? amountInMerits / rate
@@ -167,7 +166,6 @@ export const Comment = ({
             
             setAmount(0);
             setAmountInMerits(0);
-            setCommentText("");
             
             if (updateAll) await updateAll();
         } catch (error) {
@@ -254,8 +252,8 @@ export const Comment = ({
                     <Spinner />
                 ) : (
                     <FormWithdraw
-                        comment={commentText}
-                        setComment={setCommentText}
+                        comment=""
+                        setComment={() => {}}
                         amount={amount}
                         setAmount={setAmount}
                         maxWithdrawAmount={maxWithdrawAmount}
@@ -274,8 +272,8 @@ export const Comment = ({
                     <Spinner />
                 ) : (
                     <FormWithdraw
-                        comment={commentText}
-                        setComment={setCommentText}
+                        comment=""
+                        setComment={() => {}}
                         amount={amount}
                         setAmount={setAmount}
                         maxWithdrawAmount={maxWithdrawAmount}
