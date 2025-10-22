@@ -73,9 +73,9 @@ ghcr.io/[owner]/meriter-nextjs-api:latest
 
    **Security (Change these!):**
    ```env
-   JWT_SECRET=your-secure-random-string
-   SESSION_SECRET=your-session-secret
-   COOKIE_SECRET=your-cookie-secret
+   JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+   SESSION_SECRET=your-session-secret-change-this-in-production
+   COOKIE_SECRET=your-cookie-secret-change-this-in-production
    ```
 
    **Domain:**
@@ -83,7 +83,14 @@ ghcr.io/[owner]/meriter-nextjs-api:latest
    DOMAIN=yourdomain.com
    ```
 
-   **AWS S3 (if using):**
+   **Telegram Bot (Required):**
+   ```env
+   TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
+   BOT_USERNAME=your_bot_username
+   APP_URL=https://yourdomain.com
+   ```
+
+   **S3 Storage (Optional):**
    ```env
    AWS_ACCESS_KEY_ID=your-key
    AWS_SECRET_ACCESS_KEY=your-secret

@@ -51,6 +51,23 @@ cp api/env.example api/.env
 cp web/env.example web/.env
 ```
 
+**Required Configuration:**
+
+**`api/.env`:**
+```bash
+MONGO_URL=mongodb://127.0.0.1:27017/meriter
+BOT_TOKEN=your_telegram_bot_token_from_botfather
+BOT_USERNAME=your_bot_username
+```
+
+**`web/.env`:**
+```bash
+MONGO_URL=mongodb://127.0.0.1:27017/meriter
+BOT_TOKEN=your_telegram_bot_token_from_botfather
+NEXT_PUBLIC_BOT_USERNAME=your_bot_username
+JWT_SECRET=your-secure-jwt-secret
+```
+
 #### 1.3. Start Services
 
 Open **three** terminal windows:
@@ -119,13 +136,16 @@ cp web/env.example web/.env
 **`api/.env`:**
 ```bash
 MONGO_URL=mongodb://127.0.0.1:27017/meriter
-BOT_TOKEN=your_telegram_bot_token
+BOT_TOKEN=your_telegram_bot_token_from_botfather
 BOT_USERNAME=your_bot_username
 ```
 
 **`web/.env`:**
 ```bash
 MONGO_URL=mongodb://127.0.0.1:27017/meriter
+BOT_TOKEN=your_telegram_bot_token_from_botfather
+NEXT_PUBLIC_BOT_USERNAME=your_bot_username
+JWT_SECRET=your-secure-jwt-secret
 ```
 
 #### 2.3. Start Services
@@ -261,14 +281,17 @@ Access via: `http://localhost` (Caddy on port 80)
 
 ### Backend (`api/.env`)
 - `MONGO_URL` - MongoDB connection string
-- `BOT_TOKEN` - Telegram bot token
+- `BOT_TOKEN` - Telegram bot token (from @BotFather)
 - `BOT_USERNAME` - Telegram bot username
-- `JWT_SECRET` - Secret for JWT tokens
-- `S3_*` - S3 credentials (optional)
+- `APP_URL` - Application URL for bot messages
+- `S3_*` - S3 credentials (optional, for avatar caching)
 
 ### Frontend (`web/.env`)
 - `MONGO_URL` - MongoDB connection string (for SSR)
-- ~~`BACKEND_URL`~~ - NOT needed (removed)
+- `BOT_TOKEN` - Telegram bot token (server-side only)
+- `NEXT_PUBLIC_BOT_USERNAME` - Bot username (client-accessible)
+- `JWT_SECRET` - Secret for JWT tokens
+- `APP_URL` - Application URL
 
 ## Architecture Changes
 
