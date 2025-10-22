@@ -139,6 +139,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     
     // State for withdrawal functionality
     const [activeWithdrawPost, setActiveWithdrawPost] = useState(null);
+    const [activeSlider, setActiveSlider] = useState<string | null>(null);
     
     // Wallet update function for optimistic updates
     const updateWalletBalance = (currencyId: string, change: number) => {
@@ -196,6 +197,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 <MenuBreadcrumbs
                     chatId={chatId}
                     chatNameVerb={chatNameVerb}
+                    chatIcon={comms?.icon}
                 />
                 
                 {/* Community Header */}
@@ -358,6 +360,8 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                 balance={balance}
                                 updBalance={updBalance}
                                 activeCommentHook={activeCommentHook}
+                                activeSlider={activeSlider}
+                                setActiveSlider={setActiveSlider}
                                 dimensionConfig={undefined}
                                 myId={user?.tgUserId}
                                 onlyPublication={onlyPublication}

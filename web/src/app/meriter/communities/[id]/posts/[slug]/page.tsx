@@ -34,6 +34,12 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
         { key: "chat" }
     );
 
+    const [comms] = swr(
+        () => user?.token ? `/api/rest/communityinfo?chatId=${chatId}` : null,
+        {},
+        { key: "comms" }
+    );
+
     const [balance, updBalance] = swr(
         () => user?.token ? `/api/rest/wallet?tgChatId=${chatId}` : null,
         0,
@@ -46,8 +52,37 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
         { key: "userdata" }
     );
 
+    const [wallets, updateWallets] = swr(
+        () => user?.token ? "/api/rest/wallet" : null,
+        [],
+        { key: "wallets" }
+    );
+
+    const updateWalletBalance = (currencyOfCommunityTgChatId: string, amountChange: number) => {
+        // Optimistically update wallet balance without reloading
+        if (!Array.isArray(wallets)) return;
+        
+        const updatedWallets = wallets.map((wallet) => {
+            if (wallet.currencyOfCommunityTgChatId === currencyOfCommunityTgChatId) {
+                return {
+                    ...wallet,
+                    amount: wallet.amount + amountChange,
+                };
+            }
+            return wallet;
+        });
+        updateWallets(updatedWallets, false); // Update without revalidation
+    };
+
+    const updateAll = async () => {
+        // Close the active withdraw slider after successful update
+        setActiveWithdrawPost(null);
+    };
+
     const chatNameVerb = String(chat?.title ?? "");
     const activeCommentHook = useState(null);
+    const [activeSlider, setActiveSlider] = useState<string | null>(null);
+    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
     useEffect(() => {
         if (!user?.tgUserId && !user.init) {
@@ -83,6 +118,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                 <MenuBreadcrumbs
                     chatId={chatId}
                     chatNameVerb={chatNameVerb}
+                    chatIcon={comms?.icon}
                     postText={publication?.messageText ? ellipsize(getCleanPostText(publication.messageText), 40) : ''}
                 />
             </HeaderAvatarBalance>
@@ -95,6 +131,13 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                         balance={balance}
                         updBalance={updBalance}
                         activeCommentHook={activeCommentHook}
+                        activeSlider={activeSlider}
+                        setActiveSlider={setActiveSlider}
+                        activeWithdrawPost={activeWithdrawPost}
+                        setActiveWithdrawPost={setActiveWithdrawPost}
+                        wallets={wallets}
+                        updateWalletBalance={updateWalletBalance}
+                        updateAll={updateAll}
                         dimensionConfig={undefined}
                         myId={user?.tgUserId}
                         onlyPublication={true}

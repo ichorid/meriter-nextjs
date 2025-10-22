@@ -81,9 +81,10 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
     );
     const [user] = swr("/api/rest/getme", { init: true });
 
-    const [wallets] = swr(
-        () => user.token ? "/api/rest/wallet" : null,
-        []
+    const [wallets, updateWallets] = swr(
+        () => user?.token ? "/api/rest/wallet" : null,
+        [],
+        { key: "wallets" }
     );
 
     const [rank] = swr(
@@ -107,6 +108,27 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
         0,
         { key: "userdata" }
     );
+
+    const updateWalletBalance = (currencyOfCommunityTgChatId: string, amountChange: number) => {
+        // Optimistically update wallet balance without reloading
+        if (!Array.isArray(wallets)) return;
+        
+        const updatedWallets = wallets.map((wallet) => {
+            if (wallet.currencyOfCommunityTgChatId === currencyOfCommunityTgChatId) {
+                return {
+                    ...wallet,
+                    amount: wallet.amount + amountChange,
+                };
+            }
+            return wallet;
+        });
+        updateWallets(updatedWallets, false); // Update without revalidation
+    };
+
+    const updateAll = async () => {
+        // Close the active withdraw slider after successful update
+        setActiveWithdrawPost(null);
+    };
 
     const [findTransaction, setFindTransaction] = useState(undefined);
     useEffect(() => {
@@ -143,10 +165,18 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
         {},
         { key: "chat" }
     );
+
+    const [comms] = swr(
+        () => chatId ? `/api/rest/communityinfo?chatId=${chatId}` : null,
+        {},
+        { key: "comms" }
+    );
     const chatName = chat?.username;
     const chatUrl = chat?.url;
     const chatNameVerb = String(chat?.title ?? "");
     const activeCommentHook = useState(null);
+    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
+    const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [rankLimit, setRankLimit] = useState(2 + 1);
 
     if (!user.token) return null;
@@ -172,6 +202,7 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                     chatId={chatId}
                     tagRus={tagRus}
                     chatNameVerb={chatNameVerb}
+                    chatIcon={comms?.icon}
                 />
 
                 {error === false && (
@@ -254,6 +285,13 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                                 balance={balance}
                                 updBalance={updBalance}
                                 activeCommentHook={activeCommentHook}
+                                activeSlider={activeSlider}
+                                setActiveSlider={setActiveSlider}
+                                activeWithdrawPost={activeWithdrawPost}
+                                setActiveWithdrawPost={setActiveWithdrawPost}
+                                wallets={wallets}
+                                updateWalletBalance={updateWalletBalance}
+                                updateAll={updateAll}
                                 dimensionConfig={space.dimensionsConfig}
                                 myId={user?.tgUserId}
                                 onlyPublication={onlyPublication}

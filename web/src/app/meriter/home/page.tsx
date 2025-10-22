@@ -71,6 +71,7 @@ const PageHome = () => {
     const [sortBy, setSortBy] = useState<"recent" | "voted">("recent");
     const [showPollCreate, setShowPollCreate] = useState(false);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
+    const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [showHelpCard, setShowHelpCard] = useState(true);
     const activeCommentHook = useState(null);
 
@@ -290,6 +291,8 @@ const PageHome = () => {
                                             showCommunityAvatar={true}
                                             activeWithdrawPost={activeWithdrawPost}
                                             setActiveWithdrawPost={setActiveWithdrawPost}
+                                            activeSlider={activeSlider}
+                                            setActiveSlider={setActiveSlider}
                                             activeCommentHook={activeCommentHook}
                                         />
                                     ))}

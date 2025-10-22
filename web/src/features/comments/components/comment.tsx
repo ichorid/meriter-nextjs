@@ -34,6 +34,8 @@ export const Comment = ({
     amountTotal,
     inPublicationSlug,
     activeCommentHook,
+    activeSlider,
+    setActiveSlider,
     myId,
     highlightTransactionId,
     forTransactionId,
@@ -198,12 +200,15 @@ export const Comment = ({
         
         if (direction === undefined) {
             setActiveWithdrawPost(null);
+            setActiveSlider && setActiveSlider(null);
         } else {
             const newState = postId + ':' + (direction ? 'add' : 'withdraw');
             if (activeWithdrawPost === newState) {
                 setActiveWithdrawPost(null);
+                setActiveSlider && setActiveSlider(null);
             } else {
                 setActiveWithdrawPost(newState);
+                setActiveSlider && setActiveSlider(_id);
             }
         }
     };
@@ -294,18 +299,16 @@ export const Comment = ({
             className={classList(
                 "comment-vote-wrapper transition-all duration-300",
                 commentUnderReply ? "scale-100 opacity-100" : 
-                nobodyUnderReply ? "scale-100 opacity-100" : 
-                "scale-95 opacity-60",
+                activeSlider && activeSlider !== _id ? "scale-95 opacity-60" : "scale-100 opacity-100",
                 highlightTransactionId == _id && "highlight"
             )}
             key={_id}
             onClick={(e) => {
                 if (
-                    activeCommentHook[0] &&
-                    //(myId!==fromUserTgId) &&
+                    activeSlider === _id &&
                     !(e.target as any)?.className?.match("clickable")
                 ) {
-                    activeCommentHook[1](null);
+                    setActiveSlider && setActiveSlider(null);
                 }
             }}
         >
@@ -371,8 +374,14 @@ export const Comment = ({
                         <BarVote
                             plus={currentPlus}
                             minus={currentMinus}
-                            onPlus={showPlus}
-                            onMinus={showMinus}
+                            onPlus={() => {
+                                showPlus();
+                                setActiveSlider && setActiveSlider(_id);
+                            }}
+                            onMinus={() => {
+                                showMinus();
+                                setActiveSlider && setActiveSlider(_id);
+                            }}
                             onLeft={setShowComments}
                             commentCount={comments?.length || 0}
                         />
@@ -402,6 +411,8 @@ export const Comment = ({
                                 spaceSlug={spaceSlug}
                                 inPublicationSlug={inPublicationSlug}
                                 activeCommentHook={activeCommentHook}
+                                activeSlider={activeSlider}
+                                setActiveSlider={setActiveSlider}
                                 highlightTransactionId={highlightTransactionId}
                                 wallets={wallets}
                                 updateWalletBalance={updateWalletBalance}

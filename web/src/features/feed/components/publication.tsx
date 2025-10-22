@@ -69,6 +69,8 @@ export const Publication = ({
     keyword,
     ts,
     activeCommentHook,
+    activeSlider,
+    setActiveSlider,
     tgAuthorId,
     beneficiaryName,
     beneficiaryPhotoUrl,
@@ -219,12 +221,15 @@ export const Publication = ({
         
         if (direction === undefined) {
             setActiveWithdrawPost(null);
+            setActiveSlider && setActiveSlider(null);
         } else {
             const newState = postId + ':' + (direction ? 'add' : 'withdraw');
             if (activeWithdrawPost === newState) {
                 setActiveWithdrawPost(null);
+                setActiveSlider && setActiveSlider(null);
             } else {
                 setActiveWithdrawPost(newState);
+                setActiveSlider && setActiveSlider(postId);
             }
         }
     };
@@ -491,17 +496,15 @@ export const Publication = ({
             className={classList(
                 "mb-5 transition-all duration-300",
                 publicationUnderReply ? "scale-100 opacity-100" : 
-                commentUnderReply ? "scale-95 opacity-60" :
-                nobodyUnderReply ? "scale-100 opacity-100" : 
-                "scale-95 opacity-60"
+                activeSlider && activeSlider !== postId ? "scale-95 opacity-60" : "scale-100 opacity-100"
             )}
             onClick={(e) => {
                 if (
-                    activeCommentHook[0] &&
+                    activeSlider === postId &&
                     myId !== tgAuthorId &&
                     !(e.target as any)?.className?.match("clickable")
                 ) {
-                    activeCommentHook[1] && activeCommentHook[1](null);
+                    setActiveSlider && setActiveSlider(null);
                 }
             }}
             key={slug}
@@ -564,8 +567,14 @@ export const Publication = ({
                         <BarVote
                             plus={currentPlus}
                             minus={currentMinus}
-                            onPlus={showPlus}
-                            onMinus={showMinus}
+                            onPlus={() => {
+                                showPlus();
+                                setActiveSlider && setActiveSlider(postId);
+                            }}
+                            onMinus={() => {
+                                showMinus();
+                                setActiveSlider && setActiveSlider(postId);
+                            }}
                             onLeft={!isDetailPage ? () => {
                                 // Navigate to post detail page
                                 if (tgChatId && slug) {
@@ -617,6 +626,8 @@ export const Publication = ({
                                 spaceSlug={spaceSlug}
                                 inPublicationSlug={slug}
                                 activeCommentHook={activeCommentHook}
+                                activeSlider={activeSlider}
+                                setActiveSlider={setActiveSlider}
                                 myId={myId}
                                 highlightTransactionId={highlightTransactionId}
                                 wallets={wallets}
