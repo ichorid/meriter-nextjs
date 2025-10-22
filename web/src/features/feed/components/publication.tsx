@@ -532,7 +532,7 @@ export const Publication = ({
                     myId == tgAuthorId ? () => setShowDimensionsEditor(true) : undefined
                 }
                 bottom={
-                    isAuthor ? (
+                    isAuthor && !hasBeneficiary ? (
                         <BarWithdraw
                             balance={meritsAmount}
                             onWithdraw={() => handleSetDirectionAdd(false)}
@@ -641,7 +641,7 @@ export const Publication = ({
                     </div>
                 </div>
             )}
-            {publicationUnderReply && !(tgAuthorId == myId) && (
+            {publicationUnderReply && !(isAuthor && !hasBeneficiary) && (
                 <BottomPortal>
                     {" "}
                     <FormComment key={formCommentProps.uid} {...formCommentProps} />

@@ -59,6 +59,9 @@ export const Comment = ({
     // Check if current user is the author
     const isAuthor = myId === fromUserTgId;
     
+    // Check if there's a beneficiary and it's different from the author
+    const hasBeneficiary = toUserTgId && toUserTgId !== fromUserTgId;
+    
     // Withdrawal state management (for author's own comments)
     const [optimisticSum, setOptimisticSum] = useState(sum);
     const effectiveSum = optimisticSum ?? sum;
@@ -339,7 +342,7 @@ export const Comment = ({
                     }
                 }}
                 bottom={
-                    isAuthor ? (
+                    isAuthor && !hasBeneficiary ? (
                         <BarWithdraw
                             balance={meritsAmount}
                             onWithdraw={() => handleSetDirectionAdd(false)}
@@ -427,7 +430,7 @@ export const Comment = ({
                     </div>
                 </div>
             )}
-            {commentUnderReply && fromUserTgId !== myId && (
+            {commentUnderReply && !(isAuthor && !hasBeneficiary) && (
                 <BottomPortal>
                     {" "}
                     <FormComment key={formCommentProps.uid} {...formCommentProps} />
