@@ -134,12 +134,16 @@ export class TransactionsService {
     if (true)
       return this.model.find({
         initiatorsActorUris: 'actor.user://telegram' + tgUserId,
+        // Exclude withdrawal transactions from "my comments" - only show voting actions
+        type: { $nin: ['withdrawalFromPublication', 'withdrawalFromTransaction', 'exchange', 'reward'] }
       });
     else {
       return this.model.find(
         {
           initiatorsActorUris: 'actor.user://telegram' + tgUserId,
           'meta.metrics.sum': positive ? { $gte: 0 } : { $ne: false },
+          // Exclude withdrawal transactions from "my comments" - only show voting actions
+          type: { $nin: ['withdrawalFromPublication', 'withdrawalFromTransaction', 'exchange', 'reward'] }
         },
         {},
         { sort: { 'meta.metrics.sum': -1 } },

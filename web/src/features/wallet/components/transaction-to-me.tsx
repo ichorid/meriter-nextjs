@@ -61,6 +61,25 @@ export const TransactionToMe = ({
         return `${sign} ${amount}`;
     };
     
+    // Determine vote type based on payment source
+    const determineVoteType = () => {
+        const amountFree = transaction.amountFree || 0;
+        const amountWallet = Math.abs(transaction.amountTotal) - Math.abs(amountFree);
+        
+        const isQuota = amountFree > 0;
+        const isWallet = amountWallet > 0;
+        
+        if (transaction.directionPlus) {
+            if (isQuota && isWallet) return 'upvote-mixed';
+            return isQuota ? 'upvote-quota' : 'upvote-wallet';
+        } else {
+            if (isQuota && isWallet) return 'downvote-mixed';
+            return isQuota ? 'downvote-quota' : 'downvote-wallet';
+        }
+    };
+    
+    const voteType = determineVoteType();
+    
     // Get currency icon for separate rendering
     const currencyIcon = communityInfo?.icon;
     
@@ -77,6 +96,9 @@ export const TransactionToMe = ({
                         ? transaction.toUserTgId
                         : transaction.fromUserTgId
                 )}
+                voteType={voteType}
+                amountFree={transaction.amountFree || 0}
+                amountWallet={Math.abs(transaction.amountTotal) - Math.abs(transaction.amountFree || 0)}
                 showCommunityAvatar={true}
                 communityAvatarUrl={communityInfo?.chat?.photo}
                 communityName={communityInfo?.chat?.title}

@@ -3,6 +3,7 @@
 import { classList } from '@lib/classList';
 import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
 import { CommunityAvatar } from '@shared/components/community-avatar';
+import { useTranslation } from 'react-i18next';
 
 export const CardCommentVote = ({
     title,
@@ -20,11 +21,42 @@ export const CardCommentVote = ({
     onCommunityClick,
     withdrawSliderContent,
     currencyIcon,
-}:any) => (
+    voteType,
+    amountFree,
+    amountWallet,
+}:any) => {
+    const { t } = useTranslation('comments');
+    
+    // Get tooltip text based on vote type
+    const getTooltipText = () => {
+        switch(voteType) {
+            case 'upvote-quota': return t('upvoteFromQuota');
+            case 'upvote-wallet': return t('upvoteFromWallet');
+            case 'upvote-mixed': return t('upvoteFromMixed');
+            case 'downvote-quota': return t('downvoteFromQuota');
+            case 'downvote-wallet': return t('downvoteFromWallet');
+            case 'downvote-mixed': return t('downvoteFromMixed');
+            default: return '';
+        }
+    };
+    
+    return (
     <div className="mb-4">
         <div className="card bg-base-100 shadow-md rounded-xl overflow-hidden">
             <div className="flex">
-                <div className="bg-secondary text-secondary-content font-bold text-center py-2 px-3 min-w-[3rem] flex items-center justify-center gap-1">
+                <div className={classList(
+                    "font-bold text-center py-2 px-3 min-w-[3rem] flex items-center justify-center gap-1",
+                    // Default styling if no voteType
+                    !voteType && "bg-secondary text-secondary-content",
+                    // Upvote styles
+                    voteType === 'upvote-wallet' && "bg-success text-success-content",
+                    voteType === 'upvote-quota' && "bg-transparent border-2 border-success text-success",
+                    voteType === 'upvote-mixed' && "bg-gradient-to-r from-success/80 to-success text-success-content",
+                    // Downvote styles
+                    voteType === 'downvote-wallet' && "bg-error text-error-content",
+                    voteType === 'downvote-quota' && "bg-transparent border-2 border-error text-error",
+                    voteType === 'downvote-mixed' && "bg-gradient-to-r from-error/80 to-error text-error-content"
+                )}>
                     <span>{rate}</span>
                     {currencyIcon && (
                         <img 
@@ -33,6 +65,23 @@ export const CardCommentVote = ({
                             className="w-4 h-4"
                             style={{ maxWidth: '16px', maxHeight: '16px' }}
                         />
+                    )}
+                    {/* Payment source icons */}
+                    {voteType && (
+                        <div className="flex gap-1 ml-1" title={getTooltipText()}>
+                            {voteType.includes('quota') && !voteType.includes('mixed') && (
+                                <span className="text-xs">⚡</span>
+                            )}
+                            {voteType.includes('wallet') && !voteType.includes('mixed') && (
+                                <span className="text-xs">💰</span>
+                            )}
+                            {voteType.includes('mixed') && (
+                                <>
+                                    <span className="text-xs">⚡</span>
+                                    <span className="text-xs">💰</span>
+                                </>
+                            )}
+                        </div>
                     )}
                 </div>
                 <div className="flex-1">
@@ -81,4 +130,5 @@ export const CardCommentVote = ({
             </div>
         </div>
     </div>
-);
+    );
+};

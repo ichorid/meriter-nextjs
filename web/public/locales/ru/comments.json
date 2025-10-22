@@ -22,6 +22,12 @@
   "merits": "Мериты",
   "points": "Баллы",
   "enterPositiveAmount": "Введите положительное количество",
-  "sendError": "Ошибка при отправке: {{message}}"
+  "sendError": "Ошибка при отправке: {{message}}",
+  "upvoteFromQuota": "Плюс с суточной квоты",
+  "upvoteFromWallet": "Плюс с баланса кошелька",
+  "upvoteFromMixed": "Плюс с суточной квоты и баланса",
+  "downvoteFromQuota": "Минус с суточной квоты",
+  "downvoteFromWallet": "Минус с баланса кошелька",
+  "downvoteFromMixed": "Минус с суточной квоты и баланса"
 }
 

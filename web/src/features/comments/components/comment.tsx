@@ -91,6 +91,25 @@ export const Comment = ({
         return `${sign} ${amount}`;
     };
     
+    // Determine vote type based on payment source
+    const determineVoteType = () => {
+        const amountFree = Math.abs(amountTotal) - Math.abs(sum || 0); // Calculate free amount
+        const amountWallet = Math.abs(sum || 0); // Personal wallet amount
+        
+        const isQuota = amountFree > 0;
+        const isWallet = amountWallet > 0;
+        
+        if (directionPlus) {
+            if (isQuota && isWallet) return 'upvote-mixed';
+            return isQuota ? 'upvote-quota' : 'upvote-wallet';
+        } else {
+            if (isQuota && isWallet) return 'downvote-mixed';
+            return isQuota ? 'downvote-quota' : 'downvote-wallet';
+        }
+    };
+    
+    const voteType = determineVoteType();
+    
     // Get currency icon for separate rendering
     const currencyIcon = currencyCommunityInfo?.icon;
     
@@ -295,6 +314,9 @@ export const Comment = ({
                 rate={formatRate()}
                 currencyIcon={currencyIcon}
                 avatarUrl={avatarUrl}
+                voteType={voteType}
+                amountFree={Math.abs(amountTotal) - Math.abs(sum || 0)}
+                amountWallet={Math.abs(sum || 0)}
                 onAvatarUrlNotFound={() => {
                     const fallbackUrl = telegramGetAvatarLinkUpd(userTgId);
                     if (fallbackUrl !== avatarUrl) {

@@ -207,8 +207,10 @@ const PageMeriterLogin = () => {
     return (
         <Page className="index">
             <div className="center">
-                <div>
-                    <img src="/meriter/merit.svg" alt="Meriter" />
+                <div className="text-center mb-8">
+                    <h1 className="text-4xl font-bold text-base-content mb-4">
+                        {t('welcomeTitle')}
+                    </h1>
                 </div>
 
                 <div className="mar-80">
