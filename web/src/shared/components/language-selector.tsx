@@ -18,14 +18,8 @@ export function LanguageSelector() {
         localStorage.setItem('language', value);
         
         try {
-            // Set cookie via API
-            await fetch('/api/set-locale', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ locale: value }),
-            });
+            // Set cookie directly
+            document.cookie = `NEXT_LOCALE=${value}; max-age=${365 * 24 * 60 * 60}; path=/; samesite=lax`;
             
             // Change language immediately for instant feedback
             if (value === 'auto') {

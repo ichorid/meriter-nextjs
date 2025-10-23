@@ -22,7 +22,7 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     const [user] = swr("/api/rest/getme", { init: true });
 
-    const [pollData] = swr(
+    const [pollData, pollError] = swr(
         () => user?.token ? `/api/rest/poll/get?pollId=${pollId}` : null,
         {}
     );
@@ -65,10 +65,10 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
         if (!Array.isArray(wallets)) return;
         
         const updatedWallets = wallets.map((wallet) => {
-            if (wallet.currencyOfCommunityTgChatId === currencyOfCommunityTgChatId) {
+            if (wallet.meta?.currencyOfCommunityTgChatId === currencyOfCommunityTgChatId) {
                 return {
                     ...wallet,
-                    amount: wallet.amount + amountChange,
+                    value: (wallet.value || 0) + amountChange,
                 };
             }
             return wallet;
@@ -86,15 +86,93 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (!user?.tgUserId && !user.init) {
-            router.push("/meriter/login?returnTo=" + encodeURIComponent(window.location.pathname));
-        }
-    }, [user, user?.init, router]);
+    // Remove authentication check - let the existing auth flow handle it
+    // The user is already authenticated if they have a JWT token
 
-    if (!user.token) return null;
+    // Debug user object
+    console.log('🔍 Poll page user object:', { 
+        user: user, 
+        hasToken: !!user?.token, 
+        hasInit: !!user?.init,
+        hasTgUserId: !!user?.tgUserId 
+    });
+
+    if (!user?.token) {
+        console.log('❌ Poll page: No user token, returning null');
+        return null;
+    }
 
     const tgAuthorId = user?.tgUserId;
+
+    // Handle case when poll is not found
+    if (pollError || (pollData && pollData.error)) {
+        return (
+            <Page className="feed">
+                <HeaderAvatarBalance
+                    balance1={{ icon: chat?.icon, amount: balance }}
+                    balance2={undefined}
+                    avatarUrl={telegramGetAvatarLink(tgAuthorId)}
+                    onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
+                    onClick={() => {
+                        router.push("/meriter/home");
+                    }}
+                    userName={user?.name || 'User'}
+                >
+                    <MenuBreadcrumbs
+                        chatId={chatId}
+                        chatNameVerb={chatNameVerb}
+                        chatIcon={comms?.icon}
+                        postText="Poll Not Found"
+                    />
+                </HeaderAvatarBalance>
+
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                        <h2 className="text-2xl font-bold mb-4">Poll Not Found</h2>
+                        <p className="text-gray-600 mb-6">The poll you're looking for doesn't exist or has been removed.</p>
+                        <button 
+                            onClick={() => router.push("/meriter/home")}
+                            className="btn btn-primary"
+                        >
+                            Go to Home
+                        </button>
+                    </div>
+                </div>
+            </Page>
+        );
+    }
+
+    // Show loading state while poll data is being fetched
+    if (!poll) {
+        return (
+            <Page className="feed">
+                <HeaderAvatarBalance
+                    balance1={{ icon: chat?.icon, amount: balance }}
+                    balance2={undefined}
+                    avatarUrl={telegramGetAvatarLink(tgAuthorId)}
+                    onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
+                    onClick={() => {
+                        router.push("/meriter/home");
+                    }}
+                    userName={user?.name || 'User'}
+                >
+                    <MenuBreadcrumbs
+                        chatId={chatId}
+                        chatNameVerb={chatNameVerb}
+                        chatIcon={comms?.icon}
+                        postText="Loading Poll..."
+                    />
+                </HeaderAvatarBalance>
+
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                        <div className="loading loading-spinner loading-lg"></div>
+                        <p className="mt-4">Loading poll...</p>
+                    </div>
+                </div>
+            </Page>
+        );
+    }
 
     return (
         <Page className="feed">
@@ -117,28 +195,26 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
             </HeaderAvatarBalance>
 
             <div className="space-y-4">
-                {poll && (
-                    <Publication
-                        key={poll._id}
-                        {...poll}
-                        balance={balance}
-                        updBalance={updBalance}
-                        activeCommentHook={activeCommentHook}
-                        activeSlider={activeSlider}
-                        setActiveSlider={setActiveSlider}
-                        activeWithdrawPost={activeWithdrawPost}
-                        setActiveWithdrawPost={setActiveWithdrawPost}
-                        wallets={wallets}
-                        updateWalletBalance={updateWalletBalance}
-                        updateAll={updateAll}
-                        dimensionConfig={undefined}
-                        myId={user?.tgUserId}
-                        onlyPublication={true}
-                        highlightTransactionId={undefined}
-                        isDetailPage={true}
-                        showCommunityAvatar={false}
-                    />
-                )}
+                <Publication
+                    key={poll._id}
+                    {...poll}
+                    balance={balance}
+                    updBalance={updBalance}
+                    activeCommentHook={activeCommentHook}
+                    activeSlider={activeSlider}
+                    setActiveSlider={setActiveSlider}
+                    activeWithdrawPost={activeWithdrawPost}
+                    setActiveWithdrawPost={setActiveWithdrawPost}
+                    wallets={wallets}
+                    updateWalletBalance={updateWalletBalance}
+                    updateAll={updateAll}
+                    dimensionConfig={undefined}
+                    myId={user?.tgUserId}
+                    onlyPublication={true}
+                    highlightTransactionId={undefined}
+                    isDetailPage={true}
+                    showCommunityAvatar={false}
+                />
             </div>
         </Page>
     );
