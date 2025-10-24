@@ -1,10 +1,20 @@
 /**
- * Base64URL encoding utilities for Telegram deep links
- * Base64URL is URL-safe base64 encoding that replaces:
- * - '+' with '-'
- * - '/' with '_' 
- * - Removes padding '='
+ * Check if a string looks like it could be base64url encoded
+ * @param str - String to check
+ * @returns true if string looks like base64url
  */
+export function looksLikeBase64url(str: string): boolean {
+  if (!str || typeof str !== 'string') return false;
+  
+  // Must contain only valid base64url characters
+  if (!/^[A-Za-z0-9_-]*$/.test(str)) return false;
+  
+  // Must be reasonably long (base64url encoded data is usually longer)
+  if (str.length < 8) return false;
+  
+  // Must contain base64url-specific characters (- or _) or be long enough to be encoded data
+  return str.includes('-') || str.includes('_') || str.length > 20;
+}
 
 export function base64urlEncode(str: string): string {
   // Convert string to base64
@@ -18,6 +28,16 @@ export function base64urlEncode(str: string): string {
 }
 
 export function base64urlDecode(str: string): string {
+  // Validate input
+  if (!str || typeof str !== 'string') {
+    throw new Error('Invalid input: string required');
+  }
+  
+  // Check for valid base64url characters
+  if (!/^[A-Za-z0-9_-]*$/.test(str)) {
+    throw new Error('Invalid base64url characters');
+  }
+  
   // Convert from base64url to base64
   let base64 = str
     .replace(/-/g, '+')
@@ -28,8 +48,17 @@ export function base64urlDecode(str: string): string {
     base64 += '=';
   }
   
-  // Decode from base64
-  return atob(base64);
+  // Validate base64 format before decoding
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) {
+    throw new Error('Invalid base64 format');
+  }
+  
+  try {
+    // Decode from base64
+    return atob(base64);
+  } catch (error) {
+    throw new Error(`Base64 decode failed: ${error.message}`);
+  }
 }
 
 /**
@@ -50,6 +79,12 @@ export function encodeTelegramDeepLink(action: string, id?: string): string {
  */
 export function decodeTelegramDeepLink(encodedData: string): { action: string; id?: string } {
   try {
+    // Validate input
+    if (!encodedData || typeof encodedData !== 'string') {
+      console.warn('Invalid Telegram deep link data:', encodedData);
+      return { action: 'login' }; // Default fallback
+    }
+    
     const decoded = base64urlDecode(encodedData);
     const colonIndex = decoded.indexOf(':');
     
@@ -64,7 +99,14 @@ export function decodeTelegramDeepLink(encodedData: string): { action: string; i
     return { action, id };
   } catch (error) {
     console.error('Failed to decode Telegram deep link:', error);
-    // Fallback: treat as simple action
-    return { action: encodedData };
+    console.error('Original data:', encodedData);
+    
+    // Fallback: treat as simple action if it looks like a valid action
+    if (typeof encodedData === 'string' && /^[a-zA-Z-]+$/.test(encodedData)) {
+      return { action: encodedData };
+    }
+    
+    // Ultimate fallback: redirect to login
+    return { action: 'login' };
   }
 }

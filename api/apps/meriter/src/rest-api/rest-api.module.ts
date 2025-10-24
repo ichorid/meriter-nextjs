@@ -22,6 +22,7 @@ import { RestRateController } from './rest/rest-rate/rest-rate.controller';
 import { GetchatController } from './rest/getchat/getchat.controller';
 import { RestWithdrawController } from './rest/rest-withdraw/rest-withdraw.controller';
 import { RestGetmanagedchatsController } from './rest/rest-getmanagedchats/rest-getmanagedchats.controller';
+import { RestGetUserCommunitiesController } from './rest/rest-getusercommunities/rest-getusercommunities.controller';
 import { RestSpaceController } from './rest/rest-space/rest-space.controller';
 import { RestRankController } from './rest/rank/rank.controller';
 import { TgBotsService } from '../tg-bots/tg-bots.service';
@@ -70,6 +71,7 @@ import { WalletsModule } from '../wallets/wallets.module';
     GetchatController,
     RestWithdrawController,
     RestGetmanagedchatsController,
+    RestGetUserCommunitiesController,
     RestSpaceController,
     RestRankController,
     SendmemoController,

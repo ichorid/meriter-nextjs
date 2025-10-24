@@ -1,5 +1,42 @@
 import { mockTelegramEnv, isTMA, emitEvent } from '@telegram-apps/sdk-react';
 
+/**
+ * Clear persisted Telegram SDK storage to prevent stale state after logout
+ */
+function clearTelegramSDKStorage(): void {
+  try {
+    // Clear localStorage keys used by Telegram SDK
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('tma/') || key.includes('telegram') || key.includes('init-data'))) {
+        keysToRemove.push(key);
+      }
+    }
+    
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+      console.log('🧹 Cleared Telegram SDK storage key:', key);
+    });
+    
+    // Also clear sessionStorage
+    const sessionKeysToRemove = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && (key.startsWith('tma/') || key.includes('telegram') || key.includes('init-data'))) {
+        sessionKeysToRemove.push(key);
+      }
+    }
+    
+    sessionKeysToRemove.forEach(key => {
+      sessionStorage.removeItem(key);
+      console.log('🧹 Cleared Telegram SDK session storage key:', key);
+    });
+  } catch (error) {
+    console.warn('⚠️ Failed to clear Telegram SDK storage:', error);
+  }
+}
+
 // It is important, to mock the environment only for development purposes. When building the
 // application, the code inside will be tree-shaken, so you will not see it in your final bundle.
 export async function mockEnv(): Promise<void> {
@@ -10,6 +47,11 @@ export async function mockEnv(): Promise<void> {
     // Check for a URL parameter to enable mocking (e.g., ?mock-telegram=true)
     const urlParams = new URLSearchParams(window.location.search);
     const shouldMock = urlParams.get('mock-telegram') === 'true';
+    
+    // If not in Telegram environment and not mocking, clear any persisted SDK state
+    if (!isTma && !shouldMock) {
+      clearTelegramSDKStorage();
+    }
     
     if (!isTma && shouldMock) { 
       const themeParams = {

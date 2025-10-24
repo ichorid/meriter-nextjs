@@ -6,7 +6,7 @@ import { swr } from '@lib/swr';
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
-import { initDataRaw, useLaunchParams, useSignal } from '@telegram-apps/sdk-react';
+import { initDataRaw, useLaunchParams, useSignal, isTMA } from '@telegram-apps/sdk-react';
 import { useDeepLinkHandler } from '@shared/lib/deep-link-handler';
 
 const PageMeriterLogin = () => {
@@ -16,7 +16,7 @@ const PageMeriterLogin = () => {
     const locale = useLocale();
     const launchParams = useLaunchParams();
     const rawData = useSignal(initDataRaw);
-    const isInTelegram = !!rawData;
+    const [isInTelegram, setIsInTelegram] = useState(false);
     const startParam = launchParams.tgWebAppStartParam;
     const { handleDeepLink } = useDeepLinkHandler(router, searchParams, startParam);
     const [user] = swr("/api/rest/getme", { init: true });
@@ -28,6 +28,36 @@ const PageMeriterLogin = () => {
     
     // Extract returnTo query parameter using Next.js hook
     const returnTo = searchParams.get('returnTo');
+
+    // Determine if we're in Telegram environment (real or mocked)
+    useEffect(() => {
+        const checkTelegramEnvironment = async () => {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const mockEnabled = urlParams.get('mock-telegram') === 'true';
+                const isRealTelegram = await isTMA('complete');
+                
+                // Only consider it Telegram mode if:
+                // 1. We're in a real Telegram environment, OR
+                // 2. Mock is explicitly enabled via URL parameter
+                const shouldUseTelegramMode = isRealTelegram || mockEnabled;
+                
+                console.log('🔍 Telegram environment check:', {
+                    isRealTelegram,
+                    mockEnabled,
+                    shouldUseTelegramMode,
+                    hasRawData: !!rawData
+                });
+                
+                setIsInTelegram(shouldUseTelegramMode);
+            } catch (error) {
+                console.warn('⚠️ Failed to check Telegram environment:', error);
+                setIsInTelegram(false);
+            }
+        };
+        
+        checkTelegramEnvironment();
+    }, [rawData]);
 
     // Function to handle Telegram Web App authentication
     const authenticateWithTelegramWebApp = async (initData: string) => {
@@ -68,7 +98,7 @@ const PageMeriterLogin = () => {
                 setDiscoveryStatus('Discovery complete!');
                 
                 // Use deep link handler for navigation
-                handleDeepLink(data.hasPendingCommunities);
+                handleDeepLink();
             } else {
                 setAuthError(t('authError'));
             }
@@ -148,13 +178,10 @@ const PageMeriterLogin = () => {
                 if (data.success) {
                     setDiscoveryStatus('Discovery complete!');
                     
-                    // Determine redirect based on pending communities or returnTo
+                    // Determine redirect based on returnTo parameter
                     let redirectPath = '/meriter/home'; // default
                     
-                    if (data.hasPendingCommunities) {
-                        console.log('🔵 User has pending communities, redirecting to /meriter/manage');
-                        redirectPath = '/meriter/manage';
-                    } else if (returnTo) {
+                    if (returnTo) {
                         console.log('🔵 Using returnTo parameter:', returnTo);
                         redirectPath = returnTo;
                     }

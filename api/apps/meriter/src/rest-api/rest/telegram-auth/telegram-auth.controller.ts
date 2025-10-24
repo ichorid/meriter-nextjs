@@ -124,22 +124,6 @@ export class TelegramAuthController {
     }
   }
 
-  /**
-   * Check if user has pending communities (communities where they're admin but haven't configured hashtags)
-   */
-  private async hasPendingCommunities(telegramId: string): Promise<boolean> {
-    const chats = await this.tgChatsService.model.find({
-      administrators: 'telegram://' + telegramId,
-    });
-
-    // Check if any community has no hashtags configured
-    const hasPending = chats.some(chat => {
-      const hashtagLabels = chat.meta?.hashtagLabels || [];
-      return hashtagLabels.length === 0;
-    });
-
-    return hasPending;
-  }
 
   /**
    * Discover which communities the user is a member of by checking against all registered communities
@@ -275,9 +259,6 @@ export class TelegramAuthController {
         userToken: user.token,
       });
 
-      // Check if user has pending communities to configure
-      const hasPending = await this.hasPendingCommunities(telegramId);
-
       // Start community discovery in background (non-blocking)
       this.logger.log(`Starting background community discovery for user ${telegramId}`);
       this.discoverUserCommunities(telegramId).then(discoveredCount => {
@@ -311,7 +292,6 @@ export class TelegramAuthController {
       // Return user data
       return res.json({
         success: true,
-        hasPendingCommunities: hasPending,
         user: {
           tgUserId: telegramId,
           name: user.profile?.name,
@@ -424,9 +404,6 @@ export class TelegramAuthController {
         userToken: user.token,
       });
 
-      // Check if user has pending communities to configure
-      const hasPending = await this.hasPendingCommunities(telegramId);
-
       // Start community discovery in background (non-blocking)
       this.logger.log(`Starting background community discovery for user ${telegramId}`);
       this.discoverUserCommunities(telegramId).then(discoveredCount => {
@@ -459,7 +436,6 @@ export class TelegramAuthController {
       // Return user data
       return res.json({
         success: true,
-        hasPendingCommunities: hasPending,
         user: {
           tgUserId: telegramId,
           name: user.profile?.name,

@@ -177,8 +177,26 @@ export class RestCommunityifoController {
   }
 
   @Post()
-  async update(@Body() dto: any, @Query('chatId') chatId: string) {
+  async update(@Body() dto: any, @Query('chatId') chatId: string, @Req() req) {
     if (!chatId) throw 'no chatId given';
+    
+    const tgUserId = req.user.tgUserId;
+    
+    // Check if user is admin of this community
+    const community = await this.tgChatsService.model.findOne({
+      identities: 'telegram://' + chatId,
+    });
+    
+    if (!community) {
+      throw new HttpException('Community not found', HttpStatus.NOT_FOUND);
+    }
+    
+    const administratorsIds = (community.administrators || []).map(a => a.replace('telegram://', ''));
+    const isAdmin = administratorsIds.includes(tgUserId);
+    
+    if (!isAdmin) {
+      throw new HttpException('Only administrators can update community settings', HttpStatus.FORBIDDEN);
+    }
     
     const spaces = dto.spaces || [];
     

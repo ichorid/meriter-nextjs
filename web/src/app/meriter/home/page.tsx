@@ -63,8 +63,11 @@ const PageHome = () => {
             revalidateOnFocus: false,
         }
     );
-    const [wallets, updateWallets] = swr("/api/rest/wallet", [], {
+    const [wallets, updateWallets] = swr("/api/rest/getusercommunities", [], {
         key: "wallets",
+    });
+    const [walletData, updateWalletData] = swr("/api/rest/wallet", [], {
+        key: "walletData",
     });
     const [user] = swr("/api/rest/getme", {});
     const [tab, setTab] = useState("publications");
@@ -77,9 +80,9 @@ const PageHome = () => {
 
     const updateWalletBalance = (currencyOfCommunityTgChatId: string, amountChange: number) => {
         // Optimistically update wallet balance without reloading
-        if (!Array.isArray(wallets)) return;
+        if (!Array.isArray(walletData)) return;
         
-        const updatedWallets = wallets.map((wallet) => {
+        const updatedWalletData = walletData.map((wallet) => {
             if (wallet.currencyOfCommunityTgChatId === currencyOfCommunityTgChatId) {
                 return {
                     ...wallet,
@@ -88,7 +91,7 @@ const PageHome = () => {
             }
             return wallet;
         });
-        updateWallets(updatedWallets, false); // Update without revalidation
+        updateWalletData(updatedWalletData, false); // Update without revalidation
     };
 
     const updateAll = async () => {
@@ -106,7 +109,7 @@ const PageHome = () => {
                 1000
             );
         }
-    }, [wallets]);
+    }, [walletData]);
 
     // Reset active withdraw slider when switching tabs
     useEffect(() => {
@@ -200,10 +203,22 @@ const PageHome = () => {
                 </div>
             )}
             <div className="balance-available">
-                {false && <div className="heading">{t('availableBalance')}</div>}
-                {wallets && wallets.map((w) => (
-                    <WalletCommunity key={w._id} {...w} />
-                ))}
+                <div className="heading">{t('myCommunities')}</div>
+                {wallets?.communities && wallets.communities.map((community) => {
+                    // Find corresponding wallet data for this community
+                    const walletInfo = walletData?.find(w => w.currencyOfCommunityTgChatId === community.chatId);
+                    return (
+                        <WalletCommunity 
+                            key={community._id} 
+                            amount={walletInfo?.amount || 0}
+                            currencyNames={walletInfo?.currencyNames || []}
+                            currencyOfCommunityTgChatId={community.chatId}
+                            tgUserId={user?.tgUserId}
+                            isAdmin={community.isAdmin}
+                            needsSetup={community.needsSetup}
+                        />
+                    );
+                })}
             </div>
             <div className="balance-inpublications">
                 <div className="tabs tabs-boxed mb-4 p-1 bg-base-200 rounded-lg shadow-sm">
@@ -289,7 +304,7 @@ const PageHome = () => {
                                             myId={user?.tgUserId}
                                             updateAll={updateAll}
                                             updateWalletBalance={updateWalletBalance}
-                                            wallets={wallets}
+                                            wallets={walletData}
                                             showCommunityAvatar={true}
                                             activeWithdrawPost={activeWithdrawPost}
                                             setActiveWithdrawPost={setActiveWithdrawPost}
@@ -315,7 +330,7 @@ const PageHome = () => {
                                             myId={user?.tgUserId}
                                             updateAll={updateAll}
                                             updateWalletBalance={updateWalletBalance}
-                                            wallets={wallets}
+                                            wallets={walletData}
                                             showCommunityAvatar={true}
                                             activeWithdrawPost={activeWithdrawPost}
                                             setActiveWithdrawPost={setActiveWithdrawPost}

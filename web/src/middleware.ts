@@ -67,7 +67,6 @@ export function middleware(request: NextRequest) {
         '/meriter/home',
         '/meriter/manage',
         '/meriter/commbalance',
-        '/meriter/setup-community',
         '/meriter/communities',
         '/meriter/spaces',
         '/meriter/settings',

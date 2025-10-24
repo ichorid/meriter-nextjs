@@ -62,11 +62,6 @@ A new utility `useDeepLinkHandler` hook has been created in `web/src/shared/lib/
 - Integrated deep link handler for post-authentication navigation
 - Maintains backward compatibility with `returnTo` parameter
 
-#### Setup Community Page (`web/src/app/meriter/setup-community/page.tsx`)
-- Added deep link parameter extraction
-- Integrated deep link handler for post-authentication navigation
-- Handles both authenticated and unauthenticated users
-
 #### Community Page (`web/src/app/meriter/communities/[id]/page.tsx`)
 - **Added support for `post` query parameter** for deep linking to specific posts
 - **Automatic scrolling and highlighting** of target posts
@@ -77,11 +72,10 @@ A new utility `useDeepLinkHandler` hook has been created in `web/src/shared/lib/
 
 | Action | Description | Parameters | Redirect Path |
 |--------|-------------|------------|---------------|
-| `login` | User login flow | None | `/meriter/home` or based on pending communities |
+| `login` | User login flow | None | `/meriter/home` |
 | `publication` | View specific publication | `id` (simple ID or `communities/chatId/posts/slug`) | `/meriter/publications/{id}` or `/meriter/communities/{chatId}?post={slug}` |
 | `community` | View specific community | `id` | `/meriter/communities/{id}` |
 | `global-feed` | Global merit feed | None | `/meriter/merit` |
-| `setup` | Community setup | None | `/meriter/setup-community` |
 | `poll` | View specific poll | `id` | `/meriter/polls/{id}` |
 | `updates` | User updates/notifications | None | `/meriter/home?updates=true` |
 
