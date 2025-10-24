@@ -67,6 +67,10 @@
     "inReplyTo": "В ответ на:",
     "thisPost": "эту запись",
     "logout": "Выйти",
+    "loggingOut": "Выход...",
+    "confirmLogout": "Подтвердить выход",
+    "confirmLogoutMessage": "Вы уверены, что хотите выйти? Для доступа к аккаунту потребуется войти снова.",
+    "cancel": "Отмена",
     "timeAgo": {
       "seconds": "{count} сек назад",
       "minutes": "{count} мин назад",

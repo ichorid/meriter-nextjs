@@ -106,7 +106,7 @@ const PageHome = () => {
     }
 
     const sortItems = (items: any[]) => {
-        if (!items) return [];
+        if (!items || !Array.isArray(items)) return [];
         return [...items].sort((a, b) => {
             if (sortBy === "recent") {
                 return new Date(b.ts).getTime() - new Date(a.ts).getTime();

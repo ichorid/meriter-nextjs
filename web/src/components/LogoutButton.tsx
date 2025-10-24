@@ -37,7 +37,8 @@ export function LogoutButton({
       // Redirect is handled in the auth context
     } catch (error: any) {
       console.error('Logout failed:', error);
-      // Error is handled in the auth context
+      // Error is handled in the auth context, but we don't re-throw it
+      // because we want the logout to complete even if there's an API error
     }
   };
   

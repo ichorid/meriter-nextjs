@@ -108,6 +108,11 @@ export class ApiClient {
     return response.data;
   }
 
+  // Method for handling responses that need custom processing (like auth responses)
+  async postRaw<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return await this.client.post<T>(url, data, config);
+  }
+
   setAuthToken(token: string): void {
     if (typeof window !== 'undefined') {
       localStorage.setItem('auth_token', token);

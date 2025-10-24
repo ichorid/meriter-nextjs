@@ -1,6 +1,5 @@
 'use client';
 
-import { swr } from '@lib/swr';
 import { useEffect, useState } from "react";
 
 import Page from '@shared/components/page';
@@ -14,6 +13,7 @@ import {
     telegramGetAvatarLink,
     telegramGetAvatarLinkUpd,
 } from '@lib/telegram';
+import { useAuth } from '@/contexts/AuthContext';
 
 const CommunityCard = ({ chatId, title, description, tags, avatarUrl, icon }: any) => {
     return (
@@ -57,6 +57,13 @@ const ManagePage = () => {
     const searchParams = useSearchParams();
     const [successMessage, setSuccessMessage] = useState('');
     
+    // Use centralized auth context
+    const { user, isLoading, isAuthenticated } = useAuth();
+    
+    // State for chats data
+    const [chats, setChats] = useState<any[]>([]);
+    const [chatsLoading, setChatsLoading] = useState(true);
+    
     // Extract query parameters using Next.js hook
     const refreshChatId = searchParams.get('refreshChatId') || undefined;
     const showSuccess = searchParams.get('success') === 'saved';
@@ -68,23 +75,61 @@ const ManagePage = () => {
         }
     }, [showSuccess]);
     
-    const [chats] = swr(
-        () =>
-            refreshChatId
-                ? "/api/rest/getmanagedchats?refreshChatId=" + refreshChatId
-                : "/api/rest/getmanagedchats",
-        [],
-        { key: "chats" }
-    );
-    const [user] = swr("/api/rest/getme", { init: true });
-
+    // Fetch chats data
     useEffect(() => {
-        if (!user.tgUserId && !user.init) {
+        if (isAuthenticated && user) {
+            const fetchChats = async () => {
+                try {
+                    setChatsLoading(true);
+                    const url = refreshChatId
+                        ? `/api/rest/getmanagedchats?refreshChatId=${refreshChatId}`
+                        : '/api/rest/getmanagedchats';
+                    
+                    const response = await fetch(url, {
+                        credentials: 'include',
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        setChats(data || []);
+                    } else {
+                        console.error('Failed to fetch chats');
+                        setChats([]);
+                    }
+                } catch (error) {
+                    console.error('Error fetching chats:', error);
+                    setChats([]);
+                } finally {
+                    setChatsLoading(false);
+                }
+            };
+            
+            fetchChats();
+        }
+    }, [isAuthenticated, user, refreshChatId]);
+    
+    // Redirect if not authenticated
+    useEffect(() => {
+        if (!isLoading && !isAuthenticated) {
             router.push("/meriter/login?returnTo=/meriter/manage");
         }
-    }, [user]);
+    }, [isAuthenticated, isLoading, router]);
 
-    if (!user.tgUserId) return null;
+    // Show loading state while checking authentication or fetching chats
+    if (isLoading || chatsLoading) {
+        return (
+            <Page className="manage">
+                <div className="flex justify-center items-center min-h-[400px]">
+                    <div className="loading loading-spinner loading-lg"></div>
+                </div>
+            </Page>
+        );
+    }
+
+    // Don't render if not authenticated (will redirect)
+    if (!isAuthenticated || !user) {
+        return null;
+    }
     
     return (
         <Page>

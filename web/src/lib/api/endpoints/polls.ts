@@ -14,7 +14,7 @@ export const pollsApi = {
    */
   async getPolls(params: { skip?: number; limit?: number } = {}): Promise<Poll[]> {
     const response = await apiClient.get<Poll[]>('/api/rest/polls', { params });
-    return response;
+    return response.data;
   },
 
   /**
@@ -22,7 +22,7 @@ export const pollsApi = {
    */
   async getPoll(id: string): Promise<Poll> {
     const response = await apiClient.get<Poll>(`/api/rest/polls/${id}`);
-    return response;
+    return response.data;
   },
 
   /**
@@ -30,7 +30,7 @@ export const pollsApi = {
    */
   async getPollResults(id: string): Promise<PollResult> {
     const response = await apiClient.get<PollResult>(`/api/rest/polls/${id}/results`);
-    return response;
+    return response.data;
   },
 
   /**
@@ -45,11 +45,11 @@ export const pollsApi = {
    * Vote on poll
    */
   async votePoll(id: string, data: VotePollRequest): Promise<VotePollResponse['data']> {
-    const response = await apiClient.post<VotePollResponse>(`/api/rest/polls/${id}/vote`, data);
-    if (!response.success) {
-      throw new Error(response.error || 'Vote failed');
+    const response = await apiClient.postRaw<VotePollResponse>(`/api/rest/polls/${id}/vote`, data);
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Vote failed');
     }
-    return response.data;
+    return response.data.data;
   },
 
   /**
@@ -57,7 +57,7 @@ export const pollsApi = {
    */
   async updatePoll(id: string, data: Partial<CreatePollRequest>): Promise<Poll> {
     const response = await apiClient.put<Poll>(`/api/rest/polls/${id}`, data);
-    return response;
+    return response.data;
   },
 
   /**

@@ -67,6 +67,10 @@
     "inReplyTo": "In reply to:",
     "thisPost": "this post",
     "logout": "Logout",
+    "loggingOut": "Logging out...",
+    "confirmLogout": "Confirm Logout",
+    "confirmLogoutMessage": "Are you sure you want to log out? You will need to sign in again to access your account.",
+    "cancel": "Cancel",
     "timeAgo": {
       "seconds": "{count}s ago",
       "minutes": "{count}m ago",

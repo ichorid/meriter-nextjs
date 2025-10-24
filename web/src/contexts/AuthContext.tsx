@@ -100,11 +100,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Clear Telegram SDK storage
       clearTelegramSDKStorage();
       
-      // Redirect to login page
-      router.push('/meriter/login');
+      // Clear authentication cookies
+      clearAuthCookies();
+      
+      console.log('🔐 AuthContext: Logout successful, redirecting to login');
+      console.log('🔐 AuthContext: Current URL before redirect:', window.location.href);
+      
+      // Use window.location.replace to completely replace the URL and clear any parameters
+      window.location.replace('/meriter/login');
+      
+      console.log('🔐 AuthContext: Redirected to clean login page');
     } catch (error: any) {
+      console.error('🔐 AuthContext: Logout error:', error);
       setAuthError(error.message || 'Logout failed');
-      throw error;
+      
+      // Even if logout fails, we should still clear local data and redirect
+      console.log('🔐 AuthContext: Proceeding with cleanup and redirect despite error');
+      
+      // Clear Telegram SDK storage
+      clearTelegramSDKStorage();
+      
+      // Clear authentication cookies
+      clearAuthCookies();
+      
+      // Use window.location.replace to completely replace the URL and clear any parameters
+      window.location.replace('/meriter/login');
     } finally {
       setIsAuthenticating(false);
     }
@@ -145,6 +165,42 @@ export function useAuth(): AuthContextType {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+}
+
+/**
+ * Clear authentication cookies
+ */
+function clearAuthCookies(): void {
+  try {
+    // List of common authentication cookie names
+    const authCookieNames = [
+      'jwt',
+      'auth_token',
+      'token',
+      'session',
+      'auth',
+      'user',
+      'telegram_auth',
+      'meriter_auth'
+    ];
+    
+    // Clear cookies by setting them to expire in the past
+    authCookieNames.forEach(cookieName => {
+      // Clear for current domain
+      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+      // Clear for parent domain
+      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+      // Clear for subdomain
+      const domain = window.location.hostname.split('.').slice(-2).join('.');
+      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${domain};`;
+      
+      console.log('🧹 Cleared auth cookie:', cookieName);
+    });
+    
+    console.log('🧹 All authentication cookies cleared');
+  } catch (error) {
+    console.warn('⚠️ Failed to clear auth cookies:', error);
+  }
 }
 
 /**

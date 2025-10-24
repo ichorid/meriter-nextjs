@@ -23,7 +23,7 @@ export const publicationsApi = {
    */
   async getMyPublications(params: { skip?: number; limit?: number } = {}): Promise<Publication[]> {
     const response = await apiClient.get<Publication[]>('/api/rest/publications/my', { params });
-    return response;
+    return response.data;
   },
 
   /**
@@ -45,7 +45,7 @@ export const publicationsApi = {
    */
   async getPublication(slug: string): Promise<Publication> {
     const response = await apiClient.get<Publication>(`/api/rest/publications/${slug}`);
-    return response;
+    return response.data;
   },
 
   /**
@@ -61,7 +61,7 @@ export const publicationsApi = {
    */
   async updatePublication(id: string, data: Partial<CreatePublicationRequest>): Promise<Publication> {
     const response = await apiClient.put<Publication>(`/api/rest/publications/${id}`, data);
-    return response;
+    return response.data;
   },
 
   /**

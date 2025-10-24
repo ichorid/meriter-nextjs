@@ -83,6 +83,6 @@ export const commentsApi = {
     inPublicationSlug?: string;
   }): Promise<any> {
     const response = await apiClient.post('/api/rest/transactions', data);
-    return response;
+    return response.data;
   },
 };

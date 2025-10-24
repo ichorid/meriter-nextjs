@@ -1,7 +1,6 @@
 'use client';
 
 import Page from '@shared/components/page';
-import { swr } from '@lib/swr';
 import { useEffect, useState } from 'react';
 import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { useRouter } from 'next/navigation';
@@ -16,20 +15,24 @@ import { LogoutButton } from '@shared/components/logout-button';
 import { LanguageSelector } from '@shared/components/language-selector';
 import { useTranslations } from 'next-intl';
 import { mutate } from 'swr';
+import { useAuth } from '@/contexts/AuthContext';
 
 const SettingsPage = () => {
     const router = useRouter();
     const t = useTranslations('settings');
     const tCommon = useTranslations('common');
-    const [user] = swr('/api/rest/getme', {});
+    
+    // Use centralized auth context
+    const { user, isLoading, isAuthenticated } = useAuth();
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncMessage, setSyncMessage] = useState('');
 
+    // Redirect if not authenticated
     useEffect(() => {
-        if (!user?.tgUserId && !user.init) {
+        if (!isLoading && !isAuthenticated) {
             router.push('/meriter/login?returnTo=' + encodeURIComponent(window.location.pathname));
         }
-    }, [user, user?.init, router]);
+    }, [isAuthenticated, isLoading, router]);
 
     const handleSyncCommunities = async () => {
         setIsSyncing(true);
@@ -61,8 +64,20 @@ const SettingsPage = () => {
         }
     };
 
-    if (!user.token) {
-        return null; // Loading or not authenticated
+    // Show loading state while checking authentication
+    if (isLoading) {
+        return (
+            <Page className="settings">
+                <div className="flex justify-center items-center min-h-[400px]">
+                    <div className="loading loading-spinner loading-lg"></div>
+                </div>
+            </Page>
+        );
+    }
+
+    // Don't render if not authenticated (will redirect)
+    if (!isAuthenticated || !user) {
+        return null;
     }
 
     const tgAuthorId = user?.tgUserId;

@@ -23,7 +23,7 @@ export const walletApi = {
   async getBalance(currencyOfCommunityTgChatId?: string): Promise<number> {
     const params = currencyOfCommunityTgChatId ? { currencyOfCommunityTgChatId } : {};
     const response = await apiClient.get<number>('/api/rest/wallet', { params });
-    return response;
+    return response.data;
   },
 
   /**
@@ -44,7 +44,7 @@ export const walletApi = {
    */
   async getTransactionUpdates(): Promise<Transaction[]> {
     const response = await apiClient.get<Transaction[]>('/api/rest/transactions/updates');
-    return response;
+    return response.data;
   },
 
   /**
@@ -73,18 +73,18 @@ export const walletApi = {
     publicationSlug?: string;
   }): Promise<Transaction> {
     const response = await apiClient.post<Transaction>('/api/rest/transactions', data);
-    return response;
+    return response.data;
   },
 
   /**
    * Withdraw funds
    */
   async withdraw(data: WithdrawRequest): Promise<WithdrawResponse['data']> {
-    const response = await apiClient.post<WithdrawResponse>('/api/rest/wallet/withdraw', data);
-    if (!response.success) {
-      throw new Error(response.error || 'Withdrawal failed');
+    const response = await apiClient.postRaw<WithdrawResponse>('/api/rest/wallet/withdraw', data);
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Withdrawal failed');
     }
-    return response.data;
+    return response.data.data;
   },
 
   /**
@@ -97,7 +97,7 @@ export const walletApi = {
     description?: string;
   }): Promise<Transaction> {
     const response = await apiClient.post<Transaction>('/api/rest/wallet/transfer', data);
-    return response;
+    return response.data;
   },
 
   /**
@@ -106,6 +106,6 @@ export const walletApi = {
   async getFreeBalance(currencyOfCommunityTgChatId?: string): Promise<number> {
     const params = currencyOfCommunityTgChatId ? { currencyOfCommunityTgChatId } : {};
     const response = await apiClient.get<number>('/api/rest/free', { params });
-    return response;
+    return response.data;
   },
 };
