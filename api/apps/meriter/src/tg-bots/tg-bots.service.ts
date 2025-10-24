@@ -60,7 +60,31 @@ export class TgBotsService {
     // Log all incoming updates for debugging
     this.logger.log('📨 Received Telegram update:', JSON.stringify(body, null, 2));
     
-    const { message } = body;
+    const { message, my_chat_member } = body;
+
+    // Handle my_chat_member events (bot membership changes)
+    if (my_chat_member) {
+      this.logger.log(`🤖 Bot membership change detected: chat=${my_chat_member.chat.id}, status: ${my_chat_member.old_chat_member.status} -> ${my_chat_member.new_chat_member.status}`);
+      
+      const chatId = my_chat_member.chat.id;
+      const chatUsername = my_chat_member.chat.username;
+      const oldStatus = my_chat_member.old_chat_member.status;
+      const newStatus = my_chat_member.new_chat_member.status;
+      
+      // Bot was removed from chat
+      if (oldStatus === 'member' && (newStatus === 'left' || newStatus === 'kicked')) {
+        this.logger.log(`🚪 Bot removed from chat: ${chatId} (${chatUsername || my_chat_member.chat.title})`);
+        await this.processRemovedFromChat({ chatId: chatId, chat_username: chatUsername });
+      }
+      
+      // Bot was added to chat
+      if ((oldStatus === 'left' || oldStatus === 'kicked') && newStatus === 'member') {
+        this.logger.log(`🤖 Bot added to chat: ${chatId} (${chatUsername || my_chat_member.chat.title})`);
+        await this.processAddedToChat({ chatId: chatId, chat_username: chatUsername });
+      }
+      
+      return;
+    }
 
     if (!message) {
       this.logger.log('⚠️  No message in update, skipping');
@@ -71,6 +95,7 @@ export class TgBotsService {
       from,
       chat,
       new_chat_members,
+      left_chat_member,
       text,
       caption,
       entities,
@@ -80,8 +105,13 @@ export class TgBotsService {
 
     this.logger.log(`📝 Message details: from=${user_id} (${username || first_name}), chat=${chat_id}, text="${text || caption}"`);
 
-    //ADDED TO NEW CHAT
+    //BOT REMOVED FROM CHAT
+    if (left_chat_member?.username == BOT_USERNAME) {
+      this.logger.log(`🚪 Bot removed from chat: ${chat_id} (${chat_username || chat.title})`);
+      await this.processRemovedFromChat({ chatId: chat_id, chat_username });
+    }
 
+    //ADDED TO NEW CHAT
     if (new_chat_members?.[0]?.username == BOT_USERNAME) {
       this.logger.log(`🤖 Bot added to chat: ${chat_id} (${chat_username || chat.title})`);
       await this.processAddedToChat({ chatId: chat_id, chat_username });
@@ -122,6 +152,12 @@ export class TgBotsService {
     try {
       this.logger.log(`🔧 Processing bot added to chat ${chatId}`);
       
+      // Check if community already exists
+      const existingCommunity = await this.tgChatsService.model.findOne({
+        identities: "telegram://" + chatId,
+      });
+      this.logger.log(`🏢 Community ${chatId} ${existingCommunity ? 'ALREADY EXISTS' : 'IS NEW'}`);
+      
       const [admins, chatInfo] = await Promise.all([
         this.tgChatGetAdmins({ tgChatId: chatId }),
         this.tgGetChat(chatId),
@@ -131,6 +167,7 @@ export class TgBotsService {
         (chatInfo as any) ?? {};
       
       this.logger.log(`📊 Chat info: title="${title}", admins=${admins.length}, type=${type}`);
+      this.logger.log(`👥 Admin IDs: [${admins.map(a => a.id).join(', ')}]`);
       
       // Fetch chat avatar from Telegram Bot API
       let chatAvatarUrl = null;
@@ -192,8 +229,67 @@ export class TgBotsService {
         { new: true, upsert: true }
       );
 
+      this.logger.log(`✅ Community ${chatId} ${existingCommunity ? 'UPDATED' : 'CREATED'} successfully`);
+      this.logger.log(`📝 Community administrators: [${admins.map(a => `telegram://${a.id}`).join(', ')}]`);
+      
+      // Re-validate admin memberships when bot is re-added
+      this.logger.log(`🔄 Re-validating admin memberships for ${admins.length} admin(s)`);
+      const membershipPromises = admins.map(async (admin) => {
+        try {
+          const adminId = String(admin.id);
+          const isMember = await this.updateUserChatMembership(chatId, adminId);
+          this.logger.log(`👤 Admin ${adminId} membership validation: ${isMember ? 'SUCCESS' : 'FAILED'}`);
+          return { adminId, isMember };
+        } catch (error) {
+          this.logger.warn(`⚠️  Failed to validate membership for admin ${admin.id}:`, error.message);
+          return { adminId: String(admin.id), isMember: false };
+        }
+      });
+      
+      const membershipResults = await Promise.all(membershipPromises);
+      const successfulValidations = membershipResults.filter(r => r.isMember).length;
+      this.logger.log(`✅ Successfully validated ${successfulValidations}/${admins.length} admin memberships`);
+      
+      // Log community creation/update timestamp
+      this.logger.log(`⏰ Community operation completed at: ${new Date().toISOString()}`);
+
       return r;
     } catch (e) {
+      this.logger.error(`❌ Error in processAddedToChat for ${chatId}:`, e);
+      return "error";
+    }
+  }
+
+  async processRemovedFromChat({ chatId, chat_username }) {
+    try {
+      this.logger.log(`🚪 Processing bot removed from chat ${chatId}`);
+      
+      // Remove chat ID from all users' tags
+      const result = await this.usersService.removeTag(chatId);
+      this.logger.log(`🧹 Removed chat ${chatId} from ${result.modifiedCount} user(s)`);
+      
+      // Optionally mark community as inactive/deleted
+      const communityUpdate = await this.tgChatsService.model.findOneAndUpdate(
+        { identities: `telegram://${chatId}` },
+        { 
+          $set: { 
+            'meta.botRemoved': true,
+            'meta.botRemovedAt': new Date().toISOString()
+          }
+        },
+        { new: true }
+      );
+      
+      if (communityUpdate) {
+        this.logger.log(`📝 Marked community ${chatId} as bot-removed`);
+      } else {
+        this.logger.log(`⚠️  Community ${chatId} not found in database`);
+      }
+      
+      this.logger.log(`✅ Bot removal processing completed for chat ${chatId}`);
+      return result;
+    } catch (e) {
+      this.logger.error(`❌ Error in processRemovedFromChat for ${chatId}:`, e);
       return "error";
     }
   }
@@ -1055,10 +1151,27 @@ export class TgBotsService {
   }
 
   async updateUserChatMembership(tgChatId: string, tgUserId: string): Promise<boolean> {
+    this.logger.log(`🔍 Checking membership: user=${tgUserId}, chat=${tgChatId}`);
+    
+    // Get current user state for logging
+    const user = await this.usersService.model.findOne({identities: `telegram://${tgUserId}`});
+    this.logger.log(`📋 Current user tags: [${user?.tags?.join(', ') || 'none'}]`);
+    
     const isMember = await this.tgGetChatMember(tgChatId, tgUserId);
-    if (!isMember) return false;
+    this.logger.log(`✅ Telegram API membership check: ${isMember ? 'MEMBER' : 'NOT_MEMBER'}`);
+    
+    if (!isMember) {
+      this.logger.log(`❌ User ${tgUserId} is not a member of chat ${tgChatId}, skipping tag update`);
+      return false;
+    }
 
+    // Check if tag already exists
+    const hasTag = user?.tags?.includes(tgChatId);
+    this.logger.log(`🏷️  Tag ${tgChatId} ${hasTag ? 'ALREADY EXISTS' : 'NEEDS TO BE ADDED'} in user tags`);
+    
     await this.usersService.pushTag(`telegram://${tgUserId}`, tgChatId);
+    this.logger.log(`✅ Tag addition completed for user ${tgUserId}, chat ${tgChatId}`);
+    
     return true;
   }
 }

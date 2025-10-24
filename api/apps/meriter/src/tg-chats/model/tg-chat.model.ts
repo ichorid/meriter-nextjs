@@ -12,6 +12,8 @@ export abstract class TgChatMeta {
   currencyNames: string[];
   url?: string;
   helpUrl?: string;
+  botRemoved?: boolean;
+  botRemovedAt?: string;
 }
 
 @Schema()

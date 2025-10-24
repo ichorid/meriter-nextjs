@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ActorsService } from '@common/abstracts/actors/actors.service';
 import { AssetsService } from '@common/abstracts/assets/assets.service';
 import { Document, FilterQuery, Model, UpdateQuery } from 'mongoose';
@@ -10,6 +10,8 @@ class User extends Actor {}
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+  
   constructor(public actorsService: ActorsService) {
     this.model = (this.actorsService.model as unknown) as Model<
       User & Document
@@ -48,5 +50,17 @@ export class UsersService {
       },
       { $addToSet: { tags: value } },
     );
+  }
+
+  async removeTag(chatId: string) {
+    this.logger.log(`🧹 Removing chat ${chatId} from all user tags`);
+    
+    const result = await this.actorsService.model.updateMany(
+      { tags: chatId },
+      { $pull: { tags: chatId } }
+    );
+    
+    this.logger.log(`✅ Removed chat ${chatId} from ${result.modifiedCount} user(s)`);
+    return result;
   }
 }

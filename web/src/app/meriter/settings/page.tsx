@@ -42,10 +42,13 @@ const SettingsPage = () => {
             const data = await response.json();
             
             if (data.success) {
-                setSyncMessage(t('syncSuccess', { count: data.count }));
+                setSyncMessage(t('syncSuccess', { count: data.membershipsUpdated }));
                 setTimeout(() => setSyncMessage(''), 3000);
+            } else {
+                setSyncMessage(data.message || t('syncError'));
             }
         } catch (error) {
+            console.error('Sync communities error:', error);
             setSyncMessage(t('syncError'));
         } finally {
             setIsSyncing(false);

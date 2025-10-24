@@ -406,6 +406,7 @@ export interface Update {
   callback_query?: CallbackQuery;
   shipping_query?: ShippingQuery;
   pre_checkout_query?: PreCheckoutQuery;
+  my_chat_member?: ChatMemberUpdated;
 }
 
 export interface WebhookInfo {
@@ -701,6 +702,14 @@ export interface ChatMember {
   can_send_polls: boolean;
   can_send_other_messages?: boolean;
   can_add_web_page_previews?: boolean;
+}
+
+export interface ChatMemberUpdated {
+  chat: Chat;
+  from: User;
+  date: number;
+  old_chat_member: ChatMember;
+  new_chat_member: ChatMember;
 }
 
 export interface ChatPermissions {

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { ConfigService } from '@nestjs/config';
 import { uid as uidGen } from 'uid';
 import { sign, verify } from 'jsonwebtoken';
 
@@ -11,6 +12,7 @@ import { flattenObjectMeta } from '@common/lambdas/pure/objects';
 export class ActorsService {
   constructor(
     @InjectModel(Actor.name, 'default') private actorModel: Model<ActorDocument>,
+    private configService: ConfigService,
   ) {
     this.model = actorModel;
   }
@@ -74,9 +76,10 @@ export class ActorsService {
   }
   signJWT(payload: Record<string, unknown>, exp?: string) {
     console.log('signing jwt', payload, exp);
+    const jwtSecret = this.configService.get<string>('jwt.secret');
     const jwt = sign(
       payload,
-      process.env.JWT_SECRET,
+      jwtSecret,
       exp && { expiresIn: exp },
     );
     console.log('signing jwt', payload, exp);
@@ -84,7 +87,8 @@ export class ActorsService {
   }
 
   verifyJWT(jwt: string) {
-    return verify(jwt, process.env.JWT_SECRET);
+    const jwtSecret = this.configService.get<string>('jwt.secret');
+    return verify(jwt, jwtSecret);
   }
 
   __testCleanup() {

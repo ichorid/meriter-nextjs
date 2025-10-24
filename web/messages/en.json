@@ -53,7 +53,7 @@
     "communitiesDescription": "Update your community list by checking membership in Telegram groups",
     "syncCommunities": "🔄 Sync Communities",
     "syncing": "Syncing...",
-    "syncSuccess": "Found {{count}} communities!",
+    "syncSuccess": "Found {count} communities!",
     "syncError": "Error syncing communities",
     "account": "Account",
     "profile": "Profile",
