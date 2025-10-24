@@ -1,12 +1,15 @@
 module.exports = {
     testEnvironment: 'jsdom',
     testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/"],
+    preset: 'ts-jest',
     transform: {
-      "^.+\\.(js|jsx|ts|tsx)$": "<rootDir>/node_modules/babel-jest"
+      "^.+\\.(ts|tsx)$": ["ts-jest", {
+        tsconfig: {
+          jsx: "react-jsx"
+        }
+      }],
+      "^.+\\.(js|jsx)$": "babel-jest"
     },
-    transformIgnorePatterns: [
-      "node_modules/(?!(nanoid|@tanstack)/)"
-    ],
     setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
     moduleDirectories: [
         "node_modules",
@@ -26,7 +29,7 @@ module.exports = {
       "^@/lib/(.*)$": "<rootDir>/src/lib/$1",
       "^@/shared/(.*)$": "<rootDir>/src/shared/$1",
       "^@/config/(.*)$": "<rootDir>/src/config/$1",
-      "^@config$": "<rootDir>/src/config/index.ts",
+      "^@/config$": "<rootDir>/src/config/index.ts",
       "\\.(css|scss)$": "identity-obj-proxy"
     },
     testTimeout: 20000,

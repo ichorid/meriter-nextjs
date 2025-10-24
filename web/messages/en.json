@@ -17,12 +17,6 @@
     "breadcrumb": "Home",
     "tip1": "Transfer points from publications and comments to your available balance to use them",
     "tip2": "Transfer your available balance to publications and comments to increase their visibility",
-    "helpCard": {
-      "title": "How Meriter Works",
-      "content": "Transfer points from your publications and comments to your available balance to use them freely. Transfer your available balance to publications and comments to increase their visibility and ranking. The more points a publication or comment has, the higher it appears in feeds. You have 10 points of free upvote daily.",
-      "reviewInSettings": "You can review this help anytime in Settings",
-      "dismiss": "Got it"
-    },
     "availableBalance": "Available Balance",
     "myCommunities": "My Communities",
     "tabs": {
@@ -47,8 +41,6 @@
     "themeSection": "Theme",
     "themeToggle": "Toggle theme:",
     "updatesFrequency": "Update Frequency",
-    "helpSection": "Review Help",
-    "helpContent": "Transfer points from your publications and comments to your available balance to use them freely. Transfer your available balance to publications and comments to increase their visibility and ranking. The more points a publication or comment has, the higher it appears in feeds. You have 10 points of free upvote daily.",
     "communities": "Communities",
     "communitiesDescription": "Update your community list by checking membership in Telegram groups",
     "syncCommunities": "🔄 Sync Communities",
@@ -84,11 +76,21 @@
   },
   "login": {
     "welcomeTitle": "Welcome to Meriter",
+    "welcome": "Welcome to Meriter",
+    "title": "Login",
+    "subtitle": "Sign in to access your account",
     "redirecting": "Redirecting to home...",
     "authenticating": "Authenticating...",
     "discoveringCommunities": "Discovering your communities...",
     "authError": "Authentication error",
-    "connectionError": "Server connection error: {message}"
+    "connectionError": "Server connection error: {message}",
+    "telegramWebApp": {
+      "detected": "Telegram Web App detected, authenticating..."
+    },
+    "telegramWidget": {
+      "instructions": "Click the button below to sign in with Telegram"
+    },
+    "backToHome": "Back to Home"
   },
   "polls": {
     "createTitle": "Create Poll",

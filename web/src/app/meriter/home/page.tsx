@@ -52,7 +52,6 @@ const PageHome = () => {
     const [showPollCreate, setShowPollCreate] = useState(false);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
-    const [showHelpCard, setShowHelpCard] = useState(true);
     const activeCommentHook = useState<string | null>(null);
 
     const updateWalletBalance = (currencyOfCommunityTgChatId: string, amountChange: number) => {
@@ -95,18 +94,6 @@ const PageHome = () => {
         }
     }, [isAuthenticated, userLoading, router]);
 
-    // Check if help card was dismissed
-    useEffect(() => {
-        const dismissed = localStorage.getItem('help-card-dismissed');
-        if (dismissed === 'true') {
-            setShowHelpCard(false);
-        }
-    }, []);
-
-    const dismissHelpCard = () => {
-        localStorage.setItem('help-card-dismissed', 'true');
-        setShowHelpCard(false);
-    };
 
     if (userLoading || !isAuthenticated) {
         return (
@@ -146,29 +133,6 @@ const PageHome = () => {
                 <MenuBreadcrumbs />
             </HeaderAvatarBalance>
 
-            {/* Help Card */}
-            {showHelpCard && (
-                <div className="card bg-primary/10 border border-primary/20 shadow-lg mb-6">
-                    <div className="card-body">
-                        <div className="flex justify-between items-start">
-                            <h3 className="card-title text-primary mb-2">{t('helpCard.title')}</h3>
-                            <button 
-                                onClick={dismissHelpCard}
-                                className="btn btn-ghost btn-sm btn-circle"
-                                aria-label="Close"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        <p className="text-sm mb-2">
-                            {t('helpCard.content')}
-                        </p>
-                        <p className="text-xs opacity-70">
-                            {t('helpCard.reviewInSettings')}
-                        </p>
-                    </div>
-                </div>
-            )}
             
             <div className="balance-available">
                 {false && <div className="heading">{t('availableBalance')}</div>}

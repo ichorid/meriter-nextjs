@@ -78,7 +78,7 @@ jest.mock('@/shared/lib/deep-link-handler', () => ({
 }));
 
 // Mock config
-jest.mock('@/config', () => ({
+jest.mock('./src/config/index.ts', () => ({
   config: {
     app: {
       isDevelopment: true,
