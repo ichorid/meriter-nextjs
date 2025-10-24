@@ -580,6 +580,7 @@ export class TgBotsService {
     if (process.env.noAxios) return null;
     return await Axios.get(BOT_URL + "/getChatMember", {
       params,
+      timeout: 5000, // 5 second timeout to prevent hanging requests
     })
       .then((d) => d.data)
       .then((d) => {
@@ -587,7 +588,10 @@ export class TgBotsService {
         //   console.log(d);
         return st === "member" || st === "administrator" || st === "creator";
       })
-      .catch((e) => false);
+      .catch((e) => {
+        this.logger.warn(`Failed to get chat member ${tgUserId} from ${tgChatId}:`, e.message);
+        return false;
+      });
   }
 
   async tgGetUserByUsername(username: string) {

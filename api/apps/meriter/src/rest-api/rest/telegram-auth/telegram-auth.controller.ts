@@ -275,13 +275,16 @@ export class TelegramAuthController {
         userToken: user.token,
       });
 
-      // Discover user's communities eagerly
-      this.logger.log(`Starting community discovery for user ${telegramId}`);
-      const discoveredCount = await this.discoverUserCommunities(telegramId);
-      this.logger.log(`Community discovery complete: ${discoveredCount} communities found`);
-
       // Check if user has pending communities to configure
       const hasPending = await this.hasPendingCommunities(telegramId);
+
+      // Start community discovery in background (non-blocking)
+      this.logger.log(`Starting background community discovery for user ${telegramId}`);
+      this.discoverUserCommunities(telegramId).then(discoveredCount => {
+        this.logger.log(`Background community discovery complete: ${discoveredCount} communities found`);
+      }).catch(error => {
+        this.logger.error(`Background community discovery failed for user ${telegramId}:`, error);
+      });
 
       // Generate JWT with user data
       const jwtSecret = this.configService.get<string>('jwt.secret');
@@ -421,13 +424,16 @@ export class TelegramAuthController {
         userToken: user.token,
       });
 
-      // Discover user's communities
-      this.logger.log(`Starting community discovery for user ${telegramId}`);
-      const discoveredCount = await this.discoverUserCommunities(telegramId);
-      this.logger.log(`Community discovery complete: ${discoveredCount} communities found`);
-
       // Check if user has pending communities to configure
       const hasPending = await this.hasPendingCommunities(telegramId);
+
+      // Start community discovery in background (non-blocking)
+      this.logger.log(`Starting background community discovery for user ${telegramId}`);
+      this.discoverUserCommunities(telegramId).then(discoveredCount => {
+        this.logger.log(`Background community discovery complete: ${discoveredCount} communities found`);
+      }).catch(error => {
+        this.logger.error(`Background community discovery failed for user ${telegramId}:`, error);
+      });
 
       // Generate JWT with user data
       const jwt = this.actorsService.signJWT(
