@@ -212,6 +212,125 @@ Browser → Caddy (port 80/443)
 
 In production, Caddy routes requests, so CORS is not needed (same origin).
 
+## Authentication Flow
+
+The application supports **dual authentication** for both Telegram Web App and regular browsers:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    User Opens App                           │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│              SDK Detects Environment                       │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+        ┌─────────────┴─────────────┐
+        │                          │
+        ▼                          ▼
+┌───────────────┐        ┌─────────────────┐
+│ In Telegram   │        │ Regular Browser │
+│ Web App       │        │                 │
+└───────┬───────┘        └─────────┬───────┘
+        │                          │
+        ▼                          ▼
+┌───────────────┐        ┌─────────────────┐
+│ Auto-auth     │        │ Show Login      │
+│ with initData │        │ Widget           │
+└───────┬───────┘        └─────────┬───────┘
+        │                          │
+        ▼                          ▼
+┌─────────────────────────────────────────────┐
+│         Backend Validation                  │
+│  /api/rest/telegram-auth/webapp            │
+│  /api/rest/telegram-auth                   │
+└─────────────────────┬───────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────┐
+│         JWT Cookie Set                      │
+│         User Authenticated                  │
+└─────────────────────┬───────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────┐
+│         Redirect to App                     │
+└─────────────────────────────────────────────┘
+```
+
+### Authentication Methods
+
+**1. Telegram Web App Authentication** (Inside Telegram)
+- **Detection**: Uses SDK's `initDataRaw` signal to detect if running in Telegram
+- **Flow**: Automatically authenticates using `initData` sent to `/api/rest/telegram-auth/webapp`
+- **UI**: Shows "Authenticating..." message while processing
+- **Backend**: Uses Web App validation endpoint
+
+**2. Telegram Login Widget** (Regular Browsers)
+- **Detection**: When `isInTelegram` is false, shows the Telegram Login Widget
+- **Flow**: User clicks widget → Telegram callback → sends user data to `/api/rest/telegram-auth`
+- **UI**: Shows the official Telegram Login Widget button
+- **Backend**: Uses widget validation endpoint
+
+### Testing Authentication
+
+**In Telegram Web App:**
+1. Open the app inside Telegram
+2. Authentication happens automatically
+3. No manual interaction required
+
+**In Regular Browser:**
+1. Open `http://localhost:8080/meriter/login` in Chrome/Safari/Firefox
+2. Click the Telegram Login Widget button
+3. Complete Telegram authentication
+4. Get redirected to the app
+
+### Testing Telegram Web App Features (Development)
+
+To test Telegram Web App features in a regular browser during development, you can enable mock mode:
+
+**Enable Mock Mode:**
+1. Add `?mock-telegram=true` to any URL
+2. Example: `http://localhost:8080/meriter/login?mock-telegram=true`
+3. The app will simulate Telegram Web App environment
+4. Automatic authentication will be attempted (will fail with mock data)
+5. Telegram UI components will be available
+
+**Mock Mode Features:**
+- Simulates `initData` for testing Web App auth flow
+- Enables Telegram UI components (BackButton, MainButton, etc.)
+- Provides mock theme parameters
+- Shows console messages about mock status
+
+**Console Messages:**
+- `ℹ️ Running in regular browser mode` - Normal mode (shows Login Widget)
+- `⚠️ Telegram environment mocked for testing` - Mock mode active
+- `⚠️ Telegram environment mocked for testing. Add ?mock-telegram=true to URL to enable mocking.` - Instructions
+
+**Testing Scenarios:**
+
+1. **Regular Browser Testing** (Default):
+   ```
+   URL: http://localhost:8080/meriter/login
+   Shows: Telegram Login Widget
+   Auth: Manual widget interaction
+   ```
+
+2. **Telegram Web App Testing** (Mock Mode):
+   ```
+   URL: http://localhost:8080/meriter/login?mock-telegram=true
+   Shows: "Authenticating..." (simulates Web App)
+   Auth: Automatic (will fail with mock data)
+   ```
+
+3. **Real Telegram Web App** (Production):
+   ```
+   URL: Opened from Telegram
+   Shows: Automatic authentication
+   Auth: Real initData validation
+   ```
+
 ## Testing
 
 ### Backend Tests

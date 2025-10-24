@@ -7,7 +7,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { useDeepLinkHandler } from '@shared/lib/deep-link-handler';
-import { useLaunchParams } from '@telegram-apps/sdk-react';
+import { useLaunchParams, initDataRaw, useSignal } from '@telegram-apps/sdk-react';
 
 const PageSetupCommunity = () => {
     const router = useRouter();
@@ -16,14 +16,75 @@ const PageSetupCommunity = () => {
     const locale = useLocale();
     const launchParams = useLaunchParams();
     const startParam = launchParams.tgWebAppStartParam;
+    const rawData = useSignal(initDataRaw);
+    const isInTelegram = !!rawData;
     const { handleDeepLink } = useDeepLinkHandler(router, searchParams, startParam);
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
     const telegramWidgetRef = useRef<HTMLDivElement>(null);
+    const webAppAuthAttempted = useRef(false);
+
+    // Function to handle Telegram Web App authentication
+    const authenticateWithTelegramWebApp = async (initData: string) => {
+        console.log('🟣 Telegram Web App auth detected, authenticating...');
+        setIsAuthenticating(true);
+        setAuthError(null);
+
+        try {
+            console.log('🔵 Sending auth request to backend...');
+            const authResponse = await fetch('/api/rest/telegram-auth/webapp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ initData }),
+                credentials: 'include',
+            });
+
+            console.log('🔵 Backend response status:', authResponse.status);
+
+            if (!authResponse.ok) {
+                const errorData = await authResponse.json().catch(() => ({}));
+                console.error('🔴 Auth failed:', errorData);
+                throw new Error('Authentication failed');
+            }
+
+            const data = await authResponse.json();
+            console.log('🔵 Auth successful!', data);
+
+            if (data.success) {
+                // Use deep link handler for navigation
+                console.log('🔵 Auth successful, handling deep link navigation...');
+                handleDeepLink();
+            } else {
+                setAuthError(t('setupCommunity.authError'));
+            }
+        } catch (error) {
+            console.error('🔴 Auth error:', error);
+            setAuthError(t('setupCommunity.connectionError', { message: (error as Error).message }));
+        } finally {
+            setIsAuthenticating(false);
+        }
+    };
+
+    // Auto-authenticate if opened in Telegram Web App
+    useEffect(() => {
+        if (isInTelegram && rawData && !webAppAuthAttempted.current && !user?.token) {
+            webAppAuthAttempted.current = true;
+            authenticateWithTelegramWebApp(rawData);
+        }
+    }, [isInTelegram, rawData, user?.token]);
 
     useEffect(() => {
         console.log('🟢 Setup community page mounted. BOT_USERNAME:', BOT_USERNAME);
+        console.log('🟢 Telegram Web App mode:', isInTelegram);
+        
+        // Skip widget loading if in Telegram Web App mode
+        if (isInTelegram) {
+            console.log('🟢 Skipping widget load - using Web App authentication');
+            return;
+        }
         
         // Define the global callback function that Telegram will call
         (window as any).onTelegramAuth = async (user: any) => {
@@ -89,7 +150,7 @@ const PageSetupCommunity = () => {
             // Cleanup
             delete (window as any).onTelegramAuth;
         };
-    }, [router, locale]);
+    }, [router, locale, isInTelegram]);
 
     useEffect(() => {
         if (user?.token) {
@@ -130,9 +191,16 @@ const PageSetupCommunity = () => {
 
                 <div className="mar-40">
                     {isAuthenticating ? (
-                        <div>{t('setupCommunity.authenticating')}</div>
-                    ) : (
+                        <div className="text-center">
+                            <span className="loading loading-spinner loading-lg"></span>
+                            <p className="mt-4">{t('setupCommunity.authenticating')}</p>
+                        </div>
+                    ) : !isInTelegram ? (
                         <div ref={telegramWidgetRef} id="telegram-login-widget"></div>
+                    ) : (
+                        <div className="text-center text-base-content/70">
+                            {t('setupCommunity.authenticating')}
+                        </div>
                     )}
                     {authError && (
                         <div className="text-red-500 mt-4">{authError}</div>

@@ -6,7 +6,12 @@ export async function mockEnv(): Promise<void> {
   return process.env.NODE_ENV !== 'development'
   ? undefined
   : isTMA('complete').then((isTma) => {
-    if (!isTma){ 
+    // Only mock if we're not in a real Telegram environment AND we want to test Telegram features
+    // Check for a URL parameter to enable mocking (e.g., ?mock-telegram=true)
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldMock = urlParams.get('mock-telegram') === 'true';
+    
+    if (!isTma && shouldMock) { 
       const themeParams = {
         accent_text_color: '#6ab2f2',
         bg_color: '#17212b',
@@ -74,7 +79,11 @@ export async function mockEnv(): Promise<void> {
       });
   
       console.info(
-        '⚠️ As long as the current environment was not considered as the Telegram-based one, it was mocked. Take a note, that you should not do it in production and current behavior is only specific to the development process. Environment mocking is also applied only in development mode. So, after building the application, you will not see this behavior and related warning, leading to crashing the application outside Telegram.',
+        '⚠️ Telegram environment mocked for testing. Add ?mock-telegram=true to URL to enable mocking.',
+      );
+    } else if (!isTma) {
+      console.info(
+        'ℹ️ Running in regular browser mode. Add ?mock-telegram=true to URL to test Telegram Web App features.',
       );
     }
   });

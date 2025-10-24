@@ -32,6 +32,8 @@ const PageMeriterLogin = () => {
     // Function to handle Telegram Web App authentication
     const authenticateWithTelegramWebApp = async (initData: string) => {
         console.log('🟣 Telegram Web App auth detected, authenticating...');
+        console.log('🟣 InitData being sent:', initData);
+        console.log('🟣 InitData length:', initData?.length);
         setIsAuthenticating(true);
         setDiscoveryStatus('Authenticating...');
         setAuthError(null);
@@ -49,10 +51,13 @@ const PageMeriterLogin = () => {
             });
 
             console.log('🟣 Backend response status:', authResponse.status);
+            console.log('🟣 Backend response headers:', Object.fromEntries(authResponse.headers.entries()));
 
             if (!authResponse.ok) {
                 const errorData = await authResponse.json().catch(() => ({}));
                 console.error('🔴 Web App auth failed:', errorData);
+                console.error('🔴 Response status:', authResponse.status);
+                console.error('🔴 Response statusText:', authResponse.statusText);
                 throw new Error('Authentication failed');
             }
 
@@ -96,6 +101,8 @@ const PageMeriterLogin = () => {
         console.log('🟢 Login page mounted. BOT_USERNAME:', BOT_USERNAME);
         console.log('🟢 Telegram Web App mode:', isInTelegram);
         console.log('🟢 Telegram start_param:', startParam);
+        console.log('🟢 Raw initData:', rawData);
+        console.log('🟢 Launch params:', launchParams);
         
         if (returnTo) {
             console.log('🟢 returnTo parameter found:', returnTo);
