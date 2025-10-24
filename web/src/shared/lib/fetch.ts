@@ -43,11 +43,15 @@ export const useApiPOST = (addr: string, initial: any, params = {}) => {
 }
 
 const fetchJSON = async function (input: RequestInfo, init?: RequestInit) {
+    console.log('🌐 SWR Fetch request:', input);
     const res = await fetch(input, {
         ...init,
         credentials: 'include', // Include cookies in requests
     })
-    return res.json()
+    console.log('🌐 SWR Fetch response status:', res.status, res.statusText);
+    const data = await res.json();
+    console.log('🌐 SWR Fetch response data:', data);
+    return data;
 }
 //const prefix="http://localhost:3000"
 

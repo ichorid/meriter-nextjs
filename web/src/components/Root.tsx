@@ -17,10 +17,21 @@ import { ThemeProvider } from '@/shared/lib/theme-provider';
 import './styles.css';
 
 function RootInner({ children }: PropsWithChildren) {
-  const lp = useLaunchParams();
+  let lp;
+  let isDark;
+  let initDataUser;
 
-  const isDark = useSignal(miniApp.isDark);
-  const initDataUser = useSignal(initData.user);
+  try {
+    lp = useLaunchParams();
+    isDark = useSignal(miniApp.isDark);
+    initDataUser = useSignal(initData.user);
+  } catch (error) {
+    console.warn('⚠️ Telegram Web App not detected, running in development mode:', error.message);
+    // Fallback values for development
+    lp = { tgWebAppPlatform: 'web' };
+    isDark = { value: false };
+    initDataUser = { value: null };
+  }
 
   // Note: Locale setting from Telegram user data would need to be handled
   // on the server side or through a different mechanism since we can't
@@ -29,9 +40,9 @@ function RootInner({ children }: PropsWithChildren) {
   return (
     <ThemeProvider>
       <AppRoot
-        appearance={isDark ? 'dark' : 'light'}
+        appearance={isDark?.value ? 'dark' : 'light'}
         platform={
-          ['macos', 'ios'].includes(lp.tgWebAppPlatform) ? 'ios' : 'base'
+          ['macos', 'ios'].includes(lp?.tgWebAppPlatform) ? 'ios' : 'base'
         }
       >
         {children}

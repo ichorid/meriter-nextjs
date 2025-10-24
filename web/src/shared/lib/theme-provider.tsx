@@ -17,10 +17,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [theme, setThemeState] = useState<Theme>('auto');
     const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
     
-    // Use SDK signals
-    const rawData = useSignal(initDataRaw);
-    const isInTelegram = !!rawData;
-    const isDark = useSignal(miniApp.isDark);
+    // Use SDK signals with error handling
+    let rawData;
+    let isDark;
+    let isInTelegram = false;
+    
+    try {
+        rawData = useSignal(initDataRaw);
+        isDark = useSignal(miniApp.isDark);
+        isInTelegram = !!rawData;
+    } catch (error) {
+        console.warn('⚠️ Telegram Web App not detected in theme provider, using fallback:', error.message);
+        rawData = { value: null };
+        isDark = { value: false };
+        isInTelegram = false;
+    }
 
     // Initialize theme from localStorage
     useEffect(() => {

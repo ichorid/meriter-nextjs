@@ -15,10 +15,12 @@ import { ThemeToggle } from '@shared/components/theme-toggle';
 import { LogoutButton } from '@shared/components/logout-button';
 import { LanguageSelector } from '@shared/components/language-selector';
 import { useTranslations } from 'next-intl';
+import { mutate } from 'swr';
 
 const SettingsPage = () => {
     const router = useRouter();
     const t = useTranslations('settings');
+    const tCommon = useTranslations('common');
     const [user] = swr('/api/rest/getme', {});
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncMessage, setSyncMessage] = useState('');
@@ -44,6 +46,10 @@ const SettingsPage = () => {
             if (data.success) {
                 setSyncMessage(t('syncSuccess', { count: data.membershipsUpdated }));
                 setTimeout(() => setSyncMessage(''), 3000);
+                
+                // Invalidate SWR cache for communities data to refresh the home page
+                mutate('/api/rest/getusercommunities');
+                mutate('/api/rest/getme');
             } else {
                 setSyncMessage(data.message || t('syncError'));
             }
@@ -85,7 +91,7 @@ const SettingsPage = () => {
                                         src={"/meriter/home.svg"}
                                         alt="Home"
                                     />
-                                    <span>{t('breadcrumb', { ns: 'home' })}</span>
+                                    <span>{tCommon('home')}</span>
                                 </Link>
                             </li>
                             <li>{t('breadcrumb')}</li>

@@ -14,10 +14,22 @@ const PageMeriterLogin = () => {
     const searchParams = useSearchParams();
     const t = useTranslations('login');
     const locale = useLocale();
-    const launchParams = useLaunchParams();
-    const rawData = useSignal(initDataRaw);
+    let launchParams;
+    let rawData;
+    let startParam;
+    
+    try {
+        launchParams = useLaunchParams();
+        rawData = useSignal(initDataRaw);
+        startParam = launchParams.tgWebAppStartParam;
+    } catch (error) {
+        console.warn('⚠️ Telegram Web App not detected in login, using fallback:', error.message);
+        launchParams = { tgWebAppStartParam: null };
+        rawData = { value: null };
+        startParam = null;
+    }
+    
     const [isInTelegram, setIsInTelegram] = useState(false);
-    const startParam = launchParams.tgWebAppStartParam;
     const { handleDeepLink } = useDeepLinkHandler(router, searchParams, startParam);
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);
@@ -253,7 +265,26 @@ const PageMeriterLogin = () => {
 
                 <div className="mar-80">
                     {!isAuthenticating && !isInTelegram && (
-                        <div ref={telegramWidgetRef} id="telegram-login-widget"></div>
+                        <>
+                            <div ref={telegramWidgetRef} id="telegram-login-widget"></div>
+                            {/* Development mode login button */}
+                            <div className="mt-4 p-4 border border-yellow-300 bg-yellow-50 rounded-lg">
+                                <p className="text-sm text-yellow-800 mb-2">
+                                    Development Mode: Not running in Telegram Web App
+                                </p>
+                                <button
+                                    onClick={() => {
+                                        console.log('🔧 Development login clicked');
+                                        // For development, we'll simulate a successful auth
+                                        // You can modify this to use a test user or mock data
+                                        window.location.href = '/meriter/home';
+                                    }}
+                                    className="btn btn-primary btn-sm"
+                                >
+                                    Continue to App (Dev Mode)
+                                </button>
+                            </div>
+                        </>
                     )}
                     {!isAuthenticating && isInTelegram && (
                         <div className="text-center text-base-content/70">

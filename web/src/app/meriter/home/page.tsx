@@ -63,9 +63,25 @@ const PageHome = () => {
             revalidateOnFocus: false,
         }
     );
-    const [wallets, updateWallets] = swr("/api/rest/getusercommunities", [], {
-        key: "wallets",
-    });
+    const [wallets, updateWallets] = swr("/api/rest/getusercommunities", { communities: [] });
+
+    // Debug SWR call
+    console.log('🔧 SWR wallets call made, result:', wallets);
+    console.log('🔧 SWR updateWallets function:', typeof updateWallets);
+
+    // Debug logging for communities
+    useEffect(() => {
+        console.log('🏠 Home page - Communities data:', wallets);
+        console.log('🏠 Home page - Communities count:', wallets?.communities?.length || 0);
+        if (wallets?.communities) {
+            console.log('🏠 Home page - Communities details:', wallets.communities.map(c => ({
+                chatId: c.chatId,
+                title: c.title,
+                isAdmin: c.isAdmin,
+                needsSetup: c.needsSetup
+            })));
+        }
+    }, [wallets]);
     const [walletData, updateWalletData] = swr("/api/rest/wallet", [], {
         key: "walletData",
     });
@@ -204,21 +220,38 @@ const PageHome = () => {
             )}
             <div className="balance-available">
                 <div className="heading">{t('myCommunities')}</div>
-                {wallets?.communities && wallets.communities.map((community) => {
-                    // Find corresponding wallet data for this community
-                    const walletInfo = walletData?.find(w => w.currencyOfCommunityTgChatId === community.chatId);
-                    return (
-                        <WalletCommunity 
-                            key={community._id} 
-                            amount={walletInfo?.amount || 0}
-                            currencyNames={walletInfo?.currencyNames || []}
-                            currencyOfCommunityTgChatId={community.chatId}
-                            tgUserId={user?.tgUserId}
-                            isAdmin={community.isAdmin}
-                            needsSetup={community.needsSetup}
-                        />
-                    );
-                })}
+                {(() => {
+                    console.log('🎨 Rendering communities - wallets:', wallets);
+                    console.log('🎨 Rendering communities - communities array:', wallets?.communities);
+                    console.log('🎨 Rendering communities - communities length:', wallets?.communities?.length);
+                    
+                    if (!wallets?.communities) {
+                        console.log('🎨 No communities data available');
+                        return <div>No communities data</div>;
+                    }
+                    
+                    if (wallets.communities.length === 0) {
+                        console.log('🎨 Communities array is empty');
+                        return <div>No communities found</div>;
+                    }
+                    
+                    return wallets.communities.map((community) => {
+                        console.log('🎨 Rendering community:', community);
+                        // Find corresponding wallet data for this community
+                        const walletInfo = walletData?.find(w => w.currencyOfCommunityTgChatId === community.chatId);
+                        return (
+                            <WalletCommunity 
+                                key={community._id} 
+                                amount={walletInfo?.amount || 0}
+                                currencyNames={walletInfo?.currencyNames || []}
+                                currencyOfCommunityTgChatId={community.chatId}
+                                tgUserId={user?.tgUserId}
+                                isAdmin={community.isAdmin}
+                                needsSetup={community.needsSetup}
+                            />
+                        );
+                    });
+                })()}
             </div>
             <div className="balance-inpublications">
                 <div className="tabs tabs-boxed mb-4 p-1 bg-base-200 rounded-lg shadow-sm">
