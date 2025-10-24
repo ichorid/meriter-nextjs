@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { apiPOST } from "@shared/lib/fetch";
 import { A } from "@shared/components/simple/simple-elements";
 import { useTranslations } from 'next-intl';
@@ -27,6 +27,7 @@ export const FormPollCreate = ({
     const t = useTranslations('polls');
     const rawData = useSignal(initDataRaw);
     const isInTelegram = !!rawData;
+    const isMountedRef = useRef(true);
     
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -39,6 +40,14 @@ export const FormPollCreate = ({
     const [selectedWallet, setSelectedWallet] = useState(communityId || "");
     const [isCreating, setIsCreating] = useState(false);
     const [error, setError] = useState("");
+
+    // Track component mount status
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     const addOption = () => {
         if (options.length >= 10) {
@@ -97,8 +106,12 @@ export const FormPollCreate = ({
         setIsCreating(true);
         setError("");
         
-        if (isInTelegram) {
-            mainButton.setParams({ isLoaderVisible: true });
+        if (isInTelegram && isMountedRef.current) {
+            try {
+                mainButton.setParams({ isLoaderVisible: true });
+            } catch (error) {
+                console.warn('MainButton already unmounted:', error.message);
+            }
         }
 
         try {
@@ -155,39 +168,102 @@ export const FormPollCreate = ({
             hapticFeedback.notificationOccurred('error');
         } finally {
             setIsCreating(false);
-            if (isInTelegram) {
-                mainButton.setParams({ isLoaderVisible: false });
+            if (isInTelegram && isMountedRef.current) {
+                try {
+                    mainButton.setParams({ isLoaderVisible: false });
+                } catch (error) {
+                    console.warn('MainButton already unmounted:', error.message);
+                }
             }
         }
     }, [title, description, options, timeValue, timeUnit, selectedWallet, isInTelegram, t, onSuccess]);
 
     // Telegram MainButton integration
     useEffect(() => {
-        if (isInTelegram) {
-            mainButton.setParams({ 
-                text: t('createPoll'),
-                isVisible: true, 
-                isEnabled: true 
-            });
-            const cleanup = mainButton.onClick(handleCreate);
+        if (isInTelegram && isMountedRef.current) {
+            let cleanup: (() => void) | undefined;
             
-            // Setup back button if cancel is available
-            if (onCancel) {
-                backButton.show();
-                const backCleanup = backButton.onClick(onCancel);
+            const initializeMainButton = () => {
+                if (!isMountedRef.current) return;
+                
+                try {
+                    // Try to mount the mainButton first
+                    mainButton.mount();
+                } catch (error) {
+                    // MainButton might already be mounted, that's okay
+                    console.warn('MainButton mount warning (expected if already mounted):', error.message);
+                }
+                
+                try {
+                    // Set the mainButton parameters
+                    mainButton.setParams({ 
+                        text: t('createPoll'),
+                        isVisible: true, 
+                        isEnabled: true 
+                    });
+                    
+                    // Set up click handler
+                    cleanup = mainButton.onClick(handleCreate);
+                    
+                    // Setup back button if cancel is available
+                    if (onCancel) {
+                        try {
+                            backButton.show();
+                            const backCleanup = backButton.onClick(onCancel);
+                            
+                            return () => {
+                                if (isMountedRef.current) {
+                                    try {
+                                        mainButton.setParams({ isVisible: false });
+                                    } catch (error) {
+                                        console.warn('MainButton cleanup warning:', error.message);
+                                    }
+                                }
+                                if (cleanup) cleanup();
+                                backButton.hide();
+                                backCleanup();
+                            };
+                        } catch (error) {
+                            console.error('Failed to setup back button:', error.message);
+                        }
+                    }
+                    
+                    return () => {
+                        if (isMountedRef.current) {
+                            try {
+                                mainButton.setParams({ isVisible: false });
+                            } catch (error) {
+                                console.warn('MainButton cleanup warning:', error.message);
+                            }
+                        }
+                        if (cleanup) cleanup();
+                    };
+                    
+                } catch (error) {
+                    console.error('Failed to initialize mainButton:', error.message);
+                    // If mainButton fails, we'll just return a no-op cleanup
+                    return () => {};
+                }
+            };
+            
+            // Try to initialize immediately, but if it fails, retry after a short delay
+            let cleanupFn = initializeMainButton();
+            
+            if (!cleanupFn) {
+                // If initialization failed, try again after a short delay
+                const timeoutId = setTimeout(() => {
+                    if (isMountedRef.current) {
+                        cleanupFn = initializeMainButton();
+                    }
+                }, 200);
                 
                 return () => {
-                    mainButton.setParams({ isVisible: false });
-                    cleanup();
-                    backButton.hide();
-                    backCleanup();
+                    clearTimeout(timeoutId);
+                    if (cleanupFn) cleanupFn();
                 };
             }
             
-            return () => {
-                mainButton.setParams({ isVisible: false });
-                cleanup();
-            };
+            return cleanupFn;
         }
     }, [isInTelegram, handleCreate, onCancel, t]);
 
