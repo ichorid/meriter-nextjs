@@ -68,6 +68,8 @@ const PageHome = () => {
     // Debug SWR call
     console.log('🔧 SWR wallets call made, result:', wallets);
     console.log('🔧 SWR updateWallets function:', typeof updateWallets);
+    console.log('🔧 SWR walletData call made, result:', walletData);
+    console.log('🔧 SWR walletData type:', typeof walletData, 'isArray:', Array.isArray(walletData));
 
     // Debug logging for communities
     useEffect(() => {
@@ -82,8 +84,8 @@ const PageHome = () => {
             })));
         }
     }, [wallets]);
-    const [walletData, updateWalletData] = swr("/api/rest/wallet", [], {
-        key: "walletData",
+    const [walletData, updateWalletData] = swr("/api/rest/wallet", { wallets: [] }, {
+        key: "wallets",
     });
     const [user] = swr("/api/rest/getme", {});
     const [tab, setTab] = useState("publications");
@@ -235,13 +237,13 @@ const PageHome = () => {
                         return <div>No communities found</div>;
                     }
                     
-                    return wallets.communities.map((community) => {
-                        console.log('🎨 Rendering community:', community);
+                    return wallets.communities.map((community, index) => {
+                        console.log('🎨 Rendering community:', community, 'index:', index);
                         // Find corresponding wallet data for this community
                         const walletInfo = walletData?.find(w => w.currencyOfCommunityTgChatId === community.chatId);
                         return (
                             <WalletCommunity 
-                                key={community._id} 
+                                key={`community-${community._id || community.chatId || index}`} 
                                 amount={walletInfo?.amount || 0}
                                 currencyNames={walletInfo?.currencyNames || []}
                                 currencyOfCommunityTgChatId={community.chatId}
@@ -318,8 +320,8 @@ const PageHome = () => {
                             {myUpdates &&
                                 sortItems(myUpdates)
                                     .filter((p) => p.fromUserTgId !== user?.tgUserId)
-                                    .map((p: any) => (
-                                        <TransactionToMe key={p._id} transaction={p} />
+                                    .map((p: any, index) => (
+                                        <TransactionToMe key={`transaction-${p._id || index}`} transaction={p} />
                                     ))}
                         </div>
                     </div>
@@ -330,9 +332,9 @@ const PageHome = () => {
                             {myPublications &&
                                 sortItems(myPublications)
                                     .filter((p) => p.messageText || p.type === 'poll')
-                                    .map((p) => (
+                                    .map((p, index) => (
                                         <Publication
-                                            key={p._id || p.slug}
+                                            key={`publication-${p._id || p.slug || index}`}
                                             {...p}
                                             myId={user?.tgUserId}
                                             updateAll={updateAll}
@@ -355,9 +357,9 @@ const PageHome = () => {
                         <div className="balance-inpublications-publications">
                             {myComments &&
                                 sortItems(myComments)
-                                    .map((p) => (
+                                    .map((p, index) => (
                                         <Comment
-                                            key={p._id}
+                                            key={`comment-${p._id || index}`}
                                             {...p}
                                             _id={p._id}
                                             myId={user?.tgUserId}
