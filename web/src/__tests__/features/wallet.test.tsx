@@ -19,7 +19,9 @@ describe('Wallet Feature', () => {
                 onClick={jest.fn()}
             />
         );
-        expect(container.querySelector('.widget-avatar-balance')).toBeInTheDocument();
+        // Check for the actual CSS classes used in the component
+        expect(container.querySelector('.bg-base-100')).toBeInTheDocument();
+        expect(container.querySelector('.shadow-md')).toBeInTheDocument();
     });
 
     it('should display balance amount', () => {
@@ -45,8 +47,10 @@ describe('Wallet Feature', () => {
                 onClick={jest.fn()}
             />
         );
-        const balances = container.querySelectorAll('.balance');
-        expect(balances.length).toBe(1);
+        // Check that balance1 amount is rendered (span with font-medium class)
+        const balanceSpans = container.querySelectorAll('span.font-medium');
+        expect(balanceSpans.length).toBe(1);
+        expect(balanceSpans[0]).toHaveTextContent('100');
     });
 });
 
