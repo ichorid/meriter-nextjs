@@ -164,6 +164,9 @@ describe('TransactionsService', () => {
         fail('Expected method to throw an error');
       } catch (error) {
         expect(error).toBe('cannot vote for self');
+        // Enhanced: Verify error message is specific and meaningful
+        expect(typeof error).toBe('string');
+        expect(error).toContain('cannot vote for self');
       }
     });
   });

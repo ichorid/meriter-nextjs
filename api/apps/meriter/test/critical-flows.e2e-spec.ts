@@ -184,7 +184,7 @@ describe('Critical User Flows (E2E)', () => {
         .get('/api/rest/getme')
         .set('Cookie', `jwt=${testData.USER_A_JWT}`);
 
-      expect([200, 201]).toContain(response.status);
+      expect(response.status).toBe(200);
       expect(response.body.tgUserId).toBe(testData.USER_A_ID);
       expect(response.body.name).toBe('User A');
     });
@@ -195,6 +195,9 @@ describe('Critical User Flows (E2E)', () => {
         .set('Cookie', 'jwt=invalid-jwt-token');
 
       expect([401, 403]).toContain(response.status);
+      // Enhanced: Verify specific error message
+      expect(response.body.message || response.body.error).toBeDefined();
+      expect(response.body.message || response.body.error).toMatch(/invalid|unauthorized|jwt/i);
     });
 
     test('UserGuard rejects requests without JWT', async () => {
@@ -202,6 +205,9 @@ describe('Critical User Flows (E2E)', () => {
         .get('/api/rest/getme');
 
       expect([401, 403]).toContain(response.status);
+      // Enhanced: Verify specific error message
+      expect(response.body.message || response.body.error).toBeDefined();
+      expect(response.body.message || response.body.error).toMatch(/no.*jwt|token.*provided|unauthorized/i);
     });
   });
 
@@ -211,9 +217,21 @@ describe('Critical User Flows (E2E)', () => {
         .get('/api/rest/publications/my')
         .set('Cookie', `jwt=${testData.USER_A_JWT}`);
 
-      expect([200, 201]).toContain(response.status);
+      expect(response.status).toBe(200);
       expect(response.body.publications).toBeDefined();
       expect(Array.isArray(response.body.publications)).toBe(true);
+      
+      // Enhanced: Validate response structure
+      expect(response.body).toHaveProperty('publications');
+      
+      // Enhanced: If publications exist, validate their structure
+      if (response.body.publications.length > 0) {
+        const publication = response.body.publications[0];
+        expect(publication).toHaveProperty('uid');
+        expect(publication).toHaveProperty('_id');
+        expect(typeof publication.uid).toBe('string');
+        expect(publication.uid.length).toBeGreaterThan(0);
+      }
     });
 
     test('User can access community publications', async () => {
@@ -221,9 +239,21 @@ describe('Critical User Flows (E2E)', () => {
         .get(`/api/rest/publications/communities/${testData.COMMUNITY_CHAT_ID}`)
         .set('Cookie', `jwt=${testData.USER_A_JWT}`);
 
-      expect([200, 201]).toContain(response.status);
+      expect(response.status).toBe(200);
       expect(response.body.publications).toBeDefined();
       expect(Array.isArray(response.body.publications)).toBe(true);
+      
+      // Enhanced: Validate response structure
+      expect(response.body).toHaveProperty('publications');
+      
+      // Enhanced: If publications exist, validate their structure
+      if (response.body.publications.length > 0) {
+        const publication = response.body.publications[0];
+        expect(publication).toHaveProperty('uid');
+        expect(publication).toHaveProperty('_id');
+        expect(typeof publication.uid).toBe('string');
+        expect(publication.uid.length).toBeGreaterThan(0);
+      }
     });
 
     test('User cannot access publications from communities they are not members of', async () => {
@@ -252,6 +282,10 @@ describe('Critical User Flows (E2E)', () => {
 
       // Should fail with 403 Forbidden
       expect([403, 401]).toContain(response.status);
+      
+      // Enhanced: Verify specific error message
+      expect(response.body.message || response.body.error).toBeDefined();
+      expect(response.body.message || response.body.error).toMatch(/not.*authorized|forbidden|not.*member/i);
     });
   });
 
@@ -261,9 +295,17 @@ describe('Critical User Flows (E2E)', () => {
         .get('/api/rest/wallet')
         .set('Cookie', `jwt=${testData.USER_A_JWT}`);
 
-      expect([200, 201]).toContain(response.status);
+      expect(response.status).toBe(200);
       expect(response.body.wallets).toBeDefined();
       expect(Array.isArray(response.body.wallets)).toBe(true);
+      
+      // Enhanced: Validate wallet structure if wallets exist
+      if (response.body.wallets.length > 0) {
+        const wallet = response.body.wallets[0];
+        expect(wallet).toHaveProperty('value');
+        expect(typeof wallet.value).toBe('number');
+        expect(wallet.value).toBeGreaterThanOrEqual(0);
+      }
     });
 
     test('User can check free voting limit', async () => {
@@ -271,9 +313,10 @@ describe('Critical User Flows (E2E)', () => {
         .get('/api/rest/free?inSpaceSlug=test')
         .set('Cookie', `jwt=${testData.USER_A_JWT}`);
 
-      expect([200, 201]).toContain(response.status);
+      expect(response.status).toBe(200);
       expect(response.body.free).toBeDefined();
       expect(typeof response.body.free).toBe('number');
+      expect(response.body.free).toBeGreaterThanOrEqual(0);
     });
   });
 
@@ -296,8 +339,10 @@ describe('Critical User Flows (E2E)', () => {
         .set('Cookie', `jwt=${testData.USER_A_JWT}`)
         .send(pollData);
 
-      expect([200, 201]).toContain(createResponse.status);
+      expect(createResponse.status).toBe(201);
       expect(createResponse.body.uid).toBeDefined();
+      expect(typeof createResponse.body.uid).toBe('string');
+      expect(createResponse.body.uid.length).toBeGreaterThan(0);
       testData.POLL_SLUG = createResponse.body.uid;
 
       // Verify poll was created in database
@@ -326,7 +371,7 @@ describe('Critical User Flows (E2E)', () => {
         .set('Cookie', `jwt=${testData.USER_A_JWT}`)
         .send(pollData);
 
-      expect([200, 201]).toContain(createResponse.status);
+      expect(createResponse.status).toBe(201);
       const pollSlug = createResponse.body.uid;
 
       // Give User B some wallet balance for voting
@@ -345,7 +390,7 @@ describe('Critical User Flows (E2E)', () => {
           amount: 5,
         });
 
-      expect([200, 201]).toContain(voteResponse.status);
+      expect(voteResponse.status).toBe(200);
 
       // Verify poll results updated
       const poll = await publicationsService.model.findOne({
@@ -382,7 +427,7 @@ describe('Critical User Flows (E2E)', () => {
         .set('Cookie', `jwt=${testData.USER_A_JWT}`)
         .send(pollData);
 
-      expect([200, 201]).toContain(createResponse.status);
+      expect(createResponse.status).toBe(201);
       const pollSlug = createResponse.body.uid;
 
       // Get poll details
@@ -390,7 +435,7 @@ describe('Critical User Flows (E2E)', () => {
         .get(`/api/rest/poll/get?pollId=${pollSlug}`)
         .set('Cookie', `jwt=${testData.USER_A_JWT}`);
 
-      expect([200, 201]).toContain(getResponse.status);
+      expect(getResponse.status).toBe(200);
       expect(getResponse.body.poll).toBeDefined();
       expect(getResponse.body.poll.uid).toBe(pollSlug);
       expect(getResponse.body.userVotes).toBeDefined();
@@ -404,7 +449,7 @@ describe('Critical User Flows (E2E)', () => {
         .get('/api/rest/transactions/my')
         .set('Cookie', `jwt=${testData.USER_A_JWT}`);
 
-      expect([200, 201]).toContain(response.status);
+      expect(response.status).toBe(200);
       expect(response.body.transactions).toBeDefined();
       expect(Array.isArray(response.body.transactions)).toBe(true);
     });
@@ -414,7 +459,7 @@ describe('Critical User Flows (E2E)', () => {
         .get('/api/rest/transactions/my?positive=true')
         .set('Cookie', `jwt=${testData.USER_A_JWT}`);
 
-      expect([200, 201]).toContain(response.status);
+      expect(response.status).toBe(200);
       expect(response.body.transactions).toBeDefined();
       expect(Array.isArray(response.body.transactions)).toBe(true);
     });
