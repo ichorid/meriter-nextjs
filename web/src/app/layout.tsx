@@ -6,6 +6,7 @@ import { headers } from 'next/headers';
 import { detectBrowserLanguage, SUPPORTED_LOCALES, DEFAULT_LOCALE } from '@/i18n/request';
 import { cookies } from 'next/headers';
 import { Root } from '@/components/Root';
+import { QueryProvider } from '@/providers/QueryProvider';
 
 export const metadata: Metadata = {
     title: 'Meriter',
@@ -49,9 +50,11 @@ export default async function RootLayout({
                 />
             </head>
             <body suppressHydrationWarning>
-                <NextIntlClientProvider messages={messages}>
-                    <Root>{children}</Root>
-                </NextIntlClientProvider>
+                <QueryProvider>
+                    <NextIntlClientProvider messages={messages}>
+                        <Root>{children}</Root>
+                    </NextIntlClientProvider>
+                </QueryProvider>
             </body>
         </html>
     );

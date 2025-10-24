@@ -13,6 +13,7 @@ import { ActorsService } from '@common/abstracts/actors/actors.service';
 import { TgChatsService } from '../../../tg-chats/tg-chats.service';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
 import * as crypto from 'crypto';
+import { successResponse } from '../utils/response.helper';
 
 interface TelegramAuthData {
   id: number;

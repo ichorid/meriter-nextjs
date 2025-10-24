@@ -4,7 +4,23 @@ import Link from "next/link";
 import { FormCommentVote } from "./form-comment-vote";
 import { useTranslations } from 'next-intl';
 
-export const FormComment = ({
+interface FormCommentProps {
+    uid: string;
+    hasPoints: boolean;
+    comment: string;
+    setComment: (comment: string) => void;
+    amount: number;
+    setAmount: (amount: number) => void;
+    free: number;
+    maxPlus: number;
+    maxMinus: number;
+    commentAdd: (data: any) => void;
+    error: string;
+    reason?: string;
+    onClose: () => void;
+}
+
+export const FormComment: React.FC<FormCommentProps> = ({
     uid,
     hasPoints,
     comment,

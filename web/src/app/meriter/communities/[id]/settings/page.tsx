@@ -37,7 +37,7 @@ const CommunitySettingsPage = () => {
     const [formData, setFormData] = useState({
         currencyNames: { 1: '', 2: '', 5: '' },
         icon: '',
-        spaces: []
+        spaces: [] as any[]
     });
     const [isDirty, setIsDirty] = useState(false);
     const [touched, setTouched] = useState(false);
@@ -75,6 +75,7 @@ const CommunitySettingsPage = () => {
                 cleanup();
             };
         }
+        return undefined;
     }, [isInTelegram, router]);
 
     // Load community data
@@ -114,7 +115,7 @@ const CommunitySettingsPage = () => {
         if (!formData.icon) {
             errors.icon = t('communitySettings.validation.iconRequired');
         }
-        const validHashtags = formData.spaces.filter(s => s.tagRus?.trim() && !s.deleted);
+        const validHashtags = formData.spaces.filter((s: any) => s.tagRus?.trim() && !s.deleted);
         if (validHashtags.length === 0) {
             errors.hashtags = t('communitySettings.validation.hashtagsRequired');
         }
@@ -138,7 +139,7 @@ const CommunitySettingsPage = () => {
     };
 
     const setVal = (idx: number, key: string) => (val: any) => {
-        let spacesNew = [...formData.spaces];
+        let spacesNew = [...formData.spaces] as any[];
         spacesNew[idx] = { ...spacesNew[idx], [key]: val };
         setFormData(prev => ({ ...prev, spaces: spacesNew }));
         setIsDirty(true);
@@ -180,7 +181,7 @@ const CommunitySettingsPage = () => {
                 setSaveSuccess('');
                 router.push('/meriter/manage?success=saved');
             }, 1500);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Save failed:', error);
             setSaveError(error.response?.data?.message || 'Failed to save settings');
         } finally {
@@ -255,32 +256,32 @@ const CommunitySettingsPage = () => {
                         <div className="breadcrumbs text-sm">
                             <ul>
                                 <li><Link href="/meriter/manage">Communities</Link></li>
-                                <li><Link href={`/meriter/communities/${chatId}/settings`}>{communityData?.chat?.title || 'Community'}</Link></li>
+                                <li><Link href={`/meriter/communities/${chatId}/settings`}>{(communityData as any)?.chat?.title || 'Community'}</Link></li>
                                 <li>{t('communitySettings.breadcrumb')}</li>
                             </ul>
                         </div>
                     </div>
                 </MenuBreadcrumbs>
                 <div>
-                    {t('communitySettings.subtitle', { communityName: communityData?.chat?.title || 'this community' })}
+                    {t('communitySettings.subtitle', { communityName: (communityData as any)?.chat?.title || 'this community' })}
                 </div>
             </HeaderAvatarBalance>
 
             {/* Community Profile Section */}
-            {communityData?.chat && (
+            {(communityData as any)?.chat && (
                 <div className="card bg-base-100 shadow-xl mb-6">
                     <div className="card-body">
                         <h2 className="card-title">{t('communitySettings.communityProfile')}</h2>
                         <div className="flex items-center gap-4">
                             <CommunityAvatar
-                                avatarUrl={communityData.chat.photo}
-                                communityName={communityData.chat.title || 'Community'}
+                                avatarUrl={(communityData as any)?.chat?.photo}
+                                communityName={(communityData as any)?.chat?.title || 'Community'}
                                 size={80}
                             />
                             <div>
-                                <div className="text-xl font-semibold">{communityData.chat.title}</div>
+                                <div className="text-xl font-semibold">{(communityData as any)?.chat?.title}</div>
                                 <div className="text-sm opacity-60">
-                                    {communityData.chat.description || t('communitySettings.noDescription')}
+                                    {(communityData as any)?.chat?.description || t('communitySettings.noDescription')}
                                 </div>
                                 <div className="text-xs opacity-50 mt-1">
                                     {t('communitySettings.avatarUpdateNote')}

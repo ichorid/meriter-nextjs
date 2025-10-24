@@ -4,7 +4,6 @@ export * from './date';
 export * from './debounce';
 export { apiPOST, apiGET } from './fetch';
 export * from './getIcon';
-export * from './mongooseconnect';
 export * from './object';
 export * from './objects';
 export * from './s3';

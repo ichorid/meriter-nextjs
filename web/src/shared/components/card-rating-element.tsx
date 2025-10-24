@@ -2,7 +2,23 @@
 
 import { classList } from '@lib/classList'
 
-export const CardRatingElement = ({ title, subtitle, description, avatarUrl, children, bottom }) => (
+interface CardRatingElementProps {
+    title: string;
+    subtitle: string;
+    description: string;
+    avatarUrl?: string;
+    children: React.ReactNode;
+    bottom: React.ReactNode;
+}
+
+export const CardRatingElement: React.FC<CardRatingElementProps> = ({ 
+    title, 
+    subtitle, 
+    description, 
+    avatarUrl, 
+    children, 
+    bottom 
+}) => (
     <div className="card-publication">
         <div className="inner">
             <div className="header">

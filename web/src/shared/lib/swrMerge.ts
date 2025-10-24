@@ -1,6 +1,6 @@
 import useSWR from "swr";
 
-const _fetch = async function (input, ...args) {
+const _fetch = async function (input: RequestInfo | URL, ...args: any[]) {
     const res = await fetch(input, ...args);
     return res.json();
 };
@@ -19,11 +19,11 @@ export const swr = (
     return [
         key ? data && data[key] : data,
         key
-            ? (data, shouldRevalidate) =>
+            ? (data: any, shouldRevalidate: any) =>
                   mutate({ [key]: data }, shouldRevalidate)
             : mutate,
         error,
     ];
 };
 
-export const swrPrefetch = (path) => {};
+export const swrPrefetch = (path: string) => {};

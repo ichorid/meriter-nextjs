@@ -17,6 +17,7 @@ import { HashtagsService } from '../../../hashtags/hashtags.service';
 import { TgChat } from '../../../tg-chats/model/tg-chat.model';
 import { UserGuard } from '../../../user.guard';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
+import { successResponse } from '../utils/response.helper';
 
 // Helper functions to map between formats for API backward compatibility
 function mapTgChatToOldFormat(chat: any) {
@@ -144,7 +145,7 @@ export class RestCommunityifoController {
     const telegramCommunityChatId = chatId;
 
     const info = await this.tgChatsService.getInfo(chatId);
-    if (!info) return null;
+    if (!info) return successResponse(null);
     const hashtags = await this.hashtagsService.getInChat(chatId);
     const spaces = hashtags
       .map((h) => h.toObject())
@@ -158,13 +159,13 @@ export class RestCommunityifoController {
         tgUserId,
       );
       if (!isMember)
-        return {
+        return successResponse({
           chat: mapTgChatToOldFormat(info),
           icon: info.meta.iconUrl,
           dailyEmission: 0,
           spaces: [],
           currencyNames: info.meta.currencyNames,
-        };
+        });
     }
     const resp = {
       chat: mapTgChatToOldFormat(info),
@@ -173,7 +174,7 @@ export class RestCommunityifoController {
       dailyEmission: 10,
       currencyNames: info.meta.currencyNames,
     };
-    return resp;
+    return successResponse(resp);
   }
 
   @Post()
@@ -254,6 +255,6 @@ export class RestCommunityifoController {
       updateData,
     );
     
-    return updateResult;
+    return successResponse(updateResult);
   }
 }

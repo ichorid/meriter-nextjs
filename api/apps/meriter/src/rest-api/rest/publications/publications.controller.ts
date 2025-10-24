@@ -13,6 +13,7 @@ import {
 import { PublicationsService } from '../../../publications/publications.service';
 import { UserGuard } from '../../../user.guard';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
+import { successResponse } from '../utils/response.helper';
 
 // Helper function to map publication to old format for API backward compatibility
 function mapPublicationToOldFormat(publication: any) {
@@ -96,9 +97,7 @@ export class RestPublicationsController {
       skip,
       positive,
     );
-    return {
-      publications: publ.map((p) => mapPublicationToOldFormat(p)),
-    };
+    return successResponse(publ.map((p) => mapPublicationToOldFormat(p)));
   }
 
   @Get('communities/:chatId')
@@ -129,9 +128,9 @@ export class RestPublicationsController {
       skip,
     );
     
-    return {
+    return successResponse({
       publications: publ.map((p) => mapPublicationToOldFormat(p)),
-    };
+    });
   }
 
   @Get('spaces/:slug/:publicationSlug')
@@ -168,11 +167,11 @@ export class RestPublicationsController {
         );
     }
 
-    if (skip > 0) return { publications: [] };
-    return {
+    if (skip > 0) return successResponse({ publications: [] });
+    return successResponse({
       publications: [mapPublicationToOldFormat(publ)],
       publicationSlug,
-    };
+    });
   }
 
   @Get('spaces/:slug')
@@ -207,9 +206,9 @@ export class RestPublicationsController {
         );
     }
 
-    return {
+    return successResponse({
       publications: publ.map((p) => mapPublicationToOldFormat(p)),
-    };
+    });
   }
 
   // This route must be last as it's a catch-all pattern
@@ -245,6 +244,6 @@ export class RestPublicationsController {
         );
     }
 
-    return mapPublicationToOldFormat(publ);
+    return successResponse(mapPublicationToOldFormat(publ));
   }
 }

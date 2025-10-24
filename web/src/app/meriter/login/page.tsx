@@ -22,7 +22,7 @@ const PageMeriterLogin = () => {
         launchParams = useLaunchParams();
         rawData = useSignal(initDataRaw);
         startParam = launchParams.tgWebAppStartParam;
-    } catch (error) {
+    } catch (error: any) {
         console.warn('⚠️ Telegram Web App not detected in login, using fallback:', error.message);
         launchParams = { tgWebAppStartParam: null };
         rawData = { value: null };
@@ -30,7 +30,7 @@ const PageMeriterLogin = () => {
     }
     
     const [isInTelegram, setIsInTelegram] = useState(false);
-    const { handleDeepLink } = useDeepLinkHandler(router, searchParams, startParam);
+    const { handleDeepLink } = useDeepLinkHandler(router, searchParams, startParam || undefined);
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -135,7 +135,7 @@ const PageMeriterLogin = () => {
     useEffect(() => {
         if (isInTelegram && rawData && !webAppAuthAttempted.current && !user?.token) {
             webAppAuthAttempted.current = true;
-            authenticateWithTelegramWebApp(rawData);
+            authenticateWithTelegramWebApp(rawData as string);
         }
     }, [isInTelegram, rawData, user?.token]);
 

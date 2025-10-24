@@ -1,8 +1,10 @@
+import React from 'react';
+
 // Mock next-intl
 jest.mock('next-intl', () => ({
-    useTranslations: jest.fn((namespace) => (key) => `${namespace}.${key}`),
+    useTranslations: jest.fn((namespace: string) => (key: string) => `${namespace}.${key}`),
     useLocale: jest.fn(() => 'en'),
-    NextIntlClientProvider: ({ children }) => children,
+    NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 jest.mock('next-intl/server', () => ({

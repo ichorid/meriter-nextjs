@@ -17,7 +17,7 @@ export function getInitials(name: string): string {
     return '?';
   }
   
-  return trimmed[0].toUpperCase();
+  return trimmed[0]?.toUpperCase() || '?';
 }
 
 /**
@@ -53,6 +53,6 @@ export function getColorFromString(str: string): string {
   ];
   
   const index = Math.abs(hash) % colors.length;
-  return colors[index];
+  return colors[index] ?? colors[0] ?? '#6B7280';
 }
 

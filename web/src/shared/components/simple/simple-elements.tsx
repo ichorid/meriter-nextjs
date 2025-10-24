@@ -3,7 +3,7 @@
 import React, { Children, Fragment } from "react";
 import { classList } from '@lib/classList';
 
-export const parseMarkDown = (txt) => {
+export const parseMarkDown = (txt: any): any => {
     if (typeof txt !== "string") return txt;
     const accent = txt.match("(.*)\\*\\*(.*?)\\*\\*(.*)");
     const newline = txt.match("\\|\\|\\|");
@@ -29,7 +29,29 @@ export const parseMarkDown = (txt) => {
     return txt;
 };
 
-const Paragraph = ({ type, props, children }) => {
+interface ParagraphProps {
+    type: string;
+    props: {
+        right?: boolean;
+        center?: boolean;
+        thin?: boolean;
+        op1?: boolean;
+        op0?: boolean;
+        op08?: boolean;
+        op05?: boolean;
+        op01?: boolean;
+        regular?: boolean;
+        mt0?: boolean;
+        mb0?: boolean;
+        little?: boolean;
+        red?: boolean;
+        strike?: boolean;
+        muted?: boolean;
+    };
+    children: React.ReactNode;
+}
+
+const Paragraph: React.FC<ParagraphProps> = ({ type, props, children }) => {
     const {
         right,
         center,
@@ -48,21 +70,21 @@ const Paragraph = ({ type, props, children }) => {
         muted,
     } = props;
     let className = classList(
-        { right },
-        { center },
-        { thin },
-        { op1 },
-        { op0 },
-        { op08 },
-        { op05 },
-        { op01 },
-        { regular },
-        { mt0 },
-        { mb0 },
-        { little },
-        { red },
-        { strike },
-        { muted }
+        right ? { right } : "",
+        center ? { center } : "",
+        thin ? { thin } : "",
+        op1 ? { op1 } : "",
+        op0 ? { op0 } : "",
+        op08 ? { op08 } : "",
+        op05 ? { op05 } : "",
+        op01 ? { op01 } : "",
+        regular ? { regular } : "",
+        mt0 ? { mt0 } : "",
+        mb0 ? { mb0 } : "",
+        little ? { little } : "",
+        red ? { red } : "",
+        strike ? { strike } : "",
+        muted ? { muted } : ""
     );
     //const props = {}
     return React.createElement(
@@ -71,28 +93,28 @@ const Paragraph = ({ type, props, children }) => {
         parseMarkDown(children)
     );
 };
-export const P = (props) => {
+export const P: React.FC<any> = (props) => {
     return (
         <Paragraph type="p" props={props}>
             {props.children}
         </Paragraph>
     );
 };
-export const H1 = (props) => {
+export const H1: React.FC<any> = (props) => {
     return (
         <Paragraph type="h1" props={props}>
             {props.children}
         </Paragraph>
     );
 };
-export const H2 = (props) => {
+export const H2: React.FC<any> = (props) => {
     return (
         <Paragraph type="h2" props={props}>
             {props.children}
         </Paragraph>
     );
 };
-export const B = (props) => {
+export const B: React.FC<any> = (props) => {
     return (
         <Paragraph type="b" props={props}>
             {props.children}
@@ -100,21 +122,21 @@ export const B = (props) => {
     );
 };
 
-export const H3 = (props) => {
+export const H3: React.FC<any> = (props) => {
     return (
         <Paragraph type="h3" props={props}>
             {props.children}
         </Paragraph>
     );
 };
-export const H4 = (props) => {
+export const H4: React.FC<any> = (props) => {
     return (
         <Paragraph type="h4" props={props}>
             {props.children}
         </Paragraph>
     );
 };
-export const Li = (props) => {
+export const Li: React.FC<any> = (props) => {
     return (
         <Paragraph type="li" props={props}>
             {props.children}
@@ -122,7 +144,7 @@ export const Li = (props) => {
     );
 };
 
-export const A = (props) => {
+export const A: React.FC<any> = (props) => {
     const noaccent = props.noaccent ?? false;
     const button = props.button ?? false;
     const {
@@ -193,7 +215,7 @@ export const A = (props) => {
         </p>
     );
 };
-export const Div = (props) => {
+export const Div: React.FC<any> = (props) => {
     return (
         <div
             className={classList(
@@ -208,7 +230,7 @@ export const Div = (props) => {
     );
 };
 
-export const Img = (props) => {
+export const Img: React.FC<any> = (props) => {
     const { src, cover, shadowblur } = props;
     if (cover)
         return (

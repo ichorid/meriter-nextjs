@@ -28,25 +28,25 @@ import { FormWithdraw } from "@features/wallet/components/form-withdraw";
 import { useTranslations } from 'next-intl';
 
 export interface IPublication {
-    tgChatName;
-    tgMessageId;
-    minus;
-    plus;
-    sum;
-    slug;
-    spaceSlug;
-    balance;
-    updBalance?;
-    messageText;
-    authorPhotoUrl;
-    tgAuthorName;
-    tgAuthorId?;
-    beneficiaryName?;
-    beneficiaryPhotoUrl?;
-    beneficiaryId?;
-    beneficiaryUsername?;
-    keyword;
-    ts;
+    tgChatName: string;
+    tgMessageId: string;
+    minus: number;
+    plus: number;
+    sum: number;
+    slug: string;
+    spaceSlug: string;
+    balance: any;
+    updBalance?: any;
+    messageText: string;
+    authorPhotoUrl: string;
+    tgAuthorName: string;
+    tgAuthorId?: string;
+    beneficiaryName?: string;
+    beneficiaryPhotoUrl?: string;
+    beneficiaryId?: string;
+    beneficiaryUsername?: string;
+    keyword: string;
+    ts: string;
     type?: string;
     content?: any;
     _id?: string;
@@ -386,8 +386,8 @@ export const Publication = ({
                     <PollVoting
                         pollData={pollData}
                         pollId={_id || slug}
-                        userVote={pollUserVote}
-                        userVoteSummary={pollUserVoteSummary}
+                        userVote={pollUserVote || undefined}
+                        userVoteSummary={pollUserVoteSummary || undefined}
                         balance={effectiveBalance}
                         onVoteSuccess={handlePollVoteSuccess}
                         updateWalletBalance={updateWalletBalance}
@@ -412,9 +412,9 @@ export const Publication = ({
     } = useComments(
         false,
         slug,
-        undefined,
+        "",
         "/api/rest/transactions/publications/" + slug,
-        spaceSlug ? "/api/rest/free?inSpaceSlug=" + spaceSlug : null,
+        spaceSlug ? "/api/rest/free?inSpaceSlug=" + spaceSlug : "",
         balance,
         updBalance,
         plus,
@@ -617,7 +617,7 @@ export const Publication = ({
             {showComments && (
                 <div className="publication-comments">
                     <div className="comments">
-                        {comments?.map((c) => (
+                        {comments?.map((c: any) => (
                             <Comment
                                 key={c._id}
                                 {...c}

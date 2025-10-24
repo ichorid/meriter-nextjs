@@ -16,8 +16,8 @@ export function detectBrowserLanguage(acceptLanguage?: string): Locale {
     
     const languages = acceptLanguage
         .split(',')
-        .map(lang => lang.split(';')[0].trim().toLowerCase())
-        .map(lang => lang.split('-')[0]); // Extract primary language
+        .map(lang => lang.split(';')[0]?.trim().toLowerCase() || '')
+        .map(lang => lang.split('-')[0] || ''); // Extract primary language
     
     // Check for Russian first
     if (languages.includes('ru')) return 'ru';

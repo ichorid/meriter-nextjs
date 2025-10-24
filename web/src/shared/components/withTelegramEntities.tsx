@@ -1,6 +1,6 @@
 'use client';
 
-const linebr = (text) => {
+const linebr = (text: string) => {
     return text
         .split("\n")
         .map((t, i) => [t, <br key={`br-${i}`} />])
@@ -28,7 +28,7 @@ export const WithTelegramEntities = ({
         return null;
     }
     
-    function onlyUnique(value, index, self) {
+    function onlyUnique(value: any, index: number, self: any[]) {
         return self.indexOf(value) === index;
     }
 
@@ -55,21 +55,21 @@ export const WithTelegramEntities = ({
 
     const decorated = segments.map(([start, end], index) => {
         const type = activeEntities.find((e) => e.offset === start)?.type;
-        if (!type) return <span key={`seg-${index}`}>{linebr(messageText.substring(start, end))}</span>;
+        if (!type) return <span key={`seg-${index}`}>{linebr(messageText.substring(start || 0, end || 0))}</span>;
         if (type === "bold") {
-            return <b key={`seg-${index}`}>{linebr(messageText.substring(start, end))}</b>;
+            return <b key={`seg-${index}`}>{linebr(messageText.substring(start || 0, end || 0))}</b>;
         }
         if (type === "italic") {
-            return <em key={`seg-${index}`}>{linebr(messageText.substring(start, end))}</em>;
+            return <em key={`seg-${index}`}>{linebr(messageText.substring(start || 0, end || 0))}</em>;
         }
         if (type === "url") {
             return (
                 <a
                     key={`seg-${index}`}
                     style={{ wordWrap: "break-word" }}
-                    href={messageText.substring(start, end)}
+                    href={messageText.substring(start || 0, end || 0)}
                 >
-                    {linebr(messageText.substring(start, end))}
+                    {linebr(messageText.substring(start || 0, end || 0))}
                 </a>
             );
         }
@@ -77,10 +77,12 @@ export const WithTelegramEntities = ({
             const ent = activeEntities.find((e) => e.offset === start);
             return (
                 <a key={`seg-${index}`} style={{ wordWrap: "break-word" }} href={ent?.url}>
-                    {linebr(messageText.substring(start, end))}
+                    {linebr(messageText.substring(start || 0, end || 0))}
                 </a>
             );
         }
+        // Default case for unknown types
+        return <span key={`seg-${index}`}>{linebr(messageText.substring(start || 0, end || 0))}</span>;
     });
 
     return <div className={"tttt"}>{decorated}</div>;

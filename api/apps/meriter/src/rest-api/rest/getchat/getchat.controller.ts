@@ -1,5 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { TgChatsService } from '../../../tg-chats/tg-chats.service';
+import { successResponse } from '../utils/response.helper';
 
 // Helper function to map TgChat to old format for API backward compatibility
 function mapTgChatToOldFormat(chat: any) {
@@ -23,7 +24,7 @@ export class GetchatController {
   @Get()
   async rest_getchat(@Query('chatId') chatId: string) {
     const info = await this.tgChatsService.getInfo(chatId);
-    if (!info) return {};
-    return { chat: mapTgChatToOldFormat(info) };
+    if (!info) return successResponse({});
+    return successResponse({ chat: mapTgChatToOldFormat(info) });
   }
 }

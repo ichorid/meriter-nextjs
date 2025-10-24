@@ -2,7 +2,23 @@
 
 import { classList } from '@lib/classList'
 
-export const WidgetAvatarBalance = ({ title, subtitle, description, avatarUrl, children, bottom }) => (
+interface MenuVerticalProps {
+    title: string;
+    subtitle: string;
+    description: string;
+    avatarUrl?: string;
+    children: React.ReactNode;
+    bottom: React.ReactNode;
+}
+
+export const MenuVertical: React.FC<MenuVerticalProps> = ({ 
+    title, 
+    subtitle, 
+    description, 
+    avatarUrl, 
+    children, 
+    bottom 
+}) => (
     <div className="card-publication">
         <div className="inner">
             <div className="header">

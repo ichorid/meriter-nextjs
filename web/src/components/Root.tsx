@@ -25,7 +25,7 @@ function RootInner({ children }: PropsWithChildren) {
     lp = useLaunchParams();
     isDark = useSignal(miniApp.isDark);
     initDataUser = useSignal(initData.user);
-  } catch (error) {
+  } catch (error: any) {
     console.warn('⚠️ Telegram Web App not detected, running in development mode:', error.message);
     // Fallback values for development
     lp = { tgWebAppPlatform: 'web' };
@@ -40,7 +40,7 @@ function RootInner({ children }: PropsWithChildren) {
   return (
     <ThemeProvider>
       <AppRoot
-        appearance={isDark?.value ? 'dark' : 'light'}
+        appearance={(isDark as any)?.value ? 'dark' : 'light'}
         platform={
           ['macos', 'ios'].includes(lp?.tgWebAppPlatform) ? 'ios' : 'base'
         }

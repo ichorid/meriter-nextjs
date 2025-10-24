@@ -23,7 +23,14 @@ interface IPollResults {
     [tagName: string]: any;
 }
 
-const Checkbox = ({ tagName, h, d, selectItem }) => {
+interface CheckboxProps {
+    tagName: string;
+    h: any;
+    d: any;
+    selectItem: (tagName: string, checked: boolean) => void;
+}
+
+const Checkbox: React.FC<CheckboxProps> = ({ tagName, h, d, selectItem }) => {
     return (
         <div className="checkbox-wrapper">
             <label>
@@ -49,7 +56,7 @@ export const Poll = ({
     onSubmit,
 }: IPollProps) => {
     const t = useTranslations('polls');
-    const [expanded, setExpanded] = useState({});
+    const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
     const [results, setResults] =
         resultsInit !== undefined && setResultsInit
@@ -94,7 +101,7 @@ export const Poll = ({
             })}
             {!folded && Object.keys(results).length > 0 && (
                 <div className="submit">
-                    <A center button onClick={() => onSubmit(results)}>
+                    <A center button onClick={() => onSubmit?.(results)}>
                         {t('confirm')}
                     </A>
                 </div>

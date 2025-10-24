@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { WalletsService } from '../../../wallets/wallets.service';
 import { UserGuard } from '../../../user.guard';
 import { TransactionsService } from '../../../transactions/transactions.service';
+import { successResponse } from '../utils/response.helper';
 
 class RestFreeResponse {
   free: number;
@@ -16,6 +17,6 @@ export class RestFreeController {
       req.user.tgUserId,
       inSpaceSlug,
     );
-    return { free };
+    return successResponse(free);
   }
 }

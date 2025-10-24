@@ -11,7 +11,13 @@ const EmojiPicker = dynamic(
     { ssr: false }
 )
 
-export const IconPicker = ({ icon, cta, setIcon }) => {
+interface IconPickerProps {
+    icon: string;
+    cta: string;
+    setIcon: (icon: string) => void;
+}
+
+export const IconPicker: React.FC<IconPickerProps> = ({ icon, cta, setIcon }) => {
     const t = useTranslations('pages');
     const [opened, setOpened] = useState(false)
 

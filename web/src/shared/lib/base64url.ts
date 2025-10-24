@@ -56,7 +56,7 @@ export function base64urlDecode(str: string): string {
   try {
     // Decode from base64
     return atob(base64);
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(`Base64 decode failed: ${error.message}`);
   }
 }

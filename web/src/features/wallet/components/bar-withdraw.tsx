@@ -2,7 +2,14 @@
 
 import { useTranslations } from 'next-intl';
 
-export const BarWithdraw = ({ onWithdraw, onTopup, balance, children }) => {
+interface BarWithdrawProps {
+    onWithdraw: () => void;
+    onTopup: () => void;
+    balance: number;
+    children: React.ReactNode;
+}
+
+export const BarWithdraw: React.FC<BarWithdrawProps> = ({ onWithdraw, onTopup, balance, children }) => {
     const t = useTranslations('shared');
     const displayBalance = balance ?? 0;
     

@@ -55,15 +55,15 @@ export const CardCommentVote = ({
                 <div className={classList(
                     "font-bold text-center py-2 px-3 min-w-[3rem] flex items-center justify-center gap-1",
                     // Default styling if no voteType
-                    !voteType && "bg-secondary text-secondary-content",
+                    !voteType ? "bg-secondary text-secondary-content" : "",
                     // Upvote styles
-                    voteType === 'upvote-wallet' && "bg-success text-success-content",
-                    voteType === 'upvote-quota' && "bg-transparent border-2 border-success text-success",
-                    voteType === 'upvote-mixed' && "bg-gradient-to-r from-success/80 to-success text-success-content",
+                    voteType === 'upvote-wallet' ? "bg-success text-success-content" : "",
+                    voteType === 'upvote-quota' ? "bg-transparent border-2 border-success text-success" : "",
+                    voteType === 'upvote-mixed' ? "bg-gradient-to-r from-success/80 to-success text-success-content" : "",
                     // Downvote styles
-                    voteType === 'downvote-wallet' && "bg-error text-error-content",
-                    voteType === 'downvote-quota' && "bg-transparent border-2 border-error text-error",
-                    voteType === 'downvote-mixed' && "bg-gradient-to-r from-error/80 to-error text-error-content"
+                    voteType === 'downvote-wallet' ? "bg-error text-error-content" : "",
+                    voteType === 'downvote-quota' ? "bg-transparent border-2 border-error text-error" : "",
+                    voteType === 'downvote-mixed' ? "bg-gradient-to-r from-error/80 to-error text-error-content" : ""
                 )}>
                     <span>{rate}</span>
                     {currencyIcon && (

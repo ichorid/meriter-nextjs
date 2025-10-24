@@ -1,10 +1,10 @@
-export const textToHTML = (text) => {
+export const textToHTML = (text: string) => {
     let newText = text
     newText = newText.replace(/  +/g, ' ')
     newText = newText.replace(/\n/g, '<br>')
     return newText
 }
-export const textToTelegramHTML = (text) => {
+export const textToTelegramHTML = (text: string) => {
     let newText = text
     newText = newText.replace(/  +/g, ' ')
     newText = newText.replace(/ \n+/g, '\n')

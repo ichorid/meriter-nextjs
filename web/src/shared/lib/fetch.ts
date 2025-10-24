@@ -57,7 +57,7 @@ const fetchJSON = async function (input: RequestInfo, init?: RequestInit) {
 
 //const fetcher = url => fetch(url).then(r => r.json())
 
-export const swr = (fullPath, initialData, options: any = {}) => {
+export const swr = (fullPath: string | Function, initialData: any, options: any = {}) => {
     let path, key
     if (typeof fullPath == 'function') {
         key = options.key
@@ -72,7 +72,7 @@ export const swr = (fullPath, initialData, options: any = {}) => {
         revalidateOnMount: true,
         ...options,
     })
-    return [key ? data && data[key] : data, key ? (data, shouldRevalidate) => mutate({ [key]: data }, shouldRevalidate) : mutate, error]
+    return [key ? data && data[key] : data, key ? (data: any, shouldRevalidate: any) => mutate({ [key]: data }, shouldRevalidate) : mutate, error]
 }
 
-export const swrPrefetch = (path) => {}
+export const swrPrefetch = (path: string) => {}

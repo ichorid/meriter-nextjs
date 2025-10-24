@@ -109,7 +109,7 @@ export const FormPollCreate = ({
         if (isInTelegram && isMountedRef.current) {
             try {
                 mainButton.setParams({ isLoaderVisible: true });
-            } catch (error) {
+            } catch (error: any) {
                 console.warn('MainButton already unmounted:', error.message);
             }
         }
@@ -161,7 +161,7 @@ export const FormPollCreate = ({
                 hapticFeedback.notificationOccurred('success');
                 onSuccess && onSuccess(response._id);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('📊 Poll creation error:', err);
             const errorMessage = err.response?.data?.message || err.message || t('errorCreating');
             setError(errorMessage);
@@ -171,7 +171,7 @@ export const FormPollCreate = ({
             if (isInTelegram && isMountedRef.current) {
                 try {
                     mainButton.setParams({ isLoaderVisible: false });
-                } catch (error) {
+                } catch (error: any) {
                     console.warn('MainButton already unmounted:', error.message);
                 }
             }
@@ -189,7 +189,7 @@ export const FormPollCreate = ({
                 try {
                     // Try to mount the mainButton first
                     mainButton.mount();
-                } catch (error) {
+                } catch (error: any) {
                     // MainButton might already be mounted, that's okay
                     console.warn('MainButton mount warning (expected if already mounted):', error.message);
                 }
@@ -215,7 +215,7 @@ export const FormPollCreate = ({
                                 if (isMountedRef.current) {
                                     try {
                                         mainButton.setParams({ isVisible: false });
-                                    } catch (error) {
+                                    } catch (error: any) {
                                         console.warn('MainButton cleanup warning:', error.message);
                                     }
                                 }
@@ -223,7 +223,7 @@ export const FormPollCreate = ({
                                 backButton.hide();
                                 backCleanup();
                             };
-                        } catch (error) {
+                        } catch (error: any) {
                             console.error('Failed to setup back button:', error.message);
                         }
                     }
@@ -232,14 +232,14 @@ export const FormPollCreate = ({
                         if (isMountedRef.current) {
                             try {
                                 mainButton.setParams({ isVisible: false });
-                            } catch (error) {
+                            } catch (error: any) {
                                 console.warn('MainButton cleanup warning:', error.message);
                             }
                         }
                         if (cleanup) cleanup();
                     };
                     
-                } catch (error) {
+                } catch (error: any) {
                     console.error('Failed to initialize mainButton:', error.message);
                     // If mainButton fails, we'll just return a no-op cleanup
                     return () => {};
@@ -265,6 +265,7 @@ export const FormPollCreate = ({
             
             return cleanupFn;
         }
+        return undefined;
     }, [isInTelegram, handleCreate, onCancel, t]);
 
     return (

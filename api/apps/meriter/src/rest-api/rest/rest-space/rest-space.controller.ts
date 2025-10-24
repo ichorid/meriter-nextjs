@@ -1,5 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { HashtagsService } from '../../../hashtags/hashtags.service';
+import { successResponse } from '../utils/response.helper';
 
 // Helper function to map hashtag to old space format for API backward compatibility
 function mapHashtagToOldFormat(hashtag: any) {
@@ -25,6 +26,6 @@ export class RestSpaceController {
     const hashtag = await this.hashtagsService.model.findOne({
       slug: spaceSlug,
     });
-    return { space: mapHashtagToOldFormat(hashtag) };
+    return successResponse({ space: mapHashtagToOldFormat(hashtag) });
   }
 }

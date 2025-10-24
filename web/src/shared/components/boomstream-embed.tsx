@@ -1,6 +1,10 @@
 'use client';
 
-export const BoomstreamEmbed = ({ boomstreamId }) => {
+interface BoomstreamEmbedProps {
+    boomstreamId: string;
+}
+
+export const BoomstreamEmbed: React.FC<BoomstreamEmbedProps> = ({ boomstreamId }) => {
     return (
         <iframe
             width="640"

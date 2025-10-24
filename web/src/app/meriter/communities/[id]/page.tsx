@@ -35,7 +35,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const [sortBy, setSortBy] = useState<"recent" | "voted">("recent");
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
 
-    const getKeyPublications = (chatId) => (pageIndex, previousPageData) => {
+    const getKeyPublications = (chatId: string) => (pageIndex: number, previousPageData: any) => {
         if (previousPageData && !previousPageData?.publications.length) {
             setPaginationEnd(true);
             return null;
@@ -56,10 +56,10 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     );
 
     const publications = ((content as IPublication[] | any)??[])
-        .map((c) => (c as any).publications)
+        .map((c: any) => (c as any).publications)
         .flat()
-        .filter((p, index, self) => 
-            index === self.findIndex((t) => t?._id === p?._id)
+        .filter((p: any, index: number, self: any[]) => 
+            index === self.findIndex((t: any) => t?._id === p?._id)
         );
 
     const setJwt = (content as any ??[])?.[0]?.setJwt;
@@ -73,9 +73,9 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     useEffect(() => {
         if (targetPostSlug && publications.length > 0) {
             console.log('🔍 Looking for post with slug:', targetPostSlug);
-            console.log('🔍 Available publications:', publications.map(p => ({ slug: p.slug, _id: p._id })));
+            console.log('🔍 Available publications:', publications.map((p: any) => ({ slug: p.slug, _id: p._id })));
             
-            const targetPost = publications.find(p => p.slug === targetPostSlug);
+            const targetPost = publications.find((p: any) => p.slug === targetPostSlug);
             if (targetPost) {
                 console.log('🎯 Found target post for deep link:', targetPostSlug, 'with _id:', targetPost._id);
                 setHighlightedPostId(targetPost._id);
@@ -132,7 +132,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         { key: "userdata" }
     );
 
-    const [findTransaction, setFindTransaction] = useState(undefined);
+    const [findTransaction, setFindTransaction] = useState<string | undefined>(undefined);
     useEffect(() => {
         if (document.location.search)
             setFindTransaction(document.location.search?.replace("#", ""));
@@ -203,7 +203,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const tgAuthorId = user?.tgUserId;
 
     const onlyPublication =
-        publications.filter((p) => p?.messageText)?.length == 1;
+        publications.filter((p: any) => p?.messageText)?.length == 1;
 
     const sortItems = (items: any[]) => {
         if (!items) return [];
@@ -318,7 +318,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                 </div>
                             )}
                             {comms.spaces &&
-                                comms.spaces.map((space) => (
+                                comms.spaces.map((space: any) => (
                                     <CardWithAvatar
                                         key={space.slug}
                                         avatarUrl=""
@@ -364,7 +364,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     <button 
                         className={classList(
                             "join-item btn btn-sm font-medium transition-all duration-200",
-                            sortBy === "recent" && "btn-active btn-primary"
+                            sortBy === "recent" ? "btn-active btn-primary" : ""
                         )}
                         onClick={() => setSortBy("recent")}
                     >
@@ -373,7 +373,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     <button 
                         className={classList(
                             "join-item btn btn-sm font-medium transition-all duration-200",
-                            sortBy === "voted" && "btn-active btn-primary"
+                            sortBy === "voted" ? "btn-active btn-primary" : ""
                         )}
                         onClick={() => setSortBy("voted")}
                     >

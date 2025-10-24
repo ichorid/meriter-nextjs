@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { UpdatesConductorsService } from '../../../updates-conductors/updates-conductors.service';
 import { UserGuard } from '../../../user.guard';
+import { successResponse } from '../utils/response.helper';
 
 @Controller('api/rest/freq')
 @UseGuards(UserGuard)
@@ -17,9 +18,9 @@ export class RestFreqController {
 
   @Get()
   rest_getfrequency(@Req() req) {
-    return this.updatesConductorsService.getFrequency(
+    return successResponse(this.updatesConductorsService.getFrequency(
       'actor.user://telegram' + req.user.tgUserId,
-    );
+    ));
   }
 
   @Post()
@@ -29,9 +30,9 @@ export class RestFreqController {
   ) {
     if (!updateFrequencyMs) throw 'no frequency given';
     if (!req.user?.tgUserId) throw 'no user given to update freq';
-    return this.updatesConductorsService.setFrequency(
+    return successResponse(this.updatesConductorsService.setFrequency(
       'actor.user://telegram' + req.user.tgUserId,
       updateFrequencyMs,
-    );
+    ));
   }
 }

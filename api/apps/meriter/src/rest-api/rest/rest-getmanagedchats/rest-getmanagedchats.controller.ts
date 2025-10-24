@@ -2,6 +2,7 @@ import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { TgChatsService } from '../../../tg-chats/tg-chats.service';
 import { UserGuard } from '../../../user.guard';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
+import { successResponse } from '../utils/response.helper';
 class RestGMCDto {
   chats: {
     administratorsIds: string[]; //['123456789'];
@@ -39,7 +40,7 @@ export class RestGetmanagedchatsController {
     const chats = await this.tgChatsService.model.find({
       administrators: 'telegram://' + req.user.tgUserId,
     });
-    return { 
+    return successResponse({ 
       chats: chats.map(chat => ({
         _id: chat.uid,
         photo: chat.profile?.avatarUrl,
@@ -57,6 +58,6 @@ export class RestGetmanagedchatsController {
         first_name: null,
         last_name: null,
       }))
-    };
+    });
   }
 }

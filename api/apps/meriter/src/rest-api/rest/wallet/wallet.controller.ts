@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { WalletsService } from '../../../wallets/wallets.service';
 import { UserGuard } from '../../../user.guard';
+import { successResponse } from '../utils/response.helper';
 
 // Helper function to map wallet to old format for API backward compatibility
 function mapWalletToOldFormat(wallet: any) {
@@ -53,13 +54,13 @@ export class RestWalletController {
       // Use getValue to get the actual wallet balance (with domainName filter)
       const balance = await this.walletsService.getValue(walletQuery);
       
-      return { balance };
+      return successResponse(balance);
     } else {
       const wallets = await this.walletsService.model.find({
         'meta.telegramUserId': req.user.tgUserId,
       });
 
-      return { wallets: wallets.map(mapWalletToOldFormat) };
+      return successResponse(wallets.map(mapWalletToOldFormat));
     }
 
     //return new RestWalletResponse();

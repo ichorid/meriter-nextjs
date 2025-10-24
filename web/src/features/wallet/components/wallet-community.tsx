@@ -3,7 +3,16 @@
 import { swr } from "@lib/swr";
 import { CommunityAvatar } from "@shared/components/community-avatar";
 
-export const WalletCommunity = ({
+interface WalletCommunityProps {
+    amount: number;
+    currencyNames: string[];
+    currencyOfCommunityTgChatId: string;
+    tgUserId: string;
+    isAdmin?: boolean;
+    needsSetup?: boolean;
+}
+
+export const WalletCommunity: React.FC<WalletCommunityProps> = ({
     amount,
     currencyNames,
     currencyOfCommunityTgChatId,
@@ -99,7 +108,7 @@ export const WalletCommunity = ({
                         </div>
                     </div>
                     <div className="description text-sm opacity-60 mt-2">
-                        {tags && tags.map((t) => "#" + t).join(" ")}
+                        {tags && tags.map((t: string) => "#" + t).join(" ")}
                     </div>
                 </div>
             </div>

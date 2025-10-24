@@ -8,14 +8,14 @@ import { useTranslations } from 'next-intl';
 
 interface iFormCommentVoteProps {
     comment: string;
-    setComment: Function;
+    setComment: (value: string) => void;
     freePlus: number;
     freeMinus: number;
     amount: number;
-    setAmount: (number) => void;
+    setAmount: (amount: number) => void;
     maxPlus: number;
     maxMinus: number;
-    commentAdd: (any) => void;
+    commentAdd: (data: any) => void;
     error: string;
     reason?: string;
 }
@@ -79,7 +79,7 @@ export const FormCommentVote = ({
                     min={-maxMinus}
                     max={maxPlus}
                     value={amount}
-                    onChange={setAmount}
+                    onChange={(value) => setAmount(typeof value === 'number' ? value : value[0] || 0)}
                 />
             </div>
             <div className="relative">

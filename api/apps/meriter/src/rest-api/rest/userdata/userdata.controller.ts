@@ -1,5 +1,6 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { UsersService } from '../../../users/users.service';
+import { successResponse } from '../utils/response.helper';
 
 class UserdataResponse {
   firstName?: string;
@@ -19,7 +20,7 @@ export class RestUserdataController {
     );
 
     if (!profile) {
-      return { userdata: null };
+      return successResponse({ userdata: null });
     }
 
     const userdata: UserdataResponse = {
@@ -29,6 +30,6 @@ export class RestUserdataController {
       photoUrl: profile.avatarUrl, // Using avatarUrl for photoUrl as well
     };
 
-    return { userdata };
+    return successResponse({ userdata });
   }
 }

@@ -37,7 +37,7 @@ const PublicationMy = ({
     const [amountInMerits, setAmountInMerits] = useState(0);
     const [withdrawMerits, setWithdrawMerits] = useState(true);
 
-    const [directionAdd, setDirectionAdd] = useState(undefined);
+    const [directionAdd, setDirectionAdd] = useState<boolean | undefined>(undefined);
     const [loading, setLoading] = useState(false);
     const disabled = withdrawMerits ? !amountInMerits : !amount;
     const submit = () => {
@@ -83,7 +83,7 @@ const PublicationMy = ({
                             <div className="publication-withdraw">
                                 {directionAdd ? t('commbalance.add') : t('commbalance.remove')} {t('commbalance.merits')}:{" "}
                                 <input
-                                    {...etv(amountInMerits, setAmountInMerits)}
+                                    {...etv(String(amountInMerits), (value) => setAmountInMerits(Number(value)))}
                                     min={0}
                                     max={sum * rate}
                                 />
@@ -105,7 +105,7 @@ const PublicationMy = ({
                             <div className="publication-withdraw">
                                 {directionAdd ? t('commbalance.add') : t('commbalance.remove')} {t('commbalance.communityPoints')}:{" "}
                                 <input
-                                    {...etv(amount, setAmount)}
+                                    {...etv(String(amount), (value) => setAmount(Number(value)))}
                                     min={0}
                                     max={sum}
                                 />
@@ -128,7 +128,7 @@ const PublicationMy = ({
     );
 };
 
-const verb = (w) => {
+const verb = (w: { amount: number; currencyNames: string[] }) => {
     const { amount, currencyNames } = w;
     if (amount === 0) return `0 ${currencyNames[5]}`;
     else if (amount === 1) return `1 ${currencyNames[1]}`;
@@ -175,7 +175,7 @@ const PageCommunityBalance = ({ searchParams }: { searchParams: Promise<{ chatId
                 <div className="balance-inpublications-list">
                     <div className="balance-inpublications-filters"></div>
                     <div className="balance-inpublications-publications">
-                        {myPublications.map((p, i) => (
+                        {myPublications.map((p: any, i: number) => (
                             <PublicationMy key={i} {...p} updRate={updRate} />
                         ))}
                     </div>

@@ -10,10 +10,10 @@ import { useTranslations } from 'next-intl';
 export const FormDimensionsEditor = ({dimensions:dimenstionsInitial,dimensionConfig,level,onSave}:
     {dimensions:iDimensions,dimensionConfig:iDimensionConfig,
         level:"publication"|"comment"|"commentLvl1"|"commentLvl2"|"commentLvl3",
-        onSave:(iDimensions)=>any})=>{
+        onSave:(dimensions: iDimensions)=>any})=>{
             const t = useTranslations('communities');
             const [dimensions,setDimensions]=useState(dimenstionsInitial);
-            const setDimension = (slug) => (value) => {
+            const setDimension = (slug: string) => (value: any) => {
                 const newDim = {...dimensions,[slug]:value};
                 onSave(newDim);
                 setDimensions(newDim)
@@ -32,14 +32,14 @@ export const FormDimensionsEditor = ({dimensions:dimenstionsInitial,dimensionCon
             })}</div>
 }
 
-const CatEnum = ({dimensionProto,setDimension,initialValue})=>{
+const CatEnum = ({dimensionProto, setDimension, initialValue}: any) => {
     const t = useTranslations('communities');
     const [tagSelected,setTagSelected] =useState(initialValue)
-    const customInit = !initialValue||(dimensionProto.enum.find(e=>e===initialValue))?false:true;
+    const customInit = !initialValue||(dimensionProto.enum.find((e: any) => e===initialValue))?false:true;
 
     
     const totalEnum = customInit?[...dimensionProto.enum,initialValue]:dimensionProto.enum;
-    const std = !tagSelected||totalEnum.find(t=>t===tagSelected)
+    const std = !tagSelected||totalEnum.find((t: any) => t===tagSelected)
     
     const [customTagEdit,setCustomTagEdit] =useState(false)
     const tagSelectedDebounced = useDebounce(tagSelected,500,true);
@@ -51,7 +51,7 @@ const CatEnum = ({dimensionProto,setDimension,initialValue})=>{
     return <div className="mb-4">
     <div className="text-sm font-medium mb-2 opacity-70">{dimensionProto.label}</div>
         <div className="flex flex-wrap gap-2">
-        {(totalEnum).map(tag=>{
+        {(totalEnum).map((tag: any) => {
             return <span 
                 key={tag}
                 className={classList(

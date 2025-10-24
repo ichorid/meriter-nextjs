@@ -28,7 +28,7 @@ export const objectAddress = function (obj: any, address: string[] = []): any {
     if (address.length > 0) {
         if (address[0] === '') return objectAddress(obj, address.slice(1))
         //support of "/" at start of the path
-        else return objectAddress(obj[address[0]], address.slice(1))
+        else return objectAddress(obj[address[0]!], address.slice(1))
     } else return obj
 }
 
@@ -78,7 +78,7 @@ export function fillDefinedAndNotEmpty<T extends Record<string, any>>(obj: T): P
     }, {} as any)
 }
 
-export function objectDeepSubst(obj: object, params: object) {
+export function objectDeepSubst(obj: object, params: object): any {
     if (Array.isArray(obj)) {
         return obj.map((o) => objectDeepSubst(o, params))
     }

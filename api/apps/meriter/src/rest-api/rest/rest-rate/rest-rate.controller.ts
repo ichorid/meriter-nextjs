@@ -1,4 +1,5 @@
 import { Controller, Get, Param } from '@nestjs/common';
+import { successResponse } from '../utils/response.helper';
 class RestRateResponse {
   rate: number;
 }
@@ -6,6 +7,6 @@ class RestRateResponse {
 export class RestRateController {
   @Get()
   rest_rate(@Param() fromCurrency: number) {
-    return { rate: 0 };
+    return successResponse(0);
   }
 }

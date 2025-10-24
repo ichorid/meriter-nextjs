@@ -128,7 +128,7 @@ const ManagePage = () => {
                 </div>
             ) : (
                 <div className="grid gap-4">
-                    {chats?.map((chat, i) => (
+                    {chats?.map((chat: any, i: number) => (
                         <CommunityCard
                             key={i}
                             chatId={chat.chatId}

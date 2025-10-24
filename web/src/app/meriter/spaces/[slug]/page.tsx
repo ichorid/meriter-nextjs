@@ -27,7 +27,7 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
     const [paginationEnd, setPaginationEnd] = useState(false);
     const [showPollCreate, setShowPollCreate] = useState(false);
 
-    const getKeyPublications = (spaceSlug) => (pageIndex, previousPageData) => {
+    const getKeyPublications = (spaceSlug: string) => (pageIndex: number, previousPageData: any) => {
         if (previousPageData && !previousPageData?.publications.length) {
             setPaginationEnd(true);
             return null;
@@ -54,10 +54,10 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
     );
 
     const publications = ((content as IPublication[] | any)??[])
-        .map((c) => (c as any).publications)
+        .map((c: any) => (c as any).publications)
         .flat()
-        .filter((p, index, self) => 
-            index === self.findIndex((t) => t?._id === p?._id)
+        .filter((p: any, index: number, self: any[]) => 
+            index === self.findIndex((t: any) => t?._id === p?._id)
         );
 
     const setJwt = (content as any ??[])?.[0]?.setJwt;
@@ -130,7 +130,7 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
         setActiveWithdrawPost(null);
     };
 
-    const [findTransaction, setFindTransaction] = useState(undefined);
+    const [findTransaction, setFindTransaction] = useState<string | undefined>(undefined);
     useEffect(() => {
         if (document.location.search)
             setFindTransaction(document.location.search?.replace("#", ""));
@@ -184,7 +184,7 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
     const tgAuthorId = user?.tgUserId;
 
     const onlyPublication =
-        publications.filter((p) => p?.messageText)?.length == 1;
+        publications.filter((p: any) => p?.messageText)?.length == 1;
 
     return (
         <Page className="feed">
@@ -235,8 +235,8 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                 )}
                 {spaceSlug &&
                     rank
-                        ?.filter((r, i) => i < rankLimit)
-                        ?.map((r) => (
+                        ?.filter((r: any, i: number) => i < rankLimit)
+                        ?.map((r: any) => (
                             <CardWithAvatar
                                 key={r.tgUserId}
                                 avatarUrl={telegramGetAvatarLink(r.tgUserId)}
@@ -277,8 +277,8 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                 )}
                 {user.token &&
                     publications
-                        .filter((p) => p?.messageText || p?.type === 'poll')
-                        .map((p) => (
+                        .filter((p: any) => p?.messageText || p?.type === 'poll')
+                        .map((p: any) => (
                             <Publication
                                 key={p._id}
                                 {...p}

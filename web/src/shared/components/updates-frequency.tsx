@@ -10,7 +10,7 @@ export const UpdatesFrequency = () => {
     const endpoint = "/api/rest/freq";
     const [frequency, mutateFrequency] = swr(endpoint, 0);
 
-    const setFrequency = (freq) => {
+    const setFrequency = (freq: number) => {
         axios.post(endpoint, { updateFrequencyMs: freq });
         mutateFrequency(freq);
     };
@@ -40,7 +40,7 @@ export const UpdatesFrequency = () => {
                     options.find((o) => o.default)?.updateFrequencyMs
                 }
                 onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-                    setFrequency(e.target.value);
+                    setFrequency(Number(e.target.value));
                 }}
             >
                 {options.map((o, i) => (

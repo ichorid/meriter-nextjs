@@ -16,7 +16,26 @@ import { Spinner } from "@shared/components/misc";
 import { FormWithdraw } from "@features/wallet/components/form-withdraw";
 import { useTranslations } from 'next-intl';
 
-export const Comment = ({
+interface CommentProps {
+    _id: string;
+    spaceSlug?: string;
+    balance?: any;
+    updBalance?: any;
+    plus?: number;
+    minus?: number;
+    fromUserTgName?: string;
+    ts?: string;
+    comment?: string;
+    directionPlus?: boolean;
+    reason?: string;
+    toUserTgId?: string;
+    toUserTgName?: string;
+    fromUserTgId?: string;
+    amountTotal?: number;
+    [key: string]: any;
+}
+
+export const Comment: React.FC<CommentProps> = ({
     _id,
     spaceSlug,
     balance,
@@ -81,7 +100,7 @@ export const Comment = ({
     
     // Fetch community info to get currency icon
     const [currencyCommunityInfo] = swr(
-        curr ? `/api/rest/communityinfo?chatId=${curr}` : null,
+        curr ? `/api/rest/communityinfo?chatId=${curr}` : '',
         {},
         { revalidateOnFocus: false }
     );
@@ -94,14 +113,14 @@ export const Comment = ({
     
     // Format the rate with currency icon
     const formatRate = () => {
-        const amount = Math.abs(amountTotal);
+        const amount = Math.abs(amountTotal || 0);
         const sign = directionPlus ? "+" : "-";
         return `${sign} ${amount}`;
     };
     
     // Determine vote type based on payment source
     const determineVoteType = () => {
-        const amountFree = Math.abs(amountTotal) - Math.abs(sum || 0); // Calculate free amount
+        const amountFree = Math.abs(amountTotal || 0) - Math.abs(sum || 0); // Calculate free amount
         const amountWallet = Math.abs(sum || 0); // Personal wallet amount
         
         const isQuota = amountFree > 0;
@@ -238,17 +257,17 @@ export const Comment = ({
         inPublicationSlug,
         forTransactionId || _id,
         "/api/rest/transactions/" + (forTransactionId || _id) + "/replies",
-        spaceSlug ? "/api/rest/free?inSpaceSlug=" + spaceSlug : null,
+        spaceSlug ? "/api/rest/free?inSpaceSlug=" + spaceSlug : "",
         balance,
         updBalance,
-        plus,
-        minus,
+        plus || 0,
+        minus || 0,
         activeCommentHook
     );
     const commentUnderReply = activeCommentHook[0] == (forTransactionId || _id);
     const nobodyUnderReply = activeCommentHook[0] === null;
     const userTgId = reason === "withdrawalFromPublication" ? toUserTgId : fromUserTgId;
-    const avatarUrl = telegramGetAvatarLink(userTgId);
+    const avatarUrl = telegramGetAvatarLink(userTgId || '');
     
     // Prepare withdraw slider content for author's comments
     const disabled = withdrawMerits ? !amountInMerits : !amount;
@@ -303,7 +322,7 @@ export const Comment = ({
                 "comment-vote-wrapper transition-all duration-300",
                 commentUnderReply ? "scale-100 opacity-100" : 
                 activeSlider && activeSlider !== _id ? "scale-95 opacity-60" : "scale-100 opacity-100",
-                highlightTransactionId == _id && "highlight"
+                highlightTransactionId == _id ? "highlight" : ""
             )}
             key={_id}
             onClick={(e) => {
@@ -317,16 +336,16 @@ export const Comment = ({
         >
             <CardCommentVote
                 title={fromUserTgName}
-                subtitle={new Date(ts).toLocaleString()}
+                subtitle={new Date(ts || '').toLocaleString()}
                 content={comment}
                 rate={formatRate()}
                 currencyIcon={currencyIcon}
                 avatarUrl={avatarUrl}
                 voteType={voteType}
-                amountFree={Math.abs(amountTotal) - Math.abs(sum || 0)}
+                amountFree={Math.abs(amountTotal || 0) - Math.abs(sum || 0)}
                 amountWallet={Math.abs(sum || 0)}
                 beneficiaryName={toUserTgName}
-                beneficiaryAvatarUrl={telegramGetAvatarLink(toUserTgId)}
+                beneficiaryAvatarUrl={telegramGetAvatarLink(toUserTgId || '')}
                 onClick={!isDetailPage ? () => {
                     // Navigate to the post page only when not on detail page
                     if (inPublicationSlug && currencyOfCommunityTgChatId) {
@@ -334,7 +353,7 @@ export const Comment = ({
                     }
                 } : undefined}
                 onAvatarUrlNotFound={() => {
-                    const fallbackUrl = telegramGetAvatarLinkUpd(userTgId);
+                    const fallbackUrl = telegramGetAvatarLinkUpd(userTgId || '');
                     if (fallbackUrl !== avatarUrl) {
                         // Force re-render with fallback avatar
                         const imgElement = document.querySelector(`img[src="${avatarUrl}"]`) as HTMLImageElement;
@@ -385,7 +404,7 @@ export const Comment = ({
                                 showMinus();
                                 setActiveSlider && setActiveSlider(_id);
                             }}
-                            onLeft={setShowComments}
+                            onLeft={() => setShowComments(true)}
                             commentCount={comments?.length || 0}
                         />
                     )
@@ -404,7 +423,7 @@ export const Comment = ({
             {showComments && (
                 <div className="transaction-comments">
                     <div className="comments">
-                        {comments?.map((c) => (
+                        {comments?.map((c: any) => (
                             <Comment
                                 key={c._id}
                                 {...c}

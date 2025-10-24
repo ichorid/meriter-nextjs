@@ -7,7 +7,7 @@ const isS3Enabled = () => {
     return !!(process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY);
 };
 
-export const uploadStream = ({ Bucket, Key }) => {
+export const uploadStream = ({ Bucket, Key }: { Bucket: string; Key: string }) => {
     const pass = new stream.PassThrough()
     
     // Return no-op stream if S3 not configured
@@ -21,8 +21,8 @@ export const uploadStream = ({ Bucket, Key }) => {
 
     const s3 = new S3Client({
         credentials: {
-            accessKeyId: process.env.S3_ACCESS_KEY_ID,
-            secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+            accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
         },
         endpoint: process.env.S3_ENDPOINT || 'https://hb.bizmrg.com',
         region: process.env.S3_REGION || 'ru-msk',

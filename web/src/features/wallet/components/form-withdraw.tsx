@@ -5,7 +5,19 @@ import { etv } from '@shared/lib/input-utils';
 import Slider from "rc-slider";
 import { useTranslations } from 'next-intl';
 
-export const FormWithdraw = ({
+interface FormWithdrawProps {
+    comment: string;
+    setComment: (comment: string) => void;
+    amount: number;
+    setAmount: (amount: number) => void;
+    maxWithdrawAmount: number;
+    maxTopUpAmount: number;
+    onSubmit: () => void;
+    children: React.ReactNode;
+    isWithdrawal: boolean;
+}
+
+export const FormWithdraw: React.FC<FormWithdrawProps> = ({
     comment,
     setComment,
     amount,
@@ -37,7 +49,7 @@ export const FormWithdraw = ({
                                     : maxTopUpAmount
                             }
                             value={amount}
-                            onChange={setAmount}
+                            onChange={(value) => setAmount(typeof value === 'number' ? value : value[0] || 0)}
                         />
                     </div>
                     <div className="flex justify-end mt-4">

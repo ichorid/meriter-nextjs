@@ -18,6 +18,7 @@ import { create } from 'domain';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
 import { PublicationsService } from '../../../publications/publications.service';
 import { UsersService } from '../../../users/users.service';
+import { successResponse } from '../utils/response.helper';
 
 // Helper function to map transaction to old format for API backward compatibility
 async function mapTransactionToOldFormat(transaction: any, usersService: any) {
@@ -137,7 +138,7 @@ export class RestTransactionsController {
     const mappedTransactions = await Promise.all(
       t.map(transaction => mapTransactionToOldFormat(transaction, this.usersService))
     );
-    return { transactions: mappedTransactions };
+    return successResponse(mappedTransactions);
   }
 
   @Get('updates')
@@ -152,7 +153,7 @@ export class RestTransactionsController {
     const mappedTransactions = await Promise.all(
       t.map(transaction => mapTransactionToOldFormat(transaction, this.usersService))
     );
-    return { transactions: mappedTransactions };
+    return successResponse(mappedTransactions);
   }
 
   @Get('publications/:publicationSlug')
@@ -201,7 +202,7 @@ export class RestTransactionsController {
     const mappedTransactions = await Promise.all(
       t.map(transaction => mapTransactionToOldFormat(transaction, this.usersService))
     );
-    return { transactions: mappedTransactions };
+    return successResponse(mappedTransactions);
   }
 
   @Get(':transactionId/replies')
@@ -251,7 +252,7 @@ export class RestTransactionsController {
     const mappedTransactions = await Promise.all(
       t.map(transaction => mapTransactionToOldFormat(transaction, this.usersService))
     );
-    return { transactions: mappedTransactions };
+    return successResponse(mappedTransactions);
   }
 
   @Post()
@@ -272,13 +273,13 @@ export class RestTransactionsController {
         throw new HttpException('Not chat member', HttpStatus.FORBIDDEN);
       }
       
-      return await this.transactionsService.createForPublication({
+      return successResponse(await this.transactionsService.createForPublication({
         amount: dto.directionPlus ? dto.amountPoints : -dto.amountPoints,
         comment: dto.comment,
         forPublicationUid: dto.forPublicationSlug,
         fromUserTgId: req.user.tgUserId,
         fromUserTgName: req.user.tgUserName,
-      });
+      }));
     }
 
     if (dto.forTransactionId) {
@@ -294,16 +295,16 @@ export class RestTransactionsController {
         throw new HttpException('Not chat member', HttpStatus.FORBIDDEN);
       }
 
-      return await this.transactionsService.createForTransaction({
+      return successResponse(await this.transactionsService.createForTransaction({
         amount: dto.directionPlus ? dto.amountPoints : -dto.amountPoints,
         comment: dto.comment,
         forTransactionUid: dto.forTransactionId,
         inPublicationUid: dto.inPublicationSlug,
         fromUserTgId: req.user.tgUserId,
         fromUserTgName: req.user.tgUserName,
-      });
+      }));
     }
 
-    return {};
+    return successResponse({});
   }
 }

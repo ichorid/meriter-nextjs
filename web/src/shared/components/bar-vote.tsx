@@ -2,11 +2,27 @@
 
 import { initDataRaw, useSignal, hapticFeedback } from '@telegram-apps/sdk-react';
 
-export const BarVote = ({ onPlus, onMinus, plus, minus, onLeft, commentCount = 0 }) => {
+interface BarVoteProps {
+    onPlus: () => void;
+    onMinus: () => void;
+    plus: number;
+    minus: number;
+    onLeft: () => void;
+    commentCount?: number;
+}
+
+export const BarVote: React.FC<BarVoteProps> = ({ 
+    onPlus, 
+    onMinus, 
+    plus, 
+    minus, 
+    onLeft, 
+    commentCount = 0 
+}) => {
     const rawData = useSignal(initDataRaw);
     const isInTelegram = !!rawData;
     
-    const handleMinus = (e) => {
+    const handleMinus = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (isInTelegram) {
             hapticFeedback.impactOccurred('light');
@@ -14,7 +30,7 @@ export const BarVote = ({ onPlus, onMinus, plus, minus, onLeft, commentCount = 0
         onMinus();
     };
     
-    const handlePlus = (e) => {
+    const handlePlus = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (isInTelegram) {
             hapticFeedback.impactOccurred('light');

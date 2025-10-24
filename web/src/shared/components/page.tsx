@@ -1,6 +1,11 @@
 'use client';
 
-const Page = (props) => {
+interface PageProps {
+    children: React.ReactNode;
+    className?: string;
+}
+
+const Page: React.FC<PageProps> = (props) => {
     const { children, className } = props;
     return (
         <div className={`page max-w-2xl mx-auto px-4 py-6 ${className ?? ""}`}>

@@ -20,6 +20,7 @@ import { TransactionsService } from '../../../transactions/transactions.service'
 import { WalletsService } from '../../../wallets/wallets.service';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
 import { encodeTelegramDeepLink } from '@common/abstracts';
+import { successResponse } from '../utils/response.helper';
 
 class PollOptionDto {
   @IsString()
@@ -211,7 +212,7 @@ ${pollLink}`;
       this.logger.error(`Failed to send poll announcement to Telegram: ${error.message}`);
     }
 
-    return publication;
+    return successResponse(publication);
   }
 
   @Post('vote')
@@ -313,10 +314,10 @@ ${pollLink}`;
 
     // Return updated poll data
     const updatedPoll = await this.publicationsService.model.findOne({ uid: dto.pollId });
-    return {
+    return successResponse({
       poll: updatedPoll,
       transaction,
-    };
+    });
   }
 
   @Get('get')
@@ -352,7 +353,7 @@ ${pollLink}`;
 
     const totalVoteAmount = userVotes.reduce((sum, vote) => sum + vote.content.amount, 0);
 
-    return {
+    return successResponse({
       poll,
       userVotes: userVotes.map(v => v.content),
       userVoteSummary: {
@@ -360,7 +361,7 @@ ${pollLink}`;
         totalAmount: totalVoteAmount,
         byOption: voteSummary,
       },
-    };
+    });
   }
 }
 

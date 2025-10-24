@@ -7,9 +7,10 @@ export const classList = (
             .filter((cls) => cls !== undefined)
             .map((cls) =>
                 typeof cls == "object"
-                    ? cls[Object.keys(cls)[0]]
-                        ? Object.keys(cls)[0]
-                        : "undefined"
+                    ? (() => {
+                        const key = Object.keys(cls)[0];
+                        return key && cls[key] ? key : "undefined";
+                    })()
                     : cls
             )
             .filter((c) => c != "undefined")

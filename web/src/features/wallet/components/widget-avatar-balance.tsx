@@ -5,7 +5,22 @@ import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholde
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
-export const WidgetAvatarBalance = ({
+interface WidgetAvatarBalanceProps {
+    balance1?: {
+        icon?: string;
+        amount: number;
+    };
+    balance2?: {
+        icon: string;
+        amount: number;
+    };
+    avatarUrl?: string;
+    onAvatarUrlNotFound?: () => void;
+    onClick?: () => void;
+    userName?: string;
+}
+
+export const WidgetAvatarBalance: React.FC<WidgetAvatarBalanceProps> = ({
     balance1,
     balance2,
     avatarUrl,

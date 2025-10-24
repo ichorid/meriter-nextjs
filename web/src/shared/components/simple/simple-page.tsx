@@ -5,7 +5,7 @@ import { classList } from '@lib/classList'
 
 export const SimplePage = ({ children, coverImageUrl, blur, className }: any) => {
     useEffect(() => {
-        const sc = (e) => {
+        const sc = (e: Event) => {
             //   const r = Math.max(0, 1 - window.scrollY / 500)
             //     ;(document.querySelector('.simple-page-cover') as any).style.opacity = r
         }

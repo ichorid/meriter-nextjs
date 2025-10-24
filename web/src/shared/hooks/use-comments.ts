@@ -6,22 +6,22 @@ const { round } = Math;
 
 export const useComments = (
     forTransaction: boolean,
-    publicationSlug,
-    transactionId,
-    getCommentsApiPath,
-    getFreeBalanceApiPath,
-    balance,
-    updBalance,
-    plusGiven,
-    minusGiven,
-    activeCommentHook,
+    publicationSlug: string,
+    transactionId: string,
+    getCommentsApiPath: string,
+    getFreeBalanceApiPath: string,
+    balance: any,
+    updBalance: any,
+    plusGiven: number,
+    minusGiven: number,
+    activeCommentHook: any,
     onlyPublication = false
 ) => {
     const t = useTranslations('comments');
     const uid = transactionId || publicationSlug;
     const [showComments, setShowComments] = useState(!!onlyPublication);
     const [comment, setCommentW] = useState("");
-    const setComment = (c) => {
+    const setComment = (c: string) => {
         setCommentW(c);
         setError("");
     };
@@ -89,10 +89,10 @@ export const useComments = (
     };
 
     const currentPlus = round(
-        (parseInt(plusGiven) + parseInt(deltaPlus as any)) || 0
+        (plusGiven + (deltaPlus as any)) || 0
     );
     const currentMinus = round(
-        (parseInt(minusGiven) + parseInt(deltaMinus as any)) || 0
+        (minusGiven + (deltaMinus as any)) || 0
     );
     const formCommentProps = {
         key: uid,

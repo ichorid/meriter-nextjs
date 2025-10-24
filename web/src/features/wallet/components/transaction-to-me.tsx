@@ -6,28 +6,28 @@ import { useTranslations } from 'next-intl';
 import { swr } from "@lib/swr";
 
 class RestTransactionObject {
-    amount: number; //0
-    amountFree: number; //3
-    amountTotal: number; //3
-    comment: string; //"Три голоса плюс"
-    currencyOfCommunityTgChatId: string; //"-123123"
-    directionPlus: boolean; //true
-    forPublicationSlug: string; //"abc123"
-    fromUserTgId: string; //"123123"
-    fromUserTgName: string; //"Some Name"
-    inPublicationSlug: string; //"123asdf"
-    inSpaceSlug: string; //"asdf"
-    minus: number; //0
-    plus: number; //0
-    publicationClassTags: [];
-    reason: string; //"forPublication"
-    sum: number; //0
-    toUserTgId: string; //"123123"
-    ts: string; //"2021-01-08T09:40:11.179Z",
-    parentText: string;
-    forTransactionId: string;
-
-    _id: string; //"123123"
+    amount: number = 0; //0
+    amountFree: number = 0; //3
+    amountTotal: number = 0; //3
+    comment: string = ""; //"Три голоса плюс"
+    currencyOfCommunityTgChatId: string = ""; //"-123123"
+    directionPlus: boolean = true; //true
+    forPublicationSlug: string = ""; //"abc123"
+    fromUserTgId: string = ""; //"123123"
+    fromUserTgName: string = ""; //"Some Name"
+    inPublicationSlug: string = ""; //"123asdf"
+    inSpaceSlug: string = ""; //"asdf"
+    minus: number = 0; //0
+    plus: number = 0; //0
+    publicationClassTags: any[] = [];
+    reason: string = ""; //"forPublication"
+    sum: number = 0; //0
+    toUserTgId: string = ""; //"123123"
+    toUserTgName: string = ""; //"Some Name"
+    ts: string = ""; //"2021-01-08T09:40:11.179Z"
+    parentText: string = "";
+    forTransactionId: string = "";
+    _id: string = ""; //"123123"
 }
 
 export const TransactionToMe = ({
@@ -41,7 +41,7 @@ export const TransactionToMe = ({
     const [communityInfo] = swr(
         transaction.currencyOfCommunityTgChatId 
             ? `/api/rest/communityinfo?chatId=${transaction.currencyOfCommunityTgChatId}`
-            : null,
+            : '',
         {},
         { revalidateOnFocus: false }
     );
