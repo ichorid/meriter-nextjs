@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, use } from "react";
-import { swr, swrInfinite } from '@lib/swr';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
 import Page from '@shared/components/page';
 import { useRouter, useSearchParams } from "next/navigation";
 import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
@@ -35,34 +36,44 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const [sortBy, setSortBy] = useState<"recent" | "voted">("recent");
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
 
-    const getKeyPublications = (chatId: string) => (pageIndex: number, previousPageData: any) => {
-        if (previousPageData && !previousPageData?.publications.length) {
-            setPaginationEnd(true);
-            return null;
-        }
-        return `/api/rest/publications/communities/${chatId}?skip=${
-            5 * pageIndex
-        }&limit=5`;
-    };
+    const { data: comms = {} } = useQuery({
+        queryKey: ['community-info', chatId],
+        queryFn: async () => {
+            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${chatId}`);
+            return response;
+        },
+    });
 
-    const [comms] = swr(
-        () => `/api/rest/communityinfo?chatId=${chatId}`,
-        {}
-    );
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        error: err
+    } = useInfiniteQuery({
+        queryKey: ['publications', chatId],
+        queryFn: async ({ pageParam = 0 }) => {
+            const response = await apiClient.get(`/api/rest/publications/communities/${chatId}?skip=${5 * pageParam}&limit=5`);
+            return response;
+        },
+        getNextPageParam: (lastPage, pages) => {
+            if (!lastPage?.publications?.length) {
+                setPaginationEnd(true);
+                return undefined;
+            }
+            return pages.length;
+        },
+        initialPageParam: 0,
+    });
 
-    const [content, size, setSize, err]: any = swrInfinite(
-        getKeyPublications(chatId),
-        []
-    );
-
-    const publications = ((content as IPublication[] | any)??[])
-        .map((c: any) => (c as any).publications)
+    const publications = (data?.pages ?? [])
+        .map((page: any) => page.publications)
         .flat()
         .filter((p: any, index: number, self: any[]) => 
             index === self.findIndex((t: any) => t?._id === p?._id)
         );
 
-    const setJwt = (content as any ??[])?.[0]?.setJwt;
+    const setJwt = data?.pages?.[0]?.setJwt;
     useEffect(() => {
         if (setJwt) {
             document.location.href = "/auth/" + setJwt;
@@ -139,7 +150,6 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     }, []);
 
     const cooldown = useRef(false);
-    const sizeRef = useRef(size);
     useEffect(() => {
         const fn = () => {
             if (
@@ -147,8 +157,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 document.body.offsetHeight
             ) {
                 if (!paginationEnd && !cooldown.current) {
-                    setSize(sizeRef.current + 1);
-                    sizeRef.current++;
+                    fetchNextPage();
 
                     cooldown.current = true;
                     setTimeout(() => {
@@ -415,7 +424,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                             </div>
                         ))}
                 {!paginationEnd && publications.length > 1 && (
-                    <button onClick={() => setSize(size + 1)} className="btn btn-primary btn-wide mx-auto block">
+                    <button onClick={() => fetchNextPage()} className="btn btn-primary btn-wide mx-auto block">
                         {t('communities.loadMore')}
                     </button>
                 )}

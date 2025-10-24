@@ -1,6 +1,7 @@
 'use client';
 
-import { swr } from "@lib/swr";
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
 import { CommunityAvatar } from "@shared/components/community-avatar";
 
 interface WalletCommunityProps {
@@ -20,13 +21,22 @@ export const WalletCommunity: React.FC<WalletCommunityProps> = ({
     isAdmin,
     needsSetup,
 }) => {
-    const [info] = swr(
-        "/api/rest/communityinfo?chatId=" + currencyOfCommunityTgChatId,
-        {},
-        { revalidateOnFocus: false }
-    );
+    const { data: info = {} } = useQuery({
+        queryKey: ['community-info', currencyOfCommunityTgChatId],
+        queryFn: async () => {
+            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${currencyOfCommunityTgChatId}`);
+            return response;
+        },
+        refetchOnWindowFocus: false,
+    });
 
-    const [user] = swr("/api/rest/getme", { init: true });
+    const { data: user = { init: true } } = useQuery({
+        queryKey: ['user'],
+        queryFn: async () => {
+            const response = await apiClient.get('/api/rest/getme');
+            return response;
+        },
+    });
 
     const title = info?.chat?.title;
     const chatPhoto = info?.chat?.photo; // Community's Telegram avatar

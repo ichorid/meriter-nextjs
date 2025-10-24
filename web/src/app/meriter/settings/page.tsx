@@ -14,8 +14,8 @@ import { ThemeToggle } from '@shared/components/theme-toggle';
 import { LogoutButton } from '@shared/components/logout-button';
 import { LanguageSelector } from '@shared/components/language-selector';
 import { useTranslations } from 'next-intl';
-import { mutate } from 'swr';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 
 const SettingsPage = () => {
     const router = useRouter();
@@ -24,6 +24,7 @@ const SettingsPage = () => {
     
     // Use centralized auth context
     const { user, isLoading, isAuthenticated } = useAuth();
+    const queryClient = useQueryClient();
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncMessage, setSyncMessage] = useState('');
 
@@ -51,8 +52,9 @@ const SettingsPage = () => {
                 setTimeout(() => setSyncMessage(''), 3000);
                 
                 // Invalidate SWR cache for communities data to refresh the home page
-                mutate('/api/rest/getusercommunities');
-                mutate('/api/rest/getme');
+                // Invalidate React Query caches instead of SWR mutate
+                queryClient.invalidateQueries({ queryKey: ['user-communities'] });
+                queryClient.invalidateQueries({ queryKey: ['user'] });
             } else {
                 setSyncMessage(data.message || t('syncError'));
             }

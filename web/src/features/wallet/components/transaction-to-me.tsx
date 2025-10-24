@@ -3,7 +3,8 @@
 import { CardCommentVote } from "@shared/components/card-comment-vote";
 import { telegramGetAvatarLink } from "@lib/telegram";
 import { useTranslations } from 'next-intl';
-import { swr } from "@lib/swr";
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
 
 class RestTransactionObject {
     amount: number = 0; //0
@@ -38,13 +39,16 @@ export const TransactionToMe = ({
     const t = useTranslations('shared');
     
     // Fetch community info to get currency icon
-    const [communityInfo] = swr(
-        transaction.currencyOfCommunityTgChatId 
-            ? `/api/rest/communityinfo?chatId=${transaction.currencyOfCommunityTgChatId}`
-            : '',
-        {},
-        { revalidateOnFocus: false }
-    );
+    const { data: communityInfo = {} } = useQuery({
+        queryKey: ['community-info', transaction.currencyOfCommunityTgChatId],
+        queryFn: async () => {
+            if (!transaction.currencyOfCommunityTgChatId) return {};
+            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${transaction.currencyOfCommunityTgChatId}`);
+            return response;
+        },
+        enabled: !!transaction.currencyOfCommunityTgChatId,
+        refetchOnWindowFocus: false,
+    });
     
     // Format the rate with currency icon
     const formatRate = () => {

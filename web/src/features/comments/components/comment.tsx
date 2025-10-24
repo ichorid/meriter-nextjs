@@ -10,8 +10,8 @@ import { FormComment } from "./form-comment";
 import { classList } from "@lib/classList";
 import { useState, useEffect } from "react";
 import { GLOBAL_FEED_TG_CHAT_ID } from "@config/meriter";
-import { swr } from "@lib/swr";
-import Axios from "axios";
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
 import { Spinner } from "@shared/components/misc";
 import { FormWithdraw } from "@shared/components/form-withdraw";
 import { useTranslations } from 'next-intl';
@@ -99,17 +99,27 @@ export const Comment: React.FC<CommentProps> = ({
     const [showselector, setShowselector] = useState(false);
     
     // Fetch community info to get currency icon
-    const [currencyCommunityInfo] = swr(
-        curr ? `/api/rest/communityinfo?chatId=${curr}` : '',
-        {},
-        { revalidateOnFocus: false }
-    );
+    const { data: currencyCommunityInfo = {} } = useQuery({
+        queryKey: ['community-info', curr],
+        queryFn: async () => {
+            if (!curr) return {};
+            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${curr}`);
+            return response;
+        },
+        enabled: !!curr,
+        refetchOnWindowFocus: false,
+    });
     
-    const [rate] = swr(
-        () => isAuthor && !isMerit && curr ? "/api/rest/rate?fromCurrency=" + curr : null,
-        0,
-        { key: "rate-comment-" + curr + "-" + _id, revalidateOnFocus: false }
-    );
+    const { data: rate = 0 } = useQuery({
+        queryKey: ['rate', curr, _id],
+        queryFn: async () => {
+            if (!isAuthor || isMerit || !curr) return 0;
+            const response = await apiClient.get(`/api/rest/rate?fromCurrency=${curr}`);
+            return response;
+        },
+        enabled: isAuthor && !isMerit && !!curr,
+        refetchOnWindowFocus: false,
+    });
     
     // Format the rate with currency icon
     const formatRate = () => {
@@ -174,7 +184,7 @@ export const Comment: React.FC<CommentProps> = ({
         }
         
         try {
-            await Axios.post("/api/rest/withdraw", {
+            await apiClient.post("/api/rest/withdraw", {
                 transactionId: _id,
                 amount: withdrawMerits ? amountInMerits : amount,
                 currency: withdrawMerits ? "merit" : currency,
@@ -237,11 +247,16 @@ export const Comment: React.FC<CommentProps> = ({
     
     // Fetch community info for displaying community avatar
     const communityId = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
-    const [communityInfo] = swr(
-        () => isAuthor && communityId && showCommunityAvatar ? `/api/rest/communityinfo?chatId=${communityId}` : null,
-        {},
-        { revalidateOnFocus: false }
-    );
+    const { data: communityInfo = {} } = useQuery({
+        queryKey: ['community-info', communityId],
+        queryFn: async () => {
+            if (!communityId || !showCommunityAvatar) return {};
+            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${communityId}`);
+            return response;
+        },
+        enabled: !!communityId && showCommunityAvatar,
+        refetchOnWindowFocus: false,
+    });
     
     const {
         comments,

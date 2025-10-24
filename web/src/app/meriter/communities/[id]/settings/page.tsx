@@ -1,8 +1,8 @@
 'use client';
 
-import { swr } from '@lib/swr';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
 import { useEffect, useState } from "react";
-import Axios from "axios";
 import { etv } from '@shared/lib/input-utils';
 import { nanoid } from "nanoid";
 import { useParams, useRouter } from "next/navigation";
@@ -47,8 +47,14 @@ const CommunitySettingsPage = () => {
     const [saveError, setSaveError] = useState('');
     const [saveSuccess, setSaveSuccess] = useState('');
 
-    // Load user and community data
-    const [user] = swr("/api/rest/getme", { init: true });
+    // Load user data
+    const { data: user = { init: true } } = useQuery({
+        queryKey: ['user'],
+        queryFn: async () => {
+            const response = await apiClient.get('/api/rest/getme');
+            return response;
+        },
+    });
     const [communityData, setCommunityData] = useState(null);
     const [communityLoading, setCommunityLoading] = useState(true);
     const [communityError, setCommunityError] = useState('');
@@ -83,7 +89,7 @@ const CommunitySettingsPage = () => {
         if (!chatId || !user.tgUserId) return;
 
         setCommunityLoading(true);
-        Axios.get(`/api/rest/communityinfo?chatId=${chatId}`)
+        apiClient.get(`/api/rest/communityinfo?chatId=${chatId}`)
             .then((response) => {
                 const data = response.data;
                 setCommunityData(data);
@@ -173,7 +179,7 @@ const CommunitySettingsPage = () => {
         setSaveError('');
 
         try {
-            await Axios.post(`/api/rest/communityinfo?chatId=${chatId}`, saveData);
+            await apiClient.post(`/api/rest/communityinfo?chatId=${chatId}`, saveData);
 
             setIsDirty(false);
             setSaveSuccess(t('communitySettings.settingsSaved'));

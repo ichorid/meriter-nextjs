@@ -8,7 +8,6 @@ export * from './object';
 export * from './objects';
 export * from './s3';
 export * from './security';
-export * from './swr';
 // swrMerge exports swr which conflicts, so skip it for now
 // export * from './swrMerge';
 export * from './telegram';

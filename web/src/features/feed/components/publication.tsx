@@ -12,7 +12,6 @@ import { BarVote } from "@shared/components/bar-vote";
 import { BarWithdraw } from "@shared/components/bar-withdraw";
 import { WithTelegramEntities } from "@shared/components/withTelegramEntities";
 import { FormDimensionsEditor } from "@shared/components/form-dimensions-editor";
-import Axios from "axios";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { FormComment } from "@features/comments/components/form-comment";
 import { classList } from "@lib/classList";
@@ -21,7 +20,8 @@ import { PollVoting } from "@features/polls/components/poll-voting";
 import type { IPollData } from "@features/polls/types";
 import { apiPOST, apiGET } from "@shared/lib/fetch";
 import { useRouter } from "next/navigation";
-import { swr } from "@lib/swr";
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
 import { GLOBAL_FEED_TG_CHAT_ID } from "@config/meriter";
 import { Spinner } from "@shared/components/misc";
 import { FormWithdraw } from "@shared/components/form-withdraw";
@@ -130,11 +130,16 @@ export const Publication = ({
     const isMerit = tgChatId === GLOBAL_FEED_TG_CHAT_ID;
     const [showselector, setShowselector] = useState(false);
     
-    const [rate] = swr(
-        () => isAuthor && !isMerit && curr ? "/api/rest/rate?fromCurrency=" + curr : null,
-        0,
-        { key: "rate-" + curr, revalidateOnFocus: false }
-    );
+    const { data: rate = 0 } = useQuery({
+        queryKey: ['rate', curr],
+        queryFn: async () => {
+            if (!isAuthor || isMerit || !curr) return 0;
+            const response = await apiClient.get(`/api/rest/rate?fromCurrency=${curr}`);
+            return response;
+        },
+        enabled: isAuthor && !isMerit && !!curr,
+        refetchOnWindowFocus: false,
+    });
     
     // Create a unique identifier for this post
     const postId = slug || _id;
@@ -171,7 +176,7 @@ export const Publication = ({
         }
         
         try {
-            await Axios.post("/api/rest/withdraw", {
+            await apiClient.post("/api/rest/withdraw", {
                 publicationSlug: slug,
                 // Don't send transactionId for publications - slug is sufficient
                 amount: withdrawMerits ? amountInMerits : amount,
@@ -242,20 +247,29 @@ export const Publication = ({
     // For polls, fetch the wallet balance for the specific community ONLY when not on community page
     // When on community page (showCommunityAvatar=false), the balance prop is already correct
     const pollCommunityId = type === 'poll' ? content?.communityId : null;
-    const [pollBalanceResponse] = swr(
-        () => pollCommunityId && showCommunityAvatar ? `/api/rest/wallet?tgChatId=${pollCommunityId}` : null,
-        { balance: 0 },
-        { key: "poll-balance-" + pollCommunityId }
-    );
+    const { data: pollBalanceResponse = { balance: 0 } } = useQuery({
+        queryKey: ['poll-balance', pollCommunityId],
+        queryFn: async () => {
+            if (!pollCommunityId || !showCommunityAvatar) return { balance: 0 };
+            const response = await apiClient.get(`/api/rest/wallet?tgChatId=${pollCommunityId}`);
+            return response;
+        },
+        enabled: !!pollCommunityId && showCommunityAvatar,
+    });
     const pollBalance = pollBalanceResponse?.balance || 0;
     
     // Fetch community info for displaying community avatar
     const communityId = tgChatId || pollCommunityId;
-    const [communityInfo] = swr(
-        () => communityId && showCommunityAvatar ? `/api/rest/communityinfo?chatId=${communityId}` : null,
-        {},
-        { revalidateOnFocus: false }
-    );
+    const { data: communityInfo = {} } = useQuery({
+        queryKey: ['community-info', communityId],
+        queryFn: async () => {
+            if (!communityId || !showCommunityAvatar) return {};
+            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${communityId}`);
+            return response;
+        },
+        enabled: !!communityId && showCommunityAvatar,
+        refetchOnWindowFocus: false,
+    });
     
     // Fetch poll vote status if this is a poll
     useEffect(() => {

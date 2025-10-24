@@ -46,7 +46,6 @@
         "react-telegram-login": "^1.1.2",
         "react-transition-group": "^4.4.5",
         "sharp": "^0.33.5",
-        "swr": "^2.2.5",
         "uid": "^2.0.2",
         "zod": "^4.1.12"
     },

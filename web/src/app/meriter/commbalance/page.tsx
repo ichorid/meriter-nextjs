@@ -1,11 +1,11 @@
 'use client';
 
 import Page from '@shared/components/page';
-import { swr } from '@lib/swr';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
 import TgEmbed from '@shared/components/tgembed';
 import { useState, use } from "react";
 import { etv } from '@shared/lib/input-utils';
-import Axios from "axios";
 import { Spinner } from '@shared/components/misc';
 import { GLOBAL_FEED_TG_CHAT_ID } from '@config/meriter';
 import { useTranslations } from 'next-intl';

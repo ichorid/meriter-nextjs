@@ -1,7 +1,8 @@
 'use client';
 
 import { use, useEffect, useState } from "react";
-import { swr } from '@lib/swr';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
 import Page from '@shared/components/page';
 import { useRouter } from "next/navigation";
 import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
@@ -20,65 +21,101 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const resolvedParams = use(params);
     const pollId = resolvedParams.id;
 
-    const [user] = swr("/api/rest/getme", { init: true });
+    const { data: user = { init: true } } = useQuery({
+        queryKey: ['user'],
+        queryFn: async () => {
+            const response = await apiClient.get('/api/rest/getme');
+            return response;
+        },
+    });
 
-    const [pollData, pollError] = swr(
-        () => user?.token ? `/api/rest/poll/get?pollId=${pollId}` : null,
-        {}
-    );
+    const { data: pollData = {}, error: pollError } = useQuery({
+        queryKey: ['poll', pollId],
+        queryFn: async () => {
+            const response = await apiClient.get(`/api/rest/poll/get?pollId=${pollId}`);
+            return response;
+        },
+        enabled: !!user?.token,
+    });
 
     const poll = pollData?.poll;
     const chatId = poll?.content?.communityId;
 
-    const [chat] = swr(
-        () => user?.token && chatId ? `/api/rest/getchat?chatId=${chatId}` : null,
-        {},
-        { key: "chat" }
-    );
+    const { data: chat = {} } = useQuery({
+        queryKey: ['chat', chatId],
+        queryFn: async () => {
+            const response = await apiClient.get(`/api/rest/getchat?chatId=${chatId}`);
+            return response;
+        },
+        enabled: !!user?.token && !!chatId,
+    });
 
-    const [comms] = swr(
-        () => user?.token && chatId ? `/api/rest/communityinfo?chatId=${chatId}` : null,
-        {},
-        { key: "comms" }
-    );
+    const { data: comms = {} } = useQuery({
+        queryKey: ['community-info', chatId],
+        queryFn: async () => {
+            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${chatId}`);
+            return response;
+        },
+        enabled: !!user?.token && !!chatId,
+    });
 
-    const [balance, updBalance] = swr(
-        () => user?.token && chatId ? `/api/rest/wallet?tgChatId=${chatId}` : null,
-        0,
-        { key: "balance" }
-    );
+    const { data: balance = 0 } = useQuery({
+        queryKey: ['wallet', chatId],
+        queryFn: async () => {
+            const response = await apiClient.get(`/api/rest/wallet?tgChatId=${chatId}`);
+            return response;
+        },
+        enabled: !!user?.token && !!chatId,
+    });
 
-    const [userdata] = swr(
-        () => user?.tgUserId ? `/api/rest/users/telegram/${user.tgUserId}/profile` : null,
-        0,
-        { key: "userdata" }
-    );
+    const { data: userdata = {} } = useQuery({
+        queryKey: ['user-profile', user?.tgUserId],
+        queryFn: async () => {
+            const response = await apiClient.get(`/api/rest/users/telegram/${user.tgUserId}/profile`);
+            return response;
+        },
+        enabled: !!user?.tgUserId,
+    });
 
-    const [wallets, updateWallets] = swr(
-        () => user?.token ? "/api/rest/wallet" : null,
-        [],
-        { key: "wallets" }
-    );
+    const { data: wallets = [] } = useQuery({
+        queryKey: ['wallets'],
+        queryFn: async () => {
+            const response = await apiClient.get('/api/rest/wallet');
+            return response;
+        },
+        enabled: !!user?.token,
+    });
+
+    const queryClient = useQueryClient();
 
     const updateWalletBalance = (currencyOfCommunityTgChatId: string, amountChange: number) => {
-        // Optimistically update wallet balance without reloading
-        if (!Array.isArray(wallets)) return;
-        
-        const updatedWallets = wallets.map((wallet) => {
-            if (wallet.meta?.currencyOfCommunityTgChatId === currencyOfCommunityTgChatId) {
-                return {
-                    ...wallet,
-                    value: (wallet.value || 0) + amountChange,
-                };
-            }
-            return wallet;
+        // Optimistically update wallet balance using React Query's cache
+        queryClient.setQueryData(['wallets'], (oldWallets: any) => {
+            if (!Array.isArray(oldWallets)) return oldWallets;
+            
+            return oldWallets.map((wallet) => {
+                if (wallet.meta?.currencyOfCommunityTgChatId === currencyOfCommunityTgChatId) {
+                    return {
+                        ...wallet,
+                        value: (wallet.value || 0) + amountChange,
+                    };
+                }
+                return wallet;
+            });
         });
-        updateWallets(updatedWallets, false); // Update without revalidation
     };
 
     const updateAll = async () => {
         // Close the active withdraw slider after successful update
         setActiveWithdrawPost(null);
+        // Invalidate queries to refresh data
+        await queryClient.invalidateQueries({ queryKey: ['wallets'] });
+        await queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
+    };
+
+    const updBalance = () => {
+        // Invalidate balance query to refresh
+        queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
     };
 
     const chatNameVerb = String(chat?.title ?? "");

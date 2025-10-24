@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { swr } from "@lib/swr";
-import Axios from "axios";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
 import { useTranslations } from 'next-intl';
 const { round } = Math;
 
@@ -30,12 +30,22 @@ export const useComments = (
     const [delta, setDelta] = useState(0);
     const [error, setError] = useState("");
 
-    const [comments] = swr(getCommentsApiPath, [], {
-        revalidateOnFocus: false,
+    const { data: comments = [] } = useQuery({
+        queryKey: ['comments', getCommentsApiPath],
+        queryFn: async () => {
+            const response = await apiClient.get(getCommentsApiPath);
+            return response;
+        },
+        refetchOnWindowFocus: false,
     });
 
-    const [free] = swr(getFreeBalanceApiPath, {}, {
-        revalidateOnFocus: false,
+    const { data: free = {} } = useQuery({
+        queryKey: ['free-balance', getFreeBalanceApiPath],
+        queryFn: async () => {
+            const response = await apiClient.get(getFreeBalanceApiPath);
+            return response;
+        },
+        refetchOnWindowFocus: false,
     });
 
     const currentPlus = round(
@@ -74,14 +84,14 @@ export const useComments = (
         maxMinus: free?.minus || 0,
         commentAdd: async (directionPlus: boolean) => {
             try {
-                const response = await Axios.post("/api/rest/transactions", {
+                const response = await apiClient.post("/api/rest/transactions", {
                     amount: Math.abs(delta),
                     directionPlus,
                     comment: comment.trim(),
                     forPublicationSlug: publicationSlug,
                     forTransactionId: transactionId,
                 });
-                if (response.data.success) {
+                if (response.success) {
                     setComment("");
                     setDelta(0);
                     setError("");
@@ -91,7 +101,7 @@ export const useComments = (
                     }
                 }
             } catch (err: any) {
-                setError(err.response?.data?.message || t('errorCommenting'));
+                setError(err.message || t('errorCommenting'));
             }
         },
         error,
