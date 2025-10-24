@@ -14,7 +14,7 @@ export interface AuthResponse extends ApiResponse {
   success: true;
   data: {
     user: User;
-    token: string;
+    token?: string; // Optional since we use cookie-based auth
     hasPendingCommunities: boolean;
   };
 }

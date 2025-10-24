@@ -53,6 +53,17 @@ const env = envSchema.parse({
   NEXT_PUBLIC_ENABLE_DEBUG: process.env.NEXT_PUBLIC_ENABLE_DEBUG,
 });
 
+// Debug logging for environment variables
+console.log('🔧 Environment Variables Debug:');
+console.log('  NODE_ENV:', process.env.NODE_ENV);
+console.log('  NEXT_PUBLIC_API_URL (raw):', process.env.NEXT_PUBLIC_API_URL);
+console.log('  NEXT_PUBLIC_API_URL (parsed):', env.NEXT_PUBLIC_API_URL);
+console.log('  APP_URL:', env.APP_URL);
+console.log('  NEXT_PUBLIC_BOT_USERNAME:', env.NEXT_PUBLIC_BOT_USERNAME);
+console.log('  BOT_TOKEN:', env.BOT_TOKEN ? '[SET]' : '[NOT SET]');
+console.log('  S3_ACCESS_KEY_ID:', env.S3_ACCESS_KEY_ID ? '[SET]' : '[NOT SET]');
+console.log('  S3_SECRET_ACCESS_KEY:', env.S3_SECRET_ACCESS_KEY ? '[SET]' : '[NOT SET]');
+
 // Configuration object with computed values
 export const config = {
   // Application

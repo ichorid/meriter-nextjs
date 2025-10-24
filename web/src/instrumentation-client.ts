@@ -1,16 +1,23 @@
 // This file is normally used for setting up analytics and other
 // services that require one-time initialization on the client.
 
-import { retrieveLaunchParams } from '@telegram-apps/sdk-react';
+import { retrieveLaunchParams, isTMA } from '@telegram-apps/sdk-react';
 import { init } from './core/init';
 import { mockEnv } from './mockEnv';
 import { config } from './config';
 
-mockEnv().then(() => {
+mockEnv().then(async () => {
   try {
     let launchParams;
     try {
-      launchParams = retrieveLaunchParams();
+      // Check if we're in Telegram environment first
+      const isInTelegram = await isTMA('complete');
+      
+      if (isInTelegram) {
+        launchParams = retrieveLaunchParams();
+      } else {
+        throw new Error('Not in Telegram environment');
+      }
     } catch (e) {
       // Not in Telegram environment, use defaults
       console.log('Not in Telegram environment, using default config');

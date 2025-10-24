@@ -69,7 +69,11 @@ export async function init(options: {
             tp = themeParamsState();
           } else {
             firstThemeSent = true;
-            tp ||= retrieveLaunchParams().tgWebAppThemeParams;
+            try {
+              tp ||= retrieveLaunchParams().tgWebAppThemeParams;
+            } catch (error) {
+              console.warn('Failed to retrieve launch params for theme:', error);
+            }
           }
           return emitEvent('theme_changed', { theme_params: tp });
         }
@@ -90,7 +94,21 @@ export async function init(options: {
 
   // Mount all components used in the project.
   mountBackButton.ifAvailable();
-  restoreInitData();
+  
+  // Only restore init data if we're in Telegram environment or mocking
+  try {
+    const isInTelegram = await isTMA('complete');
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldMock = urlParams.get('mock-telegram') === 'true';
+    
+    if (isInTelegram || shouldMock) {
+      restoreInitData();
+    } else {
+      console.log('🌐 Skipping restoreInitData - not in Telegram environment');
+    }
+  } catch (error) {
+    console.warn('⚠️ Failed to restore init data:', error);
+  }
 
   // Only mount Telegram-specific components if we're in Telegram environment
   try {

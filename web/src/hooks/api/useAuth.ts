@@ -32,14 +32,6 @@ export function useTelegramAuth() {
     onSuccess: (data) => {
       console.log('🔐 useTelegramAuth: Mutation successful, received data:', data);
       
-      // Store auth token if available
-      if (data && data.token && data.token.trim() !== '') {
-        console.log('🔐 useTelegramAuth: Storing auth token:', data.token);
-        localStorage.setItem('auth_token', data.token);
-      } else {
-        console.warn('🔐 useTelegramAuth: No token provided by server, authentication may use session-based auth');
-      }
-      
       // Update user cache
       if (data && data.user) {
         console.log('🔐 useTelegramAuth: Updating user cache:', data.user);
@@ -65,14 +57,6 @@ export function useTelegramWebAppAuth() {
     mutationFn: (initData: string) => authApi.authenticateWithTelegramWebApp(initData),
     onSuccess: (data) => {
       console.log('🔐 useTelegramWebAppAuth: Mutation successful, received data:', data);
-      
-      // Store auth token if available
-      if (data && data.token && data.token.trim() !== '') {
-        console.log('🔐 useTelegramWebAppAuth: Storing auth token:', data.token);
-        localStorage.setItem('auth_token', data.token);
-      } else {
-        console.warn('🔐 useTelegramWebAppAuth: No token provided by server, authentication may use session-based auth');
-      }
       
       // Update user cache
       if (data && data.user) {
@@ -100,9 +84,6 @@ export function useLogout() {
     onSuccess: () => {
       console.log('🔐 useLogout: Logout successful, clearing all auth data');
       
-      // Clear auth token
-      localStorage.removeItem('auth_token');
-      
       // Clear all authentication-related localStorage items
       const authKeys = ['auth_token', 'user', 'auth_user', 'telegram_user', 'jwt'];
       authKeys.forEach(key => {
@@ -127,7 +108,6 @@ export function useLogout() {
       
       // Still clear local data even if server logout fails
       console.log('🔐 useLogout: Proceeding with local cleanup despite API error');
-      localStorage.removeItem('auth_token');
       
       // Clear all authentication-related localStorage items
       const authKeys = ['auth_token', 'user', 'auth_user', 'telegram_user', 'jwt'];
@@ -202,13 +182,11 @@ export function useRefreshToken() {
   return useMutation({
     mutationFn: () => authApi.refreshToken(),
     onSuccess: (data) => {
-      // Store new auth token
-      localStorage.setItem('auth_token', data.token);
+      // Note: Token refresh is handled by cookies, no localStorage needed
+      console.log('🔐 Token refresh successful');
     },
     onError: (error) => {
       console.error('Token refresh error:', error);
-      // Clear auth token on refresh failure
-      localStorage.removeItem('auth_token');
     },
   });
 }

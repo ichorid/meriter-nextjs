@@ -12,7 +12,6 @@ import type { User } from '@/types/entities';
 interface TelegramAuthServerResponse {
   success: boolean;
   user?: User;
-  token?: string;
   hasPendingCommunities?: boolean;
   error?: string;
 }
@@ -29,7 +28,7 @@ export const authApi = {
   /**
    * Authenticate with Telegram widget
    */
-  async authenticateWithTelegram(user: TelegramAuthRequest): Promise<AuthResponse['data']> {
+  async authenticateWithTelegram(user: TelegramAuthRequest): Promise<{ user: User; hasPendingCommunities: boolean }> {
     try {
       console.log('🔐 Auth API: Starting Telegram authentication with user:', user);
       const response = await apiClient.postRaw<TelegramAuthServerResponse>('/api/rest/telegram-auth', user);
@@ -52,7 +51,6 @@ export const authApi = {
       
       const authData = {
         user: response.data.user,
-        token: response.data.token || '', // The server might not be returning a token
         hasPendingCommunities: response.data.hasPendingCommunities || false
       };
       
@@ -69,7 +67,7 @@ export const authApi = {
   /**
    * Authenticate with Telegram Web App
    */
-  async authenticateWithTelegramWebApp(initData: string): Promise<AuthResponse['data']> {
+  async authenticateWithTelegramWebApp(initData: string): Promise<{ user: User; hasPendingCommunities: boolean }> {
     try {
       console.log('🔐 Auth API: Starting Telegram Web App authentication with initData:', initData);
       const response = await apiClient.postRaw<TelegramAuthServerResponse>('/api/rest/telegram-auth/webapp', { initData });
@@ -92,7 +90,6 @@ export const authApi = {
       
       const authData = {
         user: response.data.user,
-        token: response.data.token || '', // The server might not be returning a token
         hasPendingCommunities: response.data.hasPendingCommunities || false
       };
       
@@ -114,13 +111,8 @@ export const authApi = {
       console.log('🔐 Auth API: Starting logout...');
       await apiClient.post('/api/rest/telegram-auth/logout');
       console.log('🔐 Auth API: Logout API call successful');
-      apiClient.clearAuthToken();
-      console.log('🔐 Auth API: Auth token cleared');
     } catch (error) {
       console.error('🔐 Auth API: Logout API call failed:', error);
-      // Still clear the auth token even if the API call fails
-      apiClient.clearAuthToken();
-      console.log('🔐 Auth API: Auth token cleared despite API error');
       throw error;
     }
   },

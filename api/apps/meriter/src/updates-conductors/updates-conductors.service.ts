@@ -151,19 +151,38 @@ export class UpdatesConductorsService {
     return;
   }
 
-  setFrequency(actorUri: string, updateFrequencyMs: number) {
+  async setFrequency(actorUri: string, updateFrequencyMs: number) {
+    this.logger.log(`Setting frequency for actorUri: ${actorUri}, updateFrequencyMs: ${updateFrequencyMs}`);
+    
     const nextUpdateAfter = new Date(
       Date.now() + parseInt(String(updateFrequencyMs ?? 1000 * 60)),
     );
-    return this.model.updateMany(
-      { actorUri },
-      { updateFrequencyMs, nextUpdateAfter },
-      { upsert: true },
-    );
+    
+    try {
+      const result = await this.model.updateMany(
+        { actorUri },
+        { updateFrequencyMs, nextUpdateAfter },
+        { upsert: true },
+      );
+      
+      this.logger.log(`Update result:`, result);
+      return { success: true, message: 'Frequency updated successfully' };
+    } catch (error) {
+      this.logger.error(`Failed to update frequency:`, error);
+      throw error;
+    }
   }
   async getFrequency(actorUri: string) {
-    const fr = await this.model.findOne({ actorUri });
-    if (!fr) this.logger.warn('freq not found for ',actorUri)
-    return fr?.updateFrequencyMs;
+    this.logger.log(`Getting frequency for actorUri: ${actorUri}`);
+    
+    const fr = await this.model.findOne({ actorUri }).select('updateFrequencyMs').lean();
+    
+    if (!fr) {
+      this.logger.warn('freq not found for ', actorUri);
+      return null;
+    }
+    
+    this.logger.log(`Found frequency: ${fr.updateFrequencyMs} for actorUri: ${actorUri}`);
+    return fr.updateFrequencyMs;
   }
 }

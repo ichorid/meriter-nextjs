@@ -17,22 +17,40 @@ export class RestFreqController {
   constructor(private updatesConductorsService: UpdatesConductorsService) {}
 
   @Get()
-  rest_getfrequency(@Req() req) {
-    return successResponse(this.updatesConductorsService.getFrequency(
-      'actor.user://telegram' + req.user.tgUserId,
-    ));
+  async rest_getfrequency(@Req() req) {
+    console.log('GET /api/rest/freq - Request received');
+    console.log('User:', req.user);
+    
+    const actorUri = 'actor.user://telegram' + req.user.tgUserId;
+    console.log('Actor URI:', actorUri);
+    
+    const frequency = await this.updatesConductorsService.getFrequency(actorUri);
+    console.log('Frequency result:', frequency);
+    
+    return successResponse(frequency);
   }
 
   @Post()
-  rest_setfrequency(
+  async rest_setfrequency(
     @Req() req,
     @Body('updateFrequencyMs') updateFrequencyMs: number,
   ) {
+    console.log('POST /api/rest/freq - Request received');
+    console.log('User:', req.user);
+    console.log('updateFrequencyMs:', updateFrequencyMs);
+    
     if (!updateFrequencyMs) throw 'no frequency given';
     if (!req.user?.tgUserId) throw 'no user given to update freq';
-    return successResponse(this.updatesConductorsService.setFrequency(
-      'actor.user://telegram' + req.user.tgUserId,
+    
+    const actorUri = 'actor.user://telegram' + req.user.tgUserId;
+    console.log('Actor URI:', actorUri);
+    
+    const result = await this.updatesConductorsService.setFrequency(
+      actorUri,
       updateFrequencyMs,
-    ));
+    );
+    
+    console.log('Set frequency result:', result);
+    return successResponse(result);
   }
 }

@@ -7,6 +7,8 @@ export class ApiClient {
   private client: AxiosInstance;
 
   constructor(baseURL = '', config: RequestConfig = {}) {
+    console.log('🌐 API Client initialized with baseURL:', baseURL);
+    
     this.client = axios.create({
       baseURL,
       timeout: config.timeout || 10000,
@@ -21,16 +23,10 @@ export class ApiClient {
   }
 
   private setupInterceptors(): void {
-    // Request interceptor
+    // Request interceptor - no longer needed for auth token injection
+    // Cookies are automatically sent with withCredentials: true
     this.client.interceptors.request.use(
-      (config) => {
-        // Add auth token if available
-        const token = this.getAuthToken();
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
+      (config) => config,
       (error) => Promise.reject(error)
     );
 
@@ -42,14 +38,6 @@ export class ApiClient {
         return Promise.reject(apiError);
       }
     );
-  }
-
-  private getAuthToken(): string | null {
-    // Get token from localStorage or cookie
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('auth_token') || null;
-    }
-    return null;
   }
 
   private transformError(error: AxiosError): ApiError {
@@ -84,12 +72,16 @@ export class ApiClient {
   }
 
   async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    console.log('🌐 API GET request:', url);
     const response = await this.client.get<T>(url, config);
+    console.log('🌐 API GET response:', response.status, response.data);
     return response.data;
   }
 
   async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    console.log('🌐 API POST request:', url, 'Data:', data);
     const response = await this.client.post<T>(url, data, config);
+    console.log('🌐 API POST response:', response.status, response.data);
     return response.data;
   }
 
@@ -111,18 +103,6 @@ export class ApiClient {
   // Method for handling responses that need custom processing (like auth responses)
   async postRaw<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return await this.client.post<T>(url, data, config);
-  }
-
-  setAuthToken(token: string): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('auth_token', token);
-    }
-  }
-
-  clearAuthToken(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
-    }
   }
 }
 
