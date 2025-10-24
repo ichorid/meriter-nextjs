@@ -7,14 +7,15 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { useDeepLinkHandler } from '@shared/lib/deep-link-handler';
-import { useTelegramWebApp } from '@shared/hooks/useTelegramWebApp';
+import { useLaunchParams } from '@telegram-apps/sdk-react';
 
 const PageSetupCommunity = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const t = useTranslations('pages');
     const locale = useLocale();
-    const { startParam } = useTelegramWebApp();
+    const launchParams = useLaunchParams();
+    const startParam = launchParams.tgWebAppStartParam;
     const { handleDeepLink } = useDeepLinkHandler(router, searchParams, startParam);
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);

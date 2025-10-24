@@ -1,11 +1,12 @@
 'use client';
 
 import { useTheme } from '../lib/theme-provider';
-import { useTelegramWebApp } from '../hooks/useTelegramWebApp';
+import { initDataRaw, useSignal } from '@telegram-apps/sdk-react';
 
 export function ThemeToggle() {
     const { theme, setTheme, resolvedTheme } = useTheme();
-    const { isInTelegram } = useTelegramWebApp();
+    const rawData = useSignal(initDataRaw);
+    const isInTelegram = !!rawData;
 
     const cycleTheme = () => {
         if (isInTelegram) {

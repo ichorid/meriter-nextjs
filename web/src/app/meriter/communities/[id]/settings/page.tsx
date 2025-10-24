@@ -8,6 +8,7 @@ import { nanoid } from "nanoid";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from 'next-intl';
+import { initDataRaw, useSignal, backButton } from '@telegram-apps/sdk-react';
 
 import { DivFade } from '@shared/components/transitions';
 import Page from '@shared/components/page';
@@ -27,6 +28,10 @@ const CommunitySettingsPage = () => {
     const params = useParams();
     const chatId = params.id as string;
     const t = useTranslations('pages');
+    
+    // Telegram SDK integration
+    const rawData = useSignal(initDataRaw);
+    const isInTelegram = !!rawData;
 
     // Form state
     const [formData, setFormData] = useState({
@@ -54,6 +59,23 @@ const CommunitySettingsPage = () => {
             router.push("/meriter/login?returnTo=/meriter/manage");
         }
     }, [user, router]);
+
+    // Telegram BackButton integration
+    useEffect(() => {
+        if (isInTelegram) {
+            const handleBack = () => {
+                router.push("/meriter/manage");
+            };
+            
+            backButton.show();
+            const cleanup = backButton.onClick(handleBack);
+            
+            return () => {
+                backButton.hide();
+                cleanup();
+            };
+        }
+    }, [isInTelegram, router]);
 
     // Load community data
     useEffect(() => {
@@ -424,9 +446,11 @@ const CommunitySettingsPage = () => {
                     )}
                     
                     <div className="flex gap-4">
-                        <Link href="/meriter/manage" className="btn btn-ghost">
-                            {t('communitySettings.cancel')}
-                        </Link>
+                        {!isInTelegram && (
+                            <Link href="/meriter/manage" className="btn btn-ghost">
+                                {t('communitySettings.cancel')}
+                            </Link>
+                        )}
                         <button
                             className="btn btn-primary flex-1"
                             disabled={!isValid || saving}

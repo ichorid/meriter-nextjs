@@ -12,6 +12,7 @@ const nextConfig = {
             bodySizeLimit: '2mb',
         },
     },
+    transpilePackages: ['@telegram-apps/sdk-react', '@telegram-apps/telegram-ui'],
 };
 
 module.exports = withNextIntl(nextConfig);

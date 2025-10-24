@@ -3,6 +3,13 @@
 @tailwind utilities;
 
 @import 'rc-slider/assets/index.css';
+@import '@telegram-apps/telegram-ui/dist/styles.css';
+
+@layer base {
+  body {
+    @apply bg-base-200 text-base-content;
+  }
+}
 
 @layer base {
   body {

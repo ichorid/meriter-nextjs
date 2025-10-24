@@ -1,29 +1,30 @@
 'use client';
 
-import { useTelegramWebApp } from '@shared/hooks/useTelegramWebApp';
+import { initDataRaw, useSignal, hapticFeedback } from '@telegram-apps/sdk-react';
 
 export const BarVote = ({ onPlus, onMinus, plus, minus, onLeft, commentCount = 0 }) => {
-    const { hapticFeedback, isInTelegram } = useTelegramWebApp();
+    const rawData = useSignal(initDataRaw);
+    const isInTelegram = !!rawData;
     
     const handleMinus = (e) => {
         e.stopPropagation();
-        if (isInTelegram && hapticFeedback) {
-            hapticFeedback.impact('light');
+        if (isInTelegram) {
+            hapticFeedback.impactOccurred('light');
         }
         onMinus();
     };
     
     const handlePlus = (e) => {
         e.stopPropagation();
-        if (isInTelegram && hapticFeedback) {
-            hapticFeedback.impact('light');
+        if (isInTelegram) {
+            hapticFeedback.impactOccurred('light');
         }
         onPlus();
     };
     
     const handleCommentClick = () => {
-        if (isInTelegram && hapticFeedback) {
-            hapticFeedback.impact('soft');
+        if (isInTelegram) {
+            hapticFeedback.impactOccurred('soft');
         }
         onLeft();
     };

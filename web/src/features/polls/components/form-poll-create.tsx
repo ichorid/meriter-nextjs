@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { apiPOST } from "@shared/lib/fetch";
 import { A } from "@shared/components/simple/simple-elements";
 import { useTranslations } from 'next-intl';
-import { useTelegramWebApp } from '@shared/hooks/useTelegramWebApp';
+import { initDataRaw, useSignal, hapticFeedback, mainButton, backButton } from '@telegram-apps/sdk-react';
 
 interface IPollOption {
     id: string;
@@ -25,7 +25,9 @@ export const FormPollCreate = ({
     onCancel,
 }: IFormPollCreateProps) => {
     const t = useTranslations('polls');
-    const { isInTelegram, webApp, hapticFeedback } = useTelegramWebApp();
+    const rawData = useSignal(initDataRaw);
+    const isInTelegram = !!rawData;
+    
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [options, setOptions] = useState<IPollOption[]>([
@@ -88,15 +90,15 @@ export const FormPollCreate = ({
 
     const handleCreate = useCallback(async () => {
         if (!validate()) {
-            hapticFeedback?.notification('error');
+            hapticFeedback.notificationOccurred('error');
             return;
         }
 
         setIsCreating(true);
         setError("");
         
-        if (isInTelegram && webApp) {
-            webApp.MainButton.showProgress();
+        if (isInTelegram) {
+            mainButton.setParams({ isLoaderVisible: true });
         }
 
         try {
@@ -141,48 +143,53 @@ export const FormPollCreate = ({
 
             if (response.error) {
                 setError(response.error);
-                hapticFeedback?.notification('error');
+                hapticFeedback.notificationOccurred('error');
             } else if (response._id) {
-                hapticFeedback?.notification('success');
+                hapticFeedback.notificationOccurred('success');
                 onSuccess && onSuccess(response._id);
             }
         } catch (err) {
             console.error('📊 Poll creation error:', err);
             const errorMessage = err.response?.data?.message || err.message || t('errorCreating');
             setError(errorMessage);
-            hapticFeedback?.notification('error');
+            hapticFeedback.notificationOccurred('error');
         } finally {
             setIsCreating(false);
-            if (isInTelegram && webApp) {
-                webApp.MainButton.hideProgress();
+            if (isInTelegram) {
+                mainButton.setParams({ isLoaderVisible: false });
             }
         }
-    }, [title, description, options, timeValue, timeUnit, selectedWallet, isInTelegram, webApp, hapticFeedback, t, onSuccess]);
+    }, [title, description, options, timeValue, timeUnit, selectedWallet, isInTelegram, t, onSuccess]);
 
     // Telegram MainButton integration
     useEffect(() => {
-        if (isInTelegram && webApp) {
-            webApp.MainButton.setText(t('createPoll'));
-            webApp.MainButton.show();
-            webApp.MainButton.enable();
-            webApp.MainButton.onClick(handleCreate);
+        if (isInTelegram) {
+            mainButton.setParams({ 
+                text: t('createPoll'),
+                isVisible: true, 
+                isEnabled: true 
+            });
+            const cleanup = mainButton.onClick(handleCreate);
             
             // Setup back button if cancel is available
             if (onCancel) {
-                webApp.BackButton.show();
-                webApp.BackButton.onClick(onCancel);
+                backButton.show();
+                const backCleanup = backButton.onClick(onCancel);
+                
+                return () => {
+                    mainButton.setParams({ isVisible: false });
+                    cleanup();
+                    backButton.hide();
+                    backCleanup();
+                };
             }
             
             return () => {
-                webApp.MainButton.hide();
-                webApp.MainButton.offClick(handleCreate);
-                if (onCancel) {
-                    webApp.BackButton.hide();
-                    webApp.BackButton.offClick(onCancel);
-                }
+                mainButton.setParams({ isVisible: false });
+                cleanup();
             };
         }
-    }, [isInTelegram, webApp, handleCreate, onCancel, t]);
+    }, [isInTelegram, handleCreate, onCancel, t]);
 
     return (
         <div className="card bg-base-100 shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">

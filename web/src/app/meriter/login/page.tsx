@@ -6,7 +6,7 @@ import { swr } from '@lib/swr';
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
-import { useTelegramWebApp } from '@shared/hooks/useTelegramWebApp';
+import { initDataRaw, useLaunchParams, useSignal } from '@telegram-apps/sdk-react';
 import { useDeepLinkHandler } from '@shared/lib/deep-link-handler';
 
 const PageMeriterLogin = () => {
@@ -14,7 +14,10 @@ const PageMeriterLogin = () => {
     const searchParams = useSearchParams();
     const t = useTranslations('login');
     const locale = useLocale();
-    const { isInTelegram, initData, startParam } = useTelegramWebApp();
+    const launchParams = useLaunchParams();
+    const rawData = useSignal(initDataRaw);
+    const isInTelegram = !!rawData;
+    const startParam = launchParams.tgWebAppStartParam;
     const { handleDeepLink } = useDeepLinkHandler(router, searchParams, startParam);
     const [user] = swr("/api/rest/getme", { init: true });
     const [authError, setAuthError] = useState<string | null>(null);
@@ -83,11 +86,11 @@ const PageMeriterLogin = () => {
 
     // Auto-authenticate if opened in Telegram Web App
     useEffect(() => {
-        if (isInTelegram && initData && !webAppAuthAttempted.current && !user?.token) {
+        if (isInTelegram && rawData && !webAppAuthAttempted.current && !user?.token) {
             webAppAuthAttempted.current = true;
-            authenticateWithTelegramWebApp(initData);
+            authenticateWithTelegramWebApp(rawData);
         }
-    }, [isInTelegram, initData, user?.token]);
+    }, [isInTelegram, rawData, user?.token]);
 
     useEffect(() => {
         console.log('🟢 Login page mounted. BOT_USERNAME:', BOT_USERNAME);
