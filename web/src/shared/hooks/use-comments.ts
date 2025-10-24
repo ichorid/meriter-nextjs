@@ -28,98 +28,89 @@ export const useComments = (
 
     const [plusSign, setPlusSign] = useState(true);
     const [delta, setDelta] = useState(0);
-    const [deltaPlus, setDeltaPlus] = useState(0);
-    const [deltaMinus, setDeltaMinus] = useState(0);
-    const [comments, upd] = swr(() => showComments && getCommentsApiPath, [], {
-        key: "transactions",
-    });
-    
-    // Ensure comments is always an array
-    const safeComments = comments || [];
-    const [free, updFree] = swr(getFreeBalanceApiPath, 0, { key: "free" });
     const [error, setError] = useState("");
-    const maxPlus = free + balance;
-    const maxMinus = balance;
-    const hasPoints = maxPlus > 0;
-    const [amount, setAmount] = useState(Math.min(1, maxPlus));
-    const absAmount = Math.abs(amount);
+
+    const [comments] = swr(getCommentsApiPath, [], {
+        revalidateOnFocus: false,
+    });
+
+    const [free] = swr(getFreeBalanceApiPath, {}, {
+        revalidateOnFocus: false,
+    });
+
+    const currentPlus = round(
+        (plusGiven + (delta as any)) || 0
+    );
+    const currentMinus = round(
+        (minusGiven + (delta as any)) || 0
+    );
 
     const showPlus = () => {
         setError("");
-        setAmount(1);
-        setPlusSign(true);
+        setDelta(1);
         setShowComments(true);
-        setActiveComment(uid);
+        if (activeCommentHook) {
+            activeCommentHook[1](uid);
+        }
     };
     const showMinus = () => {
-        setAmount(-1);
-        setPlusSign(false);
+        setError("");
+        setDelta(-1);
         setShowComments(true);
-        setActiveComment(uid);
-    };
-    const [activeComment, setActiveComment] = activeCommentHook;
-
-    const commentAdd = (plusSignRewrite: boolean | undefined = undefined) => {
-        if (!comment) return setError(t('enterComment'));
-        if (!amount) return setError(t('enterPositiveAmount'));
-
-        setDelta(delta + (plusSign ? absAmount : -absAmount));
-        plusSign && setDeltaPlus(deltaPlus + absAmount);
-        !plusSign && setDeltaMinus(deltaMinus + absAmount);
-        Axios.post("/api/rest/transactions", {
-            amountPoints: absAmount,
-            comment,
-            inPublicationSlug: publicationSlug,
-            [forTransaction
-                ? "forTransactionId"
-                : "forPublicationSlug"]: forTransaction
-                ? transactionId
-                : publicationSlug,
-
-            directionPlus: plusSignRewrite ?? plusSign,
-        })
-            .then((d) => d.data)
-            .then((d) => {
-                upd([...comments, { comment }]);
-                setActiveComment(null);
-                updBalance();
-            });
-        setComment("");
-        setAmount(Math.min(1, maxPlus));
+        if (activeCommentHook) {
+            activeCommentHook[1](uid);
+        }
     };
 
-    const currentPlus = round(
-        (plusGiven + (deltaPlus as any)) || 0
-    );
-    const currentMinus = round(
-        (minusGiven + (deltaMinus as any)) || 0
-    );
     const formCommentProps = {
-        key: uid,
         uid,
-        hasPoints,
+        hasPoints: (free?.plus || 0) > 0,
         comment,
         setComment,
-        amount,
-        setAmount,
-        free,
-        maxPlus,
-        maxMinus,
-        commentAdd,
+        amount: Math.abs(delta),
+        setAmount: setDelta,
+        free: free?.plus || 0,
+        maxPlus: free?.plus || 0,
+        maxMinus: free?.minus || 0,
+        commentAdd: async (directionPlus: boolean) => {
+            try {
+                const response = await Axios.post("/api/rest/transactions", {
+                    amount: Math.abs(delta),
+                    directionPlus,
+                    comment: comment.trim(),
+                    forPublicationSlug: publicationSlug,
+                    forTransactionId: transactionId,
+                });
+                if (response.data.success) {
+                    setComment("");
+                    setDelta(0);
+                    setError("");
+                    updBalance();
+                    if (activeCommentHook) {
+                        activeCommentHook[1](null);
+                    }
+                }
+            } catch (err: any) {
+                setError(err.response?.data?.message || t('errorCommenting'));
+            }
+        },
         error,
         onClose: () => {
-            activeCommentHook[1](null);
+            if (activeCommentHook) {
+                activeCommentHook[1](null);
+            }
         },
     };
 
     return {
-        comments: safeComments,
-        showPlus,
-        setShowComments,
+        comments,
+        free,
         currentPlus,
         currentMinus,
+        showPlus,
         showMinus,
         showComments,
+        setShowComments,
         formCommentProps,
     };
 };

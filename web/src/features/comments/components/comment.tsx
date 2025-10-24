@@ -1,10 +1,10 @@
 'use client';
 
 import { useComments } from "../hooks/use-comments";
-import { CardCommentVote } from "./card-comment-vote";
+import { CardCommentVote } from "@shared/components/card-comment-vote";
 import { telegramGetAvatarLink, telegramGetAvatarLinkUpd } from "@lib/telegram";
 import { BarVote } from "@shared/components/bar-vote";
-import { BarWithdraw } from "@features/wallet/components/bar-withdraw";
+import { BarWithdraw } from "@shared/components/bar-withdraw";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { FormComment } from "./form-comment";
 import { classList } from "@lib/classList";
@@ -13,7 +13,7 @@ import { GLOBAL_FEED_TG_CHAT_ID } from "@config/meriter";
 import { swr } from "@lib/swr";
 import Axios from "axios";
 import { Spinner } from "@shared/components/misc";
-import { FormWithdraw } from "@features/wallet/components/form-withdraw";
+import { FormWithdraw } from "@shared/components/form-withdraw";
 import { useTranslations } from 'next-intl';
 
 interface CommentProps {

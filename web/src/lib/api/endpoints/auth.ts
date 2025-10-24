@@ -55,4 +55,3 @@ export const authApi = {
     return response;
   },
 };
-

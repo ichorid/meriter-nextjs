@@ -1,10 +1,11 @@
 // Telegram utility functions
+import { config } from '@/config';
 
 const isS3Enabled = () => {
-    return process.env.NEXT_PUBLIC_S3_ENABLED !== 'false';
+    return config.s3.enabled;
 };
 
-const telegramCdnUrl = process.env.NEXT_PUBLIC_TELEGRAM_AVATAR_BASE_URL || 'https://telegram.hb.bizmrg.com';
+const telegramCdnUrl = config.telegram.avatarBaseUrl;
 
 export function telegramGetAvatarLink(chat_id: string | number) {
     if (!chat_id || chat_id == "undefined" || !isS3Enabled()) return "";

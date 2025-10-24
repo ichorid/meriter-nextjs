@@ -1,10 +1,11 @@
 import { S3Client } from '@aws-sdk/client-s3'
 import { Upload } from '@aws-sdk/lib-storage'
 import stream from 'stream'
+import { config } from '@/config'
 
 // Check if S3 is configured
 const isS3Enabled = () => {
-    return !!(process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY);
+    return config.s3.enabled;
 };
 
 export const uploadStream = ({ Bucket, Key }: { Bucket: string; Key: string }) => {
@@ -19,14 +20,14 @@ export const uploadStream = ({ Bucket, Key }: { Bucket: string; Key: string }) =
         };
     }
 
-    const s3 = new S3Client({
-        credentials: {
-            accessKeyId: process.env.S3_ACCESS_KEY_ID!,
-            secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
-        },
-        endpoint: process.env.S3_ENDPOINT || 'https://hb.bizmrg.com',
-        region: process.env.S3_REGION || 'ru-msk',
-    })
+            const s3 = new S3Client({
+                credentials: {
+                    accessKeyId: config.s3.accessKeyId!,
+                    secretAccessKey: config.s3.secretAccessKey!,
+                },
+                endpoint: config.s3.endpoint,
+                region: config.s3.region,
+            })
 
     const upload = new Upload({
         client: s3,

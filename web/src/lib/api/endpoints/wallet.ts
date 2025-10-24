@@ -23,7 +23,7 @@ export const walletApi = {
   async getBalance(currencyOfCommunityTgChatId?: string): Promise<number> {
     const params = currencyOfCommunityTgChatId ? { currencyOfCommunityTgChatId } : {};
     const response = await apiClient.get<number>('/api/rest/wallet', { params });
-    return response.data;
+    return response;
   },
 
   /**
@@ -44,7 +44,7 @@ export const walletApi = {
    */
   async getTransactionUpdates(): Promise<Transaction[]> {
     const response = await apiClient.get<Transaction[]>('/api/rest/transactions/updates');
-    return response.data;
+    return response;
   },
 
   /**
@@ -106,6 +106,6 @@ export const walletApi = {
   async getFreeBalance(currencyOfCommunityTgChatId?: string): Promise<number> {
     const params = currencyOfCommunityTgChatId ? { currencyOfCommunityTgChatId } : {};
     const response = await apiClient.get<number>('/api/rest/free', { params });
-    return response.data;
+    return response;
   },
 };

@@ -1,4 +1,5 @@
 import { mockTelegramEnv, isTMA, emitEvent } from '@telegram-apps/sdk-react';
+import { config } from './config';
 
 /**
  * Clear persisted Telegram SDK storage to prevent stale state after logout
@@ -40,7 +41,7 @@ function clearTelegramSDKStorage(): void {
 // It is important, to mock the environment only for development purposes. When building the
 // application, the code inside will be tree-shaken, so you will not see it in your final bundle.
 export async function mockEnv(): Promise<void> {
-  return process.env.NODE_ENV !== 'development'
+  return !config.app.isDevelopment
   ? undefined
   : isTMA('complete').then((isTma) => {
     // Only mock if we're not in a real Telegram environment AND we want to test Telegram features

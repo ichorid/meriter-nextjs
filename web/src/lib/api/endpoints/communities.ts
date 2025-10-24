@@ -33,7 +33,7 @@ export const communitiesApi = {
    */
   async getCommunity(id: string): Promise<Community> {
     const response = await apiClient.get<Community>(`/api/rest/communities/${id}`);
-    return response.data;
+    return response;
   },
 
   /**
@@ -41,7 +41,7 @@ export const communitiesApi = {
    */
   async createCommunity(data: CreateCommunityRequest): Promise<Community> {
     const response = await apiClient.post<Community>('/api/rest/communities', data);
-    return response.data;
+    return response;
   },
 
   /**
@@ -49,7 +49,7 @@ export const communitiesApi = {
    */
   async updateCommunity(id: string, data: Partial<CreateCommunityRequest>): Promise<Community> {
     const response = await apiClient.put<Community>(`/api/rest/communities/${id}`, data);
-    return response.data;
+    return response;
   },
 
   /**
@@ -64,7 +64,7 @@ export const communitiesApi = {
    */
   async getUserProfile(tgUserId: string): Promise<any> {
     const response = await apiClient.get(`/api/rest/users/telegram/${tgUserId}/profile`);
-    return response.data;
+    return response;
   },
 
   /**
@@ -74,6 +74,6 @@ export const communitiesApi = {
     const response = await apiClient.get<number>('/api/rest/rate', { 
       params: { fromCurrency } 
     });
-    return response.data;
+    return response;
   },
 };

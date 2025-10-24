@@ -17,7 +17,8 @@ import { PublicationCard } from "@/components/organisms/Publication";
 import { Comment } from "@features/comments/components/comment";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
-import { useMe, useMyPublications, useWallets, useTransactionUpdates, useUserProfile } from '@/hooks/api';
+import { useMyPublications, useWallets, useTransactionUpdates, useUserProfile } from '@/hooks/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface iCommunityProps {
     name: string;
@@ -40,8 +41,8 @@ const PageHome = () => {
     const t = useTranslations('home');
     const balance: number[] = [];
     
-    // Use React Query hooks
-    const { data: user, isLoading: userLoading } = useMe();
+    // Use centralized auth context
+    const { user, isLoading: userLoading, isAuthenticated } = useAuth();
     const { data: myPublications = [], isLoading: publicationsLoading } = useMyPublications({ skip: 0, limit: 100 });
     const { data: wallets = [], isLoading: walletsLoading } = useWallets();
     const { data: myUpdates = [], isLoading: updatesLoading } = useTransactionUpdates();
@@ -88,11 +89,11 @@ const PageHome = () => {
     const authCheckDone = useRef(false);
 
     useEffect(() => {
-        if (!authCheckDone.current && !userLoading && !user?.tgUserId) {
+        if (!authCheckDone.current && !userLoading && !isAuthenticated) {
             authCheckDone.current = true;
             router.push("/meriter/login?returnTo=" + encodeURIComponent(window.location.pathname));
         }
-    }, [user, userLoading, router]);
+    }, [isAuthenticated, userLoading, router]);
 
     // Check if help card was dismissed
     useEffect(() => {
@@ -107,7 +108,7 @@ const PageHome = () => {
         setShowHelpCard(false);
     };
 
-    if (userLoading || !user?.token) {
+    if (userLoading || !isAuthenticated) {
         return (
             <Page className="balance">
                 <div className="flex justify-center items-center h-64">
@@ -176,7 +177,7 @@ const PageHome = () => {
                         <span className="loading loading-spinner loading-lg"></span>
                     </div>
                 ) : (
-                    wallets && wallets.map((w: any) => (
+                    (Array.isArray(wallets) ? wallets : []).map((w: any) => (
                         <WalletCommunity key={w._id} {...w} />
                     ))
                 )}
@@ -276,7 +277,7 @@ const PageHome = () => {
                                         <PublicationCard
                                             key={p._id || p.slug}
                                             publication={p}
-                                            wallets={wallets}
+                                            wallets={Array.isArray(wallets) ? wallets : []}
                                             showCommunityAvatar={true}
                                             updateAll={updateAll}
                                             updateWalletBalance={updateWalletBalance}
@@ -302,7 +303,7 @@ const PageHome = () => {
                                             myId={user?.tgUserId}
                                             updateAll={updateAll}
                                             updateWalletBalance={updateWalletBalance}
-                                            wallets={wallets}
+                                            wallets={Array.isArray(wallets) ? wallets : []}
                                             showCommunityAvatar={true}
                                             activeWithdrawPost={activeWithdrawPost}
                                             setActiveWithdrawPost={setActiveWithdrawPost}
@@ -332,7 +333,7 @@ const PageHome = () => {
                         overflowY: "auto"
                     }}>
                         <FormPollCreate
-                            wallets={wallets}
+                            wallets={Array.isArray(wallets) ? wallets : []}
                             onSuccess={(pollId) => {
                                 setShowPollCreate(false);
                                 updateAll();

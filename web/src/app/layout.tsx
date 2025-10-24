@@ -7,6 +7,7 @@ import { detectBrowserLanguage, SUPPORTED_LOCALES, DEFAULT_LOCALE } from '@/i18n
 import { cookies } from 'next/headers';
 import { Root } from '@/components/Root';
 import { QueryProvider } from '@/providers/QueryProvider';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 export const metadata: Metadata = {
     title: 'Meriter',
@@ -49,13 +50,15 @@ export default async function RootLayout({
                     rel="stylesheet"
                 />
             </head>
-            <body suppressHydrationWarning>
-                <QueryProvider>
-                    <NextIntlClientProvider messages={messages}>
-                        <Root>{children}</Root>
-                    </NextIntlClientProvider>
-                </QueryProvider>
-            </body>
+                    <body suppressHydrationWarning>
+                        <QueryProvider>
+                            <AuthProvider>
+                                <NextIntlClientProvider messages={messages}>
+                                    <Root>{children}</Root>
+                                </NextIntlClientProvider>
+                            </AuthProvider>
+                        </QueryProvider>
+                    </body>
         </html>
     );
 }

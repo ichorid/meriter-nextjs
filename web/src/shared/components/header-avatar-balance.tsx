@@ -1,6 +1,6 @@
 'use client';
 
-import { WidgetAvatarBalance } from "@features/wallet/components/widget-avatar-balance";
+import { WidgetAvatarBalance } from '@shared/components/widget-avatar-balance';
 
 interface HeaderAvatarBalanceProps {
     balance1?: {

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { config } from '@/config';
 
 interface ErrorPageProps {
   error?: Error;
@@ -21,7 +22,7 @@ export function ErrorPage({ error }: ErrorPageProps) {
         <p className="text-gray-600 dark:text-gray-400 text-center mb-4">
           An unexpected error occurred. Please try refreshing the page.
         </p>
-        {error && process.env.NODE_ENV === 'development' && (
+        {error && config.app.isDevelopment && (
           <details className="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded text-sm">
             <summary className="cursor-pointer font-medium">Error details</summary>
             <pre className="mt-2 text-xs overflow-auto">{error.stack}</pre>

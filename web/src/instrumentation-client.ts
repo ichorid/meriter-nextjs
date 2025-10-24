@@ -4,6 +4,7 @@
 import { retrieveLaunchParams } from '@telegram-apps/sdk-react';
 import { init } from './core/init';
 import { mockEnv } from './mockEnv';
+import { config } from './config';
 
 mockEnv().then(() => {
   try {
@@ -11,7 +12,7 @@ mockEnv().then(() => {
     const { tgWebAppPlatform: platform } = launchParams;
     const debug =
       (launchParams.tgWebAppStartParam || '').includes('debug') ||
-      process.env.NODE_ENV === 'development';
+      config.app.isDevelopment;
 
     // Configure all application dependencies.
     init({

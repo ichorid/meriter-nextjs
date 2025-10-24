@@ -1,6 +1,7 @@
 // Base API client with error handling
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import type { ApiError, ApiErrorResponse, RequestConfig } from '@/types/common';
+import { config } from '@/config';
 
 export class ApiClient {
   private client: AxiosInstance;
@@ -121,5 +122,5 @@ export class ApiClient {
 }
 
 // Create default API client instance
-export const apiClient = new ApiClient();
+export const apiClient = new ApiClient(config.api.baseUrl);
 

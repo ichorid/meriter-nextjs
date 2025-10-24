@@ -1,6 +1,6 @@
 'use client';
 
-import { useComments } from "@features/comments/hooks/use-comments";
+import { useComments } from "@shared/hooks/use-comments";
 import { useEffect, useState } from "react";
 import { CardPublication } from "./card-publication";
 import { dateVerbose } from "@shared/lib/date";
@@ -9,9 +9,9 @@ import {
     telegramGetAvatarLinkUpd,
 } from "@lib/telegram";
 import { BarVote } from "@shared/components/bar-vote";
-import { BarWithdraw } from "@features/wallet/components/bar-withdraw";
+import { BarWithdraw } from "@shared/components/bar-withdraw";
 import { WithTelegramEntities } from "@shared/components/withTelegramEntities";
-import { FormDimensionsEditor } from "@features/communities/components/form-dimensions-editor";
+import { FormDimensionsEditor } from "@shared/components/form-dimensions-editor";
 import Axios from "axios";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { FormComment } from "@features/comments/components/form-comment";
@@ -24,7 +24,7 @@ import { useRouter } from "next/navigation";
 import { swr } from "@lib/swr";
 import { GLOBAL_FEED_TG_CHAT_ID } from "@config/meriter";
 import { Spinner } from "@shared/components/misc";
-import { FormWithdraw } from "@features/wallet/components/form-withdraw";
+import { FormWithdraw } from "@shared/components/form-withdraw";
 import { useTranslations } from 'next-intl';
 
 export interface IPublication {

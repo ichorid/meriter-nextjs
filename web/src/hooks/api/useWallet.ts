@@ -24,6 +24,7 @@ export function useWallets() {
     queryKey: walletKeys.wallets(),
     queryFn: () => walletApi.getWallets(),
     staleTime: 2 * 60 * 1000, // 2 minutes
+    initialData: [],
   });
 }
 

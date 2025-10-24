@@ -1,6 +1,6 @@
 'use client';
 
-import { CardCommentVote } from "@features/comments/components/card-comment-vote";
+import { CardCommentVote } from "@shared/components/card-comment-vote";
 import { telegramGetAvatarLink } from "@lib/telegram";
 import { useTranslations } from 'next-intl';
 import { swr } from "@lib/swr";
