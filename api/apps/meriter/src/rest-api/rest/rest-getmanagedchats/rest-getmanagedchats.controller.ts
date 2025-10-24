@@ -2,7 +2,7 @@ import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { TgChatsService } from '../../../tg-chats/tg-chats.service';
 import { UserGuard } from '../../../user.guard';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
-import { successResponse } from '../utils/response.helper';
+import { successResponse, ApiResponse } from '../utils/response.helper';
 class RestGMCDto {
   chats: {
     administratorsIds: string[]; //['123456789'];
@@ -31,7 +31,7 @@ export class RestGetmanagedchatsController {
   async rest_getmanagedchats(
     @Req() req,
     @Query('refreshChatId') refreshChatId?: string,
-  ): Promise<RestGMCDto> {
+  ): Promise<ApiResponse<RestGMCDto>> {
     if (refreshChatId) {
       const adms = await this.tgBotsService.tgChatGetAdmins({
         tgChatId: refreshChatId,

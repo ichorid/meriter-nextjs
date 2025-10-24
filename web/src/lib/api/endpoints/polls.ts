@@ -14,7 +14,7 @@ export const pollsApi = {
    */
   async getPolls(params: { skip?: number; limit?: number } = {}): Promise<Poll[]> {
     const response = await apiClient.get<Poll[]>('/api/rest/polls', { params });
-    return response.data;
+    return response;
   },
 
   /**
@@ -22,7 +22,7 @@ export const pollsApi = {
    */
   async getPoll(id: string): Promise<Poll> {
     const response = await apiClient.get<Poll>(`/api/rest/polls/${id}`);
-    return response.data;
+    return response;
   },
 
   /**
@@ -30,7 +30,7 @@ export const pollsApi = {
    */
   async getPollResults(id: string): Promise<PollResult> {
     const response = await apiClient.get<PollResult>(`/api/rest/polls/${id}/results`);
-    return response.data;
+    return response;
   },
 
   /**
@@ -57,7 +57,7 @@ export const pollsApi = {
    */
   async updatePoll(id: string, data: Partial<CreatePollRequest>): Promise<Poll> {
     const response = await apiClient.put<Poll>(`/api/rest/polls/${id}`, data);
-    return response.data;
+    return response;
   },
 
   /**

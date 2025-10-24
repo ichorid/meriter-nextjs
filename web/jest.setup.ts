@@ -1,4 +1,5 @@
 import React from 'react';
+import '@testing-library/jest-dom';
 
 // Mock next-intl
 jest.mock('next-intl', () => ({
@@ -45,8 +46,17 @@ jest.mock('next/headers', () => ({
 
 // Mock @tanstack/react-query
 jest.mock('@tanstack/react-query', () => ({
-  useQuery: jest.fn(),
-  useMutation: jest.fn(),
+  useQuery: jest.fn(() => ({
+    data: undefined,
+    isLoading: false,
+    error: null,
+  })),
+  useMutation: jest.fn(() => ({
+    mutateAsync: jest.fn(),
+    mutate: jest.fn(),
+    isLoading: false,
+    error: null,
+  })),
   useQueryClient: jest.fn(() => ({
     setQueryData: jest.fn(),
     invalidateQueries: jest.fn(),

@@ -17,7 +17,7 @@ import { HashtagsService } from '../../../hashtags/hashtags.service';
 import { TgChat } from '../../../tg-chats/model/tg-chat.model';
 import { UserGuard } from '../../../user.guard';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
-import { successResponse } from '../utils/response.helper';
+import { successResponse, ApiResponse } from '../utils/response.helper';
 
 // Helper functions to map between formats for API backward compatibility
 function mapTgChatToOldFormat(chat: any) {
@@ -139,7 +139,7 @@ export class RestCommunityifoController {
   async rest_communityinfo(
     @Query('chatId') chatId: string,
     @Req() req,
-  ): Promise<RestCommunityinfoResponse> {
+  ): Promise<ApiResponse<RestCommunityinfoResponse>> {
     const allowedChatsIds: string[] = req.user.chatsIds;
     const tgUserId = req.user.tgUserId;
     const telegramCommunityChatId = chatId;

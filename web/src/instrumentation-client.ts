@@ -8,19 +8,30 @@ import { config } from './config';
 
 mockEnv().then(() => {
   try {
-    const launchParams = retrieveLaunchParams();
+    let launchParams;
+    try {
+      launchParams = retrieveLaunchParams();
+    } catch (e) {
+      // Not in Telegram environment, use defaults
+      console.log('Not in Telegram environment, using default config');
+      launchParams = { 
+        tgWebAppPlatform: 'web',
+        tgWebAppStartParam: ''
+      };
+    }
+    
     const { tgWebAppPlatform: platform } = launchParams;
     const debug =
       (launchParams.tgWebAppStartParam || '').includes('debug') ||
       config.app.isDevelopment;
 
-    // Configure all application dependencies.
+    // Configure all application dependencies
     init({
       debug,
       eruda: debug && ['ios', 'android'].includes(platform),
       mockForMacOS: platform === 'macos',
     });
   } catch (e) {
-    console.log(e);
+    console.error('Failed to initialize app:', e);
   }
 });

@@ -120,9 +120,9 @@ export function useLogout() {
       console.error('🔐 useLogout: Logout error:', error);
       console.error('🔐 useLogout: Error details:', {
         message: error?.message,
-        status: error?.status,
-        code: error?.code,
-        data: error?.data
+        ...(error && typeof error === 'object' && 'status' in error && { status: (error as any).status }),
+        ...(error && typeof error === 'object' && 'code' in error && { code: (error as any).code }),
+        ...(error && typeof error === 'object' && 'data' in error && { data: (error as any).data })
       });
       
       // Still clear local data even if server logout fails

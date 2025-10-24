@@ -50,16 +50,15 @@ export default async function RootLayout({
                     rel="stylesheet"
                 />
             </head>
-                    <body suppressHydrationWarning>
-                        <QueryProvider>
-                            <AuthProvider>
-                                <NextIntlClientProvider messages={messages}>
-                                    <Root>{children}</Root>
-                                </NextIntlClientProvider>
-                            </AuthProvider>
-                        </QueryProvider>
-                    </body>
+            <body suppressHydrationWarning>
+                <QueryProvider>
+                    <AuthProvider>
+                        <NextIntlClientProvider messages={messages}>
+                            <Root>{children}</Root>
+                        </NextIntlClientProvider>
+                    </AuthProvider>
+                </QueryProvider>
+            </body>
         </html>
     );
 }
-

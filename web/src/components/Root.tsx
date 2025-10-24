@@ -1,6 +1,6 @@
 'use client';
 
-import { type PropsWithChildren, useEffect } from 'react';
+import { type PropsWithChildren } from 'react';
 import {
   initData,
   miniApp,
@@ -16,39 +16,36 @@ import { ThemeProvider } from '@/shared/lib/theme-provider';
 
 import './styles.css';
 
-function RootInner({ children }: PropsWithChildren) {
-  let lp;
-  let isDark;
-  let initDataUser;
-
+// Inner component that safely uses Telegram hooks
+function TelegramAwareWrapper({ children }: PropsWithChildren) {
+  // Always call hooks at the top level
+  let lp: any = { tgWebAppPlatform: 'web' as const };
+  let isDarkValue = false;
+  
   try {
+    // These hooks will only work if SDKProvider is present
     lp = useLaunchParams();
-    isDark = useSignal(miniApp.isDark);
-    initDataUser = useSignal(initData.user);
-  } catch (error: any) {
-    console.warn('⚠️ Telegram Web App not detected, running in development mode:', error.message);
-    // Fallback values for development
-    lp = { tgWebAppPlatform: 'web' };
-    isDark = { value: false };
-    initDataUser = { value: null };
+    const isDarkSignal = useSignal(miniApp.isDark);
+    isDarkValue = (isDarkSignal as any)?.value || false;
+  } catch (error) {
+    // Log the error for debugging but continue with defaults
+    console.debug('Telegram SDK hooks not available, using defaults:', error);
   }
-
-  // Note: Locale setting from Telegram user data would need to be handled
-  // on the server side or through a different mechanism since we can't
-  // use server-side functions in client components
 
   return (
     <ThemeProvider>
       <AppRoot
-        appearance={(isDark as any)?.value ? 'dark' : 'light'}
-        platform={
-          ['macos', 'ios'].includes(lp?.tgWebAppPlatform) ? 'ios' : 'base'
-        }
+        appearance={isDarkValue ? 'dark' : 'light'}
+        platform={['macos', 'ios'].includes(lp?.tgWebAppPlatform) ? 'ios' : 'base'}
       >
         {children}
       </AppRoot>
     </ThemeProvider>
   );
+}
+
+function RootInner({ children }: PropsWithChildren) {
+  return <TelegramAwareWrapper>{children}</TelegramAwareWrapper>;
 }
 
 export function Root(props: PropsWithChildren) {

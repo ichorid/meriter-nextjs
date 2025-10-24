@@ -47,6 +47,18 @@ export function LoginForm({ className = '' }: LoginFormProps) {
   // Get return URL
   const returnTo = searchParams.get('returnTo');
   
+  // ALWAYS call hooks at top level, never conditionally
+  let launchParamsHook = null;
+  let rawDataHook = null;
+  
+  try {
+    launchParamsHook = useLaunchParams();
+    rawDataHook = useSignal(initDataRaw);
+  } catch (error) {
+    // Hooks not available - not in Telegram or SDK not initialized
+    // This is fine, we'll use widget authentication
+  }
+  
   // Initialize Telegram Web App state
   useEffect(() => {
     const initializeTelegramState = async () => {
@@ -63,29 +75,22 @@ export function LoginForm({ className = '' }: LoginFormProps) {
         console.log('🔍 Telegram environment check:', {
           isRealTelegram,
           mockEnabled,
-          shouldUseTelegramMode
+          shouldUseTelegramMode,
+          hasLaunchParams: !!launchParamsHook,
+          hasRawData: !!rawDataHook
         });
         
-        if (shouldUseTelegramMode) {
-          try {
-            const lp = useLaunchParams();
-            const rd = useSignal(initDataRaw);
-            const sp = lp.tgWebAppStartParam;
-            
-            setLaunchParams(lp);
-            setRawData(rd);
-            setStartParam(sp || null);
-            setIsInTelegram(true);
-            
-            console.log('📱 Telegram Web App state initialized:', {
-              launchParams: lp,
-              hasRawData: !!rd,
-              startParam: sp
-            });
-          } catch (error: any) {
-            console.warn('⚠️ Telegram Web App not detected, using fallback:', error.message);
-            setIsInTelegram(false);
-          }
+        if (shouldUseTelegramMode && launchParamsHook && rawDataHook) {
+          setLaunchParams(launchParamsHook);
+          setRawData(rawDataHook);
+          setStartParam(launchParamsHook.tgWebAppStartParam || null);
+          setIsInTelegram(true);
+          
+          console.log('📱 Telegram Web App state initialized:', {
+            launchParams: launchParamsHook,
+            hasRawData: !!rawDataHook,
+            startParam: launchParamsHook.tgWebAppStartParam
+          });
         } else {
           setIsInTelegram(false);
         }
@@ -96,7 +101,7 @@ export function LoginForm({ className = '' }: LoginFormProps) {
     };
     
     initializeTelegramState();
-  }, []);
+  }, [launchParamsHook, rawDataHook]); // Add dependencies
   
   // Handle deep links
   useEffect(() => {
