@@ -5,6 +5,7 @@ import { UsersService } from '../../../users/users.service';
 import { PublicationsService } from '../../../publications/publications.service';
 import { TransactionsService } from '../../../transactions/transactions.service';
 import { WalletsService } from '../../../wallets/wallets.service';
+import { TgBotsService } from '../../../tg-bots/tg-bots.service';
 
 describe('RestPollsController', () => {
   let controller: RestPollsController;
@@ -24,6 +25,10 @@ describe('RestPollsController', () => {
         {
           provide: WalletsService,
           useValue: {},
+        },
+        {
+          provide: TgBotsService,
+          useValue: { tgSend: jest.fn() },
         },
         {
           provide: UsersService,

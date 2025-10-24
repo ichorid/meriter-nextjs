@@ -2,6 +2,37 @@
 
 This guide explains how to write tests for the Meriter backend application without requiring a full MongoDB instance.
 
+## Recent Changes (Test Suite Cleanup)
+
+**Date:** October 2025  
+**Summary:** Major cleanup of test suite to remove obsolete tests and add strategic integration tests.
+
+### What Was Removed
+- **30+ test files** that only contained "should be defined" tests with no business logic
+- **Trivial controller tests** that provided zero value (only checked instantiation)
+- **Basic E2E test** that only tested "Hello World!!!!" endpoint
+- **Service tests** with no actual functionality testing
+
+### What Was Added
+- **Critical Flows E2E Test** (`critical-flows.e2e-spec.ts`) with 13 strategic integration tests covering:
+  - User authentication and JWT validation
+  - Publication management and access control
+  - Wallet and balance management
+  - Poll creation, voting, and retrieval
+  - Transaction history viewing
+
+### What Was Fixed
+- **2 failing tests** due to missing service dependencies after refactoring:
+  - `rest-polls.controller.spec.ts` - Added missing `TgBotsService` dependency
+  - `publications.controller.spec.ts` - Added missing `UsersService` dependency for `UserGuard`
+
+### Results
+- **Before:** 42 test suites, 51 tests, 2 failing
+- **After:** 12 test suites, 32 tests, 0 failing
+- **Faster execution:** Reduced from ~10s to ~5s for unit tests
+- **Better coverage:** Integration tests cover critical user flows
+- **Higher confidence:** All remaining tests provide actual value
+
 ## Overview
 
 We use two different approaches depending on the type of test:
@@ -159,9 +190,17 @@ describe('AppController (e2e)', () => {
 });
 ```
 
-### Real Example
+### Real Examples
 
-See `apps/meriter/test/app.e2e-spec.ts` for a complete working example.
+**Critical Flows Integration Test:**
+See `apps/meriter/test/critical-flows.e2e-spec.ts` for a comprehensive example covering:
+- User authentication flows
+- API endpoint testing
+- Database interactions
+- Service integration
+
+**Telegram Bot Flow Test:**
+See `apps/meriter/test/telegram-bot-flow.e2e-spec.ts` for a complete Telegram bot workflow example.
 
 **Advantages:**
 - Tests real database interactions
@@ -192,6 +231,26 @@ npm test:watch
 npm run test:e2e
 ```
 
+## Test Strategy for Post-Refactoring
+
+After the upcoming internal implementation refactoring, follow this strategy:
+
+### Focus Areas
+1. **Critical User Flows** - Test the most important user journeys end-to-end
+2. **API Contracts** - Ensure REST endpoints maintain their interfaces
+3. **Business Logic** - Test core functionality like voting, wallet management, polls
+4. **Authentication** - Verify JWT validation and user access control
+
+### Test Types Priority
+1. **Integration Tests** (High Priority) - Test real user flows with actual services
+2. **Unit Tests** (Medium Priority) - Test individual service methods with mocks
+3. **E2E Tests** (Low Priority) - Only for critical workflows that span multiple systems
+
+### What NOT to Test
+- **Trivial instantiation tests** - Don't test "should be defined" without business logic
+- **Over-mocked tests** - Avoid tests that mock everything and test nothing
+- **Implementation details** - Focus on behavior, not internal structure
+
 ## Best Practices
 
 1. **Use unit tests by default** - They're faster and easier to maintain
@@ -200,6 +259,8 @@ npm run test:e2e
 4. **Mock external APIs** - Always mock third-party services (Telegram, S3, etc.)
 5. **Test edge cases** - Use mocks to easily simulate error conditions
 6. **Keep tests focused** - One logical assertion per test when possible
+7. **Test behavior, not implementation** - Focus on what the code does, not how it does it
+8. **Write tests that survive refactoring** - Avoid brittle tests that break with internal changes
 
 ## Troubleshooting
 
