@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { etv } from '@shared/lib/input-utils';
 import Slider from "rc-slider";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 export const FormWithdraw = ({
     comment,
@@ -16,7 +16,7 @@ export const FormWithdraw = ({
     children,
     isWithdrawal,
 }) => {
-    const { t } = useTranslation('shared');
+    const t = useTranslations('shared');
     const [selected, setSelected] = useState(false);
 
     return (

@@ -3,10 +3,10 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { mutate } from 'swr';
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 export const LogoutButton = ({ className = '' }: { className?: string }) => {
-    const { t } = useTranslation('shared');
+    const t = useTranslations('shared');
     const router = useRouter();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 

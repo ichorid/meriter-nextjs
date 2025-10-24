@@ -3,7 +3,7 @@
 import { classList } from '@lib/classList';
 import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
 import { CommunityAvatar } from '@shared/components/community-avatar';
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 export const CardCommentVote = ({
     title,
@@ -27,7 +27,7 @@ export const CardCommentVote = ({
     beneficiaryName,
     beneficiaryAvatarUrl,
 }:any) => {
-    const { t } = useTranslation('comments');
+    const t = useTranslations('comments');
     
     // Get tooltip text based on vote type
     const getTooltipText = () => {

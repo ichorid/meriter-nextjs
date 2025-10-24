@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { IPollData, IPollVote, IPollUserVoteSummary } from "../types";
 import { apiPOST } from "@shared/lib/fetch";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 interface IPollVotingProps {
     pollData: IPollData;
@@ -28,7 +28,7 @@ export const PollVoting = ({
     communityId,
     initiallyExpanded = false,
 }: IPollVotingProps) => {
-    const { t } = useTranslation('polls');
+    const t = useTranslations('polls');
     const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
     const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
     const [voteAmount, setVoteAmount] = useState<number>(1);

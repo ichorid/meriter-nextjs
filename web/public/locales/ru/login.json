@@ -1,9 +1,0 @@
-{
-  "welcomeTitle": "Добро пожаловать в Meriter",
-  "redirecting": "Переход на главную...",
-  "authenticating": "Авторизация...",
-  "discoveringCommunities": "Поиск ваших сообществ...",
-  "authError": "Ошибка авторизации",
-  "connectionError": "Ошибка подключения к серверу: {{message}}"
-}
-

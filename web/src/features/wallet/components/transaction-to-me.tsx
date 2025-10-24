@@ -2,7 +2,7 @@
 
 import { CardCommentVote } from "@features/comments/components/card-comment-vote";
 import { telegramGetAvatarLink } from "@lib/telegram";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 import { swr } from "@lib/swr";
 
 class RestTransactionObject {
@@ -35,7 +35,7 @@ export const TransactionToMe = ({
 }: {
     transaction: RestTransactionObject;
 }) => {
-    const { t } = useTranslation('shared');
+    const t = useTranslations('shared');
     
     // Fetch community info to get currency icon
     const [communityInfo] = swr(

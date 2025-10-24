@@ -14,7 +14,7 @@ import { swr } from "@lib/swr";
 import Axios from "axios";
 import { Spinner } from "@shared/components/misc";
 import { FormWithdraw } from "@features/wallet/components/form-withdraw";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 export const Comment = ({
     _id,
@@ -54,7 +54,7 @@ export const Comment = ({
     showCommunityAvatar,
     isDetailPage,
 }) => {
-    const { t } = useTranslation('comments');
+    const t = useTranslations('comments');
     
     // Check if current user is the author
     const isAuthor = myId === fromUserTgId;

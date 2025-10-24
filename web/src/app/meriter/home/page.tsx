@@ -3,7 +3,7 @@
 import Page from '@shared/components/page';
 import { swr } from '@lib/swr';
 import { useEffect, useState, useRef } from "react";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { useRouter } from "next/navigation";
 import {
@@ -37,7 +37,7 @@ const verb = (w) => {
 
 const PageHome = () => {
     const router = useRouter();
-    const { t } = useTranslation('home');
+    const t = useTranslations('home');
     const balance = [];
     const [myPublications, updatePublications] = swr(
         "/api/rest/publications/my?skip=0&limit=100",

@@ -3,10 +3,10 @@
 import { swr } from "@lib/swr";
 import axios from "axios";
 import { ChangeEvent } from "react";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 export const UpdatesFrequency = () => {
-    const { t } = useTranslation('pages');
+    const t = useTranslations('pages');
     const endpoint = "/api/rest/freq";
     const [frequency, mutateFrequency] = swr(endpoint, 0);
 

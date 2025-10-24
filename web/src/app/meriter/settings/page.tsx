@@ -14,11 +14,11 @@ import { UpdatesFrequency } from '@shared/components/updates-frequency';
 import { ThemeToggle } from '@shared/components/theme-toggle';
 import { LogoutButton } from '@shared/components/logout-button';
 import { LanguageSelector } from '@shared/components/language-selector';
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 const SettingsPage = () => {
     const router = useRouter();
-    const { t } = useTranslation('settings');
+    const t = useTranslations('settings');
     const [user] = swr('/api/rest/getme', {});
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncMessage, setSyncMessage] = useState('');

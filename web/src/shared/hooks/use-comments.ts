@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { swr } from "@lib/swr";
 import Axios from "axios";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 const { round } = Math;
 
 export const useComments = (
@@ -17,7 +17,7 @@ export const useComments = (
     activeCommentHook,
     onlyPublication = false
 ) => {
-    const { t } = useTranslation('comments');
+    const t = useTranslations('comments');
     const uid = transactionId || publicationSlug;
     const [showComments, setShowComments] = useState(!!onlyPublication);
     const [comment, setCommentW] = useState("");

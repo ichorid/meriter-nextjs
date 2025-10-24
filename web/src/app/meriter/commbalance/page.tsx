@@ -8,7 +8,7 @@ import { etv } from '@shared/lib/input-utils';
 import Axios from "axios";
 import { Spinner } from '@shared/components/misc';
 import { GLOBAL_FEED_TG_CHAT_ID } from '@config/meriter';
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 interface iCommunityProps {
     name: string;
@@ -28,7 +28,7 @@ const PublicationMy = ({
     currency,
     inMerits,
 }: any) => {
-    const { t } = useTranslation('pages');
+    const t = useTranslations('pages');
     const isMerit = tgChatId === GLOBAL_FEED_TG_CHAT_ID;
 
     const rate = 1;
@@ -138,7 +138,7 @@ const verb = (w) => {
 };
 
 const PageCommunityBalance = ({ searchParams }: { searchParams: Promise<{ chatId?: string }> }) => {
-    const { t } = useTranslation('pages');
+    const t = useTranslations('pages');
     const resolvedSearchParams = use(searchParams);
     const chatId = resolvedSearchParams?.chatId;
     if (!chatId) return null;

@@ -2,7 +2,7 @@
 
 import { A } from '@shared/components/simple/simple-elements';
 import { useState } from "react";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 interface IPollProps {
     tagRoot?: string;
@@ -48,7 +48,7 @@ export const Poll = ({
     folded,
     onSubmit,
 }: IPollProps) => {
-    const { t } = useTranslation('polls');
+    const t = useTranslations('polls');
     const [expanded, setExpanded] = useState({});
 
     const [results, setResults] =

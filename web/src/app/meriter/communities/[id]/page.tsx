@@ -15,14 +15,14 @@ import { Publication } from "@features/feed";
 import type { Publication as IPublication } from "@features/feed/types";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 import { CommunityAvatar } from "@shared/components/community-avatar";
 import { classList } from "@lib/classList";
 
 const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { t } = useTranslation('pages');
+    const t = useTranslations('pages');
     const resolvedParams = use(params);
     const chatId = resolvedParams.id;
     const pathname = `/meriter/communities/${chatId}`;

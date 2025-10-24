@@ -3,7 +3,7 @@
 import { classList } from '@lib/classList';
 import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
 import { useRouter } from 'next/navigation';
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 export const WidgetAvatarBalance = ({
     balance1,
@@ -13,7 +13,7 @@ export const WidgetAvatarBalance = ({
     onClick,
     userName,
 }) => {
-    const { t } = useTranslation('shared');
+    const t = useTranslations('shared');
     const router = useRouter();
 
     const handleSettingsClick = (e: React.MouseEvent) => {

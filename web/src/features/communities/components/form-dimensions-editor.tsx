@@ -5,13 +5,13 @@ import { useEffect, useState } from 'react'
 import { classList } from '@lib/classList';
 import useDebounce from '@lib/debounce';
 import { etv } from '@shared/lib/input-utils';
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 export const FormDimensionsEditor = ({dimensions:dimenstionsInitial,dimensionConfig,level,onSave}:
     {dimensions:iDimensions,dimensionConfig:iDimensionConfig,
         level:"publication"|"comment"|"commentLvl1"|"commentLvl2"|"commentLvl3",
         onSave:(iDimensions)=>any})=>{
-            const { t } = useTranslation('communities');
+            const t = useTranslations('communities');
             const [dimensions,setDimensions]=useState(dimenstionsInitial);
             const setDimension = (slug) => (value) => {
                 const newDim = {...dimensions,[slug]:value};
@@ -33,7 +33,7 @@ export const FormDimensionsEditor = ({dimensions:dimenstionsInitial,dimensionCon
 }
 
 const CatEnum = ({dimensionProto,setDimension,initialValue})=>{
-    const { t } = useTranslation('communities');
+    const t = useTranslations('communities');
     const [tagSelected,setTagSelected] =useState(initialValue)
     const customInit = !initialValue||(dimensionProto.enum.find(e=>e===initialValue))?false:true;
 

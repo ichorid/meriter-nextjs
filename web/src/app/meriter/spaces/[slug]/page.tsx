@@ -15,11 +15,11 @@ import { Publication } from "@features/feed";
 import type { Publication as IPublication } from "@features/feed/types";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
     const router = useRouter();
-    const { t } = useTranslation('pages');
+    const t = useTranslations('pages');
     const resolvedParams = use(params);
     const spaceSlug = resolvedParams.slug;
     const pathname = `/meriter/spaces/${spaceSlug}`;

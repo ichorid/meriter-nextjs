@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormCommentVote } from "./form-comment-vote";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 export const FormComment = ({
     uid,
@@ -18,7 +18,7 @@ export const FormComment = ({
     error,
     onClose,
 }) => {
-    const { t } = useTranslation('comments');
+    const t = useTranslations('comments');
     return (<div
         key={uid + "_unable"}
         onClick={(e) => {

@@ -11,12 +11,12 @@ import {
     telegramGetAvatarLinkUpd,
 } from '@lib/telegram';
 import { Publication } from "@features/feed";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 import { ellipsize } from "@shared/lib/text";
 
 const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
-    const { t } = useTranslation('pages');
+    const t = useTranslations('pages');
     const resolvedParams = use(params);
     const pollId = resolvedParams.id;
 

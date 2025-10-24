@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiPOST } from "@shared/lib/fetch";
 import { A } from "@shared/components/simple/simple-elements";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 import { useTelegramWebApp } from '@shared/hooks/useTelegramWebApp';
 
 interface IPollOption {
@@ -24,7 +24,7 @@ export const FormPollCreate = ({
     onSuccess,
     onCancel,
 }: IFormPollCreateProps) => {
-    const { t } = useTranslation('polls');
+    const t = useTranslations('polls');
     const { isInTelegram, webApp, hapticFeedback } = useTelegramWebApp();
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");

@@ -1,9 +1,9 @@
 'use client';
 
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 export const BarWithdraw = ({ onWithdraw, onTopup, balance, children }) => {
-    const { t } = useTranslation('shared');
+    const t = useTranslations('shared');
     const displayBalance = balance ?? 0;
     
     // Don't show withdraw bar if there's nothing to withdraw

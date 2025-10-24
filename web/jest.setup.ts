@@ -1,5 +1,13 @@
-// Import jest-dom matchers
-import '@testing-library/jest-dom';
+// Mock next-intl
+jest.mock('next-intl', () => ({
+    useTranslations: jest.fn((namespace) => (key) => `${namespace}.${key}`),
+    useLocale: jest.fn(() => 'en'),
+    NextIntlClientProvider: ({ children }) => children,
+}));
+
+jest.mock('next-intl/server', () => ({
+    getMessages: jest.fn(() => Promise.resolve({})),
+}));
 
 // Mock next/config
 jest.mock('next/config', () => () => ({

@@ -7,7 +7,7 @@ import { etv } from '@shared/lib/input-utils';
 import { nanoid } from "nanoid";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 import { DivFade } from '@shared/components/transitions';
 import Page from '@shared/components/page';
@@ -26,7 +26,7 @@ const CommunitySettingsPage = () => {
     const router = useRouter();
     const params = useParams();
     const chatId = params.id as string;
-    const { t } = useTranslation('pages');
+    const t = useTranslations('pages');
 
     // Form state
     const [formData, setFormData] = useState({

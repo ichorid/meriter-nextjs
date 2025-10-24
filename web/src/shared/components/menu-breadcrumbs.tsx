@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 export const MenuBreadcrumbs = ({
     pathname,
@@ -12,7 +12,7 @@ export const MenuBreadcrumbs = ({
     postText,
     children,
 }: any) => {
-    const { t } = useTranslation('common');
+    const t = useTranslations('common');
     return (
         <div className="breadcrumbs text-sm mb-4">
             <ul className="flex flex-wrap items-center gap-1">

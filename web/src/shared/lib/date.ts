@@ -1,5 +1,3 @@
-import i18n from '../../lib/i18n';
-
 //10y2mo1w10d30h11m200s
 export function parseTimeString(str) {
     let time = 0
@@ -56,7 +54,7 @@ export function parseDateFormula(fl, subst: object) {
     return val + addVal
 }
 
-export function dateVerbose(ts: Date | string | number): string {
+export function dateVerbose(ts: Date | string | number, locale: string = 'en'): string {
     const date = new Date(ts);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -65,16 +63,14 @@ export function dateVerbose(ts: Date | string | number): string {
     const diffHour = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHour / 24);
 
-    const locale = i18n.language || 'en';
-
     if (diffSec < 60) {
-        return i18n.t('shared:timeAgo.seconds', { count: diffSec });
+        return `${diffSec}s ago`;
     } else if (diffMin < 60) {
-        return i18n.t('shared:timeAgo.minutes', { count: diffMin });
+        return `${diffMin}m ago`;
     } else if (diffHour < 24) {
-        return i18n.t('shared:timeAgo.hours', { count: diffHour });
+        return `${diffHour}h ago`;
     } else if (diffDay < 7) {
-        return i18n.t('shared:timeAgo.days', { count: diffDay });
+        return `${diffDay}d ago`;
     } else {
         return date.toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
     }

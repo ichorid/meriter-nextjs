@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@shared/lib/theme-provider';
-import { I18nProvider } from '@/providers/i18n-provider';
-import { getServerTranslations } from '@/lib/i18n-server';
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages } from 'next-intl/server';
 import { headers } from 'next/headers';
+import { detectBrowserLanguage, SUPPORTED_LOCALES, DEFAULT_LOCALE } from '@/i18n/request';
+import { cookies } from 'next/headers';
 
 export const metadata: Metadata = {
     title: 'Meriter',
@@ -15,10 +17,24 @@ export default async function RootLayout({
 }: {
     children: React.ReactNode;
 }) {
-    // Get server-side translations
+    // Get server-side locale and messages
     const headersList = await headers();
     const acceptLanguage = headersList.get('accept-language');
-    const { locale, translations } = await getServerTranslations(acceptLanguage || undefined);
+    
+    // Get locale from cookie with fallback to browser detection
+    const cookieStore = await cookies();
+    const localePreference = cookieStore.get('NEXT_LOCALE')?.value;
+    
+    let locale = DEFAULT_LOCALE;
+    if (localePreference === 'auto') {
+        locale = detectBrowserLanguage(acceptLanguage || undefined);
+    } else if (localePreference && SUPPORTED_LOCALES.includes(localePreference as any)) {
+        locale = localePreference as any;
+    } else {
+        locale = detectBrowserLanguage(acceptLanguage || undefined);
+    }
+    
+    const messages = await getMessages({ locale });
     
     return (
         <html lang={locale} suppressHydrationWarning>
@@ -76,9 +92,9 @@ export default async function RootLayout({
                 />
             </head>
             <body suppressHydrationWarning>
-                <I18nProvider locale={locale} initialTranslations={translations}>
+                <NextIntlClientProvider messages={messages}>
                     <ThemeProvider>{children}</ThemeProvider>
-                </I18nProvider>
+                </NextIntlClientProvider>
             </body>
         </html>
     );

@@ -5,14 +5,15 @@ import Page from '@shared/components/page';
 import { swr } from '@lib/swr';
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useTranslation } from 'react-i18next';
+import { useTranslations, useLocale } from 'next-intl';
 import { useDeepLinkHandler } from '@shared/lib/deep-link-handler';
 import { useTelegramWebApp } from '@shared/hooks/useTelegramWebApp';
 
 const PageSetupCommunity = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { t, i18n } = useTranslation('pages');
+    const t = useTranslations('pages');
+    const locale = useLocale();
     const { startParam } = useTelegramWebApp();
     const { handleDeepLink } = useDeepLinkHandler(router, searchParams, startParam);
     const [user] = swr("/api/rest/getme", { init: true });
@@ -76,7 +77,7 @@ const PageSetupCommunity = () => {
             script.setAttribute('data-radius', '20');
             script.setAttribute('data-onauth', 'onTelegramAuth(user)');
             script.setAttribute('data-request-access', 'write');
-            script.setAttribute('data-lang', i18n.language === 'ru' ? 'ru' : 'en');
+            script.setAttribute('data-lang', locale === 'ru' ? 'ru' : 'en');
             script.async = true;
             
             telegramWidgetRef.current.appendChild(script);
@@ -87,7 +88,7 @@ const PageSetupCommunity = () => {
             // Cleanup
             delete (window as any).onTelegramAuth;
         };
-    }, [router, i18n.language]);
+    }, [router, locale]);
 
     useEffect(() => {
         if (user?.token) {

@@ -25,7 +25,7 @@ import { swr } from "@lib/swr";
 import { GLOBAL_FEED_TG_CHAT_ID } from "@config/meriter";
 import { Spinner } from "@shared/components/misc";
 import { FormWithdraw } from "@features/wallet/components/form-withdraw";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 export interface IPublication {
     tgChatName;
@@ -98,7 +98,7 @@ export const Publication = ({
     currencyOfCommunityTgChatId,
     fromTgChatId,
 }: any) => {
-    const { t } = useTranslation('feed');
+    const t = useTranslations('feed');
     if (!tgChatName && type !== 'poll') return null;
     const router = useRouter();
     
