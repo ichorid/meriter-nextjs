@@ -22,8 +22,8 @@ export const publicationsApi = {
    * Get user's publications
    */
   async getMyPublications(params: { skip?: number; limit?: number } = {}): Promise<Publication[]> {
-    const response = await apiClient.get<Publication[]>('/api/rest/publications/my', { params });
-    return response;
+    const response = await apiClient.get<{ success: true; data: Publication[] }>('/api/rest/publications/my', { params });
+    return response.data;
   },
 
   /**

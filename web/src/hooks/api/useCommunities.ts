@@ -76,7 +76,7 @@ export function useCreateCommunity() {
       queryClient.invalidateQueries({ queryKey: communitiesKeys.lists() });
       
       // Add the new community to cache
-      queryClient.setQueryData(communitiesKeys.detail(newCommunity._id), newCommunity);
+      queryClient.setQueryData(communitiesKeys.detail(newCommunity.uid), newCommunity);
     },
     onError: (error) => {
       console.error('Create community error:', error);
@@ -93,14 +93,14 @@ export function useUpdateCommunity() {
       communitiesApi.updateCommunity(id, data),
     onSuccess: (updatedCommunity) => {
       // Update the community in cache
-      queryClient.setQueryData(communitiesKeys.detail(updatedCommunity._id), updatedCommunity);
+      queryClient.setQueryData(communitiesKeys.detail(updatedCommunity.uid), updatedCommunity);
       
       // Invalidate lists to ensure consistency
       queryClient.invalidateQueries({ queryKey: communitiesKeys.lists() });
       
       // Also invalidate community info cache
       queryClient.invalidateQueries({ 
-        queryKey: communitiesKeys.info(updatedCommunity.chatId) 
+        queryKey: communitiesKeys.info(updatedCommunity.identities?.[0]?.replace('telegram://', '') || '') 
       });
     },
     onError: (error) => {

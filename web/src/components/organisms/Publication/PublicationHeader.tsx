@@ -19,15 +19,15 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   className = '',
 }) => {
   const author = {
-    name: publication.tgAuthorName,
-    photoUrl: publication.authorPhotoUrl,
-    username: publication.tgAuthorId,
+    name: publication.meta.author.name,
+    photoUrl: publication.meta.author.photoUrl,
+    username: publication.meta.author.username,
   };
 
-  const beneficiary = publication.beneficiaryName ? {
-    name: publication.beneficiaryName,
-    photoUrl: publication.beneficiaryPhotoUrl,
-    username: publication.beneficiaryUsername,
+  const beneficiary = publication.meta.beneficiary ? {
+    name: publication.meta.beneficiary.name,
+    photoUrl: publication.meta.beneficiary.photoUrl,
+    username: publication.meta.beneficiary.username,
   } : null;
 
   return (
@@ -42,11 +42,11 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
           </div>
         )}
         
-        {showCommunityAvatar && publication.tgChatName && (
+        {showCommunityAvatar && publication.meta.origin.telegramChatName && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-base-content/60">in</span>
             <Badge variant="info" size="sm">
-              {publication.tgChatName}
+              {publication.meta.origin.telegramChatName}
             </Badge>
           </div>
         )}
@@ -54,11 +54,11 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
       
       <div className="flex flex-col items-end gap-1">
         <span className="text-xs text-base-content/60">
-          {dateVerbose(new Date(publication.ts))}
+          {dateVerbose(new Date(publication.createdAt))}
         </span>
-        {publication.keyword && (
+        {publication.meta.hashtagName && (
           <Badge variant="default" size="sm">
-            #{publication.keyword}
+            #{publication.meta.hashtagName}
           </Badge>
         )}
       </div>

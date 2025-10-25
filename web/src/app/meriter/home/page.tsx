@@ -236,7 +236,16 @@ const PageHome = () => {
                                 </div>
                             ) : (
                                 sortItems(myPublications)
-                                    .filter((p) => p.messageText || p.type === 'poll')
+                                    .filter((p) => {
+                                        const passes = p.messageText || p.type === 'poll';
+                                        console.log('Filtering publication:', {
+                                            _id: p._id,
+                                            messageText: p.messageText,
+                                            type: p.type,
+                                            passes: passes
+                                        });
+                                        return passes;
+                                    })
                                     .map((p) => (
                                         <PublicationCard
                                             key={p._id || p.slug}

@@ -24,7 +24,7 @@ export function usePublication({
   const voteOnCommentMutation = useVoteOnComment();
 
   const handleVote = useCallback(async (direction: 'plus' | 'minus', amount: number = 1) => {
-    if (!publication._id) return;
+    if (!publication.uid) return;
 
     try {
       await createTransactionMutation.mutateAsync({
@@ -37,9 +37,9 @@ export function usePublication({
       });
 
       // Update wallet balance optimistically
-      if (updateWalletBalance && publication.currencyOfCommunityTgChatId) {
+      if (updateWalletBalance && publication.meta.origin.telegramChatId) {
         const change = direction === 'plus' ? amount : -amount;
-        updateWalletBalance(publication.currencyOfCommunityTgChatId, change);
+        updateWalletBalance(publication.meta.origin.telegramChatId, change);
       }
 
       // Refresh data
@@ -52,7 +52,7 @@ export function usePublication({
   }, [publication, createTransactionMutation, updateWalletBalance, updateAll]);
 
   const handleComment = useCallback(async (comment: string, amount: number, directionPlus: boolean) => {
-    if (!publication._id) return;
+    if (!publication.uid) return;
 
     try {
       await voteOnCommentMutation.mutateAsync({
@@ -64,9 +64,9 @@ export function usePublication({
       });
 
       // Update wallet balance optimistically
-      if (updateWalletBalance && publication.currencyOfCommunityTgChatId) {
+      if (updateWalletBalance && publication.meta.origin.telegramChatId) {
         const change = directionPlus ? amount : -amount;
-        updateWalletBalance(publication.currencyOfCommunityTgChatId, change);
+        updateWalletBalance(publication.meta.origin.telegramChatId, change);
       }
 
       // Refresh data
@@ -95,9 +95,9 @@ export function usePublication({
 
   // Get current wallet balance for this publication's community
   const getCurrentBalance = useCallback(() => {
-    if (!publication.currencyOfCommunityTgChatId) return 0;
-    return wallets.find(w => w.currencyOfCommunityTgChatId === publication.currencyOfCommunityTgChatId)?.amount || 0;
-  }, [wallets, publication.currencyOfCommunityTgChatId]);
+    if (!publication.meta.origin.telegramChatId) return 0;
+    return wallets.find(w => w.meta.currencyOfCommunityTgChatId === publication.meta.origin.telegramChatId)?.value || 0;
+  }, [wallets, publication.meta.origin.telegramChatId]);
 
   return {
     // State

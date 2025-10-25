@@ -17,6 +17,9 @@ import type { Publication as IPublication } from "@features/feed/types";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useTranslations } from 'next-intl';
+import { useWallets, useUserProfile } from '@/hooks/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { classList } from "@lib/classList";
 
 const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
     const router = useRouter();
@@ -78,61 +81,44 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
     }, [setJwt]);
 
     const error =
-        (content??[])?.[0]?.error || err
+        (publications??[])?.[0]?.error || err
             ? true
-            : content.length > 0
+            : publications.length > 0
             ? false
             : undefined;
 
-    const [balance, updBalance] = swr(
-        () => chatId ? `/api/rest/wallet?tgChatId=${chatId}` : null,
-        0,
-        { key: "balance" }
-    );
-    const [user] = swr("/api/rest/getme", { init: true });
+    const { user, isLoading: userLoading, isAuthenticated } = useAuth();
+    const { data: wallets = [], isLoading: walletsLoading } = useWallets();
+    const { data: userdata = 0 } = useUserProfile(user?.tgUserId || '');
+    
+    const { data: balance = 0 } = useQuery({
+        queryKey: ['wallet-balance', chatId],
+        queryFn: async () => {
+            if (!chatId) return 0;
+            const response = await apiClient.get(`/api/rest/wallet?tgChatId=${chatId}`);
+            return response;
+        },
+        enabled: !!chatId,
+    });
 
-    const [wallets, updateWallets] = swr(
-        () => user?.token ? "/api/rest/wallet" : null,
-        [],
-        { key: "wallets" }
-    );
-
-    const [rank] = swr(
-        () => spaceSlug && "/api/rest/rank?spaceSlug=" + spaceSlug,
-        [],
-        {
-            key: "rank",
-        }
-    );
+    const { data: rank = [] } = useQuery({
+        queryKey: ['rank', spaceSlug],
+        queryFn: async () => {
+            if (!spaceSlug) return [];
+            const response = await apiClient.get(`/api/rest/rank?spaceSlug=${spaceSlug}`);
+            return response;
+        },
+        enabled: !!spaceSlug,
+    });
 
     useEffect(() => {
-        if (!user?.tgUserId && !user.init)
+        if (!isAuthenticated && !userLoading)
             router.push("/meriter/login?returnTo=" + encodeURIComponent(document.location.pathname));
-    }, [user, user?.init]);
+    }, [isAuthenticated, userLoading]);
 
-    const [userdata] = swr(
-        () =>
-            user?.tgUserId
-                ? `/api/rest/users/telegram/${user.tgUserId}/profile`
-                : null,
-        0,
-        { key: "userdata" }
-    );
 
     const updateWalletBalance = (currencyOfCommunityTgChatId: string, amountChange: number) => {
-        // Optimistically update wallet balance without reloading
-        if (!Array.isArray(wallets)) return;
-        
-        const updatedWallets = wallets.map((wallet) => {
-            if (wallet.currencyOfCommunityTgChatId === currencyOfCommunityTgChatId) {
-                return {
-                    ...wallet,
-                    amount: wallet.amount + amountChange,
-                };
-            }
-            return wallet;
-        });
-        updateWallets(updatedWallets, false); // Update without revalidation
+        // This is now handled by React Query optimistic updates
     };
 
     const updateAll = async () => {
@@ -168,26 +154,34 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
     }, []);
 
     const tagRus = space?.tagRus ?? "";
-    const [chat] = swr(
-        () => chatId ? `/api/rest/getchat?chatId=${chatId}` : null,
-        {},
-        { key: "chat" }
-    );
+    const { data: chat = {} } = useQuery({
+        queryKey: ['chat', chatId],
+        queryFn: async () => {
+            if (!chatId) return {};
+            const response = await apiClient.get(`/api/rest/getchat?chatId=${chatId}`);
+            return response;
+        },
+        enabled: !!chatId,
+    });
 
-    const [comms] = swr(
-        () => chatId ? `/api/rest/communityinfo?chatId=${chatId}` : null,
-        {},
-        { key: "comms" }
-    );
-    const chatName = chat?.username;
-    const chatUrl = chat?.url;
-    const chatNameVerb = String(chat?.title ?? "");
+    const { data: comms = {} } = useQuery({
+        queryKey: ['community-info', chatId],
+        queryFn: async () => {
+            if (!chatId) return {};
+            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${chatId}`);
+            return response;
+        },
+        enabled: !!chatId,
+    });
+    const chatName = chat?.chat?.username;
+    const chatUrl = chat?.chat?.url;
+    const chatNameVerb = String(chat?.chat?.title ?? "");
     const activeCommentHook = useState(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [rankLimit, setRankLimit] = useState(2 + 1);
 
-    if (!user.token) return null;
+    if (!isAuthenticated) return null;
 
     const tgAuthorId = user?.tgUserId;
 
@@ -199,8 +193,8 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
             <HeaderAvatarBalance
                 balance1={{ icon: chat?.icon, amount: balance }}
                 balance2={undefined}
-                avatarUrl={telegramGetAvatarLink(tgAuthorId)}
-                onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
+                avatarUrl={telegramGetAvatarLink(tgAuthorId || '')}
+                onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId || '')}
                 onClick={() => {
                     router.push("/meriter/home");
                 }}
@@ -283,15 +277,14 @@ const SpacePage = ({ params }: { params: Promise<{ slug: string }> }) => {
                         <h3 className="text-xl font-bold">{t('spaces.topPublications')}</h3>
                     </div>
                 )}
-                {user.token &&
+                {isAuthenticated &&
                     publications
-                        .filter((p: any) => p?.messageText || p?.type === 'poll')
+                        .filter((p: any) => p?.meta?.comment || p?.type === 'poll')
                         .map((p: any) => (
                             <Publication
-                                key={p._id}
+                                key={p.uid}
                                 {...p}
                                 balance={balance}
-                                updBalance={updBalance}
                                 activeCommentHook={activeCommentHook}
                                 activeSlider={activeSlider}
                                 setActiveSlider={setActiveSlider}

@@ -3,25 +3,7 @@ import { TgChatsService } from '../../../tg-chats/tg-chats.service';
 import { UserGuard } from '../../../user.guard';
 
 class RestGUCDto {
-  communities: {
-    _id: string;
-    photo: string;
-    title: string;
-    description: string;
-    icon: string;
-    chatId: string;
-    tags: string[];
-    url: string;
-    helpUrl: string;
-    administratorsIds: string[];
-    name: string;
-    type: string;
-    username: string;
-    first_name: string | null;
-    last_name: string | null;
-    isAdmin: boolean;
-    needsSetup: boolean;
-  }[];
+  communities: any[];
 }
 
 @Controller('api/rest/getusercommunities')
@@ -50,21 +32,9 @@ export class RestGetUserCommunitiesController {
         const needsSetup = !chat.meta?.hashtagLabels || chat.meta.hashtagLabels.length === 0;
 
         return {
-          _id: chat.uid,
-          photo: chat.profile?.avatarUrl,
-          title: chat.profile?.name,
-          description: chat.profile?.description,
-          icon: chat.meta?.iconUrl,
+          ...chat.toObject(),
           chatId,
-          tags: chat.meta?.hashtagLabels || [],
-          url: chat.meta?.url,
-          helpUrl: chat.meta?.helpUrl,
           administratorsIds,
-          name: chat.profile?.name,
-          type: 'group',
-          username: chat.meta?.tgUsername,
-          first_name: null,
-          last_name: null,
           isAdmin,
           needsSetup,
         };

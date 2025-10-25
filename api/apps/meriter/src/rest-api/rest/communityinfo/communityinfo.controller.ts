@@ -19,92 +19,6 @@ import { UserGuard } from '../../../user.guard';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
 import { successResponse, ApiResponse } from '../utils/response.helper';
 
-// Helper functions to map between formats for API backward compatibility
-function mapTgChatToOldFormat(chat: any) {
-  if (!chat) return null;
-  return {
-    _id: chat.uid,
-    photo: chat.profile?.avatarUrl,
-    title: chat.profile?.name,
-    description: chat.profile?.description,
-    icon: chat.meta?.iconUrl,
-    chatId: chat.identities?.[0]?.replace('telegram://', ''),
-    tags: chat.meta?.hashtagLabels || [],
-    url: chat.meta?.url,
-    helpUrl: chat.meta?.helpUrl,
-    administratorsIds: (chat.administrators || []).map(a => a.replace('telegram://', '')),
-    first_name: null,
-    last_name: null,
-    name: chat.profile?.name,
-    type: 'group',
-    username: chat.meta?.tgUsername,
-  };
-}
-
-function mapHashtagToOldFormat(hashtag: any) {
-  if (!hashtag) return null;
-  return {
-    uid: hashtag.uid,
-    chatId: hashtag.meta?.parentTgChatId,
-    name: hashtag.profile?.name,
-    tagRus: hashtag.profile?.name,
-    slug: hashtag.slug,
-    description: hashtag.profile?.description,
-    rating: 0,
-    deleted: hashtag.deleted ?? false,
-    dimensionConfig: hashtag.meta?.dimensionConfig,
-  };
-}
-
-function mapOldSpaceToHashtag(oldSpace: any) {
-  return {
-    uid: oldSpace.uid,
-    profile: {
-      name: oldSpace.tagRus || oldSpace.name,
-      description: oldSpace.description,
-    },
-    slug: oldSpace.slug,
-    meta: {
-      parentTgChatId: oldSpace.chatId,
-      dimensionConfig: oldSpace.dimensionConfig,
-      isDeleted: false,
-      dailyEmission: 10,
-    },
-  };
-}
-
-class RestChatObject {
-  administratorsIds: string[];
-
-  chatId: string;
-  description: string;
-  first_name: string;
-  icon: string;
-  last_name: string;
-  name: string;
-  tags: string[];
-  title: string;
-  type: string;
-  username: string;
-  _id: string;
-}
-class RestSpaceObject {
-  chatId: string;
-  description: string;
-  name: string;
-  slug: string;
-  tagRus: string;
-  // _id: string;
-}
-
-class RestCommunityinfoResponse {
-  chat: RestChatObject;
-  currencyNames: string[];
-  dailyEmission: number;
-  icon: string;
-  spaces: RestSpaceObject[];
-  setJwt?: string;
-}
 
 class RestUpdateGMCDto {
   spaces: {
@@ -139,7 +53,7 @@ export class RestCommunityifoController {
   async rest_communityinfo(
     @Query('chatId') chatId: string,
     @Req() req,
-  ): Promise<ApiResponse<RestCommunityinfoResponse>> {
+  ): Promise<ApiResponse<any>> {
     const allowedChatsIds: string[] = req.user.chatsIds;
     const tgUserId = req.user.tgUserId;
     const telegramCommunityChatId = chatId;
@@ -147,10 +61,7 @@ export class RestCommunityifoController {
     const info = await this.tgChatsService.getInfo(chatId);
     if (!info) return successResponse(null);
     const hashtags = await this.hashtagsService.getInChat(chatId);
-    const spaces = hashtags
-      .map((h) => h.toObject())
-
-      .map(mapHashtagToOldFormat);
+    const spaces = hashtags.map((h) => h.toObject());
 
     //console.log(chatId, mapTgChatToOldFormat(info));
     if (!allowedChatsIds.includes(telegramCommunityChatId)) {
@@ -160,7 +71,7 @@ export class RestCommunityifoController {
       );
       if (!isMember)
         return successResponse({
-          chat: mapTgChatToOldFormat(info),
+          chat: info,
           icon: info.meta.iconUrl,
           dailyEmission: 0,
           spaces: [],
@@ -168,7 +79,7 @@ export class RestCommunityifoController {
         });
     }
     const resp = {
-      chat: mapTgChatToOldFormat(info),
+      chat: info,
       icon: info.meta.iconUrl,
       spaces,
       dailyEmission: 10,
@@ -201,8 +112,21 @@ export class RestCommunityifoController {
     
     const spaces = dto.spaces || [];
     
-    // Add chatId to each space before mapping
-    const spacesWithChatId = spaces.map(s => ({ ...s, chatId }));
+    // Transform spaces to hashtag format
+    const hashtagData = spaces.map(s => ({
+      uid: s._id,
+      profile: {
+        name: s.tagRus || s.name,
+        description: s.description,
+      },
+      slug: s.slug,
+      meta: {
+        parentTgChatId: s.chatId || chatId,
+        dimensionConfig: s.dimensionConfig,
+        isDeleted: false,
+        dailyEmission: 10,
+      },
+    }));
     
     const hashtagLabels = spaces
       .filter((s) => s.tagRus && !s.deleted)
@@ -210,7 +134,7 @@ export class RestCommunityifoController {
     
     await this.hashtagsService.upsertList(
       chatId,
-      spacesWithChatId.map(mapOldSpaceToHashtag),
+      hashtagData,
     );
 
     // Refresh chat avatar when admin saves settings

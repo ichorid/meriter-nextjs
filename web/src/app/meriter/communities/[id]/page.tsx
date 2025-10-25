@@ -18,6 +18,8 @@ import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useTranslations } from 'next-intl';
 import { CommunityAvatar } from "@shared/components/community-avatar";
+import { useWallets, useUserProfile } from '@/hooks/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { classList } from "@lib/classList";
 
 const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
@@ -110,38 +112,31 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     }, [targetPostSlug, publications]);
 
     const error =
-        (content??[])?.[0]?.error || err
+        (publications??[])?.[0]?.error || err
             ? true
-            : content.length > 0
+            : publications.length > 0
             ? false
             : undefined;
 
-    const [balance, updBalance] = swr(
-        () => `/api/rest/wallet?tgChatId=${chatId}`,
-        0,
-        { key: "balance" }
-    );
-    const [user] = swr("/api/rest/getme", { init: true });
-
-    const [wallets, updateWallets] = swr(
-        () => user.token ? "/api/rest/wallet" : null,
-        [],
-        { key: "wallets" }
-    );
+    const { user, isLoading: userLoading, isAuthenticated } = useAuth();
+    const { data: wallets = [], isLoading: walletsLoading } = useWallets();
+    const { data: userdata = 0 } = useUserProfile(user?.tgUserId || '');
+    
+    const { data: balance = 0 } = useQuery({
+        queryKey: ['wallet-balance', chatId],
+        queryFn: async () => {
+            const response = await apiClient.get(`/api/rest/wallet?tgChatId=${chatId}`);
+            return response;
+        },
+        enabled: !!chatId,
+    });
 
     useEffect(() => {
-        if (!user?.tgUserId && !user.init)
+        if (!userLoading && !isAuthenticated) {
             router.push("/meriter/login?returnTo=" + encodeURIComponent(document.location.pathname));
-    }, [user, user?.init]);
+        }
+    }, [isAuthenticated, userLoading, router]);
 
-    const [userdata] = swr(
-        () =>
-            user?.tgUserId
-                ? `/api/rest/users/telegram/${user.tgUserId}/profile`
-                : null,
-        0,
-        { key: "userdata" }
-    );
 
     const [findTransaction, setFindTransaction] = useState<string | undefined>(undefined);
     useEffect(() => {
@@ -170,14 +165,17 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         return () => window.removeEventListener("scroll", fn);
     }, []);
 
-    const [chat] = swr(
-        `/api/rest/getchat?chatId=${chatId}`,
-        {},
-        { key: "chat" }
-    );
-    const chatName = chat?.username;
-    const chatUrl = chat?.url;
-    const chatNameVerb = String(chat?.title ?? "");
+    const { data: chat = {} } = useQuery({
+        queryKey: ['chat', chatId],
+        queryFn: async () => {
+            const response = await apiClient.get(`/api/rest/getchat?chatId=${chatId}`);
+            return response;
+        },
+        enabled: !!chatId,
+    });
+    const chatName = chat?.chat?.username;
+    const chatUrl = chat?.chat?.url;
+    const chatNameVerb = String(chat?.chat?.title ?? "");
     const activeCommentHook = useState(null);
     
     // State for withdrawal functionality
@@ -186,28 +184,16 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     
     // Wallet update function for optimistic updates
     const updateWalletBalance = (currencyId: string, change: number) => {
-        // Optimistically update wallet balance in SWR cache
-        if (!Array.isArray(wallets)) return;
-        
-        const updatedWallets = wallets.map((wallet: any) => {
-            if (wallet.currencyOfCommunityTgChatId === currencyId) {
-                return {
-                    ...wallet,
-                    amount: wallet.amount + change,
-                };
-            }
-            return wallet;
-        });
-        updateWallets(updatedWallets, false); // Update SWR cache without revalidation
+        // This will be handled by React Query mutations
+        // Optimistic updates are handled in the hooks
     };
     
     const updateAll = async () => {
-        // Trigger SWR revalidation
-        await updateWallets();
-        await updBalance();
+        // Close the active withdraw slider after successful update
+        setActiveWithdrawPost(null);
     };
 
-    if (!user.token) return null;
+    if (!isAuthenticated) return null;
 
     const tgAuthorId = user?.tgUserId;
 
@@ -230,8 +216,8 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             <HeaderAvatarBalance
                 balance1={undefined}
                 balance2={undefined}
-                avatarUrl={telegramGetAvatarLink(tgAuthorId)}
-                onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
+                avatarUrl={telegramGetAvatarLink(tgAuthorId || '')}
+                onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId || '')}
                 onClick={() => {
                     router.push("/meriter/home");
                 }}
@@ -392,20 +378,19 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             </div>
 
             <div className="space-y-4">
-                {user.token &&
+                {isAuthenticated &&
                     sortItems(publications)
-                        .filter((p) => p?.messageText || p?.type === 'poll')
+                        .filter((p) => p?.meta?.comment || p?.type === 'poll')
                         .map((p) => (
                             <div
-                                key={p._id}
-                                id={`post-${p._id}`}
-                                className={highlightedPostId === p._id ? 'ring-2 ring-primary ring-opacity-50 rounded-lg p-2 bg-primary bg-opacity-10' : ''}
+                                key={p.uid}
+                                id={`post-${p.uid}`}
+                                className={highlightedPostId === p.uid ? 'ring-2 ring-primary ring-opacity-50 rounded-lg p-2 bg-primary bg-opacity-10' : ''}
                             >
                                 <Publication
                                     {...p}
                                     tgChatId={chatId}
                                     balance={balance}
-                                    updBalance={updBalance}
                                     activeCommentHook={activeCommentHook}
                                     activeSlider={activeSlider}
                                     setActiveSlider={setActiveSlider}

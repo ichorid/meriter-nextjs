@@ -17,9 +17,9 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
   return (
     <div className={`prose prose-sm max-w-none ${className}`}>
       <WithTelegramEntities
-        entities={publication.entities || []}
+        entities={publication.meta.commentTgEntities || []}
       >
-        {publication.messageText}
+        {publication.meta.comment}
       </WithTelegramEntities>
     </div>
   );

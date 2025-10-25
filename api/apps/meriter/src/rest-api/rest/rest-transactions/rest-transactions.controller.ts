@@ -20,48 +20,6 @@ import { PublicationsService } from '../../../publications/publications.service'
 import { UsersService } from '../../../users/users.service';
 import { successResponse } from '../utils/response.helper';
 
-// Helper function to map transaction to old format for API backward compatibility
-async function mapTransactionToOldFormat(transaction: any, usersService: any) {
-  const toUserTgId = transaction.subjectsActorUris?.[0]?.replace('actor.user://telegram', '');
-  let toUserTgName = '';
-  
-  // Get beneficiary name if we have a toUserTgId
-  if (toUserTgId) {
-    try {
-      const user = await usersService.model.findOne({
-        identities: 'telegram://' + toUserTgId,
-      });
-      toUserTgName = user?.profile?.name || '';
-    } catch (error) {
-      // If user lookup fails, leave name empty
-      toUserTgName = '';
-    }
-  }
-  
-  return {
-    amount: transaction.meta?.amounts?.total ?? 0,
-    amountFree: transaction.meta?.amounts?.free ?? 0,
-    amountTotal: transaction.meta?.amounts?.total ?? 0,
-    comment: transaction.meta?.comment ?? '',
-    currencyOfCommunityTgChatId: transaction.meta?.amounts?.currencyOfCommunityTgChatId,
-    directionPlus: (transaction.meta?.amounts?.total ?? 0) > 0,
-    forPublicationSlug: transaction.meta?.parentPublicationUri,
-    fromUserTgId: transaction.meta?.from?.telegramUserId,
-    fromUserTgName: transaction.meta?.from?.telegramUserName,
-    inPublicationSlug: transaction.meta?.parentPublicationUri,
-    forTransactionId: transaction.uid,
-    inSpaceSlug: transaction.spacesActorUris?.[0]?.replace('actor.hashtag://slug', '') || '',
-    minus: transaction.meta?.metrics?.minus ?? 0,
-    plus: transaction.meta?.metrics?.plus ?? 0,
-    publicationClassTags: [],
-    reason: transaction.type,
-    sum: transaction.meta?.metrics?.sum ?? 0,
-    toUserTgId: toUserTgId,
-    toUserTgName: toUserTgName,
-    ts: transaction.createdAt?.toString(),
-    _id: transaction._id,
-  };
-}
 
 class RestTransactionsDTO {
   @IsNumber()
@@ -83,33 +41,6 @@ class RestTransactionsDTO {
   
   @IsString()
   inPublicationSlug: string; //"bWcub5MPo"
-}
-class RestTransactionsResponse {
-  transactions: RestTransactionObject[];
-}
-class RestTransactionObject {
-  amount: number; //0
-  amountFree: number; //3
-  amountTotal: number; //3
-  comment: string; //"Три голоса плюс"
-  currencyOfCommunityTgChatId: string; //"-400774319"
-  directionPlus: boolean; //true
-  forPublicationSlug: string; //"rkTNLkb5n"
-  fromUserTgId: string; //"123456789"
-  fromUserTgName: string; //"Example User"
-  inPublicationSlug: string; //"rkTNLkb5n"
-  forTransactionId: string;
-  inSpaceSlug: string; //"bql0fbmi"
-  minus: number; //0
-  plus: number; //0
-  publicationClassTags: [];
-  reason: string; //"forPublication"
-  sum: number; //0
-  toUserTgId: string; //"987654321"
-  toUserTgName: string; //"Beneficiary Name"
-  ts: string; //"2021-01-08T09:40:11.179Z"
-
-  _id: string; //"5ff8287bbb626e366c0a69a0"
 }
 
 @Controller('api/rest/transactions')
@@ -135,10 +66,7 @@ export class RestTransactionsController {
       positive,
     );
     this.logger.log('found comments:', t?.length);
-    const mappedTransactions = await Promise.all(
-      t.map(transaction => mapTransactionToOldFormat(transaction, this.usersService))
-    );
-    return successResponse(mappedTransactions);
+    return successResponse(t);
   }
 
   @Get('updates')
@@ -150,10 +78,7 @@ export class RestTransactionsController {
       req.user.tgUserId,
       positive,
     );
-    const mappedTransactions = await Promise.all(
-      t.map(transaction => mapTransactionToOldFormat(transaction, this.usersService))
-    );
-    return successResponse(mappedTransactions);
+    return successResponse(t);
   }
 
   @Get('publications/:publicationSlug')
@@ -199,10 +124,7 @@ export class RestTransactionsController {
       positive,
     );
 
-    const mappedTransactions = await Promise.all(
-      t.map(transaction => mapTransactionToOldFormat(transaction, this.usersService))
-    );
-    return successResponse(mappedTransactions);
+    return successResponse(t);
   }
 
   @Get(':transactionId/replies')
@@ -249,10 +171,7 @@ export class RestTransactionsController {
       positive,
     );
 
-    const mappedTransactions = await Promise.all(
-      t.map(transaction => mapTransactionToOldFormat(transaction, this.usersService))
-    );
-    return successResponse(mappedTransactions);
+    return successResponse(t);
   }
 
   @Post()

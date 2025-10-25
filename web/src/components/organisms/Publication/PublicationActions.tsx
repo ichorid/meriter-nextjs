@@ -32,19 +32,19 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   className = '',
 }) => {
   const [activeComment, setActiveComment] = activeCommentHook;
-  const isActiveComment = activeComment === publication._id;
+  const isActiveComment = activeComment === publication.uid;
 
   const handleCommentToggle = () => {
-    setActiveComment(isActiveComment ? null : publication._id);
+    setActiveComment(isActiveComment ? null : publication.uid || null);
   };
 
   return (
     <div className={`space-y-4 ${className}`}>
       <div className="flex items-center justify-between">
         <VoteBar
-          plus={publication.plus}
-          minus={publication.minus}
-          sum={publication.sum}
+          plus={publication.meta.metrics.plus}
+          minus={publication.meta.metrics.minus}
+          sum={publication.meta.metrics.sum}
           onVote={onVote}
           maxPlus={maxPlus}
           maxMinus={maxMinus}

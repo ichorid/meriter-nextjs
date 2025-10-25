@@ -43,8 +43,8 @@ export const walletApi = {
    * Get transaction updates
    */
   async getTransactionUpdates(): Promise<Transaction[]> {
-    const response = await apiClient.get<Transaction[]>('/api/rest/transactions/updates');
-    return response;
+    const response = await apiClient.get<{ success: true; data: Transaction[] }>('/api/rest/transactions/updates');
+    return response.data;
   },
 
   /**
@@ -72,8 +72,8 @@ export const walletApi = {
     inPublicationSlug?: string;
     publicationSlug?: string;
   }): Promise<Transaction> {
-    const response = await apiClient.post<Transaction>('/api/rest/transactions', data);
-    return response;
+    const response = await apiClient.post<{ success: true; data: Transaction }>('/api/rest/transactions', data);
+    return response.data;
   },
 
   /**

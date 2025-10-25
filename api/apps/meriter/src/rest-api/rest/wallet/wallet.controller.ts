@@ -3,35 +3,6 @@ import { WalletsService } from '../../../wallets/wallets.service';
 import { UserGuard } from '../../../user.guard';
 import { successResponse } from '../utils/response.helper';
 
-// Helper function to map wallet to old format for API backward compatibility
-function mapWalletToOldFormat(wallet: any) {
-  return {
-    amount: wallet.value ?? 0,
-    tgUserId: wallet.meta?.telegramUserId,
-    currencyOfCommunityTgChatId: wallet.meta?.currencyOfCommunityTgChatId,
-    currencyNames: wallet.meta?.currencyNames,
-    _id: wallet._id,
-  };
-}
-
-class RestWalletObject {
-  amount: number; //1
-  currencyNames: {
-    1: string; //"балл",
-    2: string; //"балла"
-    5: string; //"баллов",
-    many: string; //"баллы"
-  };
-  currencyOfCommunityTgChatId: string; //"-400774319"
-  tgUserId: string; //"123456789"
-
-  _id: string; //"5ff8287bc939316d833ced30"
-}
-
-class RestWalletResponse {
-  balance?: number;
-  wallets?: RestWalletObject[];
-}
 
 @Controller('api/rest/wallet')
 @UseGuards(UserGuard)
@@ -60,7 +31,7 @@ export class RestWalletController {
         'meta.telegramUserId': req.user.tgUserId,
       });
 
-      return successResponse(wallets.map(mapWalletToOldFormat));
+      return successResponse(wallets);
     }
 
     //return new RestWalletResponse();

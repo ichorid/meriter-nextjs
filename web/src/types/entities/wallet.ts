@@ -2,46 +2,28 @@
 import type { ID, Timestamp } from '../common';
 
 export interface Wallet {
-  _id: ID;
-  amount: number;
-  currencyNames: string[];
-  currencyOfCommunityTgChatId: string;
-  tgUserId: string;
-  createdAt?: Timestamp;
-  updatedAt?: Timestamp;
-}
-
-export interface WalletBalance {
-  currencyOfCommunityTgChatId: string;
-  amount: number;
-  currencyName: string;
-  currencyIcon?: string;
-  communityInfo?: {
-    title: string;
-    photo?: string;
+  uid: ID;
+  value: number;
+  meta: {
+    currencyNames?: Record<string, string>;
+    currencyOfCommunityTgChatId?: string;
+    telegramUserId?: string;
   };
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
-export interface WalletTransaction {
-  _id: ID;
-  amount: number;
-  direction: 'in' | 'out';
-  type: 'vote' | 'withdraw' | 'transfer' | 'reward';
-  description?: string;
-  fromUserId?: ID;
-  toUserId?: ID;
-  communityId?: string;
-  createdAt: Timestamp;
+export interface WalletCreate {
+  value: number;
+  meta: {
+    currencyNames?: Record<string, string>;
+    currencyOfCommunityTgChatId?: string;
+    telegramUserId?: string;
+  };
 }
 
 export interface WithdrawRequest {
   amount: number;
   currencyOfCommunityTgChatId: string;
-  destination?: string;
+  comment?: string;
 }
-
-export interface WalletUpdate {
-  amount?: number;
-  currencyNames?: string[];
-}
-

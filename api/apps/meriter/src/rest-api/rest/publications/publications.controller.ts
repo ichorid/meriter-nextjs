@@ -15,65 +15,6 @@ import { UserGuard } from '../../../user.guard';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
 import { successResponse } from '../utils/response.helper';
 
-// Helper function to map publication to old format for API backward compatibility
-function mapPublicationToOldFormat(publication: any) {
-  return {
-    authorPhotoUrl: publication.meta?.author?.photoUrl,
-    canceled: false,
-    fromCommunity: false,
-    fromTgChatId: publication.meta?.origin?.telegramChatId,
-    keyword: publication.meta?.hashtagName,
-    messageText: publication.meta?.comment,
-    entities: publication.meta?.commentTgEntities,
-    minus: publication.meta?.metrics?.minus ?? 0,
-    pending: false,
-    plus: publication.meta?.metrics?.plus ?? 0,
-    slug: publication.uid,
-    spaceSlug: publication.meta?.hashtagSlug,
-    sum: publication.meta?.metrics?.sum ?? 0,
-    tgAuthorId: publication.meta?.author?.telegramId,
-    tgAuthorName: publication.meta?.author?.name,
-    tgAuthorUsername: publication.meta?.author?.username,
-    beneficiaryName: publication.meta?.beneficiary?.name,
-    beneficiaryPhotoUrl: publication.meta?.beneficiary?.photoUrl,
-    beneficiaryId: publication.meta?.beneficiary?.telegramId,
-    beneficiaryUsername: publication.meta?.beneficiary?.username,
-    tgChatId: publication.meta?.origin?.telegramChatId,
-    tgChatName: publication.meta?.origin?.telegramChatName,
-    tgChatUsername: '',
-    tgMessageId: publication.meta?.origin?.messageId,
-    ts: publication.createdAt?.toString(),
-    _id: publication.uid,
-    type: (publication as any).type,
-    content: (publication as any).content,
-  };
-}
-
-class RestPublicationObject {
-  authorPhotoUrl: string;
-  classTags: string[];
-  fromCommunity: boolean;
-  fromTgChatId: string;
-  keyword: string;
-  messageText: string;
-  minus: number;
-  pending: boolean;
-  plus: number;
-  slug: string;
-  spaceSlug: string;
-  sum: number;
-  tgAuthorId: string;
-  tgAuthorName: string;
-  tgChatId: string;
-  tgChatName: string;
-  tgMessageId: string;
-  ts: string;
-  _id: string;
-}
-
-export class RestPublicationsinfResponse {
-  publications: RestPublicationObject[];
-}
 
 @Controller('api/rest/publications')
 @UseGuards(UserGuard)
@@ -97,7 +38,7 @@ export class RestPublicationsController {
       skip,
       positive,
     );
-    return successResponse(publ.map((p) => mapPublicationToOldFormat(p)));
+    return successResponse(publ);
   }
 
   @Get('communities/:chatId')
@@ -129,7 +70,7 @@ export class RestPublicationsController {
     );
     
     return successResponse({
-      publications: publ.map((p) => mapPublicationToOldFormat(p)),
+      publications: publ,
     });
   }
 
@@ -169,7 +110,7 @@ export class RestPublicationsController {
 
     if (skip > 0) return successResponse({ publications: [] });
     return successResponse({
-      publications: [mapPublicationToOldFormat(publ)],
+      publications: [publ],
       publicationSlug,
     });
   }
@@ -207,7 +148,7 @@ export class RestPublicationsController {
     }
 
     return successResponse({
-      publications: publ.map((p) => mapPublicationToOldFormat(p)),
+      publications: publ,
     });
   }
 
@@ -244,6 +185,6 @@ export class RestPublicationsController {
         );
     }
 
-    return successResponse(mapPublicationToOldFormat(publ));
+    return successResponse(publ);
   }
 }

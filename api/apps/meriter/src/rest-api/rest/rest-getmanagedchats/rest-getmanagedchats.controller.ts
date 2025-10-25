@@ -4,20 +4,7 @@ import { UserGuard } from '../../../user.guard';
 import { TgBotsService } from '../../../tg-bots/tg-bots.service';
 import { successResponse, ApiResponse } from '../utils/response.helper';
 class RestGMCDto {
-  chats: {
-    administratorsIds: string[]; //['123456789'];
-    tags: string[];
-    _id: string; //'5ff81388c939316d833cc591';
-    chatId: string; //'-420747307';
-
-    description: string; //null;
-    first_name: string; //null;
-    last_name: string; //null;
-    name: string; //null;
-    title: string; //'MERITER CORP ТЕСТИРОВАНИЕ';
-    type: string; //'group';
-    username: string; //null;
-  }[];
+  chats: any[];
 }
 
 @Controller('api/rest/getmanagedchats')
@@ -42,21 +29,9 @@ export class RestGetmanagedchatsController {
     });
     return successResponse({ 
       chats: chats.map(chat => ({
-        _id: chat.uid,
-        photo: chat.profile?.avatarUrl,
-        title: chat.profile?.name,
-        description: chat.profile?.description,
-        icon: chat.meta?.iconUrl,
+        ...chat.toObject(),
         chatId: chat.identities?.[0]?.replace('telegram://', ''),
-        tags: chat.meta?.hashtagLabels || [],
-        url: chat.meta?.url,
-        helpUrl: chat.meta?.helpUrl,
         administratorsIds: (chat.administrators || []).map(a => a.replace('telegram://', '')),
-        name: chat.profile?.name,
-        type: 'group',
-        username: chat.meta?.tgUsername,
-        first_name: null,
-        last_name: null,
       }))
     });
   }

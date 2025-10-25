@@ -89,7 +89,7 @@ export function useCreatePublication() {
       queryClient.invalidateQueries({ queryKey: publicationsKeys.my() });
       
       // Add the new publication to relevant caches
-      queryClient.setQueryData(publicationsKeys.detail(newPublication.slug), newPublication);
+      queryClient.setQueryData(publicationsKeys.detail(newPublication.uid), newPublication);
     },
     onError: (error) => {
       console.error('Create publication error:', error);
@@ -106,7 +106,7 @@ export function useUpdatePublication() {
       publicationsApi.updatePublication(id, data),
     onSuccess: (updatedPublication) => {
       // Update the publication in cache
-      queryClient.setQueryData(publicationsKeys.detail(updatedPublication.slug), updatedPublication);
+      queryClient.setQueryData(publicationsKeys.detail(updatedPublication.uid), updatedPublication);
       
       // Invalidate lists to ensure consistency
       queryClient.invalidateQueries({ queryKey: publicationsKeys.lists() });

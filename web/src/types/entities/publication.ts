@@ -1,50 +1,40 @@
 // Publication entity types
 import type { ID, Timestamp } from '../common';
-import type { Wallet } from './wallet';
 
 export interface Publication {
-  _id: ID;
-  slug: string;
-  tgChatId: string;
-  tgChatName?: string;
-  tgMessageId?: number;
-  tgAuthorName?: string;
-  tgAuthorId?: string;
-  authorPhotoUrl?: string;
-  beneficiaryName?: string;
-  beneficiaryPhotoUrl?: string;
-  beneficiaryId?: string;
-  beneficiaryUsername?: string;
-  messageText: string;
-  keyword?: string;
-  plus: number;
-  minus: number;
-  sum: number;
-  currency?: string;
-  inMerits?: number;
-  ts: Timestamp;
-  type?: 'post' | 'poll';
+  uid: ID;
+  meta: {
+    author: {
+      name?: string;
+      telegramId?: string;
+      username?: string;
+      photoUrl?: string;
+    };
+    origin: {
+      telegramChatId: string;
+      telegramChatName?: string;
+      messageId?: number;
+    };
+    comment: string;
+    commentTgEntities?: TelegramEntity[];
+    hashtagName?: string;
+    hashtagSlug?: string;
+    beneficiary?: {
+      name?: string;
+      telegramId?: string;
+      username?: string;
+      photoUrl?: string;
+    };
+    metrics: {
+      plus: number;
+      minus: number;
+      sum: number;
+    };
+  };
+  createdAt: Timestamp;
+  type: 'publication' | 'poll';
   content?: any;
-  spaceSlug?: string;
-  entities?: TelegramEntity[];
-  dimensions?: Record<string, any>;
-  dimensionConfig?: Record<string, any>;
-  balance?: number;
-  updBalance?: () => void;
-  highlightTransactionId?: ID;
-  onlyPublication?: boolean;
-  isDetailPage?: boolean;
-  showCommunityAvatar?: boolean;
-  wallets?: Wallet[];
-  updateWalletBalance?: (currencyOfCommunityTgChatId: string, amountChange: number) => void;
-  activeWithdrawPost?: string | null;
-  setActiveWithdrawPost?: (postId: string | null) => void;
-  activeSlider?: string | null;
-  setActiveSlider?: (sliderId: string | null) => void;
-  activeCommentHook?: [string | null, (commentId: string | null) => void];
-  updateAll?: () => void;
-  currencyOfCommunityTgChatId?: string;
-  fromTgChatId?: string;
+  slug?: string;
 }
 
 export interface TelegramEntity {
@@ -56,20 +46,43 @@ export interface TelegramEntity {
 }
 
 export interface PublicationCreate {
-  messageText: string;
-  keyword?: string;
-  tgChatId: string;
-  tgMessageId?: number;
-  type?: 'post' | 'poll';
+  meta: {
+    comment: string;
+    origin: {
+      telegramChatId: string;
+      telegramChatName?: string;
+      messageId?: number;
+    };
+    hashtagName?: string;
+    hashtagSlug?: string;
+    beneficiary?: {
+      name?: string;
+      telegramId?: string;
+      username?: string;
+      photoUrl?: string;
+    };
+  };
+  type?: 'publication' | 'poll';
   content?: any;
 }
 
 export interface PublicationUpdate {
-  messageText?: string;
-  keyword?: string;
-  plus?: number;
-  minus?: number;
-  sum?: number;
+  meta?: {
+    comment?: string;
+    hashtagName?: string;
+    hashtagSlug?: string;
+    beneficiary?: {
+      name?: string;
+      telegramId?: string;
+      username?: string;
+      photoUrl?: string;
+    };
+    metrics?: {
+      plus?: number;
+      minus?: number;
+      sum?: number;
+    };
+  };
 }
 
 export interface Feed {
