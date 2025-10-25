@@ -46,8 +46,7 @@ export class TelegramBotLifecycleService {
     const community = await this.communityRepository.createCommunity(
       chatInfo.chatId,
       chatInfo.title || `Chat ${chatInfo.chatId}`,
-      chatInfo.description,
-      chatInfo.avatarUrl
+      chatInfo.description
     );
 
     this.logger.log(`Community created: ${community.id} for chat ${chatInfo.chatId}`);
@@ -86,9 +85,7 @@ export class TelegramBotLifecycleService {
       user = await this.userRepository.createUser(
         userInfo.userId,
         userInfo.displayName,
-        userInfo.username,
-        userInfo.firstName,
-        userInfo.lastName
+        userInfo.username
       );
     }
 

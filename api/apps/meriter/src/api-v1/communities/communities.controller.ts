@@ -111,7 +111,6 @@ export class CommunitiesController {
       id,
       pagination,
       req.user.tgUserId,
-      { ...query, ...sortOptions },
     );
     return result;
   }

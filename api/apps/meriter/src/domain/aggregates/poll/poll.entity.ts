@@ -59,12 +59,12 @@ export class Poll {
       throw new Error('Poll must have at least 2 options');
     }
     
-    const uuid = require('uuid').v4();
+    const { uid } = require('uid');
     
     const pollOptions = options.map((text, index) => PollOption.create(text, index));
     
     return new Poll(
-      uuid,
+      uid(),
       communityId,
       authorId,
       question,

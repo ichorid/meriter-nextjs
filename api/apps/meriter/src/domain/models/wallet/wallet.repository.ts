@@ -1,21 +1,26 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { BaseRepository } from '../../repositories/base.repository';
 import { Wallet, WalletDocument } from './wallet.schema';
 
 @Injectable()
-export class WalletRepository extends BaseRepository<Wallet> {
-  constructor(@InjectModel(Wallet.name) model: Model<WalletDocument>) {
-    super(model);
-  }
+export class WalletRepository {
+  constructor(@InjectModel(Wallet.name) private readonly model: Model<WalletDocument>) {}
 
   async findByUser(userId: string): Promise<Wallet[]> {
-    return this.find({ userId }, { sort: { lastUpdated: -1 } });
+    return this.model
+      .find({ userId })
+      .sort({ lastUpdated: -1 })
+      .lean()
+      .exec();
   }
 
   async findByUserAndCommunity(userId: string, communityId: string): Promise<Wallet | null> {
-    return this.findOne({ userId, communityId });
+    return this.model.findOne({ userId, communityId }).lean().exec();
+  }
+
+  async findById(id: string): Promise<Wallet | null> {
+    return this.model.findById(id).lean().exec();
   }
 
   async updateBalance(id: string, delta: number): Promise<Wallet | null> {
@@ -36,7 +41,7 @@ export class WalletRepository extends BaseRepository<Wallet> {
       return existing;
     }
 
-    return this.create({
+    return this.model.create({
       id: this.generateId(),
       userId,
       communityId,

@@ -30,19 +30,31 @@ export class CommentsController {
 
   @Get()
   async getComments(
-    @Query('targetType') targetType: string,
-    @Query('targetId') targetId: string,
+    @Query('targetType') targetType?: 'publication' | 'comment',
+    @Query('targetId') targetId?: string,
     @Query('limit') limit?: string,
     @Query('skip') skip?: string,
   ) {
-    if (!targetType || !targetId) {
-      throw new Error('targetType and targetId are required');
-    }
-
     const parsedLimit = limit ? parseInt(limit, 10) : 50;
     const parsedSkip = skip ? parseInt(skip, 10) : 0;
 
-    return this.commentService.getCommentsByTarget(targetType as any, targetId, parsedLimit, parsedSkip);
+    if (targetType && targetId) {
+      return this.commentService.getCommentsByTarget(targetType, targetId, parsedLimit, parsedSkip);
+    }
+
+    return [];
+  }
+
+  @Get('replies/:parentCommentId')
+  async getReplies(
+    @Param('parentCommentId') parentCommentId: string,
+    @Query('limit') limit?: string,
+    @Query('skip') skip?: string,
+  ) {
+    const parsedLimit = limit ? parseInt(limit, 10) : 50;
+    const parsedSkip = skip ? parseInt(skip, 10) : 0;
+
+    return this.commentService.getCommentReplies(parentCommentId, parsedLimit, parsedSkip);
   }
 
   @Get('user/:authorId')
@@ -57,16 +69,13 @@ export class CommentsController {
     return this.commentService.getCommentsByAuthor(authorId, parsedLimit, parsedSkip);
   }
 
-  @Get('replies/:parentCommentId')
-  async getReplies(
-    @Param('parentCommentId') parentCommentId: string,
-    @Query('limit') limit?: string,
-    @Query('skip') skip?: string,
+  @Post(':id/vote')
+  async voteOnComment(
+    @User() user: any,
+    @Param('id') id: string,
+    @Body() dto: { amount: number; direction: 'up' | 'down' },
   ) {
-    const parsedLimit = limit ? parseInt(limit, 10) : 20;
-    const parsedSkip = skip ? parseInt(skip, 10) : 0;
-
-    return this.commentService.getCommentReplies(parentCommentId, parsedLimit, parsedSkip);
+    return this.commentService.voteOnComment(id, user.id, dto.amount, dto.direction);
   }
 
   @Delete(':id')
@@ -76,14 +85,5 @@ export class CommentsController {
   ) {
     await this.commentService.deleteComment(id, user.id);
     return { success: true };
-  }
-
-  @Post(':id/vote')
-  async voteOnComment(
-    @User() user: any,
-    @Param('id') id: string,
-    @Body() dto: { amount: number; direction: 'up' | 'down' },
-  ) {
-    return this.commentService.voteOnComment(id, user.id, dto.amount, dto.direction);
   }
 }

@@ -1,15 +1,11 @@
 import { Module } from '@nestjs/common';
 import { WalletsController } from './wallets.controller';
 import { WalletsService } from './wallets.service';
-import { WalletsService as LegacyWalletsService } from '../../wallets/wallets.service';
-import { TransactionsService } from '../../transactions/transactions.service';
+import { DomainModule } from '../../domain.module';
 
 @Module({
+  imports: [DomainModule],
   controllers: [WalletsController],
-  providers: [
-    WalletsService,
-    LegacyWalletsService,
-    TransactionsService,
-  ],
+  providers: [WalletsService],
 })
 export class WalletsModule {}

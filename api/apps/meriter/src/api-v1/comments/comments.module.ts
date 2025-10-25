@@ -1,17 +1,12 @@
 import { Module } from '@nestjs/common';
 import { CommentsController } from './comments.controller';
 import { CommentsService } from './comments.service';
-import { TransactionsService } from '../../transactions/transactions.service';
-import { PublicationsService } from '../../publications/publications.service';
-import { TgBotsService } from '../../tg-bots/tg-bots.service';
+import { DomainModule } from '../../domain.module';
+import { TgBotsModule } from '../../tg-bots/tg-bots.module';
 
 @Module({
+  imports: [DomainModule, TgBotsModule],
   controllers: [CommentsController],
-  providers: [
-    CommentsService,
-    TransactionsService,
-    PublicationsService,
-    TgBotsService,
-  ],
+  providers: [CommentsService],
 })
 export class CommentsModule {}

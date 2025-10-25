@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PublicationService } from '../domain/services/publication.service';
+import { PublicationServiceV2 } from '../domain/services/publication.service-v2';
 import { CommunityRepository } from '../domain/models/community/community.repository';
 import { UserRepository } from '../domain/models/user/user.repository';
 import { TelegramMessageProcessorService, ParsedMessage } from './message-processor.service';
@@ -10,7 +10,7 @@ export class TelegramPublicationCreatorService {
   private readonly logger = new Logger(TelegramPublicationCreatorService.name);
 
   constructor(
-    private publicationService: PublicationService,
+    private publicationService: PublicationServiceV2,
     private communityRepository: CommunityRepository,
     private userRepository: UserRepository,
     private messageProcessor: TelegramMessageProcessorService,
@@ -42,8 +42,6 @@ export class TelegramPublicationCreatorService {
       user = await this.userRepository.createUser(
         message.userId,
         `User ${message.userId}`, // Default display name
-        undefined,
-        undefined,
         undefined
       );
     }
@@ -74,7 +72,7 @@ export class TelegramPublicationCreatorService {
         videoUrl: message.video,
       });
 
-      this.logger.log(`Publication created successfully: ${publication.id}`);
+      this.logger.log(`Publication created successfully: ${publication.getId.getValue()}`);
     } catch (error) {
       this.logger.error(`Failed to create publication from message ${message.messageId}:`, error);
     }

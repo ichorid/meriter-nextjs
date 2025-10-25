@@ -17,20 +17,19 @@ export class VotesController {
       targetType: 'publication' | 'comment';
       targetId: string;
       amount: number;
-      sourceType: 'personal' | 'quota';
+      direction: 'up' | 'down';
     },
   ) {
-    return this.voteService.createVote(user.id, dto.targetType, dto.targetId, dto.amount, dto.sourceType);
+    return this.voteService.createVoteFromDto(user.id, dto);
   }
 
   @Delete()
   async removeVote(
     @User() user: any,
-    @Query('targetType') targetType: 'publication' | 'comment',
+    @Query('targetType') targetType: string,
     @Query('targetId') targetId: string,
   ) {
-    const result = await this.voteService.removeVote(user.id, targetType, targetId);
-    return { success: result };
+    return this.voteService.removeVote(user.id, targetType as 'publication' | 'comment', targetId);
   }
 
   @Get('user')
@@ -54,12 +53,11 @@ export class VotesController {
   }
 
   @Get('has-voted')
-  async hasUserVoted(
+  async hasVoted(
     @User() user: any,
     @Query('targetType') targetType: string,
     @Query('targetId') targetId: string,
   ) {
-    const hasVoted = await this.voteService.hasUserVoted(user.id, targetType, targetId);
-    return { hasVoted };
+    return this.voteService.hasVoted(user.id, targetType as 'publication' | 'comment', targetId);
   }
 }

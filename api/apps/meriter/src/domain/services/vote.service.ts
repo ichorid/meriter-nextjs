@@ -2,7 +2,7 @@ import { Injectable, Logger, BadRequestException, NotFoundException } from '@nes
 import { VoteRepository } from '../models/vote/vote.repository';
 import { Vote } from '../models/vote/vote.schema';
 import { VoteAmount, UserId } from '../value-objects';
-import { v4 as uuidv4 } from 'uuid';
+import { uid } from 'uid';
 
 @Injectable()
 export class VoteService {
@@ -31,7 +31,7 @@ export class VoteService {
     }
 
     const vote = await this.voteRepository.create({
-      id: uuidv4(),
+      id: uid(),
       targetType,
       targetId,
       userId,
@@ -67,5 +67,13 @@ export class VoteService {
   async hasUserVoted(userId: string, targetType: string, targetId: string): Promise<boolean> {
     const vote = await this.voteRepository.findByUserAndTarget(userId, targetType, targetId);
     return vote !== null;
+  }
+
+  async hasVoted(userId: string, targetType: 'publication' | 'comment', targetId: string): Promise<boolean> {
+    return this.hasUserVoted(userId, targetType, targetId);
+  }
+
+  async createVoteFromDto(userId: string, dto: { targetType: 'publication' | 'comment'; targetId: string; amount: number }): Promise<Vote> {
+    return this.createVote(userId, dto.targetType, dto.targetId, dto.amount, 'personal');
   }
 }

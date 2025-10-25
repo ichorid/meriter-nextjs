@@ -1,38 +1,45 @@
-import { Injectable } from '@nestjs/common';
-import { DomainEvent } from './base-event';
+import { Injectable, Logger } from '@nestjs/common';
 
-export interface EventHandler<T extends DomainEvent> {
-  handle(event: T): Promise<void> | void;
+export abstract class DomainEvent {
+  abstract getEventName(): string;
+  abstract getAggregateId(): string;
+  abstract getTimestamp(): Date;
 }
 
 @Injectable()
 export class EventBus {
-  private handlers: Map<string, EventHandler<any>[]> = new Map();
-
-  subscribe<T extends DomainEvent>(eventType: string, handler: EventHandler<T>): void {
-    if (!this.handlers.has(eventType)) {
-      this.handlers.set(eventType, []);
-    }
-    this.handlers.get(eventType)!.push(handler);
-  }
+  private readonly logger = new Logger(EventBus.name);
+  private readonly handlers = new Map<string, Array<(event: DomainEvent) => Promise<void>>>();
 
   async publish(event: DomainEvent): Promise<void> {
-    const eventType = event.eventType;
-    const handlers = this.handlers.get(eventType) || [];
-
-    await Promise.all(
-      handlers.map(handler => {
-        try {
-          return handler.handle(event);
-        } catch (error) {
-          console.error(`Error handling event ${eventType}:`, error);
-          throw error;
-        }
-      })
-    );
+    const eventName = event.getEventName();
+    const handlers = this.handlers.get(eventName) || [];
+    
+    this.logger.log(`Publishing event: ${eventName} for aggregate: ${event.getAggregateId()}`);
+    
+    for (const handler of handlers) {
+      try {
+        await handler(event);
+      } catch (error) {
+        this.logger.error(`Error handling event ${eventName}:`, error);
+      }
+    }
   }
 
-  async publishAll(events: DomainEvent[]): Promise<void> {
-    await Promise.all(events.map(event => this.publish(event)));
+  subscribe(eventName: string, handler: (event: DomainEvent) => Promise<void>): void {
+    if (!this.handlers.has(eventName)) {
+      this.handlers.set(eventName, []);
+    }
+    this.handlers.get(eventName)!.push(handler);
+  }
+
+  unsubscribe(eventName: string, handler: (event: DomainEvent) => Promise<void>): void {
+    const handlers = this.handlers.get(eventName);
+    if (handlers) {
+      const index = handlers.indexOf(handler);
+      if (index > -1) {
+        handlers.splice(index, 1);
+      }
+    }
   }
 }

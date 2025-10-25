@@ -11,30 +11,32 @@ export class Transaction {
   @Prop({ required: true })
   walletId: string;
 
-  @Prop({ required: true, enum: ['credit', 'debit'] })
-  type: string;
+  @Prop({ required: true })
+  type: 'vote' | 'comment' | 'poll_vote' | 'withdrawal' | 'deposit';
 
   @Prop({ required: true })
   amount: number;
 
-  @Prop({ required: true, enum: ['personal', 'quota'] })
-  sourceType: string;
-
   @Prop({ required: true })
-  referenceType: string;
-
-  @Prop({ required: true })
-  referenceId: string;
+  description: string;
 
   @Prop()
-  description?: string;
+  referenceType?: string;
+
+  @Prop()
+  referenceId?: string;
 
   @Prop({ required: true })
   createdAt: Date;
+
+  @Prop({ required: true })
+  updatedAt: Date;
 }
 
 export const TransactionSchema = SchemaFactory.createForClass(Transaction);
 
 // Add indexes for common queries
-TransactionSchema.index({ walletId: 1, createdAt: -1 });
+TransactionSchema.index({ walletId: 1 });
+TransactionSchema.index({ type: 1 });
 TransactionSchema.index({ referenceType: 1, referenceId: 1 });
+TransactionSchema.index({ createdAt: -1 });

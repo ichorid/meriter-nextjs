@@ -31,7 +31,7 @@ export class PollVotesService {
 
     // Create new vote
     const pollVote = new this.pollVoteModel({
-      uid: uid(8),
+      id: uid(),
       pollId: createDto.pollId,
       optionId: createDto.optionId,
       userId,
@@ -43,7 +43,7 @@ export class PollVotesService {
   }
 
   async getPollVote(id: string): Promise<PollVote | null> {
-    return this.pollVoteModel.findOne({ uid: id }).exec();
+    return this.pollVoteModel.findOne({ id }).exec();
   }
 
   async removePollVote(pollId: string, userId: string): Promise<boolean> {

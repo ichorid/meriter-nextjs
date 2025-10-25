@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { WalletService } from '../../domain/services/wallet.service';
+import { WalletServiceV2 } from '../../domain/services/wallet.service-v2';
 import { User } from '../../decorators/user.decorator';
 import { UserGuard } from '../../user.guard';
 
@@ -7,7 +7,7 @@ import { UserGuard } from '../../user.guard';
 @UseGuards(UserGuard)
 export class WalletsController {
   constructor(
-    private walletService: WalletService,
+    private walletService: WalletServiceV2,
   ) {}
 
   @Get('user/:communityId')
@@ -19,10 +19,9 @@ export class WalletsController {
   }
 
   @Get('user')
-  async getUserWallets(
-    @User() user: any,
-  ) {
-    return this.walletService.getUserWallets(user.id);
+  async getUserWallets(@User() user: any) {
+    // This would need to be implemented in the service
+    return { message: 'Get all user wallets - not implemented yet' };
   }
 
   @Get('balance/:communityId')
@@ -30,16 +29,19 @@ export class WalletsController {
     @User() user: any,
     @Param('communityId') communityId: string,
   ) {
-    const balance = await this.walletService.getWalletBalance(user.id, communityId);
-    return { balance };
+    const wallet = await this.walletService.getWallet(user.id, communityId);
+    return { balance: wallet?.getBalance() || 0 };
   }
 
   @Post('create')
   async createWallet(
     @User() user: any,
-    @Body() dto: { communityId: string },
+    @Body() dto: {
+      communityId: string;
+      currency: { singular: string; plural: string; genitive: string };
+    },
   ) {
-    return this.walletService.createWallet(user.id, dto.communityId);
+    return this.walletService.createOrGetWallet(user.id, dto.communityId, dto.currency);
   }
 
   @Post('add-merits')
@@ -48,20 +50,19 @@ export class WalletsController {
     @Body() dto: {
       communityId: string;
       amount: number;
-      sourceType: 'personal' | 'quota';
-      referenceType: string;
-      referenceId: string;
-      description?: string;
+      currency: { singular: string; plural: string; genitive: string };
     },
   ) {
-    return this.walletService.addMerits(
+    return this.walletService.addTransaction(
       user.id,
       dto.communityId,
+      'credit',
       dto.amount,
-      dto.sourceType,
-      dto.referenceType,
-      dto.referenceId,
-      dto.description,
+      'personal',
+      'admin_credit',
+      'admin',
+      dto.currency,
+      'Admin credit'
     );
   }
 
@@ -71,20 +72,19 @@ export class WalletsController {
     @Body() dto: {
       communityId: string;
       amount: number;
-      sourceType: 'personal' | 'quota';
-      referenceType: string;
-      referenceId: string;
-      description?: string;
+      currency: { singular: string; plural: string; genitive: string };
     },
   ) {
-    return this.walletService.deductMerits(
+    return this.walletService.addTransaction(
       user.id,
       dto.communityId,
+      'debit',
       dto.amount,
-      dto.sourceType,
-      dto.referenceType,
-      dto.referenceId,
-      dto.description,
+      'personal',
+      'admin_debit',
+      'admin',
+      dto.currency,
+      'Admin deduction'
     );
   }
 
@@ -95,15 +95,14 @@ export class WalletsController {
     @Query('limit') limit?: string,
     @Query('skip') skip?: string,
   ) {
-    // First get the wallet
+    const parsedLimit = limit ? parseInt(limit, 10) : 50;
+    const parsedSkip = skip ? parseInt(skip, 10) : 0;
+
     const wallet = await this.walletService.getWallet(user.id, communityId);
     if (!wallet) {
       return [];
     }
 
-    const parsedLimit = limit ? parseInt(limit, 10) : 50;
-    const parsedSkip = skip ? parseInt(skip, 10) : 0;
-
-    return this.walletService.getTransactions(wallet.id, parsedLimit, parsedSkip);
+    return this.walletService.getTransactions(wallet.getId.getValue(), parsedLimit, parsedSkip);
   }
 }

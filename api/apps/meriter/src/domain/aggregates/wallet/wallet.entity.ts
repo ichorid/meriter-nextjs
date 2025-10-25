@@ -68,7 +68,7 @@ export class Wallet {
     return this.balance >= amount;
   }
 
-  get getBalance(): number {
+  getBalance(): number {
     return this.balance;
   }
 

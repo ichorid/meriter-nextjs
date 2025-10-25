@@ -17,7 +17,8 @@ export class CommentsService {
   async createComment(createDto: CreateCommentDto, userId: string): Promise<Comment> {
     const comment = new this.commentModel({
       uid: uid(8),
-      publicationId: createDto.publicationId,
+      targetType: createDto.targetType,
+      targetId: createDto.targetId,
       parentCommentId: createDto.parentCommentId,
       authorId: userId,
       content: createDto.content,
@@ -139,5 +140,24 @@ export class CommentsService {
         updatedAt: new Date(),
       }
     ).exec();
+  }
+
+  async getCommentsByTarget(
+    targetType: 'publication' | 'comment',
+    targetId: string,
+    pagination: any
+  ): Promise<PaginationResult<Comment>> {
+    const skip = PaginationHelper.getSkip(pagination);
+
+    const comments = await this.commentModel
+      .find({ targetType, targetId })
+      .skip(skip)
+      .limit(pagination.limit)
+      .sort({ createdAt: -1 })
+      .exec();
+
+    const total = await this.commentModel.countDocuments({ targetType, targetId });
+
+    return PaginationHelper.createResult(comments, total, pagination);
   }
 }

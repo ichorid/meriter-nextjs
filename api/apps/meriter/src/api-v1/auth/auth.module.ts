@@ -1,19 +1,14 @@
 import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { UsersService } from '../../users/users.service';
-import { TgChatsService } from '../../tg-chats/tg-chats.service';
-import { TgBotsService } from '../../tg-bots/tg-bots.service';
-import { ConfigService } from '@nestjs/config';
+import { UsersModule } from '../../users/users.module';
+import { TgChatsModule } from '../../tg-chats/tg-chats.module';
+import { TgBotsModule } from '../../tg-bots/tg-bots.module';
 
 @Module({
+  imports: [UsersModule, TgChatsModule, TgBotsModule],
   controllers: [AuthController],
-  providers: [
-    AuthService,
-    UsersService,
-    TgChatsService,
-    TgBotsService,
-    ConfigService,
-  ],
+  providers: [AuthService],
+  exports: [AuthService],
 })
 export class AuthModule {}

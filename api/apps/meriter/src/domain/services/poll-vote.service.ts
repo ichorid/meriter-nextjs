@@ -4,7 +4,7 @@ import { PollRepository } from '../models/poll/poll.repository';
 import { PollVote } from '../models/poll/poll-vote.schema';
 import { PollVotedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
-import { v4 as uuidv4 } from 'uuid';
+import { uid } from 'uid';
 
 @Injectable()
 export class PollVoteService {
@@ -50,7 +50,7 @@ export class PollVoteService {
     }
 
     const vote = await this.pollVoteRepository.create({
-      id: uuidv4(),
+      id: uid(),
       pollId,
       userId,
       optionIndex,
@@ -78,5 +78,9 @@ export class PollVoteService {
 
   async getAllVotes(pollId: string): Promise<PollVote[]> {
     return this.pollVoteRepository.findByPoll(pollId);
+  }
+
+  async voteOnPoll(pollId: string, userId: string, optionIndex: number, amount: number): Promise<PollVote> {
+    return this.createVote(pollId, userId, optionIndex, amount, 'personal');
   }
 }

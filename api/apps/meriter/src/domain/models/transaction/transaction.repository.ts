@@ -1,23 +1,28 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { BaseRepository } from '../../repositories/base.repository';
 import { Transaction, TransactionDocument } from './transaction.schema';
 
 @Injectable()
-export class TransactionRepository extends BaseRepository<Transaction> {
-  constructor(@InjectModel(Transaction.name) model: Model<TransactionDocument>) {
-    super(model);
-  }
+export class TransactionRepository {
+  constructor(@InjectModel(Transaction.name) private readonly model: Model<TransactionDocument>) {}
 
   async findByWallet(walletId: string, limit: number = 50, skip: number = 0): Promise<Transaction[]> {
-    return this.find(
-      { walletId },
-      { limit, skip, sort: { createdAt: -1 } }
-    );
+    return this.model
+      .find({ walletId })
+      .limit(limit)
+      .skip(skip)
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
   }
 
   async findByReference(referenceType: string, referenceId: string): Promise<Transaction[]> {
-    return this.find({ referenceType, referenceId });
+    return this.model.find({ referenceType, referenceId }).lean().exec();
+  }
+
+  async create(transactionData: Partial<Transaction>): Promise<Transaction> {
+    const transaction = await this.model.create(transactionData);
+    return transaction.toObject();
   }
 }

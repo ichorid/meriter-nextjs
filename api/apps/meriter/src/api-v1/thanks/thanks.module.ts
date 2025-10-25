@@ -1,19 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ThanksController } from './thanks.controller';
 import { ThanksService } from './thanks.service';
-import { TransactionsService } from '../../transactions/transactions.service';
-import { PublicationsService } from '../../publications/publications.service';
-import { TgBotsService } from '../../tg-bots/tg-bots.service';
-import { WalletsService } from '../../wallets/wallets.service';
+import { DomainModule } from '../../domain.module';
+import { TgBotsModule } from '../../tg-bots/tg-bots.module';
 
 @Module({
+  imports: [DomainModule, TgBotsModule],
   controllers: [ThanksController],
-  providers: [
-    ThanksService,
-    TransactionsService,
-    PublicationsService,
-    TgBotsService,
-    WalletsService,
-  ],
+  providers: [ThanksService],
 })
 export class ThanksModule {}

@@ -1,41 +1,54 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { BaseRepository } from '../../repositories/base.repository';
 import { Publication, PublicationDocument } from './publication.schema';
 
 @Injectable()
-export class PublicationRepository extends BaseRepository<Publication> {
-  constructor(@InjectModel(Publication.name) model: Model<PublicationDocument>) {
-    super(model);
-  }
+export class PublicationRepository {
+  constructor(@InjectModel(Publication.name) private readonly model: Model<PublicationDocument>) {}
 
   async findByCommunity(communityId: string, limit: number = 20, skip: number = 0): Promise<Publication[]> {
-    return this.find(
-      { communityId },
-      { limit, skip, sort: { createdAt: -1 } }
-    );
+    return this.model
+      .find({ communityId })
+      .limit(limit)
+      .skip(skip)
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
   }
 
   async findByAuthor(authorId: string, limit: number = 20, skip: number = 0): Promise<Publication[]> {
-    return this.find(
-      { authorId },
-      { limit, skip, sort: { createdAt: -1 } }
-    );
+    return this.model
+      .find({ authorId })
+      .limit(limit)
+      .skip(skip)
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
   }
 
   async findByHashtag(hashtag: string, limit: number = 20, skip: number = 0): Promise<Publication[]> {
-    return this.find(
-      { hashtags: hashtag },
-      { limit, skip, sort: { 'metrics.score': -1 } }
-    );
+    return this.model
+      .find({ hashtags: hashtag })
+      .limit(limit)
+      .skip(skip)
+      .sort({ 'metrics.score': -1 })
+      .lean()
+      .exec();
   }
 
   async findByScore(limit: number = 20, skip: number = 0): Promise<Publication[]> {
-    return this.find(
-      {},
-      { limit, skip, sort: { 'metrics.score': -1 } }
-    );
+    return this.model
+      .find({})
+      .limit(limit)
+      .skip(skip)
+      .sort({ 'metrics.score': -1 })
+      .lean()
+      .exec();
+  }
+
+  async findById(id: string): Promise<Publication | null> {
+    return this.model.findById(id).lean().exec();
   }
 
   async updateMetrics(id: string, delta: number): Promise<Publication | null> {

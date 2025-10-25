@@ -1,21 +1,12 @@
 import { Module } from '@nestjs/common';
 import { PollsController } from './polls.controller';
 import { PollsService } from './polls.service';
-import { PublicationsService } from '../../publications/publications.service';
-import { TransactionsService } from '../../transactions/transactions.service';
-import { WalletsService } from '../../wallets/wallets.service';
-import { TgBotsService } from '../../tg-bots/tg-bots.service';
-import { ConfigService } from '@nestjs/config';
+import { DomainModule } from '../../domain.module';
+import { TgBotsModule } from '../../tg-bots/tg-bots.module';
 
 @Module({
+  imports: [DomainModule, TgBotsModule],
   controllers: [PollsController],
-  providers: [
-    PollsService,
-    PublicationsService,
-    TransactionsService,
-    WalletsService,
-    TgBotsService,
-    ConfigService,
-  ],
+  providers: [PollsService],
 })
 export class PollsModule {}

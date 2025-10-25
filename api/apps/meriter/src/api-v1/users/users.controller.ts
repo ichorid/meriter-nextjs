@@ -7,6 +7,7 @@ import {
   Req,
   UseGuards,
   Logger,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { PublicationsService } from '../publications/publications.service';
@@ -78,9 +79,14 @@ export class UsersController {
   async getUserPublications(
     @Param('userId') userId: string,
     @Query() query: any,
+    @Req() req: any,
   ) {
     const pagination = PaginationHelper.parseOptions(query);
-    const result = await this.publicationsService.getUserPublications(userId, pagination);
+    const result = await this.publicationsService.getUserPublications(
+      userId,
+      pagination,
+      req.user.tgUserId,
+    );
     return result;
   }
 

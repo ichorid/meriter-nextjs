@@ -73,10 +73,10 @@ export class Comment {
     content: string,
     parentCommentId?: string
   ): Comment {
-    const uuid = require('uuid').v4();
+    const { uid } = require('uid');
     
     return new Comment(
-      uuid,
+      uid(),
       targetType,
       targetId,
       authorId,

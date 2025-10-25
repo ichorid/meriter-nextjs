@@ -1,15 +1,12 @@
 import { Module } from '@nestjs/common';
 import { PublicationsController } from './publications.controller';
 import { PublicationsService } from './publications.service';
-import { PublicationsService as LegacyPublicationsService } from '../../publications/publications.service';
-import { TgBotsService } from '../../tg-bots/tg-bots.service';
+import { DomainModule } from '../../domain.module';
+import { TgBotsModule } from '../../tg-bots/tg-bots.module';
 
 @Module({
+  imports: [DomainModule, TgBotsModule],
   controllers: [PublicationsController],
-  providers: [
-    PublicationsService,
-    LegacyPublicationsService,
-    TgBotsService,
-  ],
+  providers: [PublicationsService],
 })
 export class PublicationsModule {}

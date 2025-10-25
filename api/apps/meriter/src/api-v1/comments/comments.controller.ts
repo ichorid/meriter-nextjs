@@ -88,8 +88,7 @@ export class CommentsController {
     @Req() req: any,
   ) {
     const pagination = PaginationHelper.parseOptions(query);
-    const result = await this.commentsService.getCommentsByTarget(
-      'publication',
+    const result = await this.commentsService.getPublicationComments(
       publicationId,
       pagination,
       req.user.tgUserId,
@@ -104,8 +103,7 @@ export class CommentsController {
     @Req() req: any,
   ) {
     const pagination = PaginationHelper.parseOptions(query);
-    const result = await this.commentsService.getCommentsByTarget(
-      'comment',
+    const result = await this.commentsService.getCommentReplies(
       id,
       pagination,
       req.user.tgUserId,
@@ -117,9 +115,14 @@ export class CommentsController {
   async getUserComments(
     @Param('userId') userId: string,
     @Query() query: any,
+    @Req() req: any,
   ) {
     const pagination = PaginationHelper.parseOptions(query);
-    const result = await this.commentsService.getUserComments(userId, pagination);
+    const result = await this.commentsService.getUserComments(
+      userId,
+      pagination,
+      req.user.tgUserId,
+    );
     return result;
   }
 }

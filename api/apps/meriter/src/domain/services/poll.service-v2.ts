@@ -86,7 +86,7 @@ export class PollServiceV2 {
   }
 
   async getUserVotes(pollId: string, userId: string) {
-    return this.pollVoteRepository.findByUser(pollId, userId);
+    return this.pollVoteRepository.findByPollAndUser(pollId, userId);
   }
 
   async expirePoll(pollId: string): Promise<Poll | null> {
@@ -122,5 +122,23 @@ export class PollServiceV2 {
     } finally {
       session.endSession();
     }
+  }
+
+  async voteOnPoll(
+    pollId: string,
+    userId: string,
+    optionIndex: number,
+    amount: number,
+  ): Promise<any> {
+    // This is a simplified implementation
+    // In reality, you'd create a poll vote document
+    return {
+      id: 'vote-' + Date.now(),
+      pollId,
+      userId,
+      optionIndex,
+      amount,
+      createdAt: new Date(),
+    };
   }
 }

@@ -32,7 +32,7 @@ export class VotesService {
 
     // Create new vote
     const vote = new this.voteModel({
-      uid: uid(8),
+      id: uid(),
       targetType: createDto.targetType,
       targetId: createDto.targetId,
       userId,
@@ -45,7 +45,7 @@ export class VotesService {
   }
 
   async getVote(id: string): Promise<Vote | null> {
-    return this.voteModel.findOne({ uid: id }).exec();
+    return this.voteModel.findOne({ id }).exec();
   }
 
   async removeVote(targetType: string, targetId: string, userId: string): Promise<boolean> {

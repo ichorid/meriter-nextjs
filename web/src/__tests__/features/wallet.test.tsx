@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { WidgetAvatarBalance } from '@features/wallet/components/widget-avatar-balance';
+import { WidgetAvatarBalance } from '@shared/components/widget-avatar-balance';
 
 describe('Wallet Feature', () => {
     const mockBalance = {

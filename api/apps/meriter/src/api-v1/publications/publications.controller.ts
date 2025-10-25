@@ -1,6 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { PublicationsService } from '../../publications/publications.service';
-import { PublicationService } from '../../domain/services/publication.service';
+import { PublicationServiceV2 } from '../../domain/services/publication.service-v2';
 import { User } from '../../decorators/user.decorator';
 import { UserGuard } from '../../user.guard';
 
@@ -8,8 +7,7 @@ import { UserGuard } from '../../user.guard';
 @UseGuards(UserGuard)
 export class PublicationsController {
   constructor(
-    private publicationsService: PublicationsService, // Old service (to be removed)
-    private publicationService: PublicationService, // New domain service
+    private publicationService: PublicationServiceV2, // Use V2 service
   ) {}
 
   @Post()

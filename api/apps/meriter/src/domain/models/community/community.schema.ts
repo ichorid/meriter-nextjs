@@ -8,7 +8,7 @@ export class Community {
   @Prop({ required: true, unique: true })
   id: string;
 
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true })
   telegramChatId: string;
 
   @Prop({ required: true })
@@ -30,13 +30,13 @@ export class Community {
     type: {
       iconUrl: String,
       currencyNames: {
-        singular: { type: String, required: true },
-        plural: { type: String, required: true },
-        genitive: { type: String, required: true },
+        singular: { type: String, default: 'merit' },
+        plural: { type: String, default: 'merits' },
+        genitive: { type: String, default: 'merits' },
       },
-      dailyEmission: { type: Number, default: 100 },
+      dailyEmission: { type: Number, default: 10 },
     },
-    required: true,
+    default: {},
   })
   settings: {
     iconUrl?: string;
@@ -50,6 +50,9 @@ export class Community {
 
   @Prop({ type: [String], default: [] })
   hashtags: string[];
+
+  @Prop({ type: [String], default: [] })
+  spaces: string[];
 
   @Prop({ default: true })
   isActive: boolean;
@@ -66,5 +69,4 @@ export const CommunitySchema = SchemaFactory.createForClass(Community);
 // Add indexes for common queries
 CommunitySchema.index({ telegramChatId: 1 }, { unique: true });
 CommunitySchema.index({ administrators: 1 });
-CommunitySchema.index({ members: 1 });
 CommunitySchema.index({ isActive: 1 });

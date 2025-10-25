@@ -2,8 +2,8 @@ export class PublicationId {
   private constructor(private readonly value: string) {}
 
   static generate(): PublicationId {
-    const uuid = require('uuid').v4();
-    return new PublicationId(uuid);
+    const { uid } = require('uid');
+    return new PublicationId(uid());
   }
 
   static fromString(id: string): PublicationId {

@@ -61,9 +61,9 @@ export class Publication {
     private readonly communityId: CommunityId,
     private readonly authorId: UserId,
     private readonly beneficiaryId: UserId | null,
-    private readonly content: PublicationContent,
+    private content: PublicationContent,
     private readonly type: 'text' | 'image' | 'video',
-    private readonly hashtags: string[],
+    private hashtags: string[],
     private metrics: Metrics,
     private readonly imageUrl: string | null,
     private readonly videoUrl: string | null,
@@ -135,6 +135,16 @@ export class Publication {
 
   canBeDeletedBy(userId: UserId): boolean {
     return this.authorId.equals(userId);
+  }
+
+  updateContent(content: string): void {
+    this.content = PublicationContent.create(content);
+    this.updatedAt = new Date();
+  }
+
+  updateHashtags(hashtags: string[]): void {
+    this.hashtags = [...hashtags];
+    this.updatedAt = new Date();
   }
 
   hasBeneficiary(): boolean {

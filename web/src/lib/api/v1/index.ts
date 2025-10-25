@@ -1,5 +1,5 @@
 // New v1 API client with improved types and structure
-import { apiClient } from './client';
+import { apiClient } from '../client';
 import type { 
   User,
   Community,

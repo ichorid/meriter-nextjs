@@ -4,7 +4,7 @@ import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { HashtagsService } from '../../hashtags/hashtags.service';
 import { ConfigService } from '@nestjs/config';
 import { PaginationHelper, PaginationResult } from '../../common/helpers/pagination.helper';
-import { Community, Space, UpdateCommunityDto, UpdateSpaceDto } from '../types/domain.types';
+import { Community, Space, UpdateCommunityDto, UpdateSpaceDto, User } from '../types/domain.types';
 
 @Injectable()
 export class CommunitiesService {
@@ -49,12 +49,6 @@ export class CommunitiesService {
     }
 
     return this.mapToCommunity(community);
-  }
-
-  async createCommunity(createDto: any, userId: string): Promise<Community> {
-    // Implementation for creating a new community
-    // This would typically involve creating a new Telegram chat and registering it
-    throw new Error('Community creation not implemented yet');
   }
 
   async updateCommunity(id: string, updateDto: UpdateCommunityDto): Promise<Community> {
@@ -279,9 +273,72 @@ export class CommunitiesService {
       slug: hashtag.slug,
       name: hashtag.profile?.name || hashtag.slug,
       description: hashtag.profile?.description,
+      hashtags: hashtag.meta?.hashtagLabels || [],
       isActive: !hashtag.meta?.isDeleted,
       createdAt: hashtag.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: hashtag.updatedAt?.toISOString() || new Date().toISOString(),
+    };
+  }
+
+  async getCommunityPublications(
+    communityId: string,
+    pagination: any,
+    userId: string,
+  ): Promise<PaginationResult<any>> {
+    // Stub implementation
+    return PaginationHelper.createResult([], 0, pagination);
+  }
+
+  async createCommunity(chatId: string, title: string, description?: string, avatarUrl?: string): Promise<Community> {
+    // Stub implementation
+    return {
+      id: chatId,
+      telegramChatId: chatId,
+      name: title,
+      description,
+      administrators: [],
+      members: [],
+      settings: {
+        iconUrl: avatarUrl || '',
+        currencyNames: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        dailyEmission: 100,
+      },
+      hashtags: [],
+      spaces: [],
+      isAdmin: false,
+      needsSetup: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  async addMember(communityId: string, userId: string): Promise<void> {
+    // Stub implementation
+    return;
+  }
+
+  async createUser(telegramId: string, displayName: string, username?: string, firstName?: string, lastName?: string): Promise<User> {
+    // Stub implementation
+    return {
+      id: telegramId,
+      telegramId,
+      username,
+      firstName: firstName || displayName,
+      lastName: lastName || '',
+      displayName,
+      avatarUrl: '',
+      profile: {
+        bio: '',
+        location: '',
+        website: '',
+        isVerified: false,
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
   }
 }

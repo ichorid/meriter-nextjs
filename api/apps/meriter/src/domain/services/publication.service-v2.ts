@@ -132,4 +132,82 @@ export class PublicationServiceV2 {
       session.endSession();
     }
   }
+
+  async getPublicationsByAuthor(authorId: string, limit: number = 50, skip: number = 0): Promise<Publication[]> {
+    const docs = await this.publicationModel
+      .find({ authorId })
+      .limit(limit)
+      .skip(skip)
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    return docs.map(doc => Publication.fromSnapshot(doc as any));
+  }
+
+  async getPublicationsByHashtag(hashtag: string, limit: number = 50, skip: number = 0): Promise<Publication[]> {
+    const docs = await this.publicationModel
+      .find({ hashtags: hashtag })
+      .limit(limit)
+      .skip(skip)
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    return docs.map(doc => Publication.fromSnapshot(doc as any));
+  }
+
+  async updatePublication(publicationId: string, userId: string, updateData: Partial<CreatePublicationDto>): Promise<Publication> {
+    const session = await this.mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const doc = await this.publicationModel.findOne({ id: publicationId }, null, { session }).lean();
+      if (!doc) {
+        throw new NotFoundException('Publication not found');
+      }
+
+      const publication = Publication.fromSnapshot(doc as any);
+      const userIdObj = UserId.fromString(userId);
+      
+      if (!publication.canBeEditedBy(userIdObj)) {
+        throw new Error('Not authorized to edit this publication');
+      }
+
+      // Update publication fields
+      if (updateData.content) {
+        publication.updateContent(updateData.content);
+      }
+      if (updateData.hashtags) {
+        publication.updateHashtags(updateData.hashtags);
+      }
+
+      await this.publicationModel.updateOne(
+        { id: publication.getId },
+        { $set: publication.toSnapshot() },
+        { session }
+      );
+
+      await session.commitTransaction();
+      return publication;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  }
+
+  async deletePublication(publicationId: string, userId: string): Promise<boolean> {
+    const publication = await this.getPublication(publicationId);
+    if (!publication) {
+      throw new NotFoundException('Publication not found');
+    }
+
+    const userIdObj = UserId.fromString(userId);
+    if (!publication.canBeDeletedBy(userIdObj)) {
+      throw new Error('Not authorized to delete this publication');
+    }
+
+    await this.publicationModel.deleteOne({ id: publicationId });
+    return true;
+  }
 }
