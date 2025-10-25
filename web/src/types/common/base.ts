@@ -28,18 +28,5 @@ export type SortOrder = 'asc' | 'desc';
 
 export type LoadingState = 'idle' | 'loading' | 'success' | 'error';
 
-export interface PaginationParams {
-  skip?: number;
-  limit?: number;
-  sortBy?: string;
-  sortOrder?: SortOrder;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  hasMore: boolean;
-  skip: number;
-  limit: number;
-}
+// Pagination types are now imported from shared types
 

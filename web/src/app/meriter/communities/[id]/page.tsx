@@ -18,7 +18,8 @@ import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useTranslations } from 'next-intl';
 import { CommunityAvatar } from "@shared/components/community-avatar";
-import { useWallets, useUserProfile } from '@/hooks/api';
+import { useWallets, useUserProfile, useCommunity } from '@/hooks/api';
+import { usersApiV1 } from '@/lib/api/v1';
 import { useAuth } from '@/contexts/AuthContext';
 import { classList } from "@lib/classList";
 
@@ -38,13 +39,8 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const [sortBy, setSortBy] = useState<"recent" | "voted">("recent");
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
 
-    const { data: comms = {} } = useQuery({
-        queryKey: ['community-info', chatId],
-        queryFn: async () => {
-            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${chatId}`);
-            return response;
-        },
-    });
+    // Use v1 API hook
+    const { data: comms = {} } = useCommunity(chatId);
 
     const {
         data,
@@ -54,25 +50,25 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         error: err
     } = useInfiniteQuery({
         queryKey: ['publications', chatId],
-        queryFn: async ({ pageParam = 0 }) => {
-            const response = await apiClient.get(`/api/rest/publications/communities/${chatId}?skip=${5 * pageParam}&limit=5`);
+        queryFn: async ({ pageParam = 1 }) => {
+            const response = await apiClient.get(`/api/v1/communities/${chatId}/publications?page=${pageParam}&pageSize=5&sort=score&order=desc`);
             return response;
         },
         getNextPageParam: (lastPage, pages) => {
-            if (!lastPage?.publications?.length) {
+            if (!lastPage.meta?.pagination?.hasNext) {
                 setPaginationEnd(true);
                 return undefined;
             }
-            return pages.length;
+            return pages.length + 1;
         },
-        initialPageParam: 0,
+        initialPageParam: 1,
     });
 
     const publications = (data?.pages ?? [])
-        .map((page: any) => page.publications)
+        .map((page: any) => page.data)
         .flat()
         .filter((p: any, index: number, self: any[]) => 
-            index === self.findIndex((t: any) => t?._id === p?._id)
+            index === self.findIndex((t: any) => t?.id === p?.id)
         );
 
     const setJwt = data?.pages?.[0]?.setJwt;
@@ -86,23 +82,23 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     useEffect(() => {
         if (targetPostSlug && publications.length > 0) {
             console.log('🔍 Looking for post with slug:', targetPostSlug);
-            console.log('🔍 Available publications:', publications.map((p: any) => ({ slug: p.slug, _id: p._id })));
+            console.log('🔍 Available publications:', publications.map((p: any) => ({ slug: p.slug, id: p.id })));
             
             const targetPost = publications.find((p: any) => p.slug === targetPostSlug);
             if (targetPost) {
-                console.log('🎯 Found target post for deep link:', targetPostSlug, 'with _id:', targetPost._id);
-                setHighlightedPostId(targetPost._id);
+                console.log('🎯 Found target post for deep link:', targetPostSlug, 'with id:', targetPost.id);
+                setHighlightedPostId(targetPost.id);
                 
                 // Scroll to the post after a short delay to ensure it's rendered
                 setTimeout(() => {
-                    const postElement = document.getElementById(`post-${targetPost._id}`);
+                    const postElement = document.getElementById(`post-${targetPost.id}`);
                     if (postElement) {
                         console.log('🎯 Scrolling to post element:', postElement);
                         postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         // Remove highlight after 3 seconds
                         setTimeout(() => setHighlightedPostId(null), 3000);
                     } else {
-                        console.log('❌ Post element not found with id:', `post-${targetPost._id}`);
+                        console.log('❌ Post element not found with id:', `post-${targetPost.id}`);
                     }
                 }, 500);
             } else {
@@ -122,13 +118,16 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const { data: wallets = [], isLoading: walletsLoading } = useWallets();
     const { data: userdata = 0 } = useUserProfile(user?.tgUserId || '');
     
+    // Get wallet balance for this community from user's wallets
     const { data: balance = 0 } = useQuery({
-        queryKey: ['wallet-balance', chatId],
+        queryKey: ['wallet-balance', user?.id, chatId],
         queryFn: async () => {
-            const response = await apiClient.get(`/api/rest/wallet?tgChatId=${chatId}`);
-            return response;
+            if (!user?.id || !chatId) return 0;
+            const wallets = await usersApiV1.getUserWallets(user.id);
+            const wallet = wallets.find((w: any) => w.communityId === chatId);
+            return wallet?.balance || 0;
         },
-        enabled: !!chatId,
+        enabled: !!user?.id && !!chatId,
     });
 
     useEffect(() => {
@@ -165,17 +164,10 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         return () => window.removeEventListener("scroll", fn);
     }, []);
 
-    const { data: chat = {} } = useQuery({
-        queryKey: ['chat', chatId],
-        queryFn: async () => {
-            const response = await apiClient.get(`/api/rest/getchat?chatId=${chatId}`);
-            return response;
-        },
-        enabled: !!chatId,
-    });
-    const chatName = chat?.chat?.username;
-    const chatUrl = chat?.chat?.url;
-    const chatNameVerb = String(chat?.chat?.title ?? "");
+    // Use community data for chat info (same as comms)
+    const chatName = comms?.username;
+    const chatUrl = comms?.url;
+    const chatNameVerb = String(comms?.title ?? "");
     const activeCommentHook = useState(null);
     
     // State for withdrawal functionality
@@ -198,15 +190,15 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const tgAuthorId = user?.tgUserId;
 
     const onlyPublication =
-        publications.filter((p: any) => p?.messageText)?.length == 1;
+        publications.filter((p: any) => p?.content)?.length == 1;
 
     const sortItems = (items: any[]) => {
         if (!items) return [];
         return [...items].sort((a, b) => {
             if (sortBy === "recent") {
-                return new Date(b.ts).getTime() - new Date(a.ts).getTime();
+                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
             } else {
-                return (b.sum || 0) - (a.sum || 0);
+                return (b.metrics?.score || 0) - (a.metrics?.score || 0);
             }
         });
     };
@@ -309,24 +301,24 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                         opacity: ".5",
                                     }}
                                 >
-                                    {t('communities.filterByValues')}
+                                    {t('communities.filterByTags')}
                                 </div>
                             )}
-                            {comms.spaces &&
-                                comms.spaces.map((space: any) => (
+                            {comms.tags &&
+                                comms.tags.map((tag: string) => (
                                     <CardWithAvatar
-                                        key={space.slug}
+                                        key={tag}
                                         avatarUrl=""
-                                        userName={space.tagRus || 'Space'}
+                                        userName={tag}
                                         onClick={() =>
-                                            router.push("/meriter/spaces/" + space.slug)
+                                            router.push(`/meriter/communities/${chatId}?tag=${tag}`)
                                         }
                                     >
                                         <div className="heading">
-                                            #{space.tagRus}
+                                            #{tag}
                                         </div>
                                         <div className="description">
-                                            {space.description}
+                                            Filter by {tag}
                                         </div>
                                     </CardWithAvatar>
                                 ))}
@@ -380,32 +372,20 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             <div className="space-y-4">
                 {isAuthenticated &&
                     sortItems(publications)
-                        .filter((p) => p?.meta?.comment || p?.type === 'poll')
+                        .filter((p) => p?.content || p?.type === 'poll')
                         .map((p) => (
                             <div
-                                key={p.uid}
-                                id={`post-${p.uid}`}
-                                className={highlightedPostId === p.uid ? 'ring-2 ring-primary ring-opacity-50 rounded-lg p-2 bg-primary bg-opacity-10' : ''}
+                                key={p.id}
+                                id={`post-${p.id}`}
+                                className={highlightedPostId === p.id ? 'ring-2 ring-primary ring-opacity-50 rounded-lg p-2 bg-primary bg-opacity-10' : ''}
                             >
-                                <Publication
-                                    {...p}
-                                    tgChatId={chatId}
-                                    balance={balance}
-                                    activeCommentHook={activeCommentHook}
-                                    activeSlider={activeSlider}
-                                    setActiveSlider={setActiveSlider}
-                                    dimensionConfig={undefined}
-                                    myId={user?.tgUserId}
-                                    onlyPublication={onlyPublication}
-                                    highlightTransactionId={findTransaction}
-                                    isDetailPage={false}
+                                <PublicationCard
+                                    publication={p}
+                                    wallets={Array.isArray(wallets) ? wallets : []}
                                     showCommunityAvatar={false}
-                                    wallets={wallets}
+                                    updateAll={updateAll}
                                     updateWalletBalance={updateWalletBalance}
-                                    activeWithdrawPost={activeWithdrawPost}
-                                setActiveWithdrawPost={setActiveWithdrawPost}
-                                updateAll={updateAll}
-                            />
+                                />
                             </div>
                         ))}
                 {!paginationEnd && publications.length > 1 && (

@@ -7,46 +7,46 @@ import { useTranslations } from 'next-intl';
 
 export const UpdatesFrequency = () => {
     const t = useTranslations('pages');
-    const endpoint = "/api/rest/freq";
     const queryClient = useQueryClient();
     const [isUpdating, setIsUpdating] = useState(false);
 
     // Use React Query instead of SWR
-    const { data: frequency = null } = useQuery({
-        queryKey: ['frequency'],
+    const { data: frequencyData = null } = useQuery({
+        queryKey: ['updates-frequency'],
         queryFn: async () => {
-            console.log('🌐 React Query fetching frequency');
-            const response = await apiClient.get(endpoint);
-            console.log('🌐 React Query frequency response:', response);
-            console.log('🌐 React Query frequency data:', response.data);
-            return response.data;
+            console.log('🌐 React Query fetching updates frequency');
+            const response = await apiClient.get('/api/v1/users/me/updates-frequency');
+            console.log('🌐 React Query updates frequency response:', response);
+            return response;
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
         refetchOnWindowFocus: false,
     });
 
+    const frequency = frequencyData?.frequency || 'daily';
+
     console.log('🌐 Current frequency value:', frequency);
 
     const setFrequencyMutation = useMutation({
-        mutationFn: async (freq: number) => {
+        mutationFn: async (freq: string) => {
             console.log('Setting frequency to:', freq);
-            const response = await apiClient.post(endpoint, { updateFrequencyMs: freq });
+            const response = await apiClient.put('/api/v1/users/me/updates-frequency', { frequency: freq });
             console.log('Frequency update response:', response);
             return { freq, response };
         },
         onSuccess: (data) => {
             console.log('Mutation success, updating cache with:', data.freq);
-            console.log('Current cache before update:', queryClient.getQueryData(['frequency']));
-            // Update the cache with the new value - match the exact structure returned by the query
-            queryClient.setQueryData(['frequency'], data.freq);
-            console.log('Cache after update:', queryClient.getQueryData(['frequency']));
+            console.log('Current cache before update:', queryClient.getQueryData(['updates-frequency']));
+            // Update the cache with the new value
+            queryClient.setQueryData(['updates-frequency'], { frequency: data.freq });
+            console.log('Cache after update:', queryClient.getQueryData(['updates-frequency']));
         },
         onError: (error) => {
             console.error('Failed to update frequency:', error);
         },
     });
 
-    const setFrequency = async (freq: number) => {
+    const setFrequency = async (freq: string) => {
         setIsUpdating(true);
         try {
             await setFrequencyMutation.mutateAsync(freq);
@@ -57,16 +57,16 @@ export const UpdatesFrequency = () => {
 
     const options = [
         {
-            updateFrequencyMs: 1000 * 60,
+            frequency: 'immediately',
             label: t('updateFrequency.immediately'),
         },
         {
-            updateFrequencyMs: 1000 * 60 * 60,
+            frequency: 'hourly',
             label: t('updateFrequency.oncePerHour'),
             default: true,
         },
         {
-            updateFrequencyMs: 1000 * 60 * 60 * 24,
+            frequency: 'daily',
             label: t('updateFrequency.oncePerDay'),
         },
     ];
@@ -75,19 +75,16 @@ export const UpdatesFrequency = () => {
         <div id={"updates-frequency"}>
             {t('updateFrequency.selectFrequency')}{" "}
             <select
-                value={
-                    frequency ||
-                    options.find((o) => o.default)?.updateFrequencyMs
-                }
+                value={frequency || options.find((o) => o.default)?.frequency}
                 onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-                    setFrequency(Number(e.target.value));
+                    setFrequency(e.target.value);
                 }}
                 disabled={isUpdating}
             >
                 {options.map((o, i) => (
                     <option
                         key={i}
-                        value={o.updateFrequencyMs}
+                        value={o.frequency}
                     >
                         {o.label}
                     </option>

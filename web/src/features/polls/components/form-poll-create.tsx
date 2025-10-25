@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { apiPOST } from "@shared/lib/fetch";
 import { A } from "@shared/components/simple/simple-elements";
 import { useTranslations } from 'next-intl';
 import { initDataRaw, useSignal, hapticFeedback, mainButton, backButton } from '@telegram-apps/sdk-react';
+import { pollsApiV1 } from '@/lib/api/v1';
 
 interface IPollOption {
     id: string;
@@ -150,17 +150,12 @@ export const FormPollCreate = ({
 
             console.log('📊 Creating poll with payload:', payload);
 
-            const response = await apiPOST("/api/rest/poll/create", payload);
+            const poll = await pollsApiV1.createPoll(payload);
 
-            console.log('📊 Poll creation response:', response);
+            console.log('📊 Poll creation response:', poll);
 
-            if (response.error) {
-                setError(response.error);
-                hapticFeedback.notificationOccurred('error');
-            } else if (response._id) {
-                hapticFeedback.notificationOccurred('success');
-                onSuccess && onSuccess(response._id);
-            }
+            hapticFeedback.notificationOccurred('success');
+            onSuccess && onSuccess(poll.id);
         } catch (err: any) {
             console.error('📊 Poll creation error:', err);
             const errorMessage = err.response?.data?.message || err.message || t('errorCreating');

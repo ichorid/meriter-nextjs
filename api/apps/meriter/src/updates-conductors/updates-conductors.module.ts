@@ -9,7 +9,7 @@ import { UpdatesConductorsService } from './updates-conductors.service';
 
 import { TgChatsModule } from '../tg-chats/tg-chats.module';
 import { TgBotsModule } from '../tg-bots/tg-bots.module';
-import { DatabaseModule } from '@common/abstracts/helpers/database/database.module';
+import { DatabaseModule } from '../common/database/database.module';
 
 @Module({
   imports: [

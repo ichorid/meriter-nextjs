@@ -2,7 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { pollsApi } from '@/lib/api';
 import type { Poll, PollCreate, PollResult } from '@/types/entities';
-import type { VotePollRequest } from '@/types/api';
+import type { VotePollRequest } from '@/types/api-v1';
 
 // Query keys
 export const pollsKeys = {

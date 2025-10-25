@@ -4,7 +4,7 @@ import { CardCommentVote } from "@shared/components/card-comment-vote";
 import { telegramGetAvatarLink } from "@lib/telegram";
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
+import { useCommunity } from '@/hooks/api';
 
 class RestTransactionObject {
     amount: number = 0; //0
@@ -38,17 +38,8 @@ export const TransactionToMe = ({
 }) => {
     const t = useTranslations('shared');
     
-    // Fetch community info to get currency icon
-    const { data: communityInfo = {} } = useQuery({
-        queryKey: ['community-info', transaction.currencyOfCommunityTgChatId],
-        queryFn: async () => {
-            if (!transaction.currencyOfCommunityTgChatId) return {};
-            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${transaction.currencyOfCommunityTgChatId}`);
-            return response;
-        },
-        enabled: !!transaction.currencyOfCommunityTgChatId,
-        refetchOnWindowFocus: false,
-    });
+    // Fetch community info to get currency icon using v1 API
+    const { data: communityInfo = {} } = useCommunity(transaction.currencyOfCommunityTgChatId || '');
     
     // Format the rate with currency icon
     const formatRate = () => {
@@ -77,7 +68,7 @@ export const TransactionToMe = ({
     const voteType = determineVoteType();
     
     // Get currency icon for separate rendering
-    const currencyIcon = communityInfo?.icon;
+    const currencyIcon = communityInfo?.settings?.iconUrl || communityInfo?.icon;
     
     return (
         <div>
@@ -104,9 +95,9 @@ export const TransactionToMe = ({
                     }
                 }}
                 showCommunityAvatar={true}
-                communityAvatarUrl={communityInfo?.chat?.photo}
-                communityName={communityInfo?.chat?.title}
-                communityIconUrl={communityInfo?.icon}
+                communityAvatarUrl={communityInfo?.avatarUrl || communityInfo?.chat?.photo}
+                communityName={communityInfo?.name || communityInfo?.chat?.title}
+                communityIconUrl={communityInfo?.settings?.iconUrl || communityInfo?.icon}
                 onCommunityClick={() => {
                     if (transaction.currencyOfCommunityTgChatId) {
                         window.location.href = `/meriter/communities/${transaction.currencyOfCommunityTgChatId}`;

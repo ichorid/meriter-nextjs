@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { commentsApiV1, thanksApiV1, usersApiV1 } from '@/lib/api/v1';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
 const { round } = Math;
 
@@ -30,20 +32,32 @@ export const useComments = (
     const [delta, setDelta] = useState(0);
     const [error, setError] = useState("");
 
+    // Get comments using v1 API
     const { data: comments = [] } = useQuery({
-        queryKey: ['comments', getCommentsApiPath],
+        queryKey: ['comments', forTransaction ? transactionId : publicationSlug],
         queryFn: async () => {
-            const response = await apiClient.get(getCommentsApiPath);
-            return response;
+            if (forTransaction && transactionId) {
+                // Get replies to a comment
+                const result = await commentsApiV1.getCommentReplies(transactionId);
+                return result.data || [];
+            } else if (publicationSlug) {
+                // Get comments on a publication
+                const result = await commentsApiV1.getPublicationComments(publicationSlug);
+                return result.data || [];
+            }
+            return [];
         },
         refetchOnWindowFocus: false,
     });
 
+    // Get user quota for free balance
+    const { user } = useAuth();
     const { data: free = {} } = useQuery({
-        queryKey: ['free-balance', getFreeBalanceApiPath],
+        queryKey: ['quota', user?.id],
         queryFn: async () => {
-            const response = await apiClient.get(getFreeBalanceApiPath);
-            return response;
+            if (!user?.id) return { plus: 0, minus: 0 };
+            const quota = await usersApiV1.getUserQuota(user.id);
+            return { plus: quota || 0, minus: 0 }; // Simplified
         },
         refetchOnWindowFocus: false,
     });
@@ -84,20 +98,38 @@ export const useComments = (
         maxMinus: free?.minus || 0,
         commentAdd: async (directionPlus: boolean) => {
             try {
-                const response = await apiClient.post("/api/rest/transactions", {
-                    amount: Math.abs(delta),
-                    directionPlus,
-                    comment: comment.trim(),
-                    forPublicationSlug: publicationSlug,
-                    forTransactionId: transactionId,
-                });
-                if (response.success) {
-                    setComment("");
-                    setDelta(0);
-                    setError("");
-                    updBalance();
-                    if (activeCommentHook) {
-                        activeCommentHook[1](null);
+                // Use appropriate v1 endpoint based on whether it's a comment or thank
+                if (forTransaction) {
+                    // This is a thank for a comment
+                    const response = await apiClient.post(`/api/v1/comments/${transactionId}/thanks`, {
+                        amount: directionPlus ? Math.abs(delta) : -Math.abs(delta),
+                        sourceType: 'personal',
+                        comment: comment.trim() ? { content: comment.trim() } : undefined,
+                    });
+                    if (response.success) {
+                        setComment("");
+                        setDelta(0);
+                        setError("");
+                        updBalance();
+                        if (activeCommentHook) {
+                            activeCommentHook[1](null);
+                        }
+                    }
+                } else {
+                    // This is a comment on a publication
+                    const response = await apiClient.post("/api/v1/comments", {
+                        targetType: 'publication',
+                        targetId: publicationSlug,
+                        content: comment.trim(),
+                    });
+                    if (response.success) {
+                        setComment("");
+                        setDelta(0);
+                        setError("");
+                        updBalance();
+                        if (activeCommentHook) {
+                            activeCommentHook[1](null);
+                        }
                     }
                 }
             } catch (err: any) {

@@ -5,6 +5,8 @@ import { MeriterModule } from './meriter.module';
 import * as cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { ApiExceptionFilter } from './common/filters/api-exception.filter';
+import { ApiResponseInterceptor } from './common/interceptors/api-response.interceptor';
 // import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 declare const module: any;
 
@@ -18,23 +20,13 @@ async function bootstrap() {
   
   // CORS not needed - Caddy handles routing for both local dev and production
   
-  // Add raw body logging middleware
-  app.use((req: any, res: any, next: any) => {
-    if (req.method === 'POST' && req.path.includes('/api/rest/transaction')) {
-      logger.log(`📥 Middleware - Method: ${req.method}, Path: ${req.path}`);
-      logger.log(`📥 Content-Type: ${req.headers['content-type']}`);
-      logger.log(`📥 Content-Length: ${req.headers['content-length']}`);
-      logger.log(`📥 req.body:`, req.body);
-      logger.log(`📥 req.body type:`, typeof req.body);
-      logger.log(`📥 req.body keys:`, Object.keys(req.body || {}));
-    }
-    next();
-  });
-  
   const configService = app.get(ConfigService);
 
-  // Global exception filter
+  // Global exception filter - use new API exception filter for v1 endpoints
   app.useGlobalFilters(new AllExceptionsFilter());
+
+  // Global API response interceptor for standardized responses
+  app.useGlobalInterceptors(new ApiResponseInterceptor());
 
   // Global validation pipe
   app.useGlobalPipes(

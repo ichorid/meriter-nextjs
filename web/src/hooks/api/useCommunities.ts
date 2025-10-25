@@ -1,127 +1,32 @@
 // Communities React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { communitiesApi } from '@/lib/api';
-import type { Community, CommunityCreate } from '@/types/entities';
-import type { GetCommunitiesRequest } from '@/types/api';
+import { communitiesApiV1 } from '@/lib/api/v1';
+import { queryKeys } from '@/lib/constants/queryKeys';
+import type { UpdateCommunityDto } from '@meriter/shared-types';
 
-// Query keys
-export const communitiesKeys = {
-  all: ['communities'] as const,
-  lists: () => [...communitiesKeys.all, 'list'] as const,
-  list: (params: GetCommunitiesRequest) => [...communitiesKeys.lists(), params] as const,
-  details: () => [...communitiesKeys.all, 'detail'] as const,
-  detail: (id: string) => [...communitiesKeys.details(), id] as const,
-  info: (chatId: string) => [...communitiesKeys.all, 'info', chatId] as const,
-  userProfile: (tgUserId: string) => [...communitiesKeys.all, 'userProfile', tgUserId] as const,
-  rate: (fromCurrency: string) => [...communitiesKeys.all, 'rate', fromCurrency] as const,
-} as const;
-
-// Get communities with pagination
-export function useCommunities(params: GetCommunitiesRequest = {}) {
+export const useCommunities = () => {
   return useQuery({
-    queryKey: communitiesKeys.list(params),
-    queryFn: () => communitiesApi.getCommunities(params),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryKey: queryKeys.communities.list({}),
+    queryFn: () => communitiesApiV1.getCommunities(),
   });
-}
+};
 
-// Get single community
-export function useCommunity(id: string) {
+export const useCommunity = (id: string) => {
   return useQuery({
-    queryKey: communitiesKeys.detail(id),
-    queryFn: () => communitiesApi.getCommunity(id),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryKey: queryKeys.communities.detail(id),
+    queryFn: () => communitiesApiV1.getCommunity(id),
     enabled: !!id,
   });
-}
+};
 
-// Get community info by chat ID
-export function useCommunityInfo(chatId: string) {
-  return useQuery({
-    queryKey: communitiesKeys.info(chatId),
-    queryFn: () => communitiesApi.getCommunityInfo(chatId),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!chatId,
-  });
-}
-
-// Get user profile by Telegram ID
-export function useUserProfile(tgUserId: string) {
-  return useQuery({
-    queryKey: communitiesKeys.userProfile(tgUserId),
-    queryFn: () => communitiesApi.getUserProfile(tgUserId),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!tgUserId,
-  });
-}
-
-// Get exchange rate
-export function useRate(fromCurrency: string) {
-  return useQuery({
-    queryKey: communitiesKeys.rate(fromCurrency),
-    queryFn: () => communitiesApi.getRate(fromCurrency),
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    enabled: !!fromCurrency,
-  });
-}
-
-// Create community
-export function useCreateCommunity() {
+export const useUpdateCommunity = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (data: CommunityCreate) => communitiesApi.createCommunity(data),
-    onSuccess: (newCommunity) => {
-      // Invalidate and refetch communities lists
-      queryClient.invalidateQueries({ queryKey: communitiesKeys.lists() });
-      
-      // Add the new community to cache
-      queryClient.setQueryData(communitiesKeys.detail(newCommunity.uid), newCommunity);
-    },
-    onError: (error) => {
-      console.error('Create community error:', error);
+    mutationFn: ({ id, data }: { id: string; data: Partial<UpdateCommunityDto> }) => 
+      communitiesApiV1.updateCommunity(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.all });
     },
   });
-}
-
-// Update community
-export function useUpdateCommunity() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CommunityCreate> }) => 
-      communitiesApi.updateCommunity(id, data),
-    onSuccess: (updatedCommunity) => {
-      // Update the community in cache
-      queryClient.setQueryData(communitiesKeys.detail(updatedCommunity.uid), updatedCommunity);
-      
-      // Invalidate lists to ensure consistency
-      queryClient.invalidateQueries({ queryKey: communitiesKeys.lists() });
-      
-      // Also invalidate community info cache
-      queryClient.invalidateQueries({ 
-        queryKey: communitiesKeys.info(updatedCommunity.identities?.[0]?.replace('telegram://', '') || '') 
-      });
-    },
-    onError: (error) => {
-      console.error('Update community error:', error);
-    },
-  });
-}
-
-// Delete community
-export function useDeleteCommunity() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (id: string) => communitiesApi.deleteCommunity(id),
-    onSuccess: (_, deletedId) => {
-      // Remove from all caches
-      queryClient.removeQueries({ queryKey: communitiesKeys.detail(deletedId) });
-      queryClient.invalidateQueries({ queryKey: communitiesKeys.lists() });
-    },
-    onError: (error) => {
-      console.error('Delete community error:', error);
-    },
-  });
-}
+};

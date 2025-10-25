@@ -1,8 +1,9 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
 import { CommunityAvatar } from "@shared/components/community-avatar";
+import { useCommunity } from '@/hooks/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface WalletCommunityProps {
     amount: number;
@@ -21,38 +22,25 @@ export const WalletCommunity: React.FC<WalletCommunityProps> = ({
     isAdmin,
     needsSetup,
 }) => {
-    const { data: info = {} } = useQuery({
-        queryKey: ['community-info', currencyOfCommunityTgChatId],
-        queryFn: async () => {
-            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${currencyOfCommunityTgChatId}`);
-            return response;
-        },
-        refetchOnWindowFocus: false,
-    });
+    // Use v1 API hooks
+    const { data: info = {} } = useCommunity(currencyOfCommunityTgChatId);
+    const { user } = useAuth();
 
-    const { data: user = { init: true } } = useQuery({
-        queryKey: ['user'],
-        queryFn: async () => {
-            const response = await apiClient.get('/api/rest/getme');
-            return response;
-        },
-    });
-
-    const title = info?.chat?.title;
-    const chatPhoto = info?.chat?.photo; // Community's Telegram avatar
-    const icon = info?.icon; // Currency icon
-    const tags = info?.chat?.tags;
-    const administratorsIds = info?.chat?.administratorsIds || [];
+    const title = info?.name || info?.title;
+    const chatPhoto = info?.avatarUrl || info?.chat?.photo; // Community's Telegram avatar
+    const icon = info?.settings?.iconUrl || info?.icon; // Currency icon
+    const tags = info?.chat?.tags || info?.hashtags;
+    const administratorsIds = info?.administrators || info?.chat?.administratorsIds || [];
     
     // Use passed isAdmin prop if available, otherwise fall back to checking administratorsIds
-    const userIsAdmin = isAdmin !== undefined ? isAdmin : (user?.tgUserId && administratorsIds.includes(user.tgUserId));
+    const userIsAdmin = isAdmin !== undefined ? isAdmin : (user?.id && administratorsIds.includes(user.id));
     
     if (!title) return null;
     
     return (
         <div 
             className="card bg-base-100 shadow-md rounded-2xl mb-5 p-5 cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => (document.location.href = "/meriter/communities/" + info?.chat?.chatId)}
+            onClick={() => (document.location.href = "/meriter/communities/" + info?.id || currencyOfCommunityTgChatId)}
         >
             {/* Setup banners */}
             {needsSetup && userIsAdmin && (
@@ -105,7 +93,7 @@ export const WalletCommunity: React.FC<WalletCommunityProps> = ({
                                     className="btn btn-ghost btn-sm btn-circle"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        document.location.href = "/meriter/communities/" + info?.chat?.chatId + "/settings";
+                                        document.location.href = "/meriter/communities/" + (info?.id || currencyOfCommunityTgChatId) + "/settings";
                                     }}
                                     title="Settings"
                                 >

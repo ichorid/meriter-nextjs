@@ -1,21 +1,22 @@
-// Base API client with error handling
+// Base API client with error handling and Zod validation
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import { z } from 'zod';
 import type { ApiError, ApiErrorResponse, RequestConfig } from '@/types/common';
 import { config } from '@/config';
 
 export class ApiClient {
   private client: AxiosInstance;
 
-  constructor(baseURL = '', config: RequestConfig = {}) {
+  constructor(baseURL = '', apiConfig: RequestConfig = {}) {
     console.log('🌐 API Client initialized with baseURL:', baseURL);
     
     this.client = axios.create({
       baseURL,
-      timeout: config.timeout || 10000,
+      timeout: apiConfig.timeout || 30000, // Increased timeout for v2
       withCredentials: true, // Include cookies in requests
       headers: {
         'Content-Type': 'application/json',
-        ...config.headers,
+        ...apiConfig.headers,
       },
     });
 
@@ -26,13 +27,19 @@ export class ApiClient {
     // Request interceptor - no longer needed for auth token injection
     // Cookies are automatically sent with withCredentials: true
     this.client.interceptors.request.use(
-      (config) => config,
+      (config) => {
+        console.log('🌐 API Request:', config.method?.toUpperCase(), config.url);
+        return config;
+      },
       (error) => Promise.reject(error)
     );
 
     // Response interceptor
     this.client.interceptors.response.use(
-      (response: AxiosResponse) => response,
+      (response: AxiosResponse) => {
+        console.log('🌐 API Response:', response.status, response.config.url);
+        return response;
+      },
       (error: AxiosError) => {
         const apiError = this.transformError(error);
         return Promise.reject(apiError);
@@ -72,16 +79,12 @@ export class ApiClient {
   }
 
   async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    console.log('🌐 API GET request:', url);
     const response = await this.client.get<T>(url, config);
-    console.log('🌐 API GET response:', response.status, response.data);
     return response.data;
   }
 
   async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    console.log('🌐 API POST request:', url, 'Data:', data);
     const response = await this.client.post<T>(url, data, config);
-    console.log('🌐 API POST response:', response.status, response.data);
     return response.data;
   }
 
@@ -104,8 +107,19 @@ export class ApiClient {
   async postRaw<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return await this.client.post<T>(url, data, config);
   }
+
+  // Method for validating API responses with Zod schemas
+  async getValidated<T>(url: string, schema: z.ZodSchema<T>, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.get(url, config);
+    return schema.parse(response);
+  }
+
+  async postValidated<T>(url: string, data: any, schema: z.ZodSchema<T>, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.post(url, data, config);
+    return schema.parse(response);
+  }
 }
 
-// Create default API client instance
+// Create default API client instance for v2
 export const apiClient = new ApiClient(config.api.baseUrl);
 

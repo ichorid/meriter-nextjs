@@ -32,7 +32,7 @@ import * as stream from "stream";
 
 import { HashtagsService } from "../hashtags/hashtags.service";
 import { WalletsService } from "../wallets/wallets.service";
-import { encodeTelegramDeepLink } from '@common/abstracts';
+import { encodeTelegramDeepLink } from '../common/helpers/telegram';
 
 @Injectable()
 export class TgBotsService {

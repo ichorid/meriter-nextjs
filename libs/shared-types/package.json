@@ -1,0 +1,21 @@
+{
+  "name": "@meriter/shared-types",
+  "version": "1.0.0",
+  "description": "Shared domain types for Meriter API and Frontend",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "zod": "^4.1.12"
+  }
+}

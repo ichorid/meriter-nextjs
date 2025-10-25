@@ -15,6 +15,7 @@ import { apiClient } from '@/lib/api/client';
 import { Spinner } from "@shared/components/misc";
 import { FormWithdraw } from "@shared/components/form-withdraw";
 import { useTranslations } from 'next-intl';
+import { useCommunity } from '@/hooks/api';
 
 interface CommentProps {
     _id: string;
@@ -98,28 +99,11 @@ export const Comment: React.FC<CommentProps> = ({
     const isMerit = tgChatId === GLOBAL_FEED_TG_CHAT_ID;
     const [showselector, setShowselector] = useState(false);
     
-    // Fetch community info to get currency icon
-    const { data: currencyCommunityInfo = {} } = useQuery({
-        queryKey: ['community-info', curr],
-        queryFn: async () => {
-            if (!curr) return {};
-            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${curr}`);
-            return response;
-        },
-        enabled: !!curr,
-        refetchOnWindowFocus: false,
-    });
+    // Fetch community info to get currency icon using v1 API
+    const { data: currencyCommunityInfo = {} } = useCommunity(curr || '');
     
-    const { data: rate = 0 } = useQuery({
-        queryKey: ['rate', curr, _id],
-        queryFn: async () => {
-            if (!isAuthor || isMerit || !curr) return 0;
-            const response = await apiClient.get(`/api/rest/rate?fromCurrency=${curr}`);
-            return response;
-        },
-        enabled: isAuthor && !isMerit && !!curr,
-        refetchOnWindowFocus: false,
-    });
+    // Rate conversion no longer needed with v1 API - currencies are normalized
+    const rate = 1;
     
     // Format the rate with currency icon
     const formatRate = () => {
@@ -148,7 +132,7 @@ export const Comment: React.FC<CommentProps> = ({
     const voteType = determineVoteType();
     
     // Get currency icon for separate rendering
-    const currencyIcon = currencyCommunityInfo?.icon;
+    const currencyIcon = currencyCommunityInfo?.settings?.iconUrl || currencyCommunityInfo?.icon;
     
     // Create a unique identifier for this comment
     const postId = _id;
@@ -184,19 +168,19 @@ export const Comment: React.FC<CommentProps> = ({
         }
         
         try {
-            await apiClient.post("/api/rest/withdraw", {
-                transactionId: _id,
-                amount: withdrawMerits ? amountInMerits : amount,
-                currency: withdrawMerits ? "merit" : currency,
-                directionAdd,
-                withdrawMerits,
-                comment: '', // No comment required
-                amountInternal: withdrawMerits
-                    ? rate > 0
-                        ? amountInMerits / rate
-                        : 0
-                    : amount,
-            });
+            // Use v1 API for vote withdrawal
+            if (directionAdd) {
+                // Adding votes - use POST to create vote
+                await apiClient.post("/api/v1/votes", {
+                    targetType: 'comment',
+                    targetId: _id,
+                    amount: withdrawMerits ? amountInMerits : amount,
+                    sourceType: 'personal',
+                });
+            } else {
+                // Removing votes - use DELETE to remove vote
+                await apiClient.delete(`/api/v1/votes?targetType=comment&targetId=${_id}`);
+            }
             
             setAmount(0);
             setAmountInMerits(0);
@@ -245,18 +229,9 @@ export const Comment: React.FC<CommentProps> = ({
         }
     };
     
-    // Fetch community info for displaying community avatar
+    // Fetch community info for displaying community avatar using v1 API
     const communityId = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
-    const { data: communityInfo = {} } = useQuery({
-        queryKey: ['community-info', communityId],
-        queryFn: async () => {
-            if (!communityId || !showCommunityAvatar) return {};
-            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${communityId}`);
-            return response;
-        },
-        enabled: !!communityId && showCommunityAvatar,
-        refetchOnWindowFocus: false,
-    });
+    const { data: communityInfo = {} } = useCommunity(communityId || '');
     
     const {
         comments,
@@ -271,8 +246,8 @@ export const Comment: React.FC<CommentProps> = ({
         true,
         inPublicationSlug,
         forTransactionId || _id,
-        "/api/rest/transactions/" + (forTransactionId || _id) + "/replies",
-        spaceSlug ? "/api/rest/free?inSpaceSlug=" + spaceSlug : "",
+        "", // No longer used - path handled internally
+        "", // No longer used - quota handled internally
         balance,
         updBalance,
         plus || 0,

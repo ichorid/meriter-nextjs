@@ -1,5 +1,10 @@
-// Atoms exports
-export { Button } from './Button';
-export { Avatar } from './Avatar';
-export { Badge } from './Badge';
+export * from './Avatar';
+export * from './Badge';
+export * from './Button';
+export * from './Card';
+export * from './Divider';
+export * from './Icon';
+export * from './Input';
+export * from './Spinner';
+export * from './Typography';
 

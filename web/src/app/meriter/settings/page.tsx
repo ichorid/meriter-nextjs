@@ -40,7 +40,7 @@ const SettingsPage = () => {
         setSyncMessage('');
         
         try {
-            const response = await fetch('/api/rest/sync-communities', {
+            const response = await fetch('/api/v1/communities/sync', {
                 method: 'POST',
                 credentials: 'include',
             });
@@ -82,7 +82,7 @@ const SettingsPage = () => {
         return null;
     }
 
-    const tgAuthorId = user?.tgUserId;
+    const tgAuthorId = user?.externalIds?.telegram;
 
     return (
         <Page className="settings">
@@ -96,7 +96,7 @@ const SettingsPage = () => {
                 onClick={() => {
                     router.push('/meriter/home');
                 }}
-                userName={user?.name || 'User'}
+                userName={user?.displayName || 'User'}
             >
                 <div>
                     <div className="breadcrumbs text-sm mb-2 sm:mb-4">

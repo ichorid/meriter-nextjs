@@ -3,6 +3,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { useEffect, useState } from "react";
+import { useAuth } from '@/contexts/AuthContext';
+import { useCommunity, useUpdateCommunity } from '@/hooks/api';
+import { communitiesApiV1 } from '@/lib/api/v1';
 import { etv } from '@shared/lib/input-utils';
 import { nanoid } from "nanoid";
 import { useParams, useRouter } from "next/navigation";
@@ -47,21 +50,15 @@ const CommunitySettingsPage = () => {
     const [saveError, setSaveError] = useState('');
     const [saveSuccess, setSaveSuccess] = useState('');
 
-    // Load user data
-    const { data: user = { init: true } } = useQuery({
-        queryKey: ['user'],
-        queryFn: async () => {
-            const response = await apiClient.get('/api/rest/getme');
-            return response;
-        },
-    });
+    // Load user data using v1 API
+    const { user } = useAuth();
     const [communityData, setCommunityData] = useState(null);
     const [communityLoading, setCommunityLoading] = useState(true);
     const [communityError, setCommunityError] = useState('');
 
     // Redirect if not authenticated
     useEffect(() => {
-        if (!user.tgUserId && !user.init) {
+        if (user === null) {
             router.push("/meriter/login?returnTo=/meriter/manage");
         }
     }, [user, router]);
@@ -84,33 +81,24 @@ const CommunitySettingsPage = () => {
         return undefined;
     }, [isInTelegram, router]);
 
-    // Load community data
+    // Load community data using v1 API
+    const { data: communityResponse, isLoading: communityIsLoading, error: communityErr } = useCommunity(chatId);
+    
     useEffect(() => {
-        if (!chatId || !user.tgUserId) return;
-
-        setCommunityLoading(true);
-        apiClient.get(`/api/rest/communityinfo?chatId=${chatId}`)
-            .then((response) => {
-                const data = response.data;
-                setCommunityData(data);
-                
-                // Populate form with existing data
-                setFormData({
-                    currencyNames: data.currencyNames || { 1: '', 2: '', 5: '' },
-                    icon: data.icon || '',
-                    spaces: data.spaces || []
-                });
-                
-                setCommunityError('');
-            })
-            .catch((error) => {
-                console.error('Failed to load community data:', error);
-                setCommunityError(error.response?.status === 404 ? t('communitySettings.communityNotFound') : t('communitySettings.failedToLoad'));
-            })
-            .finally(() => {
-                setCommunityLoading(false);
+        if (communityResponse) {
+            setCommunityData(communityResponse);
+            setFormData({
+                currencyNames: communityResponse.settings?.currencyNames || { singular: '', plural: '', genitive: '' },
+                icon: communityResponse.settings?.iconUrl || '',
+                spaces: communityResponse.hashtags || []
             });
-    }, [chatId, user.tgUserId]);
+            setCommunityError('');
+        }
+        if (communityErr) {
+            setCommunityError(t('communitySettings.failedToLoad'));
+        }
+        setCommunityLoading(false);
+    }, [communityResponse, communityErr, t]);
 
     // Validation logic
     const validateForm = (): Record<string, string> => {
@@ -164,22 +152,28 @@ const CommunitySettingsPage = () => {
         setIsDirty(true);
     };
 
-    // Save handler
+    // Save handler using v1 API
+    const updateCommunityMutation = useUpdateCommunity();
+    
     const handleSave = async () => {
         setTouched(true);
         if (!isValid) return;
 
         const saveData = {
-            spaces: formData.spaces.filter((d) => d.tagRus && !d.deleted),
-            icon: formData.icon,
-            currencyNames: formData.currencyNames,
+            name: communityResponse?.name,
+            description: communityResponse?.description,
+            settings: {
+                iconUrl: formData.icon,
+                currencyNames: formData.currencyNames,
+            },
+            hashtags: formData.spaces.filter((d: any) => d.tagRus && !d.deleted).map((d: any) => d.tagRus),
         };
 
         setSaving(true);
         setSaveError('');
 
         try {
-            await apiClient.post(`/api/rest/communityinfo?chatId=${chatId}`, saveData);
+            await updateCommunityMutation.mutateAsync({ id: chatId, data: saveData });
 
             setIsDirty(false);
             setSaveSuccess(t('communitySettings.settingsSaved'));
@@ -189,7 +183,7 @@ const CommunitySettingsPage = () => {
             }, 1500);
         } catch (error: any) {
             console.error('Save failed:', error);
-            setSaveError(error.response?.data?.message || 'Failed to save settings');
+            setSaveError(error.message || 'Failed to save settings');
         } finally {
             setSaving(false);
         }

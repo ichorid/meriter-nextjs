@@ -2,39 +2,61 @@
 'use client';
 
 import React from 'react';
-import type { BadgeProps } from '@/types/components';
 
-export const Badge: React.FC<BadgeProps> = ({
-  children,
-  variant = 'default',
-  size = 'md',
-  className = '',
-  ...props
-}) => {
-  const baseClasses = 'badge';
-  const variantClasses = {
-    default: 'badge-neutral',
-    success: 'badge-success',
-    warning: 'badge-warning',
-    error: 'badge-error',
-    info: 'badge-info',
-  };
-  const sizeClasses = {
-    sm: 'badge-sm',
-    md: 'badge-md',
-    lg: 'badge-lg',
-  };
+export type BadgeVariant = 'primary' | 'secondary' | 'accent' | 'info' | 'success' | 'warning' | 'error';
+export type BadgeSize = 'xs' | 'sm' | 'md' | 'lg';
 
-  const classes = [
-    baseClasses,
-    variantClasses[variant],
-    sizeClasses[size],
-    className,
-  ].filter(Boolean).join(' ');
+export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: BadgeVariant;
+  size?: BadgeSize;
+  outline?: boolean;
+}
 
-  return (
-    <span className={classes} {...props}>
-      {children}
-    </span>
-  );
-};
+export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
+  (
+    {
+      variant = 'primary',
+      size = 'md',
+      outline = false,
+      className = '',
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const variantClasses = {
+      primary: 'badge-primary',
+      secondary: 'badge-secondary',
+      accent: 'badge-accent',
+      info: 'badge-info',
+      success: 'badge-success',
+      warning: 'badge-warning',
+      error: 'badge-error',
+    };
+
+    const sizeClasses = {
+      xs: 'badge-xs',
+      sm: 'badge-sm',
+      md: 'badge-md',
+      lg: 'badge-lg',
+    };
+
+    const classes = [
+      'badge',
+      variantClasses[variant],
+      sizeClasses[size],
+      outline && 'badge-outline',
+      className,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    return (
+      <div ref={ref} className={classes} {...props}>
+        {children}
+      </div>
+    );
+  }
+);
+
+Badge.displayName = 'Badge';

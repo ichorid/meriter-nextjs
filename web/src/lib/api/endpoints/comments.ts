@@ -4,39 +4,39 @@ import type {
   GetCommentsRequest, 
   GetCommentsResponse,
   CreateCommentRequest,
-  CreateCommentResponse
-} from '@/types/api';
-import type { Comment } from '@/types/entities';
-import type { PaginatedResponse } from '@/types/common';
+  CreateCommentResponse,
+  PaginatedResponse
+} from '@/types/api-v1';
+import type { Comment } from '@meriter/shared-types';
 
 export const commentsApi = {
   /**
-   * Get comments with pagination
+   * Get comments with pagination and sorting
    */
   async getComments(params: GetCommentsRequest = {}): Promise<PaginatedResponse<Comment>> {
-    const response = await apiClient.get<GetCommentsResponse>('/api/rest/comments', { params });
-    return response.data;
+    const response = await apiClient.get<PaginatedResponse<Comment>>('/api/v1/comments', { params });
+    return response;
   },
 
   /**
    * Get comments by publication
    */
   async getCommentsByPublication(
-    slug: string, 
-    params: { skip?: number; limit?: number } = {}
-  ): Promise<Comment[]> {
-    const response = await apiClient.get<Comment[]>(`/api/rest/comments/publication/${slug}`, { params });
+    publicationId: string,
+    params: { page?: number; pageSize?: number; sort?: string; order?: string } = {}
+  ): Promise<PaginatedResponse<Comment>> {
+    const response = await apiClient.get<PaginatedResponse<Comment>>(`/api/v1/comments/publications/${publicationId}`, { params });
     return response;
   },
 
   /**
-   * Get comments by transaction
+   * Get comments by comment (replies)
    */
-  async getCommentsByTransaction(
-    id: string, 
-    params: { skip?: number; limit?: number } = {}
-  ): Promise<Comment[]> {
-    const response = await apiClient.get<Comment[]>(`/api/rest/comments/transaction/${id}`, { params });
+  async getCommentsByComment(
+    commentId: string,
+    params: { page?: number; pageSize?: number; sort?: string; order?: string } = {}
+  ): Promise<PaginatedResponse<Comment>> {
+    const response = await apiClient.get<PaginatedResponse<Comment>>(`/api/v1/comments/${commentId}/replies`, { params });
     return response;
   },
 
@@ -44,7 +44,7 @@ export const commentsApi = {
    * Get single comment
    */
   async getComment(id: string): Promise<Comment> {
-    const response = await apiClient.get<Comment>(`/api/rest/comments/${id}`);
+    const response = await apiClient.get<Comment>(`/api/v1/comments/${id}`);
     return response;
   },
 
@@ -52,15 +52,15 @@ export const commentsApi = {
    * Create new comment
    */
   async createComment(data: CreateCommentRequest): Promise<Comment> {
-    const response = await apiClient.post<CreateCommentResponse>('/api/rest/comments', data);
-    return response.data;
+    const response = await apiClient.post<Comment>('/api/v1/comments', data);
+    return response;
   },
 
   /**
    * Update comment
    */
   async updateComment(id: string, data: Partial<CreateCommentRequest>): Promise<Comment> {
-    const response = await apiClient.put<Comment>(`/api/rest/comments/${id}`, data);
+    const response = await apiClient.put<Comment>(`/api/v1/comments/${id}`, data);
     return response;
   },
 
@@ -68,21 +68,6 @@ export const commentsApi = {
    * Delete comment
    */
   async deleteComment(id: string): Promise<void> {
-    await apiClient.delete(`/api/rest/comments/${id}`);
-  },
-
-  /**
-   * Vote on comment (create transaction)
-   */
-  async voteOnComment(data: {
-    amountPoints: number;
-    comment: string;
-    directionPlus: boolean;
-    forTransactionId?: string;
-    forPublicationSlug?: string;
-    inPublicationSlug?: string;
-  }): Promise<any> {
-    const response = await apiClient.post('/api/rest/transactions', data);
-    return response;
+    await apiClient.delete(`/api/v1/comments/${id}`);
   },
 };

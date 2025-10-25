@@ -2,50 +2,80 @@
 'use client';
 
 import React from 'react';
-import type { ButtonProps } from '@/types/components';
 
-export const Button: React.FC<ButtonProps> = ({
-  children,
-  variant = 'primary',
-  size = 'md',
-  disabled = false,
-  loading = false,
-  onClick,
-  type = 'button',
-  className = '',
-  ...props
-}) => {
-  const baseClasses = 'btn';
-  const variantClasses = {
-    primary: 'btn-primary',
-    secondary: 'btn-secondary',
-    ghost: 'btn-ghost',
-    link: 'btn-link',
-  };
-  const sizeClasses = {
-    sm: 'btn-sm',
-    md: 'btn-md',
-    lg: 'btn-lg',
-  };
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link';
+export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
-  const classes = [
-    baseClasses,
-    variantClasses[variant],
-    sizeClasses[size],
-    loading && 'loading',
-    className,
-  ].filter(Boolean).join(' ');
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  isLoading?: boolean;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  fullWidth?: boolean;
+}
 
-  return (
-    <button
-      type={type}
-      className={classes}
-      disabled={disabled || loading}
-      onClick={onClick}
-      {...props}
-    >
-      {loading && <span className="loading loading-spinner loading-sm mr-2"></span>}
-      {children}
-    </button>
-  );
-};
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      variant = 'primary',
+      size = 'md',
+      isLoading = false,
+      leftIcon,
+      rightIcon,
+      fullWidth = false,
+      className = '',
+      disabled,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const baseClasses = 'btn';
+    
+    const variantClasses = {
+      primary: 'btn-primary',
+      secondary: 'btn-secondary',
+      ghost: 'btn-ghost',
+      danger: 'btn-error',
+      link: 'btn-link',
+    };
+    
+    const sizeClasses = {
+      xs: 'btn-xs',
+      sm: 'btn-sm',
+      md: 'btn-md',
+      lg: 'btn-lg',
+    };
+    
+    const classes = [
+      baseClasses,
+      variantClasses[variant],
+      sizeClasses[size],
+      fullWidth && 'btn-block',
+      className,
+    ]
+      .filter(Boolean)
+      .join(' ');
+    
+    const isDisabled = disabled || isLoading;
+    
+    return (
+      <button
+        ref={ref}
+        className={classes}
+        disabled={isDisabled}
+        {...props}
+      >
+        {isLoading && (
+          <span className="loading loading-spinner loading-sm mr-2"></span>
+        )}
+        {!isLoading && leftIcon && <span className="mr-2">{leftIcon}</span>}
+        {children}
+        {!isLoading && rightIcon && <span className="ml-2">{rightIcon}</span>}
+      </button>
+    );
+  }
+);
+
+Button.displayName = 'Button';

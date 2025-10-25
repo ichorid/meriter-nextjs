@@ -1,8 +1,8 @@
 // Comments React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { commentsApi } from '@/lib/api';
-import type { Comment, CommentCreate } from '@/types/entities';
-import type { GetCommentsRequest } from '@/types/api';
+import type { Comment, CreateCommentRequest } from '@/types/api-v1';
+import type { GetCommentsRequest } from '@/types/api-v1';
 
 // Query keys
 export const commentsKeys = {
@@ -11,8 +11,8 @@ export const commentsKeys = {
   list: (params: GetCommentsRequest) => [...commentsKeys.lists(), params] as const,
   details: () => [...commentsKeys.all, 'detail'] as const,
   detail: (id: string) => [...commentsKeys.details(), id] as const,
-  byPublication: (slug: string) => [...commentsKeys.all, 'publication', slug] as const,
-  byTransaction: (id: string) => [...commentsKeys.all, 'transaction', id] as const,
+  byPublication: (publicationId: string) => [...commentsKeys.all, 'publication', publicationId] as const,
+  byComment: (commentId: string) => [...commentsKeys.all, 'comment', commentId] as const,
 } as const;
 
 // Get comments with pagination
@@ -26,27 +26,27 @@ export function useComments(params: GetCommentsRequest = {}) {
 
 // Get comments by publication
 export function useCommentsByPublication(
-  slug: string, 
-  params: { skip?: number; limit?: number } = {}
+  publicationId: string, 
+  params: { page?: number; pageSize?: number; sort?: string; order?: string } = {}
 ) {
   return useQuery({
-    queryKey: [...commentsKeys.byPublication(slug), params],
-    queryFn: () => commentsApi.getCommentsByPublication(slug, params),
+    queryKey: [...commentsKeys.byPublication(publicationId), params],
+    queryFn: () => commentsApi.getCommentsByPublication(publicationId, params),
     staleTime: 2 * 60 * 1000, // 2 minutes
-    enabled: !!slug,
+    enabled: !!publicationId,
   });
 }
 
-// Get comments by transaction
-export function useCommentsByTransaction(
-  id: string, 
-  params: { skip?: number; limit?: number } = {}
+// Get comments by comment (replies)
+export function useCommentsByComment(
+  commentId: string, 
+  params: { page?: number; pageSize?: number; sort?: string; order?: string } = {}
 ) {
   return useQuery({
-    queryKey: [...commentsKeys.byTransaction(id), params],
-    queryFn: () => commentsApi.getCommentsByTransaction(id, params),
+    queryKey: [...commentsKeys.byComment(commentId), params],
+    queryFn: () => commentsApi.getCommentsByComment(commentId, params),
     staleTime: 2 * 60 * 1000, // 2 minutes
-    enabled: !!id,
+    enabled: !!commentId,
   });
 }
 
@@ -65,65 +65,26 @@ export function useCreateComment() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (data: CommentCreate) => commentsApi.createComment(data),
+    mutationFn: (data: CreateCommentRequest) => commentsApi.createComment(data),
     onSuccess: (newComment) => {
       // Invalidate and refetch comments lists
       queryClient.invalidateQueries({ queryKey: commentsKeys.lists() });
       
       // Add the new comment to relevant caches
-      if (newComment.publicationSlug) {
+      if (newComment.targetType === 'publication') {
         queryClient.invalidateQueries({ 
-          queryKey: commentsKeys.byPublication(newComment.publicationSlug) 
+          queryKey: commentsKeys.byPublication(newComment.targetId) 
+        });
+      } else if (newComment.targetType === 'comment') {
+        queryClient.invalidateQueries({ 
+          queryKey: commentsKeys.byComment(newComment.targetId) 
         });
       }
       
-      if (newComment.transactionId) {
-        queryClient.invalidateQueries({ 
-          queryKey: commentsKeys.byTransaction(newComment.transactionId) 
-        });
-      }
-      
-      queryClient.setQueryData(commentsKeys.detail(newComment._id), newComment);
+      queryClient.setQueryData(commentsKeys.detail(newComment.id), newComment);
     },
     onError: (error) => {
       console.error('Create comment error:', error);
-    },
-  });
-}
-
-// Vote on comment (create transaction)
-export function useVoteOnComment() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (data: {
-      amountPoints: number;
-      comment: string;
-      directionPlus: boolean;
-      forTransactionId?: string;
-      forPublicationSlug?: string;
-      inPublicationSlug?: string;
-    }) => commentsApi.voteOnComment(data),
-    onSuccess: (newTransaction) => {
-      // Invalidate comments and transactions
-      queryClient.invalidateQueries({ queryKey: commentsKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      
-      // Update specific caches if we know the context
-      if (newTransaction.forPublicationSlug) {
-        queryClient.invalidateQueries({ 
-          queryKey: commentsKeys.byPublication(newTransaction.forPublicationSlug) 
-        });
-      }
-      
-      if (newTransaction.forTransactionId) {
-        queryClient.invalidateQueries({ 
-          queryKey: commentsKeys.byTransaction(newTransaction.forTransactionId) 
-        });
-      }
-    },
-    onError: (error) => {
-      console.error('Vote on comment error:', error);
     },
   });
 }
@@ -133,18 +94,22 @@ export function useUpdateComment() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CommentCreate> }) => 
+    mutationFn: ({ id, data }: { id: string; data: Partial<CreateCommentRequest> }) => 
       commentsApi.updateComment(id, data),
     onSuccess: (updatedComment) => {
       // Update the comment in cache
-      queryClient.setQueryData(commentsKeys.detail(updatedComment._id), updatedComment);
+      queryClient.setQueryData(commentsKeys.detail(updatedComment.id), updatedComment);
       
       // Invalidate lists to ensure consistency
       queryClient.invalidateQueries({ queryKey: commentsKeys.lists() });
       
-      if (updatedComment.publicationSlug) {
+      if (updatedComment.targetType === 'publication') {
         queryClient.invalidateQueries({ 
-          queryKey: commentsKeys.byPublication(updatedComment.publicationSlug) 
+          queryKey: commentsKeys.byPublication(updatedComment.targetId) 
+        });
+      } else if (updatedComment.targetType === 'comment') {
+        queryClient.invalidateQueries({ 
+          queryKey: commentsKeys.byComment(updatedComment.targetId) 
         });
       }
     },

@@ -26,7 +26,7 @@
     },
     "sort": {
       "recent": "By Date",
-      "voted": "By Rating"
+      "thanked": "By Rating"
     }
   },
   "settings": {
@@ -131,24 +131,24 @@
     "active": "Active",
     "pollFinished": "Poll finished",
     "timeRemaining": "Time remaining",
-    "votes": "votes",
-    "youVoted": "✓ You voted",
+    "thanks": "thanks",
+    "youThanked": "✓ You thanked",
     "clickToView": "Click to view",
     "collapseAria": "Collapse poll",
     "totalVotes": "Total votes",
     "you": "You",
     "points": "points",
-    "voters": "voters",
+    "thankers": "thankers",
     "amountLabel": "Amount of points:",
     "available": "Available",
     "voting": "Voting...",
-    "vote": "Vote",
-    "youVotedSummary": "✓ You voted {count} time(s) for a total of {amount} points",
+    "thank": "Thank",
+    "youThankedSummary": "✓ You thanked {count} time(s) for a total of {amount} points",
     "pollExpired": "Poll finished. Voting is no longer available.",
     "selectOption": "Select an answer option",
     "specifyAmount": "Specify amount of points",
     "insufficientPoints": "Insufficient points",
-    "voteError": "Voting error",
+    "thankError": "Thanking error",
     "confirm": "Confirm"
   },
   "feed": {
@@ -169,16 +169,16 @@
     "points": "Points"
   },
   "comments": {
-    "upvoteQuota": "Upvote for {used}/{total} daily quota",
-    "upvoteBalance": "Upvote for {amount} from Balance",
-    "sliderUpvote": "Slider right - upvote",
-    "sliderDownvote": "Slider left - downvote",
-    "downvoteQuota": "Downvote for {used}/{total} daily quota",
-    "downvoteBalance": "Downvote for {amount} from Balance",
+    "upthankQuota": "Thank for {used}/{total} daily quota",
+    "upthankBalance": "Thank for {amount} from Balance",
+    "sliderUpthank": "Slider right - thank positively",
+    "sliderDownthank": "Slider left - thank negatively",
+    "downthankQuota": "Thank negatively for {used}/{total} daily quota",
+    "downthankBalance": "Thank negatively for {amount} from Balance",
     "sliderHint": "Move the slider to select the number of points",
     "commentHint": "Tell us why you gave this rating. We value your opinion",
     "close": "close[x]",
-    "downvoteRequiresBalance": "Negative voting is only possible from Balance. ",
+    "downthankRequiresBalance": "Negative thanking is only possible from Balance. ",
     "withdrawToBalance": "Withdraw points from publications to your Balance",
     "insufficientPoints": "Insufficient points. ",
     "addToBalance": "Add them to your Balance",
@@ -193,12 +193,12 @@
     "points": "Points",
     "enterPositiveAmount": "Enter positive amount",
     "sendError": "Sending error: {message}",
-    "upvoteFromQuota": "Upvote using daily quota",
-    "upvoteFromWallet": "Upvote using wallet balance",
-    "upvoteFromMixed": "Upvote using daily quota and wallet",
-    "downvoteFromQuota": "Downvote using daily quota",
-    "downvoteFromWallet": "Downvote using wallet balance",
-    "downvoteFromMixed": "Downvote using daily quota and wallet"
+    "upthankFromQuota": "Thank using daily quota",
+    "upthankFromWallet": "Thank using wallet balance",
+    "upthankFromMixed": "Thank using daily quota and wallet",
+    "downthankFromQuota": "Thank negatively using daily quota",
+    "downthankFromWallet": "Thank negatively using wallet balance",
+    "downthankFromMixed": "Thank negatively using daily quota and wallet"
   },
   "communities": {
     "other": "Other"

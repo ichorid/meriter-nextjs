@@ -99,7 +99,7 @@ export function middleware(request: NextRequest) {
     }
     
     // Let all other requests through - authentication is handled client-side
-    // The pages themselves use SWR to check /api/rest/getme and redirect if needed
+    // The pages themselves use React Query to check /api/v1/auth/me and redirect if needed
     return NextResponse.next();
 }
 

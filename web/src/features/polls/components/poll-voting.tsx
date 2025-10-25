@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { IPollData, IPollVote, IPollUserVoteSummary } from "../types";
-import { apiPOST } from "@shared/lib/fetch";
 import { useTranslations } from 'next-intl';
+import { pollsApiV1 } from '@/lib/api/v1';
 
 interface IPollVotingProps {
     pollData: IPollData;
@@ -78,21 +78,12 @@ export const PollVoting = ({
         }
 
         try {
-            const response = await apiPOST("/api/rest/poll/vote", {
-                pollId,
+            await pollsApiV1.voteOnPoll(pollId, {
                 optionId: selectedOptionId,
                 amount: voteAmount,
             });
 
-            if (response.error) {
-                setError(response.error);
-                // Revert optimistic update on error
-                if (updateWalletBalance && communityId) {
-                    updateWalletBalance(communityId, voteAmount);
-                }
-            } else {
-                onVoteSuccess && onVoteSuccess();
-            }
+            onVoteSuccess && onVoteSuccess();
         } catch (err: any) {
             const errorMessage = err?.response?.data?.message || err?.message || t('voteError');
             setError(errorMessage);

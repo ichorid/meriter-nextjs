@@ -1,0 +1,2 @@
+export { ThankBar } from './ThankBar';
+

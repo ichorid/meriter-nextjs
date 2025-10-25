@@ -5,7 +5,7 @@ import type {
   GetCommunitiesResponse,
   GetCommunityInfoResponse,
   CreateCommunityRequest
-} from '@/types/api';
+} from '@/types/api-v1';
 import type { Community } from '@/types/entities';
 import type { PaginatedResponse } from '@/types/common';
 
@@ -14,25 +14,23 @@ export const communitiesApi = {
    * Get communities with pagination
    */
   async getCommunities(params: GetCommunitiesRequest = {}): Promise<PaginatedResponse<Community>> {
-    const response = await apiClient.get<GetCommunitiesResponse>('/api/rest/communities', { params });
-    return response.data;
+    const response = await apiClient.get<PaginatedResponse<Community>>('/api/v1/communities', { params });
+    return response;
   },
 
   /**
-   * Get community info by chat ID
+   * Get community info by ID
    */
-  async getCommunityInfo(chatId: string): Promise<GetCommunityInfoResponse['data']> {
-    const response = await apiClient.get<GetCommunityInfoResponse>('/api/rest/communityinfo', { 
-      params: { chatId } 
-    });
-    return response.data;
+  async getCommunityInfo(id: string): Promise<Community> {
+    const response = await apiClient.get<Community>(`/api/v1/communities/${id}`);
+    return response;
   },
 
   /**
    * Get single community
    */
   async getCommunity(id: string): Promise<Community> {
-    const response = await apiClient.get<Community>(`/api/rest/communities/${id}`);
+    const response = await apiClient.get<Community>(`/api/v1/communities/${id}`);
     return response;
   },
 
@@ -40,7 +38,7 @@ export const communitiesApi = {
    * Create new community
    */
   async createCommunity(data: CreateCommunityRequest): Promise<Community> {
-    const response = await apiClient.post<Community>('/api/rest/communities', data);
+    const response = await apiClient.post<Community>('/api/v1/communities', data);
     return response;
   },
 
@@ -48,7 +46,7 @@ export const communitiesApi = {
    * Update community
    */
   async updateCommunity(id: string, data: Partial<CreateCommunityRequest>): Promise<Community> {
-    const response = await apiClient.put<Community>(`/api/rest/communities/${id}`, data);
+    const response = await apiClient.put<Community>(`/api/v1/communities/${id}`, data);
     return response;
   },
 
@@ -56,24 +54,22 @@ export const communitiesApi = {
    * Delete community
    */
   async deleteCommunity(id: string): Promise<void> {
-    await apiClient.delete(`/api/rest/communities/${id}`);
+    await apiClient.delete(`/api/v1/communities/${id}`);
   },
 
   /**
    * Get user profile by Telegram ID
    */
-  async getUserProfile(tgUserId: string): Promise<any> {
-    const response = await apiClient.get(`/api/rest/users/telegram/${tgUserId}/profile`);
+  async getUserProfile(userId: string): Promise<any> {
+    const response = await apiClient.get(`/api/v1/users/${userId}/profile`);
     return response;
   },
 
   /**
-   * Get exchange rate
+   * Sync communities
    */
-  async getRate(fromCurrency: string): Promise<number> {
-    const response = await apiClient.get<number>('/api/rest/rate', { 
-      params: { fromCurrency } 
-    });
+  async syncCommunities(): Promise<{ message: string; syncedCount: number }> {
+    const response = await apiClient.post<{ message: string; syncedCount: number }>('/api/v1/communities/sync');
     return response;
   },
 };

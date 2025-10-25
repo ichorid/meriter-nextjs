@@ -79,13 +79,15 @@ export const config = {
   api: {
     baseUrl: env.NEXT_PUBLIC_API_URL,
     endpoints: {
-      auth: '/api/rest',
-      publications: '/api/rest/publications',
-      comments: '/api/rest/comments',
-      communities: '/api/rest/communities',
-      polls: '/api/rest/polls',
-      wallet: '/api/rest/wallet',
-      transactions: '/api/rest/transactions',
+      auth: '/api/v1/auth',
+      publications: '/api/v1/publications',
+      comments: '/api/v1/comments',
+      communities: '/api/v1/communities',
+      polls: '/api/v1/polls',
+      wallet: '/api/v1/users/me/wallets',
+      transactions: '/api/v1/users/me/transactions',
+      thanks: '/api/v1/thanks',
+      users: '/api/v1/users',
     },
   },
   

@@ -17,7 +17,7 @@ import { PublicationCard } from "@/components/organisms/Publication";
 import { Comment } from "@features/comments/components/comment";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
-import { useMyPublications, useWallets, useTransactionUpdates, useUserProfile } from '@/hooks/api';
+import { useMyPublications, useWallets, useUserProfile } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface iCommunityProps {
@@ -43,9 +43,8 @@ const PageHome = () => {
     
     // Use centralized auth context
     const { user, isLoading: userLoading, isAuthenticated } = useAuth();
-    const { data: myPublications = [], isLoading: publicationsLoading } = useMyPublications({ skip: 0, limit: 100 });
+    const { data: myPublications = [], isLoading: publicationsLoading } = useMyPublications({ page: 1, pageSize: 100 });
     const { data: wallets = [], isLoading: walletsLoading } = useWallets();
-    const { data: myUpdates = [], isLoading: updatesLoading } = useTransactionUpdates();
     
     const [tab, setTab] = useState("publications");
     const [sortBy, setSortBy] = useState<"recent" | "voted">("recent");
@@ -109,9 +108,9 @@ const PageHome = () => {
         if (!items || !Array.isArray(items)) return [];
         return [...items].sort((a, b) => {
             if (sortBy === "recent") {
-                return new Date(b.ts).getTime() - new Date(a.ts).getTime();
+                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
             } else {
-                return (b.sum || 0) - (a.sum || 0);
+                return (b.metrics?.score || 0) - (a.metrics?.score || 0);
             }
         });
     };
@@ -211,18 +210,9 @@ const PageHome = () => {
                     <div className="balance-inpublications-list">
                         <div className="balance-inpublications-filters"></div>
                         <div className="balance-inpublications-publications">
-                            {updatesLoading ? (
-                                <div className="flex justify-center items-center h-32">
-                                    <span className="loading loading-spinner loading-lg"></span>
-                                </div>
-                            ) : (
-                                myUpdates &&
-                                sortItems(myUpdates)
-                                    .filter((p) => p.fromUserTgId !== user?.tgUserId)
-                                    .map((p: any) => (
-                                        <TransactionToMe key={p._id} transaction={p} />
-                                    ))
-                            )}
+                            <div className="flex justify-center items-center h-32">
+                                <span className="text-gray-500">Updates feature coming soon</span>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -235,12 +225,12 @@ const PageHome = () => {
                                     <span className="loading loading-spinner loading-lg"></span>
                                 </div>
                             ) : (
-                                sortItems(myPublications)
+                                sortItems(myPublications.data || [])
                                     .filter((p) => {
-                                        const passes = p.messageText || p.type === 'poll';
+                                        const passes = p.content || p.type === 'poll';
                                         console.log('Filtering publication:', {
-                                            _id: p._id,
-                                            messageText: p.messageText,
+                                            id: p.id,
+                                            content: p.content,
                                             type: p.type,
                                             passes: passes
                                         });
@@ -248,7 +238,7 @@ const PageHome = () => {
                                     })
                                     .map((p) => (
                                         <PublicationCard
-                                            key={p._id || p.slug}
+                                            key={p.id}
                                             publication={p}
                                             wallets={Array.isArray(wallets) ? wallets : []}
                                             showCommunityAvatar={true}
@@ -265,25 +255,9 @@ const PageHome = () => {
                     <div className="balance-inpublications-list">
                         <div className="balance-inpublications-filters"></div>
                         <div className="balance-inpublications-publications">
-                            {myPublications &&
-                                sortItems(myPublications)
-                                    .filter((p) => p.type === 'comment')
-                                    .map((p) => (
-                                        <Comment
-                                            key={p._id}
-                                            {...p}
-                                            _id={p._id}
-                                            myId={user?.tgUserId}
-                                            updateAll={updateAll}
-                                            updateWalletBalance={updateWalletBalance}
-                                            wallets={Array.isArray(wallets) ? wallets : []}
-                                            showCommunityAvatar={true}
-                                            activeWithdrawPost={activeWithdrawPost}
-                                            setActiveWithdrawPost={setActiveWithdrawPost}
-                                            activeCommentHook={activeCommentHook}
-                                            isDetailPage={false}
-                                        />
-                                    ))}
+                            <div className="flex justify-center items-center h-32">
+                                <span className="text-gray-500">Comments feature coming soon</span>
+                            </div>
                         </div>
                     </div>
                 )}

@@ -1,9 +1,3 @@
-// Entity type exports
-export * from './user';
-export * from './publication';
-export * from './comment';
-export * from './community';
-export * from './poll';
-export * from './wallet';
-export * from './transaction';
+// Re-export all entity types from shared types
+export * from '@meriter/shared-types';
 

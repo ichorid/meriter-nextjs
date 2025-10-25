@@ -14,6 +14,9 @@ import {
 import { Publication } from "@features/feed";
 import { useTranslations } from 'next-intl';
 import { ellipsize } from "@shared/lib/text";
+import { useAuth } from '@/contexts/AuthContext';
+import { usePublication, useCommunity, useUserProfile, useWallets } from '@/hooks/api';
+import { usersApiV1 } from '@/lib/api/v1';
 
 const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> }) => {
     const router = useRouter();
@@ -22,67 +25,24 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     const chatId = resolvedParams.id;
     const slug = resolvedParams.slug;
 
-    const { data: user = { init: true } } = useQuery({
-        queryKey: ['user'],
-        queryFn: async () => {
-            const response = await apiClient.get('/api/rest/getme');
-            return response;
-        },
-    });
-
-    const { data: publication = {} } = useQuery({
-        queryKey: ['publication', slug],
-        queryFn: async () => {
-            const response = await apiClient.get(`/api/rest/publications/${slug}`);
-            return response;
-        },
-        enabled: !!user?.token,
-    });
-
-    const { data: chat = {} } = useQuery({
-        queryKey: ['chat', chatId],
-        queryFn: async () => {
-            const response = await apiClient.get(`/api/rest/getchat?chatId=${chatId}`);
-            return response;
-        },
-        enabled: !!user?.token,
-    });
-
-    const { data: comms = {} } = useQuery({
-        queryKey: ['community-info', chatId],
-        queryFn: async () => {
-            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${chatId}`);
-            return response;
-        },
-        enabled: !!user?.token,
-    });
-
+    // Use v1 API hooks
+    const { user } = useAuth();
+    const { data: publication = {} } = usePublication(slug);
+    const { data: comms = {} } = useCommunity(chatId);
+    
     const { data: balance = 0 } = useQuery({
-        queryKey: ['wallet', chatId],
+        queryKey: ['wallet-balance', user?.id, chatId],
         queryFn: async () => {
-            const response = await apiClient.get(`/api/rest/wallet?tgChatId=${chatId}`);
-            return response;
+            if (!user?.id || !chatId) return 0;
+            const wallets = await usersApiV1.getUserWallets(user.id);
+            const wallet = wallets.find((w: any) => w.communityId === chatId);
+            return wallet?.balance || 0;
         },
-        enabled: !!user?.token,
+        enabled: !!user?.id && !!chatId,
     });
 
-    const { data: userdata = {} } = useQuery({
-        queryKey: ['user-profile', user?.tgUserId],
-        queryFn: async () => {
-            const response = await apiClient.get(`/api/rest/users/telegram/${user.tgUserId}/profile`);
-            return response;
-        },
-        enabled: !!user?.tgUserId,
-    });
-
-    const { data: wallets = [] } = useQuery({
-        queryKey: ['wallets'],
-        queryFn: async () => {
-            const response = await apiClient.get('/api/rest/wallet');
-            return response;
-        },
-        enabled: !!user?.token,
-    });
+    const { data: userdata = {} } = useUserProfile(user?.id || '');
+    const { data: wallets = [] } = useWallets();
 
     const queryClient = useQueryClient();
 

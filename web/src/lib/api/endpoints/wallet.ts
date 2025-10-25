@@ -4,8 +4,8 @@ import type {
   GetWalletsResponse,
   GetTransactionsResponse,
   WithdrawResponse
-} from '@/types/api';
-import type { Wallet, Transaction, WithdrawRequest } from '@/types/entities';
+} from '@/types/api-v1';
+import type { Wallet, Transaction, WithdrawRequest, TransferRequest } from '@/types/entities';
 import type { PaginatedResponse } from '@/types/common';
 
 export const walletApi = {
@@ -13,17 +13,16 @@ export const walletApi = {
    * Get user wallets
    */
   async getWallets(): Promise<Wallet[]> {
-    const response = await apiClient.get<GetWalletsResponse>('/api/rest/wallet');
-    return response.data;
+    const response = await apiClient.get<Wallet[]>('/api/v1/users/me/wallets');
+    return response;
   },
 
   /**
-   * Get wallet balance
+   * Get wallet balance for specific community
    */
-  async getBalance(currencyOfCommunityTgChatId?: string): Promise<number> {
-    const params = currencyOfCommunityTgChatId ? { currencyOfCommunityTgChatId } : {};
-    const response = await apiClient.get<number>('/api/rest/wallet', { params });
-    return response;
+  async getBalance(communityId: string): Promise<number> {
+    const response = await apiClient.get<Wallet>(`/api/v1/users/me/wallets/${communityId}`);
+    return response.balance;
   },
 
   /**
@@ -35,20 +34,22 @@ export const walletApi = {
     positive?: boolean;
     userId?: string;
   } = {}): Promise<PaginatedResponse<Transaction>> {
-    const response = await apiClient.get<GetTransactionsResponse>('/api/rest/transactions/my', { params });
-    return response.data;
+    const response = await apiClient.get<PaginatedResponse<Transaction>>('/api/v1/users/me/transactions', { params });
+    return response;
   },
 
   /**
    * Get transaction updates
    */
   async getTransactionUpdates(): Promise<Transaction[]> {
-    const response = await apiClient.get<{ success: true; data: Transaction[] }>('/api/rest/transactions/updates');
+    const response = await apiClient.get<PaginatedResponse<Transaction>>('/api/v1/users/me/transactions', { 
+      params: { updates: true } 
+    });
     return response.data;
   },
 
   /**
-   * Get all transactions
+   * Get all transactions (admin view)
    */
   async getAllTransactions(params: { 
     skip?: number; 
@@ -56,56 +57,31 @@ export const walletApi = {
     userId?: string;
     communityId?: string;
   } = {}): Promise<PaginatedResponse<Transaction>> {
-    const response = await apiClient.get<GetTransactionsResponse>('/api/rest/transactions', { params });
-    return response.data;
-  },
-
-  /**
-   * Create transaction (vote/comment)
-   */
-  async createTransaction(data: {
-    amountPoints: number;
-    comment?: string;
-    directionPlus: boolean;
-    forTransactionId?: string;
-    forPublicationSlug?: string;
-    inPublicationSlug?: string;
-    publicationSlug?: string;
-  }): Promise<Transaction> {
-    const response = await apiClient.post<{ success: true; data: Transaction }>('/api/rest/transactions', data);
-    return response.data;
+    const response = await apiClient.get<PaginatedResponse<Transaction>>('/api/v1/users/me/transactions', { params });
+    return response;
   },
 
   /**
    * Withdraw funds
    */
-  async withdraw(data: WithdrawRequest): Promise<WithdrawResponse['data']> {
-    const response = await apiClient.postRaw<WithdrawResponse>('/api/rest/wallet/withdraw', data);
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Withdrawal failed');
-    }
-    return response.data.data;
+  async withdraw(communityId: string, data: WithdrawRequest): Promise<Transaction> {
+    const response = await apiClient.post<Transaction>(`/api/v1/users/me/wallets/${communityId}/withdraw`, data);
+    return response;
   },
 
   /**
    * Transfer funds
    */
-  async transfer(data: {
-    amount: number;
-    toUserId: string;
-    currencyOfCommunityTgChatId: string;
-    description?: string;
-  }): Promise<Transaction> {
-    const response = await apiClient.post<Transaction>('/api/rest/wallet/transfer', data);
+  async transfer(communityId: string, data: TransferRequest): Promise<Transaction> {
+    const response = await apiClient.post<Transaction>(`/api/v1/users/me/wallets/${communityId}/transfer`, data);
     return response;
   },
 
   /**
    * Get free balance for voting
    */
-  async getFreeBalance(currencyOfCommunityTgChatId?: string): Promise<number> {
-    const params = currencyOfCommunityTgChatId ? { currencyOfCommunityTgChatId } : {};
-    const response = await apiClient.get<number>('/api/rest/free', { params });
+  async getFreeBalance(communityId: string): Promise<number> {
+    const response = await apiClient.get<number>(`/api/v1/users/me/quota?communityId=${communityId}`);
     return response;
   },
 };

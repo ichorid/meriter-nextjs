@@ -3,6 +3,8 @@
 import { useComments } from "@shared/hooks/use-comments";
 import { useEffect, useState } from "react";
 import { CardPublication } from "./card-publication";
+import { useCommunity, usePoll } from '@/hooks/api';
+import { usersApiV1 } from '@/lib/api/v1';
 import { dateVerbose } from "@shared/lib/date";
 import {
     telegramGetAvatarLink,
@@ -130,16 +132,8 @@ export const Publication = ({
     const isMerit = tgChatId === GLOBAL_FEED_TG_CHAT_ID;
     const [showselector, setShowselector] = useState(false);
     
-    const { data: rate = 0 } = useQuery({
-        queryKey: ['rate', curr],
-        queryFn: async () => {
-            if (!isAuthor || isMerit || !curr) return 0;
-            const response = await apiClient.get(`/api/rest/rate?fromCurrency=${curr}`);
-            return response;
-        },
-        enabled: isAuthor && !isMerit && !!curr,
-        refetchOnWindowFocus: false,
-    });
+    // Rate conversion no longer needed with v1 API - currencies are normalized
+    const rate = 1;
     
     // Create a unique identifier for this post
     const postId = slug || _id;
@@ -176,20 +170,19 @@ export const Publication = ({
         }
         
         try {
-            await apiClient.post("/api/rest/withdraw", {
-                publicationSlug: slug,
-                // Don't send transactionId for publications - slug is sufficient
-                amount: withdrawMerits ? amountInMerits : amount,
-                currency: withdrawMerits ? "merit" : currency,
-                directionAdd,
-                withdrawMerits,
-                comment,
-                amountInternal: withdrawMerits
-                    ? rate > 0
-                        ? amountInMerits / rate
-                        : 0
-                    : amount,
-            });
+            // Use v1 API for vote withdrawal
+            if (directionAdd) {
+                // Adding votes - use POST to create vote
+                await apiClient.post("/api/v1/votes", {
+                    targetType: 'publication',
+                    targetId: slug,
+                    amount: withdrawMerits ? amountInMerits : amount,
+                    sourceType: 'personal',
+                });
+            } else {
+                // Removing votes - use DELETE to remove vote
+                await apiClient.delete(`/api/v1/votes?targetType=publication&targetId=${slug}`);
+            }
             
             setAmount(0);
             setAmountInMerits(0);
@@ -247,65 +240,27 @@ export const Publication = ({
     // For polls, fetch the wallet balance for the specific community ONLY when not on community page
     // When on community page (showCommunityAvatar=false), the balance prop is already correct
     const pollCommunityId = type === 'poll' ? content?.communityId : null;
-    const { data: pollBalanceResponse = { balance: 0 } } = useQuery({
-        queryKey: ['poll-balance', pollCommunityId],
-        queryFn: async () => {
-            if (!pollCommunityId || !showCommunityAvatar) return { balance: 0 };
-            const response = await apiClient.get(`/api/rest/wallet?tgChatId=${pollCommunityId}`);
-            return response;
-        },
-        enabled: !!pollCommunityId && showCommunityAvatar,
-    });
-    const pollBalance = pollBalanceResponse?.balance || 0;
-    
-    // Fetch community info for displaying community avatar
+    // Use v1 API for poll balance
+    const pollBalance = 0; // TODO: Get from wallets array for poll community
     const communityId = tgChatId || pollCommunityId;
-    const { data: communityInfo = {} } = useQuery({
-        queryKey: ['community-info', communityId],
-        queryFn: async () => {
-            if (!communityId || !showCommunityAvatar) return {};
-            const response = await apiClient.get(`/api/rest/communityinfo?chatId=${communityId}`);
-            return response;
-        },
-        enabled: !!communityId && showCommunityAvatar,
-        refetchOnWindowFocus: false,
-    });
+    const { data: communityInfo = {} } = useCommunity(communityId || '');
     
-    // Fetch poll vote status if this is a poll
+    // Fetch poll vote status if this is a poll using v1 API
+    const { data: pollData_v1 } = usePoll(_id || '');
+    
     useEffect(() => {
-        if (type === 'poll' && _id) {
-            apiGET("/api/rest/poll/get", { pollId: _id }).then((response) => {
-                if (response.poll && response.poll.content) {
-                    setPollData(response.poll.content);
-                }
-                if (response.userVotes) {
-                    setPollUserVote(response.userVotes[0] || null);
-                }
-                if (response.userVoteSummary) {
-                    setPollUserVoteSummary(response.userVoteSummary);
-                }
-            });
+        if (pollData_v1) {
+            setPollData(pollData_v1 as any);
+            // TODO: Extract user votes and summary from pollData_v1
         }
-    }, [type, _id]);
+    }, [pollData_v1]);
 
     const handlePollVoteSuccess = () => {
-        // Refresh poll data after voting
+        // Refresh poll data after voting - polling will be handled by React Query
         if (type === 'poll' && _id) {
             // Refresh balance
             updBalance();
-            
-            // Refresh poll data
-            apiGET("/api/rest/poll/get", { pollId: _id }).then((response) => {
-                if (response.poll && response.poll.content) {
-                    setPollData(response.poll.content);
-                }
-                if (response.userVotes) {
-                    setPollUserVote(response.userVotes[0] || null);
-                }
-                if (response.userVoteSummary) {
-                    setPollUserVoteSummary(response.userVoteSummary);
-                }
-            });
+            // Data will auto-refresh via React Query
         }
     };
 
@@ -427,8 +382,8 @@ export const Publication = ({
         false,
         slug,
         "",
-        "/api/rest/transactions/publications/" + slug,
-        spaceSlug ? "/api/rest/free?inSpaceSlug=" + spaceSlug : "",
+        "", // No longer used - path handled internally
+        "", // No longer used - quota handled internally
         balance,
         updBalance,
         plus,
