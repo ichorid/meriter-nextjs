@@ -18,10 +18,6 @@ import { TgBotsModule } from './tg-bots/tg-bots.module';
 // Import the new domain module
 import { DomainModule } from './domain.module';
 
-// Import legacy service modules
-import { UsersModule } from './users/users.module';
-import { TgChatsModule } from './tg-chats/tg-chats.module';
-
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -34,8 +30,6 @@ import { TgChatsModule } from './tg-chats/tg-chats.module';
       },
     }),
     DatabaseModule,
-    UsersModule, // Legacy users service
-    TgChatsModule, // Legacy tg-chats service
     ApiV1Module,
     DomainModule, // Domain layer with V2 services
     UpdatesConductorsModule,

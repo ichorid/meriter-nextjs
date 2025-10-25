@@ -1,6 +1,6 @@
 // Wallet React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { walletApi } from '@/lib/api';
+import { walletApiV1 } from '@/lib/api/v1';
 import type { Wallet, Transaction, WithdrawRequest } from '@/types/entities';
 import type { PaginatedResponse } from '@/types/common';
 
@@ -22,7 +22,7 @@ export const walletKeys = {
 export function useWallets() {
   return useQuery({
     queryKey: walletKeys.wallets(),
-    queryFn: () => walletApi.getWallets(),
+    queryFn: () => walletApiV1.getWallets(),
     staleTime: 2 * 60 * 1000, // 2 minutes
     initialData: [],
   });
@@ -32,7 +32,7 @@ export function useWallets() {
 export function useWalletBalance(currencyOfCommunityTgChatId?: string) {
   return useQuery({
     queryKey: walletKeys.balance(currencyOfCommunityTgChatId),
-    queryFn: () => walletApi.getBalance(currencyOfCommunityTgChatId),
+    queryFn: () => walletApiV1.getBalance(currencyOfCommunityTgChatId),
     staleTime: 1 * 60 * 1000, // 1 minute
   });
 }
@@ -41,7 +41,7 @@ export function useWalletBalance(currencyOfCommunityTgChatId?: string) {
 export function useFreeBalance(currencyOfCommunityTgChatId?: string) {
   return useQuery({
     queryKey: walletKeys.freeBalance(currencyOfCommunityTgChatId),
-    queryFn: () => walletApi.getFreeBalance(currencyOfCommunityTgChatId),
+    queryFn: () => walletApiV1.getFreeBalance(currencyOfCommunityTgChatId),
     staleTime: 30 * 1000, // 30 seconds
   });
 }
@@ -54,7 +54,7 @@ export function useMyTransactions(params: {
 } = {}) {
   return useQuery({
     queryKey: walletKeys.myTransactions(params),
-    queryFn: () => walletApi.getTransactions(params),
+    queryFn: () => walletApiV1.getTransactions(params),
     staleTime: 1 * 60 * 1000, // 1 minute
   });
 }
@@ -63,7 +63,7 @@ export function useMyTransactions(params: {
 export function useTransactionUpdates() {
   return useQuery({
     queryKey: walletKeys.updates(),
-    queryFn: () => walletApi.getTransactionUpdates(),
+    queryFn: () => walletApiV1.getTransactionUpdates(),
     staleTime: 30 * 1000, // 30 seconds
   });
 }
@@ -77,7 +77,7 @@ export function useTransactions(params: {
 } = {}) {
   return useQuery({
     queryKey: walletKeys.transactionsList(params),
-    queryFn: () => walletApi.getAllTransactions(params),
+    queryFn: () => walletApiV1.getAllTransactions(params),
     staleTime: 1 * 60 * 1000, // 1 minute
   });
 }

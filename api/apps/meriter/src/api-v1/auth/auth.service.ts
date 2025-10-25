@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { UsersService } from '../../users/users.service';
-import { TgChatsService } from '../../tg-chats/tg-chats.service';
+import { UserServiceV2 } from '../../domain/services/user.service-v2';
+import { CommunityServiceV2 } from '../../domain/services/community.service-v2';
 import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { User } from '../types/domain.types';
 import { signJWT } from '../../common/helpers/jwt';
@@ -22,8 +22,8 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
-    private readonly usersService: UsersService,
-    private readonly tgChatsService: TgChatsService,
+    private readonly userService: UserServiceV2,
+    private readonly communityService: CommunityServiceV2,
     private readonly tgBotsService: TgBotsService,
     private readonly configService: ConfigService,
   ) {}

@@ -1,6 +1,6 @@
 // Comments React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { commentsApi } from '@/lib/api';
+import { commentsApiV1 } from '@/lib/api/v1';
 import type { Comment, CreateCommentRequest } from '@/types/api-v1';
 import type { GetCommentsRequest } from '@/types/api-v1';
 
@@ -19,7 +19,7 @@ export const commentsKeys = {
 export function useComments(params: GetCommentsRequest = {}) {
   return useQuery({
     queryKey: commentsKeys.list(params),
-    queryFn: () => commentsApi.getComments(params),
+    queryFn: () => commentsApiV1.getComments(params),
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 }
@@ -31,7 +31,7 @@ export function useCommentsByPublication(
 ) {
   return useQuery({
     queryKey: [...commentsKeys.byPublication(publicationId), params],
-    queryFn: () => commentsApi.getCommentsByPublication(publicationId, params),
+    queryFn: () => commentsApiV1.getCommentsByPublication(publicationId, params),
     staleTime: 2 * 60 * 1000, // 2 minutes
     enabled: !!publicationId,
   });
@@ -44,7 +44,7 @@ export function useCommentsByComment(
 ) {
   return useQuery({
     queryKey: [...commentsKeys.byComment(commentId), params],
-    queryFn: () => commentsApi.getCommentsByComment(commentId, params),
+    queryFn: () => commentsApiV1.getCommentsByComment(commentId, params),
     staleTime: 2 * 60 * 1000, // 2 minutes
     enabled: !!commentId,
   });
@@ -54,7 +54,7 @@ export function useCommentsByComment(
 export function useComment(id: string) {
   return useQuery({
     queryKey: commentsKeys.detail(id),
-    queryFn: () => commentsApi.getComment(id),
+    queryFn: () => commentsApiV1.getComment(id),
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !!id,
   });
@@ -65,7 +65,7 @@ export function useCreateComment() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (data: CreateCommentRequest) => commentsApi.createComment(data),
+    mutationFn: (data: CreateCommentRequest) => commentsApiV1.createComment(data),
     onSuccess: (newComment) => {
       // Invalidate and refetch comments lists
       queryClient.invalidateQueries({ queryKey: commentsKeys.lists() });
@@ -95,7 +95,7 @@ export function useUpdateComment() {
   
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<CreateCommentRequest> }) => 
-      commentsApi.updateComment(id, data),
+      commentsApiV1.updateComment(id, data),
     onSuccess: (updatedComment) => {
       // Update the comment in cache
       queryClient.setQueryData(commentsKeys.detail(updatedComment.id), updatedComment);
@@ -124,7 +124,7 @@ export function useDeleteComment() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (id: string) => commentsApi.deleteComment(id),
+    mutationFn: (id: string) => commentsApiV1.deleteComment(id),
     onSuccess: (_, deletedId) => {
       // Remove from all caches
       queryClient.removeQueries({ queryKey: commentsKeys.detail(deletedId) });

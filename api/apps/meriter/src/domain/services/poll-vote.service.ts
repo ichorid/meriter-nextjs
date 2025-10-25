@@ -1,6 +1,8 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { PollVoteRepository } from '../models/poll/poll-vote.repository';
-import { PollRepository } from '../models/poll/poll.repository';
+import { Poll, PollDocument } from '../models/poll/poll.schema';
 import { PollVote } from '../models/poll/poll-vote.schema';
 import { PollVotedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
@@ -12,7 +14,7 @@ export class PollVoteService {
 
   constructor(
     private pollVoteRepository: PollVoteRepository,
-    private pollRepository: PollRepository,
+    @InjectModel(Poll.name) private pollModel: Model<PollDocument>,
     private eventBus: EventBus,
   ) {}
 
@@ -26,7 +28,7 @@ export class PollVoteService {
     this.logger.log(`Creating poll vote: poll=${pollId}, user=${userId}, option=${optionIndex}, amount=${amount}`);
 
     // Validate poll exists and is active
-    const poll = await this.pollRepository.findById(pollId);
+    const poll = await this.pollModel.findById(pollId).lean();
     if (!poll) {
       throw new NotFoundException('Poll not found');
     }

@@ -9,4 +9,8 @@ export * from './WithdrawBar';
 export * from './ThemeToggle';
 export { ThankBar } from './ThankBar';
 export { CommentForm } from './CommentForm';
+export * from './VoteBar';
+export * from './WithdrawForm';
+export * from './Breadcrumbs';
+export * from './CardWithAvatar';
 

@@ -2,8 +2,8 @@ import { PublicationId, UserId, CommunityId, PublicationContent } from '../../va
 
 export class Metrics {
   private constructor(
-    public readonly upthanks: number,
-    public readonly downthanks: number,
+    public readonly upvotes: number,
+    public readonly downvotes: number,
     public readonly commentCount: number,
   ) {}
 
@@ -11,30 +11,30 @@ export class Metrics {
     return new Metrics(0, 0, 0);
   }
 
-  static fromSnapshot(data: { upthanks: number; downthanks: number; commentCount: number }): Metrics {
-    return new Metrics(data.upthanks, data.downthanks, data.commentCount);
+  static fromSnapshot(data: { upvotes: number; downvotes: number; commentCount: number }): Metrics {
+    return new Metrics(data.upvotes, data.downvotes, data.commentCount);
   }
 
   applyVote(amount: number): Metrics {
     if (amount > 0) {
-      return new Metrics(this.upthanks + amount, this.downthanks, this.commentCount);
+      return new Metrics(this.upvotes + amount, this.downvotes, this.commentCount);
     } else {
-      return new Metrics(this.upthanks, this.downthanks + Math.abs(amount), this.commentCount);
+      return new Metrics(this.upvotes, this.downvotes + Math.abs(amount), this.commentCount);
     }
   }
 
   incrementComment(): Metrics {
-    return new Metrics(this.upthanks, this.downthanks, this.commentCount + 1);
+    return new Metrics(this.upvotes, this.downvotes, this.commentCount + 1);
   }
 
   get score(): number {
-    return this.upthanks - this.downthanks;
+    return this.upvotes - this.downvotes;
   }
 
   toSnapshot() {
     return {
-      upthanks: this.upthanks,
-      downthanks: this.downthanks,
+      upvotes: this.upvotes,
+      downvotes: this.downvotes,
       commentCount: this.commentCount,
     };
   }

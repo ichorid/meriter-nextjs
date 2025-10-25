@@ -11,8 +11,8 @@ import {
   UseGuards,
   Logger,
 } from '@nestjs/common';
-import { CommunitiesService } from './communities.service';
-import { PublicationsService } from '../publications/publications.service';
+import { CommunityServiceV2 } from '../../domain/services/community.service-v2';
+import { PublicationServiceV2 } from '../../domain/services/publication.service-v2';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
@@ -24,8 +24,8 @@ export class CommunitiesController {
   private readonly logger = new Logger(CommunitiesController.name);
 
   constructor(
-    private readonly communitiesService: CommunitiesService,
-    private readonly publicationsService: PublicationsService,
+    private readonly communityService: CommunityServiceV2,
+    private readonly publicationService: PublicationServiceV2,
   ) {}
 
   @Get()
@@ -103,16 +103,41 @@ export class CommunitiesController {
     @Req() req: any,
   ) {
     const pagination = PaginationHelper.parseOptions(query);
-    const sortOptions = {
-      sort: query.sort || 'score',
-      order: query.order || 'desc',
-    };
-    const result = await this.publicationsService.getCommunityPublications(
+    const skip = PaginationHelper.getSkip(pagination);
+    
+    const publications = await this.publicationService.getPublicationsByCommunity(
       id,
-      pagination,
-      req.user.tgUserId,
+      pagination.limit,
+      skip
     );
-    return result;
+
+    // Convert domain entities to DTOs
+    const mappedPublications = publications.map(publication => ({
+      id: publication.getId.getValue(),
+      communityId: publication.getCommunityId.getValue(),
+      spaceId: undefined, // Not available in current entity
+      authorId: publication.getAuthorId.getValue(),
+      beneficiaryId: publication.getBeneficiaryId?.getValue() || undefined,
+      content: publication.getContent,
+      type: publication.getType,
+      hashtags: publication.getHashtags,
+      imageUrl: undefined, // Not available in current entity
+      videoUrl: undefined, // Not available in current entity
+      metadata: undefined, // Not available in current entity
+      metrics: {
+        upvotes: publication.getMetrics.upvotes,
+        downvotes: publication.getMetrics.downvotes,
+        upthanks: publication.getMetrics.upvotes,
+        downthanks: publication.getMetrics.downvotes,
+        score: publication.getMetrics.score,
+        commentCount: publication.getMetrics.commentCount,
+        viewCount: 0, // Not available in current entity
+      },
+      createdAt: publication.toSnapshot().createdAt.toISOString(),
+      updatedAt: publication.toSnapshot().updatedAt.toISOString(),
+    }));
+
+    return PaginationHelper.createResult(mappedPublications, mappedPublications.length, pagination);
   }
 
 }

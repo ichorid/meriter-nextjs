@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { PublicationServiceV2 } from '../domain/services/publication.service-v2';
-import { CommunityRepository } from '../domain/models/community/community.repository';
-import { UserRepository } from '../domain/models/user/user.repository';
+import { Community, CommunityDocument } from '../domain/models/community/community.schema';
+import { User, UserDocument } from '../domain/models/user/user.schema';
 import { TelegramMessageProcessorService, ParsedMessage } from './message-processor.service';
 import { TelegramMessage } from './message-processor.service';
 
@@ -11,8 +13,8 @@ export class TelegramPublicationCreatorService {
 
   constructor(
     private publicationService: PublicationServiceV2,
-    private communityRepository: CommunityRepository,
-    private userRepository: UserRepository,
+    @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
     private messageProcessor: TelegramMessageProcessorService,
   ) {}
 
@@ -23,7 +25,7 @@ export class TelegramPublicationCreatorService {
     const parsedMessage = this.messageProcessor.parseMessage(message);
 
     // Find community
-    const community = await this.communityRepository.findByTelegramChatId(message.chatId);
+    const community = await this.communityModel.findOne({ telegramChatId: message.chatId }).lean();
     if (!community) {
       this.logger.warn(`Community not found for chat: ${message.chatId}`);
       return;
@@ -36,22 +38,24 @@ export class TelegramPublicationCreatorService {
     }
 
     // Find or create user
-    let user = await this.userRepository.findByTelegramId(message.userId);
+    let user = await this.userModel.findOne({ telegramId: message.userId }).lean();
     if (!user) {
       this.logger.log(`Creating new user: ${message.userId}`);
-      user = await this.userRepository.createUser(
-        message.userId,
-        `User ${message.userId}`, // Default display name
-        undefined
-      );
+      user = await this.userModel.create({
+        telegramId: message.userId,
+        displayName: `User ${message.userId}`, // Default display name
+        username: undefined,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
     }
 
     // Find beneficiary if specified
     let beneficiaryId: string | undefined;
     if (parsedMessage.beneficiary) {
-      const beneficiary = await this.userRepository.findByUsername(parsedMessage.beneficiary.username || '');
+      const beneficiary = await this.userModel.findOne({ username: parsedMessage.beneficiary.username || '' }).lean();
       if (beneficiary) {
-        beneficiaryId = beneficiary.id;
+        beneficiaryId = beneficiary._id.toString();
       } else {
         this.logger.warn(`Beneficiary not found: ${parsedMessage.beneficiary.username}`);
       }
@@ -62,8 +66,8 @@ export class TelegramPublicationCreatorService {
 
     // Create publication
     try {
-      const publication = await this.publicationService.createPublication(user.id, {
-        communityId: community.id,
+      const publication = await this.publicationService.createPublication(user._id.toString(), {
+        communityId: community._id.toString(),
         content: parsedMessage.cleanedText,
         type: messageType,
         beneficiaryId,

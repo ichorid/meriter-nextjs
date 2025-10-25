@@ -1,6 +1,6 @@
 // Thanks React Query hooks
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { thanksApi } from '@/lib/api';
+import { thanksApiV1 } from '@/lib/api/v1';
 import type { CreateThankRequest } from '@/types/api-v1';
 
 // Thank publication creator
@@ -9,7 +9,7 @@ export function useThankPublication() {
   
   return useMutation({
     mutationFn: ({ publicationId, data }: { publicationId: string; data: CreateThankRequest }) => 
-      thanksApi.thankPublication(publicationId, data),
+      thanksApiV1.thankPublication(publicationId, data),
     onSuccess: (result) => {
       // Invalidate publications to update thank counts
       queryClient.invalidateQueries({ queryKey: ['publications'] });
@@ -34,7 +34,7 @@ export function useThankComment() {
   
   return useMutation({
     mutationFn: ({ commentId, data }: { commentId: string; data: CreateThankRequest }) => 
-      thanksApi.thankComment(commentId, data),
+      thanksApiV1.thankComment(commentId, data),
     onSuccess: (result) => {
       // Invalidate comments to update thank counts
       queryClient.invalidateQueries({ queryKey: ['comments'] });
@@ -58,7 +58,7 @@ export function useRemovePublicationThank() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (publicationId: string) => thanksApi.removePublicationThank(publicationId),
+    mutationFn: (publicationId: string) => thanksApiV1.removePublicationThank(publicationId),
     onSuccess: () => {
       // Invalidate publications to update thank counts
       queryClient.invalidateQueries({ queryKey: ['publications'] });
@@ -77,7 +77,7 @@ export function useRemoveCommentThank() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (commentId: string) => thanksApi.removeCommentThank(commentId),
+    mutationFn: (commentId: string) => thanksApiV1.removeCommentThank(commentId),
     onSuccess: () => {
       // Invalidate comments to update thank counts
       queryClient.invalidateQueries({ queryKey: ['comments'] });

@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { VoteRepository } from '../models/vote/vote.repository';
-import { Vote } from '../models/vote/vote.schema';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Vote, VoteDocument } from '../models/vote/vote.schema';
 import { VoteAmount, UserId } from '../value-objects';
 import { uid } from 'uid';
 
@@ -9,7 +10,7 @@ export class VoteService {
   private readonly logger = new Logger(VoteService.name);
 
   constructor(
-    private voteRepository: VoteRepository,
+    @InjectModel(Vote.name) private voteModel: Model<VoteDocument>,
   ) {}
 
   async createVote(
@@ -25,12 +26,12 @@ export class VoteService {
     const voteAmount = amount > 0 ? VoteAmount.up(amount) : VoteAmount.down(Math.abs(amount));
 
     // Check if user already voted on this target
-    const existing = await this.voteRepository.findByUserAndTarget(userId, targetType, targetId);
+    const existing = await this.voteModel.findOne({ userId, targetType, targetId }).lean();
     if (existing) {
       throw new BadRequestException('Already voted on this content');
     }
 
-    const vote = await this.voteRepository.create({
+    const vote = await this.voteModel.create({
       id: uid(),
       targetType,
       targetId,
@@ -47,25 +48,31 @@ export class VoteService {
   async removeVote(userId: string, targetType: 'publication' | 'comment', targetId: string): Promise<boolean> {
     this.logger.log(`Removing vote: user=${userId}, target=${targetType}:${targetId}`);
 
-    const result = await this.voteRepository.deleteByUserAndTarget(userId, targetType, targetId);
+    const result = await this.voteModel.deleteOne({ userId, targetType, targetId });
     
-    if (result) {
+    if (result.deletedCount > 0) {
       this.logger.log(`Vote removed successfully`);
     }
 
-    return result;
+    return result.deletedCount > 0;
   }
 
   async getUserVotes(userId: string, limit: number = 100, skip: number = 0): Promise<Vote[]> {
-    return this.voteRepository.findByUser(userId, limit, skip);
+    return this.voteModel
+      .find({ userId })
+      .limit(limit)
+      .skip(skip)
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
   }
 
   async getTargetVotes(targetType: string, targetId: string): Promise<Vote[]> {
-    return this.voteRepository.findByTarget(targetType, targetId);
+    return this.voteModel.find({ targetType, targetId }).lean().exec();
   }
 
   async hasUserVoted(userId: string, targetType: string, targetId: string): Promise<boolean> {
-    const vote = await this.voteRepository.findByUserAndTarget(userId, targetType, targetId);
+    const vote = await this.voteModel.findOne({ userId, targetType, targetId }).lean();
     return vote !== null;
   }
 

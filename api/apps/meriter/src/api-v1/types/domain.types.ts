@@ -205,7 +205,7 @@ export interface CreatePollVoteDto {
   communityId?: string;
 }
 
-export interface Thank {
+export interface Vote {
   id: string;
   userId: string;
   targetType: 'publication' | 'comment';
@@ -214,7 +214,7 @@ export interface Thank {
   comment?: string;
   description?: string;
   sourceType?: 'personal' | 'quota';
-  thank?: any;
+  vote?: any;
   wallet?: any;
   createdAt: string;
 }
@@ -243,7 +243,7 @@ export interface CreatePublicationDto {
   videoUrl?: string;
 }
 
-export interface CreateThankDto {
+export interface CreateVoteDto {
   amount: number;
   comment?: string;
   targetType?: 'publication' | 'comment';

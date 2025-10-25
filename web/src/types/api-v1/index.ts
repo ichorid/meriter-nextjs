@@ -9,11 +9,6 @@ export interface ApiError {
   timestamp: string;
 }
 
-export interface RequestConfig {
-  timeout?: number;
-  headers?: Record<string, string>;
-}
-
 export interface PaginatedResponse<T> {
   data: T[];
   meta: {

@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { CommunitiesModule } from './communities/communities.module';
-import { PublicationsModule } from './publications/publications.module';
 import { CommentsModule } from './comments/comments.module';
-import { ThanksModule } from './thanks/thanks.module';
+import { VotesModule } from './votes/votes.module';
 import { PollsModule } from './polls/polls.module';
 import { WalletsModule } from './wallets/wallets.module';
 import { UsersModule } from './users/users.module';
@@ -12,9 +11,8 @@ import { UsersModule } from './users/users.module';
   imports: [
     AuthModule,
     CommunitiesModule,
-    PublicationsModule,
     CommentsModule,
-    ThanksModule,
+    VotesModule,
     PollsModule,
     WalletsModule,
     UsersModule,

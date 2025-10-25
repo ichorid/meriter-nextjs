@@ -1,6 +1,6 @@
 // Polls React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { pollsApi } from '@/lib/api';
+import { pollsApiV1 } from '@/lib/api/v1';
 import type { Poll, PollCreate, PollResult } from '@/types/entities';
 import type { VotePollRequest } from '@/types/api-v1';
 
@@ -18,7 +18,7 @@ export const pollsKeys = {
 export function usePolls(params: { skip?: number; limit?: number } = {}) {
   return useQuery({
     queryKey: pollsKeys.list(params),
-    queryFn: () => pollsApi.getPolls(params),
+    queryFn: () => pollsApiV1.getPolls(params),
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 }
@@ -27,7 +27,7 @@ export function usePolls(params: { skip?: number; limit?: number } = {}) {
 export function usePoll(id: string) {
   return useQuery({
     queryKey: pollsKeys.detail(id),
-    queryFn: () => pollsApi.getPoll(id),
+    queryFn: () => pollsApiV1.getPoll(id),
     staleTime: 2 * 60 * 1000, // 2 minutes
     enabled: !!id,
   });
@@ -37,7 +37,7 @@ export function usePoll(id: string) {
 export function usePollResults(id: string) {
   return useQuery({
     queryKey: pollsKeys.results(id),
-    queryFn: () => pollsApi.getPollResults(id),
+    queryFn: () => pollsApiV1.getPollResults(id),
     staleTime: 1 * 60 * 1000, // 1 minute
     enabled: !!id,
   });
@@ -48,7 +48,7 @@ export function useCreatePoll() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (data: PollCreate) => pollsApi.createPoll(data),
+    mutationFn: (data: PollCreate) => pollsApiV1.createPoll(data),
     onSuccess: (newPoll) => {
       // Invalidate and refetch polls lists
       queryClient.invalidateQueries({ queryKey: pollsKeys.lists() });
@@ -68,7 +68,7 @@ export function useVotePoll() {
   
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: VotePollRequest }) => 
-      pollsApi.votePoll(id, data),
+      pollsApiV1.voteOnPoll(id, data),
     onSuccess: (result, { id }) => {
       // Update poll cache with new vote data
       queryClient.setQueryData(pollsKeys.detail(id), result.poll);
@@ -91,7 +91,7 @@ export function useUpdatePoll() {
   
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<PollCreate> }) => 
-      pollsApi.updatePoll(id, data),
+      pollsApiV1.updatePoll(id, data),
     onSuccess: (updatedPoll) => {
       // Update the poll in cache
       queryClient.setQueryData(pollsKeys.detail(updatedPoll._id), updatedPoll);
@@ -110,7 +110,7 @@ export function useDeletePoll() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (id: string) => pollsApi.deletePoll(id),
+    mutationFn: (id: string) => pollsApiV1.deletePoll(id),
     onSuccess: (_, deletedId) => {
       // Remove from all caches
       queryClient.removeQueries({ queryKey: pollsKeys.detail(deletedId) });

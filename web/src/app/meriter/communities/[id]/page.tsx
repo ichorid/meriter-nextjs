@@ -3,17 +3,13 @@
 import { useEffect, useRef, useState, use } from "react";
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
-import Page from '@shared/components/page';
+import { PageLayout } from '@/components/templates/PageLayout';
 import { useRouter, useSearchParams } from "next/navigation";
-import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
-import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
-import { CardWithAvatar } from '@shared/components/card-with-avatar';
-import {
-    telegramGetAvatarLink,
-    telegramGetAvatarLinkUpd,
-} from '@lib/telegram';
-import { Publication } from "@features/feed";
-import type { Publication as IPublication } from "@features/feed/types";
+import { AvatarBalanceWidget } from '@/components/organisms/AvatarBalanceWidget';
+import { Breadcrumbs } from '@/components/molecules/Breadcrumbs';
+import { CardWithAvatar } from '@/components/molecules/CardWithAvatar';
+import { PublicationCard } from "@/components/organisms/Publication";
+import { telegramGetAvatarLink, telegramGetAvatarLinkUpd } from '@lib/telegram';
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useTranslations } from 'next-intl';
@@ -204,8 +200,8 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     };
 
     return (
-        <Page className="feed">
-            <HeaderAvatarBalance
+        <PageLayout className="feed">
+            <AvatarBalanceWidget
                 balance1={undefined}
                 balance2={undefined}
                 avatarUrl={telegramGetAvatarLink(tgAuthorId || '')}
@@ -214,24 +210,26 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     router.push("/meriter/home");
                 }}
                 userName={user?.name || 'User'}
-            >
-                <MenuBreadcrumbs
-                    chatId={chatId}
-                    chatNameVerb={chatNameVerb}
-                    chatIcon={comms?.icon}
-                />
+            />
+
+            <Breadcrumbs
+                pathname={pathname}
+                chatId={chatId}
+                chatNameVerb={chatNameVerb}
+                chatIcon={comms?.icon}
+            />
                 
                 {/* Community Header */}
-                {chat?.title && (
+                {comms?.chat?.title && (
                     <div className="py-3 border-b border-base-300 mb-4">
                         <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-3">
                                 <CommunityAvatar
-                                    avatarUrl={chat?.photo}
-                                    communityName={chat?.title}
+                                    avatarUrl={comms?.chat?.photo}
+                                    communityName={comms?.chat?.title}
                                     size={48}
                                 />
-                                <h1 className="text-xl font-semibold">{chat?.title}</h1>
+                                <h1 className="text-xl font-semibold">{comms?.chat?.title}</h1>
                             </div>
                             {/* Settings cog icon - visible only to admins */}
                             {comms?.chat?.administratorsIds?.includes(user?.tgUserId) && (
@@ -325,7 +323,6 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                         </div>
                     </>
                 )}
-            </HeaderAvatarBalance>
             {error === true && <div>{t('communities.noAccess')}</div>}
 
             <button
@@ -408,7 +405,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     </div>
                 </BottomPortal>
             )}
-        </Page>
+        </PageLayout>
     );
 };
 

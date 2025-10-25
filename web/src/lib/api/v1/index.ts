@@ -21,7 +21,7 @@ import type {
 } from '@/types/api-v1';
 import type { PaginatedResponse } from '@/types/common';
 
-// Auth API
+// Auth API with enhanced response handling
 export const authApiV1 = {
   async getMe(): Promise<User> {
     const response = await apiClient.get<{ success: true; data: User }>('/api/v1/auth/me');
@@ -29,17 +29,84 @@ export const authApiV1 = {
   },
 
   async authenticateWithTelegramWidget(user: any): Promise<{ user: User; hasPendingCommunities: boolean }> {
-    const response = await apiClient.postRaw<{ success: true; data: { user: User; hasPendingCommunities: boolean } }>('/api/v1/auth/telegram/widget', user);
-    return response.data;
+    try {
+      console.log('🔐 Auth API: Starting Telegram authentication with user:', user);
+      const response = await apiClient.postRaw<{ success: boolean; data: { user: User; hasPendingCommunities: boolean }; error?: string }>('/api/v1/auth/telegram/widget', user);
+      console.log('🔐 Auth API: Raw response received:', response);
+      console.log('🔐 Auth API: Response data:', response.data);
+      
+      if (!response.data) {
+        throw new Error('No response data received from server');
+      }
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Authentication failed');
+      }
+      
+      // Handle the actual response structure: { success: true, data: { user: {...}, hasPendingCommunities: ... } }
+      if (!response.data.data) {
+        throw new Error('No data received from server');
+      }
+      
+      const authData = {
+        user: response.data.data.user,
+        hasPendingCommunities: response.data.data.hasPendingCommunities || false
+      };
+      
+      console.log('🔐 Auth API: Constructed auth data:', authData);
+      
+      console.log('🔐 Auth API: Authentication successful, returning data:', authData);
+      return authData;
+    } catch (error) {
+      console.error('🔐 Auth API: Authentication error:', error);
+      throw error;
+    }
   },
 
   async authenticateWithTelegramWebApp(initData: string): Promise<{ user: User; hasPendingCommunities: boolean }> {
-    const response = await apiClient.postRaw<{ success: true; data: { user: User; hasPendingCommunities: boolean } }>('/api/v1/auth/telegram/webapp', { initData });
-    return response.data;
+    try {
+      console.log('🔐 Auth API: Starting Telegram Web App authentication with initData:', initData);
+      const response = await apiClient.postRaw<{ success: boolean; data: { user: User; hasPendingCommunities: boolean }; error?: string }>('/api/v1/auth/telegram/webapp', { initData });
+      console.log('🔐 Auth API: Raw response received:', response);
+      console.log('🔐 Auth API: Response data:', response.data);
+      
+      if (!response.data) {
+        throw new Error('No response data received from server');
+      }
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Authentication failed');
+      }
+      
+      // Handle the actual response structure: { success: true, data: { user: {...}, hasPendingCommunities: ... } }
+      if (!response.data.data) {
+        throw new Error('No data received from server');
+      }
+      
+      const authData = {
+        user: response.data.data.user,
+        hasPendingCommunities: response.data.data.hasPendingCommunities || false
+      };
+      
+      console.log('🔐 Auth API: Constructed auth data:', authData);
+      
+      console.log('🔐 Auth API: Authentication successful, returning data:', authData);
+      return authData;
+    } catch (error) {
+      console.error('🔐 Auth API: Authentication error:', error);
+      throw error;
+    }
   },
 
   async logout(): Promise<void> {
-    await apiClient.post('/api/v1/auth/logout');
+    try {
+      console.log('🔐 Auth API: Starting logout...');
+      await apiClient.post('/api/v1/auth/logout');
+      console.log('🔐 Auth API: Logout API call successful');
+    } catch (error) {
+      console.error('🔐 Auth API: Logout API call failed:', error);
+      throw error;
+    }
   },
 };
 
@@ -163,30 +230,65 @@ export const communitiesApiV1 = {
   },
 };
 
-// Publications API
+// Publications API with Zod validation and query parameter transformations
 export const publicationsApiV1 = {
-  async getPublications(params: { skip?: number; limit?: number; type?: string; communityId?: string; spaceId?: string } = {}): Promise<PaginatedResponse<Publication>> {
-    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Publication> }>('/api/v1/publications', { params });
-    return response.data;
+  async getPublications(params: { skip?: number; limit?: number; type?: string; communityId?: string; spaceId?: string; userId?: string; tag?: string; sort?: string; order?: string } = {}): Promise<Publication[]> {
+    const queryParams = new URLSearchParams();
+    
+    if (params.skip) queryParams.append('page', Math.floor(params.skip / (params.limit || 10)) + 1);
+    if (params.limit) queryParams.append('pageSize', params.limit.toString());
+    if (params.sort) queryParams.append('sort', params.sort);
+    if (params.order) queryParams.append('order', params.order);
+    if (params.communityId) queryParams.append('communityId', params.communityId);
+    if (params.userId) queryParams.append('authorId', params.userId); // Transform userId to authorId
+    if (params.tag) queryParams.append('hashtag', params.tag); // Transform tag to hashtag
+
+    const response = await apiClient.get(`/api/v1/publications?${queryParams.toString()}`);
+    return response;
+  },
+
+  async getMyPublications(params: { skip?: number; limit?: number } = {}): Promise<Publication[]> {
+    const queryParams = new URLSearchParams();
+    
+    if (params.skip) queryParams.append('page', Math.floor(params.skip / (params.limit || 10)) + 1);
+    if (params.limit) queryParams.append('pageSize', params.limit.toString());
+
+    const response = await apiClient.get(`/api/v1/publications/my?${queryParams.toString()}`);
+    return response;
+  },
+
+  async getPublicationsByCommunity(
+    communityId: string, 
+    params: { skip?: number; limit?: number; sort?: string; order?: string } = {}
+  ): Promise<Publication[]> {
+    const queryParams = new URLSearchParams();
+    
+    if (params.skip) queryParams.append('page', Math.floor(params.skip / (params.limit || 10)) + 1);
+    if (params.limit) queryParams.append('pageSize', params.limit.toString());
+    if (params.sort) queryParams.append('sort', params.sort);
+    if (params.order) queryParams.append('order', params.order);
+
+    const response = await apiClient.get(`/api/v1/publications?communityId=${communityId}&${queryParams.toString()}`);
+    return response;
   },
 
   async getPublication(id: string): Promise<Publication> {
-    const response = await apiClient.get<{ success: true; data: Publication }>(`/api/v1/publications/${id}`);
-    return response.data;
+    const response = await apiClient.get(`/api/v1/publications/${id}`);
+    return response;
   },
 
   async createPublication(data: CreatePublicationDto): Promise<Publication> {
-    const response = await apiClient.post<{ success: true; data: Publication }>('/api/v1/publications', data);
-    return response.data;
+    const response = await apiClient.post('/api/v1/publications', data);
+    return response;
   },
 
   async updatePublication(id: string, data: Partial<CreatePublicationDto>): Promise<Publication> {
-    const response = await apiClient.put<{ success: true; data: Publication }>(`/api/v1/publications/${id}`, data);
-    return response.data;
+    const response = await apiClient.put(`/api/v1/publications/${id}`, data);
+    return response;
   },
 
-  async deletePublication(id: string): Promise<void> {
-    await apiClient.delete(`/api/v1/publications/${id}`);
+  async deletePublication(id: string): Promise<{ success: boolean }> {
+    return apiClient.delete(`/api/v1/publications/${id}`);
   },
 
   async getSpacePublications(spaceId: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<Publication>> {
@@ -195,10 +297,26 @@ export const publicationsApiV1 = {
   },
 };
 
-// Comments API
+// Comments API with hierarchical endpoints
 export const commentsApiV1 = {
   async getComments(params: { skip?: number; limit?: number; publicationId?: string; userId?: string } = {}): Promise<PaginatedResponse<Comment>> {
     const response = await apiClient.get<{ success: true; data: PaginatedResponse<Comment> }>('/api/v1/comments', { params });
+    return response.data;
+  },
+
+  async getCommentsByPublication(
+    publicationId: string,
+    params: { page?: number; pageSize?: number; sort?: string; order?: string } = {}
+  ): Promise<PaginatedResponse<Comment>> {
+    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Comment> }>(`/api/v1/comments/publications/${publicationId}`, { params });
+    return response.data;
+  },
+
+  async getCommentsByComment(
+    commentId: string,
+    params: { page?: number; pageSize?: number; sort?: string; order?: string } = {}
+  ): Promise<PaginatedResponse<Comment>> {
+    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Comment> }>(`/api/v1/comments/${commentId}/replies`, { params });
     return response.data;
   },
 
@@ -232,26 +350,38 @@ export const commentsApiV1 = {
   },
 };
 
-// Thanks API
+// Thanks API with complex response structures and missing endpoints
 export const thanksApiV1 = {
-  async thankPublication(publicationId: string, data: CreateThankDto): Promise<Thank> {
-    const response = await apiClient.post<{ success: true; data: Thank }>(`/api/v1/publications/${publicationId}/thanks`, data);
+  async thankPublication(
+    publicationId: string,
+    data: CreateThankDto
+  ): Promise<{ thank: Thank; comment?: Comment; wallet: Wallet }> {
+    const response = await apiClient.post<{ success: true; data: { thank: Thank; comment?: Comment; wallet: Wallet } }>(`/api/v1/publications/${publicationId}/thanks`, data);
     return response.data;
   },
 
-  async thankComment(commentId: string, data: CreateThankDto): Promise<Thank> {
-    const response = await apiClient.post<{ success: true; data: Thank }>(`/api/v1/comments/${commentId}/thanks`, data);
+  async thankComment(
+    commentId: string,
+    data: CreateThankDto
+  ): Promise<{ thank: Thank; comment?: Comment; wallet: Wallet }> {
+    const response = await apiClient.post<{ success: true; data: { thank: Thank; comment?: Comment; wallet: Wallet } }>(`/api/v1/comments/${commentId}/thanks`, data);
     return response.data;
   },
 
-  async getPublicationThanks(publicationId: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<Thank>> {
-    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Thank> }>(`/api/v1/publications/${publicationId}/thanks`, { params });
-    return response.data;
+  async getPublicationThanks(
+    publicationId: string,
+    params: { page?: number; pageSize?: number } = {}
+  ): Promise<{ data: Thank[] }> {
+    const response = await apiClient.get(`/api/v1/publications/${publicationId}/thanks`, { params });
+    return response;
   },
 
-  async getCommentThanks(commentId: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<Thank>> {
-    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Thank> }>(`/api/v1/comments/${commentId}/thanks`, { params });
-    return response.data;
+  async getCommentThanks(
+    commentId: string,
+    params: { page?: number; pageSize?: number } = {}
+  ): Promise<{ data: Thank[] }> {
+    const response = await apiClient.get(`/api/v1/comments/${commentId}/thanks`, { params });
+    return response;
   },
 
   async removePublicationThank(publicationId: string): Promise<void> {
@@ -260,6 +390,11 @@ export const thanksApiV1 = {
 
   async removeCommentThank(commentId: string): Promise<void> {
     await apiClient.delete(`/api/v1/comments/${commentId}/thanks`);
+  },
+
+  async getThankDetails(thankId: string): Promise<{ thank: Thank; comment?: Comment }> {
+    const response = await apiClient.get<{ thank: Thank; comment?: Comment }>(`/api/v1/thanks/${thankId}/details`);
+    return response;
   },
 };
 
@@ -305,13 +440,79 @@ export const pollsApiV1 = {
   },
 };
 
+// Wallet API with missing functionality
+export const walletApiV1 = {
+  async getWallets(): Promise<Wallet[]> {
+    const response = await apiClient.get<Wallet[]>('/api/v1/users/me/wallets');
+    return response;
+  },
+
+  async getBalance(communityId: string): Promise<number> {
+    const response = await apiClient.get<Wallet>(`/api/v1/users/me/wallets/${communityId}`);
+    return response.balance;
+  },
+
+  async getTransactions(params: { 
+    skip?: number; 
+    limit?: number; 
+    positive?: boolean;
+    userId?: string;
+  } = {}): Promise<PaginatedResponse<Transaction>> {
+    const response = await apiClient.get<PaginatedResponse<Transaction>>('/api/v1/users/me/transactions', { params });
+    return response;
+  },
+
+  async getTransactionUpdates(): Promise<Transaction[]> {
+    const response = await apiClient.get<PaginatedResponse<Transaction>>('/api/v1/users/me/transactions', { 
+      params: { updates: true } 
+    });
+    return response.data;
+  },
+
+  async getAllTransactions(params: { 
+    skip?: number; 
+    limit?: number;
+    userId?: string;
+    communityId?: string;
+  } = {}): Promise<PaginatedResponse<Transaction>> {
+    const response = await apiClient.get<PaginatedResponse<Transaction>>('/api/v1/users/me/transactions', { params });
+    return response;
+  },
+
+  async withdraw(communityId: string, data: { amount: number; memo?: string }): Promise<Transaction> {
+    const response = await apiClient.post<Transaction>(`/api/v1/users/me/wallets/${communityId}/withdraw`, data);
+    return response;
+  },
+
+  async transfer(communityId: string, data: { toUserId: string; amount: number; description?: string }): Promise<Transaction> {
+    const response = await apiClient.post<Transaction>(`/api/v1/users/me/wallets/${communityId}/transfer`, data);
+    return response;
+  },
+
+  async getFreeBalance(communityId: string): Promise<number> {
+    const response = await apiClient.get<number>(`/api/v1/users/me/quota?communityId=${communityId}`);
+    return response;
+  },
+};
+
+// Communities API with missing sync functionality
+export const communitiesApiV1Enhanced = {
+  ...communitiesApiV1,
+  
+  async syncCommunities(): Promise<{ message: string; syncedCount: number }> {
+    const response = await apiClient.post<{ message: string; syncedCount: number }>('/api/v1/communities/sync');
+    return response;
+  },
+};
+
 // Export all APIs
 export const apiV1 = {
   auth: authApiV1,
   users: usersApiV1,
-  communities: communitiesApiV1,
+  communities: communitiesApiV1Enhanced,
   publications: publicationsApiV1,
   comments: commentsApiV1,
   thanks: thanksApiV1,
   polls: pollsApiV1,
+  wallet: walletApiV1,
 };

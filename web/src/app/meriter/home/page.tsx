@@ -1,24 +1,18 @@
 'use client';
 
-import Page from '@shared/components/page';
 import { useEffect, useState, useRef } from "react";
 import { useTranslations } from 'next-intl';
-import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { useRouter } from "next/navigation";
-import {
-    telegramGetAvatarLink,
-    telegramGetAvatarLinkUpd,
-} from '@lib/telegram';
-import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
-import { classList } from '@lib/classList';
-import { TransactionToMe } from "@features/wallet/components/transaction-to-me";
-import { WalletCommunity } from "@features/wallet/components/wallet-community";
+import { PageLayout } from '@/components/templates/PageLayout';
+import { AvatarBalanceWidget } from '@/components/organisms/AvatarBalanceWidget';
+import { Breadcrumbs } from '@/components/molecules/Breadcrumbs';
 import { PublicationCard } from "@/components/organisms/Publication";
-import { Comment } from "@features/comments/components/comment";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useMyPublications, useWallets, useUserProfile } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { telegramGetAvatarLink, telegramGetAvatarLinkUpd } from '@lib/telegram';
+import { classList } from '@lib/classList';
 
 interface iCommunityProps {
     name: string;
@@ -116,8 +110,8 @@ const PageHome = () => {
     };
 
     return (
-        <Page className="balance">
-            <HeaderAvatarBalance
+        <PageLayout className="balance">
+            <AvatarBalanceWidget
                 balance1={undefined}
                 balance2={undefined}
                 avatarUrl={
@@ -128,10 +122,9 @@ const PageHome = () => {
                     router.push("/meriter/home");
                 }}
                 userName={user?.name || 'User'}
-            >
-                <MenuBreadcrumbs />
-            </HeaderAvatarBalance>
+            />
 
+            <Breadcrumbs pathname="/meriter/home" />
             
             <div className="balance-available">
                 {false && <div className="heading">{t('availableBalance')}</div>}
@@ -141,7 +134,10 @@ const PageHome = () => {
                     </div>
                 ) : (
                     (Array.isArray(wallets) ? wallets : []).map((w: any) => (
-                        <WalletCommunity key={w._id} {...w} />
+                        <div key={w._id} className="text-sm">
+                            {/* TODO: Replace with WalletCommunity component */}
+                            {w.currencyNames?.[5]}: {w.amount}
+                        </div>
                     ))
                 )}
             </div>
@@ -290,7 +286,7 @@ const PageHome = () => {
                     </div>
                 </BottomPortal>
             )}
-        </Page>
+        </PageLayout>
     );
 };
 

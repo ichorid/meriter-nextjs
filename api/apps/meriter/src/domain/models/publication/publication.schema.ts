@@ -28,21 +28,21 @@ export class Publication {
 
   @Prop({
     type: {
-      upthanks: { type: Number, default: 0 },
-      downthanks: { type: Number, default: 0 },
+      upvotes: { type: Number, default: 0 },
+      downvotes: { type: Number, default: 0 },
       score: { type: Number, default: 0 },
       commentCount: { type: Number, default: 0 },
     },
     default: {
-      upthanks: 0,
-      downthanks: 0,
+      upvotes: 0,
+      downvotes: 0,
       score: 0,
       commentCount: 0,
     },
   })
   metrics: {
-    upthanks: number;
-    downthanks: number;
+    upvotes: number;
+    downvotes: number;
     score: number;
     commentCount: number;
   };
