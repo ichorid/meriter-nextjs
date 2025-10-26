@@ -88,10 +88,28 @@ const CommunitySettingsPage = () => {
     useEffect(() => {
         if (communityResponse) {
             setCommunityData(communityResponse);
+            
+            // Map API format to form format
+            // API has: settings.currencyNames { singular, plural, genitive }
+            // Form uses: { 1: 'singular', 2: 'dual/genitive', 5: 'plural' }
+            const currencyNames = communityResponse.settings?.currencyNames || {};
+            const formCurrencyNames = {
+                1: currencyNames.singular || '',
+                2: currencyNames.genitive || currencyNames.plural || '',
+                5: currencyNames.plural || '',
+            };
+            
+            // Map hashtags to spaces format
+            const spaces = (communityResponse.hashtags || []).map((tag: string) => ({
+                slug: nanoid(8),
+                tagRus: tag,
+                description: ''
+            }));
+            
             setFormData({
-                currencyNames: { 1: '', 2: '', 5: '' },
-                icon: communityResponse.avatarUrl || '',
-                spaces: communityResponse.hashtags || []
+                currencyNames: formCurrencyNames,
+                icon: communityResponse.settings?.iconUrl || communityResponse.avatarUrl || '',
+                spaces: spaces
             });
             setCommunityError('');
         }
@@ -160,12 +178,21 @@ const CommunitySettingsPage = () => {
         setTouched(true);
         if (!isValid) return;
 
+        // Map currency names from form format to API format
+        // Form uses: { 1: 'singular', 2: 'dual', 5: 'plural' }
+        // API expects: { singular: 'text', plural: 'text', genitive: 'text' }
+        const currencyNames = {
+            singular: formData.currencyNames[1] || '',
+            plural: formData.currencyNames[5] || '',
+            genitive: formData.currencyNames[2] || formData.currencyNames[5] || '', // Use plural as fallback for genitive
+        };
+
         const saveData = {
             name: communityResponse?.name,
             description: communityResponse?.description,
             settings: {
                 iconUrl: formData.icon,
-                currencyNames: formData.currencyNames,
+                currencyNames: currencyNames,
             },
             hashtags: formData.spaces.filter((d: any) => d.tagRus && !d.deleted).map((d: any) => d.tagRus),
         };
@@ -183,9 +210,22 @@ const CommunitySettingsPage = () => {
                 router.push(`/meriter/communities/${chatId}?saved=1`);
             }, 1500);
         } catch (error: unknown) {
-            console.error('Save failed:', error);
-            const message = error instanceof Error ? error.message : 'Failed to save settings';
-            setSaveError(message);
+            // Log error details properly
+            if (error instanceof Error) {
+                console.error('Save failed:', error.message, error);
+            } else if (error && typeof error === 'object') {
+                const errorDetails = {
+                    message: (error as any).message || 'Unknown error',
+                    code: (error as any).code,
+                    details: (error as any).details
+                };
+                console.error('Save failed:', JSON.stringify(errorDetails, null, 2));
+                const message = (error as any).message || 'Failed to save settings';
+                setSaveError(message);
+            } else {
+                console.error('Save failed:', String(error));
+                setSaveError('Failed to save settings');
+            }
         } finally {
             setSaving(false);
         }

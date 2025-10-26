@@ -91,38 +91,25 @@ export class PollServiceV2 {
   }
 
   async expirePoll(pollId: string): Promise<Poll | null> {
-    const session = await this.mongoose.startSession();
-    session.startTransaction();
-
-    try {
-      const doc = await this.pollModel.findOne({ id: pollId }, null, { session }).lean();
-      if (!doc) {
-        throw new NotFoundException('Poll not found');
-      }
-
-      const poll = Poll.fromSnapshot(doc as IPollDocument);
-      
-      if (poll.hasExpired()) {
-        poll.expire();
-        
-        await this.pollModel.updateOne(
-          { id: poll.getId },
-          { $set: poll.toSnapshot() },
-          { session }
-        );
-        
-        await session.commitTransaction();
-        return poll;
-      }
-      
-      await session.commitTransaction();
-      return poll;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+    const doc = await this.pollModel.findOne({ id: pollId }).lean();
+    if (!doc) {
+      throw new NotFoundException('Poll not found');
     }
+
+    const poll = Poll.fromSnapshot(doc as IPollDocument);
+    
+    if (poll.hasExpired()) {
+      poll.expire();
+      
+      await this.pollModel.updateOne(
+        { id: poll.getId },
+        { $set: poll.toSnapshot() }
+      );
+      
+      return poll;
+    }
+    
+    return poll;
   }
 
   async voteOnPoll(

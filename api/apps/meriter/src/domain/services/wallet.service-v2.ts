@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model, ClientSession } from 'mongoose';
+import { Connection, Model } from 'mongoose';
 import { Wallet } from '../aggregates/wallet/wallet.entity';
 import { Wallet as WalletSchema, WalletDocument } from '../models/wallet/wallet.schema';
 import { Transaction } from '../models/transaction/transaction.schema';
@@ -61,68 +61,56 @@ export class WalletServiceV2 {
     currency: { singular: string; plural: string; genitive: string },
     description?: string
   ): Promise<Wallet> {
-    const session = await this.mongoose.startSession();
-    session.startTransaction();
-
-    try {
-      // Get or create wallet
-      let wallet = await this.getWallet(userId, communityId);
-      
-      if (!wallet) {
-        wallet = Wallet.create(
-          UserId.fromString(userId),
-          CommunityId.fromString(communityId),
-          currency
-        );
-      }
-
-      // Domain logic
-      if (type === 'credit') {
-        wallet.add(amount);
-      } else {
-        wallet.deduct(amount);
-      }
-
-      // Save wallet
-      await this.walletModel.updateOne(
-        { id: wallet.getId.getValue() },
-        { $set: wallet.toSnapshot() },
-        { upsert: true, session }
+    // Get or create wallet
+    let wallet = await this.getWallet(userId, communityId);
+    
+    if (!wallet) {
+      wallet = Wallet.create(
+        UserId.fromString(userId),
+        CommunityId.fromString(communityId),
+        currency
       );
-
-      // Create transaction record
-      await this.mongoose.models.Transaction.create([{
-        id: uid(),
-        walletId: wallet.getId.getValue(),
-        type,
-        amount,
-        sourceType,
-        referenceType,
-        referenceId,
-        description,
-        createdAt: new Date(),
-      }], { session });
-
-      await session.commitTransaction();
-
-      // Publish event
-      await this.eventBus.publish(
-        new WalletBalanceChangedEvent(
-          wallet.getId.getValue(),
-          userId,
-          communityId,
-          amount,
-          type
-        )
-      );
-
-      return wallet;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
     }
+
+    // Domain logic
+    if (type === 'credit') {
+      wallet.add(amount);
+    } else {
+      wallet.deduct(amount);
+    }
+
+    // Save wallet
+    await this.walletModel.updateOne(
+      { id: wallet.getId.getValue() },
+      { $set: wallet.toSnapshot() },
+      { upsert: true }
+    );
+
+    // Create transaction record
+    await this.mongoose.models.Transaction.create([{
+      id: uid(),
+      walletId: wallet.getId.getValue(),
+      type,
+      amount,
+      sourceType,
+      referenceType,
+      referenceId,
+      description,
+      createdAt: new Date(),
+    }]);
+
+    // Publish event
+    await this.eventBus.publish(
+      new WalletBalanceChangedEvent(
+        wallet.getId.getValue(),
+        userId,
+        communityId,
+        amount,
+        type
+      )
+    );
+
+    return wallet;
   }
 
   async getTransactions(walletId: string, limit: number = 50, skip: number = 0): Promise<Transaction[]> {

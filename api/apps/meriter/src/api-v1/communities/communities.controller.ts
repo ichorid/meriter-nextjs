@@ -49,7 +49,15 @@ export class CommunitiesController {
     return {
       ...community,
       isAdmin: await this.communityService.isUserAdmin(id, req.user.tgUserId),
-      needsSetup: !community.hashtags || community.hashtags.length === 0,
+      needsSetup: (
+        !community.hashtags || 
+        community.hashtags.length === 0 ||
+        !community.settings?.currencyNames?.singular ||
+        community.settings.currencyNames.singular === 'merit' ||
+        !community.settings?.currencyNames?.plural ||
+        !community.settings?.currencyNames?.genitive ||
+        !community.settings?.iconUrl
+      ),
       createdAt: community.createdAt.toISOString(),
       updatedAt: community.updatedAt.toISOString(),
     };
@@ -61,7 +69,15 @@ export class CommunitiesController {
     return {
       ...community,
       isAdmin: true, // Creator is admin
-      needsSetup: !community.hashtags || community.hashtags.length === 0,
+      needsSetup: (
+        !community.hashtags || 
+        community.hashtags.length === 0 ||
+        !community.settings?.currencyNames?.singular ||
+        community.settings.currencyNames.singular === 'merit' ||
+        !community.settings?.currencyNames?.plural ||
+        !community.settings?.currencyNames?.genitive ||
+        !community.settings?.iconUrl
+      ),
       createdAt: community.createdAt.toISOString(),
       updatedAt: community.updatedAt.toISOString(),
     };
@@ -82,7 +98,15 @@ export class CommunitiesController {
     return {
       ...community,
       isAdmin: await this.communityService.isUserAdmin(id, req.user.tgUserId),
-      needsSetup: !community.hashtags || community.hashtags.length === 0,
+      needsSetup: (
+        !community.hashtags || 
+        community.hashtags.length === 0 ||
+        !community.settings?.currencyNames?.singular ||
+        community.settings.currencyNames.singular === 'merit' ||
+        !community.settings?.currencyNames?.plural ||
+        !community.settings?.currencyNames?.genitive ||
+        !community.settings?.iconUrl
+      ),
       createdAt: community.createdAt.toISOString(),
       updatedAt: community.updatedAt.toISOString(),
     };

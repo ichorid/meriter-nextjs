@@ -118,43 +118,30 @@ export class CommentServiceV2 {
   }
 
   async voteOnComment(commentId: string, userId: string, amount: number, direction: 'up' | 'down'): Promise<Comment> {
-    const session = await this.mongoose.startSession();
-    session.startTransaction();
-
-    try {
-      // Load aggregate
-      const doc = await this.commentModel.findOne({ id: commentId }, null, { session }).lean();
-      if (!doc) {
-        throw new NotFoundException('Comment not found');
-      }
-
-      const comment = Comment.fromSnapshot(doc as ICommentDocument);
-
-      // Domain logic
-      const voteAmount = direction === 'up' ? amount : -amount;
-      comment.vote(voteAmount);
-
-      // Save with session
-      await this.commentModel.updateOne(
-        { id: comment.getId },
-        { $set: comment.toSnapshot() },
-        { session }
-      );
-
-      await session.commitTransaction();
-
-      // Publish event
-      await this.eventBus.publish(
-        new CommentVotedEvent(commentId, userId, amount, direction)
-      );
-
-      return comment;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+    // Load aggregate
+    const doc = await this.commentModel.findOne({ id: commentId }).lean();
+    if (!doc) {
+      throw new NotFoundException('Comment not found');
     }
+
+    const comment = Comment.fromSnapshot(doc as ICommentDocument);
+
+    // Domain logic
+    const voteAmount = direction === 'up' ? amount : -amount;
+    comment.vote(voteAmount);
+
+    // Save
+    await this.commentModel.updateOne(
+      { id: comment.getId },
+      { $set: comment.toSnapshot() }
+    );
+
+    // Publish event
+    await this.eventBus.publish(
+      new CommentVotedEvent(commentId, userId, amount, direction)
+    );
+
+    return comment;
   }
 
   async deleteComment(commentId: string, userId: string): Promise<boolean> {

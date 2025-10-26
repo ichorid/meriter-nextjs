@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model, ClientSession } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { Community, CommunityDocument } from '../models/community/community.schema';
 import { User, UserDocument } from '../models/user/user.schema';
 import { CommunityId, UserId } from '../value-objects';
@@ -47,7 +47,6 @@ export class CommunityServiceV2 {
   constructor(
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
   ) {}
 
@@ -58,165 +57,107 @@ export class CommunityServiceV2 {
   }
 
   async createCommunity(dto: CreateCommunityDto): Promise<Community> {
-    const session = await this.mongoose.startSession();
-    session.startTransaction();
-
-    try {
-      const community = {
-        id: uid(),
-        telegramChatId: dto.telegramChatId,
-        name: dto.name,
-        description: dto.description,
-        avatarUrl: dto.avatarUrl,
-        administrators: dto.administrators,
-        members: [],
-        settings: {
-          iconUrl: dto.settings?.iconUrl,
-          currencyNames: dto.settings?.currencyNames || {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          },
-          dailyEmission: dto.settings?.dailyEmission || 10,
+    const community = {
+      id: uid(),
+      telegramChatId: dto.telegramChatId,
+      name: dto.name,
+      description: dto.description,
+      avatarUrl: dto.avatarUrl,
+      administrators: dto.administrators,
+      members: [],
+      settings: {
+        iconUrl: dto.settings?.iconUrl,
+        currencyNames: dto.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
         },
-        hashtags: [],
-        spaces: [],
-        isActive: true, // Default to active
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+        dailyEmission: dto.settings?.dailyEmission || 10,
+      },
+      hashtags: [],
+      spaces: [],
+      isActive: true, // Default to active
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
 
-      await this.communityModel.create([community], { session });
-      await session.commitTransaction();
-
-      this.logger.log(`Community created: ${community.id}`);
-      return community;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
+    await this.communityModel.create([community]);
+    this.logger.log(`Community created: ${community.id}`);
+    return community;
   }
 
   async updateCommunity(communityId: string, dto: UpdateCommunityDto): Promise<Community> {
-    const session = await this.mongoose.startSession();
-    session.startTransaction();
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
 
-    try {
-      const updateData: any = {
-        updatedAt: new Date(),
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.description !== undefined) updateData.description = dto.description;
+    if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
+    if (dto.administrators !== undefined) updateData.administrators = dto.administrators;
+    
+    if (dto.settings) {
+      updateData.settings = {
+        ...updateData.settings,
+        ...dto.settings,
       };
-
-      if (dto.name !== undefined) updateData.name = dto.name;
-      if (dto.description !== undefined) updateData.description = dto.description;
-      if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
-      if (dto.administrators !== undefined) updateData.administrators = dto.administrators;
-      
-      if (dto.settings) {
-        updateData.settings = {
-          ...updateData.settings,
-          ...dto.settings,
-        };
-      }
-
-      const updatedCommunity = await this.communityModel.findOneAndUpdate(
-        { telegramChatId: communityId },
-        { $set: updateData },
-        { new: true, session }
-      ).lean();
-
-      if (!updatedCommunity) {
-        throw new NotFoundException('Community not found');
-      }
-
-      await session.commitTransaction();
-      return updatedCommunity;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
     }
+
+    const updatedCommunity = await this.communityModel.findOneAndUpdate(
+      { telegramChatId: communityId },
+      { $set: updateData },
+      { new: true }
+    ).lean();
+
+    if (!updatedCommunity) {
+      throw new NotFoundException('Community not found');
+    }
+
+    return updatedCommunity;
   }
 
   async deleteCommunity(communityId: string): Promise<void> {
-    const session = await this.mongoose.startSession();
-    session.startTransaction();
+    const result = await this.communityModel.deleteOne(
+      { telegramChatId: communityId }
+    );
 
-    try {
-      const result = await this.communityModel.deleteOne(
-        { telegramChatId: communityId },
-        { session }
-      );
-
-      if (result.deletedCount === 0) {
-        throw new NotFoundException('Community not found');
-      }
-
-      await session.commitTransaction();
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+    if (result.deletedCount === 0) {
+      throw new NotFoundException('Community not found');
     }
   }
 
   async addMember(communityId: string, userId: string): Promise<Community> {
-    const session = await this.mongoose.startSession();
-    session.startTransaction();
+    const updatedCommunity = await this.communityModel.findOneAndUpdate(
+      { telegramChatId: communityId },
+      { 
+        $addToSet: { members: userId },
+        $set: { updatedAt: new Date() }
+      },
+      { new: true }
+    ).lean();
 
-    try {
-      const updatedCommunity = await this.communityModel.findOneAndUpdate(
-        { telegramChatId: communityId },
-        { 
-          $addToSet: { members: userId },
-          $set: { updatedAt: new Date() }
-        },
-        { new: true, session }
-      ).lean();
-
-      if (!updatedCommunity) {
-        throw new NotFoundException('Community not found');
-      }
-
-      await session.commitTransaction();
-      return updatedCommunity;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+    if (!updatedCommunity) {
+      throw new NotFoundException('Community not found');
     }
+
+    return updatedCommunity;
   }
 
   async removeMember(communityId: string, userId: string): Promise<Community> {
-    const session = await this.mongoose.startSession();
-    session.startTransaction();
+    const updatedCommunity = await this.communityModel.findOneAndUpdate(
+      { telegramChatId: communityId },
+      { 
+        $pull: { members: userId },
+        $set: { updatedAt: new Date() }
+      },
+      { new: true }
+    ).lean();
 
-    try {
-      const updatedCommunity = await this.communityModel.findOneAndUpdate(
-        { telegramChatId: communityId },
-        { 
-          $pull: { members: userId },
-          $set: { updatedAt: new Date() }
-        },
-        { new: true, session }
-      ).lean();
-
-      if (!updatedCommunity) {
-        throw new NotFoundException('Community not found');
-      }
-
-      await session.commitTransaction();
-      return updatedCommunity;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+    if (!updatedCommunity) {
+      throw new NotFoundException('Community not found');
     }
+
+    return updatedCommunity;
   }
 
   async isUserAdmin(communityId: string, userId: string): Promise<boolean> {
@@ -259,59 +200,37 @@ export class CommunityServiceV2 {
   }
 
   async addHashtag(communityId: string, hashtag: string): Promise<Community> {
-    const session = await this.mongoose.startSession();
-    session.startTransaction();
+    const updatedCommunity = await this.communityModel.findOneAndUpdate(
+      { telegramChatId: communityId },
+      { 
+        $addToSet: { hashtags: hashtag },
+        $set: { updatedAt: new Date() }
+      },
+      { new: true }
+    ).lean();
 
-    try {
-      const updatedCommunity = await this.communityModel.findOneAndUpdate(
-        { telegramChatId: communityId },
-        { 
-          $addToSet: { hashtags: hashtag },
-          $set: { updatedAt: new Date() }
-        },
-        { new: true, session }
-      ).lean();
-
-      if (!updatedCommunity) {
-        throw new NotFoundException('Community not found');
-      }
-
-      await session.commitTransaction();
-      return updatedCommunity;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+    if (!updatedCommunity) {
+      throw new NotFoundException('Community not found');
     }
+
+    return updatedCommunity;
   }
 
   async removeHashtag(communityId: string, hashtag: string): Promise<Community> {
-    const session = await this.mongoose.startSession();
-    session.startTransaction();
+    const updatedCommunity = await this.communityModel.findOneAndUpdate(
+      { telegramChatId: communityId },
+      { 
+        $pull: { hashtags: hashtag },
+        $set: { updatedAt: new Date() }
+      },
+      { new: true }
+    ).lean();
 
-    try {
-      const updatedCommunity = await this.communityModel.findOneAndUpdate(
-        { telegramChatId: communityId },
-        { 
-          $pull: { hashtags: hashtag },
-          $set: { updatedAt: new Date() }
-        },
-        { new: true, session }
-      ).lean();
-
-      if (!updatedCommunity) {
-        throw new NotFoundException('Community not found');
-      }
-
-      await session.commitTransaction();
-      return updatedCommunity;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+    if (!updatedCommunity) {
+      throw new NotFoundException('Community not found');
     }
+
+    return updatedCommunity;
   }
 
   async updateUserChatMembership(chatId: string, userId: string): Promise<boolean> {

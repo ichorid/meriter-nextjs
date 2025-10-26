@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model, ClientSession } from 'mongoose';
+import { Connection, Model } from 'mongoose';
 import { Publication } from '../aggregates/publication/publication.entity';
 import { Publication as PublicationSchema, PublicationDocument } from '../models/publication/publication.schema';
 import { PublicationId, UserId, CommunityId, PublicationContent } from '../value-objects';
@@ -93,45 +93,31 @@ export class PublicationServiceV2 {
 
   async voteOnPublication(publicationId: string, userId: string, amount: number, direction: 'up' | 'down'): Promise<Publication> {
     const id = PublicationId.fromString(publicationId);
-    const session = await this.mongoose.startSession();
-    
-    session.startTransaction();
 
-    try {
-      // Load aggregate using Mongoose directly
-      const doc = await this.publicationModel.findOne({ id: id.getValue() }, null, { session }).lean();
-      if (!doc) {
-        throw new NotFoundException('Publication not found');
-      }
-
-      const publication = Publication.fromSnapshot(doc as IPublicationDocument);
-
-      // Business logic in domain
-      const voteAmount = direction === 'up' ? amount : -amount;
-      publication.vote(voteAmount);
-
-      // Save with session for atomicity
-      await this.publicationModel.updateOne(
-        { id: publication.getId.getValue() },
-        { $set: publication.toSnapshot() },
-        { session }
-      );
-
-      // Commit transaction
-      await session.commitTransaction();
-
-      // Publish event (outside transaction)
-      await this.eventBus.publish(
-        new PublicationVotedEvent(publicationId, userId, amount, direction)
-      );
-
-      return publication;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+    // Load aggregate using Mongoose directly
+    const doc = await this.publicationModel.findOne({ id: id.getValue() }).lean();
+    if (!doc) {
+      throw new NotFoundException('Publication not found');
     }
+
+    const publication = Publication.fromSnapshot(doc as IPublicationDocument);
+
+    // Business logic in domain
+    const voteAmount = direction === 'up' ? amount : -amount;
+    publication.vote(voteAmount);
+
+    // Save
+    await this.publicationModel.updateOne(
+      { id: publication.getId.getValue() },
+      { $set: publication.toSnapshot() }
+    );
+
+    // Publish event
+    await this.eventBus.publish(
+      new PublicationVotedEvent(publicationId, userId, amount, direction)
+    );
+
+    return publication;
   }
 
   async getPublicationsByAuthor(authorId: string, limit: number = 50, skip: number = 0): Promise<Publication[]> {
@@ -157,44 +143,32 @@ export class PublicationServiceV2 {
   }
 
   async updatePublication(publicationId: string, userId: string, updateData: Partial<CreatePublicationDto>): Promise<Publication> {
-    const session = await this.mongoose.startSession();
-    session.startTransaction();
-
-    try {
-      const doc = await this.publicationModel.findOne({ id: publicationId }, null, { session }).lean();
-      if (!doc) {
-        throw new NotFoundException('Publication not found');
-      }
-
-      const publication = Publication.fromSnapshot(doc as IPublicationDocument);
-      const userIdObj = UserId.fromString(userId);
-      
-      if (!publication.canBeEditedBy(userIdObj)) {
-        throw new Error('Not authorized to edit this publication');
-      }
-
-      // Update publication fields
-      if (updateData.content) {
-        publication.updateContent(updateData.content);
-      }
-      if (updateData.hashtags) {
-        publication.updateHashtags(updateData.hashtags);
-      }
-
-      await this.publicationModel.updateOne(
-        { id: publication.getId },
-        { $set: publication.toSnapshot() },
-        { session }
-      );
-
-      await session.commitTransaction();
-      return publication;
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
+    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
+    if (!doc) {
+      throw new NotFoundException('Publication not found');
     }
+
+    const publication = Publication.fromSnapshot(doc as IPublicationDocument);
+    const userIdObj = UserId.fromString(userId);
+    
+    if (!publication.canBeEditedBy(userIdObj)) {
+      throw new Error('Not authorized to edit this publication');
+    }
+
+    // Update publication fields
+    if (updateData.content) {
+      publication.updateContent(updateData.content);
+    }
+    if (updateData.hashtags) {
+      publication.updateHashtags(updateData.hashtags);
+    }
+
+    await this.publicationModel.updateOne(
+      { id: publication.getId },
+      { $set: publication.toSnapshot() }
+    );
+
+    return publication;
   }
 
   async deletePublication(publicationId: string, userId: string): Promise<boolean> {
