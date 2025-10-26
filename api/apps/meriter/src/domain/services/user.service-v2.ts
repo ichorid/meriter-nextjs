@@ -29,6 +29,10 @@ export class UserServiceV2 {
     private eventBus: EventBus,
   ) {}
 
+  private shouldUseTransactions(): boolean {
+    return process.env.NODE_ENV === 'production';
+  }
+
   async getUser(userId: string): Promise<User | null> {
     // Direct Mongoose query
     const doc = await this.userModel.findOne({ telegramId: userId }).lean();
@@ -45,12 +49,18 @@ export class UserServiceV2 {
   }
 
   async createOrUpdateUser(dto: CreateUserDto, token?: string): Promise<User> {
-    const session = await this.mongoose.startSession();
-    session.startTransaction();
+    const useTransactions = this.shouldUseTransactions();
+    const session = useTransactions ? await this.mongoose.startSession() : null;
+    
+    if (useTransactions) {
+      session.startTransaction();
+    }
 
     try {
       // Check if user exists
-      let user = await this.userModel.findOne({ telegramId: dto.telegramId }, null, { session }).lean();
+      let user = useTransactions 
+        ? await this.userModel.findOne({ telegramId: dto.telegramId }, null, { session }).lean()
+        : await this.userModel.findOne({ telegramId: dto.telegramId }).lean();
       
       if (user) {
         // Update existing user
@@ -71,13 +81,20 @@ export class UserServiceV2 {
           updateData['token'] = token;
         }
 
-        await this.userModel.updateOne(
-          { telegramId: dto.telegramId },
-          { $set: updateData },
-          { session }
-        );
-
-        user = { ...user, ...updateData };
+        if (useTransactions) {
+          await this.userModel.updateOne(
+            { telegramId: dto.telegramId },
+            { $set: updateData },
+            { session }
+          );
+          user = { ...user, ...updateData };
+        } else {
+          await this.userModel.updateOne(
+            { telegramId: dto.telegramId },
+            { $set: updateData }
+          );
+          user = { ...user, ...updateData };
+        }
       } else {
         // Create new user
         const newUser = {
@@ -100,77 +117,132 @@ export class UserServiceV2 {
           updatedAt: new Date(),
         };
 
-        await this.userModel.create([newUser], { session });
-        user = await this.userModel.findOne({ id: newUser.id }, null, { session }).lean();
+        if (useTransactions) {
+          await this.userModel.create([newUser], { session });
+          user = await this.userModel.findOne({ id: newUser.id }, null, { session }).lean();
+        } else {
+          await this.userModel.create([newUser]);
+          user = await this.userModel.findOne({ id: newUser.id }).lean();
+        }
       }
 
-      await session.commitTransaction();
+      if (useTransactions) {
+        await session.commitTransaction();
+      }
       return user;
     } catch (error) {
-      await session.abortTransaction();
+      if (useTransactions) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
-      session.endSession();
+      if (session) {
+        session.endSession();
+      }
     }
   }
 
   async addCommunityMembership(userId: string, communityId: string): Promise<User> {
-    const session = await this.mongoose.startSession();
-    session.startTransaction();
+    const useTransactions = this.shouldUseTransactions();
+    const session = useTransactions ? await this.mongoose.startSession() : null;
+    
+    if (useTransactions) {
+      session.startTransaction();
+    }
 
     try {
-      const user = await this.userModel.findOne({ telegramId: userId }, null, { session }).lean();
+      const user = useTransactions
+        ? await this.userModel.findOne({ telegramId: userId }, null, { session }).lean()
+        : await this.userModel.findOne({ telegramId: userId }).lean();
+      
       if (!user) {
         throw new NotFoundException('User not found');
       }
 
       // Add community to memberships if not already present
-      const updatedUser = await this.userModel.findOneAndUpdate(
-        { telegramId: userId },
-        { 
-          $addToSet: { communityMemberships: communityId },
-          $set: { updatedAt: new Date() }
-        },
-        { new: true, session }
-      ).lean();
+      const updatedUser = useTransactions
+        ? await this.userModel.findOneAndUpdate(
+            { telegramId: userId },
+            { 
+              $addToSet: { communityMemberships: communityId },
+              $set: { updatedAt: new Date() }
+            },
+            { new: true, session }
+          ).lean()
+        : await this.userModel.findOneAndUpdate(
+            { telegramId: userId },
+            { 
+              $addToSet: { communityMemberships: communityId },
+              $set: { updatedAt: new Date() }
+            },
+            { new: true }
+          ).lean();
 
-      await session.commitTransaction();
+      if (useTransactions) {
+        await session.commitTransaction();
+      }
       return updatedUser;
     } catch (error) {
-      await session.abortTransaction();
+      if (useTransactions) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
-      session.endSession();
+      if (session) {
+        session.endSession();
+      }
     }
   }
 
   async removeCommunityMembership(userId: string, communityId: string): Promise<User> {
-    const session = await this.mongoose.startSession();
-    session.startTransaction();
+    const useTransactions = this.shouldUseTransactions();
+    const session = useTransactions ? await this.mongoose.startSession() : null;
+    
+    if (useTransactions) {
+      session.startTransaction();
+    }
 
     try {
-      const user = await this.userModel.findOne({ telegramId: userId }, null, { session }).lean();
+      const user = useTransactions
+        ? await this.userModel.findOne({ telegramId: userId }, null, { session }).lean()
+        : await this.userModel.findOne({ telegramId: userId }).lean();
+      
       if (!user) {
         throw new NotFoundException('User not found');
       }
 
       // Remove community from memberships
-      const updatedUser = await this.userModel.findOneAndUpdate(
-        { telegramId: userId },
-        { 
-          $pull: { communityMemberships: communityId },
-          $set: { updatedAt: new Date() }
-        },
-        { new: true, session }
-      ).lean();
+      const updatedUser = useTransactions
+        ? await this.userModel.findOneAndUpdate(
+            { telegramId: userId },
+            { 
+              $pull: { communityMemberships: communityId },
+              $set: { updatedAt: new Date() }
+            },
+            { new: true, session }
+          ).lean()
+        : await this.userModel.findOneAndUpdate(
+            { telegramId: userId },
+            { 
+              $pull: { communityMemberships: communityId },
+              $set: { updatedAt: new Date() }
+            },
+            { new: true }
+          ).lean();
 
-      await session.commitTransaction();
+      if (useTransactions) {
+        await session.commitTransaction();
+      }
       return updatedUser;
     } catch (error) {
-      await session.abortTransaction();
+      if (useTransactions) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
-      session.endSession();
+      if (session) {
+        session.endSession();
+      }
     }
   }
 

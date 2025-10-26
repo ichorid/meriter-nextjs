@@ -4,6 +4,7 @@ import {
   Get,
   Body,
   Res,
+  Req,
   UseGuards,
   Logger,
 } from '@nestjs/common';
@@ -54,13 +55,15 @@ export class AuthController {
         path: '/',
       });
 
-      return {
+      this.logger.log('Authentication successful, sending response');
+
+      return res.json({
         success: true,
         data: {
           user: result.user,
           hasPendingCommunities: result.hasPendingCommunities,
         },
-      };
+      });
     } catch (error) {
       this.logger.error('Widget authentication error', error.stack);
       throw new UnauthorizedError('Authentication failed');
@@ -86,13 +89,15 @@ export class AuthController {
         path: '/',
       });
 
-      return {
+      this.logger.log('Authentication successful, sending response');
+
+      return res.json({
         success: true,
         data: {
           user: result.user,
           hasPendingCommunities: result.hasPendingCommunities,
         },
-      };
+      });
     } catch (error) {
       this.logger.error('Web App authentication error', error.stack);
       throw new UnauthorizedError('Authentication failed');
@@ -120,10 +125,10 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(UserGuard)
-  async getCurrentUser(@Res() req: any): Promise<User> {
+  async getCurrentUser(@Res() res: any, @Req() req: any) {
     try {
       const user = await this.authService.getCurrentUser(req.user);
-      return user;
+      res.json({ success: true, data: user });
     } catch (error) {
       this.logger.error('Get current user error', error.stack);
       throw new InternalServerError('Failed to get user information');

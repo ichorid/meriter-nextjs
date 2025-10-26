@@ -60,6 +60,7 @@ export class AuthService {
 
     // Try to get user's profile photo using Bot API
     try {
+      this.logger.log(`Fetching avatar for user ${telegramId}...`);
       const newAvatarUrl = await this.tgBotsService.telegramGetChatPhotoUrl(
         botToken,
         telegramId,
@@ -69,7 +70,9 @@ export class AuthService {
       if (newAvatarUrl) {
         const timestamp = Date.now();
         avatarUrl = `${newAvatarUrl}?t=${timestamp}`;
+        this.logger.log(`Avatar fetched successfully for user ${telegramId}`);
       } else {
+        this.logger.log(`No avatar available for user ${telegramId}`);
         avatarUrl = null;
       }
     } catch (error) {
@@ -77,6 +80,8 @@ export class AuthService {
       const existingIsS3 = existingUser?.avatarUrl?.includes('telegram_small_avatars');
       avatarUrl = existingIsS3 ? existingUser.avatarUrl : null;
     }
+    
+    this.logger.log(`Creating or updating user ${telegramId}...`);
 
     const displayName = [authData.first_name, authData.last_name].filter((a) => a).join(' ');
 
@@ -92,6 +97,8 @@ export class AuthService {
     if (!user) {
       throw new Error('Failed to create user session');
     }
+
+    this.logger.log(`User ${telegramId} created/updated successfully`);
 
     // Start community discovery in background
     this.discoverUserCommunities(telegramId).catch(error => {
@@ -110,6 +117,8 @@ export class AuthService {
       jwtSecret,
       '365d',
     );
+
+    this.logger.log(`JWT generated for user ${telegramId}`);
 
     return {
       user: this.mapUserToV1Format(user),
@@ -203,12 +212,24 @@ export class AuthService {
   }
 
   async getCurrentUser(reqUser: any): Promise<User> {
-    const user = await this.userService.getUserByTelegramId(reqUser.tgUserId);
+    this.logger.log(`Getting current user for reqUser:`, JSON.stringify(reqUser, null, 2));
+    
+    const tgUserId = reqUser?.tgUserId || reqUser?.telegramId;
+    this.logger.log(`Looking up user with telegramId: ${tgUserId}`);
+
+    if (!tgUserId) {
+      this.logger.error('No telegramId found in reqUser');
+      throw new Error('No telegramId found in request user');
+    }
+
+    const user = await this.userService.getUserByTelegramId(tgUserId);
 
     if (!user) {
+      this.logger.error(`User not found for telegramId: ${tgUserId}`);
       throw new Error('User not found');
     }
 
+    this.logger.log(`User found:`, user.id);
     return this.mapUserToV1Format(user);
   }
 

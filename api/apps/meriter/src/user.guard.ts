@@ -21,6 +21,7 @@ export class UserGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
+    const response = context.switchToHttp().getResponse();
     const jwt = request.cookies?.jwt;
 
     if (!jwt) {
@@ -41,6 +42,8 @@ export class UserGuard implements CanActivate {
         this.logger.warn(
           'This may indicate a deleted user, invalid token, or database issue',
         );
+        // Clear the stale JWT cookie
+        response.clearCookie('jwt', { path: '/' });
         throw new UnauthorizedException('User not found');
       }
 
