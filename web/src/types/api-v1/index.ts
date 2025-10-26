@@ -28,8 +28,17 @@ export interface Community {
   memberCount: number;
   isActive: boolean;
   isAdmin?: boolean; // Whether the current user is an admin of this community
-  needsSetup?: boolean; // Whether community needs setup (no hashtags)
+  needsSetup?: boolean; // Whether community needs setup (missing hashtags, currency names, or icon)
   hashtags?: string[];
+  settings?: {
+    iconUrl?: string;
+    currencyNames?: {
+      singular: string;
+      plural: string;
+      genitive: string;
+    };
+    dailyEmission?: number;
+  };
   createdAt: string;
   updatedAt: string;
 }

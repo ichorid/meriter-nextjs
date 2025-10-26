@@ -60,15 +60,15 @@ const CommunitySettingsPage = () => {
     // Redirect if not authenticated
     useEffect(() => {
         if (user === null) {
-            router.push("/meriter/login?returnTo=/meriter/manage");
+            router.push(`/meriter/login?returnTo=/meriter/communities/${chatId}/settings`);
         }
-    }, [user, router]);
+    }, [user, router, chatId]);
 
     // Telegram BackButton integration
     useEffect(() => {
         if (isInTelegram) {
             const handleBack = () => {
-                router.push("/meriter/manage");
+                router.push(`/meriter/communities/${chatId}`);
             };
             
             backButton.show();
@@ -80,7 +80,7 @@ const CommunitySettingsPage = () => {
             };
         }
         return undefined;
-    }, [isInTelegram, router]);
+    }, [isInTelegram, router, chatId]);
 
     // Load community data using v1 API
     const { data: communityResponse, isLoading: communityIsLoading, error: communityErr } = useCommunity(chatId);
@@ -180,7 +180,7 @@ const CommunitySettingsPage = () => {
             setSaveSuccess(t('communitySettings.settingsSaved'));
             setTimeout(() => {
                 setSaveSuccess('');
-                router.push('/meriter/manage?success=saved');
+                router.push(`/meriter/communities/${chatId}?saved=1`);
             }, 1500);
         } catch (error: unknown) {
             console.error('Save failed:', error);
@@ -224,7 +224,7 @@ const CommunitySettingsPage = () => {
                 <div className="text-center py-8">
                     <h2 className="text-xl font-semibold mb-4">{t('communitySettings.error')}</h2>
                     <p className="text-base-content/70 mb-4">{communityError}</p>
-                    <Link href="/meriter/manage" className="btn btn-primary">
+                    <Link href="/meriter/home" className="btn btn-primary">
                         {t('communitySettings.backToCommunities')}
                     </Link>
                 </div>
@@ -257,7 +257,7 @@ const CommunitySettingsPage = () => {
                     <div>
                         <div className="breadcrumbs text-sm">
                             <ul>
-                                <li><Link href="/meriter/manage">Communities</Link></li>
+                                <li><Link href="/meriter/home">Home</Link></li>
                                 <li><Link href={`/meriter/communities/${chatId}/settings`}>{communityData?.name || 'Community'}</Link></li>
                                 <li>{t('communitySettings.breadcrumb')}</li>
                             </ul>
@@ -450,7 +450,7 @@ const CommunitySettingsPage = () => {
                     
                     <div className="flex gap-4">
                         {!isInTelegram && (
-                            <Link href="/meriter/manage" className="btn btn-ghost">
+                            <Link href={`/meriter/communities/${chatId}`} className="btn btn-ghost">
                                 {t('communitySettings.cancel')}
                             </Link>
                         )}

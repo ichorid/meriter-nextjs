@@ -274,7 +274,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                 <h1 className="text-xl font-semibold">{comms?.name}</h1>
                             </div>
                             {/* Settings cog icon - visible only to admins */}
-                            {comms?.isActive && (
+                            {comms?.isAdmin && (
                                 <button
                                     onClick={() => router.push(`/meriter/communities/${chatId}/settings`)}
                                     className="btn btn-ghost btn-sm btn-circle"

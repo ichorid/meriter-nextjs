@@ -202,7 +202,14 @@
     "downthankFromMixed": "Thank negatively using daily quota and wallet"
   },
   "communities": {
-    "other": "Other"
+    "other": "Other",
+    "unconfigured": {
+      "banner": {
+        "admin": "This community is unconfigured. Click to configure",
+        "user": "This community is unconfigured. Community admin will configure it soon"
+      },
+      "tooltip": "Community is unconfigured"
+    }
   },
   "pages": {
     "setupCommunity": {
