@@ -13,6 +13,7 @@ import { useMyPublications, useWallets, useUserProfile } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { telegramGetAvatarLink, telegramGetAvatarLinkUpd } from '@lib/telegram';
 import { classList } from '@lib/classList';
+import { WalletCommunity } from '@/features/wallet/components/wallet-community';
 
 interface iCommunityProps {
     name: string;
@@ -133,12 +134,18 @@ const PageHome = () => {
                         <span className="loading loading-spinner loading-lg"></span>
                     </div>
                 ) : (
-                    (Array.isArray(wallets) ? wallets : []).map((w: any) => (
-                        <div key={w._id} className="text-sm">
-                            {/* TODO: Replace with WalletCommunity component */}
-                            {w.currencyNames?.[5]}: {w.amount}
-                        </div>
-                    ))
+                    (Array.isArray(wallets) ? wallets : [])
+                        .filter((w: any) => w.communityId) // Show wallets with communities
+                        .map((w: any) => (
+                            <WalletCommunity
+                                key={w.id || w._id}
+                                amount={w.balance}
+                                currencyNames={w.currency || {}}
+                                currencyOfCommunityTgChatId={w.communityId}
+                                tgUserId={user?.telegramId || ''}
+                                needsSetup={false}
+                            />
+                        ))
                 )}
             </div>
             

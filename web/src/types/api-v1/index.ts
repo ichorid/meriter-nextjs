@@ -21,6 +21,7 @@ export interface User {
 // Community types
 export interface Community {
   id: string;
+  telegramChatId: string;
   name: string;
   description?: string;
   avatarUrl?: string;

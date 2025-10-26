@@ -40,7 +40,7 @@ export const WalletCommunity: React.FC<WalletCommunityProps> = ({
     return (
         <div 
             className="card bg-base-100 shadow-md rounded-2xl mb-5 p-5 cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => (document.location.href = "/meriter/communities/" + info?.id || currencyOfCommunityTgChatId)}
+            onClick={() => (document.location.href = "/meriter/communities/" + (info?.telegramChatId || currencyOfCommunityTgChatId))}
         >
             {/* Setup banners */}
             {needsSetup && userIsAdmin && (
@@ -93,7 +93,7 @@ export const WalletCommunity: React.FC<WalletCommunityProps> = ({
                                     className="btn btn-ghost btn-sm btn-circle"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        document.location.href = "/meriter/communities/" + (info?.id || currencyOfCommunityTgChatId) + "/settings";
+                                        document.location.href = "/meriter/communities/" + (info?.telegramChatId || currencyOfCommunityTgChatId) + "/settings";
                                     }}
                                     title="Settings"
                                 >

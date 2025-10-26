@@ -200,34 +200,43 @@ export class TgBotsService {
         this.logger.error('❌ Error sending setup messages:', e);
       }
 
+      // Prepare community data according to new schema
+      const communityData = {
+        id: existingCommunity?.id || uid(),
+        telegramChatId: chatId,
+        name: title,
+        description: description || '',
+        avatarUrl: chatAvatarUrl,
+        administrators: admins.map((a) => String(a.id)),
+        members: [],
+        settings: {
+          iconUrl: chatAvatarUrl,
+          currencyNames: {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          },
+          dailyEmission: 10,
+        },
+        hashtags: existingCommunity?.hashtags || [],
+        spaces: existingCommunity?.spaces || [],
+        isActive: true,
+        createdAt: existingCommunity?.createdAt || new Date(),
+        updatedAt: new Date(),
+      };
+
       const r = await this.communityModel.findOneAndUpdate(
         {
-          identities: "telegram://" + chatId,
+          telegramChatId: chatId,
         },
         {
-          profile: {
-            name: title,
-            description: description,
-            avatarUrl: chatAvatarUrl,
-            scope: 'meriter',
-          },
-          domainName: 'tg-chat',
-          identities: [`telegram://${chatId}`],
-          administrators: admins.map((a) => `telegram://${String(a.id)}`),
-          meta: {
-            iconUrl: null,
-            tgUsername: username,
-            tgBotUsername: BOT_USERNAME,
-            hashtagLabels: [],
-            dailyEmission: 10,
-            chatAccessLink: null,
-          },
+          $set: communityData,
         },
         { new: true, upsert: true }
       );
 
       this.logger.log(`✅ Community ${chatId} ${existingCommunity ? 'UPDATED' : 'CREATED'} successfully`);
-      this.logger.log(`📝 Community administrators: [${admins.map(a => `telegram://${a.id}`).join(', ')}]`);
+      this.logger.log(`📝 Community administrators: [${admins.map(a => String(a.id)).join(', ')}]`);
       
       // Re-validate admin memberships when bot is re-added
       this.logger.log(`🔄 Re-validating admin memberships for ${admins.length} admin(s)`);
@@ -268,13 +277,13 @@ export class TgBotsService {
       );
       this.logger.log(`🧹 Removed chat ${chatId} from ${result.modifiedCount} user(s)`);
       
-      // Optionally mark community as inactive/deleted
+      // Mark community as inactive
       const communityUpdate = await this.communityModel.findOneAndUpdate(
-        { identities: `telegram://${chatId}` },
+        { telegramChatId: chatId },
         { 
           $set: { 
-            'meta.botRemoved': true,
-            'meta.botRemovedAt': new Date().toISOString()
+            isActive: false,
+            updatedAt: new Date()
           }
         },
         { new: true }

@@ -120,8 +120,14 @@ export class CommunitiesController {
       const communityChatIds: string[] = [];
       let syncedCount = 0;
 
-      // Check membership for each community
+      // Check membership for each community (only active communities)
       for (const community of allCommunities) {
+        // Skip inactive communities
+        if (!community.isActive) {
+          this.logger.log(`Skipping inactive community: ${community.name}`);
+          continue;
+        }
+        
         try {
           const isMember = await this.tgBotsService.tgGetChatMember(
             community.telegramChatId,
