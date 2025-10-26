@@ -60,19 +60,31 @@ export class CommunitiesController {
       throw new NotFoundError('Community', id);
     }
     
+    // A community needs setup if it's missing essential configurations
+    // Note: Having default currency name "merit" is NOT considered needing setup
+    const hasNoHashtags = !community.hashtags || community.hashtags.length === 0;
+    const hasNoSingular = !community.settings?.currencyNames?.singular;
+    const hasNoPlural = !community.settings?.currencyNames?.plural;
+    const hasNoGenitive = !community.settings?.currencyNames?.genitive;
+    
+    const needsSetup = hasNoHashtags || hasNoSingular || hasNoPlural || hasNoGenitive;
+    
+    this.logger.log(`Community ${id} setup check:`, {
+      hasNoHashtags,
+      hasNoSingular,
+      hasNoPlural,
+      hasNoGenitive,
+      needsSetup,
+      hashtags: community.hashtags,
+      currencyNames: community.settings?.currencyNames,
+      iconUrl: community.settings?.iconUrl
+    });
+    
     return {
       ...community,
       hashtagDescriptions: this.convertHashtagDescriptions(community.hashtagDescriptions),
       isAdmin: await this.communityService.isUserAdmin(id, req.user.tgUserId),
-      needsSetup: (
-        !community.hashtags || 
-        community.hashtags.length === 0 ||
-        !community.settings?.currencyNames?.singular ||
-        community.settings.currencyNames.singular === 'merit' ||
-        !community.settings?.currencyNames?.plural ||
-        !community.settings?.currencyNames?.genitive ||
-        !community.settings?.iconUrl
-      ),
+      needsSetup,
       createdAt: community.createdAt.toISOString(),
       updatedAt: community.updatedAt.toISOString(),
     };
@@ -82,19 +94,20 @@ export class CommunitiesController {
   async createCommunity(@Body() createDto: any, @Req() req: any): Promise<Community> {
     const community = await this.communityService.createCommunity(createDto);
     
+    // A community needs setup if it's missing essential configurations
+    // Note: Having default currency name "merit" is NOT considered needing setup
+    const hasNoHashtags = !community.hashtags || community.hashtags.length === 0;
+    const hasNoSingular = !community.settings?.currencyNames?.singular;
+    const hasNoPlural = !community.settings?.currencyNames?.plural;
+    const hasNoGenitive = !community.settings?.currencyNames?.genitive;
+    
+    const needsSetup = hasNoHashtags || hasNoSingular || hasNoPlural || hasNoGenitive;
+    
     return {
       ...community,
       hashtagDescriptions: this.convertHashtagDescriptions(community.hashtagDescriptions),
       isAdmin: true, // Creator is admin
-      needsSetup: (
-        !community.hashtags || 
-        community.hashtags.length === 0 ||
-        !community.settings?.currencyNames?.singular ||
-        community.settings.currencyNames.singular === 'merit' ||
-        !community.settings?.currencyNames?.plural ||
-        !community.settings?.currencyNames?.genitive ||
-        !community.settings?.iconUrl
-      ),
+      needsSetup,
       createdAt: community.createdAt.toISOString(),
       updatedAt: community.updatedAt.toISOString(),
     };
@@ -113,19 +126,31 @@ export class CommunitiesController {
 
     const community = await this.communityService.updateCommunity(id, updateDto);
     
+    // A community needs setup if it's missing essential configurations
+    // Note: Having default currency name "merit" is NOT considered needing setup
+    const hasNoHashtags = !community.hashtags || community.hashtags.length === 0;
+    const hasNoSingular = !community.settings?.currencyNames?.singular;
+    const hasNoPlural = !community.settings?.currencyNames?.plural;
+    const hasNoGenitive = !community.settings?.currencyNames?.genitive;
+    
+    const needsSetup = hasNoHashtags || hasNoSingular || hasNoPlural || hasNoGenitive;
+    
+    this.logger.log(`Community ${id} setup check after update:`, {
+      hasNoHashtags,
+      hasNoSingular,
+      hasNoPlural,
+      hasNoGenitive,
+      needsSetup,
+      hashtags: community.hashtags,
+      currencyNames: community.settings?.currencyNames,
+      iconUrl: community.settings?.iconUrl
+    });
+    
     return {
       ...community,
       hashtagDescriptions: this.convertHashtagDescriptions(community.hashtagDescriptions),
       isAdmin: await this.communityService.isUserAdmin(id, req.user.tgUserId),
-      needsSetup: (
-        !community.hashtags || 
-        community.hashtags.length === 0 ||
-        !community.settings?.currencyNames?.singular ||
-        community.settings.currencyNames.singular === 'merit' ||
-        !community.settings?.currencyNames?.plural ||
-        !community.settings?.currencyNames?.genitive ||
-        !community.settings?.iconUrl
-      ),
+      needsSetup,
       createdAt: community.createdAt.toISOString(),
       updatedAt: community.updatedAt.toISOString(),
     };
