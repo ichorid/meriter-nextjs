@@ -34,29 +34,18 @@ export interface Community {
     dailyEmission: number;
   };
   hashtags: string[];
-  spaces: string[];
+  hashtagDescriptions?: Record<string, string>;
   isAdmin: boolean;
   needsSetup: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface Space {
-  id: string;
-  communityId: string;
-  slug: string;
-  name: string;
-  description?: string;
-  hashtags: string[];
-  isActive: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
 export interface UpdateCommunityDto {
   name?: string;
   description?: string;
   hashtags?: string[];
+  hashtagDescriptions?: Record<string, string>;
   settings?: {
     iconUrl?: string;
     currencyNames?: {
@@ -66,13 +55,6 @@ export interface UpdateCommunityDto {
     };
     dailyEmission?: number;
   };
-}
-
-export interface UpdateSpaceDto {
-  name?: string;
-  description?: string;
-  hashtags?: string[];
-  isActive?: boolean;
 }
 
 export interface Comment {
@@ -103,7 +85,6 @@ export interface Publication {
   id: string;
   authorId: string;
   communityId: string;
-  spaceId?: string;
   content: string;
   type: 'text' | 'image' | 'video' | 'poll';
   beneficiaryId?: string;

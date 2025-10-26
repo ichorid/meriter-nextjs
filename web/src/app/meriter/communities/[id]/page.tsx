@@ -145,17 +145,17 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     
     // Get wallet balance for this community from user's wallets
     const { data: balance = 0 } = useQuery({
-        queryKey: ['wallet-balance', user?.id, chatId],
+        queryKey: ['wallet-balance', user?.telegramId, chatId],
         queryFn: async () => {
-            if (!user?.id || !chatId) return 0;
+            if (!user?.telegramId || !chatId) return 0;
             try {
-                const wallets = await usersApiV1.getUserWallets(user.id);
+                const wallets = await usersApiV1.getUserWallets(user.telegramId);
                 const wallet = wallets.find((w: Wallet) => w.communityId === chatId);
                 return wallet?.balance || 0;
             } catch (error: any) {
                 // Handle 404 and other wallet errors gracefully
                 if (error?.response?.status === 404 || error?.response?.statusCode === 404) {
-                    console.debug('Wallet not found for user:', user.id, 'community:', chatId, '- returning 0 balance');
+                    console.debug('Wallet not found for user:', user.telegramId, 'community:', chatId, '- returning 0 balance');
                     return 0;
                 }
                 // Only log non-404 errors to avoid console noise
@@ -303,9 +303,9 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                             )}
                         </div>
                         <div className="flex items-center gap-3">
-                            {comms?.avatarUrl && (
+                            {comms?.settings?.iconUrl && (
                                 <div className="flex items-center gap-2">
-                                    <img className="w-5 h-5" src={comms.avatarUrl} alt="Currency" />
+                                    <img className="w-5 h-5" src={comms.settings.iconUrl} alt="Currency" />
                                     <span className="text-lg font-semibold">{balance}</span>
                                 </div>
                             )}

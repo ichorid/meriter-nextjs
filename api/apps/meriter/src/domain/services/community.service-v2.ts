@@ -29,6 +29,8 @@ export interface UpdateCommunityDto {
   description?: string;
   avatarUrl?: string;
   administrators?: string[];
+  hashtags?: string[];
+  hashtagDescriptions?: Record<string, string>;
   settings?: {
     iconUrl?: string;
     currencyNames?: {
@@ -53,7 +55,7 @@ export class CommunityServiceV2 {
   async getCommunity(communityId: string): Promise<Community | null> {
     // Direct Mongoose query
     const doc = await this.communityModel.findOne({ telegramChatId: communityId }).lean();
-    return doc;
+    return doc as any as Community;
   }
 
   async createCommunity(dto: CreateCommunityDto): Promise<Community> {
@@ -75,7 +77,7 @@ export class CommunityServiceV2 {
         dailyEmission: dto.settings?.dailyEmission || 10,
       },
       hashtags: [],
-      spaces: [],
+      hashtagDescriptions: new Map<string, string>(),
       isActive: true, // Default to active
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -95,12 +97,33 @@ export class CommunityServiceV2 {
     if (dto.description !== undefined) updateData.description = dto.description;
     if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
     if (dto.administrators !== undefined) updateData.administrators = dto.administrators;
+    if (dto.hashtags !== undefined) updateData.hashtags = dto.hashtags;
+    if (dto.hashtagDescriptions !== undefined) {
+      // Convert Record to Map for MongoDB storage
+      updateData.hashtagDescriptions = new Map(Object.entries(dto.hashtagDescriptions));
+    }
     
     if (dto.settings) {
-      updateData.settings = {
-        ...updateData.settings,
-        ...dto.settings,
-      };
+      // Only merge nested properties if they exist
+      const settingsUpdate: any = {};
+      if (dto.settings.iconUrl !== undefined) settingsUpdate['settings.iconUrl'] = dto.settings.iconUrl;
+      if (dto.settings.currencyNames !== undefined) {
+        if (dto.settings.currencyNames.singular !== undefined) {
+          settingsUpdate['settings.currencyNames.singular'] = dto.settings.currencyNames.singular;
+        }
+        if (dto.settings.currencyNames.plural !== undefined) {
+          settingsUpdate['settings.currencyNames.plural'] = dto.settings.currencyNames.plural;
+        }
+        if (dto.settings.currencyNames.genitive !== undefined) {
+          settingsUpdate['settings.currencyNames.genitive'] = dto.settings.currencyNames.genitive;
+        }
+      }
+      if (dto.settings.dailyEmission !== undefined) {
+        settingsUpdate['settings.dailyEmission'] = dto.settings.dailyEmission;
+      }
+      
+      // Merge settings into updateData
+      Object.assign(updateData, settingsUpdate);
     }
 
     const updatedCommunity = await this.communityModel.findOneAndUpdate(
@@ -113,7 +136,7 @@ export class CommunityServiceV2 {
       throw new NotFoundException('Community not found');
     }
 
-    return updatedCommunity;
+    return updatedCommunity as any as Community;
   }
 
   async deleteCommunity(communityId: string): Promise<void> {
@@ -140,7 +163,7 @@ export class CommunityServiceV2 {
       throw new NotFoundException('Community not found');
     }
 
-    return updatedCommunity;
+    return updatedCommunity as any as Community;
   }
 
   async removeMember(communityId: string, userId: string): Promise<Community> {

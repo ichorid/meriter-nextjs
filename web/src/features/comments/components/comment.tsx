@@ -132,7 +132,7 @@ export const Comment: React.FC<CommentProps> = ({
     const voteType = determineVoteType();
     
     // Get currency icon for separate rendering
-    const currencyIcon = currencyCommunityInfo?.avatarUrl;
+    const currencyIcon = currencyCommunityInfo?.settings?.iconUrl;
     
     // Create a unique identifier for this comment
     const postId = _id;
@@ -402,7 +402,7 @@ export const Comment: React.FC<CommentProps> = ({
                 showCommunityAvatar={showCommunityAvatar}
                 communityAvatarUrl={communityInfo?.avatarUrl}
                 communityName={communityInfo?.name}
-                communityIconUrl={communityInfo?.avatarUrl}
+                communityIconUrl={communityInfo?.settings?.iconUrl}
                 onCommunityClick={() => {
                     if (communityId) {
                         window.location.href = `/meriter/communities/${communityId}`;

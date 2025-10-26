@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 interface MenuBreadcrumbsProps {
     pathname?: string;
     chatId?: string;
-    tagRus?: string;
+    tag?: string;
     chatNameVerb?: string;
     chatIcon?: string;
     postText?: string;
@@ -16,7 +16,7 @@ interface MenuBreadcrumbsProps {
 export const MenuBreadcrumbs = ({
     pathname,
     chatId,
-    tagRus,
+    tag,
     chatNameVerb,
     chatIcon,
     postText,
@@ -36,7 +36,7 @@ export const MenuBreadcrumbs = ({
                         <span>{t('home')}</span>
                     </Link>
                 </li>
-                {chatId && !tagRus && !postText && (
+                {chatId && !tag && !postText && (
                     <li>
                         <Link href={"/meriter/communities/" + chatId} className="link link-hover flex items-center gap-1">
                             {chatIcon && <img className="w-4 h-4" src={chatIcon} alt="Currency" />}
@@ -44,7 +44,7 @@ export const MenuBreadcrumbs = ({
                         </Link>
                     </li>
                 )}
-                {chatId && (tagRus || postText) && (
+                {chatId && (tag || postText) && (
                     <li>
                         <Link href={"/meriter/communities/" + chatId} className="link link-hover flex items-center gap-1">
                             {chatIcon && <img className="w-4 h-4" src={chatIcon} alt="Currency" />}
@@ -52,9 +52,9 @@ export const MenuBreadcrumbs = ({
                         </Link>
                     </li>
                 )}
-                {tagRus && (
+                {tag && (
                     <li>
-                        <span>#{tagRus}</span>
+                        <span>#{tag}</span>
                     </li>
                 )}
                 {postText && (

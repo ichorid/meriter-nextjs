@@ -68,7 +68,7 @@ export const TransactionToMe = ({
     const voteType = determineVoteType();
     
     // Get currency icon for separate rendering
-    const currencyIcon = communityInfo?.avatarUrl;
+    const currencyIcon = communityInfo?.settings?.iconUrl;
     
     return (
         <div>
@@ -97,7 +97,7 @@ export const TransactionToMe = ({
                 showCommunityAvatar={true}
                 communityAvatarUrl={communityInfo?.avatarUrl}
                 communityName={communityInfo?.name}
-                communityIconUrl={communityInfo?.avatarUrl}
+                communityIconUrl={communityInfo?.settings?.iconUrl}
                 onCommunityClick={() => {
                     if (transaction.currencyOfCommunityTgChatId) {
                         window.location.href = `/meriter/communities/${transaction.currencyOfCommunityTgChatId}`;

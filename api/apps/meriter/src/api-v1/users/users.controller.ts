@@ -107,7 +107,6 @@ export class UsersController {
     const mappedPublications = publications.map(publication => ({
       id: publication.getId.getValue(),
       communityId: publication.getCommunityId.getValue(),
-      spaceId: undefined, // Not available in current entity
       authorId: publication.getAuthorId.getValue(),
       beneficiaryId: publication.getBeneficiaryId?.getValue() || undefined,
       content: publication.getContent,

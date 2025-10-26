@@ -30,6 +30,7 @@ export interface Community {
   isAdmin?: boolean; // Whether the current user is an admin of this community
   needsSetup?: boolean; // Whether community needs setup (missing hashtags, currency names, or icon)
   hashtags?: string[];
+  hashtagDescriptions?: Record<string, string>;
   settings?: {
     iconUrl?: string;
     currencyNames?: {
@@ -43,17 +44,6 @@ export interface Community {
   updatedAt: string;
 }
 
-// Space types
-export interface Space {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  communityId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 // Publication types
 export interface Publication {
   id: string;
@@ -61,7 +51,6 @@ export interface Publication {
   content: string;
   authorId: string;
   communityId: string;
-  spaceId?: string;
   type: 'text' | 'image' | 'video' | 'poll';
   imageUrl?: string;
   videoUrl?: string;
@@ -151,7 +140,6 @@ export interface CreatePublicationDto {
   title: string;
   content: string;
   communityId: string;
-  spaceId?: string;
   type: 'text' | 'image' | 'video' | 'poll';
   imageUrl?: string;
   videoUrl?: string;
@@ -186,11 +174,17 @@ export interface UpdateCommunityDto {
   description?: string;
   avatarUrl?: string;
   isActive?: boolean;
-}
-
-export interface UpdateSpaceDto {
-  name?: string;
-  description?: string;
+  hashtags?: string[];
+  hashtagDescriptions?: Record<string, string>;
+  settings?: {
+    iconUrl?: string;
+    currencyNames?: {
+      singular: string;
+      plural: string;
+      genitive: string;
+    };
+    dailyEmission?: number;
+  };
 }
 
 // Query parameter types

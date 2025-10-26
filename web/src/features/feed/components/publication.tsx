@@ -343,7 +343,7 @@ export const Publication = ({
                     showCommunityAvatar={showCommunityAvatar}
                     communityAvatarUrl={communityInfo?.avatarUrl}
                     communityName={communityInfo?.name || tgChatName}
-                    communityIconUrl={communityInfo?.avatarUrl}
+                    communityIconUrl={communityInfo?.settings?.iconUrl}
                     onCommunityClick={() => {
                         if (communityId) {
                             router.push(`/meriter/communities/${communityId}`);
@@ -558,7 +558,7 @@ export const Publication = ({
                 showCommunityAvatar={showCommunityAvatar}
                 communityAvatarUrl={communityInfo?.avatarUrl}
                 communityName={communityInfo?.name || tgChatName}
-                communityIconUrl={communityInfo?.avatarUrl}
+                communityIconUrl={communityInfo?.settings?.iconUrl}
                 onCommunityClick={() => {
                     if (communityId) {
                         router.push(`/meriter/communities/${communityId}`);

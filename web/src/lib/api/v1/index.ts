@@ -3,7 +3,6 @@ import { apiClient } from '../client';
 import type { 
   User,
   Community,
-  Space,
   Publication,
   Comment,
   Thank,
@@ -17,7 +16,6 @@ import type {
   CreatePollDto,
   CreatePollVoteDto,
   UpdateCommunityDto,
-  UpdateSpaceDto,
 } from '@/types/api-v1';
 import type { PaginatedResponse } from '@/types/api-v1';
 import type { TelegramUser, AuthResult, CommunityMember, LeaderboardEntry, PollVoteResult } from '@/types/api-responses';
@@ -155,25 +153,6 @@ export const communitiesApiV1 = {
     return response.data;
   },
 
-  async getCommunitySpaces(id: string): Promise<Space[]> {
-    const response = await apiClient.get<{ success: true; data: Space[] }>(`/api/v1/communities/${id}/spaces`);
-    return response.data;
-  },
-
-  async createSpace(communityId: string, data: { name: string; slug: string; description?: string; [key: string]: unknown }): Promise<Space> {
-    const response = await apiClient.post<{ success: true; data: Space }>(`/api/v1/communities/${communityId}/spaces`, data);
-    return response.data;
-  },
-
-  async updateSpace(communityId: string, spaceId: string, data: UpdateSpaceDto): Promise<Space> {
-    const response = await apiClient.put<{ success: true; data: Space }>(`/api/v1/communities/${communityId}/spaces/${spaceId}`, data);
-    return response.data;
-  },
-
-  async deleteSpace(communityId: string, spaceId: string): Promise<void> {
-    await apiClient.delete(`/api/v1/communities/${communityId}/spaces/${spaceId}`);
-  },
-
   async getCommunityPublications(id: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<Publication>> {
     const response = await apiClient.get<{ success: true; data: PaginatedResponse<Publication> }>(`/api/v1/communities/${id}/publications`, { params });
     return response.data;
@@ -192,7 +171,7 @@ export const communitiesApiV1 = {
 
 // Publications API with Zod validation and query parameter transformations
 export const publicationsApiV1 = {
-  async getPublications(params: { skip?: number; limit?: number; type?: string; communityId?: string; spaceId?: string; userId?: string; tag?: string; sort?: string; order?: string } = {}): Promise<Publication[]> {
+  async getPublications(params: { skip?: number; limit?: number; type?: string; communityId?: string; userId?: string; tag?: string; sort?: string; order?: string } = {}): Promise<Publication[]> {
     const queryParams = new URLSearchParams();
     
     if (params.skip) queryParams.append('page', (Math.floor(params.skip / (params.limit || 10)) + 1).toString());
@@ -249,11 +228,6 @@ export const publicationsApiV1 = {
 
   async deletePublication(id: string): Promise<{ success: boolean }> {
     return apiClient.delete(`/api/v1/publications/${id}`);
-  },
-
-  async getSpacePublications(spaceId: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<Publication>> {
-    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Publication> }>(`/api/v1/spaces/${spaceId}/publications`, { params });
-    return response.data;
   },
 };
 

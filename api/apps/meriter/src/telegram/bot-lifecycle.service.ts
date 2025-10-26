@@ -65,7 +65,6 @@ export class TelegramBotLifecycleService {
         dailyEmission: 100,
       },
       hashtags: [],
-      spaces: [],
       isAdmin: false,
       needsSetup: false,
       createdAt: new Date(),

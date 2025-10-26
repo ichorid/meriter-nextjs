@@ -31,17 +31,17 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     const { data: comms } = useCommunity(chatId);
     
     const { data: balance = 0 } = useQuery({
-        queryKey: ['wallet-balance', user?.id, chatId],
+        queryKey: ['wallet-balance', user?.telegramId, chatId],
         queryFn: async () => {
-            if (!user?.id || !chatId) return 0;
-            const wallets = await usersApiV1.getUserWallets(user.id);
+            if (!user?.telegramId || !chatId) return 0;
+            const wallets = await usersApiV1.getUserWallets(user.telegramId);
             const wallet = wallets.find((w: any) => w.communityId === chatId);
             return wallet?.balance || 0;
         },
-        enabled: !!user?.id && !!chatId,
+        enabled: !!user?.telegramId && !!chatId,
     });
 
-    const { data: userdata = {} } = useUserProfile(user?.id || '');
+    const { data: userdata = {} } = useUserProfile(user?.telegramId || '');
     const { data: wallets = [] } = useWallets();
 
     const queryClient = useQueryClient();
@@ -103,7 +103,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     return (
         <Page className="feed">
             <HeaderAvatarBalance
-                balance1={{ icon: comms?.avatarUrl, amount: balance }}
+                balance1={{ icon: comms?.settings?.iconUrl, amount: balance }}
                 balance2={undefined}
                 avatarUrl={telegramGetAvatarLink(tgAuthorId || '')}
                 onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId || '')}

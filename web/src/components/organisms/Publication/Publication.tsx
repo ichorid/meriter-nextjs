@@ -316,7 +316,7 @@ export const Publication: React.FC<PublicationProps> = ({
           showCommunityAvatar={showCommunityAvatar}
           communityAvatarUrl={stateLogic.communityInfo?.avatarUrl}
           communityName={stateLogic.communityInfo?.name || tgChatName}
-          communityIconUrl={stateLogic.communityInfo?.avatarUrl}
+          communityIconUrl={stateLogic.communityInfo?.settings?.iconUrl}
           onCommunityClick={() => navigationLogic.navigateToCommunity(stateLogic.communityInfo?.id || '')}
           withdrawSliderContent={withdrawSliderContent}
         >
@@ -455,7 +455,7 @@ export const Publication: React.FC<PublicationProps> = ({
         showCommunityAvatar={showCommunityAvatar}
         communityAvatarUrl={stateLogic.communityInfo?.avatarUrl}
         communityName={stateLogic.communityInfo?.name || tgChatName}
-        communityIconUrl={stateLogic.communityInfo?.avatarUrl}
+        communityIconUrl={stateLogic.communityInfo?.settings?.iconUrl}
         onCommunityClick={() => navigationLogic.navigateToCommunity(stateLogic.communityInfo?.id || '')}
         withdrawSliderContent={withdrawSliderContent}
       >

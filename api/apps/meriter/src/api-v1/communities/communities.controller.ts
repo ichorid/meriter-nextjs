@@ -18,7 +18,7 @@ import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
-import { Community, Space, UpdateCommunityDto, UpdateSpaceDto } from '../types/domain.types';
+import { Community, UpdateCommunityDto } from '../types/domain.types';
 
 @Controller('api/v1/communities')
 @UseGuards(UserGuard)
@@ -31,6 +31,19 @@ export class CommunitiesController {
     private readonly userService: UserServiceV2,
     private readonly tgBotsService: TgBotsService,
   ) {}
+
+  /**
+   * Helper to safely convert hashtagDescriptions from MongoDB Map to plain object.
+   * When using .lean(), Mongoose returns a plain object instead of a Map.
+   */
+  private convertHashtagDescriptions(descriptions: any): Record<string, string> | undefined {
+    if (!descriptions) return undefined;
+    if (descriptions instanceof Map) {
+      return Object.fromEntries(descriptions);
+    }
+    // Already a plain object from .lean()
+    return descriptions as Record<string, string>;
+  }
 
   @Get()
   async getCommunities(@Query() query: any) {
@@ -46,8 +59,10 @@ export class CommunitiesController {
     if (!community) {
       throw new NotFoundError('Community', id);
     }
+    
     return {
       ...community,
+      hashtagDescriptions: this.convertHashtagDescriptions(community.hashtagDescriptions),
       isAdmin: await this.communityService.isUserAdmin(id, req.user.tgUserId),
       needsSetup: (
         !community.hashtags || 
@@ -66,8 +81,10 @@ export class CommunitiesController {
   @Post()
   async createCommunity(@Body() createDto: any, @Req() req: any): Promise<Community> {
     const community = await this.communityService.createCommunity(createDto);
+    
     return {
       ...community,
+      hashtagDescriptions: this.convertHashtagDescriptions(community.hashtagDescriptions),
       isAdmin: true, // Creator is admin
       needsSetup: (
         !community.hashtags || 
@@ -95,8 +112,10 @@ export class CommunitiesController {
     }
 
     const community = await this.communityService.updateCommunity(id, updateDto);
+    
     return {
       ...community,
+      hashtagDescriptions: this.convertHashtagDescriptions(community.hashtagDescriptions),
       isAdmin: await this.communityService.isUserAdmin(id, req.user.tgUserId),
       needsSetup: (
         !community.hashtags || 
@@ -206,7 +225,6 @@ export class CommunitiesController {
     const mappedPublications = publications.map(publication => ({
       id: publication.getId.getValue(),
       communityId: publication.getCommunityId.getValue(),
-      spaceId: undefined, // Not available in current entity
       authorId: publication.getAuthorId.getValue(),
       beneficiaryId: publication.getBeneficiaryId?.getValue() || undefined,
       content: publication.getContent,

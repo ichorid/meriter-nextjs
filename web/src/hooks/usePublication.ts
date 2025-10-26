@@ -9,7 +9,6 @@ interface Publication {
   content: string;
   authorId: string;
   communityId: string;
-  spaceId?: string;
   type: 'text' | 'image' | 'video' | 'poll';
   imageUrl?: string;
   videoUrl?: string;

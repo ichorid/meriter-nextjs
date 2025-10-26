@@ -32,7 +32,7 @@ This document catalogs all domain logic found in `/shared/components/` before mi
 - **Internationalization**: Uses `useTranslations('common')` for i18n
 - **Dynamic Breadcrumb Logic**: Complex conditional rendering based on:
   - `chatId` (community ID)
-  - `tagRus` (Russian hashtag)
+  - `tag` (hashtag)
   - `postText` (publication text)
 - **Link Generation**: Dynamic href generation for community pages
 - **Icon Integration**: Community icons and home icon

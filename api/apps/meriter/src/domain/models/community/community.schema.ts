@@ -51,8 +51,8 @@ export class Community {
   @Prop({ type: [String], default: [] })
   hashtags: string[];
 
-  @Prop({ type: [String], default: [] })
-  spaces: string[];
+  @Prop({ type: Map, of: String, default: new Map(), required: false })
+  hashtagDescriptions?: Map<string, string>;
 
   @Prop({ default: true })
   isActive: boolean;

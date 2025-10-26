@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl';
 interface BreadcrumbsProps {
   pathname: string;
   chatId?: string;
-  tagRus?: string;
+  tag?: string;
   chatNameVerb?: string;
   chatIcon?: string;
   postText?: string;
@@ -19,7 +19,7 @@ interface BreadcrumbsProps {
 export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
   pathname,
   chatId,
-  tagRus,
+  tag,
   chatNameVerb,
   chatIcon,
   postText,
@@ -41,7 +41,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
             <span>{t('home')}</span>
           </Link>
         </li>
-        {chatId && !tagRus && !postText && (
+        {chatId && !tag && !postText && (
           <li>
             <Link href={"/meriter/communities/" + chatId} className="link link-hover flex items-center gap-1">
               {chatIcon && <img className="w-4 h-4" src={chatIcon} alt="Currency" />}
@@ -49,7 +49,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
             </Link>
           </li>
         )}
-        {chatId && (tagRus || postText) && (
+        {chatId && (tag || postText) && (
           <li>
             <Link href={"/meriter/communities/" + chatId} className="link link-hover flex items-center gap-1">
               {chatIcon && <img className="w-4 h-4" src={chatIcon} alt="Currency" />}
@@ -57,9 +57,9 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
             </Link>
           </li>
         )}
-        {tagRus && (
+        {tag && (
           <li>
-            <span>#{tagRus}</span>
+            <span>#{tag}</span>
           </li>
         )}
         {postText && (

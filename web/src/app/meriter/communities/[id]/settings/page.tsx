@@ -41,7 +41,7 @@ const CommunitySettingsPage = () => {
     const [formData, setFormData] = useState({
         currencyNames: { 1: '', 2: '', 5: '' },
         icon: '',
-        spaces: [] as any[]
+        hashtagEdits: [] as any[]
     });
     const [isDirty, setIsDirty] = useState(false);
     const [touched, setTouched] = useState(false);
@@ -99,17 +99,18 @@ const CommunitySettingsPage = () => {
                 5: currencyNames.plural || '',
             };
             
-            // Map hashtags to spaces format
-            const spaces = (communityResponse.hashtags || []).map((tag: string) => ({
+            // Map hashtags to hashtagEdits format with descriptions
+            const hashtagDescriptions = communityResponse.hashtagDescriptions || {};
+            const hashtagEdits = (communityResponse.hashtags || []).map((tag: string) => ({
                 slug: nanoid(8),
-                tagRus: tag,
-                description: ''
+                tag: tag,
+                description: hashtagDescriptions[tag] || ''
             }));
             
             setFormData({
                 currencyNames: formCurrencyNames,
                 icon: communityResponse.settings?.iconUrl || communityResponse.avatarUrl || '',
-                spaces: spaces
+                hashtagEdits: hashtagEdits
             });
             setCommunityError('');
         }
@@ -128,7 +129,7 @@ const CommunitySettingsPage = () => {
         if (!formData.icon) {
             errors.icon = t('communitySettings.validation.iconRequired');
         }
-        const validHashtags = formData.spaces.filter((s: any) => s.tagRus?.trim() && !s.deleted);
+        const validHashtags = formData.hashtagEdits.filter((s: any) => s.tag?.trim() && !s.deleted);
         if (validHashtags.length === 0) {
             errors.hashtags = t('communitySettings.validation.hashtagsRequired');
         }
@@ -152,22 +153,22 @@ const CommunitySettingsPage = () => {
     };
 
     const setVal = (idx: number, key: string) => (val: any) => {
-        let spacesNew = [...formData.spaces] as any[];
-        spacesNew[idx] = { ...spacesNew[idx], [key]: val };
-        setFormData(prev => ({ ...prev, spaces: spacesNew }));
+        let hashtagEdits = [...formData.hashtagEdits] as any[];
+        hashtagEdits[idx] = { ...hashtagEdits[idx], [key]: val };
+        setFormData(prev => ({ ...prev, hashtagEdits: hashtagEdits }));
         setIsDirty(true);
     };
 
     const addHashtag = () => {
-        const newSpace = { slug: nanoid(8), tagRus: '', description: '' };
-        setFormData(prev => ({ ...prev, spaces: [...prev.spaces, newSpace] }));
+        const newHashtag = { slug: nanoid(8), tag: '', description: '' };
+        setFormData(prev => ({ ...prev, hashtagEdits: [...prev.hashtagEdits, newHashtag] }));
         setIsDirty(true);
     };
 
     const deleteHashtag = (idx: number) => {
-        let spacesNew = [...formData.spaces];
-        spacesNew[idx].deleted = true;
-        setFormData(prev => ({ ...prev, spaces: spacesNew }));
+        let hashtagEdits = [...formData.hashtagEdits];
+        hashtagEdits[idx].deleted = true;
+        setFormData(prev => ({ ...prev, hashtagEdits: hashtagEdits }));
         setIsDirty(true);
     };
 
@@ -187,6 +188,15 @@ const CommunitySettingsPage = () => {
             genitive: formData.currencyNames[2] || formData.currencyNames[5] || '', // Use plural as fallback for genitive
         };
 
+        // Extract hashtags and descriptions
+        const validHashtags = formData.hashtagEdits.filter((d: any) => d.tag && !d.deleted);
+        const hashtagDescriptions: Record<string, string> = {};
+        validHashtags.forEach((hashtagEdit: any) => {
+            if (hashtagEdit.description) {
+                hashtagDescriptions[hashtagEdit.tag] = hashtagEdit.description;
+            }
+        });
+
         const saveData = {
             name: communityResponse?.name,
             description: communityResponse?.description,
@@ -194,7 +204,8 @@ const CommunitySettingsPage = () => {
                 iconUrl: formData.icon,
                 currencyNames: currencyNames,
             },
-            hashtags: formData.spaces.filter((d: any) => d.tagRus && !d.deleted).map((d: any) => d.tagRus),
+            hashtags: validHashtags.map((d: any) => d.tag),
+            hashtagDescriptions: hashtagDescriptions,
         };
 
         setSaving(true);
@@ -406,8 +417,8 @@ const CommunitySettingsPage = () => {
                 <div className="card-body">
                     <h2 className="card-title">{t('communitySettings.communityValues')}</h2>
                     <div className="space-y-4">
-                        {formData.spaces.map((space, i) => {
-                            if (space.deleted) return null;
+                        {formData.hashtagEdits.map((hashtagEdit, i) => {
+                            if (hashtagEdit.deleted) return null;
                             
                             return (
                                 <div key={i} className="border border-base-300 rounded-lg p-4 bg-base-100 space-y-3">
@@ -420,8 +431,8 @@ const CommunitySettingsPage = () => {
                                             <input
                                                 className="input input-bordered flex-1"
                                                 placeholder={t('communitySettings.hashtagPlaceholder')}
-                                                value={space.tagRus || ''}
-                                                onChange={(e) => setVal(i, 'tagRus')(e.target.value)}
+                                                value={hashtagEdit.tag || ''}
+                                                onChange={(e) => setVal(i, 'tag')(e.target.value)}
                                                 onBlur={() => setTouched(true)}
                                             />
                                         </div>
@@ -434,7 +445,7 @@ const CommunitySettingsPage = () => {
                                             className="textarea textarea-bordered w-full"
                                             placeholder={t('communitySettings.descriptionPlaceholder')}
                                             rows={3}
-                                            value={space.description || ''}
+                                            value={hashtagEdit.description || ''}
                                             onChange={(e) => setVal(i, 'description')(e.target.value)}
                                             onBlur={() => setTouched(true)}
                                         />

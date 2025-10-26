@@ -219,7 +219,6 @@ export class TgBotsService {
           dailyEmission: 10,
         },
         hashtags: existingCommunity?.hashtags || [],
-        spaces: existingCommunity?.spaces || [],
         isActive: true,
         createdAt: existingCommunity?.createdAt || new Date(),
         updatedAt: new Date(),
@@ -1065,7 +1064,7 @@ export class TgBotsService {
     // });
     const space = null; // Placeholder
 
-    //const space = await Space.findOne({ chatId: tgChatId, tagRus: keyword });
+    //const space = await Space.findOne({ chatId: tgChatId, tag: keyword });
     if (!space) {
       this.logger.log({
         "meta.parentTgChatId": tgChatId,

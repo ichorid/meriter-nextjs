@@ -10,7 +10,6 @@ interface Publication {
   content: string;
   authorId: string;
   communityId: string;
-  spaceId?: string;
   type: 'text' | 'image' | 'video';
   imageUrl?: string;
   videoUrl?: string;
@@ -27,7 +26,6 @@ interface CreatePublicationDto {
   title: string;
   content: string;
   communityId: string;
-  spaceId?: string;
   type: 'text' | 'image' | 'video';
   imageUrl?: string;
   videoUrl?: string;
@@ -39,7 +37,6 @@ interface ListQueryParams {
   limit?: number;
   type?: string;
   communityId?: string;
-  spaceId?: string;
   userId?: string;
   tag?: string;
   sort?: string;
