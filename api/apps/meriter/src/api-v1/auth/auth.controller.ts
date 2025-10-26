@@ -108,19 +108,29 @@ export class AuthController {
   async logout(@Res() res: any) {
     this.logger.log('User logout request');
 
-    // Clear the JWT cookie
-    res.cookie('jwt', '', {
+    // Clear the JWT cookie by setting it to empty and expiring it immediately
+    // Must use the same options as when setting the cookie
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0, // Expire immediately
+      sameSite: 'lax' as const,
       path: '/',
+    };
+
+    // Set cookie to expire immediately
+    res.cookie('jwt', '', {
+      ...cookieOptions,
+      expires: new Date(0),
+      maxAge: 0,
     });
 
-    return {
+    // Also explicitly clear it
+    res.clearCookie('jwt', cookieOptions);
+
+    return res.json({
       success: true,
       data: { message: 'Logged out successfully' },
-    };
+    });
   }
 
   @Get('me')

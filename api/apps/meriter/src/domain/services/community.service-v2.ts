@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, ClientSession } from 'mongoose';
 import { Community, CommunityDocument } from '../models/community/community.schema';
+import { User, UserDocument } from '../models/user/user.schema';
 import { CommunityId, UserId } from '../value-objects';
 import { EventBus } from '../events/event-bus';
 import { uid } from 'uid';
@@ -45,6 +46,7 @@ export class CommunityServiceV2 {
 
   constructor(
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
   ) {}

@@ -46,19 +46,25 @@ export class UsersController {
 
   @Get(':userId/communities')
   async getUserCommunities(@Param('userId') userId: string, @Req() req: any) {
+    // Handle 'me' token for current user
+    const actualUserId = userId === 'me' ? req.user.tgUserId : userId;
+    
     // Users can only see their own communities
-    if (userId !== req.user.tgUserId) {
+    if (actualUserId !== req.user.tgUserId) {
       throw new NotFoundError('User', userId);
     }
-    const communityIds = await this.userService.getUserCommunities(userId);
+    const communityIds = await this.userService.getUserCommunities(actualUserId);
     // TODO: Convert community IDs to full community objects using CommunityServiceV2
     return communityIds.map(id => ({ id, name: 'Community', description: '' }));
   }
 
   @Get(':userId/updates-frequency')
   async getUpdatesFrequency(@Param('userId') userId: string, @Req() req: any) {
+    // Handle 'me' token for current user
+    const actualUserId = userId === 'me' ? req.user.tgUserId : userId;
+    
     // Users can only see their own settings
-    if (userId !== req.user.tgUserId) {
+    if (actualUserId !== req.user.tgUserId) {
       throw new NotFoundError('User', userId);
     }
     // TODO: Implement user settings
@@ -71,8 +77,11 @@ export class UsersController {
     @Body() body: { frequency: string },
     @Req() req: any,
   ) {
+    // Handle 'me' token for current user
+    const actualUserId = userId === 'me' ? req.user.tgUserId : userId;
+    
     // Users can only update their own settings
-    if (userId !== req.user.tgUserId) {
+    if (actualUserId !== req.user.tgUserId) {
       throw new NotFoundError('User', userId);
     }
     // TODO: Implement user settings update

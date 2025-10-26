@@ -21,11 +21,36 @@ export function LogoutButton() {
     setIsLoggingOut(true);
     try {
       await logoutMutation.mutateAsync();
-      window.location.replace('/meriter/login');
+      
+      // Manually clear all cookies
+      document.cookie.split(";").forEach((c) => {
+        const eqPos = c.indexOf("=");
+        const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim();
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+      });
+      
+      // Clear localStorage and sessionStorage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Redirect to login page
+      window.location.href = '/meriter/login';
     } catch (error: unknown) {
       console.error('Logout failed:', error);
-      // Still redirect on error
-      window.location.replace('/meriter/login');
+      
+      // Still clear everything and redirect on error
+      document.cookie.split(";").forEach((c) => {
+        const eqPos = c.indexOf("=");
+        const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim();
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+      });
+      
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      window.location.href = '/meriter/login';
     } finally {
       setIsLoggingOut(false);
     }

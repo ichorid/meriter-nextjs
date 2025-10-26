@@ -26,7 +26,8 @@
     },
     "sort": {
       "recent": "By Date",
-      "thanked": "By Rating"
+      "thanked": "By Rating",
+      "voted": "By Rating"
     }
   },
   "settings": {

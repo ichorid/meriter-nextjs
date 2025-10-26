@@ -13,6 +13,8 @@ import {
 } from '@nestjs/common';
 import { CommunityServiceV2 } from '../../domain/services/community.service-v2';
 import { PublicationServiceV2 } from '../../domain/services/publication.service-v2';
+import { UserServiceV2 } from '../../domain/services/user.service-v2';
+import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
@@ -26,6 +28,8 @@ export class CommunitiesController {
   constructor(
     private readonly communityService: CommunityServiceV2,
     private readonly publicationService: PublicationServiceV2,
+    private readonly userService: UserServiceV2,
+    private readonly tgBotsService: TgBotsService,
   ) {}
 
   @Get()
@@ -103,21 +107,55 @@ export class CommunitiesController {
   //   return result;
   // }
 
-  // TODO: Implement syncUserCommunities in CommunityServiceV2
-  // @Post('sync')
-  // async syncCommunities(@Req() req: any) {
-  //   const result = await this.communityService.syncUserCommunities(req.user.tgUserId);
-  //   return {
-  //     data: {
-  //       message: 'Communities synced successfully',
-  //       syncedCount: result.syncedCount,
-  //     },
-  //     meta: {
-  //       timestamp: new Date().toISOString(),
-  //       requestId: req.headers['x-request-id'] || 'unknown',
-  //     },
-  //   };
-  // }
+  @Post('sync')
+  async syncCommunities(@Req() req: any) {
+    const userId = req.user.tgUserId;
+    this.logger.log(`Syncing communities for user: ${userId}`);
+    
+    try {
+      // Get all active communities
+      const allCommunities = await this.communityService.getAllCommunities(1000, 0);
+      this.logger.log(`Found ${allCommunities.length} active communities`);
+
+      const communityChatIds: string[] = [];
+      let syncedCount = 0;
+
+      // Check membership for each community
+      for (const community of allCommunities) {
+        try {
+          const isMember = await this.tgBotsService.tgGetChatMember(
+            community.telegramChatId,
+            userId
+          );
+          
+          if (isMember) {
+            communityChatIds.push(community.telegramChatId);
+            syncedCount++;
+            this.logger.log(`User ${userId} is a member of community ${community.name}`);
+          }
+        } catch (error) {
+          this.logger.warn(`Error checking membership for community ${community.telegramChatId}:`, error.message);
+          // Continue with other communities
+        }
+      }
+
+      this.logger.log(`Synced ${syncedCount} communities for user ${userId}`);
+      return {
+        success: true,
+        message: 'Communities synced successfully',
+        syncedCount: syncedCount,
+        membershipsUpdated: syncedCount,
+      };
+    } catch (error) {
+      this.logger.error(`Error syncing communities for user ${userId}:`, error);
+      return {
+        success: false,
+        message: 'Error syncing communities',
+        syncedCount: 0,
+        membershipsUpdated: 0,
+      };
+    }
+  }
 
   @Get(':id/publications')
   async getCommunityPublications(
