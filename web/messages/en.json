@@ -270,6 +270,7 @@
       "toAddPublication": "To add a publication here,",
       "writeMessageInChat": "write a message in the corporate chat",
       "filterByValues": "Filter publications by values:",
+      "filterByTags": "Filter by tags:",
       "noAccess": "No access",
       "createPoll": "📊 Create Poll",
       "byDate": "By Date",

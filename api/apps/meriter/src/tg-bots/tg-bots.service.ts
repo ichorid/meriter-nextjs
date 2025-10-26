@@ -5,8 +5,6 @@ import { uid } from "uid";
 import * as sharp from "sharp";
 
 import {
-  ADDED_EXTERNAL_PUBLICATION_ADMIN_REPLY,
-  ADDED_EXTERNAL_PUBLICATION_PENDING_REPLY,
   ADDED_PUBLICATION_REPLY,
   APPROVED_PEDNDING_WORDS,
   AUTH_USER_MESSAGE,
@@ -14,8 +12,6 @@ import {
   BOT_URL,
   BOT_USERNAME,
   LEADER_MESSAGE_AFTER_ADDED,
-  GLOBAL_FEED_HASHTAG,
-  GLOBAL_FEED_TG_CHAT_ID,
   WELCOME_LEADER_MESSAGE,
   WELCOME_USER_MESSAGE,
 } from "../config";
@@ -438,13 +434,12 @@ export class TgBotsService {
       }
     }
 
-    const kw = [...keywords, ...[GLOBAL_FEED_HASHTAG]].find((k) =>
+    const kw = keywords.find((k) =>
       (messageText ?? "").match("#" + k)
     );
-    const sendToGlobalFeed = (messageText ?? "").match("#" + GLOBAL_FEED_HASHTAG);
 
     this.logger.log(`🏷️  Chat keywords: ${keywords.join(', ')}`);
-    this.logger.log(`🔍 Found keyword: ${kw || 'none'}, sendToGlobalFeed: ${!!sendToGlobalFeed}`);
+    this.logger.log(`🔍 Found keyword: ${kw || 'none'}`);
 
     if (replyMessageId) {
       const approved = APPROVED_PEDNDING_WORDS.map((word) =>
@@ -482,14 +477,7 @@ export class TgBotsService {
     
     const finalMessageText = cleanedText || messageText;
 
-    const pending = false;
-    const isAdmin = false;
-    const external = sendToGlobalFeed ? true : false;
-    /* if (external) {
-      isAdmin = await tgChatIsAdmin({ tgChatId, tgUserId });
-      if (!isAdmin) pending = true;
-    }*/
-    const tgAuthorId = external ? tgChatId : tgUserId;
+    const tgAuthorId = tgUserId;
     const authorPhotoUrl = await this.telegramGetChatPhotoUrl(
       BOT_TOKEN,
       tgAuthorId
@@ -514,21 +502,17 @@ export class TgBotsService {
     // });
 
     const promisePublication = this.publicationAdd({
-      tgChatId: !external
-        ? tgChatId
-        : GLOBAL_FEED_TG_CHAT_ID,
+      tgChatId,
       authorPhotoUrl,
       fromTgChatId: tgChatId,
       tgAuthorId,
-      tgAuthorUsername: external ? tgAuthorName : tgChatUsername,
+      tgAuthorUsername: tgChatUsername,
       tgAuthorName: tgAuthorName,
       tgMessageId: messageId,
       keyword: kw,
       tgChatUsername,
       tgChatName: tgChatName,
-      pending,
       text: finalMessageText,
-      fromCommunity: external,
       messageText: finalMessageText,
       entities,
       beneficiary,
@@ -539,47 +523,19 @@ export class TgBotsService {
     ]);
 
     const slug = publication.id; // Use publication ID as slug
-    const spaceSlug = kw?.replace('#', '') || 'general'; // Use keyword as space slug
     const link = `communities/${tgChatId}/posts/${slug}`;
     
-    this.logger.log(`✅ Publication created: slug=${slug}, spaceSlug=${spaceSlug}, external=${external}`);
+    this.logger.log(`✅ Publication created: slug=${slug}`);
 
-    if (!external) {
-      const encodedLink = encodeTelegramDeepLink('publication', link);
-      const text = ADDED_PUBLICATION_REPLY.replace("{encodedLink}", encodedLink);
-      this.logger.log(`💬 Sending reply to group ${tgChatId} with encoded link: ${encodedLink}`);
+    const encodedLink = encodeTelegramDeepLink('publication', link);
+    const text = ADDED_PUBLICATION_REPLY.replace("{encodedLink}", encodedLink);
+    this.logger.log(`💬 Sending reply to group ${tgChatId} with encoded link: ${encodedLink}`);
 
-      await this.tgReplyMessage({
-        reply_to_message_id: messageId,
-        chat_id: tgChatId,
-        text,
-      });
-    } else {
-      if (isAdmin) {
-        const text = ADDED_EXTERNAL_PUBLICATION_ADMIN_REPLY.replace(
-          "{link}",
-          link
-        );
-
-        await this.tgReplyMessage({
-          reply_to_message_id: messageId,
-          chat_id: tgChatId,
-          text,
-        });
-      } else {
-        const encodedLink = encodeTelegramDeepLink('publication', link);
-        const text = ADDED_EXTERNAL_PUBLICATION_PENDING_REPLY.replace(
-          "{encodedLink}",
-          encodedLink
-        );
-
-        await this.tgReplyMessage({
-          reply_to_message_id: messageId,
-          chat_id: tgChatId,
-          text,
-        });
-      }
-    }
+    await this.tgReplyMessage({
+      reply_to_message_id: messageId,
+      chat_id: tgChatId,
+      text,
+    });
   }
 
   async processRecieveMessageFromUser({ tgUserId, messageText, tgUserName }) {
@@ -1047,52 +1003,31 @@ export class TgBotsService {
     tgChatUsername,
     keyword,
     text,
-    pending,
-    fromCommunity,
     messageText,
     authorPhotoUrl,
     entities,
     beneficiary,
   }) {
-    const toGlobalFeed = keyword === GLOBAL_FEED_HASHTAG;
-    const external = toGlobalFeed;
     const tgChatId = String(tgChatIdInt);
-    // TODO: Implement space/hashtag lookup in V2 services
-    // const space = await this.hashtagsService.model.findOne({
-    //   "meta.parentTgChatId": tgChatId,
-    //   "profile.name": keyword.replace("#", ""),
-    // });
-    const space = null; // Placeholder
 
-    //const space = await Space.findOne({ chatId: tgChatId, tag: keyword });
-    if (!space) {
-      this.logger.log({
-        "meta.parentTgChatId": tgChatId,
-        "profile.name": keyword.replace("#", ""),
-      });
-      throw `space not found for ${tgChatId} and keword ${keyword}`;
+    // Fetch community and validate hashtag exists
+    const community = await this.communityModel.findOne({
+      telegramChatId: fromTgChatId,
+    }).lean();
+
+    if (!community) {
+      this.logger.error(`Community not found for chat ${fromTgChatId}`);
+      throw new Error(`Community not found for chat ${fromTgChatId}`);
     }
-    const publicationUid = uid(8);
-    const newPublication = {
-      tgMessageId,
-      fromTgChatId,
-      spaceSlug: space.slug,
-      tgAuthorId,
-      tgAuthorName,
-      tgAuthorUsername,
-      tgChatName,
-      tgChatUsername,
-      tgChatId,
-      keyword,
-      pending,
-      slug: publicationUid,
-      fromCommunity,
-      messageText,
-      authorPhotoUrl,
-      ts: String(Date.now()),
-      canceled: false,
-      entities,
-    };
+
+    const cleanKeyword = keyword.replace("#", "");
+    const hashtagExists = community.hashtags?.includes(cleanKeyword);
+
+    if (!hashtagExists) {
+      this.logger.error(`Hashtag #${cleanKeyword} not configured in community ${fromTgChatId}`);
+      throw new Error(`Hashtag #${cleanKeyword} is not configured for this community`);
+    }
+
     const publication = await this.publicationModel.create({
       id: uid(),
       authorId: tgAuthorId,
@@ -1147,10 +1082,6 @@ export class TgBotsService {
     ).replace("{encodedCommunityLink}", encodedCommunityLink);
 
     await this.tgSend({ tgChatId: toTgChatId, text });
-  }
-
-  async notifyGlobalFeed(text) {
-    return await this.tgSend({ tgChatId: GLOBAL_FEED_TG_CHAT_ID, text });
   }
 
   async updateUserChatMembership(tgChatId: string, tgUserId: string): Promise<boolean> {
