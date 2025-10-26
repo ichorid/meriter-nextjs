@@ -72,9 +72,12 @@ export const UpdatesFrequency = () => {
     ];
 
     return (
-        <div id={"updates-frequency"}>
-            {t('updateFrequency.selectFrequency')}{" "}
+        <div id={"updates-frequency"} className="form-control w-full">
+            <label className="label">
+                <span className="label-text">{t('updateFrequency.selectFrequency')}</span>
+            </label>
             <select
+                className="select select-bordered w-full max-w-xs"
                 value={frequency || options.find((o) => o.default)?.frequency}
                 onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                     setFrequency(e.target.value);
@@ -90,7 +93,11 @@ export const UpdatesFrequency = () => {
                     </option>
                 ))}
             </select>
-            {isUpdating && <span className="ml-2 text-sm text-gray-500">Updating...</span>}
+            {isUpdating && (
+                <label className="label">
+                    <span className="label-text-alt text-base-content/70">Updating...</span>
+                </label>
+            )}
         </div>
     );
 };

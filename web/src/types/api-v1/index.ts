@@ -27,6 +27,8 @@ export interface Community {
   avatarUrl?: string;
   memberCount: number;
   isActive: boolean;
+  isAdmin?: boolean; // Whether the current user is an admin of this community
+  needsSetup?: boolean; // Whether community needs setup (no hashtags)
   hashtags?: string[];
   createdAt: string;
   updatedAt: string;

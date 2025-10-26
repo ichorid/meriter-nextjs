@@ -155,10 +155,13 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             } catch (error: any) {
                 // Handle 404 and other wallet errors gracefully
                 if (error?.response?.status === 404 || error?.response?.statusCode === 404) {
-                    console.debug('Wallet not found for user:', user.id, 'community:', chatId);
+                    console.debug('Wallet not found for user:', user.id, 'community:', chatId, '- returning 0 balance');
                     return 0;
                 }
-                console.error('Error fetching wallet balance:', error);
+                // Only log non-404 errors to avoid console noise
+                if (error?.response?.status !== 404 && error?.response?.statusCode !== 404) {
+                    console.error('Error fetching wallet balance:', error);
+                }
                 return 0;
             }
         },

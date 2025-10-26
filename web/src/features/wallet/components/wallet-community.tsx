@@ -35,13 +35,12 @@ export const WalletCommunity: React.FC<WalletCommunityProps> = ({
     const chatPhoto = info?.avatarUrl; // Community's Telegram avatar
     const icon = info?.avatarUrl; // Currency icon
     const tags = info?.hashtags;
-    const administratorsIds: string[] = []; // TODO: Add admin support to Community type
     
     // Derive needsSetup from community data (isActive field)
     const needsSetup = needsSetupProp !== undefined ? needsSetupProp : (info?.isActive === false);
     
-    // Use passed isAdmin prop if available, otherwise fall back to checking administratorsIds
-    const userIsAdmin = isAdmin !== undefined ? isAdmin : (user?.id && administratorsIds.includes(user.id));
+    // Use API-provided isAdmin field, or fall back to passed prop
+    const userIsAdmin = info?.isAdmin !== undefined ? info.isAdmin : (isAdmin ?? false);
     
     const handleClick = (e: React.MouseEvent) => {
         if (needsSetup) {
