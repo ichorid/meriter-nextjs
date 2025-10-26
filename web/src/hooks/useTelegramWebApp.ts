@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useTelegramStore } from '@/stores';
+import { useAppMode } from '@/contexts/AppModeContext';
 
 export function useTelegramWebApp() {
+  const { isTelegramMiniApp } = useAppMode();
   const store = useTelegramStore();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    
+    // Only load Telegram SDK in mini app mode
+    if (!isTelegramMiniApp) {
+      setIsReady(true);
+      return;
+    }
 
     // Initialize Telegram WebApp
     store.init();
@@ -26,7 +34,7 @@ export function useTelegramWebApp() {
     } else {
       setIsReady(true);
     }
-  }, [store]);
+  }, [store, isTelegramMiniApp]);
 
   return {
     isInTelegram: store.isInTelegram,

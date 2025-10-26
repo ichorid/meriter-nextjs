@@ -14,6 +14,7 @@ import {
   emitEvent,
   isTMA,
 } from '@telegram-apps/sdk-react';
+import { detectTelegramEnvironment } from '@/lib/telegram-env-detector';
 
 /**
  * Initializes the application and configures its dependencies.
@@ -23,30 +24,25 @@ export async function init(options: {
   eruda: boolean;
   mockForMacOS: boolean;
 }): Promise<void> {
+  // Early check: are we in Telegram Mini App mode?
+  const detection = detectTelegramEnvironment();
+  
+  if (!detection.isTelegramMiniApp) {
+    console.log('🌐 Running in desktop browser mode - skipping all Telegram SDK initialization');
+    return;
+  }
+
+  console.log('📱 Running in Telegram Mini App mode - initializing SDK');
+
   // Set @telegram-apps/sdk-react debug mode and initialize it.
   setDebug(options.debug);
   
-  // Only initialize SDK if we're in a Telegram environment or mocking is enabled
+  // Initialize SDK
   try {
-    const isInTelegram = await isTMA('complete');
-    if (isInTelegram) {
-      initSDK();
-    } else {
-      // Check if mocking is enabled via URL parameter
-      const urlParams = new URLSearchParams(window.location.search);
-      const shouldMock = urlParams.get('mock-telegram') === 'true';
-      
-      if (shouldMock) {
-        // Mock environment first, then initialize
-        console.log('🔧 Mocking Telegram environment before SDK init');
-        initSDK();
-      } else {
-        console.log('🌐 Running in regular browser mode - skipping Telegram SDK init');
-        // Skip SDK initialization for regular web usage
-      }
-    }
+    initSDK();
   } catch (error) {
-    console.warn('⚠️ Failed to determine Telegram environment, skipping SDK init:', error);
+    console.warn('⚠️ Failed to initialize SDK:', error);
+    return;
   }
 
   // Add Eruda if needed.
@@ -95,52 +91,24 @@ export async function init(options: {
   // Mount all components used in the project.
   mountBackButton.ifAvailable();
   
-  // Only restore init data if we're in Telegram environment or mocking
+  // Restore init data
   try {
-    const isInTelegram = await isTMA('complete');
-    const urlParams = new URLSearchParams(window.location.search);
-    const shouldMock = urlParams.get('mock-telegram') === 'true';
-    
-    if (isInTelegram || shouldMock) {
-      restoreInitData();
-    } else {
-      console.log('🌐 Skipping restoreInitData - not in Telegram environment');
-    }
+    restoreInitData();
   } catch (error) {
     console.warn('⚠️ Failed to restore init data:', error);
   }
 
-  // Only mount Telegram-specific components if we're in Telegram environment
+  // Mount Telegram-specific components
   try {
-    const isInTelegram = await isTMA('complete');
-    if (isInTelegram) {
-      if (mountMiniAppSync.isAvailable()) {
-        mountMiniAppSync();
-        bindThemeParamsCssVars();
-      }
+    if (mountMiniAppSync.isAvailable()) {
+      mountMiniAppSync();
+      bindThemeParamsCssVars();
+    }
 
-      if (mountViewport.isAvailable()) {
-        mountViewport().then(() => {
-          bindViewportCssVars();
-        });
-      }
-    } else {
-      // Check if mocking is enabled for regular web usage
-      const urlParams = new URLSearchParams(window.location.search);
-      const shouldMock = urlParams.get('mock-telegram') === 'true';
-      
-      if (shouldMock) {
-        if (mountMiniAppSync.isAvailable()) {
-          mountMiniAppSync();
-          bindThemeParamsCssVars();
-        }
-
-        if (mountViewport.isAvailable()) {
-          mountViewport().then(() => {
-            bindViewportCssVars();
-          });
-        }
-      }
+    if (mountViewport.isAvailable()) {
+      mountViewport().then(() => {
+        bindViewportCssVars();
+      });
     }
   } catch (error) {
     console.warn('⚠️ Failed to mount Telegram components:', error);

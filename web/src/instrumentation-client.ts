@@ -2,25 +2,36 @@
 // services that require one-time initialization on the client.
 
 import { retrieveLaunchParams, isTMA } from '@telegram-apps/sdk-react';
+import { detectTelegramEnvironment } from './lib/telegram-env-detector';
 import { init } from './core/init';
 import { mockEnv } from './mockEnv';
 import { config } from './config';
 
 mockEnv().then(async () => {
   try {
+    // Early detection using our utility
+    const detection = detectTelegramEnvironment();
+    
+    if (!detection.isTelegramMiniApp) {
+      console.log('🌐 Desktop browser mode detected - skipping Telegram-specific initialization');
+      // Just initialize with defaults for desktop mode
+      const debug = config.app.isDevelopment;
+      init({
+        debug,
+        eruda: false,
+        mockForMacOS: false,
+      });
+      return;
+    }
+
+    // We're in Telegram Mini App mode, proceed with full initialization
+    console.log('📱 Telegram Mini App mode detected');
+
     let launchParams;
     try {
-      // Check if we're in Telegram environment first
-      const isInTelegram = await isTMA('complete');
-      
-      if (isInTelegram) {
-        launchParams = retrieveLaunchParams();
-      } else {
-        throw new Error('Not in Telegram environment');
-      }
+      launchParams = retrieveLaunchParams();
     } catch (e) {
-      // Not in Telegram environment, use defaults
-      console.log('Not in Telegram environment, using default config');
+      console.warn('Failed to retrieve launch params, using defaults:', e);
       launchParams = { 
         tgWebAppPlatform: 'web',
         tgWebAppStartParam: ''

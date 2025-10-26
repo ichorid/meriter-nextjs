@@ -14,7 +14,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTelegramConfig } from '@/hooks/useConfig';
-import { initDataRaw, useLaunchParams, useSignal, isTMA } from '@telegram-apps/sdk-react';
+import { useAppMode } from '@/contexts/AppModeContext';
 import type { TelegramUser } from '@/types/telegram';
 
 interface LoginFormProps {
@@ -26,6 +26,7 @@ export function LoginForm({ className = '' }: LoginFormProps) {
   const searchParams = useSearchParams();
   const t = useTranslations('login');
   const { botUsername } = useTelegramConfig();
+  const { isTelegramMiniApp } = useAppMode();
   
   const { 
     authenticateWithTelegram, 
@@ -37,9 +38,8 @@ export function LoginForm({ className = '' }: LoginFormProps) {
   } = useAuth();
   
   // Telegram Web App state
-  const [isInTelegram, setIsInTelegram] = useState(false);
   const [launchParams, setLaunchParams] = useState<any>(null);
-  const [rawData, setRawData] = useState<any>(null);
+  const [rawData, setRawData] = useState<string | null>(null);
   const [startParam, setStartParam] = useState<string | null>(null);
   const [webAppAuthAttempted, setWebAppAuthAttempted] = useState(false);
   
@@ -48,80 +48,49 @@ export function LoginForm({ className = '' }: LoginFormProps) {
   // Get return URL
   const returnTo = searchParams.get('returnTo');
   
-  // ALWAYS call hooks at top level, never conditionally
-  let launchParamsHook = null;
-  let rawDataHook = null;
-  
-  try {
-    launchParamsHook = useLaunchParams();
-    rawDataHook = useSignal(initDataRaw);
-  } catch (error) {
-    // Hooks not available - not in Telegram or SDK not initialized
-    // This is fine, we'll use widget authentication
-  }
-  
   // Initialize Telegram Web App state
   useEffect(() => {
-    const initializeTelegramState = async () => {
+    if (isTelegramMiniApp && typeof window !== 'undefined') {
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const mockEnabled = urlParams.get('mock-telegram') === 'true';
-        const isRealTelegram = await isTMA('complete');
-        
-        // Only consider it Telegram mode if:
-        // 1. We're in a real Telegram environment, OR
-        // 2. Mock is explicitly enabled via URL parameter
-        const shouldUseTelegramMode = isRealTelegram || mockEnabled;
-        
-        console.log('🔍 Telegram environment check:', {
-          isRealTelegram,
-          mockEnabled,
-          shouldUseTelegramMode,
-          hasLaunchParams: !!launchParamsHook,
-          hasRawData: !!rawDataHook
-        });
-        
-        if (shouldUseTelegramMode && launchParamsHook && rawDataHook) {
-          setLaunchParams(launchParamsHook);
-          setRawData(rawDataHook);
-          setStartParam(launchParamsHook.tgWebAppStartParam || null);
-          setIsInTelegram(true);
+        const tgWebApp = (window as any).Telegram?.WebApp;
+        if (tgWebApp) {
+          const initDataUnsafe = tgWebApp.initDataUnsafe || {};
+          const startParam = initDataUnsafe.start_param || '';
           
-          console.log('📱 Telegram Web App state initialized:', {
-            launchParams: launchParamsHook,
-            hasRawData: !!rawDataHook,
-            startParam: launchParamsHook.tgWebAppStartParam
-          });
-        } else {
-          setIsInTelegram(false);
+          if (initDataUnsafe) {
+            setLaunchParams({ tgWebAppStartParam: startParam });
+            setRawData(tgWebApp.initData || null);
+            setStartParam(startParam);
+            
+            console.log('📱 Telegram Web App state initialized:', {
+              hasInitData: !!initDataUnsafe,
+              startParam
+            });
+          }
         }
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Failed to initialize Telegram state';
-        console.warn('⚠️ Failed to initialize Telegram state:', message);
-        setIsInTelegram(false);
+      } catch (error) {
+        console.debug('Failed to access Telegram WebApp:', error);
       }
-    };
-    
-    initializeTelegramState();
-  }, [launchParamsHook, rawDataHook]); // Add dependencies
+    }
+  }, [isTelegramMiniApp]);
   
   // Handle deep links
   useEffect(() => {
-    if (startParam && isInTelegram) {
+    if (startParam && isTelegramMiniApp) {
       // TODO: Fix router type compatibility
       // handleDeepLink(router, searchParams, startParam);
     }
-  }, [startParam, isInTelegram, handleDeepLink, router, searchParams]);
+  }, [startParam, isTelegramMiniApp, handleDeepLink, router, searchParams]);
   
   // Auto-authenticate with Telegram Web App
   useEffect(() => {
-    if (isInTelegram && rawData?.value && !webAppAuthAttempted) {
+    if (isTelegramMiniApp && rawData && !webAppAuthAttempted) {
       setWebAppAuthAttempted(true);
       
       const performWebAppAuth = async () => {
         try {
           console.log('🚀 Attempting Telegram Web App authentication...');
-          await authenticateWithTelegramWebApp(rawData.value);
+          await authenticateWithTelegramWebApp(rawData);
           
           // Redirect after successful authentication
           const redirectUrl = returnTo || '/meriter/home';
@@ -136,7 +105,7 @@ export function LoginForm({ className = '' }: LoginFormProps) {
       
       performWebAppAuth();
     }
-  }, [isInTelegram, rawData, webAppAuthAttempted, authenticateWithTelegramWebApp, returnTo, router, setAuthError]);
+  }, [isTelegramMiniApp, rawData, webAppAuthAttempted, authenticateWithTelegramWebApp, returnTo, router, setAuthError]);
   
   // Handle Telegram widget authentication
   const handleTelegramAuth = async (telegramUser: unknown) => {
@@ -203,7 +172,7 @@ export function LoginForm({ className = '' }: LoginFormProps) {
           
           {!isLoading && (
             <div className="space-y-4">
-              {isInTelegram ? (
+              {isTelegramMiniApp ? (
                 <div className="text-center">
                   <p className="text-sm text-base-content/70 mb-4">
                     {t('telegramWebApp.detected')}

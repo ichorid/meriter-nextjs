@@ -1,51 +1,47 @@
 'use client';
 
 import { type PropsWithChildren } from 'react';
-import {
-  initData,
-  miniApp,
-  useLaunchParams,
-  useSignal,
-} from '@telegram-apps/sdk-react';
-import { AppRoot } from '@telegram-apps/telegram-ui';
+import dynamic from 'next/dynamic';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ErrorPage } from '@/components/ErrorPage';
 import { useDidMount } from '@/hooks/useDidMount';
 import { ThemeProvider } from '@/shared/lib/theme-provider';
+import { useAppMode } from '@/contexts/AppModeContext';
 
 import './styles.css';
 
-// Inner component that safely uses Telegram hooks
-function TelegramAwareWrapper({ children }: PropsWithChildren) {
-  // Always call hooks at the top level
-  let lp: any = { tgWebAppPlatform: 'web' as const };
-  let isDarkValue = false;
-  
-  try {
-    // These hooks will only work if SDKProvider is present
-    lp = useLaunchParams();
-    const isDarkSignal = useSignal(miniApp.isDark);
-    isDarkValue = (isDarkSignal as any)?.value || false;
-  } catch (error) {
-    // Log the error for debugging but continue with defaults
-    console.debug('Telegram SDK hooks not available, using defaults:', error);
-  }
+// Dynamically import Telegram SDK components only when needed
+const TelegramSDKWrapper = dynamic(
+  () => import('./TelegramSDKWrapper'),
+  { ssr: false }
+);
 
+// Desktop mode wrapper - simple, no Telegram UI
+function DesktopWrapper({ children }: PropsWithChildren) {
   return (
     <ThemeProvider>
-      <AppRoot
-        appearance={isDarkValue ? 'dark' : 'light'}
-        platform={['macos', 'ios'].includes(lp?.tgWebAppPlatform) ? 'ios' : 'base'}
-      >
+      <div className="app">
         {children}
-      </AppRoot>
+      </div>
     </ThemeProvider>
   );
 }
 
 function RootInner({ children }: PropsWithChildren) {
-  return <TelegramAwareWrapper>{children}</TelegramAwareWrapper>;
+  const { isTelegramMiniApp, isReady } = useAppMode();
+
+  // Wait for detection to complete
+  if (!isReady) {
+    return <div className="root__loading">Loading</div>;
+  }
+
+  // Conditionally render based on app mode
+  if (isTelegramMiniApp) {
+    return <TelegramSDKWrapper>{children}</TelegramSDKWrapper>;
+  }
+
+  return <DesktopWrapper>{children}</DesktopWrapper>;
 }
 
 export function Root(props: PropsWithChildren) {

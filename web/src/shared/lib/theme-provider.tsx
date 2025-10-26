@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { initDataRaw, miniApp, useSignal } from '@telegram-apps/sdk-react';
+import { useAppMode } from '@/contexts/AppModeContext';
 
 type Theme = 'light' | 'dark' | 'auto';
 
@@ -14,48 +15,50 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+    const { isTelegramMiniApp } = useAppMode();
     const [theme, setThemeState] = useState<Theme>('auto');
     const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
     
-    // Use SDK signals with error handling
+    // Use SDK signals only in mini app mode
     let rawData;
     let isDark;
-    let isInTelegram = false;
     
-    try {
-        rawData = useSignal(initDataRaw);
-        isDark = useSignal(miniApp.isDark);
-        isInTelegram = !!rawData;
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        console.warn('⚠️ Telegram Web App not detected in theme provider, using fallback:', message);
+    if (isTelegramMiniApp) {
+        try {
+            rawData = useSignal(initDataRaw);
+            isDark = useSignal(miniApp.isDark);
+        } catch (error: unknown) {
+            console.warn('⚠️ Telegram SDK signals not available');
+            rawData = { value: null };
+            isDark = { value: false };
+        }
+    } else {
         rawData = { value: null };
         isDark = { value: false };
-        isInTelegram = false;
     }
 
     // Initialize theme from localStorage
     useEffect(() => {
-        if (!isInTelegram) {
+        if (!isTelegramMiniApp) {
             const stored = localStorage.getItem('theme') as Theme | null;
             if (stored && ['light', 'dark', 'auto'].includes(stored)) {
                 console.log('🎨 Using stored theme:', stored);
                 setThemeState(stored);
             }
         }
-    }, [isInTelegram]);
+    }, [isTelegramMiniApp]);
 
     // Use Telegram theme when in Telegram
     useEffect(() => {
-        if (isInTelegram) {
+        if (isTelegramMiniApp) {
             console.log('🎨 Using Telegram theme:', isDark ? 'dark' : 'light');
             setResolvedTheme(isDark ? 'dark' : 'light');
         }
-    }, [isInTelegram, isDark]);
+    }, [isTelegramMiniApp, isDark]);
 
     // Update resolved theme based on theme setting and system preference (non-Telegram)
     useEffect(() => {
-        if (isInTelegram) return; // Skip if using Telegram theme
+        if (isTelegramMiniApp) return; // Skip if using Telegram theme
         
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         
@@ -78,7 +81,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
         mediaQuery.addEventListener('change', handler);
         return () => mediaQuery.removeEventListener('change', handler);
-    }, [theme, isInTelegram]);
+    }, [theme, isTelegramMiniApp]);
 
     // Apply theme to document
     useEffect(() => {
@@ -90,7 +93,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setThemeState(newTheme);
         localStorage.setItem('theme', newTheme);
         
-        if (isInTelegram) {
+        if (isTelegramMiniApp) {
             console.log('🎨 In Telegram Web App - theme follows Telegram settings');
         }
     };

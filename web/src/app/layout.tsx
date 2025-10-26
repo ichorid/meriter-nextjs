@@ -8,6 +8,7 @@ import { cookies } from 'next/headers';
 import { Root } from '@/components/Root';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AppModeProvider } from '@/contexts/AppModeContext';
 
 export const metadata: Metadata = {
     title: 'Meriter',
@@ -51,13 +52,15 @@ export default async function RootLayout({
                 />
             </head>
             <body suppressHydrationWarning>
-                <QueryProvider>
-                    <AuthProvider>
-                        <NextIntlClientProvider messages={messages}>
-                            <Root>{children}</Root>
-                        </NextIntlClientProvider>
-                    </AuthProvider>
-                </QueryProvider>
+                <AppModeProvider>
+                    <QueryProvider>
+                        <AuthProvider>
+                            <NextIntlClientProvider messages={messages}>
+                                <Root>{children}</Root>
+                            </NextIntlClientProvider>
+                        </AuthProvider>
+                    </QueryProvider>
+                </AppModeProvider>
             </body>
         </html>
     );
