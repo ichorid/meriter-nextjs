@@ -49,7 +49,7 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
     'justify-center',
     'text-base-content',
     'font-medium',
-    typeof size !== 'number' && sizeClasses[size as string],
+    typeof size !== 'number' && size in sizeClasses && sizeClasses[size as keyof typeof sizeClasses],
     onClick && 'cursor-pointer',
     className,
   ].filter(Boolean).join(' ');

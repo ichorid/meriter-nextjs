@@ -98,7 +98,7 @@ export const CommentForm: React.FC<CommentFormProps> = ({
         <Button
           type="submit"
           variant="primary"
-          loading={loading}
+          isLoading={loading}
           disabled={!comment.trim() || amount <= 0}
         >
           Submit

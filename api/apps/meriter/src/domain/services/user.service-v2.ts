@@ -35,6 +35,10 @@ export class UserServiceV2 {
     return doc;
   }
 
+  async getUserByTelegramId(telegramId: string): Promise<User | null> {
+    return this.getUser(telegramId);
+  }
+
   async getUserByToken(token: string): Promise<User | null> {
     const doc = await this.userModel.findOne({ token }).lean();
     return doc;
@@ -84,18 +88,20 @@ export class UserServiceV2 {
           lastName: dto.lastName,
           displayName: dto.displayName || `${dto.firstName || ''} ${dto.lastName || ''}`.trim(),
           avatarUrl: dto.avatarUrl,
-          bio: dto.bio,
-          location: dto.location,
-          website: dto.website,
-          isVerified: dto.isVerified || false,
+          profile: {
+            bio: dto.bio,
+            location: dto.location,
+            website: dto.website,
+            isVerified: dto.isVerified || false,
+          },
+          communityTags: [],
           token: token || uid(),
-          communityMemberships: [],
           createdAt: new Date(),
           updatedAt: new Date(),
         };
 
         await this.userModel.create([newUser], { session });
-        user = newUser;
+        user = await this.userModel.findOne({ id: newUser.id }, null, { session }).lean();
       }
 
       await session.commitTransaction();

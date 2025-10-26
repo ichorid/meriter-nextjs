@@ -1,7 +1,7 @@
 export { PublicationCard } from './PublicationCard';
-export { PublicationHeader } from './PublicationHeader';
-export { PublicationContent } from './PublicationContent';
-export { PublicationActions } from './PublicationActions';
+export { PublicationCardHeader } from './PublicationHeader';
+export { PublicationCardContent } from './PublicationContent';
+export { PublicationCardActions } from './PublicationActions';
 export { PublicationMetrics } from './PublicationMetrics';
 export type { PublicationCardProps } from './PublicationCard';
 export type { PublicationHeaderProps } from './PublicationHeader';

@@ -3,6 +3,16 @@
 import Link from "next/link";
 import { useTranslations } from 'next-intl';
 
+interface MenuBreadcrumbsProps {
+    pathname?: string;
+    chatId?: string;
+    tagRus?: string;
+    chatNameVerb?: string;
+    chatIcon?: string;
+    postText?: string;
+    children?: React.ReactNode;
+}
+
 export const MenuBreadcrumbs = ({
     pathname,
     chatId,
@@ -11,7 +21,7 @@ export const MenuBreadcrumbs = ({
     chatIcon,
     postText,
     children,
-}: any) => {
+}: MenuBreadcrumbsProps) => {
     const t = useTranslations('common');
     return (
         <div className="breadcrumbs text-sm mb-4">

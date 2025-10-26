@@ -1,6 +1,3 @@
-// Re-export shared API types
-export * from '@meriter/shared-types';
-
 // Additional frontend-specific types
 export interface RequestConfig {
   timeout?: number;

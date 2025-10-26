@@ -3,8 +3,8 @@
 import React, { Children, Fragment } from "react";
 import { classList } from '@lib/classList';
 
-export const parseMarkDown = (txt: any): any => {
-    if (typeof txt !== "string") return txt;
+export const parseMarkDown = (txt: unknown): React.ReactNode => {
+    if (typeof txt !== "string") return null;
     const accent = txt.match("(.*)\\*\\*(.*?)\\*\\*(.*)");
     const newline = txt.match("\\|\\|\\|");
     const linebreak = txt.match("\\|\\|");
@@ -255,7 +255,12 @@ export const Img: React.FC<any> = (props) => {
     return <img src={src} />;
 };
 
-export const PanelBottom = ({ children, onClose }: any) => {
+interface PanelBottomProps {
+    children?: React.ReactNode;
+    onClose: () => void;
+}
+
+export const PanelBottom = ({ children, onClose }: PanelBottomProps) => {
     const onlyPanelScreen = Array.isArray(children)
         ? children.filter((c) => c)[0] || null
         : children;
@@ -274,8 +279,14 @@ export const PanelBottom = ({ children, onClose }: any) => {
         </div>
     );
 };
-export const PanelScreen = ({ children, className, scroll }: any) => (
-    <div className={classList("panel-screen", className, { scroll })}>
+interface PanelScreenProps {
+    children?: React.ReactNode;
+    className?: string;
+    scroll?: boolean;
+}
+
+export const PanelScreen = ({ children, className, scroll }: PanelScreenProps) => (
+    <div className={classList("panel-screen", className || '', { scroll: scroll || false })}>
         {children}
     </div>
 );

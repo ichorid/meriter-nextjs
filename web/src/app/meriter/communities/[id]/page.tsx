@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AvatarBalanceWidget } from '@/components/organisms/AvatarBalanceWidget';
 import { Breadcrumbs } from '@/components/molecules/Breadcrumbs';
 import { CardWithAvatar } from '@/components/molecules/CardWithAvatar';
-import { PublicationCard } from "@/components/organisms/Publication";
+import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
 import { telegramGetAvatarLink, telegramGetAvatarLinkUpd } from '@lib/telegram';
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
@@ -18,6 +18,29 @@ import { useWallets, useUserProfile, useCommunity } from '@/hooks/api';
 import { usersApiV1 } from '@/lib/api/v1';
 import { useAuth } from '@/contexts/AuthContext';
 import { classList } from "@lib/classList";
+import type { Wallet } from '@/types/api-v1';
+
+interface Publication {
+  id: string;
+  slug: string;
+  title: string;
+  content: string;
+  authorId: string;
+  communityId: string;
+  type: 'text' | 'image' | 'video' | 'poll';
+  createdAt: string;
+  updatedAt: string;
+  metrics?: {
+    score: number;
+    commentCount: number;
+  };
+  [key: string]: unknown;
+}
+
+interface PageData {
+  data: Publication[];
+  [key: string]: unknown;
+}
 
 const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
@@ -36,7 +59,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
 
     // Use v1 API hook
-    const { data: comms = {} } = useCommunity(chatId);
+    const { data: comms } = useCommunity(chatId);
 
     const {
         data,
@@ -61,10 +84,10 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     });
 
     const publications = (data?.pages ?? [])
-        .map((page: any) => page.data)
+        .map((page: PageData) => page.data)
         .flat()
-        .filter((p: any, index: number, self: any[]) => 
-            index === self.findIndex((t: any) => t?.id === p?.id)
+        .filter((p: Publication, index: number, self: Publication[]) => 
+            index === self.findIndex((t: Publication) => t?.id === p?.id)
         );
 
     const setJwt = data?.pages?.[0]?.setJwt;
@@ -78,9 +101,9 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     useEffect(() => {
         if (targetPostSlug && publications.length > 0) {
             console.log('🔍 Looking for post with slug:', targetPostSlug);
-            console.log('🔍 Available publications:', publications.map((p: any) => ({ slug: p.slug, id: p.id })));
+            console.log('🔍 Available publications:', publications.map((p: Publication) => ({ slug: p.slug, id: p.id })));
             
-            const targetPost = publications.find((p: any) => p.slug === targetPostSlug);
+            const targetPost = publications.find((p: Publication) => p.slug === targetPostSlug);
             if (targetPost) {
                 console.log('🎯 Found target post for deep link:', targetPostSlug, 'with id:', targetPost.id);
                 setHighlightedPostId(targetPost.id);
@@ -112,7 +135,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     const { user, isLoading: userLoading, isAuthenticated } = useAuth();
     const { data: wallets = [], isLoading: walletsLoading } = useWallets();
-    const { data: userdata = 0 } = useUserProfile(user?.tgUserId || '');
+    const { data: userdata = 0 } = useUserProfile(user?.telegramId || '');
     
     // Get wallet balance for this community from user's wallets
     const { data: balance = 0 } = useQuery({
@@ -120,7 +143,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         queryFn: async () => {
             if (!user?.id || !chatId) return 0;
             const wallets = await usersApiV1.getUserWallets(user.id);
-            const wallet = wallets.find((w: any) => w.communityId === chatId);
+            const wallet = wallets.find((w: Wallet) => w.communityId === chatId);
             return wallet?.balance || 0;
         },
         enabled: !!user?.id && !!chatId,
@@ -161,9 +184,9 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     }, []);
 
     // Use community data for chat info (same as comms)
-    const chatName = comms?.username;
-    const chatUrl = comms?.url;
-    const chatNameVerb = String(comms?.title ?? "");
+    const chatName = comms?.name;
+    const chatUrl = comms?.description;
+    const chatNameVerb = String(comms?.name ?? "");
     const activeCommentHook = useState(null);
     
     // State for withdrawal functionality
@@ -183,12 +206,12 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     if (!isAuthenticated) return null;
 
-    const tgAuthorId = user?.tgUserId;
+    const tgAuthorId = user?.telegramId;
 
     const onlyPublication =
-        publications.filter((p: any) => p?.content)?.length == 1;
+        publications.filter((p: Publication) => p?.content)?.length == 1;
 
-    const sortItems = (items: any[]) => {
+    const sortItems = (items: Publication[]): Publication[] => {
         if (!items) return [];
         return [...items].sort((a, b) => {
             if (sortBy === "recent") {
@@ -209,30 +232,30 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 onClick={() => {
                     router.push("/meriter/home");
                 }}
-                userName={user?.name || 'User'}
+                userName={user?.displayName || 'User'}
             />
 
             <Breadcrumbs
                 pathname={pathname}
                 chatId={chatId}
                 chatNameVerb={chatNameVerb}
-                chatIcon={comms?.icon}
+                chatIcon={comms?.avatarUrl}
             />
                 
                 {/* Community Header */}
-                {comms?.chat?.title && (
+                {comms?.name && (
                     <div className="py-3 border-b border-base-300 mb-4">
                         <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-3">
                                 <CommunityAvatar
-                                    avatarUrl={comms?.chat?.photo}
-                                    communityName={comms?.chat?.title}
+                                    avatarUrl={comms?.avatarUrl}
+                                    communityName={comms?.name}
                                     size={48}
                                 />
-                                <h1 className="text-xl font-semibold">{comms?.chat?.title}</h1>
+                                <h1 className="text-xl font-semibold">{comms?.name}</h1>
                             </div>
                             {/* Settings cog icon - visible only to admins */}
-                            {comms?.chat?.administratorsIds?.includes(user?.tgUserId) && (
+                            {comms?.isActive && (
                                 <button
                                     onClick={() => router.push(`/meriter/communities/${chatId}/settings`)}
                                     className="btn btn-ghost btn-sm btn-circle"
@@ -261,15 +284,15 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                             )}
                         </div>
                         <div className="flex items-center gap-3">
-                            {comms?.icon && (
+                            {comms?.avatarUrl && (
                                 <div className="flex items-center gap-2">
-                                    <img className="w-5 h-5" src={comms.icon} alt="Currency" />
+                                    <img className="w-5 h-5" src={comms.avatarUrl} alt="Currency" />
                                     <span className="text-lg font-semibold">{balance}</span>
                                 </div>
                             )}
-                            {comms?.chat?.tags && comms.chat.tags.length > 0 && (
+                            {comms?.hashtags && comms.hashtags.length > 0 && (
                                 <div className="flex flex-wrap gap-1">
-                                    {comms.chat.tags.map((tag: string, i: number) => (
+                                    {comms.hashtags.map((tag: string, i: number) => (
                                         <span key={i} className="badge badge-primary badge-sm">#{tag}</span>
                                     ))}
                                 </div>
@@ -292,7 +315,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                     <br />
                                 </div>
                             )}
-                            {comms.spaces && (
+                            {comms?.hashtags && (
                                 <div
                                     style={{
                                         paddingBottom: "15px",
@@ -302,8 +325,8 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                     {t('communities.filterByTags')}
                                 </div>
                             )}
-                            {comms.tags &&
-                                comms.tags.map((tag: string) => (
+                            {comms?.hashtags &&
+                                comms.hashtags.map((tag: string) => (
                                     <CardWithAvatar
                                         key={tag}
                                         avatarUrl=""
@@ -379,9 +402,9 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                 <PublicationCard
                                     publication={p}
                                     wallets={Array.isArray(wallets) ? wallets : []}
-                                    showCommunityAvatar={false}
-                                    updateAll={updateAll}
                                     updateWalletBalance={updateWalletBalance}
+                                    updateAll={updateAll}
+                                    showCommunityAvatar={false}
                                 />
                             </div>
                         ))}

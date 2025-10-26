@@ -2,7 +2,6 @@
 export * from './classList';
 export * from './date';
 export * from './debounce';
-export { apiPOST, apiGET } from './fetch';
 export * from './getIcon';
 export * from './object';
 export * from './objects';

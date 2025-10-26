@@ -109,8 +109,9 @@ export const FormPollCreate = ({
         if (isInTelegram && isMountedRef.current) {
             try {
                 mainButton.setParams({ isLoaderVisible: true });
-            } catch (error: any) {
-                console.warn('MainButton already unmounted:', error.message);
+            } catch (error: unknown) {
+                const message = error instanceof Error ? error.message : 'Unknown error';
+                console.warn('MainButton already unmounted:', message);
             }
         }
 
@@ -156,9 +157,9 @@ export const FormPollCreate = ({
 
             hapticFeedback.notificationOccurred('success');
             onSuccess && onSuccess(poll.id);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('📊 Poll creation error:', err);
-            const errorMessage = err.response?.data?.message || err.message || t('errorCreating');
+            const errorMessage = err instanceof Error ? (err as any).response?.data?.message || err.message : t('errorCreating');
             setError(errorMessage);
             hapticFeedback.notificationOccurred('error');
         } finally {
@@ -166,8 +167,9 @@ export const FormPollCreate = ({
             if (isInTelegram && isMountedRef.current) {
                 try {
                     mainButton.setParams({ isLoaderVisible: false });
-                } catch (error: any) {
-                    console.warn('MainButton already unmounted:', error.message);
+                } catch (error: unknown) {
+                    const message = error instanceof Error ? error.message : 'Unknown error';
+                    console.warn('MainButton already unmounted:', message);
                 }
             }
         }
@@ -184,9 +186,10 @@ export const FormPollCreate = ({
                 try {
                     // Try to mount the mainButton first
                     mainButton.mount();
-                } catch (error: any) {
+                } catch (error: unknown) {
                     // MainButton might already be mounted, that's okay
-                    console.warn('MainButton mount warning (expected if already mounted):', error.message);
+                    const message = error instanceof Error ? error.message : 'Unknown error';
+                    console.warn('MainButton mount warning (expected if already mounted):', message);
                 }
                 
                 try {
@@ -210,16 +213,18 @@ export const FormPollCreate = ({
                                 if (isMountedRef.current) {
                                     try {
                                         mainButton.setParams({ isVisible: false });
-                                    } catch (error: any) {
-                                        console.warn('MainButton cleanup warning:', error.message);
+                                    } catch (error: unknown) {
+                                        const message = error instanceof Error ? error.message : 'Unknown error';
+                                        console.warn('MainButton cleanup warning:', message);
                                     }
                                 }
                                 if (cleanup) cleanup();
                                 backButton.hide();
                                 backCleanup();
                             };
-                        } catch (error: any) {
-                            console.error('Failed to setup back button:', error.message);
+                        } catch (error: unknown) {
+                            const message = error instanceof Error ? error.message : 'Unknown error';
+                            console.error('Failed to setup back button:', message);
                         }
                     }
                     
@@ -227,15 +232,17 @@ export const FormPollCreate = ({
                         if (isMountedRef.current) {
                             try {
                                 mainButton.setParams({ isVisible: false });
-                            } catch (error: any) {
-                                console.warn('MainButton cleanup warning:', error.message);
+                            } catch (error: unknown) {
+                                const message = error instanceof Error ? error.message : 'Unknown error';
+                                console.warn('MainButton cleanup warning:', message);
                             }
                         }
                         if (cleanup) cleanup();
                     };
                     
-                } catch (error: any) {
-                    console.error('Failed to initialize mainButton:', error.message);
+                } catch (error: unknown) {
+                    const message = error instanceof Error ? error.message : 'Unknown error';
+                    console.error('Failed to initialize mainButton:', message);
                     // If mainButton fails, we'll just return a no-op cleanup
                     return () => {};
                 }

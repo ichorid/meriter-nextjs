@@ -100,7 +100,7 @@ export const Comment: React.FC<CommentProps> = ({
     const [showselector, setShowselector] = useState(false);
     
     // Fetch community info to get currency icon using v1 API
-    const { data: currencyCommunityInfo = {} } = useCommunity(curr || '');
+    const { data: currencyCommunityInfo } = useCommunity(curr || '');
     
     // Rate conversion no longer needed with v1 API - currencies are normalized
     const rate = 1;
@@ -132,7 +132,7 @@ export const Comment: React.FC<CommentProps> = ({
     const voteType = determineVoteType();
     
     // Get currency icon for separate rendering
-    const currencyIcon = currencyCommunityInfo?.settings?.iconUrl || currencyCommunityInfo?.icon;
+    const currencyIcon = currencyCommunityInfo?.avatarUrl;
     
     // Create a unique identifier for this comment
     const postId = _id;
@@ -231,7 +231,7 @@ export const Comment: React.FC<CommentProps> = ({
     
     // Fetch community info for displaying community avatar using v1 API
     const communityId = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
-    const { data: communityInfo = {} } = useCommunity(communityId || '');
+    const { data: communityInfo } = useCommunity(communityId || '');
     
     const {
         comments,
@@ -400,9 +400,9 @@ export const Comment: React.FC<CommentProps> = ({
                     )
                 }
                 showCommunityAvatar={showCommunityAvatar}
-                communityAvatarUrl={communityInfo?.chat?.photo}
-                communityName={communityInfo?.chat?.title}
-                communityIconUrl={communityInfo?.icon}
+                communityAvatarUrl={communityInfo?.avatarUrl}
+                communityName={communityInfo?.name}
+                communityIconUrl={communityInfo?.avatarUrl}
                 onCommunityClick={() => {
                     if (communityId) {
                         window.location.href = `/meriter/communities/${communityId}`;

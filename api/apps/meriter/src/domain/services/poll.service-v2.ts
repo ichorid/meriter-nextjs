@@ -6,6 +6,7 @@ import { Poll as PollSchema, PollDocument } from '../models/poll/poll.schema';
 import { PollVoteRepository } from '../models/poll/poll-vote.repository';
 import { PollCreatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
+import { PollDocument as IPollDocument } from '../../common/interfaces/poll-document.interface';
 
 export interface CreatePollDto {
   communityId: string;
@@ -56,7 +57,7 @@ export class PollServiceV2 {
 
   async getPoll(id: string): Promise<Poll | null> {
     const doc = await this.pollModel.findOne({ id }).lean();
-    return doc ? Poll.fromSnapshot(doc as any) : null;
+    return doc ? Poll.fromSnapshot(doc as IPollDocument) : null;
   }
 
   async getPollsByCommunity(communityId: string, limit: number = 20, skip: number = 0): Promise<Poll[]> {
@@ -67,7 +68,7 @@ export class PollServiceV2 {
       .sort({ createdAt: -1 })
       .lean();
     
-    return docs.map(doc => Poll.fromSnapshot(doc as any));
+    return docs.map(doc => Poll.fromSnapshot(doc as IPollDocument));
   }
 
   async getActivePolls(limit: number = 20, skip: number = 0): Promise<Poll[]> {
@@ -78,7 +79,7 @@ export class PollServiceV2 {
       .sort({ createdAt: -1 })
       .lean();
     
-    return docs.map(doc => Poll.fromSnapshot(doc as any));
+    return docs.map(doc => Poll.fromSnapshot(doc as IPollDocument));
   }
 
   async getPollResults(pollId: string): Promise<Array<{ optionIndex: number; totalAmount: number }>> {
@@ -99,7 +100,7 @@ export class PollServiceV2 {
         throw new NotFoundException('Poll not found');
       }
 
-      const poll = Poll.fromSnapshot(doc as any);
+      const poll = Poll.fromSnapshot(doc as IPollDocument);
       
       if (poll.hasExpired()) {
         poll.expire();

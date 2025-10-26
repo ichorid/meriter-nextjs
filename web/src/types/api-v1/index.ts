@@ -1,5 +1,201 @@
-// Frontend types - re-export from shared types
-export * from '@meriter/shared-types';
+// Frontend types - local definitions since shared-types is not working
+// User types
+export interface User {
+  id: string;
+  telegramId: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  displayName: string;
+  avatarUrl?: string;
+  profile?: {
+    bio?: string;
+    location?: string;
+    website?: string;
+    isVerified?: boolean;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Community types
+export interface Community {
+  id: string;
+  name: string;
+  description?: string;
+  avatarUrl?: string;
+  memberCount: number;
+  isActive: boolean;
+  hashtags?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Space types
+export interface Space {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  communityId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Publication types
+export interface Publication {
+  id: string;
+  title: string;
+  content: string;
+  authorId: string;
+  communityId: string;
+  spaceId?: string;
+  type: 'text' | 'image' | 'video' | 'poll';
+  imageUrl?: string;
+  videoUrl?: string;
+  hashtags?: string[];
+  createdAt: string;
+  updatedAt: string;
+  metrics?: {
+    score: number;
+    commentCount: number;
+  };
+}
+
+// Comment types
+export interface Comment {
+  id: string;
+  authorId: string;
+  content: string;
+  targetType: 'publication' | 'comment';
+  targetId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Thank types
+export interface Thank {
+  id: string;
+  userId: string;
+  targetType: 'publication' | 'comment';
+  targetId: string;
+  amount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Poll types
+export interface Poll {
+  id: string;
+  title: string;
+  description?: string;
+  options: PollOption[];
+  communityId: string;
+  authorId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PollOption {
+  id: string;
+  text: string;
+  votes: number;
+  percentage: number;
+}
+
+export interface PollVote {
+  id: string;
+  pollId: string;
+  optionId: string;
+  userId: string;
+  amount: number;
+  createdAt: string;
+}
+
+// Wallet types
+export interface Wallet {
+  id: string;
+  userId: string;
+  communityId: string;
+  balance: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Transaction types
+export interface Transaction {
+  id: string;
+  userId: string;
+  communityId: string;
+  amount: number;
+  type: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// DTO types
+export interface CreatePublicationDto {
+  title: string;
+  content: string;
+  communityId: string;
+  spaceId?: string;
+  type: 'text' | 'image' | 'video' | 'poll';
+  imageUrl?: string;
+  videoUrl?: string;
+  hashtags?: string[];
+}
+
+export interface CreateCommentDto {
+  content: string;
+  targetType: 'publication' | 'comment';
+  targetId: string;
+}
+
+export interface CreateThankDto {
+  amount: number;
+  comment?: string;
+}
+
+export interface CreatePollDto {
+  title: string;
+  description?: string;
+  options: { text: string }[];
+  communityId: string;
+}
+
+export interface CreatePollVoteDto {
+  optionIndex: number;
+  amount: number;
+}
+
+export interface UpdateCommunityDto {
+  name?: string;
+  description?: string;
+  avatarUrl?: string;
+  isActive?: boolean;
+}
+
+export interface UpdateSpaceDto {
+  name?: string;
+  description?: string;
+}
+
+// Query parameter types
+export interface ListQueryParams {
+  skip?: number;
+  limit?: number;
+  sort?: string;
+  order?: string;
+}
+
+// Pagination types
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  skip: number;
+  limit: number;
+}
 
 // Additional frontend-specific types
 export interface ApiError {

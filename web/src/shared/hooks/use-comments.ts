@@ -4,7 +4,17 @@ import { apiClient } from '@/lib/api/client';
 import { commentsApiV1, thanksApiV1, usersApiV1 } from '@/lib/api/v1';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
+import type { Dispatch, SetStateAction } from 'react';
+
 const { round } = Math;
+
+interface Wallet {
+  id: string;
+  userId: string;
+  communityId: string;
+  balance: number;
+  [key: string]: unknown;
+}
 
 export const useComments = (
     forTransaction: boolean,
@@ -12,11 +22,11 @@ export const useComments = (
     transactionId: string,
     getCommentsApiPath: string,
     getFreeBalanceApiPath: string,
-    balance: any,
-    updBalance: any,
+    balance: Wallet | null,
+    updBalance: () => Promise<void>,
     plusGiven: number,
     minusGiven: number,
-    activeCommentHook: any,
+    activeCommentHook: [string | null, Dispatch<SetStateAction<string | null>>],
     onlyPublication = false
 ) => {
     const t = useTranslations('comments');
@@ -52,7 +62,7 @@ export const useComments = (
 
     // Get user quota for free balance
     const { user } = useAuth();
-    const { data: free = {} } = useQuery({
+    const { data: free = { plus: 0, minus: 0 } } = useQuery({
         queryKey: ['quota', user?.id],
         queryFn: async () => {
             if (!user?.id) return { plus: 0, minus: 0 };
@@ -132,8 +142,9 @@ export const useComments = (
                         }
                     }
                 }
-            } catch (err: any) {
-                setError(err.message || t('errorCommenting'));
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : t('errorCommenting');
+                setError(message);
             }
         },
         error,

@@ -29,7 +29,7 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const { data: poll, error: pollError } = usePoll(pollId);
     const chatId = poll?.communityId;
     
-    const { data: comms = {} } = useCommunity(chatId || '');
+    const { data: comms } = useCommunity(chatId || '');
     
     const { data: balance = 0 } = useQuery({
         queryKey: ['wallet-balance', user?.id, chatId],
@@ -77,7 +77,7 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
         queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
     };
 
-    const chatNameVerb = String(chat?.title ?? "");
+    const chatNameVerb = String(poll?.communityId ?? "");
     const activeCommentHook = useState(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
@@ -88,36 +88,36 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
     // Debug user object
     console.log('🔍 Poll page user object:', { 
         user: user, 
-        hasToken: !!user?.token, 
-        hasInit: !!user?.init,
-        hasTgUserId: !!user?.tgUserId 
+        hasToken: !!user?.id, 
+        hasInit: !!user?.id,
+        hasTgUserId: !!user?.telegramId 
     });
 
-    if (!user?.token) {
-        console.log('❌ Poll page: No user token, returning null');
+    if (!user?.id) {
+        console.log('❌ Poll page: No user ID, returning null');
         return null;
     }
 
-    const tgAuthorId = user?.tgUserId;
+    const tgAuthorId = user?.telegramId;
 
     // Handle case when poll is not found
-    if (pollError || (pollData && pollData.error)) {
+    if (pollError || !poll) {
         return (
             <Page className="feed">
                 <HeaderAvatarBalance
-                    balance1={{ icon: chat?.icon, amount: balance }}
+                    balance1={{ icon: undefined, amount: balance }}
                     balance2={undefined}
                     avatarUrl={telegramGetAvatarLink(tgAuthorId)}
                     onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
                     onClick={() => {
                         router.push("/meriter/home");
                     }}
-                    userName={user?.name || 'User'}
+                    userName={user?.displayName || 'User'}
                 >
                     <MenuBreadcrumbs
                         chatId={chatId}
                         chatNameVerb={chatNameVerb}
-                        chatIcon={comms?.icon}
+                        chatIcon={comms?.avatarUrl}
                         postText="Poll Not Found"
                     />
                 </HeaderAvatarBalance>
@@ -143,19 +143,19 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
         return (
             <Page className="feed">
                 <HeaderAvatarBalance
-                    balance1={{ icon: chat?.icon, amount: balance }}
+                    balance1={{ icon: undefined, amount: balance }}
                     balance2={undefined}
                     avatarUrl={telegramGetAvatarLink(tgAuthorId)}
                     onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
                     onClick={() => {
                         router.push("/meriter/home");
                     }}
-                    userName={user?.name || 'User'}
+                    userName={user?.displayName || 'User'}
                 >
                     <MenuBreadcrumbs
                         chatId={chatId}
                         chatNameVerb={chatNameVerb}
-                        chatIcon={comms?.icon}
+                        chatIcon={comms?.avatarUrl}
                         postText="Loading Poll..."
                     />
                 </HeaderAvatarBalance>
@@ -173,26 +173,26 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
     return (
         <Page className="feed">
             <HeaderAvatarBalance
-                balance1={{ icon: chat?.icon, amount: balance }}
+                balance1={{ icon: undefined, amount: balance }}
                 balance2={undefined}
                 avatarUrl={telegramGetAvatarLink(tgAuthorId)}
                 onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
                 onClick={() => {
                     router.push("/meriter/home");
                 }}
-                userName={user?.name || 'User'}
+                userName={user?.displayName || 'User'}
             >
                 <MenuBreadcrumbs
                     chatId={chatId}
                     chatNameVerb={chatNameVerb}
-                    chatIcon={comms?.icon}
-                    postText={poll?.content?.title ? ellipsize(poll.content.title, 60) : 'Poll'}
+                    chatIcon={comms?.avatarUrl}
+                    postText={poll?.title ? ellipsize(poll.title, 60) : 'Poll'}
                 />
             </HeaderAvatarBalance>
 
             <div className="space-y-4">
                 <Publication
-                    key={poll._id}
+                    key={poll.id}
                     {...poll}
                     balance={balance}
                     updBalance={updBalance}
@@ -205,7 +205,7 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     updateWalletBalance={updateWalletBalance}
                     updateAll={updateAll}
                     dimensionConfig={undefined}
-                    myId={user?.tgUserId}
+                    myId={user?.telegramId}
                     onlyPublication={true}
                     highlightTransactionId={undefined}
                     isDetailPage={true}

@@ -7,9 +7,9 @@ export const useWallets = () => {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: queryKeys.wallet.wallets(user?.tgUserId),
-    queryFn: () => usersApiV1.getUserWallets(user?.tgUserId || ''),
-    enabled: !!user?.tgUserId,
+    queryKey: queryKeys.wallet.wallets(),
+    queryFn: () => usersApiV1.getUserWallets(user?.telegramId || ''),
+    enabled: !!user?.telegramId,
   });
 };
 
@@ -17,8 +17,8 @@ export const useTransactions = (params: Record<string, any> = {}) => {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: queryKeys.wallet.transactionsList({ userId: user?.tgUserId, ...params }),
-    queryFn: () => usersApiV1.getUserTransactions(user?.tgUserId || '', params),
-    enabled: !!user?.tgUserId,
+    queryKey: queryKeys.wallet.transactionsList({ userId: user?.telegramId, ...params }),
+    queryFn: () => usersApiV1.getUserTransactions(user?.telegramId || '', params),
+    enabled: !!user?.telegramId,
   });
 };

@@ -1,8 +1,30 @@
 // Comments React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { commentsApiV1 } from '@/lib/api/v1';
-import type { Comment, CreateCommentRequest } from '@/types/api-v1';
-import type { GetCommentsRequest } from '@/types/api-v1';
+
+// Local type definitions
+interface Comment {
+  id: string;
+  authorId: string;
+  content: string;
+  targetType: 'publication' | 'comment';
+  targetId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CreateCommentRequest {
+  content: string;
+  targetType: 'publication' | 'comment';
+  targetId: string;
+}
+
+interface GetCommentsRequest {
+  skip?: number;
+  limit?: number;
+  publicationId?: string;
+  userId?: string;
+}
 
 // Query keys
 export const commentsKeys = {

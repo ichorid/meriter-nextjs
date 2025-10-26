@@ -3,7 +3,27 @@ import { Card, CardBody } from '@/components/atoms';
 import { UserCard, VoteIndicator } from '@/components/molecules';
 import { Avatar, Badge, Button, Icon, Divider } from '@/components/atoms';
 import { formatDate } from '@/lib/utils/date';
-import type { Comment } from '@meriter/shared-types';
+
+// Local Comment type definition
+interface Comment {
+  id: string;
+  authorId: string;
+  author?: {
+    avatarUrl?: string;
+    displayName: string;
+  };
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  authorVoteAmount?: number;
+  metrics: {
+    upthanks: number;
+    downthanks: number;
+    score: number;
+    replyCount: number;
+    thanks?: number;
+  };
+}
 
 export interface CommentThreadProps {
   comment: Comment;

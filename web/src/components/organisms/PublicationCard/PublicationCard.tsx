@@ -1,10 +1,46 @@
 import React from 'react';
 import { Card, CardBody, CardHeader } from '@/components/atoms';
-import { PublicationHeader } from './PublicationHeader';
-import { PublicationContent } from './PublicationContent';
-import { PublicationActions } from './PublicationActions';
+import { PublicationCardHeader } from './PublicationHeader';
+import { PublicationCardContent } from './PublicationContent';
+import { PublicationCardActions } from './PublicationActions';
 import { PublicationMetrics } from './PublicationMetrics';
-import type { Publication } from '@meriter/shared-types';
+
+// Local Publication type definition
+interface Publication {
+  id: string;
+  slug?: string;
+  content?: string;
+  createdAt: string;
+  authorId?: string;
+  communityId?: string;
+  hashtags?: string[];
+  imageUrl?: string;
+  videoUrl?: string;
+  type?: 'video' | 'image' | 'text';
+  metrics?: {
+    score?: number;
+    commentCount?: number;
+  };
+  meta?: {
+    commentTgEntities?: any[];
+    comment?: string;
+    author?: {
+      name?: string;
+      photoUrl?: string;
+      username?: string;
+    };
+    beneficiary?: {
+      name?: string;
+      photoUrl?: string;
+      username?: string;
+    };
+    origin?: {
+      telegramChatName?: string;
+    };
+    hashtagName?: string;
+  };
+  [key: string]: unknown;
+}
 
 export interface PublicationCardProps {
   publication: Publication;
@@ -28,31 +64,31 @@ export const PublicationCard: React.FC<PublicationCardProps> = ({
   return (
     <Card hover bordered className="cursor-pointer" onClick={onClick}>
       <CardBody>
-        <PublicationHeader
-          authorId={publication.authorId}
+        <PublicationCardHeader
+          authorId={publication.authorId || ''}
           communityId={showCommunity ? publication.communityId : undefined}
           communityName={showCommunity ? communityName : undefined}
           createdAt={publication.createdAt}
           hashtags={publication.hashtags}
         />
         
-        <PublicationContent
-          content={publication.content}
+        <PublicationCardContent
+          content={publication.content || ''}
           imageUrl={publication.imageUrl}
           videoUrl={publication.videoUrl}
-          type={publication.type}
+          type={publication.type || 'text'}
         />
         
         <PublicationMetrics 
-          metrics={publication.metrics}
-          commentCount={publication.metrics.commentCount}
+          metrics={publication.metrics || { score: 0, commentCount: 0 }}
+          commentCount={publication.metrics?.commentCount || 0}
         />
         
-        <PublicationActions
+        <PublicationCardActions
           onVote={onVote || (() => {})}
           onComment={onComment || (() => {})}
           onShare={onShare}
-          commentCount={publication.metrics.commentCount}
+          commentCount={publication.metrics?.commentCount || 0}
         />
       </CardBody>
     </Card>

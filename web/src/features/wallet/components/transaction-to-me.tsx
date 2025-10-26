@@ -39,7 +39,7 @@ export const TransactionToMe = ({
     const t = useTranslations('shared');
     
     // Fetch community info to get currency icon using v1 API
-    const { data: communityInfo = {} } = useCommunity(transaction.currencyOfCommunityTgChatId || '');
+    const { data: communityInfo } = useCommunity(transaction.currencyOfCommunityTgChatId || '');
     
     // Format the rate with currency icon
     const formatRate = () => {
@@ -68,7 +68,7 @@ export const TransactionToMe = ({
     const voteType = determineVoteType();
     
     // Get currency icon for separate rendering
-    const currencyIcon = communityInfo?.settings?.iconUrl || communityInfo?.icon;
+    const currencyIcon = communityInfo?.avatarUrl;
     
     return (
         <div>
@@ -95,9 +95,9 @@ export const TransactionToMe = ({
                     }
                 }}
                 showCommunityAvatar={true}
-                communityAvatarUrl={communityInfo?.avatarUrl || communityInfo?.chat?.photo}
-                communityName={communityInfo?.name || communityInfo?.chat?.title}
-                communityIconUrl={communityInfo?.settings?.iconUrl || communityInfo?.icon}
+                communityAvatarUrl={communityInfo?.avatarUrl}
+                communityName={communityInfo?.name}
+                communityIconUrl={communityInfo?.avatarUrl}
                 onCommunityClick={() => {
                     if (transaction.currencyOfCommunityTgChatId) {
                         window.location.href = `/meriter/communities/${transaction.currencyOfCommunityTgChatId}`;

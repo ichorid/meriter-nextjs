@@ -6,7 +6,33 @@ import { PublicationHeader } from './PublicationHeader';
 import { PublicationContent } from './PublicationContent';
 import { PublicationActions } from './PublicationActions';
 import { usePublication } from '@/hooks/usePublication';
-import type { Publication as IPublication, Wallet } from '@/types/entities';
+
+// Local type definitions
+interface IPublication {
+  id: string;
+  slug?: string;
+  title: string;
+  content: string;
+  authorId: string;
+  communityId: string;
+  type: 'text' | 'image' | 'video' | 'poll';
+  createdAt: string;
+  updatedAt: string;
+  metrics?: {
+    score: number;
+    commentCount: number;
+  };
+  [key: string]: unknown;
+}
+
+interface Wallet {
+  id: string;
+  userId: string;
+  communityId: string;
+  balance: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface PublicationCardProps {
   publication: IPublication;
@@ -17,7 +43,7 @@ interface PublicationCardProps {
   className?: string;
 }
 
-export const PublicationCard: React.FC<PublicationCardProps> = ({
+export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   publication,
   wallets = [],
   updateWalletBalance,

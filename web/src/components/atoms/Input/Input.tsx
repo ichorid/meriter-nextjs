@@ -2,8 +2,8 @@ import React from 'react';
 
 export type InputSize = 'xs' | 'sm' | 'md' | 'lg';
 
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  size?: InputSize;
+export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
+  inputSize?: InputSize;
   error?: string;
   label?: string;
   helperText?: string;
@@ -15,7 +15,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
     {
-      size = 'md',
+      inputSize = 'md',
       error,
       label,
       helperText,
@@ -40,7 +40,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const inputClasses = [
       'input',
       'input-bordered',
-      sizeClasses[size],
+      sizeClasses[inputSize],
       error && 'input-error',
       fullWidth && 'w-full',
       className,

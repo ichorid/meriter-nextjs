@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { Model, Connection, ClientSession } from 'mongoose';
 import { Vote, VoteDocument } from '../models/vote/vote.schema';
 import { VoteAmount, UserId } from '../value-objects';
 import { uid } from 'uid';
@@ -11,6 +11,7 @@ export class VoteService {
 
   constructor(
     @InjectModel(Vote.name) private voteModel: Model<VoteDocument>,
+    @InjectConnection() private mongoose: Connection,
   ) {}
 
   async createVote(
@@ -22,39 +23,72 @@ export class VoteService {
   ): Promise<Vote> {
     this.logger.log(`Creating vote: user=${userId}, target=${targetType}:${targetId}, amount=${amount}`);
 
-    // Validate vote amount
-    const voteAmount = amount > 0 ? VoteAmount.up(amount) : VoteAmount.down(Math.abs(amount));
+    const session = await this.mongoose.startSession();
+    session.startTransaction();
 
-    // Check if user already voted on this target
-    const existing = await this.voteModel.findOne({ userId, targetType, targetId }).lean();
-    if (existing) {
-      throw new BadRequestException('Already voted on this content');
+    try {
+      // Validate vote amount
+      const voteAmount = amount > 0 ? VoteAmount.up(amount) : VoteAmount.down(Math.abs(amount));
+
+      // Check if user already voted on this target
+      const existing = await this.voteModel.findOne(
+        { userId, targetType, targetId }, 
+        null, 
+        { session }
+      ).lean();
+      
+      if (existing) {
+        throw new BadRequestException('Already voted on this content');
+      }
+
+      // Create vote with session for atomicity
+      const voteArray = await this.voteModel.create([{
+        id: uid(),
+        targetType,
+        targetId,
+        userId,
+        amount: voteAmount.getNumericValue(),
+        sourceType,
+        createdAt: new Date(),
+      }], { session });
+
+      await session.commitTransaction();
+
+      this.logger.log(`Vote created successfully: ${voteArray[0].id}`);
+      return voteArray[0];
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
     }
-
-    const vote = await this.voteModel.create({
-      id: uid(),
-      targetType,
-      targetId,
-      userId,
-      amount: voteAmount.getNumericValue(),
-      sourceType,
-      createdAt: new Date(),
-    });
-
-    this.logger.log(`Vote created successfully: ${vote.id}`);
-    return vote;
   }
 
   async removeVote(userId: string, targetType: 'publication' | 'comment', targetId: string): Promise<boolean> {
     this.logger.log(`Removing vote: user=${userId}, target=${targetType}:${targetId}`);
 
-    const result = await this.voteModel.deleteOne({ userId, targetType, targetId });
-    
-    if (result.deletedCount > 0) {
-      this.logger.log(`Vote removed successfully`);
-    }
+    const session = await this.mongoose.startSession();
+    session.startTransaction();
 
-    return result.deletedCount > 0;
+    try {
+      const result = await this.voteModel.deleteOne(
+        { userId, targetType, targetId }, 
+        { session }
+      );
+      
+      await session.commitTransaction();
+      
+      if (result.deletedCount > 0) {
+        this.logger.log(`Vote removed successfully`);
+      }
+
+      return result.deletedCount > 0;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   }
 
   async getUserVotes(userId: string, limit: number = 100, skip: number = 0): Promise<Vote[]> {

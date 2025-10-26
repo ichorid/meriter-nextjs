@@ -19,7 +19,7 @@ const transitionStyles: Record<string, { opacity: number }> = {
 }
 
 interface DivFadeProps {
-    text: any;
+    text: React.ReactNode;
     className?: string;
 }
 

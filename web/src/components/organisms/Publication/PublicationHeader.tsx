@@ -2,10 +2,38 @@
 'use client';
 
 import React from 'react';
-import { UserCard } from '@/components/molecules/UserCard';
-import { Badge } from '@/components/atoms/Badge';
+import { Avatar, Badge } from '@/components/atoms';
 import { dateVerbose } from '@shared/lib/date';
-import type { Publication } from '@/types/entities';
+
+// Local Publication type definition
+interface Publication {
+  id: string;
+  slug?: string;
+  content?: string;
+  createdAt: string;
+  metrics?: {
+    score?: number;
+  };
+  meta?: {
+    commentTgEntities?: any[];
+    comment?: string;
+    author?: {
+      name?: string;
+      photoUrl?: string;
+      username?: string;
+    };
+    beneficiary?: {
+      name?: string;
+      photoUrl?: string;
+      username?: string;
+    };
+    origin?: {
+      telegramChatName?: string;
+    };
+    hashtagName?: string;
+  };
+  [key: string]: unknown;
+}
 
 interface PublicationHeaderProps {
   publication: Publication;
@@ -19,12 +47,12 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   className = '',
 }) => {
   const author = {
-    name: publication.meta.author.name,
-    photoUrl: publication.meta.author.photoUrl,
-    username: publication.meta.author.username,
+    name: publication.meta?.author?.name || 'Unknown',
+    photoUrl: publication.meta?.author?.photoUrl,
+    username: publication.meta?.author?.username,
   };
 
-  const beneficiary = publication.meta.beneficiary ? {
+  const beneficiary = publication.meta?.beneficiary ? {
     name: publication.meta.beneficiary.name,
     photoUrl: publication.meta.beneficiary.photoUrl,
     username: publication.meta.beneficiary.username,
@@ -33,20 +61,32 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   return (
     <div className={`flex items-start justify-between ${className}`}>
       <div className="flex items-start gap-3">
-        <UserCard user={author} size="md" />
+        <div className="flex items-center gap-2">
+          <Avatar src={author.photoUrl} alt={author.name} size="md" />
+          <div className="flex flex-col">
+            <span className="font-medium">{author.name}</span>
+            {author.username && <span className="text-sm text-base-content/60">@{author.username}</span>}
+          </div>
+        </div>
         
         {beneficiary && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-base-content/60">→</span>
-            <UserCard user={beneficiary} size="sm" />
+            <div className="flex items-center gap-2">
+              <Avatar src={beneficiary.photoUrl} alt={beneficiary.name} size="sm" />
+              <div className="flex flex-col">
+                <span className="font-medium text-sm">{beneficiary.name}</span>
+                {beneficiary.username && <span className="text-xs text-base-content/60">@{beneficiary.username}</span>}
+              </div>
+            </div>
           </div>
         )}
         
-        {showCommunityAvatar && publication.meta.origin.telegramChatName && (
+        {showCommunityAvatar && publication.meta?.origin?.telegramChatName && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-base-content/60">in</span>
             <Badge variant="info" size="sm">
-              {publication.meta.origin.telegramChatName}
+              {publication.meta?.origin?.telegramChatName}
             </Badge>
           </div>
         )}
@@ -56,9 +96,9 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
         <span className="text-xs text-base-content/60">
           {dateVerbose(new Date(publication.createdAt))}
         </span>
-        {publication.meta.hashtagName && (
-          <Badge variant="default" size="sm">
-            #{publication.meta.hashtagName}
+        {publication.meta?.hashtagName && (
+          <Badge variant="primary" size="sm">
+            #{publication.meta?.hashtagName}
           </Badge>
         )}
       </div>

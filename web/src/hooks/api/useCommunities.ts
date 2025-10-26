@@ -2,7 +2,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { communitiesApiV1 } from '@/lib/api/v1';
 import { queryKeys } from '@/lib/constants/queryKeys';
-import type { UpdateCommunityDto } from '@meriter/shared-types';
+
+// Local type definition
+interface UpdateCommunityDto {
+  name?: string;
+  description?: string;
+  avatarUrl?: string;
+  isActive?: boolean;
+}
 
 export const useCommunities = () => {
   return useQuery({

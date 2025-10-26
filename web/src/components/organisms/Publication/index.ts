@@ -1,6 +1,6 @@
 // Publication organism exports
 export { Publication } from './Publication';
-export { PublicationCard } from './PublicationCard';
+export { PublicationCardComponent } from './PublicationCard';
 export { PublicationHeader } from './PublicationHeader';
 export { PublicationContent } from './PublicationContent';
 export { PublicationActions } from './PublicationActions';

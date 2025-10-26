@@ -24,7 +24,7 @@ import { Spinner } from '@shared/components/misc';
 import { CardPublication } from '@features/feed/components/card-publication';
 import { classList } from '@lib/classList';
 import { dateVerbose } from '@shared/lib/date';
-import { GLOBAL_FEED_TG_CHAT_ID } from '../../../config/meriter';
+import { GLOBAL_FEED_TG_CHAT_ID } from '../../../../config/meriter';
 import type { IPollData } from '@features/polls/types';
 
 export interface IPublication {
@@ -63,7 +63,7 @@ export interface PublicationProps {
   slug: string;
   spaceSlug: string;
   balance: any;
-  updBalance?: () => void;
+  updBalance?: () => Promise<void>;
   messageText: string;
   authorPhotoUrl: string;
   tgAuthorName: string;
@@ -79,7 +79,7 @@ export interface PublicationProps {
   _id?: string;
   
   // State management
-  activeCommentHook: any[];
+  activeCommentHook: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
   activeSlider?: string | null;
   setActiveSlider?: (slider: string | null) => void;
   myId?: string;
@@ -115,7 +115,7 @@ export const Publication: React.FC<PublicationProps> = ({
   slug,
   spaceSlug,
   balance,
-  updBalance = () => {},
+  updBalance = async () => {},
   messageText,
   authorPhotoUrl,
   tgAuthorName,
@@ -223,6 +223,7 @@ export const Publication: React.FC<PublicationProps> = ({
     slug,
     "",
     "",
+    "",
     balance,
     updBalance,
     plus,
@@ -255,7 +256,7 @@ export const Publication: React.FC<PublicationProps> = ({
   
   // Render poll publication
   if (type === 'poll' && pollData) {
-    const avatarUrl = authorPhotoUrl || telegramGetAvatarLink(tgAuthorId);
+    const avatarUrl = authorPhotoUrl || (tgAuthorId ? telegramGetAvatarLink(tgAuthorId) : undefined);
     
     const withdrawSliderContent = stateLogic.isAuthor && votingLogic.directionAdd !== undefined && (
       <>
@@ -313,9 +314,9 @@ export const Publication: React.FC<PublicationProps> = ({
           onDescriptionClick={undefined}
           bottom={undefined}
           showCommunityAvatar={showCommunityAvatar}
-          communityAvatarUrl={stateLogic.communityInfo?.chat?.photo}
-          communityName={stateLogic.communityInfo?.chat?.title || tgChatName}
-          communityIconUrl={stateLogic.communityInfo?.icon}
+          communityAvatarUrl={stateLogic.communityInfo?.avatarUrl}
+          communityName={stateLogic.communityInfo?.name || tgChatName}
+          communityIconUrl={stateLogic.communityInfo?.avatarUrl}
           onCommunityClick={() => navigationLogic.navigateToCommunity(stateLogic.communityInfo?.id || '')}
           withdrawSliderContent={withdrawSliderContent}
         >
@@ -324,7 +325,7 @@ export const Publication: React.FC<PublicationProps> = ({
             pollId={_id || slug}
             userVote={pollUserVote || undefined}
             userVoteSummary={pollUserVoteSummary || undefined}
-            balance={stateLogic.effectiveBalance}
+            balance={stateLogic.effectiveBalance || 0}
             onVoteSuccess={stateLogic.handlePollVoteSuccess}
             updateWalletBalance={updateWalletBalance}
             communityId={pollData?.communityId}
@@ -452,9 +453,9 @@ export const Publication: React.FC<PublicationProps> = ({
           )
         }
         showCommunityAvatar={showCommunityAvatar}
-        communityAvatarUrl={stateLogic.communityInfo?.chat?.photo}
-        communityName={stateLogic.communityInfo?.chat?.title || tgChatName}
-        communityIconUrl={stateLogic.communityInfo?.icon}
+        communityAvatarUrl={stateLogic.communityInfo?.avatarUrl}
+        communityName={stateLogic.communityInfo?.name || tgChatName}
+        communityIconUrl={stateLogic.communityInfo?.avatarUrl}
         onCommunityClick={() => navigationLogic.navigateToCommunity(stateLogic.communityInfo?.id || '')}
         withdrawSliderContent={withdrawSliderContent}
       >

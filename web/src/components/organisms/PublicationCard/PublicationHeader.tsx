@@ -11,7 +11,7 @@ export interface PublicationHeaderProps {
   hashtags?: string[];
 }
 
-export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
+export const PublicationCardHeader: React.FC<PublicationHeaderProps> = ({
   authorId,
   communityName,
   createdAt,

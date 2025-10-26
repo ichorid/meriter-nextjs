@@ -8,6 +8,7 @@ import { UserId, CommunityId, WalletId } from '../value-objects';
 import { WalletBalanceChangedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { uid } from 'uid';
+import { WalletDocument as IWalletDocument } from '../../common/interfaces/wallet-document.interface';
 
 @Injectable()
 export class WalletServiceV2 {
@@ -26,7 +27,7 @@ export class WalletServiceV2 {
       .lean()
       .exec();
     
-    return doc ? Wallet.fromSnapshot(doc as any) : null;
+    return doc ? Wallet.fromSnapshot(doc as IWalletDocument) : null;
   }
 
   async createOrGetWallet(
@@ -146,7 +147,7 @@ export class WalletServiceV2 {
       .lean()
       .exec();
     
-    return docs.map(doc => Wallet.fromSnapshot(doc as any));
+    return docs.map(doc => Wallet.fromSnapshot(doc as IWalletDocument));
   }
 
   async createTransaction(

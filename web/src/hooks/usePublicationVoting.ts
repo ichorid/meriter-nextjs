@@ -3,6 +3,15 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api/client';
 import { useTranslations } from 'next-intl';
 
+interface Wallet {
+  id: string;
+  userId: string;
+  communityId: string;
+  balance: number;
+  currencyOfCommunityTgChatId?: string;
+  [key: string]: unknown;
+}
+
 export interface UsePublicationVotingProps {
   slug: string;
   _id?: string;
@@ -10,7 +19,7 @@ export interface UsePublicationVotingProps {
   isAuthor: boolean;
   tgAuthorId?: string;
   myId?: string;
-  wallets?: any[];
+  wallets?: Wallet[];
   currencyOfCommunityTgChatId?: string;
   fromTgChatId?: string;
   tgChatId?: string;
@@ -58,7 +67,9 @@ export function usePublicationVoting({
   // Calculate current balance
   const curr = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
   const currentBalance = (Array.isArray(wallets) &&
-    wallets.find((w) => w.currencyOfCommunityTgChatId == curr)?.amount) || 0;
+    wallets.find((w) => w.currencyOfCommunityTgChatId == curr)?.balance) || 0;
+  
+  const effectiveSum = optimisticSum ?? sum;
   
   // Calculate withdrawal amounts
   const meritsAmount = isAuthor
@@ -72,8 +83,6 @@ export function usePublicationVoting({
   const maxTopUpAmount = isAuthor
     ? Math.floor(10 * (withdrawMerits ? currentBalance : currentBalance)) / 10
     : 0;
-  
-  const effectiveSum = optimisticSum ?? sum;
   
   // Create unique post ID
   const postId = slug || _id;
@@ -149,7 +158,7 @@ export function usePublicationVoting({
         setActiveSlider && setActiveSlider(null);
       } else {
         setActiveWithdrawPost(newState);
-        setActiveSlider && setActiveSlider(postId);
+        setActiveSlider && setActiveSlider(postId || null);
       }
     }
   };

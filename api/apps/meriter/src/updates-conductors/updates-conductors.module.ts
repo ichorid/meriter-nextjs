@@ -7,7 +7,7 @@ import {
 } from './model/updates-conductor.schema';
 import { UpdatesConductorsService } from './updates-conductors.service';
 
-import { TgChatsModule } from '../tg-chats/tg-chats.module';
+import { DomainModule } from '../domain.module';
 import { TgBotsModule } from '../tg-bots/tg-bots.module';
 import { DatabaseModule } from '../common/database/database.module';
 
@@ -15,11 +15,10 @@ import { DatabaseModule } from '../common/database/database.module';
   imports: [
     ScheduleModule.forRoot(),
     DatabaseModule,
-    MongooseModule.forFeature(
-      [{ name: UpdatesConductor.name, schema: UpdatesConductorSchema }],
-      'default',
-    ),
-    TgChatsModule,
+    MongooseModule.forFeature([
+      { name: UpdatesConductor.name, schema: UpdatesConductorSchema }
+    ]),
+    DomainModule,
     TgBotsModule,
   ],
   providers: [UpdatesConductorsService],

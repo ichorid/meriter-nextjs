@@ -3,6 +3,17 @@ import { useState, useEffect } from 'react';
 import { telegramGetAvatarLink, telegramGetAvatarLinkUpd } from '@shared/lib/telegram';
 import { useCommunity } from '@/hooks/api';
 import { GLOBAL_FEED_TG_CHAT_ID } from '../../config/meriter';
+import type { Dispatch, SetStateAction } from 'react';
+import { useTranslations } from 'next-intl';
+
+interface Wallet {
+  id: string;
+  userId: string;
+  communityId: string;
+  balance: number;
+  currencyOfCommunityTgChatId?: string;
+  [key: string]: unknown;
+}
 
 export interface UsePublicationStateProps {
   tgAuthorId?: string;
@@ -13,18 +24,18 @@ export interface UsePublicationStateProps {
   myId?: string;
   tgChatId?: string;
   showCommunityAvatar?: boolean;
-  wallets?: any[];
+  wallets?: Wallet[];
   balance?: number;
   updBalance?: () => void;
   type?: string;
-  content?: any;
+  content?: unknown;
   _id?: string;
   onlyPublication?: boolean;
   isDetailPage?: boolean;
-  activeCommentHook?: any[];
-  dimensions?: any;
+  activeCommentHook?: [string | null, Dispatch<SetStateAction<string | null>>];
+  dimensions?: Record<string, unknown>;
   keyword?: string;
-  entities?: any;
+  entities?: Record<string, unknown>;
 }
 
 export function usePublicationState({
@@ -54,9 +65,9 @@ export function usePublicationState({
   // State management
   const [showselector, setShowselector] = useState(false);
   const [showDimensionsEditor, setShowDimensionsEditor] = useState(false);
-  const [pollUserVote, setPollUserVote] = useState(null);
-  const [pollUserVoteSummary, setPollUserVoteSummary] = useState(null);
-  const [pollData, setPollData] = useState<any>(type === 'poll' ? content : null);
+  const [pollUserVote, setPollUserVote] = useState<string | null>(null);
+  const [pollUserVoteSummary, setPollUserVoteSummary] = useState<string | null>(null);
+  const [pollData, setPollData] = useState<unknown>(type === 'poll' ? content : null);
   
   // Check if current user is the author
   const isAuthor = myId === tgAuthorId;
@@ -73,29 +84,29 @@ export function usePublicationState({
   const isMerit = tgChatId === GLOBAL_FEED_TG_CHAT_ID;
   
   // Get community info
-  const communityId = tgChatId || (type === 'poll' ? content?.communityId : null);
-  const { data: communityInfo = {} } = useCommunity(communityId || '');
+  const communityId = tgChatId || (type === 'poll' ? (content as any)?.communityId : null);
+  const { data: communityInfo } = useCommunity(communityId || '');
   
   // Calculate poll balance
-  const pollCommunityId = type === 'poll' ? content?.communityId : null;
-  let effectiveBalance = balance;
+  const pollCommunityId = type === 'poll' ? (content as any)?.communityId : null;
+  let effectiveBalance = balance || 0;
   if (isAuthor && Array.isArray(wallets) && pollCommunityId) {
-    const pollWalletBalance = wallets.find((w: any) => w.currencyOfCommunityTgChatId === pollCommunityId)?.amount || 0;
+    const pollWalletBalance = wallets.find((w: Wallet) => w.currencyOfCommunityTgChatId === pollCommunityId)?.balance || 0;
     effectiveBalance = pollWalletBalance;
   } else {
-    effectiveBalance = showCommunityAvatar ? 0 : balance;
+    effectiveBalance = showCommunityAvatar ? 0 : (balance || 0);
   }
   
   // Generate avatar URL
-  const avatarUrl = authorPhotoUrl || telegramGetAvatarLink(tgAuthorId);
+  const avatarUrl = authorPhotoUrl || (tgAuthorId ? telegramGetAvatarLink(tgAuthorId) : undefined);
   
   // Handle avatar error
   const handleAvatarError = () => {
-    const fallbackUrl = telegramGetAvatarLinkUpd(tgAuthorId);
+    const fallbackUrl = tgAuthorId ? telegramGetAvatarLinkUpd(tgAuthorId) : undefined;
     if (fallbackUrl !== avatarUrl) {
       // Force re-render with fallback avatar
       const imgElement = document.querySelector(`img[src="${avatarUrl}"]`) as HTMLImageElement;
-      if (imgElement) imgElement.src = fallbackUrl;
+      if (imgElement && fallbackUrl) imgElement.src = fallbackUrl;
     }
   };
   

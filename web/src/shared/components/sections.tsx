@@ -2,7 +2,14 @@
 
 import { useState } from 'react'
 
-export const SectionToggle = ({ children, title, className, isOpened }: any) => {
+interface SectionToggleProps {
+    children?: React.ReactNode;
+    title?: string;
+    className?: string;
+    isOpened?: boolean;
+}
+
+export const SectionToggle = ({ children, title, className, isOpened }: SectionToggleProps) => {
     const [opened, setOpened] = useState(isOpened === false ? false : true)
     return (
         <section className={className}>

@@ -1,10 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { UserServiceV2 } from '../../domain/services/user.service-v2';
 import { CommunityServiceV2 } from '../../domain/services/community.service-v2';
 import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { User } from '../types/domain.types';
 import { signJWT } from '../../common/helpers/jwt';
+import { Community, CommunityDocument } from '../../domain/models/community/community.schema';
 import * as crypto from 'crypto';
 
 interface TelegramAuthData {
@@ -26,6 +29,7 @@ export class AuthService {
     private readonly communityService: CommunityServiceV2,
     private readonly tgBotsService: TgBotsService,
     private readonly configService: ConfigService,
+    @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
   ) {}
 
   async authenticateTelegramWidget(authData: TelegramAuthData): Promise<{
@@ -50,11 +54,9 @@ export class AuthService {
     const identity = `telegram://${telegramId}`;
 
     // Get existing user to compare avatar
-    const existingUser = await this.usersService.model.findOne({
-      identities: identity,
-    });
+    const existingUser = await this.userService.getUserByTelegramId(telegramId);
 
-    let avatarUrl = existingUser?.profile?.avatarUrl;
+    let avatarUrl = existingUser?.avatarUrl;
 
     // Try to get user's profile photo using Bot API
     try {
@@ -72,23 +74,20 @@ export class AuthService {
       }
     } catch (error) {
       this.logger.warn(`Failed to fetch avatar via Bot API for user ${telegramId}:`, error.message);
-      const existingIsS3 = existingUser?.profile?.avatarUrl?.includes('telegram_small_avatars');
-      avatarUrl = existingIsS3 ? existingUser.profile.avatarUrl : null;
+      const existingIsS3 = existingUser?.avatarUrl?.includes('telegram_small_avatars');
+      avatarUrl = existingIsS3 ? existingUser.avatarUrl : null;
     }
 
     const displayName = [authData.first_name, authData.last_name].filter((a) => a).join(' ');
 
-    const user = await this.usersService.upsert(
-      { identities: identity },
-      {
-        identities: [identity],
-        'profile.name': displayName,
-        'profile.firstName': authData.first_name,
-        'profile.lastName': authData.last_name,
-        'profile.avatarUrl': avatarUrl,
-        'meta.username': authData.username,
-      },
-    );
+    const user = await this.userService.createOrUpdateUser({
+      telegramId,
+      username: authData.username || undefined,
+      firstName: authData.first_name,
+      lastName: authData.last_name,
+      displayName,
+      avatarUrl: avatarUrl || undefined,
+    });
 
     if (!user) {
       throw new Error('Failed to create user session');
@@ -104,9 +103,9 @@ export class AuthService {
     const jwtToken = signJWT(
       {
         token: user.token,
-        uid: user.uid,
+        uid: user.id,
         telegramId,
-        tags: user.tags || [],
+        tags: user.communityTags || [],
       },
       jwtSecret,
       '365d',
@@ -114,7 +113,7 @@ export class AuthService {
 
     return {
       user: this.mapUserToV1Format(user),
-      hasPendingCommunities: (user.tags?.length || 0) > 0,
+      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
       jwt: jwtToken,
     };
   }
@@ -140,11 +139,9 @@ export class AuthService {
     const telegramId = webAppUser.id.toString();
     const identity = `telegram://${telegramId}`;
 
-    const existingUser = await this.usersService.model.findOne({
-      identities: identity,
-    });
+    const existingUser = await this.userService.getUserByTelegramId(telegramId);
 
-    let avatarUrl = existingUser?.profile?.avatarUrl;
+    let avatarUrl = existingUser?.avatarUrl;
 
     try {
       const newAvatarUrl = await this.tgBotsService.telegramGetChatPhotoUrl(
@@ -161,22 +158,20 @@ export class AuthService {
       }
     } catch (error) {
       this.logger.warn(`Failed to fetch avatar via Bot API for user ${telegramId}:`, error.message);
-      const existingIsS3 = existingUser?.profile?.avatarUrl?.includes('telegram_small_avatars');
-      avatarUrl = existingIsS3 ? existingUser.profile.avatarUrl : null;
+      const existingIsS3 = existingUser?.avatarUrl?.includes('telegram_small_avatars');
+      avatarUrl = existingIsS3 ? existingUser.avatarUrl : null;
     }
 
     const displayName = [webAppUser.first_name, webAppUser.last_name].filter((a) => a).join(' ');
 
-    const user = await this.usersService.upsert(
-      { identities: identity },
-      {
-        identities: [identity],
-        'profile.name': displayName,
-        'profile.firstName': webAppUser.first_name,
-        'profile.lastName': webAppUser.last_name,
-        'profile.avatarUrl': avatarUrl,
-      },
-    );
+    const user = await this.userService.createOrUpdateUser({
+      telegramId,
+      username: webAppUser.username || undefined,
+      firstName: webAppUser.first_name,
+      lastName: webAppUser.last_name,
+      displayName,
+      avatarUrl: avatarUrl || undefined,
+    });
 
     if (!user) {
       throw new Error('Failed to create user session');
@@ -192,9 +187,9 @@ export class AuthService {
     const jwtToken = signJWT(
       {
         token: user.token,
-        uid: user.uid,
+        uid: user.id,
         telegramId,
-        tags: user.tags || [],
+        tags: user.communityTags || [],
       },
       jwtSecret,
       '365d',
@@ -202,15 +197,13 @@ export class AuthService {
 
     return {
       user: this.mapUserToV1Format(user),
-      hasPendingCommunities: (user.tags?.length || 0) > 0,
+      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
       jwt: jwtToken,
     };
   }
 
   async getCurrentUser(reqUser: any): Promise<User> {
-    const user = await this.usersService.model.findOne({
-      identities: `telegram://${reqUser.tgUserId}`,
-    });
+    const user = await this.userService.getUserByTelegramId(reqUser.tgUserId);
 
     if (!user) {
       throw new Error('User not found');
@@ -290,13 +283,13 @@ export class AuthService {
   }
 
   private async discoverUserCommunities(telegramId: string): Promise<number> {
-    const allCommunities = await this.tgChatsService.model
-      .find({ domainName: 'tg-chat' })
+    const allCommunities = await this.communityModel
+      .find({ isActive: true })
       .limit(30)
       .lean();
 
     const membershipChecks = allCommunities.map(async (community) => {
-      const chatId = community.identities?.[0]?.replace('telegram://', '');
+      const chatId = community.telegramChatId;
       if (!chatId) return;
 
       try {
@@ -308,22 +301,20 @@ export class AuthService {
 
     await Promise.all(membershipChecks);
 
-    const updatedUser = await this.usersService.model.findOne({
-      identities: `telegram://${telegramId}`,
-    });
+    const updatedUser = await this.userService.getUser(telegramId);
 
-    return updatedUser?.tags?.length || 0;
+    return updatedUser?.communityTags?.length || 0;
   }
 
   private mapUserToV1Format(user: any): User {
     return {
-      id: user.uid,
-      telegramId: user.identities?.[0]?.replace('telegram://', '') || '',
-      username: user.meta?.username,
-      firstName: user.profile?.firstName,
-      lastName: user.profile?.lastName,
-      displayName: user.profile?.name || 'User',
-      avatarUrl: user.profile?.avatarUrl,
+      id: user.id,
+      telegramId: user.telegramId,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
       profile: {
         bio: user.profile?.bio,
         location: user.profile?.location,

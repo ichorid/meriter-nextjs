@@ -25,7 +25,7 @@ export class UpdatesConductorsService {
   model: Model<UpdatesConductorDocument>;
 
   constructor(
-    @InjectModel(UpdatesConductor.name, 'default')
+    @InjectModel(UpdatesConductor.name)
     updatesConductorModel: Model<UpdatesConductorDocument>,
 
     private readonly tgBotsService: TgBotsService,

@@ -9,7 +9,7 @@ export interface PublicationActionsProps {
   isLoading?: boolean;
 }
 
-export const PublicationActions: React.FC<PublicationActionsProps> = ({
+export const PublicationCardActions: React.FC<PublicationActionsProps> = ({
   onVote,
   onComment,
   onShare,

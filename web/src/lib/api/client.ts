@@ -1,8 +1,30 @@
 // Base API client with error handling and Zod validation
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { z } from 'zod';
-import type { ApiError, ApiErrorResponse, RequestConfig } from '@/types/common';
 import { config } from '@/config';
+
+// Local type definitions
+interface ApiError {
+  code: string;
+  message: string;
+  timestamp: string;
+  details?: {
+    status?: number;
+    data?: any;
+    url?: string;
+  };
+}
+
+interface ApiErrorResponse {
+  success: false;
+  error: string;
+  code?: string;
+}
+
+interface RequestConfig {
+  timeout?: number;
+  headers?: Record<string, string>;
+}
 
 export class ApiClient {
   private client: AxiosInstance;
@@ -28,7 +50,7 @@ export class ApiClient {
     // Cookies are automatically sent with withCredentials: true
     this.client.interceptors.request.use(
       (config) => {
-        console.log('🌐 API Request:', config.method?.toUpperCase(), config.url);
+        // Removed console.log for production
         return config;
       },
       (error) => Promise.reject(error)
@@ -37,7 +59,7 @@ export class ApiClient {
     // Response interceptor
     this.client.interceptors.response.use(
       (response: AxiosResponse) => {
-        console.log('🌐 API Response:', response.status, response.config.url);
+        // Removed console.log for production
         return response;
       },
       (error: AxiosError) => {
@@ -59,7 +81,9 @@ export class ApiClient {
       const { status, data } = error.response;
       
       apiError.code = `HTTP_${status}`;
-      apiError.message = (data as any)?.message || error.message;
+      // Type guard for error response data
+      const errorData = data as { message?: string };
+      apiError.message = errorData?.message || error.message;
       apiError.details = {
         status,
         data,

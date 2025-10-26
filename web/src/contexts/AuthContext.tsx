@@ -16,16 +16,37 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMe, useTelegramAuth, useTelegramWebAppAuth, useLogout } from '@/hooks/api/useAuth';
 import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
-import type { User } from '@meriter/shared-types';
+import type { TelegramUser } from '@/types/telegram';
+import type { Router } from 'next/router';
+import type { ParsedUrlQuery } from 'querystring';
+
+// Local User type definition
+interface User {
+  id: string;
+  telegramId: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  displayName: string;
+  avatarUrl?: string;
+  profile?: {
+    bio?: string;
+    location?: string;
+    website?: string;
+    isVerified?: boolean;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  authenticateWithTelegram: (user: any) => Promise<void>;
+  authenticateWithTelegram: (user: TelegramUser) => Promise<void>;
   authenticateWithTelegramWebApp: (initData: string) => Promise<void>;
   logout: () => Promise<void>;
-  handleDeepLink: (router: any, searchParams: any, startParam?: string) => void;
+  handleDeepLink: (router: Router, searchParams: ParsedUrlQuery, startParam?: string) => void;
   authError: string | null;
   setAuthError: (error: string | null) => void;
 }
@@ -48,18 +69,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const telegramWebAppAuthMutation = useTelegramWebAppAuth();
   const logoutMutation = useLogout();
   
-  const { handleDeepLink } = useDeepLinkHandler(router, null, undefined);
+  const { handleDeepLink } = useDeepLinkHandler(router as unknown as Router, null, undefined);
   
   const isLoading = userLoading || isAuthenticating;
   const isAuthenticated = !!user && !userError;
   
-  const authenticateWithTelegram = async (telegramUser: any) => {
+  const authenticateWithTelegram = async (telegramUser: TelegramUser) => {
     try {
       setIsAuthenticating(true);
       setAuthError(null);
       await telegramAuthMutation.mutateAsync(telegramUser);
-    } catch (error: any) {
-      setAuthError(error.message || 'Authentication failed');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Authentication failed';
+      setAuthError(message);
       throw error;
     } finally {
       setIsAuthenticating(false);
@@ -71,8 +93,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsAuthenticating(true);
       setAuthError(null);
       await telegramWebAppAuthMutation.mutateAsync(initData);
-    } catch (error: any) {
-      setAuthError(error.message || 'Authentication failed');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Authentication failed';
+      setAuthError(message);
       throw error;
     } finally {
       setIsAuthenticating(false);
@@ -85,8 +108,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setAuthError(null);
       await logoutMutation.mutateAsync();
       window.location.replace('/meriter/login');
-    } catch (error: any) {
-      setAuthError(error.message || 'Logout failed');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Logout failed';
+      setAuthError(message);
       window.location.replace('/meriter/login');
     } finally {
       setIsAuthenticating(false);

@@ -1,6 +1,18 @@
 import React from 'react';
 import { Avatar, Badge, Heading } from '@/components/atoms';
-import type { Community } from '@meriter/shared-types';
+
+// Local Community type definition
+interface Community {
+  id: string;
+  name: string;
+  description?: string;
+  avatarUrl?: string;
+  memberCount: number;
+  isActive: boolean;
+  hashtags?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface CommunityCardProps {
   community: Community;

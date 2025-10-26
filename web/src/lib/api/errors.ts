@@ -1,5 +1,28 @@
 // Error handling utilities
-import type { ApiError, ApiErrorResponse, ValidationError as ValidationErrorType } from '@/types/common';
+
+// Local type definitions
+interface ApiError {
+  code: string;
+  message: string;
+  timestamp: string;
+  details?: {
+    status?: number;
+    data?: any;
+    url?: string;
+  };
+}
+
+interface ApiErrorResponse {
+  success: false;
+  error: string;
+  code?: string;
+}
+
+interface ValidationErrorType {
+  field: string;
+  message: string;
+  code?: string;
+}
 
 export class AppError extends Error {
   public readonly code: string;

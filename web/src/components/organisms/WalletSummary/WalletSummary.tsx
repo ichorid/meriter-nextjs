@@ -67,7 +67,7 @@ export const WalletSummary: React.FC<WalletSummaryProps> = ({
                 <div className="flex gap-2">
                   {onTopup && (
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
                       onClick={() => onTopup(wallet.id)}
                     >

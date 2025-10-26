@@ -19,7 +19,8 @@ import type {
   UpdateCommunityDto,
   UpdateSpaceDto,
 } from '@/types/api-v1';
-import type { PaginatedResponse } from '@/types/common';
+import type { PaginatedResponse } from '@/types/api-v1';
+import type { TelegramUser, AuthResult, CommunityMember, LeaderboardEntry, PollVoteResult } from '@/types/api-responses';
 
 // Auth API with enhanced response handling
 export const authApiV1 = {
@@ -28,85 +29,44 @@ export const authApiV1 = {
     return response.data;
   },
 
-  async authenticateWithTelegramWidget(user: any): Promise<{ user: User; hasPendingCommunities: boolean }> {
-    try {
-      console.log('🔐 Auth API: Starting Telegram authentication with user:', user);
-      const response = await apiClient.postRaw<{ success: boolean; data: { user: User; hasPendingCommunities: boolean }; error?: string }>('/api/v1/auth/telegram/widget', user);
-      console.log('🔐 Auth API: Raw response received:', response);
-      console.log('🔐 Auth API: Response data:', response.data);
-      
-      if (!response.data) {
-        throw new Error('No response data received from server');
-      }
-      
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Authentication failed');
-      }
-      
-      // Handle the actual response structure: { success: true, data: { user: {...}, hasPendingCommunities: ... } }
-      if (!response.data.data) {
-        throw new Error('No data received from server');
-      }
-      
-      const authData = {
-        user: response.data.data.user,
-        hasPendingCommunities: response.data.data.hasPendingCommunities || false
-      };
-      
-      console.log('🔐 Auth API: Constructed auth data:', authData);
-      
-      console.log('🔐 Auth API: Authentication successful, returning data:', authData);
-      return authData;
-    } catch (error) {
-      console.error('🔐 Auth API: Authentication error:', error);
-      throw error;
+  async authenticateWithTelegramWidget(user: TelegramUser): Promise<AuthResult> {
+    const response = await apiClient.postRaw<{ success: boolean; data: AuthResult; error?: string }>('/api/v1/auth/telegram/widget', user);
+    
+    if (!response.data) {
+      throw new Error('No response data received from server');
     }
+    
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Authentication failed');
+    }
+    
+    if (!response.data.data) {
+      throw new Error('No data received from server');
+    }
+    
+    return response.data.data;
   },
 
-  async authenticateWithTelegramWebApp(initData: string): Promise<{ user: User; hasPendingCommunities: boolean }> {
-    try {
-      console.log('🔐 Auth API: Starting Telegram Web App authentication with initData:', initData);
-      const response = await apiClient.postRaw<{ success: boolean; data: { user: User; hasPendingCommunities: boolean }; error?: string }>('/api/v1/auth/telegram/webapp', { initData });
-      console.log('🔐 Auth API: Raw response received:', response);
-      console.log('🔐 Auth API: Response data:', response.data);
-      
-      if (!response.data) {
-        throw new Error('No response data received from server');
-      }
-      
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Authentication failed');
-      }
-      
-      // Handle the actual response structure: { success: true, data: { user: {...}, hasPendingCommunities: ... } }
-      if (!response.data.data) {
-        throw new Error('No data received from server');
-      }
-      
-      const authData = {
-        user: response.data.data.user,
-        hasPendingCommunities: response.data.data.hasPendingCommunities || false
-      };
-      
-      console.log('🔐 Auth API: Constructed auth data:', authData);
-      
-      console.log('🔐 Auth API: Authentication successful, returning data:', authData);
-      return authData;
-    } catch (error) {
-      console.error('🔐 Auth API: Authentication error:', error);
-      throw error;
+  async authenticateWithTelegramWebApp(initData: string): Promise<AuthResult> {
+    const response = await apiClient.postRaw<{ success: boolean; data: AuthResult; error?: string }>('/api/v1/auth/telegram/webapp', { initData });
+    
+    if (!response.data) {
+      throw new Error('No response data received from server');
     }
+    
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Authentication failed');
+    }
+    
+    if (!response.data.data) {
+      throw new Error('No data received from server');
+    }
+    
+    return response.data.data;
   },
 
   async logout(): Promise<void> {
-    try {
-      console.log('🔐 Auth API: Starting logout...');
-      await apiClient.post('/api/v1/auth/logout');
-      console.log('🔐 Auth API: Logout API call successful');
-    } catch (error) {
-      console.error('🔐 Auth API: Logout API call failed:', error);
-      throw error;
-    }
+    await apiClient.post('/api/v1/auth/logout');
   },
 };
 
@@ -176,7 +136,7 @@ export const communitiesApiV1 = {
     return response.data;
   },
 
-  async createCommunity(data: any): Promise<Community> {
+  async createCommunity(data: { name: string; description?: string; [key: string]: unknown }): Promise<Community> {
     const response = await apiClient.post<{ success: true; data: Community }>('/api/v1/communities', data);
     return response.data;
   },
@@ -190,8 +150,8 @@ export const communitiesApiV1 = {
     await apiClient.delete(`/api/v1/communities/${id}`);
   },
 
-  async getCommunityMembers(id: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<any>> {
-    const response = await apiClient.get<{ success: true; data: PaginatedResponse<any> }>(`/api/v1/communities/${id}/members`, { params });
+  async getCommunityMembers(id: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<CommunityMember>> {
+    const response = await apiClient.get<{ success: true; data: PaginatedResponse<CommunityMember> }>(`/api/v1/communities/${id}/members`, { params });
     return response.data;
   },
 
@@ -200,7 +160,7 @@ export const communitiesApiV1 = {
     return response.data;
   },
 
-  async createSpace(communityId: string, data: any): Promise<Space> {
+  async createSpace(communityId: string, data: { name: string; slug: string; description?: string; [key: string]: unknown }): Promise<Space> {
     const response = await apiClient.post<{ success: true; data: Space }>(`/api/v1/communities/${communityId}/spaces`, data);
     return response.data;
   },
@@ -224,8 +184,8 @@ export const communitiesApiV1 = {
     return response.data;
   },
 
-  async getCommunityLeaderboard(id: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<any>> {
-    const response = await apiClient.get<{ success: true; data: PaginatedResponse<any> }>(`/api/v1/communities/${id}/leaderboard`, { params });
+  async getCommunityLeaderboard(id: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<LeaderboardEntry>> {
+    const response = await apiClient.get<{ success: true; data: PaginatedResponse<LeaderboardEntry> }>(`/api/v1/communities/${id}/leaderboard`, { params });
     return response.data;
   },
 };
@@ -235,7 +195,7 @@ export const publicationsApiV1 = {
   async getPublications(params: { skip?: number; limit?: number; type?: string; communityId?: string; spaceId?: string; userId?: string; tag?: string; sort?: string; order?: string } = {}): Promise<Publication[]> {
     const queryParams = new URLSearchParams();
     
-    if (params.skip) queryParams.append('page', Math.floor(params.skip / (params.limit || 10)) + 1);
+    if (params.skip) queryParams.append('page', (Math.floor(params.skip / (params.limit || 10)) + 1).toString());
     if (params.limit) queryParams.append('pageSize', params.limit.toString());
     if (params.sort) queryParams.append('sort', params.sort);
     if (params.order) queryParams.append('order', params.order);
@@ -250,7 +210,7 @@ export const publicationsApiV1 = {
   async getMyPublications(params: { skip?: number; limit?: number } = {}): Promise<Publication[]> {
     const queryParams = new URLSearchParams();
     
-    if (params.skip) queryParams.append('page', Math.floor(params.skip / (params.limit || 10)) + 1);
+    if (params.skip) queryParams.append('page', (Math.floor(params.skip / (params.limit || 10)) + 1).toString());
     if (params.limit) queryParams.append('pageSize', params.limit.toString());
 
     const response = await apiClient.get(`/api/v1/publications/my?${queryParams.toString()}`);
@@ -263,7 +223,7 @@ export const publicationsApiV1 = {
   ): Promise<Publication[]> {
     const queryParams = new URLSearchParams();
     
-    if (params.skip) queryParams.append('page', Math.floor(params.skip / (params.limit || 10)) + 1);
+    if (params.skip) queryParams.append('page', (Math.floor(params.skip / (params.limit || 10)) + 1).toString());
     if (params.limit) queryParams.append('pageSize', params.limit.toString());
     if (params.sort) queryParams.append('sort', params.sort);
     if (params.order) queryParams.append('order', params.order);

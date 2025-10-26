@@ -6,7 +6,18 @@ import { VoteBar } from '@/components/molecules/VoteBar';
 import { Button } from '@/components/atoms/Button';
 import { CommentForm } from '@/components/molecules/CommentForm';
 import { BottomPortal } from '@shared/components/bottom-portal';
-import type { Publication } from '@/types/entities';
+
+// Local Publication type definition
+interface Publication {
+  id: string;
+  slug?: string;
+  content?: string;
+  createdAt: string;
+  metrics?: {
+    score?: number;
+  };
+  [key: string]: unknown;
+}
 
 interface PublicationActionsProps {
   publication: Publication;
@@ -32,23 +43,21 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   className = '',
 }) => {
   const [activeComment, setActiveComment] = activeCommentHook;
-  const isActiveComment = activeComment === publication.uid;
+  const isActiveComment = activeComment === publication.id;
 
   const handleCommentToggle = () => {
-    setActiveComment(isActiveComment ? null : publication.uid || null);
+    setActiveComment(isActiveComment ? null : publication.id);
   };
 
   return (
     <div className={`space-y-4 ${className}`}>
       <div className="flex items-center justify-between">
         <VoteBar
-          plus={publication.meta.metrics.plus}
-          minus={publication.meta.metrics.minus}
-          sum={publication.meta.metrics.sum}
-          onVote={onVote}
-          maxPlus={maxPlus}
-          maxMinus={maxMinus}
-          disabled={isVoting}
+          plus={0}
+          minus={0}
+          onPlus={() => onVote('plus', 1)}
+          onMinus={() => onVote('minus', 1)}
+          onLeft={() => setActiveComment(isActiveComment ? null : publication.id)}
         />
         
         <div className="flex items-center gap-2">

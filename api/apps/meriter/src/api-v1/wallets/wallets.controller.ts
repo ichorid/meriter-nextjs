@@ -9,7 +9,7 @@ import {
   UseGuards,
   Logger,
 } from '@nestjs/common';
-import { WalletsService } from './wallets.service';
+import { WalletServiceV2 } from '../../domain/services/wallet.service-v2';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
@@ -20,7 +20,7 @@ import { Wallet, Transaction } from '../types/domain.types';
 export class WalletsController {
   private readonly logger = new Logger(WalletsController.name);
 
-  constructor(private readonly walletsService: WalletsService) {}
+  constructor(private readonly walletsService: WalletServiceV2) {}
 
   @Get('users/:userId/wallets')
   async getUserWallets(@Param('userId') userId: string, @Req() req: any): Promise<Wallet[]> {
@@ -28,7 +28,16 @@ export class WalletsController {
     if (userId !== req.user.tgUserId) {
       throw new NotFoundError('User', userId);
     }
-    return this.walletsService.getUserWallets(userId);
+    const wallets = await this.walletsService.getUserWallets(userId);
+    return wallets.map(wallet => {
+      const snapshot = wallet.toSnapshot();
+      return {
+        ...snapshot,
+        lastUpdated: snapshot.lastUpdated.toISOString(),
+        createdAt: snapshot.lastUpdated.toISOString(), // Use lastUpdated as createdAt fallback
+        updatedAt: snapshot.lastUpdated.toISOString(), // Use lastUpdated as updatedAt fallback
+      };
+    });
   }
 
   @Get('users/:userId/wallets/:communityId')
@@ -41,7 +50,17 @@ export class WalletsController {
     if (userId !== req.user.tgUserId) {
       throw new NotFoundError('User', userId);
     }
-    return this.walletsService.getUserWallet(userId, communityId);
+    const wallet = await this.walletsService.getUserWallet(userId, communityId);
+    if (!wallet) {
+      throw new NotFoundError('Wallet', `${userId}-${communityId}`);
+    }
+    const snapshot = wallet.toSnapshot();
+    return {
+      ...snapshot,
+      lastUpdated: snapshot.lastUpdated.toISOString(),
+      createdAt: snapshot.lastUpdated.toISOString(), // Use lastUpdated as createdAt fallback
+      updatedAt: snapshot.lastUpdated.toISOString(), // Use lastUpdated as updatedAt fallback
+    };
   }
 
   @Get('users/:userId/transactions')
@@ -55,8 +74,9 @@ export class WalletsController {
       throw new NotFoundError('User', userId);
     }
     const pagination = PaginationHelper.parseOptions(query);
-    const result = await this.walletsService.getUserTransactions(userId, pagination, query);
-    return result;
+    const skip = PaginationHelper.getSkip(pagination);
+    const result = await this.walletsService.getUserTransactions(userId, 'all', pagination.limit, skip);
+    return { data: result, total: result.length, skip, limit: pagination.limit };
   }
 
   @Get('users/:userId/quota')
@@ -69,7 +89,8 @@ export class WalletsController {
     if (userId !== req.user.tgUserId) {
       throw new NotFoundError('User', userId);
     }
-    return this.walletsService.getUserQuota(userId, query.communityId);
+    // Quota functionality not implemented in V2 service yet
+    throw new Error('Quota functionality not implemented');
   }
 
   @Post('users/:userId/wallets/:communityId/withdraw')
@@ -83,7 +104,8 @@ export class WalletsController {
     if (userId !== req.user.tgUserId) {
       throw new NotFoundError('User', userId);
     }
-    return this.walletsService.withdrawFromWallet(userId, communityId, body.amount, body.memo);
+    // Withdraw functionality not implemented in V2 service yet
+    throw new Error('Withdraw functionality not implemented');
   }
 
   @Post('users/:userId/wallets/:communityId/transfer')
@@ -97,7 +119,8 @@ export class WalletsController {
     if (userId !== req.user.tgUserId) {
       throw new NotFoundError('User', userId);
     }
-    return this.walletsService.transferToUser(userId, communityId, body.toUserId, body.amount, body.description);
+    // Transfer functionality not implemented in V2 service yet
+    throw new Error('Transfer functionality not implemented');
   }
 
 }

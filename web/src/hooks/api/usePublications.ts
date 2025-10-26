@@ -2,7 +2,49 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { publicationsApiV1 } from '@/lib/api/v1';
 import { queryKeys } from '@/lib/constants/queryKeys';
-import type { Publication, CreatePublicationDto, ListQueryParams } from '@meriter/shared-types';
+
+// Local type definitions
+interface Publication {
+  id: string;
+  title: string;
+  content: string;
+  authorId: string;
+  communityId: string;
+  spaceId?: string;
+  type: 'text' | 'image' | 'video';
+  imageUrl?: string;
+  videoUrl?: string;
+  hashtags?: string[];
+  createdAt: string;
+  updatedAt: string;
+  metrics?: {
+    score: number;
+    commentCount: number;
+  };
+}
+
+interface CreatePublicationDto {
+  title: string;
+  content: string;
+  communityId: string;
+  spaceId?: string;
+  type: 'text' | 'image' | 'video';
+  imageUrl?: string;
+  videoUrl?: string;
+  hashtags?: string[];
+}
+
+interface ListQueryParams {
+  skip?: number;
+  limit?: number;
+  type?: string;
+  communityId?: string;
+  spaceId?: string;
+  userId?: string;
+  tag?: string;
+  sort?: string;
+  order?: string;
+}
 
 export function usePublications(params: ListQueryParams = {}) {
   return useQuery({

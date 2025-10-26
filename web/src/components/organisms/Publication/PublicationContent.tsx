@@ -3,7 +3,22 @@
 
 import React from 'react';
 import { WithTelegramEntities } from '@shared/components/withTelegramEntities';
-import type { Publication } from '@/types/entities';
+
+// Local Publication type definition
+interface Publication {
+  id: string;
+  slug?: string;
+  content?: string;
+  createdAt: string;
+  metrics?: {
+    score?: number;
+  };
+  meta?: {
+    commentTgEntities?: any[];
+    comment?: string;
+  };
+  [key: string]: unknown;
+}
 
 interface PublicationContentProps {
   publication: Publication;
@@ -17,9 +32,9 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
   return (
     <div className={`prose prose-sm max-w-none ${className}`}>
       <WithTelegramEntities
-        entities={publication.meta.commentTgEntities || []}
+        entities={publication.meta?.commentTgEntities || []}
       >
-        {publication.meta.comment}
+        {publication.meta?.comment || publication.content || ''}
       </WithTelegramEntities>
     </div>
   );

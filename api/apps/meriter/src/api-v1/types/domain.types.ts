@@ -242,10 +242,3 @@ export interface CreatePublicationDto {
   imageUrl?: string;
   videoUrl?: string;
 }
-
-export interface CreateVoteDto {
-  amount: number;
-  comment?: string;
-  targetType?: 'publication' | 'comment';
-  targetId?: string;
-}

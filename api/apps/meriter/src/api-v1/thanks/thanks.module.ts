@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ThanksController } from './thanks.controller';
+// import { ThanksController } from './thanks.controller';
 import { DomainModule } from '../../domain.module';
 import { TgBotsModule } from '../../tg-bots/tg-bots.module';
 
 @Module({
   imports: [DomainModule, TgBotsModule],
-  controllers: [ThanksController],
+  controllers: [], // ThanksController not implemented yet
 })
 export class ThanksModule {}

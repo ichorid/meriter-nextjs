@@ -20,7 +20,6 @@ import { classList } from "@lib/classList";
 import { Comment } from "@features/comments/components/comment";
 import { PollVoting } from "@features/polls/components/poll-voting";
 import type { IPollData } from "@features/polls/types";
-import { apiPOST, apiGET } from "@shared/lib/fetch";
 import { useRouter } from "next/navigation";
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
@@ -243,7 +242,7 @@ export const Publication = ({
     // Use v1 API for poll balance
     const pollBalance = 0; // TODO: Get from wallets array for poll community
     const communityId = tgChatId || pollCommunityId;
-    const { data: communityInfo = {} } = useCommunity(communityId || '');
+    const { data: communityInfo } = useCommunity(communityId || '');
     
     // Fetch poll vote status if this is a poll using v1 API
     const { data: pollData_v1 } = usePoll(_id || '');
@@ -342,9 +341,9 @@ export const Publication = ({
                     onDescriptionClick={undefined}
                     bottom={undefined}
                     showCommunityAvatar={showCommunityAvatar}
-                    communityAvatarUrl={communityInfo?.chat?.photo}
-                    communityName={communityInfo?.chat?.title || tgChatName}
-                    communityIconUrl={communityInfo?.icon}
+                    communityAvatarUrl={communityInfo?.avatarUrl}
+                    communityName={communityInfo?.name || tgChatName}
+                    communityIconUrl={communityInfo?.avatarUrl}
                     onCommunityClick={() => {
                         if (communityId) {
                             router.push(`/meriter/communities/${communityId}`);
@@ -557,9 +556,9 @@ export const Publication = ({
                     )
                 }
                 showCommunityAvatar={showCommunityAvatar}
-                communityAvatarUrl={communityInfo?.chat?.photo}
-                communityName={communityInfo?.chat?.title || tgChatName}
-                communityIconUrl={communityInfo?.icon}
+                communityAvatarUrl={communityInfo?.avatarUrl}
+                communityName={communityInfo?.name || tgChatName}
+                communityIconUrl={communityInfo?.avatarUrl}
                 onCommunityClick={() => {
                     if (communityId) {
                         router.push(`/meriter/communities/${communityId}`);

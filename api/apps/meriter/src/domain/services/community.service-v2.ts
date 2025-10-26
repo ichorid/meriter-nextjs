@@ -79,6 +79,7 @@ export class CommunityServiceV2 {
         },
         hashtags: [],
         spaces: [],
+        isActive: true, // Default to active
         createdAt: new Date(),
         updatedAt: new Date(),
       };

@@ -45,6 +45,12 @@ export class User {
   @Prop({ type: [String], default: [] })
   communityTags: string[];
 
+  @Prop({ required: true, unique: true })
+  token: string;
+
+  @Prop({ type: [String], default: [] })
+  communityMemberships: string[];
+
   @Prop({ required: true })
   createdAt: Date;
 

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardBody, CardHeader, CardTitle, Button, Badge } from '@/components/atoms';
-import { Avatar, Progress } from 'flowbite-react';
+import { Card, CardBody, CardHeader, CardTitle, Button, Badge, Avatar } from '@/components/atoms';
 
 export interface PollOption {
   id: string;
@@ -71,10 +70,14 @@ export const PollCard: React.FC<PollCardProps> = ({
                       {option.votes} votes ({option.percentage}%)
                     </span>
                   </div>
-                  <Progress
-                    progress={option.percentage}
-                    color={selectedOption === option.id ? 'blue' : 'gray'}
-                  />
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        selectedOption === option.id ? 'bg-blue-600' : 'bg-gray-400'
+                      }`}
+                      style={{ width: `${option.percentage}%` }}
+                    ></div>
+                  </div>
                   {selectedOption === option.id && (
                     <Badge variant="success" size="xs" className="absolute right-2 top-0">
                       Your vote
@@ -83,7 +86,7 @@ export const PollCard: React.FC<PollCardProps> = ({
                 </div>
               ) : (
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   fullWidth
                   onClick={() => handleVote(option.id)}
                   className="text-left justify-start h-auto py-2"

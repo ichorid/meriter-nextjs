@@ -26,8 +26,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         rawData = useSignal(initDataRaw);
         isDark = useSignal(miniApp.isDark);
         isInTelegram = !!rawData;
-    } catch (error: any) {
-        console.warn('⚠️ Telegram Web App not detected in theme provider, using fallback:', error.message);
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.warn('⚠️ Telegram Web App not detected in theme provider, using fallback:', message);
         rawData = { value: null };
         isDark = { value: false };
         isInTelegram = false;

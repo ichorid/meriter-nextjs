@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommunity, useUpdateCommunity } from '@/hooks/api';
 import { communitiesApiV1 } from '@/lib/api/v1';
+import type { Community } from '@/types/api-v1';
 import { etv } from '@shared/lib/input-utils';
 import { nanoid } from "nanoid";
 import { useParams, useRouter } from "next/navigation";
@@ -52,7 +53,7 @@ const CommunitySettingsPage = () => {
 
     // Load user data using v1 API
     const { user } = useAuth();
-    const [communityData, setCommunityData] = useState(null);
+    const [communityData, setCommunityData] = useState<Community | null>(null);
     const [communityLoading, setCommunityLoading] = useState(true);
     const [communityError, setCommunityError] = useState('');
 
@@ -88,8 +89,8 @@ const CommunitySettingsPage = () => {
         if (communityResponse) {
             setCommunityData(communityResponse);
             setFormData({
-                currencyNames: communityResponse.settings?.currencyNames || { singular: '', plural: '', genitive: '' },
-                icon: communityResponse.settings?.iconUrl || '',
+                currencyNames: { 1: '', 2: '', 5: '' },
+                icon: communityResponse.avatarUrl || '',
                 spaces: communityResponse.hashtags || []
             });
             setCommunityError('');
@@ -181,9 +182,10 @@ const CommunitySettingsPage = () => {
                 setSaveSuccess('');
                 router.push('/meriter/manage?success=saved');
             }, 1500);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Save failed:', error);
-            setSaveError(error.message || 'Failed to save settings');
+            const message = error instanceof Error ? error.message : 'Failed to save settings';
+            setSaveError(message);
         } finally {
             setSaving(false);
         }
@@ -231,7 +233,7 @@ const CommunitySettingsPage = () => {
     }
 
     // Not authenticated
-    if (!user.tgUserId) {
+    if (!user?.telegramId) {
         return null;
     }
 
@@ -242,46 +244,46 @@ const CommunitySettingsPage = () => {
             <HeaderAvatarBalance
                 balance1={undefined}
                 balance2={undefined}
-                avatarUrl={telegramGetAvatarLink(user?.tgUserId)}
+                avatarUrl={telegramGetAvatarLink(user?.telegramId || '')}
                 onAvatarUrlNotFound={() =>
-                    telegramGetAvatarLinkUpd(user?.tgUserId)
+                    telegramGetAvatarLinkUpd(user?.telegramId || '')
                 }
                 onClick={() => {
                     router.push("/meriter/home");
                 }}
-                userName={user?.name || 'User'}
+                userName={user?.displayName || 'User'}
             >
                 <MenuBreadcrumbs>
                     <div>
                         <div className="breadcrumbs text-sm">
                             <ul>
                                 <li><Link href="/meriter/manage">Communities</Link></li>
-                                <li><Link href={`/meriter/communities/${chatId}/settings`}>{(communityData as any)?.chat?.title || 'Community'}</Link></li>
+                                <li><Link href={`/meriter/communities/${chatId}/settings`}>{communityData?.name || 'Community'}</Link></li>
                                 <li>{t('communitySettings.breadcrumb')}</li>
                             </ul>
                         </div>
                     </div>
                 </MenuBreadcrumbs>
                 <div>
-                    {t('communitySettings.subtitle', { communityName: (communityData as any)?.chat?.title || 'this community' })}
+                    {t('communitySettings.subtitle', { communityName: communityData?.name || 'this community' })}
                 </div>
             </HeaderAvatarBalance>
 
             {/* Community Profile Section */}
-            {(communityData as any)?.chat && (
+            {communityData && (
                 <div className="card bg-base-100 shadow-xl mb-6">
                     <div className="card-body">
                         <h2 className="card-title">{t('communitySettings.communityProfile')}</h2>
                         <div className="flex items-center gap-4">
                             <CommunityAvatar
-                                avatarUrl={(communityData as any)?.chat?.photo}
-                                communityName={(communityData as any)?.chat?.title || 'Community'}
+                                avatarUrl={communityData?.avatarUrl}
+                                communityName={communityData?.name || 'Community'}
                                 size={80}
                             />
                             <div>
-                                <div className="text-xl font-semibold">{(communityData as any)?.chat?.title}</div>
+                                <div className="text-xl font-semibold">{communityData?.name}</div>
                                 <div className="text-sm opacity-60">
-                                    {(communityData as any)?.chat?.description || t('communitySettings.noDescription')}
+                                    {communityData?.description || t('communitySettings.noDescription')}
                                 </div>
                                 <div className="text-xs opacity-50 mt-1">
                                     {t('communitySettings.avatarUpdateNote')}

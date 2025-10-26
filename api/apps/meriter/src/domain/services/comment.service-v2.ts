@@ -7,6 +7,7 @@ import { Publication as PublicationSchema, PublicationDocument } from '../models
 import { UserId } from '../value-objects';
 import { CommentAddedEvent, CommentVotedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
+import { CommentDocument as ICommentDocument } from '../../common/interfaces/comment-document.interface';
 
 export interface CreateCommentDto {
   targetType: 'publication' | 'comment';
@@ -75,7 +76,7 @@ export class CommentServiceV2 {
 
   async getComment(id: string): Promise<Comment | null> {
     const doc = await this.commentModel.findOne({ id }).lean();
-    return doc ? Comment.fromSnapshot(doc as any) : null;
+    return doc ? Comment.fromSnapshot(doc as ICommentDocument) : null;
   }
 
   async getCommentsByTarget(
@@ -91,7 +92,7 @@ export class CommentServiceV2 {
       .sort({ 'metrics.score': -1 })
       .lean();
     
-    return docs.map(doc => Comment.fromSnapshot(doc as any));
+    return docs.map(doc => Comment.fromSnapshot(doc as ICommentDocument));
   }
 
   async getCommentReplies(commentId: string, limit: number = 50, skip: number = 0): Promise<Comment[]> {
@@ -102,7 +103,7 @@ export class CommentServiceV2 {
       .sort({ createdAt: 1 })
       .lean();
     
-    return docs.map(doc => Comment.fromSnapshot(doc as any));
+    return docs.map(doc => Comment.fromSnapshot(doc as ICommentDocument));
   }
 
   async getCommentsByAuthor(userId: string, limit: number = 50, skip: number = 0): Promise<Comment[]> {
@@ -113,7 +114,7 @@ export class CommentServiceV2 {
       .sort({ createdAt: -1 })
       .lean();
     
-    return docs.map(doc => Comment.fromSnapshot(doc as any));
+    return docs.map(doc => Comment.fromSnapshot(doc as ICommentDocument));
   }
 
   async voteOnComment(commentId: string, userId: string, amount: number, direction: 'up' | 'down'): Promise<Comment> {
@@ -127,7 +128,7 @@ export class CommentServiceV2 {
         throw new NotFoundException('Comment not found');
       }
 
-      const comment = Comment.fromSnapshot(doc as any);
+      const comment = Comment.fromSnapshot(doc as ICommentDocument);
 
       // Domain logic
       const voteAmount = direction === 'up' ? amount : -amount;

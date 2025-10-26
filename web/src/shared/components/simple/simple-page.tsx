@@ -3,7 +3,14 @@
 import { useEffect } from 'react'
 import { classList } from '@lib/classList'
 
-export const SimplePage = ({ children, coverImageUrl, blur, className }: any) => {
+interface SimplePageProps {
+    children?: React.ReactNode;
+    coverImageUrl?: string;
+    blur?: number;
+    className?: string;
+}
+
+export const SimplePage = ({ children, coverImageUrl, blur, className }: SimplePageProps) => {
     useEffect(() => {
         const sc = (e: Event) => {
             //   const r = Math.max(0, 1 - window.scrollY / 500)
@@ -14,7 +21,7 @@ export const SimplePage = ({ children, coverImageUrl, blur, className }: any) =>
     }, [])
 
     return (
-        <div className={classList(className, 'simple-page')}>
+        <div className={classList(className || '', 'simple-page')}>
             <div
                 className="simple-page-cover"
                 style={{ backgroundImage: `url(${coverImageUrl})`, filter: `blur(${blur ?? 20}px)brightness(50%)` }}></div>

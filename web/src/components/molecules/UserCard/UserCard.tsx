@@ -25,9 +25,9 @@ export const UserCard: React.FC<UserCardProps> = ({ userId, showBadges = false, 
         <span className="font-medium">{user.displayName}</span>
         {user.username && <span className="text-sm text-base-content/60">@{user.username}</span>}
       </div>
-      {showBadges && user.communityTags.length > 0 && (
+      {showBadges && user.communityTags && user.communityTags.length > 0 && (
         <div className="flex gap-1 ml-auto">
-          {user.communityTags.map((tag) => (
+          {user.communityTags.map((tag: string) => (
             <Badge key={tag} variant="secondary" size="xs">{tag}</Badge>
           ))}
         </div>

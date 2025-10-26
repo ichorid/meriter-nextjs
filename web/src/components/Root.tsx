@@ -55,7 +55,7 @@ export function Root(props: PropsWithChildren) {
   const didMount = useDidMount();
 
   return didMount ? (
-    <ErrorBoundary fallback={ErrorPage}>
+    <ErrorBoundary>
       <RootInner {...props} />
     </ErrorBoundary>
   ) : (

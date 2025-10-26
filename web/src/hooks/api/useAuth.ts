@@ -2,7 +2,26 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApiV1 } from '@/lib/api/v1';
 import { queryKeys } from '@/lib/constants/queryKeys';
-import type { User } from '@meriter/shared-types';
+import type { TelegramUser } from '@/types/telegram';
+
+// Local User type definition
+interface User {
+  id: string;
+  telegramId: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  displayName: string;
+  avatarUrl?: string;
+  profile?: {
+    bio?: string;
+    location?: string;
+    website?: string;
+    isVerified?: boolean;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
 
 export const useMe = () => {
   return useQuery({
@@ -15,7 +34,7 @@ export const useTelegramAuth = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (telegramUser: any) => authApiV1.authenticateWithTelegramWidget(telegramUser),
+    mutationFn: (telegramUser: TelegramUser) => authApiV1.authenticateWithTelegramWidget(telegramUser),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.all });
     },

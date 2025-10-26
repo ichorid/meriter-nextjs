@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { PageLayout } from '@/components/templates/PageLayout';
 import { AvatarBalanceWidget } from '@/components/organisms/AvatarBalanceWidget';
 import { Breadcrumbs } from '@/components/molecules/Breadcrumbs';
-import { PublicationCard } from "@/components/organisms/Publication";
+import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useMyPublications, useWallets, useUserProfile } from '@/hooks/api';
@@ -37,7 +37,7 @@ const PageHome = () => {
     
     // Use centralized auth context
     const { user, isLoading: userLoading, isAuthenticated } = useAuth();
-    const { data: myPublications = [], isLoading: publicationsLoading } = useMyPublications({ page: 1, pageSize: 100 });
+    const { data: myPublications = [], isLoading: publicationsLoading } = useMyPublications({ skip: 0, limit: 100 });
     const { data: wallets = [], isLoading: walletsLoading } = useWallets();
     
     const [tab, setTab] = useState("publications");
@@ -76,8 +76,8 @@ const PageHome = () => {
     }, [tab]);
 
     // Get user profile data
-    const { data: userdata = 0 } = useUserProfile(user?.tgUserId || '');
-    const tgAuthorId = user?.tgUserId;
+    const { data: userdata = 0 } = useUserProfile(user?.telegramId || '');
+    const tgAuthorId = user?.telegramId;
     const authCheckDone = useRef(false);
 
     useEffect(() => {
@@ -90,11 +90,11 @@ const PageHome = () => {
 
     if (userLoading || !isAuthenticated) {
         return (
-            <Page className="balance">
+            <PageLayout className="balance">
                 <div className="flex justify-center items-center h-64">
                     <span className="loading loading-spinner loading-lg"></span>
                 </div>
-            </Page>
+            </PageLayout>
         );
     }
 
@@ -121,7 +121,7 @@ const PageHome = () => {
                 onClick={() => {
                     router.push("/meriter/home");
                 }}
-                userName={user?.name || 'User'}
+                userName={user?.displayName || 'User'}
             />
 
             <Breadcrumbs pathname="/meriter/home" />
@@ -221,7 +221,7 @@ const PageHome = () => {
                                     <span className="loading loading-spinner loading-lg"></span>
                                 </div>
                             ) : (
-                                sortItems(myPublications.data || [])
+                                sortItems(myPublications || [])
                                     .filter((p) => {
                                         const passes = p.content || p.type === 'poll';
                                         console.log('Filtering publication:', {

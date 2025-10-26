@@ -23,14 +23,14 @@ export const WalletCommunity: React.FC<WalletCommunityProps> = ({
     needsSetup,
 }) => {
     // Use v1 API hooks
-    const { data: info = {} } = useCommunity(currencyOfCommunityTgChatId);
+    const { data: info } = useCommunity(currencyOfCommunityTgChatId);
     const { user } = useAuth();
 
-    const title = info?.name || info?.title;
-    const chatPhoto = info?.avatarUrl || info?.chat?.photo; // Community's Telegram avatar
-    const icon = info?.settings?.iconUrl || info?.icon; // Currency icon
-    const tags = info?.chat?.tags || info?.hashtags;
-    const administratorsIds = info?.administrators || info?.chat?.administratorsIds || [];
+    const title = info?.name;
+    const chatPhoto = info?.avatarUrl; // Community's Telegram avatar
+    const icon = info?.avatarUrl; // Currency icon
+    const tags = info?.hashtags;
+    const administratorsIds: string[] = []; // TODO: Add admin support to Community type
     
     // Use passed isAdmin prop if available, otherwise fall back to checking administratorsIds
     const userIsAdmin = isAdmin !== undefined ? isAdmin : (user?.id && administratorsIds.includes(user.id));

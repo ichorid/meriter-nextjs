@@ -1,8 +1,40 @@
 // Wallet React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { walletApiV1 } from '@/lib/api/v1';
-import type { Wallet, Transaction, WithdrawRequest } from '@/types/entities';
-import type { PaginatedResponse } from '@/types/common';
+
+// Local type definitions
+interface Wallet {
+  id: string;
+  userId: string;
+  communityId: string;
+  balance: number;
+  currencyOfCommunityTgChatId?: string;
+  amount?: number;
+}
+
+interface Transaction {
+  id: string;
+  userId: string;
+  communityId: string;
+  amount: number;
+  type: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface WithdrawRequest {
+  communityId: string;
+  amount: number;
+  memo?: string;
+}
+
+interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  skip: number;
+  limit: number;
+}
 
 // Query keys
 export const walletKeys = {
@@ -32,8 +64,9 @@ export function useWallets() {
 export function useWalletBalance(currencyOfCommunityTgChatId?: string) {
   return useQuery({
     queryKey: walletKeys.balance(currencyOfCommunityTgChatId),
-    queryFn: () => walletApiV1.getBalance(currencyOfCommunityTgChatId),
+    queryFn: () => walletApiV1.getBalance(currencyOfCommunityTgChatId!),
     staleTime: 1 * 60 * 1000, // 1 minute
+    enabled: !!currencyOfCommunityTgChatId,
   });
 }
 
@@ -41,8 +74,9 @@ export function useWalletBalance(currencyOfCommunityTgChatId?: string) {
 export function useFreeBalance(currencyOfCommunityTgChatId?: string) {
   return useQuery({
     queryKey: walletKeys.freeBalance(currencyOfCommunityTgChatId),
-    queryFn: () => walletApiV1.getFreeBalance(currencyOfCommunityTgChatId),
+    queryFn: () => walletApiV1.getFreeBalance(currencyOfCommunityTgChatId!),
     staleTime: 30 * 1000, // 30 seconds
+    enabled: !!currencyOfCommunityTgChatId,
   });
 }
 
@@ -82,45 +116,45 @@ export function useTransactions(params: {
   });
 }
 
-// Create transaction (vote/comment)
-export function useCreateTransaction() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (data: {
-      amountPoints: number;
-      comment?: string;
-      directionPlus: boolean;
-      forTransactionId?: string;
-      forPublicationSlug?: string;
-      inPublicationSlug?: string;
-      publicationSlug?: string;
-    }) => walletApi.createTransaction(data),
-    onSuccess: (newTransaction) => {
-      // Invalidate wallet-related queries
-      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.freeBalance() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.transactions() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.myTransactions({}) });
-      queryClient.invalidateQueries({ queryKey: walletKeys.updates() });
-      
-      // Also invalidate comments and publications since transactions affect them
-      queryClient.invalidateQueries({ queryKey: ['comments'] });
-      queryClient.invalidateQueries({ queryKey: ['publications'] });
-    },
-    onError: (error) => {
-      console.error('Create transaction error:', error);
-    },
-  });
-}
+// Create transaction (vote/comment) - TODO: Implement proper transaction creation
+// export function useCreateTransaction() {
+//   const queryClient = useQueryClient();
+//   
+//   return useMutation({
+//     mutationFn: (data: {
+//       amountPoints: number;
+//       comment?: string;
+//       directionPlus: boolean;
+//       forTransactionId?: string;
+//       forPublicationSlug?: string;
+//       inPublicationSlug?: string;
+//       publicationSlug?: string;
+//     }) => walletApiV1.createTransaction(data),
+//     onSuccess: (newTransaction) => {
+//       // Invalidate wallet-related queries
+//       queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
+//       queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
+//       queryClient.invalidateQueries({ queryKey: walletKeys.freeBalance() });
+//       queryClient.invalidateQueries({ queryKey: walletKeys.transactions() });
+//       queryClient.invalidateQueries({ queryKey: walletKeys.myTransactions({}) });
+//       queryClient.invalidateQueries({ queryKey: walletKeys.updates() });
+//       
+//       // Also invalidate comments and publications since transactions affect them
+//       queryClient.invalidateQueries({ queryKey: ['comments'] });
+//       queryClient.invalidateQueries({ queryKey: ['publications'] });
+//     },
+//     onError: (error) => {
+//       console.error('Create transaction error:', error);
+//     },
+//   });
+// }
 
 // Withdraw funds
 export function useWithdraw() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (data: WithdrawRequest) => walletApi.withdraw(data),
+    mutationFn: (data: WithdrawRequest) => walletApiV1.withdraw(data.communityId, data),
     onSuccess: (result) => {
       // Invalidate wallet-related queries
       queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
@@ -144,7 +178,7 @@ export function useTransfer() {
       toUserId: string;
       currencyOfCommunityTgChatId: string;
       description?: string;
-    }) => walletApi.transfer(data),
+    }) => walletApiV1.transfer(data.currencyOfCommunityTgChatId, data),
     onSuccess: () => {
       // Invalidate wallet-related queries
       queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });

@@ -27,8 +27,8 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
 
     // Use v1 API hooks
     const { user } = useAuth();
-    const { data: publication = {} } = usePublication(slug);
-    const { data: comms = {} } = useCommunity(chatId);
+    const { data: publication } = usePublication(slug);
+    const { data: comms } = useCommunity(chatId);
     
     const { data: balance = 0 } = useQuery({
         queryKey: ['wallet-balance', user?.id, chatId],
@@ -76,20 +76,20 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
         queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
     };
 
-    const chatNameVerb = String(chat?.title ?? "");
+    const chatNameVerb = String(comms?.name ?? "");
     const activeCommentHook = useState(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!user?.tgUserId && !user.init) {
+        if (!user?.telegramId) {
             router.push("/meriter/login?returnTo=" + encodeURIComponent(window.location.pathname));
         }
-    }, [user, user?.init, router]);
+    }, [user, router]);
 
-    if (!user.token) return null;
+    // if (!user?.token) return null;
 
-    const tgAuthorId = user?.tgUserId;
+    const tgAuthorId = user?.telegramId;
     
     // Clean post text for breadcrumb: remove hashtags and /ben: commands
     const getCleanPostText = (text: string) => {
@@ -103,27 +103,27 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     return (
         <Page className="feed">
             <HeaderAvatarBalance
-                balance1={{ icon: chat?.icon, amount: balance }}
+                balance1={{ icon: comms?.avatarUrl, amount: balance }}
                 balance2={undefined}
-                avatarUrl={telegramGetAvatarLink(tgAuthorId)}
-                onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
+                avatarUrl={telegramGetAvatarLink(tgAuthorId || '')}
+                onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId || '')}
                 onClick={() => {
                     router.push("/meriter/home");
                 }}
-                userName={user?.name || 'User'}
+                userName={user?.displayName || 'User'}
             >
                 <MenuBreadcrumbs
                     chatId={chatId}
                     chatNameVerb={chatNameVerb}
-                    chatIcon={comms?.icon}
-                    postText={publication?.messageText ? ellipsize(getCleanPostText(publication.messageText), 60) : ''}
+                    chatIcon={comms?.avatarUrl}
+                    postText={publication?.content ? ellipsize(getCleanPostText(publication.content), 60) : ''}
                 />
             </HeaderAvatarBalance>
 
             <div className="space-y-4">
-                {publication && publication.messageText && (
+                {publication && publication.content && (
                     <Publication
-                        key={publication._id}
+                        key={publication.id}
                         {...publication}
                         balance={balance}
                         updBalance={updBalance}
@@ -136,7 +136,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                         updateWalletBalance={updateWalletBalance}
                         updateAll={updateAll}
                         dimensionConfig={undefined}
-                        myId={user?.tgUserId}
+                        myId={user?.telegramId}
                         onlyPublication={true}
                         highlightTransactionId={undefined}
                         isDetailPage={true}

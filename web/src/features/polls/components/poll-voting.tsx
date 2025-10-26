@@ -79,13 +79,13 @@ export const PollVoting = ({
 
         try {
             await pollsApiV1.voteOnPoll(pollId, {
-                optionId: selectedOptionId,
+                optionIndex: parseInt(selectedOptionId),
                 amount: voteAmount,
             });
 
             onVoteSuccess && onVoteSuccess();
-        } catch (err: any) {
-            const errorMessage = err?.response?.data?.message || err?.message || t('voteError');
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? (err as any)?.response?.data?.message || err.message : t('voteError');
             setError(errorMessage);
             // Revert optimistic update on error
             if (updateWalletBalance && communityId) {

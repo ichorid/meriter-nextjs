@@ -1,8 +1,53 @@
 // Polls React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { pollsApiV1 } from '@/lib/api/v1';
-import type { Poll, PollCreate, PollResult } from '@/types/entities';
-import type { VotePollRequest } from '@/types/api-v1';
+
+// Local type definitions
+interface Poll {
+  id: string;
+  title: string;
+  description?: string;
+  options: PollOption[];
+  communityId: string;
+  authorId: string;
+  createdAt: string;
+  updatedAt: string;
+  _id?: string;
+}
+
+interface PollOption {
+  id: string;
+  text: string;
+  votes: number;
+  percentage: number;
+}
+
+interface PollCreate {
+  title: string;
+  description?: string;
+  options: { text: string }[];
+  communityId: string;
+}
+
+interface PollResult {
+  poll: Poll;
+  userVote?: PollVote;
+  totalVotes: number;
+}
+
+interface PollVote {
+  id: string;
+  pollId: string;
+  optionId: string;
+  userId: string;
+  amount: number;
+  createdAt: string;
+}
+
+interface VotePollRequest {
+  optionIndex: number;
+  amount: number;
+}
 
 // Query keys
 export const pollsKeys = {
@@ -54,7 +99,7 @@ export function useCreatePoll() {
       queryClient.invalidateQueries({ queryKey: pollsKeys.lists() });
       
       // Add the new poll to cache
-      queryClient.setQueryData(pollsKeys.detail(newPoll._id), newPoll);
+      queryClient.setQueryData(pollsKeys.detail(newPoll.id), newPoll);
     },
     onError: (error) => {
       console.error('Create poll error:', error);
@@ -70,14 +115,14 @@ export function useVotePoll() {
     mutationFn: ({ id, data }: { id: string; data: VotePollRequest }) => 
       pollsApiV1.voteOnPoll(id, data),
     onSuccess: (result, { id }) => {
-      // Update poll cache with new vote data
-      queryClient.setQueryData(pollsKeys.detail(id), result.poll);
-      
       // Invalidate poll results to get updated vote counts
       queryClient.invalidateQueries({ queryKey: pollsKeys.results(id) });
       
       // Invalidate polls list to ensure consistency
       queryClient.invalidateQueries({ queryKey: pollsKeys.lists() });
+      
+      // Invalidate the specific poll to refetch with updated data
+      queryClient.invalidateQueries({ queryKey: pollsKeys.detail(id) });
     },
     onError: (error) => {
       console.error('Vote poll error:', error);
@@ -94,7 +139,7 @@ export function useUpdatePoll() {
       pollsApiV1.updatePoll(id, data),
     onSuccess: (updatedPoll) => {
       // Update the poll in cache
-      queryClient.setQueryData(pollsKeys.detail(updatedPoll._id), updatedPoll);
+      queryClient.setQueryData(pollsKeys.detail(updatedPoll.id), updatedPoll);
       
       // Invalidate lists to ensure consistency
       queryClient.invalidateQueries({ queryKey: pollsKeys.lists() });

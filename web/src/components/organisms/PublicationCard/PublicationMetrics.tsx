@@ -1,6 +1,12 @@
 import React from 'react';
 import { MetricBar } from '@/components/molecules';
-import type { Metrics } from '@meriter/shared-types';
+
+// Local Metrics type definition
+interface Metrics {
+  score?: number;
+  thanks?: number;
+  commentCount?: number;
+}
 
 export interface PublicationMetricsProps {
   metrics: Metrics;

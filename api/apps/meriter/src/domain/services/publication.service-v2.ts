@@ -6,6 +6,7 @@ import { Publication as PublicationSchema, PublicationDocument } from '../models
 import { PublicationId, UserId, CommunityId, PublicationContent } from '../value-objects';
 import { PublicationCreatedEvent, PublicationVotedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
+import { PublicationDocument as IPublicationDocument } from '../../common/interfaces/publication-document.interface';
 
 export interface CreatePublicationDto {
   communityId: string;
@@ -63,7 +64,7 @@ export class PublicationServiceV2 {
   async getPublication(id: string): Promise<Publication | null> {
     // Direct Mongoose query
     const doc = await this.publicationModel.findOne({ id }).lean();
-    return doc ? Publication.fromSnapshot(doc as any) : null;
+    return doc ? Publication.fromSnapshot(doc as IPublicationDocument) : null;
   }
 
   async getPublicationsByCommunity(communityId: string, limit: number = 20, skip: number = 0): Promise<Publication[]> {
@@ -75,7 +76,7 @@ export class PublicationServiceV2 {
       .sort({ createdAt: -1 })
       .lean();
     
-    return docs.map(doc => Publication.fromSnapshot(doc as any));
+    return docs.map(doc => Publication.fromSnapshot(doc as IPublicationDocument));
   }
 
   async getTopPublications(limit: number = 20, skip: number = 0): Promise<Publication[]> {
@@ -87,7 +88,7 @@ export class PublicationServiceV2 {
       .sort({ 'metrics.score': -1 })
       .lean();
     
-    return docs.map(doc => Publication.fromSnapshot(doc as any));
+    return docs.map(doc => Publication.fromSnapshot(doc as IPublicationDocument));
   }
 
   async voteOnPublication(publicationId: string, userId: string, amount: number, direction: 'up' | 'down'): Promise<Publication> {
@@ -103,7 +104,7 @@ export class PublicationServiceV2 {
         throw new NotFoundException('Publication not found');
       }
 
-      const publication = Publication.fromSnapshot(doc as any);
+      const publication = Publication.fromSnapshot(doc as IPublicationDocument);
 
       // Business logic in domain
       const voteAmount = direction === 'up' ? amount : -amount;
@@ -141,7 +142,7 @@ export class PublicationServiceV2 {
       .sort({ createdAt: -1 })
       .lean();
     
-    return docs.map(doc => Publication.fromSnapshot(doc as any));
+    return docs.map(doc => Publication.fromSnapshot(doc as IPublicationDocument));
   }
 
   async getPublicationsByHashtag(hashtag: string, limit: number = 50, skip: number = 0): Promise<Publication[]> {
@@ -152,7 +153,7 @@ export class PublicationServiceV2 {
       .sort({ createdAt: -1 })
       .lean();
     
-    return docs.map(doc => Publication.fromSnapshot(doc as any));
+    return docs.map(doc => Publication.fromSnapshot(doc as IPublicationDocument));
   }
 
   async updatePublication(publicationId: string, userId: string, updateData: Partial<CreatePublicationDto>): Promise<Publication> {
@@ -165,7 +166,7 @@ export class PublicationServiceV2 {
         throw new NotFoundException('Publication not found');
       }
 
-      const publication = Publication.fromSnapshot(doc as any);
+      const publication = Publication.fromSnapshot(doc as IPublicationDocument);
       const userIdObj = UserId.fromString(userId);
       
       if (!publication.canBeEditedBy(userIdObj)) {

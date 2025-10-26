@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } fro
 import { PublicationServiceV2 } from '../../domain/services/publication.service-v2';
 import { User } from '../../decorators/user.decorator';
 import { UserGuard } from '../../user.guard';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
 
 @Controller('api/v1/publications')
 @UseGuards(UserGuard)
@@ -12,7 +13,7 @@ export class PublicationsController {
 
   @Post()
   async createPublication(
-    @User() user: any,
+    @User() user: AuthenticatedUser,
     @Body() dto: {
       communityId: string;
       content: string;
@@ -59,7 +60,7 @@ export class PublicationsController {
 
   @Put(':id')
   async updatePublication(
-    @User() user: any,
+    @User() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() updates: Partial<{
       content: string;
@@ -71,7 +72,7 @@ export class PublicationsController {
 
   @Delete(':id')
   async deletePublication(
-    @User() user: any,
+    @User() user: AuthenticatedUser,
     @Param('id') id: string,
   ) {
     await this.publicationService.deletePublication(id, user.id);
@@ -80,7 +81,7 @@ export class PublicationsController {
 
   @Post(':id/vote')
   async voteOnPublication(
-    @User() user: any,
+    @User() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() dto: { amount: number; direction: 'up' | 'down' },
   ) {

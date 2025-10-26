@@ -8,7 +8,7 @@ export interface PublicationContentProps {
   type: 'text' | 'image' | 'video';
 }
 
-export const PublicationContent: React.FC<PublicationContentProps> = ({
+export const PublicationCardContent: React.FC<PublicationContentProps> = ({
   content,
   imageUrl,
   videoUrl,

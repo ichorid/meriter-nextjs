@@ -56,8 +56,9 @@ export function base64urlDecode(str: string): string {
   try {
     // Decode from base64
     return atob(base64);
-  } catch (error: any) {
-    throw new Error(`Base64 decode failed: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Base64 decode failed: ${message}`);
   }
 }
 

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { TgChatsService } from "../tg-chats/tg-chats.service";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
 import { uid } from "uid";
 import * as sharp from "sharp";
 
@@ -20,9 +21,9 @@ import {
 } from "../config";
 import * as TelegramTypes from "@common/extapis/telegram/telegram.types";
 import Axios from "axios";
-import { TgChat } from "../tg-chats/model/tg-chat.model";
-import { UsersService } from "../users/users.service";
-import { PublicationsService } from "../publications/publications.service";
+import { User, UserDocument } from "../domain/models/user/user.schema";
+import { Publication, PublicationDocument } from "../domain/models/publication/publication.schema";
+import { Community, CommunityDocument } from "../domain/models/community/community.schema";
 
 import * as config from "../config";
 
@@ -30,8 +31,6 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import * as stream from "stream";
 
-import { HashtagsService } from "../hashtags/hashtags.service";
-import { WalletsService } from "../wallets/wallets.service";
 import { encodeTelegramDeepLink } from '../common/helpers/telegram';
 
 @Injectable()
@@ -40,11 +39,9 @@ export class TgBotsService {
   telegramApiUrl: string;
   s3;
   constructor(
-    private tgChatsService: TgChatsService,
-    private usersService: UsersService,
-    private publicationsService: PublicationsService,
-    private hashtagsService: HashtagsService,
-    private walletsService: WalletsService
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Publication.name) private publicationModel: Model<PublicationDocument>,
+    @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
   ) {
     this.s3 = new S3Client({
       credentials: {
@@ -153,8 +150,8 @@ export class TgBotsService {
       this.logger.log(`🔧 Processing bot added to chat ${chatId}`);
       
       // Check if community already exists
-      const existingCommunity = await this.tgChatsService.model.findOne({
-        identities: "telegram://" + chatId,
+      const existingCommunity = await this.communityModel.findOne({
+        telegramChatId: chatId,
       });
       this.logger.log(`🏢 Community ${chatId} ${existingCommunity ? 'ALREADY EXISTS' : 'IS NEW'}`);
       
@@ -203,7 +200,7 @@ export class TgBotsService {
         this.logger.error('❌ Error sending setup messages:', e);
       }
 
-      const r = await this.tgChatsService.model.findOneAndUpdate(
+      const r = await this.communityModel.findOneAndUpdate(
         {
           identities: "telegram://" + chatId,
         },
@@ -265,11 +262,14 @@ export class TgBotsService {
       this.logger.log(`🚪 Processing bot removed from chat ${chatId}`);
       
       // Remove chat ID from all users' tags
-      const result = await this.usersService.removeTag(chatId);
+      const result = await this.userModel.updateMany(
+        { communityTags: chatId },
+        { $pull: { communityTags: chatId } }
+      );
       this.logger.log(`🧹 Removed chat ${chatId} from ${result.modifiedCount} user(s)`);
       
       // Optionally mark community as inactive/deleted
-      const communityUpdate = await this.tgChatsService.model.findOneAndUpdate(
+      const communityUpdate = await this.communityModel.findOneAndUpdate(
         { identities: `telegram://${chatId}` },
         { 
           $set: { 
@@ -321,15 +321,15 @@ export class TgBotsService {
     // Check if it's a numeric ID
     if (/^\d+$/.test(beneficiaryIdentifier)) {
       // It's a user ID
-      beneficiaryUser = await this.usersService.model.findOne({
-        identities: `telegram://${beneficiaryIdentifier}`,
+      beneficiaryUser = await this.userModel.findOne({
+        telegramId: beneficiaryIdentifier,
       });
     } else {
       // It's a username - search in profile name or meta
-      beneficiaryUser = await this.usersService.model.findOne({
+      beneficiaryUser = await this.userModel.findOne({
         $or: [
-          { 'profile.name': new RegExp(beneficiaryIdentifier, 'i') },
-          { 'meta.username': beneficiaryIdentifier },
+          { 'displayName': new RegExp(beneficiaryIdentifier, 'i') },
+          { 'username': beneficiaryIdentifier },
         ],
       });
 
@@ -341,8 +341,8 @@ export class TgBotsService {
           if (telegramUserInfo) {
             this.logger.log(`✅ Found user via Telegram API: ${telegramUserInfo.id} (${telegramUserInfo.first_name} ${telegramUserInfo.last_name || ''})`);
             // Now search by the resolved Telegram ID
-            beneficiaryUser = await this.usersService.model.findOne({
-              identities: `telegram://${telegramUserInfo.id}`,
+            beneficiaryUser = await this.userModel.findOne({
+              telegramId: telegramUserInfo.id.toString(),
             });
           }
         } catch (error) {
@@ -488,20 +488,22 @@ export class TgBotsService {
     );
 
     // Ensure user exists with proper structure before updating profile
-    const promiseUpdUserdata = this.usersService.upsert(
-      { identities: "telegram://" + tgAuthorId },
+    const promiseUpdUserdata = this.userModel.findOneAndUpdate(
+      { telegramId: tgAuthorId },
       {
-        profile: {
+        $set: {
           avatarUrl: authorPhotoUrl,
-          name: [firstName, lastName].filter((a) => a).join(" "),
+          displayName: [firstName, lastName].filter((a) => a).join(" "),
         },
-      }
+      },
+      { upsert: true, new: true }
     );
 
-    const promiseInitWallet = this.walletsService.initWallet(0, {
-      currencyOfCommunityTgChatId: tgChatId,
-      telegramUserId: tgUserId,
-    });
+    // TODO: Implement wallet initialization in WalletServiceV2
+    // const promiseInitWallet = this.walletsService.initWallet(0, {
+    //   currencyOfCommunityTgChatId: tgChatId,
+    //   telegramUserId: tgUserId,
+    // });
 
     const promisePublication = this.publicationAdd({
       tgChatId: !external
@@ -523,13 +525,13 @@ export class TgBotsService {
       entities,
       beneficiary,
     });
-    const [publication, updUserdata, initWallet] = await Promise.all([
+    const [publication, updUserdata] = await Promise.all([
       promisePublication,
       promiseUpdUserdata,
-      promiseInitWallet,
     ]);
 
-    const { slug, spaceSlug } = publication;
+    const slug = publication.id; // Use publication ID as slug
+    const spaceSlug = kw?.replace('#', '') || 'general'; // Use keyword as space slug
     const link = `communities/${tgChatId}/posts/${slug}`;
     
     this.logger.log(`✅ Publication created: slug=${slug}, spaceSlug=${spaceSlug}, external=${external}`);
@@ -582,19 +584,26 @@ export class TgBotsService {
     const auth = messageText.match("/auth");
 
     if (referal !== false) {
-      const c = await this.usersService.model.countDocuments({
-        identities: "telegram://" + tgUserId,
+      const c = await this.userModel.countDocuments({
+        telegramId: tgUserId,
       });
       if (c === 0) {
         const token = uid(32);
         
-        await this.usersService.model.create({
-          domainName: 'user',
+        await this.userModel.create({
+          id: uid(),
+          telegramId: tgUserId,
+          displayName: tgUserName,
           token: token,
-          identities: [`telegram://${tgUserId}`],
           profile: {
-            name: tgUserName,
+            bio: '',
+            location: '',
+            website: '',
+            isVerified: false,
           },
+          communityTags: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
         });
       }
     }
@@ -778,11 +787,11 @@ export class TgBotsService {
 
   async tgChatGetKeywords({ tgChatId }) {
     if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
-    const chat = await this.tgChatsService.model.findOne({
-      identities: "telegram://" + tgChatId,
+    const chat = await this.communityModel.findOne({
+      telegramChatId: tgChatId,
     });
     if (!chat) throw `chatNotFound ${tgChatId}`;
-    return chat.meta?.hashtagLabels ?? [];
+    return chat.hashtags ?? [];
   }
 
   /**
@@ -1040,10 +1049,12 @@ export class TgBotsService {
     const toGlobalFeed = keyword === GLOBAL_FEED_HASHTAG;
     const external = toGlobalFeed;
     const tgChatId = String(tgChatIdInt);
-    const space = await this.hashtagsService.model.findOne({
-      "meta.parentTgChatId": tgChatId,
-      "profile.name": keyword.replace("#", ""),
-    });
+    // TODO: Implement space/hashtag lookup in V2 services
+    // const space = await this.hashtagsService.model.findOne({
+    //   "meta.parentTgChatId": tgChatId,
+    //   "profile.name": keyword.replace("#", ""),
+    // });
+    const space = null; // Placeholder
 
     //const space = await Space.findOne({ chatId: tgChatId, tagRus: keyword });
     if (!space) {
@@ -1074,37 +1085,19 @@ export class TgBotsService {
       canceled: false,
       entities,
     };
-    const publication = await this.publicationsService.model.create({
-      domainName: 'publication',
-      extUri: `telegram://${fromTgChatId}/${tgMessageId}`,
+    const publication = await this.publicationModel.create({
+      id: uid(),
+      authorId: tgAuthorId,
+      communityId: fromTgChatId,
+      title: messageText.substring(0, 100), // Use first 100 chars as title
+      content: messageText,
+      type: 'text',
+      hashtags: keyword ? [keyword] : [],
       createdAt: new Date(),
-      meta: {
-        hashtagName: keyword,
-        hashtagSlug: space.slug,
-        comment: messageText,
-        commentTgEntities: entities,
-        origin: {
-          telegramChatId: fromTgChatId,
-          telegramChatName: fromTgChatId,
-          messageId: tgMessageId,
-        },
-        author: {
-          name: tgAuthorName,
-          username: tgAuthorUsername,
-          photoUrl: authorPhotoUrl,
-          telegramId: tgAuthorId,
-        },
-        ...(beneficiary && { beneficiary }),
-        metrics: {
-          plus: 0,
-          minus: 0,
-          sum: 0,
-        },
-      },
-      uid: publicationUid,
+      updatedAt: new Date(),
     });
 
-    return newPublication;
+    return publication;
   }
 
   awsUploadStream = ({ Bucket, Key }) => {
@@ -1127,9 +1120,11 @@ export class TgBotsService {
   };
 
   async sendInfoLetter(aboutChatId, toTgChatId) {
-    const hashtags = await this.hashtagsService.model
-      .find({ "meta.parentTgChatId": aboutChatId })
-      .lean();
+    // TODO: Implement hashtag lookup in V2 services
+    // const hashtags = await this.hashtagsService.model
+    //   .find({ "meta.parentTgChatId": aboutChatId })
+    //   .lean();
+    const hashtags = []; // Placeholder
 
     const hashtagsList = hashtags
       .map((s) => {
@@ -1154,8 +1149,8 @@ export class TgBotsService {
     this.logger.log(`🔍 Checking membership: user=${tgUserId}, chat=${tgChatId}`);
     
     // Get current user state for logging
-    const user = await this.usersService.model.findOne({identities: `telegram://${tgUserId}`});
-    this.logger.log(`📋 Current user tags: [${user?.tags?.join(', ') || 'none'}]`);
+    const user = await this.userModel.findOne({telegramId: tgUserId});
+    this.logger.log(`📋 Current user tags: [${user?.communityTags?.join(', ') || 'none'}]`);
     
     const isMember = await this.tgGetChatMember(tgChatId, tgUserId);
     this.logger.log(`✅ Telegram API membership check: ${isMember ? 'MEMBER' : 'NOT_MEMBER'}`);
@@ -1166,10 +1161,15 @@ export class TgBotsService {
     }
 
     // Check if tag already exists
-    const hasTag = user?.tags?.includes(tgChatId);
+    const hasTag = user?.communityTags?.includes(tgChatId);
     this.logger.log(`🏷️  Tag ${tgChatId} ${hasTag ? 'ALREADY EXISTS' : 'NEEDS TO BE ADDED'} in user tags`);
     
-    await this.usersService.pushTag(`telegram://${tgUserId}`, tgChatId);
+    if (!hasTag) {
+      await this.userModel.updateOne(
+        { telegramId: tgUserId },
+        { $addToSet: { communityTags: tgChatId } }
+      );
+    }
     this.logger.log(`✅ Tag addition completed for user ${tgUserId}, chat ${tgChatId}`);
     
     return true;

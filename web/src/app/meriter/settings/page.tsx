@@ -82,7 +82,7 @@ const SettingsPage = () => {
         return null;
     }
 
-    const tgAuthorId = user?.externalIds?.telegram;
+    const tgAuthorId = user?.telegramId;
 
     return (
         <Page className="settings">
@@ -183,7 +183,7 @@ const SettingsPage = () => {
                 <div className="card-body">
                     <h2 className="card-title">{t('account')}</h2>
                     <div className="py-2">
-                        <LogoutButton className="btn btn-error" />
+                        <LogoutButton />
                     </div>
                 </div>
             </div>

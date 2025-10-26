@@ -33,7 +33,7 @@ export const VoteControls: React.FC<VoteControlsProps> = ({
   return (
     <div className="flex items-center gap-2">
       <Button
-        variant="outline"
+        variant="secondary"
         size="sm"
         onClick={handleDecrease}
         disabled={amount <= min || isLoading}
@@ -55,7 +55,7 @@ export const VoteControls: React.FC<VoteControlsProps> = ({
       />
       
       <Button
-        variant="outline"
+        variant="secondary"
         size="sm"
         onClick={handleIncrease}
         disabled={amount >= max || isLoading}

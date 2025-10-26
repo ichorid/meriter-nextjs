@@ -8,14 +8,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { verify } from 'jsonwebtoken';
 
-import { UsersService } from './users/users.service';
+import { UserServiceV2 } from './domain/services/user.service-v2';
 
 @Injectable()
 export class UserGuard implements CanActivate {
   private readonly logger = new Logger(UserGuard.name);
 
   constructor(
-    private userService: UsersService,
+    private userService: UserServiceV2,
     private configService: ConfigService,
   ) {}
 
@@ -32,7 +32,7 @@ export class UserGuard implements CanActivate {
       const data: any = verify(jwt, jwtSecret);
 
       const token = data.token;
-      const user = await this.userService.getByToken(token);
+      const user = await this.userService.getUserByToken(token);
 
       if (!user) {
         this.logger.warn(
@@ -44,12 +44,12 @@ export class UserGuard implements CanActivate {
         throw new UnauthorizedException('User not found');
       }
 
-      const tgUserId = user?.identities?.[0]?.replace('telegram://', '');
-      const tgUserName = user?.profile?.name;
+      const tgUserId = user?.telegramId;
+      const tgUserName = user?.displayName;
 
       request.user = {
-        ...user.toObject(),
-        chatsIds: data.tags ?? user.tags ?? [],
+        ...user,
+        chatsIds: data.tags ?? user.communityTags ?? [],
         tgUserId,
         tgUserName,
       };
