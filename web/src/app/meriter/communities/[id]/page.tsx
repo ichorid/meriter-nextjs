@@ -75,13 +75,19 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         },
         getNextPageParam: (lastPage, pages) => {
             if (!lastPage.meta?.pagination?.hasNext) {
-                setPaginationEnd(true);
                 return undefined;
             }
             return pages.length + 1;
         },
         initialPageParam: 1,
     });
+
+    // Derive paginationEnd from hasNextPage instead of setting it in getNextPageParam
+    useEffect(() => {
+        if (!hasNextPage) {
+            setPaginationEnd(true);
+        }
+    }, [hasNextPage]);
 
     const publications = (data?.pages ?? [])
         .map((page: PageData) => page.data)
@@ -142,9 +148,19 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         queryKey: ['wallet-balance', user?.id, chatId],
         queryFn: async () => {
             if (!user?.id || !chatId) return 0;
-            const wallets = await usersApiV1.getUserWallets(user.id);
-            const wallet = wallets.find((w: Wallet) => w.communityId === chatId);
-            return wallet?.balance || 0;
+            try {
+                const wallets = await usersApiV1.getUserWallets(user.id);
+                const wallet = wallets.find((w: Wallet) => w.communityId === chatId);
+                return wallet?.balance || 0;
+            } catch (error: any) {
+                // Handle 404 and other wallet errors gracefully
+                if (error?.response?.status === 404 || error?.response?.statusCode === 404) {
+                    console.debug('Wallet not found for user:', user.id, 'community:', chatId);
+                    return 0;
+                }
+                console.error('Error fetching wallet balance:', error);
+                return 0;
+            }
         },
         enabled: !!user?.id && !!chatId,
     });

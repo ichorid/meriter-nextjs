@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { CommunityAvatar } from "@shared/components/community-avatar";
 import { useCommunity } from '@/hooks/api';
@@ -20,8 +22,11 @@ export const WalletCommunity: React.FC<WalletCommunityProps> = ({
     currencyOfCommunityTgChatId,
     tgUserId,
     isAdmin,
-    needsSetup,
+    needsSetup: needsSetupProp,
 }) => {
+    const router = useRouter();
+    const [showTooltip, setShowTooltip] = useState(false);
+    
     // Use v1 API hooks
     const { data: info } = useCommunity(currencyOfCommunityTgChatId);
     const { user } = useAuth();
@@ -32,16 +37,47 @@ export const WalletCommunity: React.FC<WalletCommunityProps> = ({
     const tags = info?.hashtags;
     const administratorsIds: string[] = []; // TODO: Add admin support to Community type
     
+    // Derive needsSetup from community data (isActive field)
+    const needsSetup = needsSetupProp !== undefined ? needsSetupProp : (info?.isActive === false);
+    
     // Use passed isAdmin prop if available, otherwise fall back to checking administratorsIds
     const userIsAdmin = isAdmin !== undefined ? isAdmin : (user?.id && administratorsIds.includes(user.id));
+    
+    const handleClick = (e: React.MouseEvent) => {
+        if (needsSetup) {
+            if (userIsAdmin) {
+                // Admin: redirect to settings
+                router.push(`/meriter/communities/${info?.telegramChatId || currencyOfCommunityTgChatId}/settings`);
+            } else {
+                // Non-admin: show tooltip, don't navigate
+                e.stopPropagation();
+                setShowTooltip(true);
+                setTimeout(() => setShowTooltip(false), 3000);
+            }
+        } else {
+            // Normal navigation to community page
+            router.push(`/meriter/communities/${info?.telegramChatId || currencyOfCommunityTgChatId}`);
+        }
+    };
     
     if (!title) return null;
     
     return (
-        <div 
-            className="card bg-base-100 shadow-md rounded-2xl mb-5 p-5 cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => (document.location.href = "/meriter/communities/" + (info?.telegramChatId || currencyOfCommunityTgChatId))}
-        >
+        <div className="relative">
+            {showTooltip && (
+                <div className="absolute top-0 left-0 right-0 bg-warning text-warning-content p-3 rounded-t-lg z-10">
+                    <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        <span>Setup pending by admin</span>
+                    </div>
+                </div>
+            )}
+            <div 
+                className="card bg-base-100 shadow-md rounded-2xl mb-5 p-5 cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={handleClick}
+            >
             {/* Setup banners */}
             {needsSetup && userIsAdmin && (
                 <div className="alert alert-warning mb-3">
@@ -109,6 +145,7 @@ export const WalletCommunity: React.FC<WalletCommunityProps> = ({
                         {tags && tags.map((t: string) => "#" + t).join(" ")}
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     );

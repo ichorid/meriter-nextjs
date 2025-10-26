@@ -143,7 +143,6 @@ const PageHome = () => {
                                 currencyNames={w.currency || {}}
                                 currencyOfCommunityTgChatId={w.communityId}
                                 tgUserId={user?.telegramId || ''}
-                                needsSetup={false}
                             />
                         ))
                 )}
