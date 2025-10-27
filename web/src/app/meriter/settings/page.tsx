@@ -2,12 +2,7 @@
 
 import Page from '@shared/components/page';
 import { useEffect, useState } from 'react';
-import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { useRouter } from 'next/navigation';
-import {
-    telegramGetAvatarLink,
-    telegramGetAvatarLinkUpd,
-} from '@lib/telegram';
 import Link from 'next/link';
 import { UpdatesFrequency } from '@shared/components/updates-frequency';
 import { ThemeToggle } from '@shared/components/theme-toggle';
@@ -86,41 +81,26 @@ const SettingsPage = () => {
 
     return (
         <Page className="settings">
-            <HeaderAvatarBalance
-                balance1={undefined}
-                balance2={undefined}
-                avatarUrl={
-                    user?.avatarUrl ?? telegramGetAvatarLink(tgAuthorId)
-                }
-                onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
-                onClick={() => {
-                    router.push('/meriter/home');
-                }}
-                userName={user?.displayName || 'User'}
-            >
-                <div>
-                    <div className="breadcrumbs text-sm mb-2 sm:mb-4">
-                        <ul>
-                            <li className="flex items-center gap-1">
-                                <Link href="/meriter/home" className="link link-hover flex items-center gap-1">
-                                    <img
-                                        className="w-5 h-5"
-                                        src={"/meriter/home.svg"}
-                                        alt="Home"
-                                    />
-                                    <span>{tCommon('home')}</span>
-                                </Link>
-                            </li>
-                            <li>{t('breadcrumb')}</li>
-                        </ul>
-                    </div>
+            <div className="mb-6">
+                <div className="breadcrumbs text-sm mb-2 sm:mb-4">
+                    <ul>
+                        <li className="flex items-center gap-1">
+                            <Link href="/meriter/home" className="link link-hover flex items-center gap-1">
+                                <img
+                                    className="w-5 h-5"
+                                    src={"/meriter/home.svg"}
+                                    alt="Home"
+                                />
+                                <span>{tCommon('home')}</span>
+                            </Link>
+                        </li>
+                        <li>{t('breadcrumb')}</li>
+                    </ul>
                 </div>
-                <div>
-                    <div className="tip">
-                        {t('subtitle')}
-                    </div>
+                <div className="tip">
+                    {t('subtitle')}
                 </div>
-            </HeaderAvatarBalance>
+            </div>
 
             {/* Language Section */}
             <div className="card bg-base-100 shadow-xl mb-6">

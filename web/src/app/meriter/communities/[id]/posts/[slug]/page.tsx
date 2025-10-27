@@ -5,8 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import Page from '@shared/components/page';
 import { useRouter } from "next/navigation";
-import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
+import { CommunityBalanceWidget } from '@/components/organisms/CommunityBalanceWidget';
 import {
     telegramGetAvatarLink,
     telegramGetAvatarLinkUpd,
@@ -102,23 +102,19 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
 
     return (
         <Page className="feed">
-            <HeaderAvatarBalance
-                balance1={{ icon: comms?.settings?.iconUrl, amount: balance }}
-                balance2={undefined}
-                avatarUrl={user?.avatarUrl ?? telegramGetAvatarLink(tgAuthorId || '')}
-                onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId || '')}
-                onClick={() => {
-                    router.push("/meriter/home");
-                }}
-                userName={user?.displayName || 'User'}
-            >
-                <MenuBreadcrumbs
-                    chatId={chatId}
-                    chatNameVerb={chatNameVerb}
-                    chatIcon={comms?.avatarUrl}
-                    postText={publication?.content ? ellipsize(getCleanPostText(publication.content), 60) : ''}
+            <MenuBreadcrumbs
+                chatId={chatId}
+                chatNameVerb={chatNameVerb}
+                chatIcon={comms?.avatarUrl}
+                postText={publication?.content ? ellipsize(getCleanPostText(publication.content), 60) : ''}
+            />
+            
+            <div className="mb-4">
+                <CommunityBalanceWidget
+                    balance={balance}
+                    currencyIcon={comms?.settings?.iconUrl}
                 />
-            </HeaderAvatarBalance>
+            </div>
 
             <div className="space-y-4">
                 {publication && publication.content && (

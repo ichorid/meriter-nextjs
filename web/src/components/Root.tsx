@@ -17,11 +17,14 @@ const TelegramSDKWrapper = dynamic(
   { ssr: false }
 );
 
-// Desktop mode wrapper - simple, no Telegram UI
+// Desktop mode wrapper - simple, no Telegram UI  
 function DesktopWrapper({ children }: PropsWithChildren) {
+  const NavigationBar = dynamic(() => import('./organisms/NavigationBar/NavigationBar').then(mod => ({ default: mod.NavigationBar })), { ssr: false });
+  
   return (
     <ThemeProvider>
       <div className="app">
+        <NavigationBar />
         {children}
       </div>
     </ThemeProvider>

@@ -18,7 +18,6 @@ import { DivFade } from '@shared/components/transitions';
 import Page from '@shared/components/page';
 import { Spinner } from '@shared/components/misc';
 import { IconPicker } from '@shared/components/iconpicker';
-import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
 import { CardWithAvatar } from '@shared/components/card-with-avatar';
 import { CommunityAvatar } from '@shared/components/community-avatar';
@@ -292,18 +291,7 @@ const CommunitySettingsPage = () => {
 
     return (
         <Page>
-            <HeaderAvatarBalance
-                balance1={undefined}
-                balance2={undefined}
-                avatarUrl={user?.avatarUrl ?? telegramGetAvatarLink(user?.telegramId || '')}
-                onAvatarUrlNotFound={() =>
-                    telegramGetAvatarLinkUpd(user?.telegramId || '')
-                }
-                onClick={() => {
-                    router.push("/meriter/home");
-                }}
-                userName={user?.displayName || 'User'}
-            >
+            <div className="mb-6">
                 <MenuBreadcrumbs>
                     <div>
                         <div className="breadcrumbs text-sm">
@@ -315,10 +303,10 @@ const CommunitySettingsPage = () => {
                         </div>
                     </div>
                 </MenuBreadcrumbs>
-                <div>
+                <div className="tip mt-2">
                     {t('communitySettings.subtitle', { communityName: communityData?.name || 'this community' })}
                 </div>
-            </HeaderAvatarBalance>
+            </div>
 
             {/* Community Profile Section */}
             {communityData && (

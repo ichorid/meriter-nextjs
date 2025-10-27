@@ -5,8 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import Page from '@shared/components/page';
 import { useRouter } from "next/navigation";
-import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
+import { CommunityBalanceWidget } from '@/components/organisms/CommunityBalanceWidget';
 import {
     telegramGetAvatarLink,
     telegramGetAvatarLinkUpd,
@@ -104,23 +104,19 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
     if (pollError || !poll) {
         return (
             <Page className="feed">
-                <HeaderAvatarBalance
-                    balance1={{ icon: undefined, amount: balance }}
-                    balance2={undefined}
-                    avatarUrl={telegramGetAvatarLink(tgAuthorId)}
-                    onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
-                    onClick={() => {
-                        router.push("/meriter/home");
-                    }}
-                    userName={user?.displayName || 'User'}
-                >
-                    <MenuBreadcrumbs
-                        chatId={chatId}
-                        chatNameVerb={chatNameVerb}
-                        chatIcon={comms?.avatarUrl}
-                        postText="Poll Not Found"
+                <MenuBreadcrumbs
+                    chatId={chatId}
+                    chatNameVerb={chatNameVerb}
+                    chatIcon={comms?.avatarUrl}
+                    postText="Poll Not Found"
+                />
+                
+                <div className="mb-4">
+                    <CommunityBalanceWidget
+                        balance={balance}
+                        currencyIcon={comms?.settings?.iconUrl}
                     />
-                </HeaderAvatarBalance>
+                </div>
 
                 <div className="flex items-center justify-center min-h-[400px]">
                     <div className="text-center">
@@ -142,23 +138,19 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
     if (!poll) {
         return (
             <Page className="feed">
-                <HeaderAvatarBalance
-                    balance1={{ icon: undefined, amount: balance }}
-                    balance2={undefined}
-                    avatarUrl={telegramGetAvatarLink(tgAuthorId)}
-                    onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
-                    onClick={() => {
-                        router.push("/meriter/home");
-                    }}
-                    userName={user?.displayName || 'User'}
-                >
-                    <MenuBreadcrumbs
-                        chatId={chatId}
-                        chatNameVerb={chatNameVerb}
-                        chatIcon={comms?.avatarUrl}
-                        postText="Loading Poll..."
+                <MenuBreadcrumbs
+                    chatId={chatId}
+                    chatNameVerb={chatNameVerb}
+                    chatIcon={comms?.avatarUrl}
+                    postText="Loading Poll..."
+                />
+                
+                <div className="mb-4">
+                    <CommunityBalanceWidget
+                        balance={balance}
+                        currencyIcon={comms?.settings?.iconUrl}
                     />
-                </HeaderAvatarBalance>
+                </div>
 
                 <div className="flex items-center justify-center min-h-[400px]">
                     <div className="text-center">
@@ -172,23 +164,19 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     return (
         <Page className="feed">
-            <HeaderAvatarBalance
-                balance1={{ icon: undefined, amount: balance }}
-                balance2={undefined}
-                avatarUrl={telegramGetAvatarLink(tgAuthorId)}
-                onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
-                onClick={() => {
-                    router.push("/meriter/home");
-                }}
-                userName={user?.displayName || 'User'}
-            >
-                <MenuBreadcrumbs
-                    chatId={chatId}
-                    chatNameVerb={chatNameVerb}
-                    chatIcon={comms?.avatarUrl}
-                    postText={poll?.title ? ellipsize(poll.title, 60) : 'Poll'}
+            <MenuBreadcrumbs
+                chatId={chatId}
+                chatNameVerb={chatNameVerb}
+                chatIcon={comms?.avatarUrl}
+                postText={poll?.title ? ellipsize(poll.title, 60) : 'Poll'}
+            />
+            
+            <div className="mb-4">
+                <CommunityBalanceWidget
+                    balance={balance}
+                    currencyIcon={comms?.settings?.iconUrl}
                 />
-            </HeaderAvatarBalance>
+            </div>
 
             <div className="space-y-4">
                 <Publication

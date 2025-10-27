@@ -1,9 +1,12 @@
 'use client';
 
 import { type PropsWithChildren, useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { AppRoot } from '@telegram-apps/telegram-ui';
 
 import { ThemeProvider } from '@/shared/lib/theme-provider';
+
+const NavigationBar = dynamic(() => import('./organisms/NavigationBar/NavigationBar').then(mod => ({ default: mod.NavigationBar })), { ssr: false });
 
 export default function TelegramSDKWrapper({ children }: PropsWithChildren) {
   const [appearance, setAppearance] = useState<'light' | 'dark'>('light');
@@ -30,6 +33,7 @@ export default function TelegramSDKWrapper({ children }: PropsWithChildren) {
   return (
     <ThemeProvider>
       <AppRoot appearance={appearance} platform={platform}>
+        <NavigationBar />
         {children}
       </AppRoot>
     </ThemeProvider>

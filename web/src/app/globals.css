@@ -25,6 +25,11 @@
   .page-inner {
     @apply max-w-2xl mx-auto;
   }
+  
+  /* Navbar spacing adjustment */
+  .page-with-navbar {
+    @apply pt-20;
+  }
 
   .clickable {
     @apply cursor-pointer;

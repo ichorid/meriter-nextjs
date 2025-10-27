@@ -4,14 +4,12 @@ import { useEffect, useState, useRef } from "react";
 import { useTranslations } from 'next-intl';
 import { useRouter } from "next/navigation";
 import { PageLayout } from '@/components/templates/PageLayout';
-import { AvatarBalanceWidget } from '@/components/organisms/AvatarBalanceWidget';
 import { Breadcrumbs } from '@/components/molecules/Breadcrumbs';
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useMyPublications, useWallets, useUserProfile } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { telegramGetAvatarLink, telegramGetAvatarLinkUpd } from '@lib/telegram';
 import { classList } from '@lib/classList';
 import { WalletCommunity } from '@/features/wallet/components/wallet-community';
 
@@ -112,19 +110,6 @@ const PageHome = () => {
 
     return (
         <PageLayout className="balance">
-            <AvatarBalanceWidget
-                balance1={undefined}
-                balance2={undefined}
-                avatarUrl={
-                    user?.avatarUrl ?? telegramGetAvatarLink(tgAuthorId || '')
-                }
-                onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId || '')}
-                onClick={() => {
-                    router.push("/meriter/home");
-                }}
-                userName={user?.displayName || 'User'}
-            />
-
             <Breadcrumbs pathname="/meriter/home" />
             
             <div className="balance-available">

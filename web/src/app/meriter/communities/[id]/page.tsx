@@ -5,7 +5,7 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { PageLayout } from '@/components/templates/PageLayout';
 import { useRouter, useSearchParams } from "next/navigation";
-import { AvatarBalanceWidget } from '@/components/organisms/AvatarBalanceWidget';
+import { CommunityBalanceWidget } from '@/components/organisms/CommunityBalanceWidget';
 import { Breadcrumbs } from '@/components/molecules/Breadcrumbs';
 import { CardWithAvatar } from '@/components/molecules/CardWithAvatar';
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
@@ -243,48 +243,44 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     return (
         <PageLayout className="feed">
-            <AvatarBalanceWidget
-                balance1={undefined}
-                balance2={undefined}
-                avatarUrl={user?.avatarUrl ?? telegramGetAvatarLink(tgAuthorId || '')}
-                onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId || '')}
-                onClick={() => {
-                    router.push("/meriter/home");
-                }}
-                userName={user?.displayName || 'User'}
-            />
-
             <Breadcrumbs
                 pathname={pathname}
                 chatId={chatId}
                 chatNameVerb={chatNameVerb}
                 chatIcon={comms?.avatarUrl}
             />
+            
+            <div className="mb-4">
+                <CommunityBalanceWidget
+                    balance={balance}
+                    currencyIcon={comms?.settings?.iconUrl}
+                />
+            </div>
                 
-                {/* Community Header */}
-                {comms?.name && (
-                    <div className="py-3 border-b border-base-300 mb-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-3">
-                                <CommunityAvatar
-                                    avatarUrl={comms?.avatarUrl}
-                                    communityName={comms?.name}
-                                    size={48}
-                                />
-                                <h1 className="text-xl font-semibold">{comms?.name}</h1>
-                            </div>
-                            {/* Settings cog icon - visible only to admins */}
-                            {comms?.isAdmin && (
-                                <button
-                                    onClick={() => router.push(`/meriter/communities/${chatId}/settings`)}
-                                    className="btn btn-ghost btn-sm btn-circle"
-                                    title="Community Settings"
-                                >
-                                    <svg 
-                                        className="w-5 h-5" 
-                                        fill="none" 
-                                        stroke="currentColor" 
-                                        viewBox="0 0 24 24"
+            {/* Community Header */}
+            {comms?.name && (
+                <div className="py-3 border-b border-base-300 mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                            <CommunityAvatar
+                                avatarUrl={comms?.avatarUrl}
+                                communityName={comms?.name}
+                                size={48}
+                            />
+                            <h1 className="text-xl font-semibold">{comms?.name}</h1>
+                        </div>
+                        {/* Settings cog icon - visible only to admins */}
+                        {comms?.isAdmin && (
+                            <button
+                                onClick={() => router.push(`/meriter/communities/${chatId}/settings`)}
+                                className="btn btn-ghost btn-sm btn-circle"
+                                title="Community Settings"
+                            >
+                                <svg 
+                                    className="w-5 h-5" 
+                                    fill="none" 
+                                    stroke="currentColor" 
+                                    viewBox="0 0 24 24"
                                     >
                                         <path 
                                             strokeLinecap="round" 
