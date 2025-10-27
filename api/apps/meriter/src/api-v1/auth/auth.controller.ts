@@ -46,13 +46,17 @@ export class AuthController {
 
       const result = await this.authService.authenticateTelegramWidget(authData);
       
-      // Set JWT cookie
+      // Set JWT cookie with proper domain for Caddy reverse proxy
+      const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+      const isProduction = process.env.NODE_ENV === 'production';
+      
       res.cookie('jwt', result.jwt, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
         maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
         path: '/',
+        domain: cookieDomain,
       });
 
       this.logger.log('Authentication successful, sending response');
@@ -80,13 +84,17 @@ export class AuthController {
 
       const result = await this.authService.authenticateTelegramWebApp(body.initData);
       
-      // Set JWT cookie
+      // Set JWT cookie with proper domain for Caddy reverse proxy
+      const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+      const isProduction = process.env.NODE_ENV === 'production';
+      
       res.cookie('jwt', result.jwt, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
         maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
         path: '/',
+        domain: cookieDomain,
       });
 
       this.logger.log('Authentication successful, sending response');
@@ -110,11 +118,16 @@ export class AuthController {
 
     // Clear the JWT cookie by setting it to empty and expiring it immediately
     // Must use the same options as when setting the cookie
+    const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    const sameSiteValue: 'none' | 'lax' = isProduction ? 'none' : 'lax';
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
+      secure: isProduction,
+      sameSite: sameSiteValue,
       path: '/',
+      domain: cookieDomain,
     };
 
     // Set cookie to expire immediately

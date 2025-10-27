@@ -97,8 +97,6 @@ export interface Publication {
   metrics: {
     upvotes: number;
     downvotes: number;
-    upthanks: number;
-    downthanks: number;
     score: number;
     commentCount: number;
     viewCount?: number;

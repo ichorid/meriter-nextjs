@@ -180,7 +180,7 @@ export class CommunityServiceV2 {
       throw new NotFoundException('Community not found');
     }
 
-    return updatedCommunity;
+    return updatedCommunity as any as Community;
   }
 
   async isUserAdmin(communityId: string, userId: string): Promise<boolean> {
@@ -205,21 +205,21 @@ export class CommunityServiceV2 {
       .limit(limit)
       .skip(skip)
       .sort({ createdAt: -1 })
-      .lean();
+      .lean() as any as Community[];
   }
 
   async getUserCommunities(userId: string): Promise<Community[]> {
     return this.communityModel
       .find({ members: userId })
       .sort({ createdAt: -1 })
-      .lean();
+      .lean() as any as Community[];
   }
 
   async getUserManagedCommunities(userId: string): Promise<Community[]> {
     return this.communityModel
       .find({ administrators: userId })
       .sort({ createdAt: -1 })
-      .lean();
+      .lean() as any as Community[];
   }
 
   async addHashtag(communityId: string, hashtag: string): Promise<Community> {
@@ -236,7 +236,7 @@ export class CommunityServiceV2 {
       throw new NotFoundException('Community not found');
     }
 
-    return updatedCommunity;
+    return updatedCommunity as any as Community;
   }
 
   async removeHashtag(communityId: string, hashtag: string): Promise<Community> {
@@ -253,7 +253,7 @@ export class CommunityServiceV2 {
       throw new NotFoundException('Community not found');
     }
 
-    return updatedCommunity;
+    return updatedCommunity as any as Community;
   }
 
   async updateUserChatMembership(chatId: string, userId: string): Promise<boolean> {

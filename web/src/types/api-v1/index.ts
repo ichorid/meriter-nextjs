@@ -74,8 +74,8 @@ export interface Comment {
   updatedAt: string;
 }
 
-// Thank types
-export interface Thank {
+// Vote types
+export interface Vote {
   id: string;
   userId: string;
   targetType: 'publication' | 'comment';
@@ -152,7 +152,7 @@ export interface CreateCommentDto {
   targetId: string;
 }
 
-export interface CreateThankDto {
+export interface CreateVoteDto {
   amount: number;
   comment?: string;
 }
@@ -256,7 +256,7 @@ export interface GetPollsResponse extends PaginatedResponse<Poll> {}
 // Frontend-specific request types (using shared DTOs)
 export interface CreatePublicationRequest extends CreatePublicationDto {}
 export interface CreateCommentRequest extends CreateCommentDto {}
-export interface CreateThankRequest extends CreateThankDto {}
+export interface CreateVoteRequest extends CreateVoteDto {}
 export interface CreatePollRequest extends CreatePollDto {}
 export interface CreatePollVoteRequest extends CreatePollVoteDto {}
 
@@ -277,9 +277,9 @@ export interface CreateCommentResponse {
   };
 }
 
-export interface CreateThankResponse {
+export interface CreateVoteResponse {
   data: {
-    thank: Thank;
+    vote: Vote;
     comment?: Comment;
     wallet: Wallet;
   };

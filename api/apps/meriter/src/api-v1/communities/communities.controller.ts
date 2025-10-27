@@ -246,30 +246,68 @@ export class CommunitiesController {
       skip
     );
 
-    // Convert domain entities to DTOs
-    const mappedPublications = publications.map(publication => ({
-      id: publication.getId.getValue(),
-      communityId: publication.getCommunityId.getValue(),
-      authorId: publication.getAuthorId.getValue(),
-      beneficiaryId: publication.getBeneficiaryId?.getValue() || undefined,
-      content: publication.getContent,
-      type: publication.getType,
-      hashtags: publication.getHashtags,
-      imageUrl: undefined, // Not available in current entity
-      videoUrl: undefined, // Not available in current entity
-      metadata: undefined, // Not available in current entity
-      metrics: {
-        upvotes: publication.getMetrics.upvotes,
-        downvotes: publication.getMetrics.downvotes,
-        upthanks: publication.getMetrics.upvotes,
-        downthanks: publication.getMetrics.downvotes,
-        score: publication.getMetrics.score,
-        commentCount: publication.getMetrics.commentCount,
-        viewCount: 0, // Not available in current entity
-      },
-      createdAt: publication.toSnapshot().createdAt.toISOString(),
-      updatedAt: publication.toSnapshot().updatedAt.toISOString(),
-    }));
+    // Extract unique user IDs (authors and beneficiaries)
+    const userIds = new Set<string>();
+    publications.forEach(pub => {
+      userIds.add(pub.getAuthorId.getValue());
+      if (pub.getBeneficiaryId) {
+        userIds.add(pub.getBeneficiaryId.getValue());
+      }
+    });
+
+    // Batch fetch all users
+    const usersMap = new Map<string, any>();
+    await Promise.all(
+      Array.from(userIds).map(async (userId) => {
+        const user = await this.userService.getUser(userId);
+        if (user) {
+          usersMap.set(userId, user);
+        }
+      })
+    );
+
+    // Convert domain entities to DTOs with enriched user metadata
+    const mappedPublications = publications.map(publication => {
+      const authorId = publication.getAuthorId.getValue();
+      const beneficiaryId = publication.getBeneficiaryId?.getValue();
+      const author = usersMap.get(authorId);
+      const beneficiary = beneficiaryId ? usersMap.get(beneficiaryId) : null;
+
+      return {
+        id: publication.getId.getValue(),
+        communityId: publication.getCommunityId.getValue(),
+        authorId,
+        beneficiaryId: beneficiaryId || undefined,
+        content: publication.getContent,
+        type: publication.getType,
+        hashtags: publication.getHashtags,
+        imageUrl: undefined, // Not available in current entity
+        videoUrl: undefined, // Not available in current entity
+        metrics: {
+          upvotes: publication.getMetrics.upvotes,
+          downvotes: publication.getMetrics.downvotes,
+          score: publication.getMetrics.score,
+          commentCount: publication.getMetrics.commentCount,
+          viewCount: 0, // Not available in current entity
+        },
+        meta: {
+          author: {
+            name: author?.displayName || author?.firstName || 'Unknown',
+            photoUrl: author?.avatarUrl,
+            username: author?.username,
+          },
+          ...(beneficiary && {
+            beneficiary: {
+              name: beneficiary.displayName || beneficiary.firstName || 'Unknown',
+              photoUrl: beneficiary.avatarUrl,
+              username: beneficiary.username,
+            },
+          }),
+        },
+        createdAt: publication.toSnapshot().createdAt.toISOString(),
+        updatedAt: publication.toSnapshot().updatedAt.toISOString(),
+      };
+    });
 
     return PaginationHelper.createResult(mappedPublications, mappedPublications.length, pagination);
   }

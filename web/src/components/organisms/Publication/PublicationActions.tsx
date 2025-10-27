@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import { VoteBar } from '@/components/molecules/VoteBar';
+import { BarVoteUnified } from '@shared/components/bar-vote-unified';
 import { Button } from '@/components/atoms/Button';
 import { CommentForm } from '@/components/molecules/CommentForm';
 import { BottomPortal } from '@shared/components/bottom-portal';
@@ -52,24 +52,13 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   return (
     <div className={`space-y-4 ${className}`}>
       <div className="flex items-center justify-between">
-        <VoteBar
-          plus={0}
-          minus={0}
-          onPlus={() => onVote('plus', 1)}
-          onMinus={() => onVote('minus', 1)}
-          onLeft={() => setActiveComment(isActiveComment ? null : publication.id)}
+        <BarVoteUnified
+          score={publication.metrics?.score || 0}
+          onVoteClick={() => setActiveComment(isActiveComment ? null : publication.id)}
+          isAuthor={false}
+          commentCount={0}
+          onCommentClick={handleCommentToggle}
         />
-        
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCommentToggle}
-            disabled={isCommenting}
-          >
-            Comment
-          </Button>
-        </div>
       </div>
 
       {isActiveComment && (

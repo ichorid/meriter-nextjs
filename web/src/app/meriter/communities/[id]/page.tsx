@@ -246,7 +246,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             <AvatarBalanceWidget
                 balance1={undefined}
                 balance2={undefined}
-                avatarUrl={telegramGetAvatarLink(tgAuthorId || '')}
+                avatarUrl={user?.avatarUrl ?? telegramGetAvatarLink(tgAuthorId || '')}
                 onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId || '')}
                 onClick={() => {
                     router.push("/meriter/home");

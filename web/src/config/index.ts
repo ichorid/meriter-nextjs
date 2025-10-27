@@ -86,7 +86,7 @@ export const config = {
       polls: '/api/v1/polls',
       wallet: '/api/v1/users/me/wallets',
       transactions: '/api/v1/users/me/transactions',
-      thanks: '/api/v1/thanks',
+      votes: '/api/v1/votes',
       users: '/api/v1/users',
     },
   },

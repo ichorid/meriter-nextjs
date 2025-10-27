@@ -105,7 +105,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
             <HeaderAvatarBalance
                 balance1={{ icon: comms?.settings?.iconUrl, amount: balance }}
                 balance2={undefined}
-                avatarUrl={telegramGetAvatarLink(tgAuthorId || '')}
+                avatarUrl={user?.avatarUrl ?? telegramGetAvatarLink(tgAuthorId || '')}
                 onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId || '')}
                 onClick={() => {
                     router.push("/meriter/home");

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { FormCommentVote } from "./form-comment-vote";
+import { FormCommentVoteVertical } from "./form-comment-vote-vertical";
 import { useTranslations } from 'next-intl';
 
 interface FormCommentProps {
@@ -72,7 +72,7 @@ export const FormComment: React.FC<FormCommentProps> = ({
                 <Link href="/meriter/home">{t('addToBalance')}</Link>{" "}
             </div>
         ) : (
-            <FormCommentVote
+            <FormCommentVoteVertical
                 key={uid}
                 comment={comment}
                 setComment={setComment}

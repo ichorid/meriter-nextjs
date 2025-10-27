@@ -1,8 +1,11 @@
-// CommentForm molecule component
+// CommentForm molecule component with vertical slider
 'use client';
 
 import React, { useState } from 'react';
 import { Button } from '@/components/atoms/Button';
+import Slider from 'rc-slider';
+import { classList } from '@lib/classList';
+import 'rc-slider/assets/index.css';
 
 interface CommentFormProps {
   onSubmit: (comment: string, amount: number, directionPlus: boolean) => void;
@@ -18,92 +21,97 @@ export const CommentForm: React.FC<CommentFormProps> = ({
   onSubmit,
   onCancel,
   maxAmount,
-  initialAmount = 1,
+  initialAmount = 0,
   initialDirection = true,
   loading = false,
   className = '',
 }) => {
   const [comment, setComment] = useState('');
   const [amount, setAmount] = useState(initialAmount);
-  const [directionPlus, setDirectionPlus] = useState(initialDirection);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!comment.trim() || amount <= 0) return;
-    onSubmit(comment, amount, directionPlus);
+    if (amount === 0) return;
+    const directionPlus = amount > 0;
+    onSubmit(comment, Math.abs(amount), directionPlus);
   };
 
+  const directionPlus = amount > 0;
+  const directionMinus = amount < 0;
+
   return (
-    <form onSubmit={handleSubmit} className={`space-y-4 ${className}`}>
-      <div>
-        <textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Enter your comment..."
-          className="textarea textarea-bordered w-full"
-          rows={3}
-          required
-        />
-      </div>
-      
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <label className="label cursor-pointer">
-            <input
-              type="radio"
-              name="direction"
-              className="radio radio-success"
-              checked={directionPlus}
-              onChange={() => setDirectionPlus(true)}
-            />
-            <span className="label-text ml-2">Positive</span>
-          </label>
-          <label className="label cursor-pointer">
-            <input
-              type="radio"
-              name="direction"
-              className="radio radio-error"
-              checked={!directionPlus}
-              onChange={() => setDirectionPlus(false)}
-            />
-            <span className="label-text ml-2">Negative</span>
-          </label>
+    <div className={classList(
+      "p-5 rounded-2xl shadow-lg",
+      directionPlus ? "bg-success/10" : directionMinus ? "bg-error/10" : "bg-base-100"
+    )}>
+      <form onSubmit={handleSubmit} className={`space-y-4 ${className}`}>
+        {/* Amount display */}
+        <div className="text-center mb-4">
+          <div className={classList(
+            "text-3xl font-bold",
+            directionPlus ? "text-success" : directionMinus ? "text-error" : "text-secondary"
+          )}>
+            {amount > 0 ? '+' : ''}{amount}
+          </div>
+          <div className="text-xs opacity-60 mt-1">
+            Vote amount
+          </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <label className="label">
-            <span className="label-text">Amount:</span>
-          </label>
-          <input
-            type="number"
-            min="1"
-            max={maxAmount}
-            value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
-            className="input input-bordered input-sm w-20"
-            required
+
+        {/* Vertical Slider */}
+        <div className="mb-4 flex justify-center">
+          <div className="relative" style={{ height: '180px' }}>
+            <Slider
+              vertical={true}
+              min={-maxAmount}
+              max={maxAmount}
+              value={amount}
+              onChange={(value) => setAmount(typeof value === 'number' ? value : value[0] || 0)}
+              className="rc-slider-vertical"
+            />
+            {/* Center zero indicator */}
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+              <div className="w-8 h-8 rounded-full bg-base-200 border-2 border-base-300 flex items-center justify-center">
+                <span className="text-xs font-bold text-base-content">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Instructions */}
+        <div className="text-sm mb-2 opacity-60 text-center">
+          Move up to vote positive, down to vote negative
+        </div>
+
+        <div>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder={amount === 0 ? "Adjust slider to vote" : "Add a comment (optional)"}
+            className="textarea textarea-bordered w-full"
+            rows={3}
           />
         </div>
-      </div>
-      
-      <div className="flex justify-end gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={onCancel}
-          disabled={loading}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          variant="primary"
-          isLoading={loading}
-          disabled={!comment.trim() || amount <= 0}
-        >
-          Submit
-        </Button>
-      </div>
-    </form>
+        
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onCancel}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            isLoading={loading}
+            disabled={amount === 0}
+          >
+            Submit
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 };

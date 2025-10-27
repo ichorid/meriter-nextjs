@@ -10,7 +10,7 @@ import {
     telegramGetAvatarLink,
     telegramGetAvatarLinkUpd,
 } from "@lib/telegram";
-import { BarVote } from "@shared/components/bar-vote";
+import { BarVoteUnified } from "@shared/components/bar-vote-unified";
 import { BarWithdraw } from "@shared/components/bar-withdraw";
 import { WithTelegramEntities } from "@shared/components/withTelegramEntities";
 import { FormDimensionsEditor } from "@shared/components/form-dimensions-editor";
@@ -532,26 +532,25 @@ export const Publication = ({
                             )}
                         </BarWithdraw>
                     ) : (
-                        <BarVote
-                            plus={currentPlus}
-                            minus={currentMinus}
-                            onPlus={() => {
+                        <BarVoteUnified
+                            score={currentPlus - currentMinus}
+                            onVoteClick={() => {
                                 showPlus();
                                 setActiveSlider && setActiveSlider(postId);
                             }}
-                            onMinus={() => {
-                                showMinus();
-                                setActiveSlider && setActiveSlider(postId);
-                            }}
-                            onLeft={!isDetailPage ? () => {
-                                // Navigate to post detail page
+                            onWithdrawClick={
+                                isAuthor && (currentPlus - currentMinus) > 0
+                                    ? () => handleSetDirectionAdd(false)
+                                    : undefined
+                            }
+                            isAuthor={isAuthor}
+                            isBeneficiary={beneficiaryId && beneficiaryId === myId}
+                            commentCount={!isDetailPage ? comments?.length || 0 : 0}
+                            onCommentClick={!isDetailPage ? () => {
                                 if (tgChatId && slug) {
                                     router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
                                 }
-                            } : () => {
-                                // On detail page, comment counter is visible but not clickable
-                            }}
-                            commentCount={comments?.length || 0}
+                            } : undefined}
                         />
                     )
                 }

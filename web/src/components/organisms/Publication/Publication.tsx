@@ -17,7 +17,7 @@ import { BottomPortal } from '@shared/components/bottom-portal';
 import { FormComment } from '@features/comments/components/form-comment';
 import { Comment } from '@features/comments/components/comment';
 import { PollVoting } from '@features/polls/components/poll-voting';
-import { BarVote } from '@shared/components/bar-vote';
+import { BarVoteUnified } from '@shared/components/bar-vote-unified';
 import { BarWithdraw } from '@shared/components/bar-withdraw';
 import { FormWithdraw } from '@shared/components/form-withdraw';
 import { Spinner } from '@shared/components/misc';
@@ -436,19 +436,21 @@ export const Publication: React.FC<PublicationProps> = ({
               )}
             </BarWithdraw>
           ) : (
-            <BarVote
-              plus={currentPlus}
-              minus={currentMinus}
-              onPlus={() => {
+            <BarVoteUnified
+              score={currentPlus - currentMinus}
+              onVoteClick={() => {
                 showPlus();
                 setActiveSlider && setActiveSlider(slug);
               }}
-              onMinus={() => {
-                showMinus();
-                setActiveSlider && setActiveSlider(slug);
-              }}
-              onLeft={navigationLogic.handleCommentClick}
-              commentCount={comments?.length || 0}
+              onWithdrawClick={
+                stateLogic.isAuthor && (currentPlus - currentMinus) > 0
+                  ? () => votingLogic.handleSetDirectionAdd(false)
+                  : undefined
+              }
+              isAuthor={stateLogic.isAuthor}
+              isBeneficiary={beneficiaryId && beneficiaryId === myId}
+              commentCount={!isDetailPage ? comments?.length || 0 : 0}
+              onCommentClick={navigationLogic.handleCommentClick}
             />
           )
         }

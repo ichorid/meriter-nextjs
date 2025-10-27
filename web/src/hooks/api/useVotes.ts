@@ -1,17 +1,17 @@
-// Thanks React Query hooks
+// Votes React Query hooks
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { thanksApiV1 } from '@/lib/api/v1';
-import type { CreateThankRequest } from '@/types/api-v1';
+import { votesApiV1 } from '@/lib/api/v1';
+import type { CreateVoteRequest } from '@/types/api-v1';
 
-// Thank publication creator
-export function useThankPublication() {
+// Vote on publication
+export function useVoteOnPublication() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ publicationId, data }: { publicationId: string; data: CreateThankRequest }) => 
-      thanksApiV1.thankPublication(publicationId, data),
+    mutationFn: ({ publicationId, data }: { publicationId: string; data: CreateVoteRequest }) => 
+      votesApiV1.voteOnPublication(publicationId, data),
     onSuccess: (result) => {
-      // Invalidate publications to update thank counts
+      // Invalidate publications to update vote counts
       queryClient.invalidateQueries({ queryKey: ['publications'] });
       
       // Invalidate wallet queries to update balance
@@ -23,20 +23,20 @@ export function useThankPublication() {
       }
     },
     onError: (error) => {
-      console.error('Thank publication error:', error);
+      console.error('Vote on publication error:', error);
     },
   });
 }
 
-// Thank comment creator
-export function useThankComment() {
+// Vote on comment
+export function useVoteOnComment() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ commentId, data }: { commentId: string; data: CreateThankRequest }) => 
-      thanksApiV1.thankComment(commentId, data),
+    mutationFn: ({ commentId, data }: { commentId: string; data: CreateVoteRequest }) => 
+      votesApiV1.voteOnComment(commentId, data),
     onSuccess: (result) => {
-      // Invalidate comments to update thank counts
+      // Invalidate comments to update vote counts
       queryClient.invalidateQueries({ queryKey: ['comments'] });
       
       // Invalidate wallet queries to update balance
@@ -48,45 +48,45 @@ export function useThankComment() {
       }
     },
     onError: (error) => {
-      console.error('Thank comment error:', error);
+      console.error('Vote on comment error:', error);
     },
   });
 }
 
-// Remove thank from publication
-export function useRemovePublicationThank() {
+// Remove vote from publication
+export function useRemovePublicationVote() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (publicationId: string) => thanksApiV1.removePublicationThank(publicationId),
+    mutationFn: (publicationId: string) => votesApiV1.removePublicationVote(publicationId),
     onSuccess: () => {
-      // Invalidate publications to update thank counts
+      // Invalidate publications to update vote counts
       queryClient.invalidateQueries({ queryKey: ['publications'] });
       
       // Invalidate wallet queries to update balance
       queryClient.invalidateQueries({ queryKey: ['wallets'] });
     },
     onError: (error) => {
-      console.error('Remove publication thank error:', error);
+      console.error('Remove publication vote error:', error);
     },
   });
 }
 
-// Remove thank from comment
-export function useRemoveCommentThank() {
+// Remove vote from comment
+export function useRemoveCommentVote() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (commentId: string) => thanksApiV1.removeCommentThank(commentId),
+    mutationFn: (commentId: string) => votesApiV1.removeCommentVote(commentId),
     onSuccess: () => {
-      // Invalidate comments to update thank counts
+      // Invalidate comments to update vote counts
       queryClient.invalidateQueries({ queryKey: ['comments'] });
       
       // Invalidate wallet queries to update balance
       queryClient.invalidateQueries({ queryKey: ['wallets'] });
     },
     onError: (error) => {
-      console.error('Remove comment thank error:', error);
+      console.error('Remove comment vote error:', error);
     },
   });
 }

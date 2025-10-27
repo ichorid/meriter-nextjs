@@ -3,7 +3,7 @@
 import { useComments } from "../hooks/use-comments";
 import { CardCommentVote } from "@shared/components/card-comment-vote";
 import { telegramGetAvatarLink, telegramGetAvatarLinkUpd } from "@lib/telegram";
-import { BarVote } from "@shared/components/bar-vote";
+import { BarVoteUnified } from "@shared/components/bar-vote-unified";
 import { BarWithdraw } from "@shared/components/bar-withdraw";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { FormComment } from "./form-comment";
@@ -383,19 +383,21 @@ export const Comment: React.FC<CommentProps> = ({
                             )}
                         </BarWithdraw>
                     ) : (
-                        <BarVote
-                            plus={currentPlus}
-                            minus={currentMinus}
-                            onPlus={() => {
+                        <BarVoteUnified
+                            score={currentPlus - currentMinus}
+                            onVoteClick={() => {
                                 showPlus();
                                 setActiveSlider && setActiveSlider(_id);
                             }}
-                            onMinus={() => {
-                                showMinus();
-                                setActiveSlider && setActiveSlider(_id);
-                            }}
-                            onLeft={() => setShowComments(true)}
+                            onWithdrawClick={
+                                isAuthor && (currentPlus - currentMinus) > 0
+                                    ? () => handleSetDirectionAdd(false)
+                                    : undefined
+                            }
+                            isAuthor={isAuthor}
+                            isBeneficiary={toUserTgId && toUserTgId === myId}
                             commentCount={comments?.length || 0}
+                            onCommentClick={() => setShowComments(true)}
                         />
                     )
                 }

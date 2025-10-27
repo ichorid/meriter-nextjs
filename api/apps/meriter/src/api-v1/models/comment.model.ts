@@ -21,10 +21,10 @@ export class Comment {
   content: string;
 
   @Prop({ default: 0 })
-  upthanks: number;
+  upvotes: number;
 
   @Prop({ default: 0 })
-  downthanks: number;
+  downvotes: number;
 
   @Prop({ default: 0 })
   score: number;

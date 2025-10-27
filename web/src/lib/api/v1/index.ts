@@ -5,14 +5,14 @@ import type {
   Community,
   Publication,
   Comment,
-  Thank,
+  Vote,
   Poll,
   PollVote,
   Wallet,
   Transaction,
   CreatePublicationDto,
   CreateCommentDto,
-  CreateThankDto,
+  CreateVoteDto,
   CreatePollDto,
   CreatePollVoteDto,
   UpdateCommunityDto,
@@ -284,50 +284,50 @@ export const commentsApiV1 = {
   },
 };
 
-// Thanks API with complex response structures and missing endpoints
-export const thanksApiV1 = {
-  async thankPublication(
+// Votes API with complex response structures and missing endpoints
+export const votesApiV1 = {
+  async voteOnPublication(
     publicationId: string,
-    data: CreateThankDto
-  ): Promise<{ thank: Thank; comment?: Comment; wallet: Wallet }> {
-    const response = await apiClient.post<{ success: true; data: { thank: Thank; comment?: Comment; wallet: Wallet } }>(`/api/v1/publications/${publicationId}/thanks`, data);
+    data: CreateVoteDto
+  ): Promise<{ vote: Vote; comment?: Comment; wallet: Wallet }> {
+    const response = await apiClient.post<{ success: true; data: { vote: Vote; comment?: Comment; wallet: Wallet } }>(`/api/v1/publications/${publicationId}/votes`, data);
     return response.data;
   },
 
-  async thankComment(
+  async voteOnComment(
     commentId: string,
-    data: CreateThankDto
-  ): Promise<{ thank: Thank; comment?: Comment; wallet: Wallet }> {
-    const response = await apiClient.post<{ success: true; data: { thank: Thank; comment?: Comment; wallet: Wallet } }>(`/api/v1/comments/${commentId}/thanks`, data);
+    data: CreateVoteDto
+  ): Promise<{ vote: Vote; comment?: Comment; wallet: Wallet }> {
+    const response = await apiClient.post<{ success: true; data: { vote: Vote; comment?: Comment; wallet: Wallet } }>(`/api/v1/comments/${commentId}/votes`, data);
     return response.data;
   },
 
-  async getPublicationThanks(
+  async getPublicationVotes(
     publicationId: string,
     params: { page?: number; pageSize?: number } = {}
-  ): Promise<{ data: Thank[] }> {
-    const response = await apiClient.get(`/api/v1/publications/${publicationId}/thanks`, { params });
+  ): Promise<{ data: Vote[] }> {
+    const response = await apiClient.get(`/api/v1/publications/${publicationId}/votes`, { params });
     return response;
   },
 
-  async getCommentThanks(
+  async getCommentVotes(
     commentId: string,
     params: { page?: number; pageSize?: number } = {}
-  ): Promise<{ data: Thank[] }> {
-    const response = await apiClient.get(`/api/v1/comments/${commentId}/thanks`, { params });
+  ): Promise<{ data: Vote[] }> {
+    const response = await apiClient.get(`/api/v1/comments/${commentId}/votes`, { params });
     return response;
   },
 
-  async removePublicationThank(publicationId: string): Promise<void> {
-    await apiClient.delete(`/api/v1/publications/${publicationId}/thanks`);
+  async removePublicationVote(publicationId: string): Promise<void> {
+    await apiClient.delete(`/api/v1/publications/${publicationId}/votes`);
   },
 
-  async removeCommentThank(commentId: string): Promise<void> {
-    await apiClient.delete(`/api/v1/comments/${commentId}/thanks`);
+  async removeCommentVote(commentId: string): Promise<void> {
+    await apiClient.delete(`/api/v1/comments/${commentId}/votes`);
   },
 
-  async getThankDetails(thankId: string): Promise<{ thank: Thank; comment?: Comment }> {
-    const response = await apiClient.get<{ thank: Thank; comment?: Comment }>(`/api/v1/thanks/${thankId}/details`);
+  async getVoteDetails(voteId: string): Promise<{ vote: Vote; comment?: Comment }> {
+    const response = await apiClient.get<{ vote: Vote; comment?: Comment }>(`/api/v1/votes/${voteId}/details`);
     return response;
   },
 };
@@ -446,7 +446,7 @@ export const apiV1 = {
   communities: communitiesApiV1Enhanced,
   publications: publicationsApiV1,
   comments: commentsApiV1,
-  thanks: thanksApiV1,
+  votes: votesApiV1,
   polls: pollsApiV1,
   wallet: walletApiV1,
 };

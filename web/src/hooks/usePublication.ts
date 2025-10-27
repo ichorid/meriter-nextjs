@@ -1,6 +1,6 @@
 // Publication business logic hook
 import { useState, useCallback } from 'react';
-import { useThankPublication, useThankComment } from '@/hooks/api';
+import { useVoteOnPublication, useVoteOnComment } from '@/hooks/api';
 
 // Local type definitions
 interface Publication {
@@ -47,14 +47,14 @@ export function usePublication({
   const [activeSlider, setActiveSlider] = useState<string | null>(null);
   const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
-  const thankPublicationMutation = useThankPublication();
-  const thankCommentMutation = useThankComment();
+  const voteOnPublicationMutation = useVoteOnPublication();
+  const voteOnCommentMutation = useVoteOnComment();
 
   const handleVote = useCallback(async (direction: 'plus' | 'minus', amount: number = 1) => {
     if (!publication.id) return;
 
     try {
-      await thankPublicationMutation.mutateAsync({
+      await voteOnPublicationMutation.mutateAsync({
         publicationId: publication.id,
         data: {
           amount,
@@ -75,13 +75,13 @@ export function usePublication({
     } catch (error) {
       console.error('Vote error:', error);
     }
-  }, [publication, thankPublicationMutation, updateWalletBalance, updateAll]);
+  }, [publication, voteOnPublicationMutation, updateWalletBalance, updateAll]);
 
   const handleComment = useCallback(async (comment: string, amount: number, directionPlus: boolean) => {
     if (!publication.id) return;
 
     try {
-      await thankPublicationMutation.mutateAsync({
+      await voteOnPublicationMutation.mutateAsync({
         publicationId: publication.id,
         data: {
           amount,
@@ -105,7 +105,7 @@ export function usePublication({
     } catch (error) {
       console.error('Comment error:', error);
     }
-  }, [publication, thankPublicationMutation, updateWalletBalance, updateAll]);
+  }, [publication, voteOnPublicationMutation, updateWalletBalance, updateAll]);
 
   const handleWithdraw = useCallback((postId: string | null) => {
     setActiveWithdrawPost(postId);
@@ -141,8 +141,8 @@ export function usePublication({
     currentBalance: getCurrentBalance(),
     
     // Loading states
-    isVoting: thankPublicationMutation.isPending,
-    isCommenting: thankPublicationMutation.isPending,
+    isVoting: voteOnPublicationMutation.isPending,
+    isCommenting: voteOnPublicationMutation.isPending,
   };
 }
 

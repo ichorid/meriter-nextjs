@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
-import { commentsApiV1, thanksApiV1, usersApiV1 } from '@/lib/api/v1';
+import { commentsApiV1, votesApiV1, usersApiV1 } from '@/lib/api/v1';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
 import type { Dispatch, SetStateAction } from 'react';
@@ -108,10 +108,10 @@ export const useComments = (
         maxMinus: free?.minus || 0,
         commentAdd: async (directionPlus: boolean) => {
             try {
-                // Use appropriate v1 endpoint based on whether it's a comment or thank
+                // Use appropriate v1 endpoint based on whether it's a comment or vote
                 if (forTransaction) {
-                    // This is a thank for a comment
-                    const response = await apiClient.post(`/api/v1/comments/${transactionId}/thanks`, {
+                    // This is a vote for a comment
+                    const response = await apiClient.post(`/api/v1/comments/${transactionId}/votes`, {
                         amount: directionPlus ? Math.abs(delta) : -Math.abs(delta),
                         sourceType: 'personal',
                         comment: comment.trim() ? { content: comment.trim() } : undefined,

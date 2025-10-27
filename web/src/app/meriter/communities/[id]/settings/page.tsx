@@ -295,7 +295,7 @@ const CommunitySettingsPage = () => {
             <HeaderAvatarBalance
                 balance1={undefined}
                 balance2={undefined}
-                avatarUrl={telegramGetAvatarLink(user?.telegramId || '')}
+                avatarUrl={user?.avatarUrl ?? telegramGetAvatarLink(user?.telegramId || '')}
                 onAvatarUrlNotFound={() =>
                     telegramGetAvatarLinkUpd(user?.telegramId || '')
                 }

@@ -118,8 +118,6 @@ export class UsersController {
       metrics: {
         upvotes: publication.getMetrics.upvotes,
         downvotes: publication.getMetrics.downvotes,
-        upthanks: publication.getMetrics.upvotes,
-        downthanks: publication.getMetrics.downvotes,
         score: publication.getMetrics.score,
         commentCount: publication.getMetrics.commentCount,
         viewCount: 0, // Not available in current entity

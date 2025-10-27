@@ -17,11 +17,11 @@ interface Comment {
   updatedAt: string;
   authorVoteAmount?: number;
   metrics: {
-    upthanks: number;
-    downthanks: number;
+    upvotes: number;
+    downvotes: number;
     score: number;
     replyCount: number;
-    thanks?: number;
+    votes?: number;
   };
 }
 
@@ -86,7 +86,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({
                   onClick={() => onVote(comment.id, 'plus')}
                 >
                   <Icon name="thumb_up" size={16} />
-                  {comment.metrics?.thanks || 0}
+                  {comment.metrics?.votes || 0}
                 </Button>
                 <Button
                   variant="ghost"
