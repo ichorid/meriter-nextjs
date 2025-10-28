@@ -208,10 +208,10 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
   const balance = wallet?.balance || 0;
 
   // Get free vote quota
-  const { data: quota = 0 } = useQuery({
+  const { data: quota } = useQuery({
     queryKey: ['user-quota', user?.telegramId, communityId],
     queryFn: () => {
-      if (!user?.telegramId || !communityId) return 0;
+      if (!user?.telegramId || !communityId) return { dailyQuota: 0, usedToday: 0, remainingToday: 0, resetAt: '' };
       return usersApiV1.getUserQuota(user.telegramId, communityId);
     },
     enabled: !!user?.telegramId && !!communityId,
@@ -345,7 +345,7 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
           {/* Balance and Quota */}
           <div className="flex items-center gap-2 text-sm">
             <span className="opacity-60">Quota:</span>
-            <span className="font-semibold">{quota}</span>
+            <span className="font-semibold">{quota?.remainingToday ?? 0}</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             {community.settings?.iconUrl && (

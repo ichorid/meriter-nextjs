@@ -28,6 +28,22 @@ interface Publication {
     score: number;
     commentCount: number;
   };
+  meta?: {
+    author?: {
+      name?: string;
+      photoUrl?: string;
+      username?: string;
+    };
+    beneficiary?: {
+      name?: string;
+      photoUrl?: string;
+      username?: string;
+    };
+    origin?: {
+      telegramChatName?: string;
+    };
+    hashtagName?: string;
+  };
   [key: string]: unknown;
 }
 
@@ -285,21 +301,33 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 {isAuthenticated &&
                     sortItems(filteredPublications)
                         .filter((p) => p?.content || p?.type === 'poll')
-                        .map((p) => (
-                            <div
-                                key={p.id}
-                                id={`post-${p.id}`}
-                                className={highlightedPostId === p.id ? 'ring-2 ring-primary ring-opacity-50 rounded-lg p-2 bg-primary bg-opacity-10' : ''}
-                            >
-                                <PublicationCard
-                                    publication={p}
-                                    wallets={Array.isArray(wallets) ? wallets : []}
-                                    updateWalletBalance={updateWalletBalance}
-                                    updateAll={updateAll}
-                                    showCommunityAvatar={false}
-                                />
-                            </div>
-                        ))}
+                        .map((p) => {
+                            // Console logging for debugging
+                            console.log('📄 Rendering publication card:', {
+                                id: p.id,
+                                type: 'PublicationCardComponent',
+                                hasBeneficiary: !!p.meta?.beneficiary,
+                                beneficiary: p.meta?.beneficiary,
+                                meta: p.meta,
+                                fullPublication: p
+                            });
+                            
+                            return (
+                                <div
+                                    key={p.id}
+                                    id={`post-${p.id}`}
+                                    className={highlightedPostId === p.id ? 'ring-2 ring-primary ring-opacity-50 rounded-lg p-2 bg-primary bg-opacity-10' : ''}
+                                >
+                                    <PublicationCard
+                                        publication={p}
+                                        wallets={Array.isArray(wallets) ? wallets : []}
+                                        updateWalletBalance={updateWalletBalance}
+                                        updateAll={updateAll}
+                                        showCommunityAvatar={false}
+                                    />
+                                </div>
+                            );
+                        })}
                 {!paginationEnd && filteredPublications.length > 1 && (
                     <button onClick={() => fetchNextPage()} className="btn btn-primary btn-wide mx-auto block">
                         {t('communities.loadMore')}

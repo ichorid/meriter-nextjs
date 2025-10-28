@@ -46,6 +46,16 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   showCommunityAvatar = false,
   className = '',
 }) => {
+  // Console logging for debugging
+  console.log('🎨 PublicationHeader rendering:', {
+    id: publication.id,
+    hasMeta: !!publication.meta,
+    hasAuthor: !!publication.meta?.author,
+    hasBeneficiary: !!publication.meta?.beneficiary,
+    beneficiary: publication.meta?.beneficiary,
+    meta: publication.meta,
+  });
+
   const author = {
     name: publication.meta?.author?.name || 'Unknown',
     photoUrl: publication.meta?.author?.photoUrl,
@@ -57,6 +67,13 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     photoUrl: publication.meta.beneficiary.photoUrl,
     username: publication.meta.beneficiary.username,
   } : null;
+
+  // Log when beneficiary exists
+  if (beneficiary) {
+    console.log('✅ Beneficiary will be displayed:', beneficiary);
+  } else {
+    console.log('❌ No beneficiary to display');
+  }
 
   return (
     <div className={`flex items-start justify-between ${className}`}>

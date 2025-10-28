@@ -67,7 +67,7 @@ export const useComments = (
         queryFn: async () => {
             if (!user?.id) return { plus: 0, minus: 0 };
             const quota = await usersApiV1.getUserQuota(user.id);
-            return { plus: quota || 0, minus: 0 }; // Simplified
+            return { plus: quota?.remainingToday || 0, minus: 0 }; // Use remainingToday from quota object
         },
         refetchOnWindowFocus: false,
     });

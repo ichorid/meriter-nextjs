@@ -1038,17 +1038,24 @@ export class TgBotsService {
       throw new Error(`Hashtag #${cleanKeyword} is not configured for this community`);
     }
 
-    const publication = await this.publicationModel.create({
+    const publicationData = {
       id: uid(),
       authorId: tgAuthorId,
       communityId: fromTgChatId,
+      beneficiaryId: beneficiary?.telegramId || undefined,
       title: messageText.substring(0, 100), // Use first 100 chars as title
       content: messageText,
       type: 'text',
       hashtags: keyword ? [keyword] : [],
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
+    };
+    
+    this.logger.log(`📝 Creating publication with beneficiaryId: ${publicationData.beneficiaryId}`);
+    
+    const publication = await this.publicationModel.create(publicationData);
+    
+    this.logger.log(`✅ Publication created with id: ${publication.id}, beneficiaryId: ${publication.beneficiaryId}`);
 
     return publication;
   }

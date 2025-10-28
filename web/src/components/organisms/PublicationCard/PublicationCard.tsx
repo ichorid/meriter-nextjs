@@ -70,6 +70,9 @@ export const PublicationCard: React.FC<PublicationCardProps> = ({
           communityName={showCommunity ? communityName : undefined}
           createdAt={publication.createdAt}
           hashtags={publication.hashtags}
+          beneficiaryName={publication.meta?.beneficiary?.name}
+          beneficiaryPhotoUrl={publication.meta?.beneficiary?.photoUrl}
+          beneficiaryUsername={publication.meta?.beneficiary?.username}
         />
         
         <PublicationCardContent
