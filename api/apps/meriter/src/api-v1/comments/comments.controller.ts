@@ -49,7 +49,7 @@ export class CommentsController {
     @Body() createDto: CreateCommentDto,
     @Req() req: any,
   ): Promise<Comment> {
-    const comment = await this.commentsService.createComment(req.user.tgUserId, createDto);
+    const comment = await this.commentsService.createComment(req.user.id, createDto);
     const snapshot = comment.toSnapshot();
     return {
       ...snapshot,
@@ -76,11 +76,11 @@ export class CommentsController {
     }
 
     const commentSnapshot = comment.toSnapshot();
-    if (commentSnapshot.authorId !== req.user.tgUserId) {
+    if (commentSnapshot.authorId !== req.user.id) {
       throw new ForbiddenError('Only the author can delete this comment');
     }
 
-    await this.commentsService.deleteComment(id, req.user.tgUserId);
+    await this.commentsService.deleteComment(id, req.user.id);
     return { success: true, data: { message: 'Comment deleted successfully' } };
   }
 

@@ -54,39 +54,9 @@ export class CommunityService {
   ) {}
 
   async getCommunity(communityId: string): Promise<Community | null> {
-    // Try internal ID first
-    let doc = await this.communityModel.findOne({ id: communityId }).lean();
-    
-    // If not found, try telegramChatId (backward compatibility)
-    if (!doc) {
-      doc = await this.communityModel.findOne({ telegramChatId: communityId }).lean();
-    }
-    
+    // Query by internal ID only
+    const doc = await this.communityModel.findOne({ id: communityId }).lean();
     return doc as any as Community;
-  }
-
-  /**
-   * Get community by telegramChatId (for bot interface only)
-   */
-  async getCommunityByTelegramChatId(telegramChatId: string): Promise<Community | null> {
-    const doc = await this.communityModel.findOne({ telegramChatId }).lean();
-    return doc as any as Community;
-  }
-
-  /**
-   * Get telegramChatId for a document ID
-   */
-  async getTelegramChatId(documentId: string): Promise<string | null> {
-    const community = await this.communityModel.findOne({ id: documentId }).lean();
-    return community?.telegramChatId || null;
-  }
-
-  /**
-   * Get document ID for a telegramChatId
-   */
-  async getDocumentId(telegramChatId: string): Promise<string | null> {
-    const community = await this.communityModel.findOne({ telegramChatId }).lean();
-    return community?.id || null;
   }
 
   async createCommunity(dto: CreateCommunityDto): Promise<Community> {
@@ -299,13 +269,6 @@ export class CommunityService {
   async resetDailyQuota(communityId: string): Promise<number> {
     this.logger.log(`Resetting daily quota for community ${communityId}`);
 
-    // Get telegramChatId for this document ID (votes collection uses telegramChatId)
-    const community = await this.communityModel.findOne({ id: communityId }).lean();
-    if (!community) {
-      throw new NotFoundException('Community not found');
-    }
-    const telegramChatId = community.telegramChatId;
-
     // Calculate today's date range (00:00:00 to 23:59:59)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -314,16 +277,15 @@ export class CommunityService {
 
     // Delete all votes with sourceType='quota' for this community today
     // Note: The schema uses 'quota' but some old data might have 'daily_quota'
-    // Votes collection uses telegramChatId as communityId
     const result = await this.mongoose.db
       .collection('votes')
       .deleteMany({
-        communityId: telegramChatId, // Use telegramChatId for votes query
+        communityId: communityId, // Use internal ID
         sourceType: { $in: ['quota', 'daily_quota'] },
         createdAt: { $gte: today, $lt: tomorrow }
       });
 
-    this.logger.log(`Deleted ${result.deletedCount} quota votes for community ${telegramChatId}`);
+    this.logger.log(`Deleted ${result.deletedCount} quota votes for community ${communityId}`);
     return result.deletedCount;
   }
 }

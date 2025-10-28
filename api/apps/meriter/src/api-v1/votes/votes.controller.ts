@@ -44,7 +44,7 @@ export class VotesController {
     const communityId = publication.getCommunityId.getValue();
     
     // Create vote with optional comment (atomic operation)
-    const result = await this.voteService.createVoteFromDto(req.user.tgUserId, {
+    const result = await this.voteService.createVoteFromDto(req.user.id, {
       targetType: 'publication',
       targetId: id,
       amount: createDto.amount,
@@ -78,7 +78,7 @@ export class VotesController {
     @Param('id') id: string,
     @Req() req: any,
   ) {
-    await this.voteService.removeVote(req.user.tgUserId, 'publication', id);
+    await this.voteService.removeVote(req.user.id, 'publication', id);
     return { success: true, data: { message: 'Vote removed successfully' } };
   }
 
@@ -119,7 +119,7 @@ export class VotesController {
     }
     
     // Create vote with optional comment (atomic operation)
-    const result = await this.voteService.createVoteFromDto(req.user.tgUserId, {
+    const result = await this.voteService.createVoteFromDto(req.user.id, {
       targetType: 'comment',
       targetId: id,
       amount: createDto.amount,
@@ -153,7 +153,7 @@ export class VotesController {
     @Param('id') id: string,
     @Req() req: any,
   ) {
-    await this.voteService.removeVote(req.user.tgUserId, 'comment', id);
+    await this.voteService.removeVote(req.user.id, 'comment', id);
     return { success: true, data: { message: 'Vote removed successfully' } };
   }
 

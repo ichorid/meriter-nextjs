@@ -117,7 +117,7 @@ export const usersApiV1 = {
 
   async getUserQuota(userId: string, communityId?: string): Promise<{ dailyQuota: number; usedToday: number; remainingToday: number; resetAt: string }> {
     const params = communityId ? { communityId } : {};
-    const response = await apiClient.get(`/api/v1/wallets/users/${userId}/quota`, { params });
+    const response = await apiClient.get(`/api/v1/users/${userId}/quota`, { params });
     return response;
   },
 };

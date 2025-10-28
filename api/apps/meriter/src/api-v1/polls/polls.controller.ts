@@ -75,7 +75,7 @@ export class PollsController {
       expiresAt: new Date(createDto.expiresAt),
     };
     
-    const poll = await this.pollsService.createPoll(req.user.tgUserId, domainDto);
+    const poll = await this.pollsService.createPoll(req.user.id, domainDto);
     const snapshot = poll.toSnapshot();
     
     // Transform domain Poll to API Poll format
@@ -119,7 +119,7 @@ export class PollsController {
       throw new NotFoundError('Poll', id);
     }
 
-    if (poll.toSnapshot().authorId !== req.user.tgUserId) {
+    if (poll.toSnapshot().authorId !== req.user.id) {
       throw new ForbiddenError('Only the author can delete this poll');
     }
 
@@ -133,7 +133,7 @@ export class PollsController {
     @Body() createDto: CreatePollVoteDto,
     @Req() req: any,
   ) {
-    return this.pollsService.voteOnPoll(id, req.user.tgUserId, createDto.optionId, createDto.amount);
+    return this.pollsService.voteOnPoll(id, req.user.id, createDto.optionId, createDto.amount);
   }
 
   @Get(':id/results')
@@ -143,7 +143,7 @@ export class PollsController {
 
   @Get(':id/my-votes')
   async getMyPollVotes(@Param('id') id: string, @Req() req: any) {
-    return this.pollsService.getUserVotes(id, req.user.tgUserId);
+    return this.pollsService.getUserVotes(id, req.user.id);
   }
 
   @Get('communities/:communityId')

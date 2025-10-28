@@ -34,14 +34,8 @@ export class WalletsController {
 
   @Get('users/:userId/wallets')
   async getUserWallets(@Param('userId') userId: string, @Req() req: any): Promise<Wallet[]> {
-    // Debug: log userId and req.user
-    this.logger.log(`getUserWallets called with userId: ${userId}`);
-    this.logger.log(`req.user.id: ${req.user?.id}`);
-    this.logger.log(`req.user.tgUserId: ${req.user?.tgUserId}`);
-    
     // Users can only see their own wallets
     if (userId !== req.user.id) {
-      this.logger.warn(`User ID mismatch: userId=${userId}, req.user.id=${req.user?.id}`);
       throw new NotFoundError('User', userId);
     }
     
@@ -51,13 +45,13 @@ export class WalletsController {
     
     // Create wallets for communities where user doesn't have one yet
     const walletPromises = allCommunities.map(async (community) => {
-      let wallet = await this.walletsService.getWallet(userId, community.telegramChatId);
+      let wallet = await this.walletsService.getWallet(userId, community.id);
       
       if (!wallet) {
         // Create wallet with community currency settings
         wallet = await this.walletsService.createOrGetWallet(
           userId,
-          community.telegramChatId,
+          community.id,
           community.settings?.currencyNames || { singular: 'merit', plural: 'merits', genitive: 'merits' }
         );
         this.logger.log(`Created wallet for user ${userId} in community ${community.name}`);
@@ -133,7 +127,7 @@ export class WalletsController {
       throw new BadRequestException('communityId is required');
     }
 
-    // Query community by MongoDB document ID
+    // Query community by internal ID
     const community = await this.communityModel.findOne({ id: communityId }).lean();
     if (!community) {
       throw new NotFoundError('Community', communityId);
@@ -149,14 +143,13 @@ export class WalletsController {
 
     // Query votes with sourceType='quota' for this user in this community today
     // Note: The schema uses 'quota' but some old data might have 'daily_quota'
-    // The votes collection uses telegramChatId as communityId
     const usedToday = await this.mongoose.db
       .collection('votes')
       .aggregate([
         {
           $match: {
             userId,
-            communityId: community.telegramChatId, // Use telegramChatId for votes query
+            communityId: community.id,
             sourceType: { $in: ['quota', 'daily_quota'] },
             createdAt: { $gte: today, $lt: tomorrow }
           }
