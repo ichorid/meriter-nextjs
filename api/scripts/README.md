@@ -259,3 +259,149 @@ export BOT_TOKEN=your_token_here
 - Telegram retries failed webhook deliveries
 - Use `check` command to debug webhook issues
 
+## setup-bot-menu.js
+
+Configure Telegram bot menu button to open the web app.
+
+### Purpose
+
+This script manages the bot's menu button configuration:
+- **Check** current menu button settings
+- **Set** menu button URL to open your web app
+- **Remove** menu button (revert to default Telegram menu)
+
+### When to Use
+
+- Setting up initial bot menu button
+- Changing web app URL or domain
+- Troubleshooting bot menu not appearing
+- Removing custom menu (switching to default)
+
+### Prerequisites
+
+1. Telegram bot token from @BotFather
+2. Publicly accessible HTTPS URL
+3. Web app deployed and running
+
+### Usage
+
+```bash
+# Navigate to api directory
+cd api
+
+# Load credentials from .env file
+export $(grep -E 'BOT_TOKEN|APP_URL' .env | xargs)
+
+# Check current menu button configuration
+node scripts/setup-bot-menu.js check
+
+# Set menu button to open login page
+node scripts/setup-bot-menu.js set
+
+# Set menu button to custom path
+node scripts/setup-bot-menu.js set /meriter/home
+
+# Remove menu button
+node scripts/setup-bot-menu.js remove
+```
+
+### Examples
+
+**Check current menu button:**
+```bash
+node scripts/setup-bot-menu.js check
+```
+
+**Set menu button for production:**
+```bash
+export BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
+export APP_URL=https://meriter.pro
+node scripts/setup-bot-menu.js set
+```
+
+**Set custom path:**
+```bash
+node scripts/setup-bot-menu.js set /meriter/home
+```
+
+**Remove menu button:**
+```bash
+node scripts/setup-bot-menu.js remove
+```
+
+### Environment Variables
+
+The script requires these environment variables:
+
+| Variable | Description | Required For |
+|----------|-------------|--------------|
+| `BOT_TOKEN` | Bot token from @BotFather | All commands |
+| `APP_URL` | Application URL (must be HTTPS) | set |
+
+### What It Does
+
+**check** command:
+- Retrieves current menu button configuration
+- Shows button type (web_app, default, or custom)
+- Displays button text and URL
+
+**set** command:
+- Creates a "Open App" menu button
+- Sets web app URL (default: `/meriter/login`)
+- Allows custom path specification
+- Enables users to open your app from bot menu
+
+**remove** command:
+- Removes custom menu button
+- Reverts to default Telegram menu
+- Shows default command options
+
+### Verification
+
+After setting the menu button:
+
+1. Open a chat with your bot in Telegram
+2. Click on the bot's name at the top
+3. Look for the "Open App" button in menu
+4. Click button - should open your web app
+5. Verify it navigates to the correct URL
+
+### Troubleshooting
+
+**Error: URL must use HTTPS**
+```bash
+# Telegram requires HTTPS for web apps
+export APP_URL=https://meriter.pro  # ✓ Correct
+export APP_URL=http://meriter.pro   # ✗ Wrong
+```
+
+**Error: Menu button not appearing**
+- Bot must have chat history with the user
+- User must click on bot's name to see menu
+- Ensure web app URL is accessible and returns valid HTML
+- Wait a few minutes for Telegram to propagate changes
+
+**Error: Invalid bot token**
+```bash
+# Verify token is correct
+echo $BOT_TOKEN
+
+# Get new token from @BotFather if needed
+# Send /mybots → Your Bot → API Token
+```
+
+**Menu button appears but doesn't open web app**
+- Check URL is accessible: `curl https://your-domain.com/meriter/login`
+- Verify URL returns HTML (not redirect)
+- Check browser console for errors
+- Ensure Telegram app is updated
+
+### Additional Notes
+
+- Menu button is visible in direct chats with the bot
+- Changes take effect immediately (no propagation delay)
+- Safe to run `set` command multiple times
+- Custom path can be any valid relative path on your domain
+- Users see "Open App" button text (cannot be customized)
+- Menu button does not appear in group chats
+

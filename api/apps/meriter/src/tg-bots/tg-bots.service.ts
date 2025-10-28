@@ -348,6 +348,16 @@ export class TgBotsService {
             beneficiaryUser = await this.userModel.findOne({
               telegramId: telegramUserInfo.id.toString(),
             });
+
+            // Update username if user was found but had missing/incorrect username
+            if (beneficiaryUser && (!beneficiaryUser.username || beneficiaryUser.username !== telegramUserInfo.username)) {
+              this.logger.log(`📝 Updating username for user ${beneficiaryUser.telegramId}: ${beneficiaryUser.username || 'missing'} -> ${telegramUserInfo.username}`);
+              await this.userModel.updateOne(
+                { telegramId: beneficiaryUser.telegramId },
+                { $set: { username: telegramUserInfo.username } }
+              );
+              beneficiaryUser.username = telegramUserInfo.username;
+            }
           }
         } catch (error) {
           this.logger.warn(`⚠️ Failed to resolve username ${beneficiaryIdentifier} via Telegram API:`, error.message);
@@ -364,8 +374,8 @@ export class TgBotsService {
       };
     }
 
-    // Extract telegram ID from identities
-    const beneficiaryTgId = beneficiaryUser.identities?.[0]?.replace('telegram://', '');
+    // Extract telegram ID directly from the user model
+    const beneficiaryTgId = beneficiaryUser.telegramId;
     if (!beneficiaryTgId) {
       this.logger.warn(`⚠️ Could not extract telegram ID from beneficiary user`);
       return { 

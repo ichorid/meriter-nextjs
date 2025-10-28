@@ -6,7 +6,6 @@ import { apiClient } from '@/lib/api/client';
 import Page from '@shared/components/page';
 import { useRouter } from "next/navigation";
 import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
-import { CommunityBalanceWidget } from '@/components/organisms/CommunityBalanceWidget';
 import {
     telegramGetAvatarLink,
     telegramGetAvatarLinkUpd,
@@ -111,13 +110,6 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     postText="Poll Not Found"
                 />
                 
-                <div className="mb-4">
-                    <CommunityBalanceWidget
-                        balance={balance}
-                        currencyIcon={comms?.settings?.iconUrl}
-                    />
-                </div>
-
                 <div className="flex items-center justify-center min-h-[400px]">
                     <div className="text-center">
                         <h2 className="text-2xl font-bold mb-4">Poll Not Found</h2>
@@ -145,13 +137,6 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     postText="Loading Poll..."
                 />
                 
-                <div className="mb-4">
-                    <CommunityBalanceWidget
-                        balance={balance}
-                        currencyIcon={comms?.settings?.iconUrl}
-                    />
-                </div>
-
                 <div className="flex items-center justify-center min-h-[400px]">
                     <div className="text-center">
                         <div className="loading loading-spinner loading-lg"></div>
@@ -170,13 +155,6 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 chatIcon={comms?.avatarUrl}
                 postText={poll?.title ? ellipsize(poll.title, 60) : 'Poll'}
             />
-            
-            <div className="mb-4">
-                <CommunityBalanceWidget
-                    balance={balance}
-                    currencyIcon={comms?.settings?.iconUrl}
-                />
-            </div>
 
             <div className="space-y-4">
                 <Publication

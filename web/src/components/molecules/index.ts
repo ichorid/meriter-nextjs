@@ -1,6 +1,5 @@
 // Molecules exports
 export * from './UserCard';
-export * from './CommunityCard';
 export * from './MetricBar';
 export * from './VoteControls';
 export * from './SearchInput';

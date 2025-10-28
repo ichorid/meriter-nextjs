@@ -1,6 +1,6 @@
 'use client';
 
-import { type PropsWithChildren } from 'react';
+import { type PropsWithChildren, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -19,13 +19,34 @@ const TelegramSDKWrapper = dynamic(
 
 // Desktop mode wrapper - simple, no Telegram UI  
 function DesktopWrapper({ children }: PropsWithChildren) {
-  const NavigationBar = dynamic(() => import('./organisms/NavigationBar/NavigationBar').then(mod => ({ default: mod.NavigationBar })), { ssr: false });
+  const mod = dynamic(() => import('./organisms/index'), { ssr: false });
+  
+  const [Components, setComponents] = useState<typeof import('./organisms/index') | null>(null);
+  
+  useEffect(() => {
+    import('./organisms/index').then(setComponents);
+  }, []);
+  
+  if (!Components) {
+    return (
+      <ThemeProvider>
+        <div className="app">
+          <div className="md:pl-[72px]">
+            {children}
+          </div>
+        </div>
+      </ThemeProvider>
+    );
+  }
   
   return (
     <ThemeProvider>
       <div className="app">
-        <NavigationBar />
-        {children}
+        <Components.VerticalSidebar />
+        <div className="md:pl-[72px]">
+          <Components.ContextTopBar />
+          {children}
+        </div>
       </div>
     </ThemeProvider>
   );

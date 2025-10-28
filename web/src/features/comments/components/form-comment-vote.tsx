@@ -32,7 +32,7 @@ export const FormCommentVote = ({
     commentAdd,
     error,
     reason,
-}: iFormCommentThankProps) => {
+}: iFormCommentVoteProps) => {
     const t = useTranslations('comments');
     const [selected, setSelected] = useState(false);
     const overflow = amount >= 0 ? amount > freePlus : amount < -freeMinus;

@@ -96,7 +96,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
                     <div className="p-2">
                       <div className="px-4 py-2 text-sm border-b border-base-300">
                         <div className="font-medium truncate">{user.displayName}</div>
-                        <div className="text-xs opacity-60 truncate">{user.email}</div>
                       </div>
                       <Link href={routes.settings}>
                         <button 

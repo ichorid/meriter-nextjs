@@ -4,42 +4,23 @@ import { useEffect, useState, useRef } from "react";
 import { useTranslations } from 'next-intl';
 import { useRouter } from "next/navigation";
 import { PageLayout } from '@/components/templates/PageLayout';
-import { Breadcrumbs } from '@/components/molecules/Breadcrumbs';
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useMyPublications, useWallets, useUserProfile } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { classList } from '@lib/classList';
-import { WalletCommunity } from '@/features/wallet/components/wallet-community';
-
-interface iCommunityProps {
-    name: string;
-    description: string;
-    balance: number;
-    capitalization: number;
-}
-
-const verb = (w: { amount: number; currencyNames: string[] }) => {
-    const { amount, currencyNames } = w;
-    if (amount === 0) return `0 ${currencyNames[5]}`;
-    else if (amount === 1) return `1 ${currencyNames[1]}`;
-    else if (amount === 2 || amount === 3 || amount === 4)
-        return `${amount} ${currencyNames[2]}`;
-    else return `${amount} ${currencyNames[5]}`;
-};
 
 const PageHome = () => {
     const router = useRouter();
     const t = useTranslations('home');
-    const balance: number[] = [];
     
     // Use centralized auth context
     const { user, isLoading: userLoading, isAuthenticated } = useAuth();
     const { data: myPublications = [], isLoading: publicationsLoading } = useMyPublications({ skip: 0, limit: 100 });
     const { data: wallets = [], isLoading: walletsLoading } = useWallets();
     
-    const [tab, setTab] = useState("publications");
+    // Read tab and sort from URL hash
+    const [currentTab, setCurrentTab] = useState<"publications" | "comments" | "updates">("publications");
     const [sortBy, setSortBy] = useState<"recent" | "voted">("recent");
     const [showPollCreate, setShowPollCreate] = useState(false);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
@@ -69,10 +50,42 @@ const PageHome = () => {
         }
     }, [wallets]);
 
+    // Read tab and sort from URL hash
+    useEffect(() => {
+        const updateFromHash = () => {
+            const hash = window.location.hash;
+            
+            // Parse tab from hash
+            if (hash.includes('comments')) {
+                setCurrentTab('comments');
+            } else if (hash.includes('updates-frequency')) {
+                setCurrentTab('updates');
+            } else {
+                setCurrentTab('publications');
+            }
+            
+            // Parse sort from hash
+            const urlParams = new URLSearchParams(hash.replace(/^#/, '').split('?')[1] || '');
+            const sortParam = urlParams.get('sort');
+            if (sortParam === 'voted') {
+                setSortBy('voted');
+            } else {
+                setSortBy('recent');
+            }
+        };
+
+        // Initial load
+        updateFromHash();
+
+        // Listen for hash changes
+        window.addEventListener('hashchange', updateFromHash);
+        return () => window.removeEventListener('hashchange', updateFromHash);
+    }, []);
+
     // Reset active withdraw slider when switching tabs
     useEffect(() => {
         setActiveWithdrawPost(null);
-    }, [tab]);
+    }, [currentTab]);
 
     // Get user profile data
     const { data: userdata = 0 } = useUserProfile(user?.telegramId || '');
@@ -110,90 +123,8 @@ const PageHome = () => {
 
     return (
         <PageLayout className="balance">
-            <Breadcrumbs pathname="/meriter/home" />
-            
-            <div className="balance-available">
-                {false && <div className="heading">{t('availableBalance')}</div>}
-                {walletsLoading ? (
-                    <div className="flex justify-center items-center h-32">
-                        <span className="loading loading-spinner loading-lg"></span>
-                    </div>
-                ) : (
-                    (Array.isArray(wallets) ? wallets : [])
-                        .filter((w: any) => w.communityId) // Show wallets with communities
-                        .map((w: any) => (
-                            <WalletCommunity
-                                key={w.id || w._id}
-                                amount={w.balance}
-                                currencyNames={w.currency || {}}
-                                currencyOfCommunityTgChatId={w.communityId}
-                                tgUserId={user?.telegramId || ''}
-                            />
-                        ))
-                )}
-            </div>
-            
             <div className="balance-inpublications">
-                <div className="tabs tabs-boxed mb-4 p-1 bg-base-200 rounded-lg shadow-sm">
-                    <a
-                        className={classList(
-                            "tab tab-lg gap-2 font-medium transition-all duration-200 hover:text-primary",
-                            tab === "publications" ? "tab-active bg-primary text-primary-content shadow-md" : ""
-                        )}
-                        onClick={() => {
-                            setTab("publications");
-                        }}
-                    >
-                        {t('tabs.publications')}
-                    </a>
-                    <a
-                        className={classList(
-                            "tab tab-lg gap-2 font-medium transition-all duration-200 hover:text-primary",
-                            tab === "comments" ? "tab-active bg-primary text-primary-content shadow-md" : ""
-                        )}
-                        onClick={() => {
-                            setTab("comments");
-                        }}
-                    >
-                        {t('tabs.comments')}
-                    </a>
-                    <a
-                        className={classList(
-                            "tab tab-lg gap-2 font-medium transition-all duration-200 hover:text-primary",
-                            tab === "updates" ? "tab-active bg-primary text-primary-content shadow-md" : ""
-                        )}
-                        onClick={() => {
-                            setTab("updates");
-                        }}
-                    >
-                        {t('tabs.updates')}
-                    </a>
-                </div>
-                
-                <div className="flex justify-end mb-4">
-                    <div className="join shadow-sm">
-                        <button 
-                            className={classList(
-                                "join-item btn btn-sm font-medium transition-all duration-200",
-                                sortBy === "recent" ? "btn-active btn-primary" : ""
-                            )}
-                            onClick={() => setSortBy("recent")}
-                        >
-                            {t('sort.recent')}
-                        </button>
-                        <button 
-                            className={classList(
-                                "join-item btn btn-sm font-medium transition-all duration-200",
-                                sortBy === "voted" ? "btn-active btn-primary" : ""
-                            )}
-                            onClick={() => setSortBy("voted")}
-                        >
-                            {t('sort.voted')}
-                        </button>
-                    </div>
-                </div>
-                
-                {tab === "updates" && (
+                {currentTab === "updates" && (
                     <div className="balance-inpublications-list">
                         <div className="balance-inpublications-filters"></div>
                         <div className="balance-inpublications-publications">
@@ -204,7 +135,7 @@ const PageHome = () => {
                     </div>
                 )}
                 
-                {tab === "publications" && (
+                {currentTab === "publications" && (
                     <div className="balance-inpublications-list">
                         <div className="balance-inpublications-publications">
                             {publicationsLoading ? (
@@ -238,7 +169,7 @@ const PageHome = () => {
                     </div>
                 )}
                 
-                {tab === "comments" && (
+                {currentTab === "comments" && (
                     <div className="balance-inpublications-list">
                         <div className="balance-inpublications-filters"></div>
                         <div className="balance-inpublications-publications">

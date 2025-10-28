@@ -18,7 +18,6 @@ import { DivFade } from '@shared/components/transitions';
 import Page from '@shared/components/page';
 import { Spinner } from '@shared/components/misc';
 import { IconPicker } from '@shared/components/iconpicker';
-import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
 import { CardWithAvatar } from '@shared/components/card-with-avatar';
 import { CommunityAvatar } from '@shared/components/community-avatar';
 import {
@@ -91,7 +90,7 @@ const CommunitySettingsPage = () => {
             // Map API format to form format
             // API has: settings.currencyNames { singular, plural, genitive }
             // Form uses: { 1: 'singular', 2: 'dual/genitive', 5: 'plural' }
-            const currencyNames = communityResponse.settings?.currencyNames || {};
+            const currencyNames = communityResponse.settings?.currencyNames || {} as any;
             const formCurrencyNames = {
                 1: currencyNames.singular || '',
                 2: currencyNames.genitive || currencyNames.plural || '',
@@ -292,17 +291,6 @@ const CommunitySettingsPage = () => {
     return (
         <Page>
             <div className="mb-6">
-                <MenuBreadcrumbs>
-                    <div>
-                        <div className="breadcrumbs text-sm">
-                            <ul>
-                                <li><Link href="/meriter/home">Home</Link></li>
-                                <li><Link href={`/meriter/communities/${chatId}/settings`}>{communityData?.name || 'Community'}</Link></li>
-                                <li>{t('communitySettings.breadcrumb')}</li>
-                            </ul>
-                        </div>
-                    </div>
-                </MenuBreadcrumbs>
                 <div className="tip mt-2">
                     {t('communitySettings.subtitle', { communityName: communityData?.name || 'this community' })}
                 </div>

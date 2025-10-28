@@ -395,7 +395,7 @@ export const Comment: React.FC<CommentProps> = ({
                                     : undefined
                             }
                             isAuthor={isAuthor}
-                            isBeneficiary={toUserTgId && toUserTgId === myId}
+                            isBeneficiary={!!(toUserTgId && toUserTgId === myId)}
                             commentCount={comments?.length || 0}
                             onCommentClick={() => setShowComments(true)}
                         />

@@ -115,10 +115,10 @@ export const usersApiV1 = {
     return response.data;
   },
 
-  async getUserQuota(userId: string, spaceSlug?: string): Promise<number> {
+  async getUserQuota(userId: string, spaceSlug?: string): Promise<{ dailyQuota: number; usedToday: number; remainingToday: number; resetAt: string }> {
     const params = spaceSlug ? { spaceSlug } : {};
-    const response = await apiClient.get<{ success: true; data: number }>(`/api/v1/users/${userId}/quota`, { params });
-    return response.data;
+    const response = await apiClient.get(`/api/v1/users/${userId}/quota`, { params });
+    return response;
   },
 };
 

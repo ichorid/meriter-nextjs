@@ -5,19 +5,13 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { PageLayout } from '@/components/templates/PageLayout';
 import { useRouter, useSearchParams } from "next/navigation";
-import { CommunityBalanceWidget } from '@/components/organisms/CommunityBalanceWidget';
-import { Breadcrumbs } from '@/components/molecules/Breadcrumbs';
-import { CardWithAvatar } from '@/components/molecules/CardWithAvatar';
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
-import { telegramGetAvatarLink, telegramGetAvatarLinkUpd } from '@lib/telegram';
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useTranslations } from 'next-intl';
-import { CommunityAvatar } from "@shared/components/community-avatar";
 import { useWallets, useUserProfile, useCommunity } from '@/hooks/api';
 import { usersApiV1 } from '@/lib/api/v1';
 import { useAuth } from '@/contexts/AuthContext';
-import { classList } from "@lib/classList";
 import type { Wallet } from '@/types/api-v1';
 
 interface Publication {
@@ -52,11 +46,21 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     
     // Get the post parameter from URL for deep linking
     const targetPostSlug = searchParams.get('post');
+    
+    // Get sort and modal state from URL params
+    const sortBy = searchParams.get('sort') || 'recent';
+    const selectedTag = searchParams.get('tag');
+    const showPollCreate = searchParams.get('modal') === 'createPoll';
 
     const [paginationEnd, setPaginationEnd] = useState(false);
-    const [showPollCreate, setShowPollCreate] = useState(false);
-    const [sortBy, setSortBy] = useState<"recent" | "voted">("recent");
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
+    
+    // Handle poll modal close
+    const handlePollClose = () => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('modal');
+        router.push(`?${params.toString()}`);
+    };
 
     // Use v1 API hook
     const { data: comms } = useCommunity(chatId);
@@ -92,6 +96,13 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const publications = (data?.pages ?? [])
         .map((page: PageData) => page.data)
         .flat()
+        .map((p: any) => ({
+            ...p,
+            beneficiaryId: p.beneficiaryId || p.meta?.beneficiary?.username,
+            beneficiaryName: p.meta?.beneficiary?.name,
+            beneficiaryPhotoUrl: p.meta?.beneficiary?.photoUrl,
+            beneficiaryUsername: p.meta?.beneficiary?.username,
+        }))
         .filter((p: Publication, index: number, self: Publication[]) => 
             index === self.findIndex((t: Publication) => t?.id === p?.id)
         );
@@ -241,172 +252,38 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         });
     };
 
+    // Filter publications by tag if selected
+    const filteredPublications = selectedTag
+        ? publications.filter((p: Publication) => {
+            const tags = p.tags as string[] | undefined;
+            return tags && Array.isArray(tags) && tags.includes(selectedTag);
+        })
+        : publications;
+
     return (
         <PageLayout className="feed">
-            <Breadcrumbs
-                pathname={pathname}
-                chatId={chatId}
-                chatNameVerb={chatNameVerb}
-                chatIcon={comms?.avatarUrl}
-            />
-            
-            <div className="mb-4">
-                <CommunityBalanceWidget
-                    balance={balance}
-                    currencyIcon={comms?.settings?.iconUrl}
-                />
-            </div>
-                
-            {/* Community Header */}
-            {comms?.name && (
-                <div className="py-3 border-b border-base-300 mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                            <CommunityAvatar
-                                avatarUrl={comms?.avatarUrl}
-                                communityName={comms?.name}
-                                size={48}
-                            />
-                            <h1 className="text-xl font-semibold">{comms?.name}</h1>
-                        </div>
-                        {/* Settings cog icon - visible only to admins */}
-                        {comms?.isAdmin && (
-                            <button
-                                onClick={() => router.push(`/meriter/communities/${chatId}/settings`)}
-                                className="btn btn-ghost btn-sm btn-circle"
-                                title="Community Settings"
-                            >
-                                <svg 
-                                    className="w-5 h-5" 
-                                    fill="none" 
-                                    stroke="currentColor" 
-                                    viewBox="0 0 24 24"
-                                    >
-                                        <path 
-                                            strokeLinecap="round" 
-                                            strokeLinejoin="round" 
-                                            strokeWidth={2} 
-                                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" 
-                                        />
-                                        <path 
-                                            strokeLinecap="round" 
-                                            strokeLinejoin="round" 
-                                            strokeWidth={2} 
-                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
-                                        />
-                                    </svg>
-                                </button>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                            {comms?.settings?.iconUrl && (
-                                <div className="flex items-center gap-2">
-                                    <img className="w-5 h-5" src={comms.settings.iconUrl} alt="Currency" />
-                                    <span className="text-lg font-semibold">{balance}</span>
-                                </div>
-                            )}
-                            {comms?.hashtags && comms.hashtags.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                    {comms.hashtags.map((tag: string, i: number) => (
-                                        <span key={i} className="badge badge-primary badge-sm">#{tag}</span>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+            {error === false && (
+                <>
+                    <div>
+                        {chatUrl && (
+                            <div className="tip">
+                                {t('communities.toAddPublication')}{" "}
+                                <a href={chatUrl}>
+                                    {" "}
+                                    {t('communities.writeMessageInChat')}
+                                </a>{" "}
+                                <br />
+                                <br />
+                            </div>
+                        )}
                     </div>
-                )}
-
-                {error === false && (
-                    <>
-                        <div>
-                            {chatUrl && (
-                                <div className="tip">
-                                    {t('communities.toAddPublication')}{" "}
-                                    <a href={chatUrl}>
-                                        {" "}
-                                        {t('communities.writeMessageInChat')}
-                                    </a>{" "}
-                                    <br />
-                                    <br />
-                                </div>
-                            )}
-                            {comms?.hashtags && (
-                                <div
-                                    style={{
-                                        paddingBottom: "15px",
-                                        opacity: ".5",
-                                    }}
-                                >
-                                    {t('communities.filterByTags')}
-                                </div>
-                            )}
-                            {comms?.hashtags &&
-                                comms.hashtags.map((tag: string) => (
-                                    <CardWithAvatar
-                                        key={tag}
-                                        avatarUrl=""
-                                        userName={tag}
-                                        onClick={() =>
-                                            router.push(`/meriter/communities/${chatId}?tag=${tag}`)
-                                        }
-                                    >
-                                        <div className="heading">
-                                            #{tag}
-                                        </div>
-                                        <div className="description">
-                                            Filter by {tag}
-                                        </div>
-                                    </CardWithAvatar>
-                                ))}
-                        </div>
-                    </>
-                )}
+                </>
+            )}
             {error === true && <div>{t('communities.noAccess')}</div>}
-
-            <button
-                className="create-poll-button"
-                onClick={() => setShowPollCreate(true)}
-                style={{
-                    padding: "10px 20px",
-                    background: "#4CAF50",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontWeight: "600",
-                    marginBottom: "15px",
-                    width: "100%"
-                }}
-            >
-                {t('communities.createPoll')}
-            </button>
-
-            <div className="flex justify-end mb-4">
-                <div className="join shadow-sm">
-                    <button 
-                        className={classList(
-                            "join-item btn btn-sm font-medium transition-all duration-200",
-                            sortBy === "recent" ? "btn-active btn-primary" : ""
-                        )}
-                        onClick={() => setSortBy("recent")}
-                    >
-                        {t('communities.byDate')}
-                    </button>
-                    <button 
-                        className={classList(
-                            "join-item btn btn-sm font-medium transition-all duration-200",
-                            sortBy === "voted" ? "btn-active btn-primary" : ""
-                        )}
-                        onClick={() => setSortBy("voted")}
-                    >
-                        {t('communities.byRating')}
-                    </button>
-                </div>
-            </div>
 
             <div className="space-y-4">
                 {isAuthenticated &&
-                    sortItems(publications)
+                    sortItems(filteredPublications)
                         .filter((p) => p?.content || p?.type === 'poll')
                         .map((p) => (
                             <div
@@ -423,7 +300,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                 />
                             </div>
                         ))}
-                {!paginationEnd && publications.length > 1 && (
+                {!paginationEnd && filteredPublications.length > 1 && (
                     <button onClick={() => fetchNextPage()} className="btn btn-primary btn-wide mx-auto block">
                         {t('communities.loadMore')}
                     </button>
@@ -435,10 +312,10 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                         <FormPollCreate
                             communityId={chatId}
                             onSuccess={(pollId) => {
-                                setShowPollCreate(false);
+                                handlePollClose();
                                 window.location.reload();
                             }}
-                            onCancel={() => setShowPollCreate(false)}
+                            onCancel={handlePollClose}
                         />
                     </div>
                 </BottomPortal>

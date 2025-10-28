@@ -109,6 +109,9 @@ export const Publication = ({
     // Check if there's a beneficiary and it's different from the author
     const hasBeneficiary = beneficiaryId && beneficiaryId !== tgAuthorId;
     
+    // Check if current user is the beneficiary (but not the author)
+    const isBeneficiary = hasBeneficiary && beneficiaryId === myId;
+    
     // Determine the title based on beneficiary
     const displayTitle = hasBeneficiary 
         ? t('forBeneficiary', { author: tgAuthorName, beneficiary: beneficiaryName })
@@ -415,7 +418,7 @@ export const Publication = ({
     // Prepare withdraw slider content for author's regular posts
     const disabled = withdrawMerits ? !amountInMerits : !amount;
     
-    const withdrawSliderContent = isAuthor && directionAdd !== undefined && (
+    const withdrawSliderContent = ((isAuthor && !hasBeneficiary) || isBeneficiary) && directionAdd !== undefined && (
         <>
             {withdrawMerits &&
                 (loading ? (
@@ -500,7 +503,54 @@ export const Publication = ({
                     myId == tgAuthorId ? () => setShowDimensionsEditor(true) : undefined
                 }
                 bottom={
-                    isAuthor && !hasBeneficiary ? (
+                    isBeneficiary ? (
+                        <BarWithdraw
+                            balance={meritsAmount}
+                            onWithdraw={() => handleSetDirectionAdd(false)}
+                            onTopup={() => handleSetDirectionAdd(true)}
+                        >
+                            {showselector && (
+                                <div className="select-currency">
+                                    <span
+                                        className={
+                                            !withdrawMerits
+                                                ? "clickable bar-withdraw-select"
+                                                : "bar-withdraw-select-active"
+                                        }
+                                        onClick={() => setWithdrawMerits(true)}
+                                    >
+                                        {t('merits')}{" "}
+                                    </span>
+                                    <span
+                                        className={
+                                            withdrawMerits
+                                                ? "clickable bar-withdraw-select"
+                                                : "bar-withdraw-select-active"
+                                        }
+                                        onClick={() => setWithdrawMerits(false)}
+                                    >
+                                        {t('points')}
+                                    </span>
+                                </div>
+                            )}
+                        </BarWithdraw>
+                    ) : isAuthor && hasBeneficiary ? (
+                        <BarVoteUnified
+                            score={currentPlus - currentMinus}
+                            onVoteClick={() => {
+                                showPlus();
+                                setActiveSlider && setActiveSlider(postId);
+                            }}
+                            isAuthor={isAuthor}
+                            isBeneficiary={false}
+                            commentCount={!isDetailPage ? comments?.length || 0 : 0}
+                            onCommentClick={!isDetailPage ? () => {
+                                if (tgChatId && slug) {
+                                    router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
+                                }
+                            } : undefined}
+                        />
+                    ) : isAuthor ? (
                         <BarWithdraw
                             balance={meritsAmount}
                             onWithdraw={() => handleSetDirectionAdd(false)}
@@ -538,13 +588,8 @@ export const Publication = ({
                                 showPlus();
                                 setActiveSlider && setActiveSlider(postId);
                             }}
-                            onWithdrawClick={
-                                isAuthor && (currentPlus - currentMinus) > 0
-                                    ? () => handleSetDirectionAdd(false)
-                                    : undefined
-                            }
                             isAuthor={isAuthor}
-                            isBeneficiary={beneficiaryId && beneficiaryId === myId}
+                            isBeneficiary={false}
                             commentCount={!isDetailPage ? comments?.length || 0 : 0}
                             onCommentClick={!isDetailPage ? () => {
                                 if (tgChatId && slug) {
@@ -608,7 +653,7 @@ export const Publication = ({
                     </div>
                 </div>
             )}
-            {publicationUnderReply && !(isAuthor && !hasBeneficiary) && (
+            {publicationUnderReply && !((isAuthor && !hasBeneficiary) || isBeneficiary) && (
                 <BottomPortal>
                     {" "}
                     <FormComment key={formCommentProps.uid} {...formCommentProps} />

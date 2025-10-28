@@ -1,2 +1,0 @@
-export { CommunityBalanceWidget } from './CommunityBalanceWidget';
-

@@ -8,9 +8,10 @@ import {
   Req,
   UseGuards,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { Model, Connection } from 'mongoose';
 import { WalletServiceV2 } from '../../domain/services/wallet.service-v2';
 import { CommunityServiceV2 } from '../../domain/services/community.service-v2';
 import { UserGuard } from '../../user.guard';
@@ -28,6 +29,7 @@ export class WalletsController {
     private readonly walletsService: WalletServiceV2,
     private readonly communityService: CommunityServiceV2,
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
+    @InjectConnection() private mongoose: Connection,
   ) {}
 
   @Get('users/:userId/wallets')
@@ -120,8 +122,55 @@ export class WalletsController {
     if (userId !== req.user.tgUserId) {
       throw new NotFoundError('User', userId);
     }
-    // Quota functionality not implemented in V2 service yet
-    throw new Error('Quota functionality not implemented');
+    
+    const { spaceSlug } = query;
+    if (!spaceSlug) {
+      throw new BadRequestException('spaceSlug is required');
+    }
+
+    // Get community to find dailyEmission setting
+    const community = await this.communityModel.findOne({ telegramChatId: spaceSlug }).lean();
+    if (!community) {
+      throw new NotFoundError('Community', spaceSlug);
+    }
+
+    const dailyQuota = community.settings?.dailyEmission || 10;
+
+    // Calculate today's date range (00:00:00 to 23:59:59)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Query votes with sourceType='daily_quota' for this user in this community today
+    const usedToday = await this.mongoose.db
+      .collection('votes')
+      .aggregate([
+        {
+          $match: {
+            userId,
+            communityId: spaceSlug,
+            sourceType: 'daily_quota',
+            createdAt: { $gte: today, $lt: tomorrow }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$amount' }
+          }
+        }
+      ])
+      .toArray();
+
+    const used = usedToday.length > 0 ? usedToday[0].total : 0;
+
+    return {
+      dailyQuota,
+      usedToday: used,
+      remainingToday: Math.max(0, dailyQuota - used),
+      resetAt: tomorrow.toISOString()
+    };
   }
 
   @Post('users/:userId/wallets/:communityId/withdraw')

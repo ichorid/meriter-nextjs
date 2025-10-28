@@ -2,25 +2,15 @@
 
 import { use, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
 import Page from '@shared/components/page';
 import { useRouter } from "next/navigation";
-import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
-import { CommunityBalanceWidget } from '@/components/organisms/CommunityBalanceWidget';
-import {
-    telegramGetAvatarLink,
-    telegramGetAvatarLinkUpd,
-} from '@lib/telegram';
 import { Publication } from "@features/feed";
-import { useTranslations } from 'next-intl';
-import { ellipsize } from "@shared/lib/text";
 import { useAuth } from '@/contexts/AuthContext';
 import { usePublication, useCommunity, useUserProfile, useWallets } from '@/hooks/api';
 import { usersApiV1 } from '@/lib/api/v1';
 
 const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> }) => {
     const router = useRouter();
-    const t = useTranslations('pages');
     const resolvedParams = use(params);
     const chatId = resolvedParams.id;
     const slug = resolvedParams.slug;
@@ -76,7 +66,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
         queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
     };
 
-    const chatNameVerb = String(comms?.name ?? "");
     const activeCommentHook = useState(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
@@ -90,32 +79,9 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     // if (!user?.token) return null;
 
     const tgAuthorId = user?.telegramId;
-    
-    // Clean post text for breadcrumb: remove hashtags and /ben: commands
-    const getCleanPostText = (text: string) => {
-        if (!text) return '';
-        return text
-            .replace(/#\w+/g, '') // Remove hashtags
-            .replace(/\/ben:@?\w+/g, '') // Remove /ben: commands
-            .trim();
-    };
 
     return (
         <Page className="feed">
-            <MenuBreadcrumbs
-                chatId={chatId}
-                chatNameVerb={chatNameVerb}
-                chatIcon={comms?.avatarUrl}
-                postText={publication?.content ? ellipsize(getCleanPostText(publication.content), 60) : ''}
-            />
-            
-            <div className="mb-4">
-                <CommunityBalanceWidget
-                    balance={balance}
-                    currencyIcon={comms?.settings?.iconUrl}
-                />
-            </div>
-
             <div className="space-y-4">
                 {publication && publication.content && (
                     <Publication

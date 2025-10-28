@@ -29,7 +29,6 @@ Meriter is a merit-based social platform that operates through Telegram communit
 
 #### Community Features
 - **Hashtag System**: Communities can define hashtags for content categorization
-- **Spaces**: Sub-communities within a community for specific topics
 - **Currency**: Each community has its own merit currency
 - **Welcome Messages**: Automated messages explaining the merit system
 
@@ -37,7 +36,6 @@ Meriter is a merit-based social platform that operates through Telegram communit
 - **Bot Addition**: When bot is added to a Telegram group, it becomes a community
 - **Bot Removal**: When bot is removed, community is marked as inactive
 - **Member Sync**: Bot validates user membership in Telegram groups
-- **Tag Management**: Users get community tags when they're members
 
 ### 3. Publications
 
@@ -59,7 +57,6 @@ Meriter is a merit-based social platform that operates through Telegram communit
 - **Hashtag Requirement**: Must contain at least one community hashtag
 - **Beneficiary Support**: Can specify beneficiary with `/ben:@username`
 - **Self-Voting**: Authors can vote for their own publications if there's a beneficiary
-- **Global Feed**: Special hashtag `#заслуга` for global merit ranking
 
 ### 4. Voting System
 
@@ -69,16 +66,17 @@ Meriter is a merit-based social platform that operates through Telegram communit
 - **Poll Votes**: Votes on poll options (separate from publication voting system)
 
 #### Voting Mechanics
-- **Currency**: Votes cost merits from user's wallet
-- **Amount**: Users specify how many merits to allocate
-- **Direction**: Positive (plus) or negative (minus) votes
-- **Balance Check**: Must have sufficient merits to vote
+- **Currency**: Votes cost merits with daily quota or from personal wallet in the community
+- **Amount**: Users specify how many merits or daily quota to allocate
+- **Direction**: Positive (plus) or negative (minus) votes. Minus only possible with merits, not daily quota
+- **Balance Check**: Must have sufficient merits or quota to vote
 
 #### Voting Rules
 - **Self-Voting Prevention**: Cannot vote for own content (unless beneficiary specified)
-- **Balance Deduction**: Merits deducted from voter's wallet
+- **Balance Deduction**: Merits deducted voter's wallet. Quota deducted from voter's personal daily quota.
 - **Recipient Credit**: Merits added to content creator's wallet
-- **Free Merits**: Users get free merits daily for voting
+- **Free Quota**: Users get free quota daily for voting
+- **Quota Amount**: Each community has different quota settings. Default is 10 quota/day.
 
 #### Vote Processing
 1. **Validation**: Check user balance and voting rules

@@ -341,7 +341,10 @@ export const Publication: React.FC<PublicationProps> = ({
   const nobodyUnderReply = activeCommentHook[0] === null;
   const commentUnderReply = activeCommentHook[0] && activeCommentHook[0] !== slug && activeCommentHook[0] !== null;
   
-  const withdrawSliderContent = stateLogic.isAuthor && !stateLogic.hasBeneficiary && votingLogic.directionAdd !== undefined && (
+  // Check if current user is the beneficiary (but not the author)
+  const isBeneficiary = stateLogic.hasBeneficiary && myId === beneficiaryId && myId !== tgAuthorId;
+  
+  const withdrawSliderContent = ((stateLogic.isAuthor && !stateLogic.hasBeneficiary) || isBeneficiary) && votingLogic.directionAdd !== undefined && (
     <>
       {votingLogic.withdrawMerits &&
         (votingLogic.loading ? (
@@ -404,7 +407,50 @@ export const Publication: React.FC<PublicationProps> = ({
         onClick={!isDetailPage ? navigationLogic.navigateToDetail : undefined}
         onDescriptionClick={stateLogic.handleDimensionsClick}
         bottom={
-          stateLogic.isAuthor && !stateLogic.hasBeneficiary ? (
+          isBeneficiary ? (
+            <BarWithdraw
+              balance={votingLogic.meritsAmount}
+              onWithdraw={() => votingLogic.handleSetDirectionAdd(false)}
+              onTopup={() => votingLogic.handleSetDirectionAdd(true)}
+            >
+              {stateLogic.showselector && (
+                <div className="select-currency">
+                  <span
+                    className={
+                      !votingLogic.withdrawMerits
+                        ? "clickable bar-withdraw-select"
+                        : "bar-withdraw-select-active"
+                    }
+                    onClick={() => votingLogic.setWithdrawMerits(true)}
+                  >
+                    {t('merits')}{" "}
+                  </span>
+                  <span
+                    className={
+                      votingLogic.withdrawMerits
+                        ? "clickable bar-withdraw-select"
+                        : "bar-withdraw-select-active"
+                    }
+                    onClick={() => votingLogic.setWithdrawMerits(false)}
+                  >
+                    {t('points')}
+                  </span>
+                </div>
+              )}
+            </BarWithdraw>
+          ) : stateLogic.isAuthor && stateLogic.hasBeneficiary ? (
+            <BarVoteUnified
+              score={currentPlus - currentMinus}
+              onVoteClick={() => {
+                showPlus();
+                setActiveSlider && setActiveSlider(slug);
+              }}
+              isAuthor={stateLogic.isAuthor}
+              isBeneficiary={false}
+              commentCount={!isDetailPage ? comments?.length || 0 : 0}
+              onCommentClick={navigationLogic.handleCommentClick}
+            />
+          ) : stateLogic.isAuthor ? (
             <BarWithdraw
               balance={votingLogic.meritsAmount}
               onWithdraw={() => votingLogic.handleSetDirectionAdd(false)}
@@ -442,13 +488,8 @@ export const Publication: React.FC<PublicationProps> = ({
                 showPlus();
                 setActiveSlider && setActiveSlider(slug);
               }}
-              onWithdrawClick={
-                stateLogic.isAuthor && (currentPlus - currentMinus) > 0
-                  ? () => votingLogic.handleSetDirectionAdd(false)
-                  : undefined
-              }
               isAuthor={stateLogic.isAuthor}
-              isBeneficiary={beneficiaryId && beneficiaryId === myId}
+              isBeneficiary={false}
               commentCount={!isDetailPage ? comments?.length || 0 : 0}
               onCommentClick={navigationLogic.handleCommentClick}
             />
@@ -505,7 +546,7 @@ export const Publication: React.FC<PublicationProps> = ({
         </div>
       )}
       
-      {publicationUnderReply && !(stateLogic.isAuthor && !stateLogic.hasBeneficiary) && (
+      {publicationUnderReply && !((stateLogic.isAuthor && !stateLogic.hasBeneficiary) || isBeneficiary) && (
         <BottomPortal>
           <FormComment key={formCommentProps.uid} {...formCommentProps} />
         </BottomPortal>
