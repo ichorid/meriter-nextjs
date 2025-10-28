@@ -318,7 +318,29 @@ export const Publication: React.FC<PublicationProps> = ({
           communityAvatarUrl={stateLogic.communityInfo?.avatarUrl}
           communityName={stateLogic.communityInfo?.name || tgChatName}
           communityIconUrl={stateLogic.communityInfo?.settings?.iconUrl}
-          onCommunityClick={() => navigationLogic.navigateToCommunity(stateLogic.communityInfo?.id || '')}
+          onCommunityClick={() => {
+            const communityId = stateLogic.communityInfo?.id || '';
+            if (!communityId) return;
+            
+            if (stateLogic.communityInfo?.needsSetup) {
+              if (stateLogic.communityInfo?.isAdmin) {
+                // Admin: redirect to settings
+                router.push(`/meriter/communities/${communityId}/settings`);
+              } else {
+                // Non-admin: show toast
+                const { useToastStore } = require('@/shared/stores/toast.store');
+                useToastStore.getState().addToast(
+                  t('communitySetupPending'),
+                  'info'
+                );
+              }
+            } else {
+              // Normal navigation
+              navigationLogic.navigateToCommunity(communityId);
+            }
+          }}
+          communityNeedsSetup={stateLogic.communityInfo?.needsSetup}
+          communityIsAdmin={stateLogic.communityInfo?.isAdmin}
           withdrawSliderContent={withdrawSliderContent}
         >
           <PollVoting
@@ -500,7 +522,29 @@ export const Publication: React.FC<PublicationProps> = ({
         communityAvatarUrl={stateLogic.communityInfo?.avatarUrl}
         communityName={stateLogic.communityInfo?.name || tgChatName}
         communityIconUrl={stateLogic.communityInfo?.settings?.iconUrl}
-        onCommunityClick={() => navigationLogic.navigateToCommunity(stateLogic.communityInfo?.id || '')}
+        onCommunityClick={() => {
+          const communityId = stateLogic.communityInfo?.id || '';
+          if (!communityId) return;
+          
+          if (stateLogic.communityInfo?.needsSetup) {
+            if (stateLogic.communityInfo?.isAdmin) {
+              // Admin: redirect to settings
+              router.push(`/meriter/communities/${communityId}/settings`);
+            } else {
+              // Non-admin: show toast
+              const { useToastStore } = require('@/shared/stores/toast.store');
+              useToastStore.getState().addToast(
+                t('communitySetupPending'),
+                'info'
+              );
+            }
+          } else {
+            // Normal navigation
+            navigationLogic.navigateToCommunity(communityId);
+          }
+        }}
+        communityNeedsSetup={stateLogic.communityInfo?.needsSetup}
+        communityIsAdmin={stateLogic.communityInfo?.isAdmin}
         withdrawSliderContent={withdrawSliderContent}
       >
         <WithTelegramEntities entities={entities}>

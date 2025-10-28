@@ -31,31 +31,31 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const { data: comms } = useCommunity(chatId || '');
     
     const { data: balance = 0 } = useQuery({
-        queryKey: ['wallet-balance', user?.telegramId, chatId],
+        queryKey: ['wallet-balance', user?.id, chatId],
         queryFn: async () => {
-            if (!user?.telegramId || !chatId) return 0;
-            const wallets = await usersApiV1.getUserWallets(user.telegramId);
+            if (!user?.id || !chatId) return 0;
+            const wallets = await usersApiV1.getUserWallets(user.id);
             const wallet = wallets.find((w: any) => w.communityId === chatId);
             return wallet?.balance || 0;
         },
-        enabled: !!user?.telegramId && !!chatId,
+        enabled: !!user?.id && !!chatId,
     });
 
-    const { data: userdata = {} } = useUserProfile(user?.telegramId || '');
+    const { data: userdata = {} } = useUserProfile(user?.id || '');
     const { data: wallets = [] } = useWallets();
 
     const queryClient = useQueryClient();
 
-    const updateWalletBalance = (currencyOfCommunityTgChatId: string, amountChange: number) => {
+    const updateWalletBalance = (communityId: string, amountChange: number) => {
         // Optimistically update wallet balance using React Query's cache
         queryClient.setQueryData(['wallets'], (oldWallets: any) => {
             if (!Array.isArray(oldWallets)) return oldWallets;
             
             return oldWallets.map((wallet) => {
-                if (wallet.meta?.currencyOfCommunityTgChatId === currencyOfCommunityTgChatId) {
+                if (wallet.communityId === communityId) {
                     return {
                         ...wallet,
-                        value: (wallet.value || 0) + amountChange,
+                        balance: (wallet.balance || 0) + amountChange,
                     };
                 }
                 return wallet;
@@ -87,17 +87,17 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
     // Debug user object
     console.log('🔍 Poll page user object:', { 
         user: user, 
-        hasToken: !!user?.telegramId, 
-        hasInit: !!user?.telegramId,
-        hasTgUserId: !!user?.telegramId 
+        hasToken: !!user?.id, 
+        hasInit: !!user?.id,
+        hasUserId: !!user?.id 
     });
 
-    if (!user?.telegramId) {
-        console.log('❌ Poll page: No user telegramId, returning null');
+    if (!user?.id) {
+        console.log('❌ Poll page: No user id, returning null');
         return null;
     }
 
-    const tgAuthorId = user?.telegramId;
+    const tgAuthorId = user?.id;
 
     // Handle case when poll is not found
     if (pollError || !poll) {
@@ -171,7 +171,7 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     updateWalletBalance={updateWalletBalance}
                     updateAll={updateAll}
                     dimensionConfig={undefined}
-                    myId={user?.telegramId}
+                    myId={user?.id}
                     onlyPublication={true}
                     highlightTransactionId={undefined}
                     isDetailPage={true}

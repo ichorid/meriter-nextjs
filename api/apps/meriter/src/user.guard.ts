@@ -32,12 +32,12 @@ export class UserGuard implements CanActivate {
       const jwtSecret = this.configService.get<string>('jwt.secret');
       const data: any = verify(jwt, jwtSecret);
 
-      const token = data.token;
-      const user = await this.userService.getUserByToken(token);
+      const uid = data.uid;
+      const user = await this.userService.getUserById(uid);
 
       if (!user) {
         this.logger.warn(
-          `Valid JWT but user not found for token: ${token?.substring(0, 10)}...`,
+          `Valid JWT but user not found for uid: ${uid}`,
         );
         this.logger.warn(
           'This may indicate a deleted user, invalid token, or database issue',

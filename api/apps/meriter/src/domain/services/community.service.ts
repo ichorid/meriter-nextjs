@@ -54,9 +54,39 @@ export class CommunityService {
   ) {}
 
   async getCommunity(communityId: string): Promise<Community | null> {
-    // Direct Mongoose query
-    const doc = await this.communityModel.findOne({ telegramChatId: communityId }).lean();
+    // Try internal ID first
+    let doc = await this.communityModel.findOne({ id: communityId }).lean();
+    
+    // If not found, try telegramChatId (backward compatibility)
+    if (!doc) {
+      doc = await this.communityModel.findOne({ telegramChatId: communityId }).lean();
+    }
+    
     return doc as any as Community;
+  }
+
+  /**
+   * Get community by telegramChatId (for bot interface only)
+   */
+  async getCommunityByTelegramChatId(telegramChatId: string): Promise<Community | null> {
+    const doc = await this.communityModel.findOne({ telegramChatId }).lean();
+    return doc as any as Community;
+  }
+
+  /**
+   * Get telegramChatId for a document ID
+   */
+  async getTelegramChatId(documentId: string): Promise<string | null> {
+    const community = await this.communityModel.findOne({ id: documentId }).lean();
+    return community?.telegramChatId || null;
+  }
+
+  /**
+   * Get document ID for a telegramChatId
+   */
+  async getDocumentId(telegramChatId: string): Promise<string | null> {
+    const community = await this.communityModel.findOne({ telegramChatId }).lean();
+    return community?.id || null;
   }
 
   async createCommunity(dto: CreateCommunityDto): Promise<Community> {
@@ -127,7 +157,7 @@ export class CommunityService {
     }
 
     const updatedCommunity = await this.communityModel.findOneAndUpdate(
-      { telegramChatId: communityId },
+      { id: communityId },
       { $set: updateData },
       { new: true }
     ).lean();
@@ -141,7 +171,7 @@ export class CommunityService {
 
   async deleteCommunity(communityId: string): Promise<void> {
     const result = await this.communityModel.deleteOne(
-      { telegramChatId: communityId }
+      { id: communityId }
     );
 
     if (result.deletedCount === 0) {
@@ -151,7 +181,7 @@ export class CommunityService {
 
   async addMember(communityId: string, userId: string): Promise<Community> {
     const updatedCommunity = await this.communityModel.findOneAndUpdate(
-      { telegramChatId: communityId },
+      { id: communityId },
       { 
         $addToSet: { members: userId },
         $set: { updatedAt: new Date() }
@@ -168,7 +198,7 @@ export class CommunityService {
 
   async removeMember(communityId: string, userId: string): Promise<Community> {
     const updatedCommunity = await this.communityModel.findOneAndUpdate(
-      { telegramChatId: communityId },
+      { id: communityId },
       { 
         $pull: { members: userId },
         $set: { updatedAt: new Date() }
@@ -185,7 +215,7 @@ export class CommunityService {
 
   async isUserAdmin(communityId: string, userId: string): Promise<boolean> {
     const community = await this.communityModel.findOne({ 
-      telegramChatId: communityId,
+      id: communityId,
       administrators: userId 
     }).lean();
     return community !== null;
@@ -193,7 +223,7 @@ export class CommunityService {
 
   async isUserMember(communityId: string, userId: string): Promise<boolean> {
     const community = await this.communityModel.findOne({ 
-      telegramChatId: communityId,
+      id: communityId,
       members: userId 
     }).lean();
     return community !== null;
@@ -224,7 +254,7 @@ export class CommunityService {
 
   async addHashtag(communityId: string, hashtag: string): Promise<Community> {
     const updatedCommunity = await this.communityModel.findOneAndUpdate(
-      { telegramChatId: communityId },
+      { id: communityId },
       { 
         $addToSet: { hashtags: hashtag },
         $set: { updatedAt: new Date() }
@@ -241,7 +271,7 @@ export class CommunityService {
 
   async removeHashtag(communityId: string, hashtag: string): Promise<Community> {
     const updatedCommunity = await this.communityModel.findOneAndUpdate(
-      { telegramChatId: communityId },
+      { id: communityId },
       { 
         $pull: { hashtags: hashtag },
         $set: { updatedAt: new Date() }
@@ -269,6 +299,13 @@ export class CommunityService {
   async resetDailyQuota(communityId: string): Promise<number> {
     this.logger.log(`Resetting daily quota for community ${communityId}`);
 
+    // Get telegramChatId for this document ID (votes collection uses telegramChatId)
+    const community = await this.communityModel.findOne({ id: communityId }).lean();
+    if (!community) {
+      throw new NotFoundException('Community not found');
+    }
+    const telegramChatId = community.telegramChatId;
+
     // Calculate today's date range (00:00:00 to 23:59:59)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -277,15 +314,16 @@ export class CommunityService {
 
     // Delete all votes with sourceType='quota' for this community today
     // Note: The schema uses 'quota' but some old data might have 'daily_quota'
+    // Votes collection uses telegramChatId as communityId
     const result = await this.mongoose.db
       .collection('votes')
       .deleteMany({
-        communityId,
+        communityId: telegramChatId, // Use telegramChatId for votes query
         sourceType: { $in: ['quota', 'daily_quota'] },
         createdAt: { $gte: today, $lt: tomorrow }
       });
 
-    this.logger.log(`Deleted ${result.deletedCount} quota votes for community ${communityId}`);
+    this.logger.log(`Deleted ${result.deletedCount} quota votes for community ${telegramChatId}`);
     return result.deletedCount;
   }
 }

@@ -8,6 +8,7 @@ import { ErrorPage } from '@/components/ErrorPage';
 import { useDidMount } from '@/hooks/useDidMount';
 import { ThemeProvider } from '@/shared/lib/theme-provider';
 import { useAppMode } from '@/contexts/AppModeContext';
+import { ToastContainer } from '@/shared/components/toast-container';
 
 import './styles.css';
 
@@ -26,16 +27,17 @@ function DesktopWrapper({ children }: PropsWithChildren) {
   }, []);
   
   if (!Components) {
-    return (
-      <ThemeProvider>
-        <div className="app">
-          <div className="md:pl-[72px]">
-            {children}
-          </div>
+  return (
+    <ThemeProvider>
+      <div className="app">
+        <div className="md:pl-[72px]">
+          {children}
         </div>
-      </ThemeProvider>
-    );
-  }
+        <ToastContainer />
+      </div>
+    </ThemeProvider>
+  );
+}
   
   return (
     <ThemeProvider>
@@ -45,6 +47,7 @@ function DesktopWrapper({ children }: PropsWithChildren) {
           <Components.ContextTopBar />
           {children}
         </div>
+        <ToastContainer />
       </div>
     </ThemeProvider>
   );

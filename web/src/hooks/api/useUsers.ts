@@ -29,6 +29,6 @@ export const useUserProfile = (userId: string) => {
       const response = await apiClient.get(`/api/v1/users/${userId}`);
       return response;
     },
-    enabled: !!userId,
+    enabled: !!userId, // userId is now expected to be internal ID
   });
 };

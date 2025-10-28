@@ -30,13 +30,21 @@ export class UserService {
   ) {}
 
   async getUser(userId: string): Promise<User | null> {
-    // Direct Mongoose query
-    const doc = await this.userModel.findOne({ telegramId: userId }).lean();
+    // Search by internal id field
+    const doc = await this.userModel.findOne({ id: userId }).lean();
+    return doc;
+  }
+
+  async getUserById(id: string): Promise<User | null> {
+    // Search by internal id field
+    const doc = await this.userModel.findOne({ id }).lean();
     return doc;
   }
 
   async getUserByTelegramId(telegramId: string): Promise<User | null> {
-    return this.getUser(telegramId);
+    // Search by telegramId field
+    const doc = await this.userModel.findOne({ telegramId }).lean();
+    return doc;
   }
 
   async getUserByToken(token: string): Promise<User | null> {

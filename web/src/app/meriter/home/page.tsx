@@ -88,8 +88,8 @@ const PageHome = () => {
     }, [currentTab]);
 
     // Get user profile data
-    const { data: userdata = 0 } = useUserProfile(user?.telegramId || '');
-    const tgAuthorId = user?.telegramId;
+    const { data: userdata = 0 } = useUserProfile(user?.id || '');
+    const tgAuthorId = user?.id;
     const authCheckDone = useRef(false);
 
     useEffect(() => {

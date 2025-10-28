@@ -64,10 +64,10 @@ export class TelegramPublicationCreatorService {
     // Determine message type
     const messageType = this.messageProcessor.determineMessageType(message);
 
-    // Create publication
+    // Create publication - use MongoDB document ID
     try {
       const publication = await this.publicationService.createPublication(user._id.toString(), {
-        communityId: community._id.toString(),
+        communityId: community.id, // Use MongoDB document ID
         content: parsedMessage.cleanedText,
         type: messageType,
         beneficiaryId,

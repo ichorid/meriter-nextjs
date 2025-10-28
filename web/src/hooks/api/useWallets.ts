@@ -8,8 +8,8 @@ export const useWallets = () => {
   
   return useQuery({
     queryKey: queryKeys.wallet.wallets(),
-    queryFn: () => usersApiV1.getUserWallets(user?.telegramId || ''),
-    enabled: !!user?.telegramId,
+    queryFn: () => usersApiV1.getUserWallets(user?.id || ''),
+    enabled: !!user?.id,
   });
 };
 
@@ -17,8 +17,8 @@ export const useTransactions = (params: Record<string, any> = {}) => {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: queryKeys.wallet.transactionsList({ userId: user?.telegramId, ...params }),
-    queryFn: () => usersApiV1.getUserTransactions(user?.telegramId || '', params),
-    enabled: !!user?.telegramId,
+    queryKey: queryKeys.wallet.transactionsList({ userId: user?.id, ...params }),
+    queryFn: () => usersApiV1.getUserTransactions(user?.id || '', params),
+    enabled: !!user?.id,
   });
 };

@@ -99,10 +99,27 @@ export const TransactionToMe = ({
                 communityName={communityInfo?.name}
                 communityIconUrl={communityInfo?.settings?.iconUrl}
                 onCommunityClick={() => {
-                    if (transaction.currencyOfCommunityTgChatId) {
+                    if (!transaction.currencyOfCommunityTgChatId) return;
+                    
+                    if (communityInfo?.needsSetup) {
+                        if (communityInfo?.isAdmin) {
+                            // Admin: redirect to settings
+                            window.location.href = `/meriter/communities/${transaction.currencyOfCommunityTgChatId}/settings`;
+                        } else {
+                            // Non-admin: show toast
+                            const { useToastStore } = require('@/shared/stores/toast.store');
+                            useToastStore.getState().addToast(
+                                'Community setup pending, your admin will set it up soon',
+                                'info'
+                            );
+                        }
+                    } else {
+                        // Normal navigation
                         window.location.href = `/meriter/communities/${transaction.currencyOfCommunityTgChatId}`;
                     }
                 }}
+                communityNeedsSetup={communityInfo?.needsSetup}
+                communityIsAdmin={communityInfo?.isAdmin}
                 bottom={null}
             />
         </div>

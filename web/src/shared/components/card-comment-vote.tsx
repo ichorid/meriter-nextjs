@@ -26,6 +26,8 @@ export const CardCommentVote = ({
     amountWallet,
     beneficiaryName,
     beneficiaryAvatarUrl,
+    communityNeedsSetup,
+    communityIsAdmin,
 }:any) => {
     const t = useTranslations('comments');
     
@@ -119,6 +121,7 @@ export const CardCommentVote = ({
                                         avatarUrl={communityAvatarUrl}
                                         communityName={communityName}
                                         size={28}
+                                        needsSetup={communityNeedsSetup}
                                     />
                                 </div>
                             )}

@@ -169,7 +169,8 @@
     "pollMy": "📊 Poll (My)",
     "poll": "📊 Poll",
     "merits": "Merits",
-    "points": "Points"
+    "points": "Points",
+    "communitySetupPending": "Community setup pending, your admin will set it up soon"
   },
   "comments": {
     "upvoteQuota": "Vote for {used}/{total} daily quota",

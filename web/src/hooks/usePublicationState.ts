@@ -91,7 +91,7 @@ export function usePublicationState({
   const pollCommunityId = type === 'poll' ? (content as any)?.communityId : null;
   let effectiveBalance = balance || 0;
   if (isAuthor && Array.isArray(wallets) && pollCommunityId) {
-    const pollWalletBalance = wallets.find((w: Wallet) => w.currencyOfCommunityTgChatId === pollCommunityId)?.balance || 0;
+    const pollWalletBalance = wallets.find((w: Wallet) => w.communityId === pollCommunityId)?.balance || 0;
     effectiveBalance = pollWalletBalance;
   } else {
     effectiveBalance = showCommunityAvatar ? 0 : (balance || 0);

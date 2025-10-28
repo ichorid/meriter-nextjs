@@ -128,7 +128,7 @@ export const Publication = ({
     const curr = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
     const currentBalance =
         (Array.isArray(wallets) &&
-            wallets.find((w) => w.currencyOfCommunityTgChatId == curr)
+            wallets.find((w) => w.communityId == curr)
                 ?.amount) ||
         0;
     const isMerit = tgChatId === GLOBAL_FEED_TG_CHAT_ID;
@@ -272,7 +272,7 @@ export const Publication = ({
         // For author: use wallet balance from wallets array; for others: use pollBalance or passed balance
         let effectiveBalance = balance;
         if (isAuthor && Array.isArray(wallets) && pollCommunityId) {
-            const pollWalletBalance = wallets.find((w: any) => w.currencyOfCommunityTgChatId === pollCommunityId)?.amount || 0;
+            const pollWalletBalance = wallets.find((w: any) => w.communityId === pollCommunityId)?.amount || 0;
             effectiveBalance = pollWalletBalance;
         } else {
             effectiveBalance = showCommunityAvatar ? (pollBalance || 0) : balance;
@@ -348,10 +348,27 @@ export const Publication = ({
                     communityName={communityInfo?.name || tgChatName}
                     communityIconUrl={communityInfo?.settings?.iconUrl}
                     onCommunityClick={() => {
-                        if (communityId) {
+                        if (!communityId) return;
+                        
+                        if (communityInfo?.needsSetup) {
+                            if (communityInfo?.isAdmin) {
+                                // Admin: redirect to settings
+                                router.push(`/meriter/communities/${communityId}/settings`);
+                            } else {
+                                // Non-admin: show toast
+                                const { useToastStore } = require('@/shared/stores/toast.store');
+                                useToastStore.getState().addToast(
+                                    t('communitySetupPending'),
+                                    'info'
+                                );
+                            }
+                        } else {
+                            // Normal navigation
                             router.push(`/meriter/communities/${communityId}`);
                         }
                     }}
+                    communityNeedsSetup={communityInfo?.needsSetup}
+                    communityIsAdmin={communityInfo?.isAdmin}
                     withdrawSliderContent={withdrawSliderContent}
                 >
                     <PollVoting
@@ -605,10 +622,27 @@ export const Publication = ({
                 communityName={communityInfo?.name || tgChatName}
                 communityIconUrl={communityInfo?.settings?.iconUrl}
                 onCommunityClick={() => {
-                    if (communityId) {
+                    if (!communityId) return;
+                    
+                    if (communityInfo?.needsSetup) {
+                        if (communityInfo?.isAdmin) {
+                            // Admin: redirect to settings
+                            router.push(`/meriter/communities/${communityId}/settings`);
+                        } else {
+                            // Non-admin: show toast
+                            const { useToastStore } = require('@/shared/stores/toast.store');
+                            useToastStore.getState().addToast(
+                                t('communitySetupPending'),
+                                'info'
+                            );
+                        }
+                    } else {
+                        // Normal navigation
                         router.push(`/meriter/communities/${communityId}`);
                     }
                 }}
+                communityNeedsSetup={communityInfo?.needsSetup}
+                communityIsAdmin={communityInfo?.isAdmin}
                 withdrawSliderContent={withdrawSliderContent}
             >
                 <WithTelegramEntities entities={entities}>

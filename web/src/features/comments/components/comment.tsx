@@ -93,7 +93,7 @@ export const Comment: React.FC<CommentProps> = ({
     const curr = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
     const currentBalance =
         (Array.isArray(wallets) &&
-            wallets.find((w) => w.currencyOfCommunityTgChatId == curr)
+            wallets.find((w) => w.communityId == curr)
                 ?.amount) ||
         0;
     const isMerit = tgChatId === GLOBAL_FEED_TG_CHAT_ID;
@@ -406,10 +406,27 @@ export const Comment: React.FC<CommentProps> = ({
                 communityName={communityInfo?.name}
                 communityIconUrl={communityInfo?.settings?.iconUrl}
                 onCommunityClick={() => {
-                    if (communityId) {
+                    if (!communityId) return;
+                    
+                    if (communityInfo?.needsSetup) {
+                        if (communityInfo?.isAdmin) {
+                            // Admin: redirect to settings
+                            window.location.href = `/meriter/communities/${communityId}/settings`;
+                        } else {
+                            // Non-admin: show toast
+                            const { useToastStore } = require('@/shared/stores/toast.store');
+                            useToastStore.getState().addToast(
+                                'Community setup pending, your admin will set it up soon',
+                                'info'
+                            );
+                        }
+                    } else {
+                        // Normal navigation
                         window.location.href = `/meriter/communities/${communityId}`;
                     }
                 }}
+                communityNeedsSetup={communityInfo?.needsSetup}
+                communityIsAdmin={communityInfo?.isAdmin}
                 withdrawSliderContent={withdrawSliderContent}
             />
             {showComments && (

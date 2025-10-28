@@ -168,21 +168,21 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     const { user, isLoading: userLoading, isAuthenticated } = useAuth();
     const { data: wallets = [], isLoading: walletsLoading } = useWallets();
-    const { data: userdata = 0 } = useUserProfile(user?.telegramId || '');
+    const { data: userdata = 0 } = useUserProfile(user?.id || '');
     
     // Get wallet balance for this community from user's wallets
     const { data: balance = 0 } = useQuery({
-        queryKey: ['wallet-balance', user?.telegramId, chatId],
+        queryKey: ['wallet-balance', user?.id, chatId],
         queryFn: async () => {
-            if (!user?.telegramId || !chatId) return 0;
+            if (!user?.id || !chatId) return 0;
             try {
-                const wallets = await usersApiV1.getUserWallets(user.telegramId);
+                const wallets = await usersApiV1.getUserWallets(user.id);
                 const wallet = wallets.find((w: Wallet) => w.communityId === chatId);
                 return wallet?.balance || 0;
             } catch (error: any) {
                 // Handle 404 and other wallet errors gracefully
                 if (error?.response?.status === 404 || error?.response?.statusCode === 404) {
-                    console.debug('Wallet not found for user:', user.telegramId, 'community:', chatId, '- returning 0 balance');
+                    console.debug('Wallet not found for user:', user.id, 'community:', chatId, '- returning 0 balance');
                     return 0;
                 }
                 // Only log non-404 errors to avoid console noise
@@ -252,7 +252,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     if (!isAuthenticated) return null;
 
-    const tgAuthorId = user?.telegramId;
+    const tgAuthorId = user?.id;
 
     const onlyPublication =
         publications.filter((p: Publication) => p?.content)?.length == 1;

@@ -123,7 +123,7 @@ describe('Quota System Integration (e2e)', () => {
         updatedAt: new Date(),
       });
 
-      // Create quota votes
+      // Create quota votes - use telegramChatId as communityId (as stored in votes collection)
       const today = new Date();
       await voteModel.create({
         id: uid(),
@@ -132,7 +132,7 @@ describe('Quota System Integration (e2e)', () => {
         userId: testUserId1,
         amount: 50,
         sourceType: 'quota',
-        communityId: testCommunityId,
+        communityId: testCommunityId, // testCommunityId is also the telegramChatId
         createdAt: today,
       });
 
@@ -143,7 +143,7 @@ describe('Quota System Integration (e2e)', () => {
         userId: testUserId1,
         amount: 30,
         sourceType: 'quota',
-        communityId: testCommunityId,
+        communityId: testCommunityId, // testCommunityId is also the telegramChatId
         createdAt: today,
       });
 
@@ -154,7 +154,7 @@ describe('Quota System Integration (e2e)', () => {
         userId: testUserId2,
         amount: 20,
         sourceType: 'quota',
-        communityId: testCommunityId,
+        communityId: testCommunityId, // testCommunityId is also the telegramChatId
         createdAt: today,
       });
 
@@ -166,7 +166,7 @@ describe('Quota System Integration (e2e)', () => {
         userId: testUserId1,
         amount: 100,
         sourceType: 'personal',
-        communityId: testCommunityId,
+        communityId: testCommunityId, // testCommunityId is also the telegramChatId
         createdAt: today,
       });
 

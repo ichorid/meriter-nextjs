@@ -34,8 +34,14 @@ export class WalletsController {
 
   @Get('users/:userId/wallets')
   async getUserWallets(@Param('userId') userId: string, @Req() req: any): Promise<Wallet[]> {
+    // Debug: log userId and req.user
+    this.logger.log(`getUserWallets called with userId: ${userId}`);
+    this.logger.log(`req.user.id: ${req.user?.id}`);
+    this.logger.log(`req.user.tgUserId: ${req.user?.tgUserId}`);
+    
     // Users can only see their own wallets
-    if (userId !== req.user.tgUserId) {
+    if (userId !== req.user.id) {
+      this.logger.warn(`User ID mismatch: userId=${userId}, req.user.id=${req.user?.id}`);
       throw new NotFoundError('User', userId);
     }
     
@@ -80,7 +86,7 @@ export class WalletsController {
     @Req() req: any,
   ): Promise<Wallet> {
     // Users can only see their own wallets
-    if (userId !== req.user.tgUserId) {
+    if (userId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
     const wallet = await this.walletsService.getUserWallet(userId, communityId);
@@ -103,7 +109,7 @@ export class WalletsController {
     @Req() req: any,
   ) {
     // Users can only see their own transactions
-    if (userId !== req.user.tgUserId) {
+    if (userId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
     const pagination = PaginationHelper.parseOptions(query);
@@ -115,23 +121,22 @@ export class WalletsController {
   @Get('users/:userId/quota')
   async getUserQuota(
     @Param('userId') userId: string,
-    @Query() query: any,
+    @Query('communityId') communityId: string,
     @Req() req: any,
   ) {
     // Users can only see their own quota
-    if (userId !== req.user.tgUserId) {
+    if (userId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
     
-    const { spaceSlug } = query;
-    if (!spaceSlug) {
-      throw new BadRequestException('spaceSlug is required');
+    if (!communityId) {
+      throw new BadRequestException('communityId is required');
     }
 
-    // Get community to find dailyEmission setting
-    const community = await this.communityModel.findOne({ telegramChatId: spaceSlug }).lean();
+    // Query community by MongoDB document ID
+    const community = await this.communityModel.findOne({ id: communityId }).lean();
     if (!community) {
-      throw new NotFoundError('Community', spaceSlug);
+      throw new NotFoundError('Community', communityId);
     }
 
     const dailyQuota = community.settings?.dailyEmission || 10;
@@ -144,13 +149,14 @@ export class WalletsController {
 
     // Query votes with sourceType='quota' for this user in this community today
     // Note: The schema uses 'quota' but some old data might have 'daily_quota'
+    // The votes collection uses telegramChatId as communityId
     const usedToday = await this.mongoose.db
       .collection('votes')
       .aggregate([
         {
           $match: {
             userId,
-            communityId: spaceSlug,
+            communityId: community.telegramChatId, // Use telegramChatId for votes query
             sourceType: { $in: ['quota', 'daily_quota'] },
             createdAt: { $gte: today, $lt: tomorrow }
           }
@@ -182,7 +188,7 @@ export class WalletsController {
     @Req() req: any,
   ) {
     // Users can only withdraw from their own wallets
-    if (userId !== req.user.tgUserId) {
+    if (userId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
     // Withdraw functionality not implemented yet
@@ -197,7 +203,7 @@ export class WalletsController {
     @Req() req: any,
   ) {
     // Users can only transfer from their own wallets
-    if (userId !== req.user.tgUserId) {
+    if (userId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
     // Transfer functionality not implemented yet

@@ -21,31 +21,31 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     const { data: comms } = useCommunity(chatId);
     
     const { data: balance = 0 } = useQuery({
-        queryKey: ['wallet-balance', user?.telegramId, chatId],
+        queryKey: ['wallet-balance', user?.id, chatId],
         queryFn: async () => {
-            if (!user?.telegramId || !chatId) return 0;
-            const wallets = await usersApiV1.getUserWallets(user.telegramId);
+            if (!user?.id || !chatId) return 0;
+            const wallets = await usersApiV1.getUserWallets(user.id);
             const wallet = wallets.find((w: any) => w.communityId === chatId);
             return wallet?.balance || 0;
         },
-        enabled: !!user?.telegramId && !!chatId,
+        enabled: !!user?.id && !!chatId,
     });
 
-    const { data: userdata = {} } = useUserProfile(user?.telegramId || '');
+    const { data: userdata = {} } = useUserProfile(user?.id || '');
     const { data: wallets = [] } = useWallets();
 
     const queryClient = useQueryClient();
 
-    const updateWalletBalance = (currencyOfCommunityTgChatId: string, amountChange: number) => {
+    const updateWalletBalance = (communityId: string, amountChange: number) => {
         // Optimistically update wallet balance using React Query's cache
         queryClient.setQueryData(['wallets'], (oldWallets: any) => {
             if (!Array.isArray(oldWallets)) return oldWallets;
             
             return oldWallets.map((wallet) => {
-                if (wallet.currencyOfCommunityTgChatId === currencyOfCommunityTgChatId) {
+                if (wallet.communityId === communityId) {
                     return {
                         ...wallet,
-                        amount: wallet.amount + amountChange,
+                        balance: wallet.balance + amountChange,
                     };
                 }
                 return wallet;
@@ -71,14 +71,14 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!user?.telegramId) {
+        if (!user?.id) {
             router.push("/meriter/login?returnTo=" + encodeURIComponent(window.location.pathname));
         }
     }, [user, router]);
 
     // if (!user?.token) return null;
 
-    const tgAuthorId = user?.telegramId;
+    const tgAuthorId = user?.id;
 
     return (
         <Page className="feed">
@@ -98,7 +98,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                         updateWalletBalance={updateWalletBalance}
                         updateAll={updateAll}
                         dimensionConfig={undefined}
-                        myId={user?.telegramId}
+                        myId={user?.id}
                         onlyPublication={true}
                         highlightTransactionId={undefined}
                         isDetailPage={true}

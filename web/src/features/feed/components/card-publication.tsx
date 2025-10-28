@@ -20,6 +20,8 @@ interface CardPublicationProps {
     communityIconUrl?: any;
     onCommunityClick?: any;
     withdrawSliderContent?: any;
+    communityNeedsSetup?: any;
+    communityIsAdmin?: any;
 }
 
 export const CardPublication = ({
@@ -38,6 +40,8 @@ export const CardPublication = ({
     communityIconUrl,
     onCommunityClick,
     withdrawSliderContent,
+    communityNeedsSetup,
+    communityIsAdmin,
 }: CardPublicationProps) => {
     const clickableClass = onClick ? " cursor-pointer hover:shadow-xl" : "";
     
@@ -73,6 +77,7 @@ export const CardPublication = ({
                                 avatarUrl={communityAvatarUrl}
                                 communityName={communityName}
                                 size={32}
+                                needsSetup={communityNeedsSetup}
                             />
                         </div>
                     )}

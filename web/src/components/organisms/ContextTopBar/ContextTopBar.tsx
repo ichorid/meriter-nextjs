@@ -209,12 +209,12 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
 
   // Get free vote quota
   const { data: quota } = useQuery({
-    queryKey: ['user-quota', user?.telegramId, communityId],
+    queryKey: ['user-quota', user?.id, community?.id],
     queryFn: () => {
-      if (!user?.telegramId || !communityId) return { dailyQuota: 0, usedToday: 0, remainingToday: 0, resetAt: '' };
-      return usersApiV1.getUserQuota(user.telegramId, communityId);
+      if (!user?.id || !community?.id) return { dailyQuota: 0, usedToday: 0, remainingToday: 0, resetAt: '' };
+      return usersApiV1.getUserQuota(user.id, community.id);
     },
-    enabled: !!user?.telegramId && !!communityId,
+    enabled: !!user?.id && !!community?.id,
   });
 
   // Get sortBy from URL params

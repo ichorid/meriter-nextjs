@@ -310,7 +310,7 @@ const CommunitySettingsPage = () => {
     }
 
     // Not authenticated
-    if (!user?.telegramId) {
+    if (!user?.id) {
         return null;
     }
 
