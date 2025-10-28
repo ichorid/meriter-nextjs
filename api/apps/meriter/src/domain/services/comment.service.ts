@@ -17,8 +17,8 @@ export interface CreateCommentDto {
 }
 
 @Injectable()
-export class CommentServiceV2 {
-  private readonly logger = new Logger(CommentServiceV2.name);
+export class CommentService {
+  private readonly logger = new Logger(CommentService.name);
 
   constructor(
     @InjectModel(CommentSchema.name) private commentModel: Model<CommentDocument>,

@@ -11,18 +11,18 @@ import {
   UseGuards,
   Logger,
 } from '@nestjs/common';
-import { CommentServiceV2 } from '../../domain/services/comment.service-v2';
+import { CommentService } from '../../domain/services/comment.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError } from '../../common/exceptions/api.exceptions';
-import { Comment, CreateCommentDto } from '../types/domain.types';
+import { Comment, CreateCommentDto } from '../../../../../../libs/shared-types/dist/index';
 
 @Controller('api/v1/comments')
 @UseGuards(UserGuard)
 export class CommentsController {
   private readonly logger = new Logger(CommentsController.name);
 
-  constructor(private readonly commentsService: CommentServiceV2) {}
+  constructor(private readonly commentsService: CommentService) {}
 
   @Get()
   async getComments(@Query() query: any) {
@@ -64,7 +64,7 @@ export class CommentsController {
     @Body() updateDto: Partial<CreateCommentDto>,
     @Req() req: any,
   ): Promise<Comment> {
-    // Update functionality not implemented in V2 service yet
+    // Update functionality not implemented yet
     throw new Error('Update comment functionality not implemented');
   }
 

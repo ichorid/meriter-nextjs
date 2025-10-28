@@ -45,9 +45,6 @@ export class User {
   @Prop({ type: [String], default: [] })
   communityTags: string[];
 
-  @Prop({ required: true, unique: true })
-  token: string;
-
   @Prop({ type: [String], default: [] })
   communityMemberships: string[];
 
@@ -64,3 +61,7 @@ export const UserSchema = SchemaFactory.createForClass(User);
 UserSchema.index({ telegramId: 1 }, { unique: true });
 UserSchema.index({ username: 1 });
 UserSchema.index({ communityTags: 1 });
+
+// The token field has been removed from the schema.
+// Any existing token_1 index in the database will be automatically dropped
+// by Mongoose when the connection is established in test environments.

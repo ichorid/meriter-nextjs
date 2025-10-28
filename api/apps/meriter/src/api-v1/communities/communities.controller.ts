@@ -11,14 +11,14 @@ import {
   UseGuards,
   Logger,
 } from '@nestjs/common';
-import { CommunityServiceV2 } from '../../domain/services/community.service-v2';
-import { PublicationServiceV2 } from '../../domain/services/publication.service-v2';
-import { UserServiceV2 } from '../../domain/services/user.service-v2';
+import { CommunityService } from '../../domain/services/community.service';
+import { PublicationService } from '../../domain/services/publication.service';
+import { UserService } from '../../domain/services/user.service';
 import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
-import { Community, UpdateCommunityDto } from '../types/domain.types';
+import { Community, UpdateCommunityDto } from '../../../../../../libs/shared-types/dist/index';
 
 @Controller('api/v1/communities')
 @UseGuards(UserGuard)
@@ -26,9 +26,9 @@ export class CommunitiesController {
   private readonly logger = new Logger(CommunitiesController.name);
 
   constructor(
-    private readonly communityService: CommunityServiceV2,
-    private readonly publicationService: PublicationServiceV2,
-    private readonly userService: UserServiceV2,
+    private readonly communityService: CommunityService,
+    private readonly publicationService: PublicationService,
+    private readonly userService: UserService,
     private readonly tgBotsService: TgBotsService,
   ) {}
 
@@ -167,7 +167,18 @@ export class CommunitiesController {
     return { success: true, data: { message: 'Community deleted successfully' } };
   }
 
-  // TODO: Implement getCommunityMembers in CommunityServiceV2
+  @Post(':id/reset-quota')
+  async resetDailyQuota(@Param('id') id: string, @Req() req: any) {
+    const isAdmin = await this.communityService.isUserAdmin(id, req.user.tgUserId);
+    if (!isAdmin) {
+      throw new ForbiddenError('Only administrators can reset daily quota');
+    }
+
+    const deletedCount = await this.communityService.resetDailyQuota(id);
+    return { success: true, data: { deletedCount } };
+  }
+
+  // TODO: Implement getCommunityMembers in CommunityService
   // @Get(':id/members')
   // async getCommunityMembers(@Param('id') id: string, @Query() query: any) {
   //   const pagination = PaginationHelper.parseOptions(query);

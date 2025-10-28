@@ -168,8 +168,8 @@ export class PollCreatedEvent extends DomainEvent {
 export class PollVotedEvent extends DomainEvent {
   constructor(
     private readonly pollId: string,
-    private readonly voterId: string,
-    private readonly optionIndex: number,
+    private readonly userId: string,
+    private readonly optionId: string,
     private readonly amount: number,
     private readonly timestamp: Date = new Date()
   ) {
@@ -188,12 +188,12 @@ export class PollVotedEvent extends DomainEvent {
     return this.timestamp;
   }
 
-  getVoterId(): string {
-    return this.voterId;
+  getUserId(): string {
+    return this.userId;
   }
 
-  getOptionIndex(): number {
-    return this.optionIndex;
+  getOptionId(): string {
+    return this.optionId;
   }
 
   getAmount(): number {

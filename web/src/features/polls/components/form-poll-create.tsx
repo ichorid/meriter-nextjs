@@ -137,12 +137,10 @@ export const FormPollCreate = ({
                 .map((opt) => ({
                     id: opt.id,
                     text: opt.text.trim(),
-                    votes: 0,
-                    voterCount: 0,
                 }));
 
             const payload = {
-                title: title.trim(),
+                question: title.trim(),
                 description: description.trim() || undefined,
                 options: filledOptions,
                 expiresAt: expiresAt.toISOString(),

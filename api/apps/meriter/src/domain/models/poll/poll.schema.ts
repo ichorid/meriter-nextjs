@@ -17,14 +17,50 @@ export class Poll {
   @Prop({ required: true })
   question: string;
 
-  @Prop({ type: [String], required: true })
-  options: string[];
+  @Prop()
+  description?: string;
+
+  @Prop({
+    type: [{
+      id: String,
+      text: String,
+      votes: Number,
+      amount: Number,
+      voterCount: Number,
+    }],
+    required: true,
+  })
+  options: Array<{
+    id: string;
+    text: string;
+    votes: number;
+    amount: number;
+    voterCount: number;
+  }>;
 
   @Prop({ required: true })
   expiresAt: Date;
 
   @Prop({ default: true })
   isActive: boolean;
+
+  @Prop({
+    type: {
+      totalVotes: { type: Number, default: 0 },
+      voterCount: { type: Number, default: 0 },
+      totalAmount: { type: Number, default: 0 },
+    },
+    default: {
+      totalVotes: 0,
+      voterCount: 0,
+      totalAmount: 0,
+    },
+  })
+  metrics: {
+    totalVotes: number;
+    voterCount: number;
+    totalAmount: number;
+  };
 
   @Prop({ required: true })
   createdAt: Date;

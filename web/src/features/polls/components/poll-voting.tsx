@@ -79,7 +79,7 @@ export const PollVoting = ({
 
         try {
             await pollsApiV1.voteOnPoll(pollId, {
-                optionIndex: parseInt(selectedOptionId),
+                optionId: selectedOptionId,
                 amount: voteAmount,
             });
 

@@ -23,10 +23,11 @@ interface PollOption {
 }
 
 interface PollCreate {
-  title: string;
+  question: string;
   description?: string;
-  options: { text: string }[];
+  options: { id?: string; text: string }[];
   communityId: string;
+  expiresAt: string;
 }
 
 interface PollResult {
@@ -45,7 +46,7 @@ interface PollVote {
 }
 
 interface VotePollRequest {
-  optionIndex: number;
+  optionId: string;
   amount: number;
 }
 

@@ -9,11 +9,11 @@ import {
   Logger,
   Query,
 } from '@nestjs/common';
-import { UserServiceV2 } from '../../domain/services/user.service-v2';
-import { PublicationServiceV2 } from '../../domain/services/publication.service-v2';
+import { UserService } from '../../domain/services/user.service';
+import { PublicationService } from '../../domain/services/publication.service';
 import { UserGuard } from '../../user.guard';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
-import { User } from '../types/domain.types';
+import { User } from '../../../../../../libs/shared-types/dist/index';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 
 @Controller('api/v1/users')
@@ -22,8 +22,8 @@ export class UsersController {
   private readonly logger = new Logger(UsersController.name);
 
   constructor(
-    private readonly userService: UserServiceV2,
-    private readonly publicationService: PublicationServiceV2,
+    private readonly userService: UserService,
+    private readonly publicationService: PublicationService,
   ) {}
 
   @Get(':userId')
@@ -54,7 +54,7 @@ export class UsersController {
       throw new NotFoundError('User', userId);
     }
     const communityIds = await this.userService.getUserCommunities(actualUserId);
-    // TODO: Convert community IDs to full community objects using CommunityServiceV2
+    // TODO: Convert community IDs to full community objects using CommunityService
     return communityIds.map(id => ({ id, name: 'Community', description: '' }));
   }
 
@@ -144,6 +144,8 @@ export class UsersController {
         website: user.website,
         isVerified: user.isVerified,
       },
+      communityTags: user.communityTags || [],
+      communityMemberships: user.communityMemberships || [],
       createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: user.updatedAt?.toISOString() || new Date().toISOString(),
     };

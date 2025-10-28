@@ -1,25 +1,52 @@
 export class PollOption {
   private constructor(
+    public readonly id: string,
     public readonly text: string,
-    public readonly index: number,
+    public readonly votes: number,
+    public readonly amount: number,
+    public readonly voterCount: number,
   ) {}
 
-  static create(text: string, index: number): PollOption {
+  static create(id: string, text: string, votes: number = 0, amount: number = 0, voterCount: number = 0): PollOption {
     if (!text || text.trim().length === 0) {
       throw new Error('Poll option text cannot be empty');
     }
-    return new PollOption(text.trim(), index);
+    return new PollOption(id, text.trim(), votes, amount, voterCount);
   }
 
   equals(other: PollOption): boolean {
-    return this.text === other.text && this.index === other.index;
+    return this.id === other.id;
   }
 
   toSnapshot() {
     return {
+      id: this.id,
       text: this.text,
-      index: this.index,
+      votes: this.votes,
+      amount: this.amount,
+      voterCount: this.voterCount,
     };
+  }
+
+  // Getters
+  get getId(): string {
+    return this.id;
+  }
+
+  get getText(): string {
+    return this.text;
+  }
+
+  get getVotes(): number {
+    return this.votes;
+  }
+
+  get getAmount(): number {
+    return this.amount;
+  }
+
+  get getVoterCount(): number {
+    return this.voterCount;
   }
 }
 
@@ -28,9 +55,21 @@ export interface PollSnapshot {
   communityId: string;
   authorId: string;
   question: string;
-  options: string[];
+  description?: string;
+  options: Array<{
+    id: string;
+    text: string;
+    votes: number;
+    amount: number;
+    voterCount: number;
+  }>;
   expiresAt: Date;
   isActive: boolean;
+  metrics: {
+    totalVotes: number;
+    voterCount: number;
+    totalAmount: number;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,9 +80,11 @@ export class Poll {
     private readonly communityId: string,
     private readonly authorId: string,
     private readonly question: string,
+    private readonly description: string | undefined,
     private readonly options: PollOption[],
     private readonly expiresAt: Date,
     private isActive: boolean,
+    private readonly metrics: { totalVotes: number; voterCount: number; totalAmount: number },
     private readonly createdAt: Date,
     private updatedAt: Date,
   ) {}
@@ -52,7 +93,8 @@ export class Poll {
     authorId: string,
     communityId: string,
     question: string,
-    options: string[],
+    description: string | undefined,
+    options: Array<{ id: string; text: string }>,
     expiresAt: Date
   ): Poll {
     if (options.length < 2) {
@@ -61,32 +103,38 @@ export class Poll {
     
     const { uid } = require('uid');
     
-    const pollOptions = options.map((text, index) => PollOption.create(text, index));
+    const pollOptions = options.map(opt => PollOption.create(opt.id, opt.text, 0, 0, 0));
     
     return new Poll(
       uid(),
       communityId,
       authorId,
       question,
+      description,
       pollOptions,
       expiresAt,
       true,
+      { totalVotes: 0, voterCount: 0, totalAmount: 0 },
       new Date(),
       new Date(),
     );
   }
 
   static fromSnapshot(snapshot: PollSnapshot): Poll {
-    const options = snapshot.options.map((text, index) => PollOption.create(text, index));
+    const options = snapshot.options.map(opt => 
+      PollOption.create(opt.id, opt.text, opt.votes, opt.amount, opt.voterCount)
+    );
     
     return new Poll(
       snapshot.id,
       snapshot.communityId,
       snapshot.authorId,
       snapshot.question,
+      snapshot.description,
       options,
       snapshot.expiresAt,
       snapshot.isActive,
+      snapshot.metrics,
       snapshot.createdAt,
       snapshot.updatedAt,
     );
@@ -105,8 +153,12 @@ export class Poll {
     return this.isCurrentlyActive();
   }
 
-  validateOptionIndex(index: number): boolean {
-    return index >= 0 && index < this.options.length;
+  validateOptionId(optionId: string): boolean {
+    return this.options.some(opt => opt.getId === optionId);
+  }
+
+  getOption(optionId: string): PollOption | undefined {
+    return this.options.find(opt => opt.getId === optionId);
   }
 
   expire(): void {
@@ -143,6 +195,14 @@ export class Poll {
     return this.isActive;
   }
 
+  get getDescription(): string | undefined {
+    return this.description;
+  }
+
+  get getMetrics() {
+    return this.metrics;
+  }
+
   // Serialization
   toSnapshot(): PollSnapshot {
     return {
@@ -150,9 +210,11 @@ export class Poll {
       communityId: this.communityId,
       authorId: this.authorId,
       question: this.question,
-      options: this.options.map(opt => opt.text),
+      description: this.description,
+      options: this.options.map(opt => opt.toSnapshot()),
       expiresAt: this.expiresAt,
       isActive: this.isActive,
+      metrics: this.metrics,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

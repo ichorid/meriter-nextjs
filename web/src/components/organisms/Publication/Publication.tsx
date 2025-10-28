@@ -229,7 +229,8 @@ export const Publication: React.FC<PublicationProps> = ({
     plus,
     minus,
     activeCommentHook,
-    onlyPublication
+    onlyPublication,
+    spaceSlug
   );
   
   // Auto-show plus and comments for detail pages

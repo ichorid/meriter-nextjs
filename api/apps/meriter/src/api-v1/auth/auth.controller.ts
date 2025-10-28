@@ -11,7 +11,7 @@ import {
 import { AuthService } from './auth.service';
 import { UserGuard } from '../../user.guard';
 import { ApiError, UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
-import { User } from '../types/domain.types';
+import { User } from '../../../../../../libs/shared-types/dist/index';
 
 interface TelegramAuthData {
   id: number;

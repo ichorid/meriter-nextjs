@@ -19,9 +19,10 @@ export class VoteService {
     targetType: 'publication' | 'comment',
     targetId: string,
     amount: number,
-    sourceType: 'personal' | 'quota'
+    sourceType: 'personal' | 'quota',
+    communityId?: string
   ): Promise<Vote> {
-    this.logger.log(`Creating vote: user=${userId}, target=${targetType}:${targetId}, amount=${amount}`);
+    this.logger.log(`Creating vote: user=${userId}, target=${targetType}:${targetId}, amount=${amount}, sourceType=${sourceType}, communityId=${communityId}`);
 
     // Validate vote amount
     const voteAmount = amount > 0 ? VoteAmount.up(amount) : VoteAmount.down(Math.abs(amount));
@@ -43,6 +44,7 @@ export class VoteService {
       userId,
       amount: voteAmount.getNumericValue(),
       sourceType,
+      communityId,
       createdAt: new Date(),
     }]);
 
@@ -87,7 +89,7 @@ export class VoteService {
     return this.hasUserVoted(userId, targetType, targetId);
   }
 
-  async createVoteFromDto(userId: string, dto: { targetType: 'publication' | 'comment'; targetId: string; amount: number }): Promise<Vote> {
-    return this.createVote(userId, dto.targetType, dto.targetId, dto.amount, 'personal');
+  async createVoteFromDto(userId: string, dto: { targetType: 'publication' | 'comment'; targetId: string; amount: number; communityId?: string }): Promise<Vote> {
+    return this.createVote(userId, dto.targetType, dto.targetId, dto.amount, 'personal', dto.communityId);
   }
 }

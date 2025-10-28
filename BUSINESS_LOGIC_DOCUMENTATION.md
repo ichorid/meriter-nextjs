@@ -12,7 +12,7 @@ Meriter is a merit-based social platform that operates through Telegram communit
 - **Primary Identity**: Telegram user ID (`telegram://{userId}`)
 - **Actor URI Format**: `actor.user://telegram{userId}`
 - **Profile Information**: Name, avatar, username from Telegram
-- **Authentication**: Telegram Web App authentication via bot token verification
+- **Authentication**: Telegram Web Auth authentication
 
 #### User Roles
 - **Regular Users**: Can vote for content creators, comment, create publications

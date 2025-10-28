@@ -27,7 +27,8 @@ export const useComments = (
     plusGiven: number,
     minusGiven: number,
     activeCommentHook: [string | null, Dispatch<SetStateAction<string | null>>],
-    onlyPublication = false
+    onlyPublication = false,
+    communityId?: string
 ) => {
     const t = useTranslations('comments');
     const uid = transactionId || publicationSlug;
@@ -63,13 +64,14 @@ export const useComments = (
     // Get user quota for free balance
     const { user } = useAuth();
     const { data: free = { plus: 0, minus: 0 } } = useQuery({
-        queryKey: ['quota', user?.id],
+        queryKey: ['quota', user?.id, communityId],
         queryFn: async () => {
-            if (!user?.id) return { plus: 0, minus: 0 };
-            const quota = await usersApiV1.getUserQuota(user.id);
+            if (!user?.id || !communityId) return { plus: 0, minus: 0 };
+            const quota = await usersApiV1.getUserQuota(user.id, communityId);
             return { plus: quota?.remainingToday || 0, minus: 0 }; // Use remainingToday from quota object
         },
         refetchOnWindowFocus: false,
+        enabled: !!communityId, // Only fetch when communityId is available
     });
 
     const currentPlus = round(

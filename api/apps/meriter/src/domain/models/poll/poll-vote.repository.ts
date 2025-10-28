@@ -30,24 +30,24 @@ export class PollVoteRepository {
     return vote.toObject();
   }
 
-  async aggregateByOption(pollId: string): Promise<Array<{ optionIndex: number; totalAmount: number; voteCount: number }>> {
+  async aggregateByOption(pollId: string): Promise<Array<{ optionId: string; totalAmount: number; voteCount: number }>> {
     return this.model.aggregate([
       { $match: { pollId } },
       {
         $group: {
-          _id: '$optionIndex',
+          _id: '$optionId',
           totalAmount: { $sum: '$amount' },
           voteCount: { $sum: 1 }
         }
       },
       {
         $project: {
-          optionIndex: '$_id',
+          optionId: '$_id',
           totalAmount: 1,
           voteCount: 1
         }
       },
-      { $sort: { optionIndex: 1 } }
+      { $sort: { optionId: 1 } }
     ]).exec();
   }
 }

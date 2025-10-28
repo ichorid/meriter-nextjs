@@ -13,8 +13,8 @@ export class PollCreatedEvent extends DomainEvent {
 export class PollVotedEvent extends DomainEvent {
   constructor(
     public readonly pollId: string,
-    public readonly voterId: string,
-    public readonly optionIndex: number,
+    public readonly userId: string,
+    public readonly optionId: string,
     public readonly amount: number
   ) {
     super();

@@ -2,10 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { UserServiceV2 } from '../../domain/services/user.service-v2';
-import { CommunityServiceV2 } from '../../domain/services/community.service-v2';
+import { UserService } from '../../domain/services/user.service';
+import { CommunityService } from '../../domain/services/community.service';
 import { TgBotsService } from '../../tg-bots/tg-bots.service';
-import { User } from '../types/domain.types';
+import { User } from '../../../../../../libs/shared-types/dist/index';
 import { signJWT } from '../../common/helpers/jwt';
 import { Community, CommunityDocument } from '../../domain/models/community/community.schema';
 import * as crypto from 'crypto';
@@ -25,8 +25,8 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
-    private readonly userService: UserServiceV2,
-    private readonly communityService: CommunityServiceV2,
+    private readonly userService: UserService,
+    private readonly communityService: CommunityService,
     private readonly tgBotsService: TgBotsService,
     private readonly configService: ConfigService,
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
@@ -109,7 +109,6 @@ export class AuthService {
     const jwtSecret = this.configService.get<string>('jwt.secret') || '';
     const jwtToken = signJWT(
       {
-        token: user.token,
         uid: user.id,
         telegramId,
         tags: user.communityTags || [],
@@ -195,7 +194,6 @@ export class AuthService {
     const jwtSecret = this.configService.get<string>('jwt.secret') || '';
     const jwtToken = signJWT(
       {
-        token: user.token,
         uid: user.id,
         telegramId,
         tags: user.communityTags || [],
@@ -342,6 +340,8 @@ export class AuthService {
         website: user.profile?.website,
         isVerified: user.profile?.isVerified,
       },
+      communityTags: user.communityTags || [],
+      communityMemberships: user.communityMemberships || [],
       createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: user.updatedAt?.toISOString() || new Date().toISOString(),
     };

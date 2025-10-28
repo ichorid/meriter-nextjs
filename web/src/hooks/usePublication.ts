@@ -57,8 +57,10 @@ export function usePublication({
       await voteOnPublicationMutation.mutateAsync({
         publicationId: publication.id,
         data: {
+          targetType: 'publication',
+          targetId: publication.id,
           amount,
-          comment: '',
+          sourceType: 'personal',
         },
       });
 
@@ -84,8 +86,11 @@ export function usePublication({
       await voteOnPublicationMutation.mutateAsync({
         publicationId: publication.id,
         data: {
+          targetType: 'publication',
+          targetId: publication.id,
           amount,
-          comment,
+          sourceType: 'personal',
+          attachedCommentId: comment, // Store comment separately
         },
       });
 

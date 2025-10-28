@@ -1,17 +1,18 @@
 import { z } from 'zod';
+import {
+  TimestampsSchema,
+  IdentifiableSchema,
+  VotableMetricsSchema,
+  PolymorphicReferenceSchema,
+  CurrencySchema,
+} from './base-schemas';
 
-// Base schemas
-export const MetricsSchema = z.object({
-  upthanks: z.number().int().min(0),
-  downthanks: z.number().int().min(0),
-  score: z.number().int(),
+// Metrics schemas extending base VotableMetricsSchema
+export const PublicationMetricsSchema = VotableMetricsSchema.extend({
   commentCount: z.number().int().min(0),
 });
 
-export const CommentMetricsSchema = z.object({
-  upthanks: z.number().int().min(0),
-  downthanks: z.number().int().min(0),
-  score: z.number().int(),
+export const CommentMetricsSchema = VotableMetricsSchema.extend({
   replyCount: z.number().int().min(0),
 });
 
@@ -21,12 +22,7 @@ export const PollMetricsSchema = z.object({
   totalAmount: z.number().int().min(0),
 });
 
-export const CurrencySchema = z.object({
-  singular: z.string().min(1),
-  plural: z.string().min(1),
-  genitive: z.string().min(1),
-});
-
+// User profile and community settings
 export const UserProfileSchema = z.object({
   bio: z.string().optional(),
   location: z.string().optional(),
@@ -37,33 +33,31 @@ export const UserProfileSchema = z.object({
 export const CommunitySettingsSchema = z.object({
   iconUrl: z.string().url().optional(),
   currencyNames: CurrencySchema,
-  dailyEmission: z.number().int().min(0).default(100),
+  dailyEmission: z.number().int().min(0).default(10),
 });
 
 export const PollOptionSchema = z.object({
   id: z.string(),
   text: z.string().min(1).max(200),
   votes: z.number().int().min(0),
+  amount: z.number().int().min(0),
   voterCount: z.number().int().min(0),
 });
 
 // Main entity schemas
-export const UserSchema = z.object({
-  id: z.string(),
+export const UserSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   telegramId: z.string(),
   username: z.string().optional(),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   displayName: z.string().min(1),
   avatarUrl: z.string().url().optional(),
-  profile: UserProfileSchema.default({}),
+  profile: UserProfileSchema.default({ isVerified: false }),
   communityTags: z.array(z.string()).default([]),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  communityMemberships: z.array(z.string()).default([]),
 });
 
-export const CommunitySchema = z.object({
-  id: z.string(),
+export const CommunitySchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   telegramChatId: z.string(),
   name: z.string().min(1),
   description: z.string().optional(),
@@ -72,51 +66,45 @@ export const CommunitySchema = z.object({
   members: z.array(z.string()).default([]),
   settings: CommunitySettingsSchema,
   hashtags: z.array(z.string()).default([]),
+  hashtagDescriptions: z.record(z.string(), z.string()).optional().default({}),
   isActive: z.boolean().default(true),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  isAdmin: z.boolean().optional(), // Computed field - is current user an admin?
+  needsSetup: z.boolean().optional(), // Computed field - does community need setup?
 });
 
-export const PublicationSchema = z.object({
-  id: z.string(),
+export const PublicationSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   communityId: z.string(),
   authorId: z.string(),
   beneficiaryId: z.string().optional(),
   content: z.string().min(1).max(10000),
   type: z.enum(['text', 'image', 'video']),
   hashtags: z.array(z.string()).default([]),
-  metrics: MetricsSchema,
+  metrics: PublicationMetricsSchema,
   imageUrl: z.string().url().optional(),
   videoUrl: z.string().url().optional(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
 });
 
-export const CommentSchema = z.object({
-  id: z.string(),
+export const CommentSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   targetType: z.enum(['publication', 'comment']),
   targetId: z.string(),
   authorId: z.string(),
   content: z.string().min(1).max(5000),
   metrics: CommentMetricsSchema,
   parentCommentId: z.string().optional(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
 });
 
-export const VoteSchema = z.object({
+export const VoteSchema = PolymorphicReferenceSchema.extend({
   id: z.string(),
-  targetType: z.enum(['publication', 'comment']),
-  targetId: z.string(),
   userId: z.string(),
-  amount: z.number().int(),
+  amount: z.number().int(), // Positive for upvote, negative for downvote
   sourceType: z.enum(['personal', 'quota']),
-  commentId: z.string().optional(),
+  communityId: z.string(),
+  attachedCommentId: z.string().optional(), // Optional comment attached to vote
   createdAt: z.string().datetime(),
+  updatedAt: z.string().optional(), // Optional for votes
 });
 
-export const PollSchema = z.object({
-  id: z.string(),
+export const PollSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   communityId: z.string(),
   authorId: z.string(),
   question: z.string().min(1).max(1000),
@@ -125,26 +113,33 @@ export const PollSchema = z.object({
   expiresAt: z.string().datetime(),
   isActive: z.boolean().default(true),
   metrics: PollMetricsSchema,
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
 });
 
-export const PollVoteSchema = z.object({
-  id: z.string(),
+export const PollVoteSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   pollId: z.string(),
-  optionId: z.string(),
+  optionId: z.string(), // Changed from optionIndex to optionId
   userId: z.string(),
   amount: z.number().int().min(1),
-  createdAt: z.string().datetime(),
+  sourceType: z.enum(['personal', 'quota']), // Added missing field
+  communityId: z.string(), // Added for consistency
 });
 
-export const WalletSchema = z.object({
-  id: z.string(),
+export const WalletSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   userId: z.string(),
   communityId: z.string(),
   balance: z.number().int().min(0),
   currency: CurrencySchema,
   lastUpdated: z.string().datetime(),
+});
+
+// Transaction schema - ADDED (was missing)
+export const TransactionSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
+  walletId: z.string(),
+  type: z.enum(['vote', 'comment', 'poll_vote', 'withdrawal', 'deposit']),
+  amount: z.number().int(),
+  description: z.string().optional(), // Made optional to match current usage
+  referenceType: z.string().optional(),
+  referenceId: z.string().optional(),
 });
 
 // DTO schemas for API requests
@@ -158,32 +153,27 @@ export const CreatePublicationDtoSchema = z.object({
   videoUrl: z.string().url().optional(),
 });
 
-export const CreateCommentDtoSchema = z.object({
-  targetType: z.enum(['publication', 'comment']),
-  targetId: z.string(),
+export const CreateCommentDtoSchema = PolymorphicReferenceSchema.extend({
   content: z.string().min(1).max(5000),
   parentCommentId: z.string().optional(),
 });
 
-export const CreateVoteDtoSchema = z.object({
-  targetType: z.enum(['publication', 'comment']),
-  targetId: z.string(),
+export const CreateVoteDtoSchema = PolymorphicReferenceSchema.extend({
   amount: z.number().int(),
   sourceType: z.enum(['personal', 'quota']),
-  commentId: z.string().optional(),
 });
 
 export const CreatePollDtoSchema = z.object({
   communityId: z.string(),
   question: z.string().min(1).max(1000),
   description: z.string().max(2000).optional(),
-  options: z.array(z.object({ text: z.string().min(1).max(200) })).min(2),
+  options: z.array(z.object({ id: z.string().optional(), text: z.string().min(1).max(200) })).min(2),
   expiresAt: z.string().datetime(),
 });
 
 export const CreatePollVoteDtoSchema = z.object({
   pollId: z.string(),
-  optionId: z.string(),
+  optionId: z.string(), // Changed from optionIndex to optionId
   amount: z.number().int().min(1),
 });
 
@@ -201,6 +191,8 @@ export const WithdrawDtoSchema = z.object({
 export const UpdateCommunityDtoSchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional(),
+  hashtags: z.array(z.string()).optional(),
+  hashtagDescriptions: z.record(z.string(), z.string()).optional(),
   settings: CommunitySettingsSchema.partial().optional(),
 });
 
@@ -261,6 +253,7 @@ export type Vote = z.infer<typeof VoteSchema>;
 export type Poll = z.infer<typeof PollSchema>;
 export type PollVote = z.infer<typeof PollVoteSchema>;
 export type Wallet = z.infer<typeof WalletSchema>;
+export type Transaction = z.infer<typeof TransactionSchema>;
 
 export type CreatePublicationDto = z.infer<typeof CreatePublicationDtoSchema>;
 export type CreateCommentDto = z.infer<typeof CreateCommentDtoSchema>;
@@ -278,6 +271,3 @@ export type PaginationParams = z.infer<typeof PaginationParamsSchema>;
 export type SortParams = z.infer<typeof SortParamsSchema>;
 export type FilterParams = z.infer<typeof FilterParamsSchema>;
 export type ListQueryParams = z.infer<typeof ListQueryParamsSchema>;
-
-// Export all schemas
-export * from './schemas';

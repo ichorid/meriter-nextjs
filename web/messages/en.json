@@ -316,7 +316,16 @@
         "currencyNameRequired": "Currency name (singular) is required",
         "iconRequired": "Currency icon is required",
         "hashtagsRequired": "At least one hashtag is required"
-      }
+      },
+      "dailyQuota": "Daily Quota",
+      "dailyQuotaDescription": "Number of free votes each member receives daily",
+      "dailyQuotaPlaceholder": "e.g., 10",
+      "resetQuota": "Reset Daily Quota",
+      "resetQuotaDescription": "Reset quota usage for all members today",
+      "resetQuotaConfirm": "Are you sure? This will reset today's quota usage for all community members.",
+      "resetQuotaSuccess": "Daily quota reset successfully",
+      "resetQuotaError": "Failed to reset daily quota",
+      "adminActions": "Admin Actions"
     }
   }
 }

@@ -153,7 +153,7 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 chatId={chatId}
                 chatNameVerb={chatNameVerb}
                 chatIcon={comms?.avatarUrl}
-                postText={poll?.title ? ellipsize(poll.title, 60) : 'Poll'}
+                postText={poll?.question ? ellipsize(poll.question, 60) : 'Poll'}
             />
 
             <div className="space-y-4">

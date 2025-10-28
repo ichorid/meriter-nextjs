@@ -21,14 +21,15 @@ export class PollVoteService {
   async createVote(
     pollId: string,
     userId: string,
-    optionIndex: number,
+    optionId: string,
     amount: number,
-    sourceType: 'personal' | 'quota'
+    sourceType: 'personal' | 'quota',
+    communityId: string
   ): Promise<PollVote> {
-    this.logger.log(`Creating poll vote: poll=${pollId}, user=${userId}, option=${optionIndex}, amount=${amount}`);
+    this.logger.log(`Creating poll vote: poll=${pollId}, user=${userId}, option=${optionId}, amount=${amount}`);
 
     // Validate poll exists and is active
-    const poll = await this.pollModel.findById(pollId).lean();
+    const poll = await this.pollModel.findOne({ id: pollId }).lean();
     if (!poll) {
       throw new NotFoundException('Poll not found');
     }
@@ -41,9 +42,10 @@ export class PollVoteService {
       throw new BadRequestException('Poll has expired');
     }
 
-    // Validate option index
-    if (optionIndex < 0 || optionIndex >= poll.options.length) {
-      throw new BadRequestException('Invalid option index');
+    // Validate option ID
+    const validOptionIds = poll.options.map(opt => opt.id);
+    if (!validOptionIds.includes(optionId)) {
+      throw new BadRequestException('Invalid option ID');
     }
 
     // Validate amount
@@ -55,15 +57,16 @@ export class PollVoteService {
       id: uid(),
       pollId,
       userId,
-      optionIndex,
+      optionId,
       amount,
       sourceType,
+      communityId,
       createdAt: new Date(),
     });
 
     // Publish event
     await this.eventBus.publish(
-      new PollVotedEvent(pollId, userId, optionIndex, amount)
+      new PollVotedEvent(pollId, userId, optionId, amount)
     );
 
     this.logger.log(`Poll vote created successfully: ${vote.id}`);
@@ -74,7 +77,7 @@ export class PollVoteService {
     return this.pollVoteRepository.findByPollAndUser(pollId, userId);
   }
 
-  async getPollResults(pollId: string): Promise<Array<{ optionIndex: number; totalAmount: number; voteCount: number }>> {
+  async getPollResults(pollId: string): Promise<Array<{ optionId: string; totalAmount: number; voteCount: number }>> {
     return this.pollVoteRepository.aggregateByOption(pollId);
   }
 
@@ -82,7 +85,7 @@ export class PollVoteService {
     return this.pollVoteRepository.findByPoll(pollId);
   }
 
-  async voteOnPoll(pollId: string, userId: string, optionIndex: number, amount: number): Promise<PollVote> {
-    return this.createVote(pollId, userId, optionIndex, amount, 'personal');
+  async voteOnPoll(pollId: string, userId: string, optionId: string, amount: number, communityId: string): Promise<PollVote> {
+    return this.createVote(pollId, userId, optionId, amount, 'personal', communityId);
   }
 }

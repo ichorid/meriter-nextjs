@@ -19,8 +19,6 @@ const TelegramSDKWrapper = dynamic(
 
 // Desktop mode wrapper - simple, no Telegram UI  
 function DesktopWrapper({ children }: PropsWithChildren) {
-  const mod = dynamic(() => import('./organisms/index'), { ssr: false });
-  
   const [Components, setComponents] = useState<typeof import('./organisms/index') | null>(null);
   
   useEffect(() => {

@@ -39,7 +39,8 @@ const CommunitySettingsPage = () => {
     const [formData, setFormData] = useState({
         currencyNames: { 1: '', 2: '', 5: '' },
         icon: '',
-        hashtagEdits: [] as any[]
+        hashtagEdits: [] as any[],
+        dailyQuota: ''
     });
     const [isDirty, setIsDirty] = useState(false);
     const [touched, setTouched] = useState(false);
@@ -48,6 +49,12 @@ const CommunitySettingsPage = () => {
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
     const [saveSuccess, setSaveSuccess] = useState('');
+    
+    // Reset quota state
+    const [resettingQuota, setResettingQuota] = useState(false);
+    const [resetQuotaError, setResetQuotaError] = useState('');
+    const [resetQuotaSuccess, setResetQuotaSuccess] = useState('');
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
 
     // Load user data using v1 API
     const { user } = useAuth();
@@ -108,7 +115,8 @@ const CommunitySettingsPage = () => {
             setFormData({
                 currencyNames: formCurrencyNames,
                 icon: communityResponse.settings?.iconUrl || communityResponse.avatarUrl || '',
-                hashtagEdits: hashtagEdits
+                hashtagEdits: hashtagEdits,
+                dailyQuota: communityResponse.settings?.dailyEmission?.toString() || '10'
             });
             setCommunityError('');
         }
@@ -201,6 +209,7 @@ const CommunitySettingsPage = () => {
             settings: {
                 iconUrl: formData.icon,
                 currencyNames: currencyNames,
+                dailyEmission: parseInt(formData.dailyQuota, 10) || 10,
             },
             hashtags: validHashtags.map((d: any) => d.tag),
             hashtagDescriptions: hashtagDescriptions,
@@ -237,6 +246,25 @@ const CommunitySettingsPage = () => {
             }
         } finally {
             setSaving(false);
+        }
+    };
+
+    // Reset quota handler
+    const handleResetQuota = async () => {
+        setResettingQuota(true);
+        setResetQuotaError('');
+        setResetQuotaSuccess('');
+
+        try {
+            const result = await communitiesApiV1.resetDailyQuota(chatId);
+            setResetQuotaSuccess(t('communitySettings.resetQuotaSuccess'));
+            setShowResetConfirm(false);
+            setTimeout(() => setResetQuotaSuccess(''), 3000);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : t('communitySettings.resetQuotaError');
+            setResetQuotaError(message);
+        } finally {
+            setResettingQuota(false);
         }
     };
 
@@ -388,6 +416,30 @@ const CommunitySettingsPage = () => {
                 </div>
             </div>
 
+            {/* Daily Quota Section */}
+            <div className="card bg-base-100 shadow-xl mb-6">
+                <div className="card-body">
+                    <h2 className="card-title">{t('communitySettings.dailyQuota')}</h2>
+                    <div>
+                        <label className="label">
+                            <span className="label-text">{t('communitySettings.dailyQuotaDescription')}</span>
+                        </label>
+                        <input
+                            className="input input-bordered w-full"
+                            type="number"
+                            min="1"
+                            placeholder={t('communitySettings.dailyQuotaPlaceholder')}
+                            value={formData.dailyQuota}
+                            onChange={(e) => {
+                                setFormData(prev => ({ ...prev, dailyQuota: e.target.value }));
+                                setIsDirty(true);
+                            }}
+                            onBlur={() => setTouched(true)}
+                        />
+                    </div>
+                </div>
+            </div>
+
             {/* Community Values Section */}
             <div className="card bg-base-100 shadow-xl mb-6">
                 <div className="card-body">
@@ -449,6 +501,71 @@ const CommunitySettingsPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Admin Actions Section - Reset Quota */}
+            {communityData?.isAdmin && (
+                <div className="card bg-base-100 shadow-xl mb-6">
+                    <div className="card-body">
+                        <h2 className="card-title">{t('communitySettings.adminActions')}</h2>
+                        
+                        {resetQuotaSuccess && (
+                            <div className="alert alert-success mb-4">
+                                {resetQuotaSuccess}
+                            </div>
+                        )}
+                        
+                        {resetQuotaError && (
+                            <div className="alert alert-error mb-4">
+                                {resetQuotaError}
+                            </div>
+                        )}
+                        
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">{t('communitySettings.resetQuotaDescription')}</span>
+                            </label>
+                            <button
+                                className="btn btn-warning"
+                                disabled={resettingQuota}
+                                onClick={() => setShowResetConfirm(true)}
+                            >
+                                {resettingQuota ? (
+                                    <>
+                                        <span className="loading loading-spinner loading-sm"></span>
+                                        Resetting...
+                                    </>
+                                ) : (
+                                    t('communitySettings.resetQuota')
+                                )}
+                            </button>
+                        </div>
+                        
+                        {showResetConfirm && (
+                            <div className="modal modal-open">
+                                <div className="modal-box">
+                                    <h3 className="font-bold text-lg">{t('communitySettings.resetQuota')}</h3>
+                                    <p className="py-4">{t('communitySettings.resetQuotaConfirm')}</p>
+                                    <div className="modal-action">
+                                        <button
+                                            className="btn btn-ghost"
+                                            onClick={() => setShowResetConfirm(false)}
+                                        >
+                                            {t('communitySettings.cancel')}
+                                        </button>
+                                        <button
+                                            className="btn btn-warning"
+                                            onClick={handleResetQuota}
+                                            disabled={resettingQuota}
+                                        >
+                                            {t('communitySettings.resetQuota')}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Save Section */}
             <div className="card bg-base-100 shadow-xl">

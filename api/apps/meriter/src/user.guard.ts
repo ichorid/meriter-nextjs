@@ -8,14 +8,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { verify } from 'jsonwebtoken';
 
-import { UserServiceV2 } from './domain/services/user.service-v2';
+import { UserService } from './domain/services/user.service';
 
 @Injectable()
 export class UserGuard implements CanActivate {
   private readonly logger = new Logger(UserGuard.name);
 
   constructor(
-    private userService: UserServiceV2,
+    private userService: UserService,
     private configService: ConfigService,
   ) {}
 

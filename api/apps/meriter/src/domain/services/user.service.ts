@@ -20,8 +20,8 @@ export interface CreateUserDto {
 }
 
 @Injectable()
-export class UserServiceV2 {
-  private readonly logger = new Logger(UserServiceV2.name);
+export class UserService {
+  private readonly logger = new Logger(UserService.name);
 
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,

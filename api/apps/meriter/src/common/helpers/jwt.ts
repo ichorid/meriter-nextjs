@@ -1,7 +1,6 @@
 import * as jwt from 'jsonwebtoken';
 
 export interface JwtPayload {
-  token: string;
   uid: string;
   telegramId: string;
   tags: string[];

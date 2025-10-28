@@ -148,6 +148,11 @@ export const communitiesApiV1 = {
     await apiClient.delete(`/api/v1/communities/${id}`);
   },
 
+  async resetDailyQuota(communityId: string): Promise<{ deletedCount: number }> {
+    const response = await apiClient.post<{ success: true; data: { deletedCount: number } }>(`/api/v1/communities/${communityId}/reset-quota`);
+    return response.data;
+  },
+
   async getCommunityMembers(id: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<CommunityMember>> {
     const response = await apiClient.get<{ success: true; data: PaginatedResponse<CommunityMember> }>(`/api/v1/communities/${id}/members`, { params });
     return response.data;

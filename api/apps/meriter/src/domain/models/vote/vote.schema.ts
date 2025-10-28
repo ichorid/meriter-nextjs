@@ -24,7 +24,10 @@ export class Vote {
   sourceType: string;
 
   @Prop()
-  commentId?: string;
+  attachedCommentId?: string; // Renamed from commentId for clarity - optional comment attached to vote
+
+  @Prop({ required: true })
+  communityId: string; // Made required for consistency
 
   @Prop({ required: true })
   createdAt: Date;

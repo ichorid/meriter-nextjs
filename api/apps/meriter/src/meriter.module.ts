@@ -31,7 +31,7 @@ import { DomainModule } from './domain.module';
     }),
     DatabaseModule,
     ApiV1Module,
-    DomainModule, // Domain layer with V2 services
+    DomainModule, // Domain layer with domain services
     UpdatesConductorsModule,
     TgBotsModule,
   ],

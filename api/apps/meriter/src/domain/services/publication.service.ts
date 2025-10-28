@@ -19,8 +19,8 @@ export interface CreatePublicationDto {
 }
 
 @Injectable()
-export class PublicationServiceV2 {
-  private readonly logger = new Logger(PublicationServiceV2.name);
+export class PublicationService {
+  private readonly logger = new Logger(PublicationService.name);
 
   constructor(
     @InjectModel(PublicationSchema.name) private publicationModel: Model<PublicationDocument>,

@@ -15,15 +15,15 @@ import { Transaction, TransactionSchema } from './domain/models/transaction/tran
 // Import repositories (only those with valuable logic)
 import { PollVoteRepository } from './domain/models/poll/poll-vote.repository';
 
-// Import V2 services (rich domain with transactions)
-import { PublicationServiceV2 } from './domain/services/publication.service-v2';
-import { CommentServiceV2 } from './domain/services/comment.service-v2';
-import { PollServiceV2 } from './domain/services/poll.service-v2';
-import { WalletServiceV2 } from './domain/services/wallet.service-v2';
+// Import domain services
+import { PublicationService } from './domain/services/publication.service';
+import { CommentService } from './domain/services/comment.service';
+import { PollService } from './domain/services/poll.service';
+import { WalletService } from './domain/services/wallet.service';
 import { VoteService } from './domain/services/vote.service';
 import { PollVoteService } from './domain/services/poll-vote.service';
-import { UserServiceV2 } from './domain/services/user.service-v2';
-import { CommunityServiceV2 } from './domain/services/community.service-v2';
+import { UserService } from './domain/services/user.service';
+import { CommunityService } from './domain/services/community.service';
 
 // Import event bus
 import { EventBus } from './domain/events/event-bus';
@@ -47,15 +47,15 @@ import { EventBus } from './domain/events/event-bus';
     // Repositories (only those with valuable logic)
     PollVoteRepository,
     
-    // V2 Services
-    PublicationServiceV2,
-    CommentServiceV2,
-    PollServiceV2,
-    WalletServiceV2,
+    // Domain Services
+    PublicationService,
+    CommentService,
+    PollService,
+    WalletService,
     VoteService,
     PollVoteService,
-    UserServiceV2,
-    CommunityServiceV2,
+    UserService,
+    CommunityService,
     
     // Event bus
     EventBus,
@@ -64,15 +64,15 @@ import { EventBus } from './domain/events/event-bus';
     // Export repositories (only those with valuable logic)
     PollVoteRepository,
     
-    // Export V2 services
-    PublicationServiceV2,
-    CommentServiceV2,
-    PollServiceV2,
-    WalletServiceV2,
+    // Export domain services
+    PublicationService,
+    CommentService,
+    PollService,
+    WalletService,
     VoteService,
     PollVoteService,
-    UserServiceV2,
-    CommunityServiceV2,
+    UserService,
+    CommunityService,
     
     // Export event bus
     EventBus,

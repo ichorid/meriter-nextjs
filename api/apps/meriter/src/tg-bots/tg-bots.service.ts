@@ -505,7 +505,7 @@ export class TgBotsService {
       { upsert: true, new: true }
     );
 
-    // TODO: Implement wallet initialization in WalletServiceV2
+    // TODO: Implement wallet initialization in WalletService
     // const promiseInitWallet = this.walletsService.initWallet(0, {
     //   currencyOfCommunityTgChatId: tgChatId,
     //   telegramUserId: tgUserId,
@@ -562,13 +562,10 @@ export class TgBotsService {
         telegramId: tgUserId,
       });
       if (c === 0) {
-        const token = uid(32);
-        
         await this.userModel.create({
           id: uid(),
           telegramId: tgUserId,
           displayName: tgUserName,
-          token: token,
           profile: {
             bio: '',
             location: '',
@@ -576,6 +573,7 @@ export class TgBotsService {
             isVerified: false,
           },
           communityTags: [],
+          communityMemberships: [],
           createdAt: new Date(),
           updatedAt: new Date(),
         });
@@ -1080,7 +1078,7 @@ export class TgBotsService {
   };
 
   async sendInfoLetter(aboutChatId, toTgChatId) {
-    // TODO: Implement hashtag lookup in V2 services
+    // TODO: Implement hashtag lookup in domain services
     // const hashtags = await this.hashtagsService.model
     //   .find({ "meta.parentTgChatId": aboutChatId })
     //   .lean();

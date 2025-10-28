@@ -47,17 +47,19 @@ export interface Community {
 // Publication types
 export interface Publication {
   id: string;
-  title: string;
   content: string;
   authorId: string;
+  beneficiaryId?: string;
   communityId: string;
-  type: 'text' | 'image' | 'video' | 'poll';
+  type: 'text' | 'image' | 'video';
   imageUrl?: string;
   videoUrl?: string;
   hashtags?: string[];
   createdAt: string;
   updatedAt: string;
   metrics?: {
+    upvotes: number;
+    downvotes: number;
     score: number;
     commentCount: number;
   };
@@ -70,6 +72,13 @@ export interface Comment {
   content: string;
   targetType: 'publication' | 'comment';
   targetId: string;
+  parentCommentId?: string;
+  metrics?: {
+    upvotes: number;
+    downvotes: number;
+    score: number;
+    replyCount: number;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -81,27 +90,37 @@ export interface Vote {
   targetType: 'publication' | 'comment';
   targetId: string;
   amount: number;
+  sourceType?: 'personal' | 'quota';
+  communityId?: string;
+  attachedCommentId?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 // Poll types
 export interface Poll {
   id: string;
-  title: string;
+  question: string; // Changed from 'title' to 'question'
   description?: string;
   options: PollOption[];
   communityId: string;
   authorId: string;
   createdAt: string;
   updatedAt: string;
+  metrics?: {
+    totalVotes: number;
+    voterCount: number;
+    totalAmount: number;
+  };
 }
 
 export interface PollOption {
   id: string;
   text: string;
   votes: number;
-  percentage: number;
+  amount: number;
+  voterCount: number;
+  percentage?: number; // Computed field, optional
 }
 
 export interface PollVote {
@@ -137,10 +156,10 @@ export interface Transaction {
 
 // DTO types
 export interface CreatePublicationDto {
-  title: string;
   content: string;
   communityId: string;
-  type: 'text' | 'image' | 'video' | 'poll';
+  type: 'text' | 'image' | 'video';
+  beneficiaryId?: string;
   imageUrl?: string;
   videoUrl?: string;
   hashtags?: string[];
@@ -150,22 +169,27 @@ export interface CreateCommentDto {
   content: string;
   targetType: 'publication' | 'comment';
   targetId: string;
+  parentCommentId?: string;
 }
 
 export interface CreateVoteDto {
+  targetType: 'publication' | 'comment';
+  targetId: string;
   amount: number;
-  comment?: string;
+  sourceType?: 'personal' | 'quota';
+  attachedCommentId?: string;
 }
 
 export interface CreatePollDto {
-  title: string;
+  question: string;
   description?: string;
-  options: { text: string }[];
+  options: { id?: string; text: string }[];
   communityId: string;
+  expiresAt: string;
 }
 
 export interface CreatePollVoteDto {
-  optionIndex: number;
+  optionId: string;
   amount: number;
 }
 

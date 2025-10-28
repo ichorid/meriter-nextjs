@@ -51,8 +51,8 @@ export class Community {
   @Prop({ type: [String], default: [] })
   hashtags: string[];
 
-  @Prop({ type: Map, of: String, default: new Map(), required: false })
-  hashtagDescriptions?: Map<string, string>;
+  @Prop({ type: Object, of: String, default: {}, required: false })
+  hashtagDescriptions?: Record<string, string>; // Changed from Map to plain object
 
   @Prop({ default: true })
   isActive: boolean;

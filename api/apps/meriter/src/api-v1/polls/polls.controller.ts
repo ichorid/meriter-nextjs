@@ -11,18 +11,18 @@ import {
   UseGuards,
   Logger,
 } from '@nestjs/common';
-import { PollServiceV2 } from '../../domain/services/poll.service-v2';
+import { PollService } from '../../domain/services/poll.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
-import { Poll, CreatePollDto, CreatePollVoteDto } from '../types/domain.types';
+import { Poll, CreatePollDto, CreatePollVoteDto } from '../../../../../../libs/shared-types/dist/index';
 
 @Controller('api/v1/polls')
 @UseGuards(UserGuard)
 export class PollsController {
   private readonly logger = new Logger(PollsController.name);
 
-  constructor(private readonly pollsService: PollServiceV2) {}
+  constructor(private readonly pollsService: PollService) {}
 
   @Get()
   async getPolls(@Query() query: any) {
@@ -44,16 +44,17 @@ export class PollsController {
       authorId: snapshot.authorId,
       communityId: snapshot.communityId,
       question: snapshot.question,
-      description: undefined, // Not available in domain entity
-      options: snapshot.options.map((text, index) => ({
-        id: `${snapshot.id}-${index}`,
-        text,
-        votes: 0, // TODO: Get actual vote counts
-        voterCount: 0, // TODO: Get actual voter counts
+      description: snapshot.description,
+      options: snapshot.options.map((opt, index) => ({
+        id: opt.id || `${snapshot.id}-${index}`,
+        text: opt.text,
+        votes: opt.votes,
+        amount: opt.amount || 0,
+        voterCount: opt.voterCount,
       })),
+      metrics: snapshot.metrics,
       expiresAt: snapshot.expiresAt.toISOString(),
       isActive: snapshot.isActive,
-      metrics: undefined, // TODO: Calculate metrics
       createdAt: snapshot.createdAt.toISOString(),
       updatedAt: snapshot.updatedAt.toISOString(),
     };
@@ -67,9 +68,10 @@ export class PollsController {
     @Req() req: any,
   ): Promise<Poll> {
     // Transform API CreatePollDto to domain CreatePollDto
+    const { uid } = require('uid');
     const domainDto = {
       ...createDto,
-      options: createDto.options.map(option => option.text),
+      options: createDto.options.map(opt => ({ id: opt.id || uid(), text: opt.text })),
       expiresAt: new Date(createDto.expiresAt),
     };
     
@@ -82,16 +84,17 @@ export class PollsController {
       authorId: snapshot.authorId,
       communityId: snapshot.communityId,
       question: snapshot.question,
-      description: undefined, // Not available in domain entity
-      options: snapshot.options.map((text, index) => ({
-        id: `${snapshot.id}-${index}`,
-        text,
-        votes: 0, // TODO: Get actual vote counts
-        voterCount: 0, // TODO: Get actual voter counts
+      description: snapshot.description,
+      options: snapshot.options.map((opt, index) => ({
+        id: opt.id || `${snapshot.id}-${index}`,
+        text: opt.text,
+        votes: opt.votes,
+        amount: opt.amount || 0,
+        voterCount: opt.voterCount,
       })),
+      metrics: snapshot.metrics,
       expiresAt: snapshot.expiresAt.toISOString(),
       isActive: snapshot.isActive,
-      metrics: undefined, // TODO: Calculate metrics
       createdAt: snapshot.createdAt.toISOString(),
       updatedAt: snapshot.updatedAt.toISOString(),
     };
@@ -105,7 +108,7 @@ export class PollsController {
     @Body() updateDto: Partial<CreatePollDto>,
     @Req() req: any,
   ): Promise<Poll> {
-    // Update functionality not implemented in V2 service yet
+    // Update functionality not implemented yet
     throw new Error('Update poll functionality not implemented');
   }
 
@@ -120,7 +123,7 @@ export class PollsController {
       throw new ForbiddenError('Only the author can delete this poll');
     }
 
-    // Delete functionality not implemented in V2 service yet
+    // Delete functionality not implemented yet
     throw new Error('Delete poll functionality not implemented');
   }
 
@@ -130,7 +133,7 @@ export class PollsController {
     @Body() createDto: CreatePollVoteDto,
     @Req() req: any,
   ) {
-    return this.pollsService.voteOnPoll(id, req.user.tgUserId, createDto.amount, createDto.optionIndex);
+    return this.pollsService.voteOnPoll(id, req.user.tgUserId, createDto.optionId, createDto.amount);
   }
 
   @Get(':id/results')

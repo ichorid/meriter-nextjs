@@ -6,18 +6,18 @@ import { Poll as PollSchema, PollDocument } from '../models/poll/poll.schema';
 import { PollVoteRepository } from '../models/poll/poll-vote.repository';
 import { PollCreatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
-import { PollDocument as IPollDocument } from '../../common/interfaces/poll-document.interface';
 
 export interface CreatePollDto {
   communityId: string;
   question: string;
-  options: string[];
+  description?: string;
+  options: Array<{ id: string; text: string }>;
   expiresAt: Date;
 }
 
 @Injectable()
-export class PollServiceV2 {
-  private readonly logger = new Logger(PollServiceV2.name);
+export class PollService {
+  private readonly logger = new Logger(PollService.name);
 
   constructor(
     @InjectModel(PollSchema.name) private pollModel: Model<PollDocument>,
@@ -34,12 +34,19 @@ export class PollServiceV2 {
       throw new BadRequestException('Poll expiration must be in the future');
     }
 
-    // Create poll aggregate
+    // Create poll aggregate with option IDs
+    const { uid } = require('uid');
+    const pollOptions = dto.options.map(opt => ({
+      id: opt.id || uid(),
+      text: opt.text,
+    }));
+    
     const poll = Poll.create(
       userId,
       dto.communityId,
       dto.question,
-      dto.options,
+      dto.description,
+      pollOptions,
       dto.expiresAt
     );
 
@@ -57,7 +64,7 @@ export class PollServiceV2 {
 
   async getPoll(id: string): Promise<Poll | null> {
     const doc = await this.pollModel.findOne({ id }).lean();
-    return doc ? Poll.fromSnapshot(doc as IPollDocument) : null;
+    return doc ? Poll.fromSnapshot(doc as any) : null;
   }
 
   async getPollsByCommunity(communityId: string, limit: number = 20, skip: number = 0): Promise<Poll[]> {
@@ -68,7 +75,7 @@ export class PollServiceV2 {
       .sort({ createdAt: -1 })
       .lean();
     
-    return docs.map(doc => Poll.fromSnapshot(doc as IPollDocument));
+    return docs.map(doc => Poll.fromSnapshot(doc as any));
   }
 
   async getActivePolls(limit: number = 20, skip: number = 0): Promise<Poll[]> {
@@ -79,10 +86,10 @@ export class PollServiceV2 {
       .sort({ createdAt: -1 })
       .lean();
     
-    return docs.map(doc => Poll.fromSnapshot(doc as IPollDocument));
+    return docs.map(doc => Poll.fromSnapshot(doc as any));
   }
 
-  async getPollResults(pollId: string): Promise<Array<{ optionIndex: number; totalAmount: number }>> {
+  async getPollResults(pollId: string): Promise<Array<{ optionId: string; totalAmount: number }>> {
     return this.pollVoteRepository.aggregateByOption(pollId);
   }
 
@@ -96,7 +103,7 @@ export class PollServiceV2 {
       throw new NotFoundException('Poll not found');
     }
 
-    const poll = Poll.fromSnapshot(doc as IPollDocument);
+    const poll = Poll.fromSnapshot(doc as any);
     
     if (poll.hasExpired()) {
       poll.expire();
@@ -115,7 +122,7 @@ export class PollServiceV2 {
   async voteOnPoll(
     pollId: string,
     userId: string,
-    optionIndex: number,
+    optionId: string,
     amount: number,
   ): Promise<any> {
     // This is a simplified implementation
@@ -124,7 +131,7 @@ export class PollServiceV2 {
       id: 'vote-' + Date.now(),
       pollId,
       userId,
-      optionIndex,
+      optionId,
       amount,
       createdAt: new Date(),
     };

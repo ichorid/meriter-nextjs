@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { PublicationServiceV2 } from '../domain/services/publication.service-v2';
+import { PublicationService } from '../domain/services/publication.service';
 import { Community, CommunityDocument } from '../domain/models/community/community.schema';
 import { User, UserDocument } from '../domain/models/user/user.schema';
 import { TelegramMessageProcessorService, ParsedMessage } from './message-processor.service';
@@ -12,7 +12,7 @@ export class TelegramPublicationCreatorService {
   private readonly logger = new Logger(TelegramPublicationCreatorService.name);
 
   constructor(
-    private publicationService: PublicationServiceV2,
+    private publicationService: PublicationService,
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private messageProcessor: TelegramMessageProcessorService,

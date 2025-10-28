@@ -11,8 +11,8 @@ import { uid } from 'uid';
 import { WalletDocument as IWalletDocument } from '../../common/interfaces/wallet-document.interface';
 
 @Injectable()
-export class WalletServiceV2 {
-  private readonly logger = new Logger(WalletServiceV2.name);
+export class WalletService {
+  private readonly logger = new Logger(WalletService.name);
 
   constructor(
     @InjectModel(WalletSchema.name) private walletModel: Model<WalletDocument>,

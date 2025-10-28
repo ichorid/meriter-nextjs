@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { Model, Connection } from 'mongoose';
 import { Community, CommunityDocument } from '../models/community/community.schema';
 import { User, UserDocument } from '../models/user/user.schema';
 import { CommunityId, UserId } from '../value-objects';
@@ -43,12 +43,13 @@ export interface UpdateCommunityDto {
 }
 
 @Injectable()
-export class CommunityServiceV2 {
-  private readonly logger = new Logger(CommunityServiceV2.name);
+export class CommunityService {
+  private readonly logger = new Logger(CommunityService.name);
 
   constructor(
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
   ) {}
 
@@ -77,7 +78,7 @@ export class CommunityServiceV2 {
         dailyEmission: dto.settings?.dailyEmission || 10,
       },
       hashtags: [],
-      hashtagDescriptions: new Map<string, string>(),
+      hashtagDescriptions: {},
       isActive: true, // Default to active
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -99,8 +100,7 @@ export class CommunityServiceV2 {
     if (dto.administrators !== undefined) updateData.administrators = dto.administrators;
     if (dto.hashtags !== undefined) updateData.hashtags = dto.hashtags;
     if (dto.hashtagDescriptions !== undefined) {
-      // Convert Record to Map for MongoDB storage
-      updateData.hashtagDescriptions = new Map(Object.entries(dto.hashtagDescriptions));
+      updateData.hashtagDescriptions = dto.hashtagDescriptions;
     }
     
     if (dto.settings) {
@@ -264,5 +264,28 @@ export class CommunityServiceV2 {
     // For now, we'll assume the user is a member
     this.logger.log(`Checking membership: user ${userId} in chat ${chatId}`);
     return true;
+  }
+
+  async resetDailyQuota(communityId: string): Promise<number> {
+    this.logger.log(`Resetting daily quota for community ${communityId}`);
+
+    // Calculate today's date range (00:00:00 to 23:59:59)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Delete all votes with sourceType='quota' for this community today
+    // Note: The schema uses 'quota' but some old data might have 'daily_quota'
+    const result = await this.mongoose.db
+      .collection('votes')
+      .deleteMany({
+        communityId,
+        sourceType: { $in: ['quota', 'daily_quota'] },
+        createdAt: { $gte: today, $lt: tomorrow }
+      });
+
+    this.logger.log(`Deleted ${result.deletedCount} quota votes for community ${communityId}`);
+    return result.deletedCount;
   }
 }

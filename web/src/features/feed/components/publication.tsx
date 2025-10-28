@@ -391,7 +391,8 @@ export const Publication = ({
         plus,
         minus,
         activeCommentHook,
-        onlyPublication
+        onlyPublication,
+        spaceSlug
     );
 
     useEffect(() => {

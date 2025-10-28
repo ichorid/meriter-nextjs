@@ -12,12 +12,12 @@ import {
 } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
-import { WalletServiceV2 } from '../../domain/services/wallet.service-v2';
-import { CommunityServiceV2 } from '../../domain/services/community.service-v2';
+import { WalletService } from '../../domain/services/wallet.service';
+import { CommunityService } from '../../domain/services/community.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
-import { Wallet, Transaction } from '../types/domain.types';
+import { Wallet, Transaction } from '../../../../../../libs/shared-types/dist/index';
 import { Community, CommunityDocument } from '../../domain/models/community/community.schema';
 
 @Controller('api/v1')
@@ -26,8 +26,8 @@ export class WalletsController {
   private readonly logger = new Logger(WalletsController.name);
 
   constructor(
-    private readonly walletsService: WalletServiceV2,
-    private readonly communityService: CommunityServiceV2,
+    private readonly walletsService: WalletService,
+    private readonly communityService: CommunityService,
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
     @InjectConnection() private mongoose: Connection,
   ) {}
@@ -142,7 +142,8 @@ export class WalletsController {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Query votes with sourceType='daily_quota' for this user in this community today
+    // Query votes with sourceType='quota' for this user in this community today
+    // Note: The schema uses 'quota' but some old data might have 'daily_quota'
     const usedToday = await this.mongoose.db
       .collection('votes')
       .aggregate([
@@ -150,7 +151,7 @@ export class WalletsController {
           $match: {
             userId,
             communityId: spaceSlug,
-            sourceType: 'daily_quota',
+            sourceType: { $in: ['quota', 'daily_quota'] },
             createdAt: { $gte: today, $lt: tomorrow }
           }
         },
@@ -184,7 +185,7 @@ export class WalletsController {
     if (userId !== req.user.tgUserId) {
       throw new NotFoundError('User', userId);
     }
-    // Withdraw functionality not implemented in V2 service yet
+    // Withdraw functionality not implemented yet
     throw new Error('Withdraw functionality not implemented');
   }
 
@@ -199,7 +200,7 @@ export class WalletsController {
     if (userId !== req.user.tgUserId) {
       throw new NotFoundError('User', userId);
     }
-    // Transfer functionality not implemented in V2 service yet
+    // Transfer functionality not implemented yet
     throw new Error('Transfer functionality not implemented');
   }
 

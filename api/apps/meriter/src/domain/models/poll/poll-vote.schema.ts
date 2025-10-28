@@ -15,13 +15,16 @@ export class PollVote {
   userId: string;
 
   @Prop({ required: true })
-  optionIndex: number;
+  optionId: string; // Changed from optionIndex to optionId
 
   @Prop({ required: true })
   amount: number;
 
   @Prop({ required: true, enum: ['personal', 'quota'] })
   sourceType: string;
+
+  @Prop({ required: true })
+  communityId: string; // Added for consistency
 
   @Prop({ required: true })
   createdAt: Date;
@@ -32,4 +35,4 @@ export const PollVoteSchema = SchemaFactory.createForClass(PollVote);
 // Add indexes for common queries
 PollVoteSchema.index({ pollId: 1, createdAt: -1 });
 PollVoteSchema.index({ userId: 1, pollId: 1 });
-PollVoteSchema.index({ userId: 1, pollId: 1, optionIndex: 1 });
+PollVoteSchema.index({ userId: 1, pollId: 1, optionId: 1 }); // Updated to use optionId
