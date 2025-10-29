@@ -111,10 +111,38 @@ export const Publication = ({
     // Check if current user is the beneficiary (but not the author)
     const isBeneficiary = hasBeneficiary && beneficiaryId === myId;
     
-    // Determine the title based on beneficiary
-    const displayTitle = hasBeneficiary 
-        ? t('forBeneficiary', { author: tgAuthorName, beneficiary: beneficiaryName })
-        : tgAuthorName;
+    // Mutual exclusivity logic:
+    // Show withdraw if: (isAuthor && !hasBeneficiary) || isBeneficiary
+    // Show vote if: !isAuthor && !isBeneficiary (or if isAuthor && hasBeneficiary - author can vote for beneficiary)
+    // IMPORTANT: If user is beneficiary, NEVER show vote button (even if balance is 0)
+    const showWithdraw = (isAuthor && !hasBeneficiary) || isBeneficiary;
+    const showVote = !isAuthor && !isBeneficiary;
+    const showVoteForAuthor = isAuthor && hasBeneficiary; // Author can vote when there's a beneficiary
+    const currentScore = currentPlus - currentMinus;
+    
+    // Debug logging
+    console.log('[Publication Feed] Mutual Exclusivity Debug:', {
+      slug: postId,
+      myId,
+      tgAuthorId,
+      beneficiaryId,
+      hasBeneficiary,
+      isAuthor,
+      isBeneficiary,
+      currentScore,
+      currentPlus,
+      currentMinus,
+      meritsAmount,
+    });
+    
+    console.log('[Publication Feed] Button Visibility Logic:', {
+      showWithdraw,
+      showVote,
+      showVoteForAuthor,
+      willShowWithdraw: showWithdraw,
+      willShowVote: showVote || showVoteForAuthor,
+      finalChoice: showWithdraw ? 'WITHDRAW' : (showVote || showVoteForAuthor ? 'VOTE' : 'NONE'),
+    });
     
     // Withdrawal state management (for author's own posts)
     const [optimisticSum, setOptimisticSum] = useState(sum);
@@ -526,99 +554,82 @@ export const Publication = ({
                     myId == tgAuthorId ? () => setShowDimensionsEditor(true) : undefined
                 }
                 bottom={
-                    isBeneficiary ? (
-                        <BarWithdraw
-                            balance={meritsAmount}
-                            onWithdraw={() => handleSetDirectionAdd(false)}
-                            onTopup={() => handleSetDirectionAdd(true)}
-                        >
-                            {showselector && (
-                                <div className="select-currency">
-                                    <span
-                                        className={
-                                            !withdrawMerits
-                                                ? "clickable bar-withdraw-select"
-                                                : "bar-withdraw-select-active"
+                    (() => {
+                        console.log('[Publication Feed] Rendering bottom component:', {
+                            showWithdraw,
+                            showVote,
+                            showVoteForAuthor,
+                            isBeneficiary,
+                            isAuthor,
+                            hasBeneficiary,
+                            meritsAmount,
+                        });
+                        
+                        if (showWithdraw) {
+                            console.log('[Publication Feed] Rendering BarWithdraw');
+                            return (
+                                <BarWithdraw
+                                    balance={meritsAmount}
+                                    onWithdraw={() => handleSetDirectionAdd(false)}
+                                    onTopup={() => handleSetDirectionAdd(true)}
+                                    showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)} // Show disabled state for beneficiaries and authors without beneficiary
+                                >
+                                    {showselector && (
+                                        <div className="select-currency">
+                                            <span
+                                                className={
+                                                    !withdrawMerits
+                                                        ? "clickable bar-withdraw-select"
+                                                        : "bar-withdraw-select-active"
+                                                }
+                                                onClick={() => setWithdrawMerits(true)}
+                                            >
+                                                {t('merits')}{" "}
+                                            </span>
+                                            <span
+                                                className={
+                                                    withdrawMerits
+                                                        ? "clickable bar-withdraw-select"
+                                                        : "bar-withdraw-select-active"
+                                                }
+                                                onClick={() => setWithdrawMerits(false)}
+                                            >
+                                                {t('points')}
+                                            </span>
+                                        </div>
+                                    )}
+                                </BarWithdraw>
+                            );
+                        } else if (showVote || showVoteForAuthor) {
+                            console.log('[Publication Feed] Rendering BarVoteUnified', {
+                                showVote,
+                                showVoteForAuthor,
+                                isBeneficiary,
+                                isAuthor,
+                                hasBeneficiary,
+                            });
+                            return (
+                                <BarVoteUnified
+                                    score={currentScore}
+                                    onVoteClick={() => {
+                                        useUIStore.getState().openVotingPopup(postId, 'publication');
+                                    }}
+                                    isAuthor={isAuthor}
+                                    isBeneficiary={isBeneficiary}
+                                    hasBeneficiary={hasBeneficiary}
+                                    commentCount={!isDetailPage ? comments?.length || 0 : 0}
+                                    onCommentClick={!isDetailPage ? () => {
+                                        if (tgChatId && slug) {
+                                            router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
                                         }
-                                        onClick={() => setWithdrawMerits(true)}
-                                    >
-                                        {t('merits')}{" "}
-                                    </span>
-                                    <span
-                                        className={
-                                            withdrawMerits
-                                                ? "clickable bar-withdraw-select"
-                                                : "bar-withdraw-select-active"
-                                        }
-                                        onClick={() => setWithdrawMerits(false)}
-                                    >
-                                        {t('points')}
-                                    </span>
-                                </div>
-                            )}
-                        </BarWithdraw>
-                    ) : isAuthor && hasBeneficiary ? (
-                        <BarVoteUnified
-                            score={currentPlus - currentMinus}
-                            onVoteClick={() => {
-                                useUIStore.getState().openVotingPopup(postId, 'publication');
-                            }}
-                            isAuthor={isAuthor}
-                            isBeneficiary={false}
-                            commentCount={!isDetailPage ? comments?.length || 0 : 0}
-                            onCommentClick={!isDetailPage ? () => {
-                                if (tgChatId && slug) {
-                                    router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
-                                }
-                            } : undefined}
-                        />
-                    ) : isAuthor ? (
-                        <BarWithdraw
-                            balance={meritsAmount}
-                            onWithdraw={() => handleSetDirectionAdd(false)}
-                            onTopup={() => handleSetDirectionAdd(true)}
-                        >
-                            {showselector && (
-                                <div className="select-currency">
-                                    <span
-                                        className={
-                                            !withdrawMerits
-                                                ? "clickable bar-withdraw-select"
-                                                : "bar-withdraw-select-active"
-                                        }
-                                        onClick={() => setWithdrawMerits(true)}
-                                    >
-                                        {t('merits')}{" "}
-                                    </span>
-                                    <span
-                                        className={
-                                            withdrawMerits
-                                                ? "clickable bar-withdraw-select"
-                                                : "bar-withdraw-select-active"
-                                        }
-                                        onClick={() => setWithdrawMerits(false)}
-                                    >
-                                        {t('points')}
-                                    </span>
-                                </div>
-                            )}
-                        </BarWithdraw>
-                    ) : (
-                        <BarVoteUnified
-                            score={currentPlus - currentMinus}
-                            onVoteClick={() => {
-                                useUIStore.getState().openVotingPopup(postId, 'publication');
-                            }}
-                            isAuthor={isAuthor}
-                            isBeneficiary={false}
-                            commentCount={!isDetailPage ? comments?.length || 0 : 0}
-                            onCommentClick={!isDetailPage ? () => {
-                                if (tgChatId && slug) {
-                                    router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
-                                }
-                            } : undefined}
-                        />
-                    )
+                                    } : undefined}
+                                />
+                            );
+                        } else {
+                            console.log('[Publication Feed] Rendering null (no buttons)');
+                            return null;
+                        }
+                    })()
                 }
                 showCommunityAvatar={showCommunityAvatar}
                 communityAvatarUrl={communityInfo?.avatarUrl}

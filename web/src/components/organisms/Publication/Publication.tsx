@@ -364,21 +364,49 @@ export const Publication: React.FC<PublicationProps> = ({
   const commentUnderReply = activeCommentHook[0] && activeCommentHook[0] !== slug && activeCommentHook[0] !== null;
   
   // Check if current user is the beneficiary (but not the author)
-  const isBeneficiary = !!(stateLogic.hasBeneficiary && myId === beneficiaryId && myId !== tgAuthorId);
-  
-  // Determine effective beneficiary
-  const effectiveBeneficiary = beneficiaryId || tgAuthorId;
-  const isEffectiveBeneficiary = myId === effectiveBeneficiary;
+  // Simplified: directly check if beneficiaryId exists and matches current user
+  const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== tgAuthorId);
+  const isBeneficiary = !!(hasBeneficiary && myId === beneficiaryId);
   const isAuthor = myId === tgAuthorId;
-  const hasBeneficiary = !!stateLogic.hasBeneficiary;
   const currentScore = currentPlus - currentMinus;
   
+  // Debug logging
+  console.log('[Publication] Mutual Exclusivity Debug:', {
+    slug,
+    myId,
+    tgAuthorId,
+    beneficiaryId,
+    stateLogicHasBeneficiary: stateLogic.hasBeneficiary,
+    hasBeneficiary,
+    isAuthor,
+    isBeneficiary,
+    calculation: {
+      'beneficiaryId exists': !!beneficiaryId,
+      'beneficiaryId !== tgAuthorId': beneficiaryId !== tgAuthorId,
+      'myId === beneficiaryId': myId === beneficiaryId,
+      'myId !== tgAuthorId': myId !== tgAuthorId,
+    },
+    currentScore,
+    currentPlus,
+    currentMinus,
+  });
+  
   // Mutual exclusivity logic:
-  // Show withdraw if: (isAuthor && !hasBeneficiary) || (isBeneficiary && currentScore > 0)
+  // Show withdraw if: (isAuthor && !hasBeneficiary) || isBeneficiary
   // Show vote if: !isAuthor && !isBeneficiary (or if isAuthor && hasBeneficiary - author can vote for beneficiary)
-  const showWithdraw = (isAuthor && !hasBeneficiary) || (isBeneficiary && currentScore > 0);
-  const showVote = !isAuthor && !isBeneficiary;
+  // IMPORTANT: If user is beneficiary, NEVER show vote button (even if balance is 0)
+  const showWithdraw = (isAuthor && !hasBeneficiary) || isBeneficiary;
+  const showVote = !isAuthor && !isBeneficiary; // Explicitly exclude beneficiaries
   const showVoteForAuthor = isAuthor && hasBeneficiary; // Author can vote when there's a beneficiary
+  
+  console.log('[Publication] Button Visibility Logic:', {
+    showWithdraw,
+    showVote,
+    showVoteForAuthor,
+    willShowWithdraw: showWithdraw,
+    willShowVote: showVote || showVoteForAuthor,
+    finalChoice: showWithdraw ? 'WITHDRAW' : (showVote || showVoteForAuthor ? 'VOTE' : 'NONE'),
+  });
   
   const withdrawSliderContent = ((stateLogic.isAuthor && !stateLogic.hasBeneficiary) || isBeneficiary) && votingLogic.directionAdd !== undefined && (
     <>
@@ -443,50 +471,78 @@ export const Publication: React.FC<PublicationProps> = ({
         onClick={!isDetailPage ? navigationLogic.navigateToDetail : undefined}
         onDescriptionClick={stateLogic.handleDimensionsClick}
         bottom={
-          showWithdraw ? (
-            <BarWithdraw
-              balance={votingLogic.meritsAmount}
-              onWithdraw={() => votingLogic.handleSetDirectionAdd(false)}
-              onTopup={() => votingLogic.handleSetDirectionAdd(true)}
-            >
-              {stateLogic.showselector && (
-                <div className="select-currency">
-                  <span
-                    className={
-                      !votingLogic.withdrawMerits
-                        ? "clickable bar-withdraw-select"
-                        : "bar-withdraw-select-active"
-                    }
-                    onClick={() => votingLogic.setWithdrawMerits(true)}
-                  >
-                    {t('merits')}{" "}
-                  </span>
-                  <span
-                    className={
-                      votingLogic.withdrawMerits
-                        ? "clickable bar-withdraw-select"
-                        : "bar-withdraw-select-active"
-                    }
-                    onClick={() => votingLogic.setWithdrawMerits(false)}
-                  >
-                    {t('points')}
-                  </span>
-                </div>
-              )}
-            </BarWithdraw>
-          ) : (showVote || showVoteForAuthor) ? (
-            <BarVoteUnified
-              score={currentScore}
-              onVoteClick={() => {
-                useUIStore.getState().openVotingPopup(slug, 'publication');
-              }}
-              isAuthor={isAuthor}
-              isBeneficiary={isBeneficiary}
-              hasBeneficiary={hasBeneficiary}
-              commentCount={!isDetailPage ? comments?.length || 0 : 0}
-              onCommentClick={navigationLogic.handleCommentClick}
-            />
-          ) : null
+          (() => {
+            console.log('[Publication] Rendering bottom component:', {
+              showWithdraw,
+              showVote,
+              showVoteForAuthor,
+              isBeneficiary,
+              isAuthor,
+              hasBeneficiary,
+              meritsAmount: votingLogic.meritsAmount,
+            });
+            
+            if (showWithdraw) {
+              console.log('[Publication] Rendering BarWithdraw');
+              return (
+                <BarWithdraw
+                  balance={votingLogic.meritsAmount}
+                  onWithdraw={() => votingLogic.handleSetDirectionAdd(false)}
+                  onTopup={() => votingLogic.handleSetDirectionAdd(true)}
+                  showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)} // Show disabled state for beneficiaries and authors without beneficiary
+                >
+                  {stateLogic.showselector && (
+                    <div className="select-currency">
+                      <span
+                        className={
+                          !votingLogic.withdrawMerits
+                            ? "clickable bar-withdraw-select"
+                            : "bar-withdraw-select-active"
+                        }
+                        onClick={() => votingLogic.setWithdrawMerits(true)}
+                      >
+                        {t('merits')}{" "}
+                      </span>
+                      <span
+                        className={
+                          votingLogic.withdrawMerits
+                            ? "clickable bar-withdraw-select"
+                            : "bar-withdraw-select-active"
+                        }
+                        onClick={() => votingLogic.setWithdrawMerits(false)}
+                      >
+                        {t('points')}
+                      </span>
+                    </div>
+                  )}
+                </BarWithdraw>
+              );
+            } else if (showVote || showVoteForAuthor) {
+              console.log('[Publication] Rendering BarVoteUnified', {
+                showVote,
+                showVoteForAuthor,
+                isBeneficiary,
+                isAuthor,
+                hasBeneficiary,
+              });
+              return (
+                <BarVoteUnified
+                  score={currentScore}
+                  onVoteClick={() => {
+                    useUIStore.getState().openVotingPopup(slug, 'publication');
+                  }}
+                  isAuthor={isAuthor}
+                  isBeneficiary={isBeneficiary}
+                  hasBeneficiary={hasBeneficiary}
+                  commentCount={!isDetailPage ? comments?.length || 0 : 0}
+                  onCommentClick={navigationLogic.handleCommentClick}
+                />
+              );
+            } else {
+              console.log('[Publication] Rendering null (no buttons)');
+              return null;
+            }
+          })()
         }
         showCommunityAvatar={showCommunityAvatar}
         communityAvatarUrl={stateLogic.communityInfo?.avatarUrl}

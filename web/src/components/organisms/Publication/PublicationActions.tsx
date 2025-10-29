@@ -3,18 +3,30 @@
 
 import React from 'react';
 import { BarVoteUnified } from '@shared/components/bar-vote-unified';
+import { BarWithdraw } from '@shared/components/bar-withdraw';
 import { useUIStore } from '@/stores/ui.store';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Local Publication type definition
 interface Publication {
   id: string;
   slug?: string;
+  authorId?: string;
+  beneficiaryId?: string;
   content?: string;
   createdAt: string;
   communityId?: string;
   metrics?: {
     score?: number;
     commentCount?: number;
+  };
+  meta?: {
+    beneficiary?: {
+      telegramId?: string;
+      username?: string;
+      name?: string;
+      photoUrl?: string;
+    };
   };
   [key: string]: unknown;
 }
@@ -42,6 +54,44 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   maxMinus = 100,
   className = '',
 }) => {
+  const { user } = useAuth();
+  const myId = user?.id || user?.telegramId;
+  
+  // Extract beneficiary information
+  const beneficiaryId = publication.beneficiaryId || publication.meta?.beneficiary?.telegramId;
+  const authorId = publication.authorId;
+  
+  // Calculate beneficiary status
+  const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== authorId);
+  const isAuthor = !!(myId && authorId && myId === authorId);
+  const isBeneficiary = !!(hasBeneficiary && myId && beneficiaryId && myId === beneficiaryId);
+  const currentScore = publication.metrics?.score || 0;
+  
+  // Debug logging
+  console.log('[PublicationActions] Mutual Exclusivity Debug:', {
+    publicationId: publication.id,
+    myId,
+    authorId,
+    beneficiaryId,
+    hasBeneficiary,
+    isAuthor,
+    isBeneficiary,
+    currentScore,
+    publicationMeta: publication.meta,
+  });
+  
+  // Mutual exclusivity logic
+  const showWithdraw = (isAuthor && !hasBeneficiary) || isBeneficiary;
+  const showVote = !isAuthor && !isBeneficiary;
+  const showVoteForAuthor = isAuthor && hasBeneficiary;
+  
+  console.log('[PublicationActions] Button Visibility Logic:', {
+    showWithdraw,
+    showVote,
+    showVoteForAuthor,
+    finalChoice: showWithdraw ? 'WITHDRAW' : (showVote || showVoteForAuthor ? 'VOTE' : 'NONE'),
+  });
+  
   const handleVoteClick = () => {
     const publicationId = String(publication.id || publication.slug || '');
     useUIStore.getState().openVotingPopup(publicationId, 'publication');
@@ -59,13 +109,32 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   return (
     <div className={`space-y-4 ${className}`}>
       <div className="flex items-center justify-between">
-        <BarVoteUnified
-          score={publication.metrics?.score || 0}
-          onVoteClick={handleVoteClick}
-          isAuthor={false}
-          commentCount={publication.metrics?.commentCount || 0}
-          onCommentClick={handleCommentToggle}
-        />
+        {showWithdraw ? (
+          <BarWithdraw
+            balance={currentScore}
+            onWithdraw={() => {
+              console.log('[PublicationActions] Withdraw clicked');
+              // TODO: Implement withdraw functionality
+            }}
+            onTopup={() => {
+              console.log('[PublicationActions] Topup clicked');
+              // TODO: Implement topup functionality
+            }}
+            showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)}
+          >
+            <span></span>
+          </BarWithdraw>
+        ) : (showVote || showVoteForAuthor) ? (
+          <BarVoteUnified
+            score={currentScore}
+            onVoteClick={handleVoteClick}
+            isAuthor={isAuthor}
+            isBeneficiary={isBeneficiary}
+            hasBeneficiary={hasBeneficiary}
+            commentCount={publication.metrics?.commentCount || 0}
+            onCommentClick={handleCommentToggle}
+          />
+        ) : null}
       </div>
     </div>
   );

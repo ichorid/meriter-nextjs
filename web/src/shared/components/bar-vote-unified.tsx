@@ -44,7 +44,17 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
 
     // Mutual exclusivity: Vote and Withdraw are mutually exclusive
     // Can vote if: NOT author AND NOT beneficiary
+    // IMPORTANT: Never show vote button if user is beneficiary, regardless of other conditions
     const canVote = !isAuthor && !isBeneficiary;
+    
+    console.log('[BarVoteUnified] Vote Button Logic:', {
+      score,
+      isAuthor,
+      isBeneficiary,
+      hasBeneficiary,
+      canVote,
+      willShowVoteButton: canVote,
+    });
     
     // Cannot show withdraw button here - withdraw should be handled by separate BarWithdraw component
     // This component only shows vote button when appropriate
