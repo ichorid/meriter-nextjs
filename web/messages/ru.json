@@ -75,6 +75,7 @@
     "confirmLogout": "Подтвердить выход",
     "confirmLogoutMessage": "Вы уверены, что хотите выйти? Для доступа к аккаунту потребуется войти снова.",
     "cancel": "Отмена",
+    "submit": "Отправить",
     "timeAgo": {
       "seconds": "{count} сек назад",
       "minutes": "{count} мин назад",

@@ -50,8 +50,22 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     }
   }, [communityId, quota, remainingQuota, community]);
 
+  // Show a placeholder while loading or if community fetch fails
   if (!community) {
-    return null;
+    // Still render something so we can see if the issue is with community fetching
+    return (
+      <div className={`w-full rounded-lg p-3 flex items-center gap-3 ${isExpanded ? '' : 'w-12 h-12'}`}>
+        {isExpanded ? (
+          <div className="flex-1">
+            <div className="text-sm font-medium truncate text-base-content/50">
+              Loading {communityId}...
+            </div>
+          </div>
+        ) : (
+          <div className="w-12 h-12 rounded-full bg-base-300 animate-pulse" />
+        )}
+      </div>
+    );
   }
   
   // Get currency icon from community settings (stored as data URL or image URL)

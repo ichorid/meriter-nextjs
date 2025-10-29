@@ -74,6 +74,7 @@
     "confirmLogout": "Confirm Logout",
     "confirmLogoutMessage": "Are you sure you want to log out? You will need to sign in again to access your account.",
     "cancel": "Cancel",
+    "submit": "Submit",
     "timeAgo": {
       "seconds": "{count}s ago",
       "minutes": "{count}m ago",

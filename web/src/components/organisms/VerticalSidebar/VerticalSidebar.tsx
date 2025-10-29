@@ -21,14 +21,16 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 }) => {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
-  const { data: wallets = [] } = useWallets();
+  const { data: wallets = [], isLoading: walletsLoading } = useWallets();
 
   // Get unique community IDs from wallets
-  const communityIds = Array.from(new Set(
-    wallets
-      .filter((w: any) => w.communityId)
-      .map((w: any) => w.communityId)
-  ));
+  const communityIds = React.useMemo(() => {
+    return Array.from(new Set(
+      wallets
+        .filter((w: any) => w?.communityId)
+        .map((w: any) => w.communityId)
+    ));
+  }, [wallets]);
 
   // Fetch quotas for all communities in parallel
   const { quotasMap } = useCommunityQuotas(communityIds);
@@ -65,15 +67,19 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
       <div className={`flex-1 overflow-y-auto w-full ${paddingClass} py-2`}>
         {/* Community Cards or Avatars */}
         <div className="space-y-2">
+          {isAuthenticated && !walletsLoading && communityIds.length === 0 && wallets.length > 0 && (
+            <div className="text-xs text-base-content/50 px-2">
+              No communities found in wallets
+            </div>
+          )}
+          {isAuthenticated && walletsLoading && (
+            <div className="text-xs text-base-content/50 px-2">
+              Loading communities...
+            </div>
+          )}
           {isAuthenticated && communityIds.map((communityId: string) => {
-            const wallet = wallets.find((w: any) => w.communityId === communityId);
+            const wallet = wallets.find((w: any) => w?.communityId === communityId);
             const quota = quotasMap.get(communityId);
-            
-            console.log(`[VerticalSidebar] Community ${communityId}:`, {
-              quota,
-              quotaFromMap: quotasMap.get(communityId),
-              remainingToday: quota?.remainingToday,
-            });
             
             return (
               <CommunityCard

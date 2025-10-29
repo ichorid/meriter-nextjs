@@ -84,6 +84,13 @@ export const PublicationSchema = IdentifiableSchema.merge(TimestampsSchema).exte
   videoUrl: z.string().url().optional(),
 });
 
+export const CommentAuthorMetaSchema = z.object({
+  name: z.string(),
+  username: z.string().optional(),
+  telegramId: z.string().optional(),
+  photoUrl: z.string().url().optional(),
+});
+
 export const CommentSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   targetType: z.enum(['publication', 'comment']),
   targetId: z.string(),
@@ -91,6 +98,9 @@ export const CommentSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   content: z.string().min(1).max(5000),
   metrics: CommentMetricsSchema,
   parentCommentId: z.string().optional(),
+  meta: z.object({
+    author: CommentAuthorMetaSchema,
+  }).optional(),
 });
 
 export const VoteSchema = PolymorphicReferenceSchema.extend({
@@ -161,6 +171,7 @@ export const CreateCommentDtoSchema = PolymorphicReferenceSchema.extend({
 export const CreateVoteDtoSchema = PolymorphicReferenceSchema.extend({
   amount: z.number().int(),
   sourceType: z.enum(['personal', 'quota']),
+  attachedCommentId: z.string().optional(),
 });
 
 export const CreatePollDtoSchema = z.object({

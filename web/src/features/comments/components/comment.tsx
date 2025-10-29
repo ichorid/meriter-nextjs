@@ -454,7 +454,7 @@ export const Comment: React.FC<CommentProps> = ({
                                 useUIStore.getState().openVotingPopup(_id, 'comment');
                             }}
                             onWithdrawClick={
-                                isAuthor && (currentPlus - currentMinus) > 0
+                                ((isAuthor || (toUserTgId && toUserTgId === myId)) && (currentPlus - currentMinus) > 0)
                                     ? () => handleSetDirectionAdd(false)
                                     : undefined
                             }
