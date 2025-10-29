@@ -42,13 +42,9 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   // Format balance and quota display
   const balance = wallet?.balance || 0;
   const remainingQuota = quota?.remainingToday || 0;
-  const currencyIcon = community.settings?.iconUrl || '💎'; // Default emoji if no icon
   
-  // Display icon - if it's an emoji, use it directly; if it's a URL, we'd need an img tag
-  // For now, assume iconUrl is either an emoji string or an image URL
-  const displayIcon = currencyIcon.length < 10 ? currencyIcon : '💎'; // Simple heuristic: emojis are short strings
-  
-  const balanceQuotaDisplay = `${displayIcon}: ${balance}+${remainingQuota}`;
+  // Get currency icon from community settings (stored as data URL or image URL)
+  const currencyIconUrl = community.settings?.iconUrl;
 
   // Expanded version (desktop)
   if (isExpanded) {
@@ -73,8 +69,11 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
             <div className={`text-sm font-medium truncate ${isActive ? 'text-primary-content' : ''}`}>
               {community.name}
             </div>
-            <div className={`text-xs truncate ${isActive ? 'text-primary-content/80' : 'text-base-content/60'}`}>
-              {balanceQuotaDisplay}
+            <div className={`text-xs truncate flex items-center gap-1 ${isActive ? 'text-primary-content/80' : 'text-base-content/60'}`}>
+              {currencyIconUrl && (
+                <img src={currencyIconUrl} alt="Currency" className="w-3 h-3 inline-block" />
+              )}
+              <span>{balance}+{remainingQuota}</span>
             </div>
           </div>
         </div>
