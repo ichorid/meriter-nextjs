@@ -12,6 +12,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { CommentService } from '../../domain/services/comment.service';
+import { UserService } from '../../domain/services/user.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError } from '../../common/exceptions/api.exceptions';
@@ -22,7 +23,10 @@ import { Comment, CreateCommentDto } from '../../../../../../libs/shared-types/d
 export class CommentsController {
   private readonly logger = new Logger(CommentsController.name);
 
-  constructor(private readonly commentsService: CommentService) {}
+  constructor(
+    private readonly commentsService: CommentService,
+    private readonly userService: UserService,
+  ) {}
 
   @Get()
   async getComments(@Query() query: any) {
@@ -36,11 +40,36 @@ export class CommentsController {
     if (!comment) {
       throw new NotFoundError('Comment', id);
     }
+    
+    // Fetch author data
+    const authorId = comment.getAuthorId.getValue();
+    let author = null;
+    if (authorId) {
+      try {
+        author = await this.userService.getUser(authorId);
+      } catch (error) {
+        this.logger.warn(`Failed to fetch author ${authorId}:`, error.message);
+      }
+    }
+
     const snapshot = comment.toSnapshot();
     return {
       ...snapshot,
       createdAt: snapshot.createdAt.toISOString(),
       updatedAt: snapshot.updatedAt.toISOString(),
+      meta: {
+        author: author ? {
+          name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
+          username: author.username,
+          telegramId: author.telegramId,
+          photoUrl: author.avatarUrl,
+        } : {
+          name: 'Unknown',
+          username: undefined,
+          telegramId: undefined,
+          photoUrl: undefined,
+        },
+      },
     };
   }
 
@@ -50,11 +79,36 @@ export class CommentsController {
     @Req() req: any,
   ): Promise<Comment> {
     const comment = await this.commentsService.createComment(req.user.id, createDto);
+    
+    // Fetch author data (should be current user)
+    const authorId = comment.getAuthorId.getValue();
+    let author = null;
+    if (authorId) {
+      try {
+        author = await this.userService.getUser(authorId);
+      } catch (error) {
+        this.logger.warn(`Failed to fetch author ${authorId}:`, error.message);
+      }
+    }
+
     const snapshot = comment.toSnapshot();
     return {
       ...snapshot,
       createdAt: snapshot.createdAt.toISOString(),
       updatedAt: snapshot.updatedAt.toISOString(),
+      meta: {
+        author: author ? {
+          name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
+          username: author.username,
+          telegramId: author.telegramId,
+          photoUrl: author.avatarUrl,
+        } : {
+          name: 'Unknown',
+          username: undefined,
+          telegramId: undefined,
+          photoUrl: undefined,
+        },
+      },
     };
   }
 
@@ -92,13 +146,64 @@ export class CommentsController {
   ) {
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
-    const result = await this.commentsService.getCommentsByTarget(
+    const comments = await this.commentsService.getCommentsByTarget(
       'publication',
       publicationId,
       pagination.limit,
       skip
     );
-    return { data: result, total: result.length, skip, limit: pagination.limit };
+
+    // Extract unique author IDs
+    const authorIds = new Set<string>();
+    comments.forEach(comment => {
+      const authorId = comment.getAuthorId.getValue();
+      if (authorId) {
+        authorIds.add(authorId);
+      }
+    });
+
+    // Batch fetch all authors
+    const usersMap = new Map<string, any>();
+    await Promise.all(
+      Array.from(authorIds).map(async (userId) => {
+        try {
+          const user = await this.userService.getUser(userId);
+          if (user) {
+            usersMap.set(userId, user);
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to fetch author ${userId}:`, error.message);
+        }
+      })
+    );
+
+    // Enrich comments with author metadata
+    const enrichedComments = comments.map(comment => {
+      const snapshot = comment.toSnapshot();
+      const authorId = comment.getAuthorId.getValue();
+      const author = usersMap.get(authorId);
+
+      return {
+        ...snapshot,
+        createdAt: snapshot.createdAt.toISOString(),
+        updatedAt: snapshot.updatedAt.toISOString(),
+        meta: {
+          author: author ? {
+            name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
+            username: author.username,
+            telegramId: author.telegramId,
+            photoUrl: author.avatarUrl,
+          } : {
+            name: 'Unknown',
+            username: undefined,
+            telegramId: undefined,
+            photoUrl: undefined,
+          },
+        },
+      };
+    });
+
+    return { data: enrichedComments, total: enrichedComments.length, skip, limit: pagination.limit };
   }
 
   @Get(':id/replies')
@@ -109,12 +214,63 @@ export class CommentsController {
   ) {
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
-    const result = await this.commentsService.getCommentReplies(
+    const comments = await this.commentsService.getCommentReplies(
       id,
       pagination.limit,
       skip
     );
-    return { data: result, total: result.length, skip, limit: pagination.limit };
+
+    // Extract unique author IDs
+    const authorIds = new Set<string>();
+    comments.forEach(comment => {
+      const authorId = comment.getAuthorId.getValue();
+      if (authorId) {
+        authorIds.add(authorId);
+      }
+    });
+
+    // Batch fetch all authors
+    const usersMap = new Map<string, any>();
+    await Promise.all(
+      Array.from(authorIds).map(async (userId) => {
+        try {
+          const user = await this.userService.getUser(userId);
+          if (user) {
+            usersMap.set(userId, user);
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to fetch author ${userId}:`, error.message);
+        }
+      })
+    );
+
+    // Enrich comments with author metadata
+    const enrichedComments = comments.map(comment => {
+      const snapshot = comment.toSnapshot();
+      const authorId = comment.getAuthorId.getValue();
+      const author = usersMap.get(authorId);
+
+      return {
+        ...snapshot,
+        createdAt: snapshot.createdAt.toISOString(),
+        updatedAt: snapshot.updatedAt.toISOString(),
+        meta: {
+          author: author ? {
+            name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
+            username: author.username,
+            telegramId: author.telegramId,
+            photoUrl: author.avatarUrl,
+          } : {
+            name: 'Unknown',
+            username: undefined,
+            telegramId: undefined,
+            photoUrl: undefined,
+          },
+        },
+      };
+    });
+
+    return { data: enrichedComments, total: enrichedComments.length, skip, limit: pagination.limit };
   }
 
   @Get('users/:userId')

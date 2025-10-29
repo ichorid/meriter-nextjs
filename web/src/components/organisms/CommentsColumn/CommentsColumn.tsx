@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Comment } from '@/features/comments/components/comment';
 import { useComments } from '@/shared/hooks/use-comments';
 import { Button } from '@/components/atoms';
-import { useQuery } from '@tanstack/react-query';
-import { usersApiV1 } from '@/lib/api/v1';
 import type { Comment as ApiComment } from '@/types/api-v1';
 
 export interface CommentsColumnProps {
@@ -72,58 +70,14 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
     wallets // wallets array for balance lookup
   );
 
-  // Extract unique author IDs from comments
-  const authorIds = useMemo(() => {
-    if (!comments || !Array.isArray(comments)) return [];
-    const ids = new Set<string>();
-    comments.forEach((c: any) => {
-      if (c.authorId) ids.add(c.authorId);
-    });
-    return Array.from(ids);
-  }, [comments]);
-
-  // Fetch author information for all unique authors
-  const authorQueries = useQuery({
-    queryKey: ['comment-authors', authorIds],
-    queryFn: async () => {
-      if (authorIds.length === 0) return {};
-      const authorMap: Record<string, any> = {};
-      // Fetch all authors in parallel
-      await Promise.all(
-        authorIds.map(async (authorId) => {
-          try {
-            const user = await usersApiV1.getUserProfile(authorId);
-            authorMap[authorId] = {
-              displayName: user.displayName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'Unknown',
-              username: user.username,
-              telegramId: user.telegramId,
-              avatarUrl: user.avatarUrl,
-            };
-          } catch (error) {
-            console.warn(`Failed to fetch author ${authorId}:`, error);
-            authorMap[authorId] = {
-              displayName: 'Unknown',
-              username: undefined,
-              telegramId: undefined,
-              avatarUrl: undefined,
-            };
-          }
-        })
-      );
-      return authorMap;
-    },
-    enabled: authorIds.length > 0,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
-
-  const authorMap = authorQueries.data || {};
-
   // Transform v1 API comment format to legacy format expected by Comment component
+  // Author data is now included in API response via meta.author
   const transformedComments = useMemo(() => {
     if (!comments || !Array.isArray(comments)) return [];
     
     return comments.map((c: ApiComment | any) => {
-      const author = authorMap[c.authorId] || {};
+      // Use author data from API response (meta.author) if available
+      const author = c.meta?.author || {};
       
       return {
         _id: c.id || c._id,
@@ -132,15 +86,17 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
         plus: c.metrics?.upvotes || c.plus || 0,
         minus: c.metrics?.downvotes || c.minus || 0,
         sum: c.metrics?.score || c.sum || 0,
-        fromUserTgName: author.displayName || c.fromUserTgName || 'Unknown',
+        fromUserTgName: author.name || c.fromUserTgName || 'Unknown',
         fromUserTgId: c.authorId || author.telegramId || c.fromUserTgId,
         fromUserTgUsername: author.username || c.fromUserTgUsername,
-        authorPhotoUrl: author.avatarUrl || c.authorPhotoUrl,
+        authorPhotoUrl: author.photoUrl || c.authorPhotoUrl,
+        // Calculate directionPlus from metrics if not provided
+        directionPlus: c.directionPlus ?? ((c.metrics?.score ?? 0) > 0 || ((c.metrics?.upvotes ?? 0) > (c.metrics?.downvotes ?? 0))),
         // Keep other properties that might be useful
         ...c,
       };
     });
-  }, [comments, authorMap]);
+  }, [comments]);
 
   const handleBack = () => {
     if (onBack) {

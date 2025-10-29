@@ -72,22 +72,41 @@ export const Comment: React.FC<CommentProps> = ({
     tgChatId,
     showCommunityAvatar,
     isDetailPage,
+    // Support v1 API format with meta.author
+    meta,
+    authorId,
+    metrics,
+    content,
+    createdAt,
+    ...rest
 }) => {
     const t = useTranslations('comments');
     
+    // Support both legacy format and v1 API format with meta.author
+    const authorMeta = meta?.author || {};
+    const effectiveFromUserTgName = fromUserTgName || authorMeta.name || 'Unknown';
+    const effectiveFromUserTgId = fromUserTgId || authorId || authorMeta.telegramId;
+    const effectiveComment = comment || content || '';
+    const effectiveTs = ts || createdAt || '';
+    const effectivePlus = plus ?? metrics?.upvotes ?? 0;
+    const effectiveMinus = minus ?? metrics?.downvotes ?? 0;
+    const baseSum = sum ?? metrics?.score ?? 0;
+    
     // Check if current user is the author
-    const isAuthor = myId === fromUserTgId;
+    const isAuthor = myId === effectiveFromUserTgId;
     
     // Check if there's a beneficiary and it's different from the author
-    const hasBeneficiary = toUserTgId && toUserTgId !== fromUserTgId;
+    const hasBeneficiary = toUserTgId && toUserTgId !== effectiveFromUserTgId;
     
     // Withdrawal state management (for author's own comments)
-    const [optimisticSum, setOptimisticSum] = useState(sum);
-    const effectiveSum = optimisticSum ?? sum;
+    // Support both legacy format (sum) and v1 API format (metrics.score)
+    const [optimisticSum, setOptimisticSum] = useState(baseSum);
+    const effectiveSum = optimisticSum ?? baseSum;
     
     useEffect(() => {
-        setOptimisticSum(sum);
-    }, [sum]);
+        const currentSum = sum ?? metrics?.score ?? 0;
+        setOptimisticSum(currentSum);
+    }, [sum, metrics?.score]);
     
     const curr = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
     const currentBalance =
@@ -104,10 +123,13 @@ export const Comment: React.FC<CommentProps> = ({
     // Rate conversion no longer needed with v1 API - currencies are normalized
     const rate = 1;
     
+    // Calculate directionPlus from metrics if not provided
+    const calculatedDirectionPlus = directionPlus ?? ((effectivePlus > effectiveMinus) || (effectiveSum > 0));
+    
     // Format the rate with currency icon
     const formatRate = () => {
         const amount = Math.abs(amountTotal || 0);
-        const sign = directionPlus ? "+" : "-";
+        const sign = calculatedDirectionPlus ? "+" : "-";
         return `${sign} ${amount}`;
     };
     
@@ -119,7 +141,7 @@ export const Comment: React.FC<CommentProps> = ({
         const isQuota = amountFree > 0;
         const isWallet = amountWallet > 0;
         
-        if (directionPlus) {
+        if (calculatedDirectionPlus) {
             if (isQuota && isWallet) return 'upvote-mixed';
             return isQuota ? 'upvote-quota' : 'upvote-wallet';
         } else {
@@ -196,6 +218,7 @@ export const Comment: React.FC<CommentProps> = ({
         }
     };
     
+    // Use effectiveSum which handles both legacy and v1 API formats
     const meritsAmount = isAuthor
         ? Math.floor(10 * (withdrawMerits ? rate * effectiveSum : effectiveSum)) / 10
         : 0;
@@ -252,8 +275,8 @@ export const Comment: React.FC<CommentProps> = ({
         "", // No longer used - quota handled internally
         balance,
         updBalance,
-        plus || 0,
-        minus || 0,
+        effectivePlus,
+        effectiveMinus,
         activeCommentHook,
         false, // onlyPublication
         commentCommunityId, // communityId
@@ -261,8 +284,8 @@ export const Comment: React.FC<CommentProps> = ({
     );
     const commentUnderReply = activeCommentHook[0] == (forTransactionId || _id);
     const nobodyUnderReply = activeCommentHook[0] === null;
-    const userTgId = reason === "withdrawalFromPublication" ? toUserTgId : fromUserTgId;
-    const avatarUrl = telegramGetAvatarLink(userTgId || '');
+    const userTgId = reason === "withdrawalFromPublication" ? toUserTgId : effectiveFromUserTgId;
+    const avatarUrl = authorMeta.photoUrl || telegramGetAvatarLink(userTgId || '');
     
     // Prepare withdraw slider content for author's comments
     const disabled = withdrawMerits ? !amountInMerits : !amount;
@@ -330,17 +353,19 @@ export const Comment: React.FC<CommentProps> = ({
             }}
         >
             <CardCommentVote
-                title={fromUserTgName}
-                subtitle={new Date(ts || '').toLocaleString()}
-                content={comment}
+                title={effectiveFromUserTgName}
+                subtitle={new Date(effectiveTs || '').toLocaleString()}
+                content={effectiveComment}
                 rate={formatRate()}
                 currencyIcon={currencyIcon}
                 avatarUrl={avatarUrl}
                 voteType={voteType}
-                amountFree={Math.abs(amountTotal || 0) - Math.abs(sum || 0)}
-                amountWallet={Math.abs(sum || 0)}
+                amountFree={Math.abs(amountTotal || 0) - Math.abs(effectiveSum || 0)}
+                amountWallet={Math.abs(effectiveSum || 0)}
                 beneficiaryName={toUserTgName}
                 beneficiaryAvatarUrl={telegramGetAvatarLink(toUserTgId || '')}
+                upvotes={effectivePlus}
+                downvotes={effectiveMinus}
                 onClick={!isDetailPage ? () => {
                     // Navigate to the post page only when not on detail page
                     if (inPublicationSlug && currencyOfCommunityTgChatId) {

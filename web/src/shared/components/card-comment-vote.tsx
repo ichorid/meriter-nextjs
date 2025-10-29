@@ -28,6 +28,8 @@ export const CardCommentVote = ({
     beneficiaryAvatarUrl,
     communityNeedsSetup,
     communityIsAdmin,
+    upvotes,
+    downvotes,
 }:any) => {
     const t = useTranslations('comments');
     
@@ -55,7 +57,7 @@ export const CardCommentVote = ({
         >
             <div className="flex">
                 <div className={classList(
-                    "font-bold text-center py-2 px-3 min-w-[3rem] flex items-center justify-center gap-1",
+                    "font-bold text-center py-2 px-3 min-w-[3rem] flex flex-col items-center justify-center gap-1",
                     // Default styling if no voteType
                     !voteType ? "bg-secondary text-secondary-content" : "",
                     // Upvote styles
@@ -67,18 +69,20 @@ export const CardCommentVote = ({
                     voteType === 'downvote-quota' ? "bg-transparent border-2 border-error text-error" : "",
                     voteType === 'downvote-mixed' ? "bg-gradient-to-r from-error/80 to-error text-error-content" : ""
                 )}>
-                    <span>{rate}</span>
-                    {currencyIcon && (
-                        <img 
-                            src={currencyIcon} 
-                            alt="Currency" 
-                            className="w-4 h-4"
-                            style={{ maxWidth: '16px', maxHeight: '16px' }}
-                        />
-                    )}
+                    <div className="flex items-center justify-center gap-1">
+                        <span>{rate}</span>
+                        {currencyIcon && (
+                            <img 
+                                src={currencyIcon} 
+                                alt="Currency" 
+                                className="w-4 h-4"
+                                style={{ maxWidth: '16px', maxHeight: '16px' }}
+                            />
+                        )}
+                    </div>
                     {/* Payment source icons */}
                     {voteType && (
-                        <div className="flex gap-1 ml-1" title={getTooltipText()}>
+                        <div className="flex flex-col items-center gap-0.5" title={getTooltipText()}>
                             {voteType.includes('quota') && !voteType.includes('mixed') && (
                                 <span className="text-xs">⚡</span>
                             )}
@@ -90,6 +94,23 @@ export const CardCommentVote = ({
                                     <span className="text-xs">⚡</span>
                                     <span className="text-xs">💰</span>
                                 </>
+                            )}
+                        </div>
+                    )}
+                    {/* Quota and wallet amounts displayed vertically */}
+                    {(amountFree > 0 || amountWallet > 0) && (
+                        <div className="flex flex-col items-center gap-0.5 text-[10px] mt-1">
+                            {amountFree > 0 && (
+                                <div className="flex items-center gap-0.5">
+                                    <span>⚡</span>
+                                    <span>{amountFree}</span>
+                                </div>
+                            )}
+                            {amountWallet > 0 && (
+                                <div className="flex items-center gap-0.5">
+                                    <span>💰</span>
+                                    <span>{amountWallet}</span>
+                                </div>
                             )}
                         </div>
                     )}
@@ -137,6 +158,23 @@ export const CardCommentVote = ({
                                     size={16}
                                 />
                                 <span>{beneficiaryName}</span>
+                            </div>
+                        )}
+                        {/* Upvotes and downvotes display */}
+                        {(upvotes !== undefined || downvotes !== undefined) && (
+                            <div className="flex items-center gap-3 mb-2 text-xs opacity-60">
+                                {upvotes !== undefined && (
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-success">↑</span>
+                                        <span>{upvotes}</span>
+                                    </div>
+                                )}
+                                {downvotes !== undefined && (
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-error">↓</span>
+                                        <span>{downvotes}</span>
+                                    </div>
+                                )}
                             </div>
                         )}
                         <div className="bottom" onClick={(e) => e.stopPropagation()}>{bottom}</div>
