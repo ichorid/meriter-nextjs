@@ -58,8 +58,6 @@ export function usePublicationVoting({
   const [optimisticSum, setOptimisticSum] = useState(sum);
   const [amount, setAmount] = useState(0);
   const [comment, setComment] = useState("");
-  const [amountInMerits, setAmountInMerits] = useState(0);
-  const [withdrawMerits, setWithdrawMerits] = useState(false);
   
   // Use loading state from mutation
   const loading = withdrawMutation.isPending;
@@ -77,16 +75,12 @@ export function usePublicationVoting({
   const effectiveSum = optimisticSum ?? sum;
   
   // Calculate withdrawal amounts
-  const meritsAmount = isAuthor
-    ? Math.floor(10 * (withdrawMerits ? effectiveSum : effectiveSum)) / 10
-    : 0;
-  
   const maxWithdrawAmount = isAuthor
-    ? Math.floor(10 * (withdrawMerits ? effectiveSum : effectiveSum)) / 10
+    ? Math.floor(10 * effectiveSum) / 10
     : 0;
   
   const maxTopUpAmount = isAuthor
-    ? Math.floor(10 * (withdrawMerits ? currentBalance : currentBalance)) / 10
+    ? Math.floor(10 * currentBalance) / 10
     : 0;
   
   // Create unique post ID
@@ -110,7 +104,7 @@ export function usePublicationVoting({
       return;
     }
     
-    const withdrawAmount = withdrawMerits ? amountInMerits : amount;
+    const withdrawAmount = amount;
     
     if (withdrawAmount <= 0) {
       return;
@@ -132,7 +126,6 @@ export function usePublicationVoting({
       });
       
       setAmount(0);
-      setAmountInMerits(0);
       setComment("");
       
       if (updateAll) await updateAll();
@@ -165,7 +158,7 @@ export function usePublicationVoting({
     }
   };
   
-  const disabled = withdrawMerits ? !amountInMerits : !amount;
+  const disabled = !amount;
   
   return {
     // State
@@ -175,15 +168,10 @@ export function usePublicationVoting({
     setAmount,
     comment,
     setComment,
-    amountInMerits,
-    setAmountInMerits,
-    withdrawMerits,
-    setWithdrawMerits,
     loading,
     disabled,
     
     // Calculated values
-    meritsAmount,
     maxWithdrawAmount,
     maxTopUpAmount,
     currentBalance,

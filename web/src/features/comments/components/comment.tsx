@@ -126,7 +126,6 @@ export const Comment: React.FC<CommentProps> = ({
             wallets.find((w) => w.communityId == curr)
                 ?.amount) ||
         0;
-    const isMerit = tgChatId === GLOBAL_FEED_TG_CHAT_ID;
     const [showselector, setShowselector] = useState(false);
     
     // Fetch community info to get currency icon using v1 API
@@ -197,8 +196,6 @@ export const Comment: React.FC<CommentProps> = ({
         : undefined;
     
     const [amount, setAmount] = useState(0);
-    const [amountInMerits, setAmountInMerits] = useState(0);
-    const [withdrawMerits, setWithdrawMerits] = useState(isMerit);
     // Mutation hooks
     const voteOnCommentMutation = useVoteOnComment();
     const withdrawMutation = useWithdrawFromComment();
@@ -211,7 +208,7 @@ export const Comment: React.FC<CommentProps> = ({
         
         if (directionAdd) {
             // Adding votes - use vote mutation
-            const changeAmount = withdrawMerits ? amountInMerits : amount;
+            const changeAmount = amount;
             const newSum = optimisticSum + changeAmount;
             
             setOptimisticSum(newSum);
@@ -229,13 +226,12 @@ export const Comment: React.FC<CommentProps> = ({
                         targetType: 'comment',
                         targetId: _id,
                         amount: changeAmount,
-                        sourceType: withdrawMerits ? 'personal' : 'quota',
+                        sourceType: 'quota',
                     },
                     communityId: commentCommunityId,
                 });
                 
                 setAmount(0);
-                setAmountInMerits(0);
                 
                 if (updateAll) await updateAll();
             } catch (error) {
@@ -247,7 +243,7 @@ export const Comment: React.FC<CommentProps> = ({
             }
         } else {
             // Withdrawing votes - use withdraw mutation
-            const withdrawAmount = withdrawMerits ? amountInMerits : amount;
+            const withdrawAmount = amount;
             
             if (withdrawAmount <= 0) {
                 return;
@@ -282,7 +278,6 @@ export const Comment: React.FC<CommentProps> = ({
                 });
                 
                 setAmount(0);
-                setAmountInMerits(0);
                 
                 if (updateAll) await updateAll();
             } catch (error: any) {
@@ -349,18 +344,12 @@ export const Comment: React.FC<CommentProps> = ({
     
     // Calculate withdrawal amounts based on withdrawable balance (metrics.score only)
     // NOT effectiveSum which might include vote transaction data
-    const meritsAmount = isAuthor
-        ? Math.floor(10 * (withdrawMerits ? rate * withdrawableBalance : withdrawableBalance)) / 10
-        : 0;
-    
     const maxWithdrawAmount = isAuthor
-        ? Math.floor(10 * (withdrawMerits ? rate * withdrawableBalance : withdrawableBalance)) / 10
+        ? Math.floor(10 * withdrawableBalance) / 10
         : 0;
     
     const maxTopUpAmount = isAuthor
-        ? Math.floor(
-            10 * (withdrawMerits ? rate * currentBalance : currentBalance)
-        ) / 10
+        ? Math.floor(10 * currentBalance) / 10
         : 0;
     
     const handleSetDirectionAdd = (direction: boolean | undefined) => {
@@ -418,50 +407,27 @@ export const Comment: React.FC<CommentProps> = ({
     const avatarUrl = authorMeta.photoUrl || telegramGetAvatarLink(userTgId || '');
     
     // Prepare withdraw slider content for author's comments
-    const disabled = withdrawMerits ? !amountInMerits : !amount;
+    const disabled = !amount;
     
     const withdrawSliderContent = isAuthor && directionAdd !== undefined && (
-        <>
-            {withdrawMerits &&
-                (loading ? (
-                    <Spinner />
-                ) : (
-                    <FormWithdraw
-                        comment=""
-                        setComment={() => {}}
-                        amount={amount}
-                        setAmount={setAmount}
-                        maxWithdrawAmount={maxWithdrawAmount}
-                        maxTopUpAmount={maxTopUpAmount}
-                        isWithdrawal={!directionAdd}
-                        onSubmit={() => !disabled && submitWithdrawal()}
-                    >
-                        <div>
-                            {directionAdd ? t('addMerits', { amount }) : t('removeMerits', { amount })}
-                        </div>
-                    </FormWithdraw>
-                ))}
-
-            {!withdrawMerits &&
-                (loading ? (
-                    <Spinner />
-                ) : (
-                    <FormWithdraw
-                        comment=""
-                        setComment={() => {}}
-                        amount={amount}
-                        setAmount={setAmount}
-                        maxWithdrawAmount={maxWithdrawAmount}
-                        maxTopUpAmount={maxTopUpAmount}
-                        isWithdrawal={!directionAdd}
-                        onSubmit={() => !disabled && submitWithdrawal()}
-                    >
-                        <div>
-                            {directionAdd ? t('addCommunityPoints', { amount }) : t('removeCommunityPoints', { amount })}
-                        </div>
-                    </FormWithdraw>
-                ))}
-        </>
+        loading ? (
+            <Spinner />
+        ) : (
+            <FormWithdraw
+                comment=""
+                setComment={() => {}}
+                amount={amount}
+                setAmount={setAmount}
+                maxWithdrawAmount={maxWithdrawAmount}
+                maxTopUpAmount={maxTopUpAmount}
+                isWithdrawal={!directionAdd}
+                onSubmit={() => !disabled && submitWithdrawal()}
+            >
+                <div>
+                    {directionAdd ? t('addCommunityPoints', { amount }) : t('removeCommunityPoints', { amount })}
+                </div>
+            </FormWithdraw>
+        )
     );
     
     return (
@@ -518,35 +484,10 @@ export const Comment: React.FC<CommentProps> = ({
                     // - If !author: show vote
                     isAuthor ? (
                         <BarWithdraw
-                            balance={meritsAmount}
+                            balance={maxWithdrawAmount}
                             onWithdraw={() => handleSetDirectionAdd(false)}
                             onTopup={() => handleSetDirectionAdd(true)}
-                        >
-                            {showselector && (
-                                <div className="select-currency">
-                                    <span
-                                        className={
-                                            !withdrawMerits
-                                                ? "clickable bar-withdraw-select"
-                                                : "bar-withdraw-select-active"
-                                        }
-                                        onClick={() => setWithdrawMerits(true)}
-                                    >
-                                        {t('merits')}{" "}
-                                    </span>
-                                    <span
-                                        className={
-                                            withdrawMerits
-                                                ? "clickable bar-withdraw-select"
-                                                : "bar-withdraw-select-active"
-                                        }
-                                        onClick={() => setWithdrawMerits(false)}
-                                    >
-                                        {t('points')}
-                                    </span>
-                                </div>
-                            )}
-                        </BarWithdraw>
+                        />
                     ) : (
                         <BarVoteUnified
                             score={currentPlus - currentMinus}

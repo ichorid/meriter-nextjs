@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { telegramGetAvatarLink, telegramGetAvatarLinkUpd } from '@shared/lib/telegram';
 import { useCommunity } from '@/hooks/api';
-import { GLOBAL_FEED_TG_CHAT_ID } from '../../config/meriter';
 import type { Dispatch, SetStateAction } from 'react';
 import { useTranslations } from 'next-intl';
 
@@ -80,9 +79,6 @@ export function usePublicationState({
     ? t('forBeneficiary', { author: tgAuthorName, beneficiary: beneficiaryName })
     : tgAuthorName;
   
-  // Check if this is a merit post
-  const isMerit = tgChatId === GLOBAL_FEED_TG_CHAT_ID;
-  
   // Get community info
   const communityId = tgChatId || (type === 'poll' ? (content as any)?.communityId : null);
   const { data: communityInfo } = useCommunity(communityId || '');
@@ -149,7 +145,6 @@ export function usePublicationState({
     isAuthor,
     hasBeneficiary,
     displayTitle,
-    isMerit,
     communityInfo,
     effectiveBalance,
     avatarUrl,

@@ -79,9 +79,6 @@ export function useDeepLinkHandler(
     } else if (startapp === 'community' && id) {
       console.log('🔗 Deep link: Redirecting to community:', id);
       redirectPath = `/meriter/communities/${id}`;
-    } else if (startapp === 'global-feed') {
-      console.log('🔗 Deep link: Redirecting to global feed');
-      redirectPath = '/meriter/merit';
     } else if (startapp === 'poll' && id) {
       console.log('🔗 Deep link: Poll detected, will fetch poll data and redirect to community');
       // For polls, we need to fetch the poll data to get the community ID

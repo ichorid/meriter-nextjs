@@ -11,9 +11,6 @@ export interface AppConfig {
     username: string;
     token: string;
   };
-  telegram: {
-    globalFeedChatId: string;
-  };
   database: {
     mongoUrl: string;
     mongoUrlSecondary: string;
@@ -32,9 +29,6 @@ export default (): AppConfig => ({
   bot: {
     username: process.env.BOT_USERNAME || 'meriterbot',
     token: process.env.BOT_TOKEN || '',
-  },
-  telegram: {
-    globalFeedChatId: process.env.GLOBAL_FEED_TG_CHAT_ID || '-1001243037875',
   },
   database: {
     mongoUrl: process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/meriter',

@@ -56,7 +56,8 @@ Meriter is a merit-based social platform that operates through Telegram communit
 #### Publication Rules
 - **Hashtag Requirement**: Must contain at least one community hashtag
 - **Beneficiary Support**: Can specify beneficiary with `/ben:@username`
-- **Self-Voting**: Authors can vote for their own publications if there's a beneficiary
+- **Effective Beneficiary**: The effective beneficiary is the `beneficiaryId` if specified, otherwise it's the `authorId`
+- **Mutual Exclusivity**: Vote and Withdraw actions are mutually exclusive - a user cannot have both abilities on the same publication
 
 ### 4. Voting System
 
@@ -72,9 +73,13 @@ Meriter is a merit-based social platform that operates through Telegram communit
 - **Balance Check**: Must have sufficient merits or quota to vote
 
 #### Voting Rules
-- **Self-Voting Prevention**: Cannot vote for own content (unless beneficiary specified)
-- **Balance Deduction**: Merits deducted voter's wallet. Quota deducted from voter's personal daily quota.
-- **Recipient Credit**: Merits added to content creator's wallet
+- **Mutual Exclusivity**: Vote and Withdraw are MUTUALLY EXCLUSIVE. A user can NEVER have both abilities on the same object.
+- **Self-Voting Prevention**: Cannot vote for own content when you are the effective beneficiary. Specifically:
+  - Cannot vote if you are the author AND there's no beneficiary (effective beneficiary = author)
+  - Cannot vote if you are the beneficiary (effective beneficiary = beneficiary)
+  - Can vote if you are the author BUT there's a different beneficiary (effective beneficiary ≠ author)
+- **Balance Deduction**: Merits deducted from voter's wallet. Quota deducted from voter's personal daily quota.
+- **Recipient Credit**: Merits credited to the effective beneficiary's wallet (beneficiaryId if set, otherwise authorId)
 - **Free Quota**: Users get free quota daily for voting
 - **Quota Amount**: Each community has different quota settings. Default is 10 quota/day.
 
@@ -95,10 +100,12 @@ Meriter is a merit-based social platform that operates through Telegram communit
 - **Metrics**: Vote counts and net score
 
 #### Comment Rules
+- **No Beneficiary Support**: Comments CANNOT have beneficiaries. The effective beneficiary is always the author.
 - **Voting Cost**: Comments can be voted for (costs merits)
 - **Nesting**: Comments can be replies to other comments
 - **Content Validation**: Must have meaningful content
 - **Vote Allocation**: Users specify merit amount for voting
+- **Mutual Exclusivity**: Vote and Withdraw are MUTUALLY EXCLUSIVE. Author can withdraw, others can vote.
 
 #### Comment Lifecycle
 1. **Creation**: User creates comment on publication
@@ -138,7 +145,6 @@ Meriter is a merit-based social platform that operates through Telegram communit
 
 #### Currency Types
 - **Community Currency**: Each community has its own currency
-- **Global Currency**: Special currency for global feed
 - **Free Merits**: Daily free merits for voting
 - **Personal Merits**: Earned merits from content creation
 
@@ -146,6 +152,7 @@ Meriter is a merit-based social platform that operates through Telegram communit
 - **Balance Check**: Verify sufficient funds before transactions
 - **Deposit**: Add merits to wallet (from votes received)
 - **Withdrawal**: Deduct merits from wallet (for voting)
+- **Withdrawal from Content**: The effective beneficiary (author or beneficiary) can withdraw accumulated votes from their publications/comments to their permanent wallet
 - **Initialization**: Create wallet when user first participates
 
 #### Merit Sources
@@ -179,12 +186,10 @@ Meriter is a merit-based social platform that operates through Telegram communit
 
 #### Hashtag System
 - **Community Hashtags**: Defined by community administrators
-- **Global Hashtags**: Special hashtags for global features
 - **Content Categorization**: Publications categorized by hashtags
 - **Search & Discovery**: Users can browse by hashtag
 
 #### Special Hashtags
-- **#заслуга**: Global merit ranking hashtag
 - **Community-specific**: Each community defines its own hashtags
 - **Required**: Publications must have at least one hashtag
 
@@ -209,13 +214,17 @@ Meriter is a merit-based social platform that operates through Telegram communit
 2. **Community Isolation**: Each community has its own currency and rules
 3. **Telegram Integration**: All users must be Telegram users
 4. **Hashtag Requirement**: Publications must contain community hashtags
-5. **Self-Voting Prevention**: Users cannot vote for their own content (unless beneficiary)
+5. **Vote/Withdraw Mutual Exclusivity**: Users cannot vote and withdraw from the same object. See Voting Rules section for detailed beneficiary logic.
 
 ### Voting Rules
 1. **Balance Requirement**: Must have sufficient merits (daily limit and/or wallet score) to vote
 2. **Amount Specification**: Users specify merit amount for each vote
 3. **Free Merit Allocation**: Daily free merits for voting
-4. **Recipient Credit**: Merits go to content creator (or beneficiary)'s post/comment. The beneficiary/content creator can withdraw the votes to their permanent merit wallet from the object at any moment.
+4. **Recipient Credit**: Merits go to the effective beneficiary's wallet (beneficiaryId if set, otherwise authorId). The effective beneficiary can withdraw accumulated votes from the publication/comment to their permanent merit wallet at any time.
+5. **Mutual Exclusivity Enforcement**: Users cannot vote and withdraw from the same object. The API enforces that:
+   - Users cannot vote if they are the effective beneficiary
+   - Users cannot withdraw if they are not the effective beneficiary
+   - Withdraw is only available when the object has a positive balance (sum > 0)
 
 ### Content Rules
 1. **Hashtag Validation**: Must contain valid community hashtags

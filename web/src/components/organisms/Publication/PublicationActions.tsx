@@ -104,7 +104,6 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   
   const [amount, setAmount] = useState(0);
   const [comment, setComment] = useState('');
-  const [withdrawMerits, setWithdrawMerits] = useState(false);
   const [optimisticScore, setOptimisticScore] = useState(currentScore);
   
   // Update optimistic score when publication score changes
@@ -114,18 +113,16 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   
   // Calculate withdraw amounts
   const effectiveScore = optimisticScore ?? currentScore;
-  const meritsAmount = (isAuthor && !hasBeneficiary) || isBeneficiary
-    ? Math.floor(10 * (withdrawMerits ? effectiveScore : effectiveScore)) / 10
+  const maxWithdrawAmount = (isAuthor && !hasBeneficiary) || isBeneficiary
+    ? Math.floor(10 * effectiveScore) / 10
     : 0;
-  
-  const maxWithdrawAmount = meritsAmount;
   
   // Get current wallet balance for topup
   const communityId = publication.communityId;
   const currentBalance = communityId
     ? (wallets.find(w => w.communityId === communityId)?.balance || 0)
     : 0;
-  const maxTopUpAmount = Math.floor(10 * (withdrawMerits ? currentBalance : currentBalance)) / 10;
+  const maxTopUpAmount = Math.floor(10 * currentBalance) / 10;
   
   // Debug logging
   console.log('[PublicationActions] Mutual Exclusivity Debug:', {
@@ -251,47 +248,24 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
 
   // Withdraw slider content
   const withdrawSliderContent = showWithdraw && directionAdd !== undefined && (
-    <>
-      {withdrawMerits ? (
-        withdrawMutation.isPending ? (
-          <Spinner />
-        ) : (
-          <FormWithdraw
-            comment={comment}
-            setComment={setComment}
-            amount={amount}
-            setAmount={setAmount}
-            maxWithdrawAmount={maxWithdrawAmount}
-            maxTopUpAmount={maxTopUpAmount}
-            isWithdrawal={!directionAdd}
-            onSubmit={() => !disabled && submitWithdrawal()}
-          >
-            <div>
-              {directionAdd ? t('addMerits', { amount }) : t('removeMerits', { amount })}
-            </div>
-          </FormWithdraw>
-        )
-      ) : (
-        withdrawMutation.isPending ? (
-          <Spinner />
-        ) : (
-          <FormWithdraw
-            comment={comment}
-            setComment={setComment}
-            amount={amount}
-            setAmount={setAmount}
-            maxWithdrawAmount={maxWithdrawAmount}
-            maxTopUpAmount={maxTopUpAmount}
-            isWithdrawal={!directionAdd}
-            onSubmit={() => !disabled && submitWithdrawal()}
-          >
-            <div>
-              {directionAdd ? t('addCommunityPoints', { amount }) : t('removeCommunityPoints', { amount })}
-            </div>
-          </FormWithdraw>
-        )
-      )}
-    </>
+    withdrawMutation.isPending ? (
+      <Spinner />
+    ) : (
+      <FormWithdraw
+        comment={comment}
+        setComment={setComment}
+        amount={amount}
+        setAmount={setAmount}
+        maxWithdrawAmount={maxWithdrawAmount}
+        maxTopUpAmount={maxTopUpAmount}
+        isWithdrawal={!directionAdd}
+        onSubmit={() => !disabled && submitWithdrawal()}
+      >
+        <div>
+          {directionAdd ? t('addCommunityPoints', { amount }) : t('removeCommunityPoints', { amount })}
+        </div>
+      </FormWithdraw>
+    )
   );
 
   return (
@@ -299,35 +273,12 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
       <div className="flex items-center justify-between">
         {showWithdraw ? (
           <BarWithdraw
-            balance={meritsAmount}
+            balance={maxWithdrawAmount}
             onWithdraw={handleWithdrawClick}
             onTopup={handleTopupClick}
             showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)}
             isLoading={withdrawMutation.isPending}
-          >
-            <div className="select-currency">
-              <span
-                className={
-                  !withdrawMerits
-                    ? "clickable bar-withdraw-select"
-                    : "bar-withdraw-select-active"
-                }
-                onClick={() => setWithdrawMerits(true)}
-              >
-                {t('merits')}{" "}
-              </span>
-              <span
-                className={
-                  withdrawMerits
-                    ? "clickable bar-withdraw-select"
-                    : "bar-withdraw-select-active"
-                }
-                onClick={() => setWithdrawMerits(false)}
-              >
-                {t('points')}
-              </span>
-            </div>
-          </BarWithdraw>
+          />
         ) : (showVote || showVoteForAuthor) ? (
           <BarVoteUnified
             score={currentScore}

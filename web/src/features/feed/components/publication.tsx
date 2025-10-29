@@ -21,7 +21,6 @@ import { PollVoting } from "@features/polls/components/poll-voting";
 import type { IPollData } from "@features/polls/types";
 import { useRouter } from "next/navigation";
 import { useQuery } from '@tanstack/react-query';
-import { GLOBAL_FEED_TG_CHAT_ID } from "@config/meriter";
 import { useVoteOnPublication, useRemovePublicationVote } from '@/hooks/api/useVotes';
 import { Spinner } from "@shared/components/misc";
 import { FormWithdraw } from "@shared/components/form-withdraw";
@@ -158,7 +157,6 @@ export const Publication = ({
             wallets.find((w) => w.communityId == curr)
                 ?.amount) ||
         0;
-    const isMerit = tgChatId === GLOBAL_FEED_TG_CHAT_ID;
     const [showselector, setShowselector] = useState(false);
     
     // Rate conversion no longer needed with v1 API - currencies are normalized
@@ -175,8 +173,6 @@ export const Publication = ({
     
     const [amount, setAmount] = useState(0);
     const [comment, setComment] = useState("");
-    const [amountInMerits, setAmountInMerits] = useState(0);
-    const [withdrawMerits, setWithdrawMerits] = useState(isMerit);
     
     // Mutation hooks
     const voteOnPublicationMutation = useVoteOnPublication();
@@ -212,7 +208,7 @@ export const Publication = ({
                     data: {
                         targetType: 'publication',
                         targetId: slug,
-                        amount: withdrawMerits ? amountInMerits : amount,
+                        amount: amount,
                         sourceType: 'personal',
                     },
                 });
@@ -222,7 +218,6 @@ export const Publication = ({
             }
             
             setAmount(0);
-            setAmountInMerits(0);
             setComment("");
             
             if (updateAll) await updateAll();
@@ -235,18 +230,12 @@ export const Publication = ({
         }
     };
     
-    const meritsAmount = isAuthor
-        ? Math.floor(10 * (withdrawMerits ? rate * effectiveSum : effectiveSum)) / 10
-        : 0;
-    
     const maxWithdrawAmount = isAuthor
-        ? Math.floor(10 * (withdrawMerits ? rate * effectiveSum : effectiveSum)) / 10
+        ? Math.floor(10 * effectiveSum) / 10
         : 0;
     
     const maxTopUpAmount = isAuthor
-        ? Math.floor(
-            10 * (withdrawMerits ? rate * currentBalance : currentBalance)
-        ) / 10
+        ? Math.floor(10 * currentBalance) / 10
         : 0;
     
     const handleSetDirectionAdd = (direction: boolean | undefined) => {
@@ -311,51 +300,28 @@ export const Publication = ({
             effectiveBalance = showCommunityAvatar ? (pollBalance || 0) : balance;
         }
         
-        const disabled = withdrawMerits ? !amountInMerits : !amount;
+        const disabled = !amount;
         
         // Prepare withdraw slider content for author's polls
         const withdrawSliderContent = isAuthor && directionAdd !== undefined && (
-            <>
-                {withdrawMerits &&
-                    (loading ? (
-                        <Spinner />
-                    ) : (
-                        <FormWithdraw
-                            comment={comment}
-                            setComment={setComment}
-                            amount={amount}
-                            setAmount={setAmount}
-                            maxWithdrawAmount={maxWithdrawAmount}
-                            maxTopUpAmount={maxTopUpAmount}
-                            isWithdrawal={!directionAdd}
-                            onSubmit={() => !disabled && submitWithdrawal()}
-                        >
-                            <div>
-                                {directionAdd ? t('addMerits', { amount }) : t('removeMerits', { amount })}
-                            </div>
-                        </FormWithdraw>
-                    ))}
-
-                {!withdrawMerits &&
-                    (loading ? (
-                        <Spinner />
-                    ) : (
-                        <FormWithdraw
-                            comment={comment}
-                            setComment={setComment}
-                            amount={amount}
-                            setAmount={setAmount}
-                            maxWithdrawAmount={maxWithdrawAmount}
-                            maxTopUpAmount={maxTopUpAmount}
-                            isWithdrawal={!directionAdd}
-                            onSubmit={() => !disabled && submitWithdrawal()}
-                        >
-                            <div>
-                                {directionAdd ? t('addCommunityPoints', { amount }) : t('removeCommunityPoints', { amount })}
-                            </div>
-                        </FormWithdraw>
-                    ))}
-            </>
+            loading ? (
+                <Spinner />
+            ) : (
+                <FormWithdraw
+                    comment={comment}
+                    setComment={setComment}
+                    amount={amount}
+                    setAmount={setAmount}
+                    maxWithdrawAmount={maxWithdrawAmount}
+                    maxTopUpAmount={maxTopUpAmount}
+                    isWithdrawal={!directionAdd}
+                    onSubmit={() => !disabled && submitWithdrawal()}
+                >
+                    <div>
+                        {directionAdd ? t('addCommunityPoints', { amount }) : t('removeCommunityPoints', { amount })}
+                    </div>
+                </FormWithdraw>
+            )
         );
         
         return (
@@ -467,50 +433,27 @@ export const Publication = ({
     const avatarUrl = authorPhotoUrl || telegramGetAvatarLink(tgAuthorId);
     
     // Prepare withdraw slider content for author's regular posts
-    const disabled = withdrawMerits ? !amountInMerits : !amount;
+    const disabled = !amount;
     
     const withdrawSliderContent = ((isAuthor && !hasBeneficiary) || isBeneficiary) && directionAdd !== undefined && (
-        <>
-            {withdrawMerits &&
-                (loading ? (
-                    <Spinner />
-                ) : (
-                    <FormWithdraw
-                        comment={comment}
-                        setComment={setComment}
-                        amount={amount}
-                        setAmount={setAmount}
-                        maxWithdrawAmount={maxWithdrawAmount}
-                        maxTopUpAmount={maxTopUpAmount}
-                        isWithdrawal={!directionAdd}
-                        onSubmit={() => !disabled && submitWithdrawal()}
-                    >
-                        <div>
-                            {directionAdd ? t('addMerits', { amount }) : t('removeMerits', { amount })}
-                        </div>
-                    </FormWithdraw>
-                ))}
-
-            {!withdrawMerits &&
-                (loading ? (
-                    <Spinner />
-                ) : (
-                    <FormWithdraw
-                        comment={comment}
-                        setComment={setComment}
-                        amount={amount}
-                        setAmount={setAmount}
-                        maxWithdrawAmount={maxWithdrawAmount}
-                        maxTopUpAmount={maxTopUpAmount}
-                        isWithdrawal={!directionAdd}
-                        onSubmit={() => !disabled && submitWithdrawal()}
-                    >
-                        <div>
-                            {directionAdd ? t('addCommunityPoints', { amount }) : t('removeCommunityPoints', { amount })}
-                        </div>
-                    </FormWithdraw>
-                ))}
-        </>
+        loading ? (
+            <Spinner />
+        ) : (
+            <FormWithdraw
+                comment={comment}
+                setComment={setComment}
+                amount={amount}
+                setAmount={setAmount}
+                maxWithdrawAmount={maxWithdrawAmount}
+                maxTopUpAmount={maxTopUpAmount}
+                isWithdrawal={!directionAdd}
+                onSubmit={() => !disabled && submitWithdrawal()}
+            >
+                <div>
+                    {directionAdd ? t('addCommunityPoints', { amount }) : t('removeCommunityPoints', { amount })}
+                </div>
+            </FormWithdraw>
+        )
     );
     
     return (
@@ -562,43 +505,17 @@ export const Publication = ({
                             isBeneficiary,
                             isAuthor,
                             hasBeneficiary,
-                            meritsAmount,
                         });
                         
                         if (showWithdraw) {
                             console.log('[Publication Feed] Rendering BarWithdraw');
                             return (
                                 <BarWithdraw
-                                    balance={meritsAmount}
+                                    balance={maxWithdrawAmount}
                                     onWithdraw={() => handleSetDirectionAdd(false)}
                                     onTopup={() => handleSetDirectionAdd(true)}
                                     showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)} // Show disabled state for beneficiaries and authors without beneficiary
-                                >
-                                    {showselector && (
-                                        <div className="select-currency">
-                                            <span
-                                                className={
-                                                    !withdrawMerits
-                                                        ? "clickable bar-withdraw-select"
-                                                        : "bar-withdraw-select-active"
-                                                }
-                                                onClick={() => setWithdrawMerits(true)}
-                                            >
-                                                {t('merits')}{" "}
-                                            </span>
-                                            <span
-                                                className={
-                                                    withdrawMerits
-                                                        ? "clickable bar-withdraw-select"
-                                                        : "bar-withdraw-select-active"
-                                                }
-                                                onClick={() => setWithdrawMerits(false)}
-                                            >
-                                                {t('points')}
-                                            </span>
-                                        </div>
-                                    )}
-                                </BarWithdraw>
+                                />
                             );
                         } else if (showVote || showVoteForAuthor) {
                             console.log('[Publication Feed] Rendering BarVoteUnified', {

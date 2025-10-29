@@ -9,7 +9,6 @@ import TgEmbed from '@shared/components/tgembed';
 import { useState, use } from "react";
 import { etv } from '@shared/lib/input-utils';
 import { Spinner } from '@shared/components/misc';
-import { GLOBAL_FEED_TG_CHAT_ID } from '@config/meriter';
 import { useTranslations } from 'next-intl';
 
 interface iCommunityProps {
@@ -31,17 +30,13 @@ const PublicationMy = ({
     inMerits,
 }: any) => {
     const t = useTranslations('pages');
-    const isMerit = tgChatId === GLOBAL_FEED_TG_CHAT_ID;
 
     const rate = 1;
 
     const [amount, setAmount] = useState(0);
-    const [amountInMerits, setAmountInMerits] = useState(0);
-    const [withdrawMerits, setWithdrawMerits] = useState(true);
-
     const [directionAdd, setDirectionAdd] = useState<boolean | undefined>(undefined);
     const [loading, setLoading] = useState(false);
-    const disabled = withdrawMerits ? !amountInMerits : !amount;
+    const disabled = !amount;
     const submit = () => {
         setLoading(true);
         // Dead API call - endpoint /api/d/meriter/withdraw doesn't exist
@@ -49,7 +44,6 @@ const PublicationMy = ({
         console.warn('Withdraw endpoint not implemented');
         setLoading(false);
         setAmount(0);
-        setAmountInMerits(0);
     };
 
     return (
@@ -65,8 +59,7 @@ const PublicationMy = ({
                 </button>
 
                 <span className="sum">
-                    {t('commbalance.available', { amount: withdrawMerits ? rate * sum : sum })}{" "}
-                    {inMerits && <img className="inline" src={"/merit.svg"} />}
+                    {t('commbalance.available', { amount: sum })}{" "}
                 </span>
 
                 <button
@@ -80,50 +73,26 @@ const PublicationMy = ({
 
             {directionAdd !== undefined && (
                 <div className="publication-withdraw">
-                    {withdrawMerits && (
-                        <div className="publication-withdraw-merits">
-                            <div className="publication-withdraw">
-                                {directionAdd ? t('commbalance.add') : t('commbalance.remove')} {t('commbalance.merits')}:{" "}
-                                <input
-                                    {...etv(String(amountInMerits), (value) => setAmountInMerits(Number(value)))}
-                                    min={0}
-                                    max={sum * rate}
-                                />
-                                {loading ? (
-                                    <Spinner />
-                                ) : (
-                                    <button
-                                        disabled={disabled}
-                                        onClick={() => !disabled && submit()}
-                                    >
-                                        {t('commbalance.ok')}
-                                    </button>
-                                )}
-                            </div>
+                    <div className="publication-withdraw-merits">
+                        <div className="publication-withdraw">
+                            {directionAdd ? t('commbalance.add') : t('commbalance.remove')} {t('commbalance.communityPoints')}:{" "}
+                            <input
+                                {...etv(String(amount), (value) => setAmount(Number(value)))}
+                                min={0}
+                                max={sum}
+                            />
+                            {loading ? (
+                                <Spinner />
+                            ) : (
+                                <button
+                                    disabled={disabled}
+                                    onClick={() => !disabled && submit()}
+                                >
+                                    {t('commbalance.ok')}
+                                </button>
+                            )}
                         </div>
-                    )}
-                    {!withdrawMerits && (
-                        <div className="publication-withdraw-merits">
-                            <div className="publication-withdraw">
-                                {directionAdd ? t('commbalance.add') : t('commbalance.remove')} {t('commbalance.communityPoints')}:{" "}
-                                <input
-                                    {...etv(String(amount), (value) => setAmount(Number(value)))}
-                                    min={0}
-                                    max={sum}
-                                />
-                                {loading ? (
-                                    <Spinner />
-                                ) : (
-                                    <button
-                                        disabled={disabled}
-                                        onClick={() => !disabled && submit()}
-                                    >
-                                        {t('commbalance.ok')}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    )}
+                    </div>
                 </div>
             )}
         </div>

@@ -23,7 +23,6 @@ import { Spinner } from '@shared/components/misc';
 import { CardPublication } from '@features/feed/components/card-publication';
 import { classList } from '@lib/classList';
 import { dateVerbose } from '@shared/lib/date';
-import { GLOBAL_FEED_TG_CHAT_ID } from '../../../../config/meriter';
 import type { IPollData } from '@features/polls/types';
 
 export interface IPublication {
@@ -259,47 +258,24 @@ export const Publication: React.FC<PublicationProps> = ({
     const avatarUrl = authorPhotoUrl || (tgAuthorId ? telegramGetAvatarLink(tgAuthorId) : undefined);
     
     const withdrawSliderContent = stateLogic.isAuthor && votingLogic.directionAdd !== undefined && (
-      <>
-        {votingLogic.withdrawMerits &&
-          (votingLogic.loading ? (
-            <Spinner />
-          ) : (
-            <FormWithdraw
-              comment={votingLogic.comment}
-              setComment={votingLogic.setComment}
-              amount={votingLogic.amount}
-              setAmount={votingLogic.setAmount}
-              maxWithdrawAmount={votingLogic.maxWithdrawAmount}
-              maxTopUpAmount={votingLogic.maxTopUpAmount}
-              isWithdrawal={!votingLogic.directionAdd}
-              onSubmit={() => !votingLogic.disabled && votingLogic.submitWithdrawal()}
-            >
-              <div>
-                {votingLogic.directionAdd ? t('addMerits', { amount: votingLogic.amount }) : t('removeMerits', { amount: votingLogic.amount })}
-              </div>
-            </FormWithdraw>
-          ))}
-        
-        {!votingLogic.withdrawMerits &&
-          (votingLogic.loading ? (
-            <Spinner />
-          ) : (
-            <FormWithdraw
-              comment={votingLogic.comment}
-              setComment={votingLogic.setComment}
-              amount={votingLogic.amount}
-              setAmount={votingLogic.setAmount}
-              maxWithdrawAmount={votingLogic.maxWithdrawAmount}
-              maxTopUpAmount={votingLogic.maxTopUpAmount}
-              isWithdrawal={!votingLogic.directionAdd}
-              onSubmit={() => !votingLogic.disabled && votingLogic.submitWithdrawal()}
-            >
-              <div>
-                {votingLogic.directionAdd ? t('addCommunityPoints', { amount: votingLogic.amount }) : t('removeCommunityPoints', { amount: votingLogic.amount })}
-              </div>
-            </FormWithdraw>
-          ))}
-      </>
+      votingLogic.loading ? (
+        <Spinner />
+      ) : (
+        <FormWithdraw
+          comment={votingLogic.comment}
+          setComment={votingLogic.setComment}
+          amount={votingLogic.amount}
+          setAmount={votingLogic.setAmount}
+          maxWithdrawAmount={votingLogic.maxWithdrawAmount}
+          maxTopUpAmount={votingLogic.maxTopUpAmount}
+          isWithdrawal={!votingLogic.directionAdd}
+          onSubmit={() => !votingLogic.disabled && votingLogic.submitWithdrawal()}
+        >
+          <div>
+            {votingLogic.directionAdd ? t('addCommunityPoints', { amount: votingLogic.amount }) : t('removeCommunityPoints', { amount: votingLogic.amount })}
+          </div>
+        </FormWithdraw>
+      )
     );
     
     return (
@@ -409,47 +385,24 @@ export const Publication: React.FC<PublicationProps> = ({
   });
   
   const withdrawSliderContent = ((stateLogic.isAuthor && !stateLogic.hasBeneficiary) || isBeneficiary) && votingLogic.directionAdd !== undefined && (
-    <>
-      {votingLogic.withdrawMerits &&
-        (votingLogic.loading ? (
-          <Spinner />
-        ) : (
-          <FormWithdraw
-            comment={votingLogic.comment}
-            setComment={votingLogic.setComment}
-            amount={votingLogic.amount}
-            setAmount={votingLogic.setAmount}
-            maxWithdrawAmount={votingLogic.maxWithdrawAmount}
-            maxTopUpAmount={votingLogic.maxTopUpAmount}
-            isWithdrawal={!votingLogic.directionAdd}
-            onSubmit={() => !votingLogic.disabled && votingLogic.submitWithdrawal()}
-          >
-            <div>
-              {votingLogic.directionAdd ? t('addMerits', { amount: votingLogic.amount }) : t('removeMerits', { amount: votingLogic.amount })}
-            </div>
-          </FormWithdraw>
-        ))}
-      
-      {!votingLogic.withdrawMerits &&
-        (votingLogic.loading ? (
-          <Spinner />
-        ) : (
-          <FormWithdraw
-            comment={votingLogic.comment}
-            setComment={votingLogic.setComment}
-            amount={votingLogic.amount}
-            setAmount={votingLogic.setAmount}
-            maxWithdrawAmount={votingLogic.maxWithdrawAmount}
-            maxTopUpAmount={votingLogic.maxTopUpAmount}
-            isWithdrawal={!votingLogic.directionAdd}
-            onSubmit={() => !votingLogic.disabled && votingLogic.submitWithdrawal()}
-          >
-            <div>
-              {votingLogic.directionAdd ? t('addCommunityPoints', { amount: votingLogic.amount }) : t('removeCommunityPoints', { amount: votingLogic.amount })}
-            </div>
-          </FormWithdraw>
-        ))}
-    </>
+    votingLogic.loading ? (
+      <Spinner />
+    ) : (
+      <FormWithdraw
+        comment={votingLogic.comment}
+        setComment={votingLogic.setComment}
+        amount={votingLogic.amount}
+        setAmount={votingLogic.setAmount}
+        maxWithdrawAmount={votingLogic.maxWithdrawAmount}
+        maxTopUpAmount={votingLogic.maxTopUpAmount}
+        isWithdrawal={!votingLogic.directionAdd}
+        onSubmit={() => !votingLogic.disabled && votingLogic.submitWithdrawal()}
+      >
+        <div>
+          {votingLogic.directionAdd ? t('addCommunityPoints', { amount: votingLogic.amount }) : t('removeCommunityPoints', { amount: votingLogic.amount })}
+        </div>
+      </FormWithdraw>
+    )
   );
   
   return (
@@ -479,42 +432,18 @@ export const Publication: React.FC<PublicationProps> = ({
               isBeneficiary,
               isAuthor,
               hasBeneficiary,
-              meritsAmount: votingLogic.meritsAmount,
             });
             
             if (showWithdraw) {
               console.log('[Publication] Rendering BarWithdraw');
               return (
                 <BarWithdraw
-                  balance={votingLogic.meritsAmount}
+                  balance={votingLogic.maxWithdrawAmount}
                   onWithdraw={() => votingLogic.handleSetDirectionAdd(false)}
                   onTopup={() => votingLogic.handleSetDirectionAdd(true)}
                   showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)} // Show disabled state for beneficiaries and authors without beneficiary
                 >
-                  {stateLogic.showselector && (
-                    <div className="select-currency">
-                      <span
-                        className={
-                          !votingLogic.withdrawMerits
-                            ? "clickable bar-withdraw-select"
-                            : "bar-withdraw-select-active"
-                        }
-                        onClick={() => votingLogic.setWithdrawMerits(true)}
-                      >
-                        {t('merits')}{" "}
-                      </span>
-                      <span
-                        className={
-                          votingLogic.withdrawMerits
-                            ? "clickable bar-withdraw-select"
-                            : "bar-withdraw-select-active"
-                        }
-                        onClick={() => votingLogic.setWithdrawMerits(false)}
-                      >
-                        {t('points')}
-                      </span>
-                    </div>
-                  )}
+                  {null}
                 </BarWithdraw>
               );
             } else if (showVote || showVoteForAuthor) {

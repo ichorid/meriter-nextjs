@@ -127,12 +127,7 @@ export const config = {
     
     addedPublicationReply: `Сообщение добавлено в приложение https://t.me/${env.NEXT_PUBLIC_BOT_USERNAME}?startapp=publication&id={link}. Перейдите, чтобы оставить своё мнение и узнать, что думают другие`,
     
-    globalFeedIncoming: `Добавлена публикация от {communityName}: https://t.me/${env.NEXT_PUBLIC_BOT_USERNAME}?startapp=publication&id={link}\n--\n{text}`,
-    
     approvedPendingWords: ['одобрить'],
-    
-    globalFeedHashtag: 'заслуга',
-    globalFeedSlug: 'merit',
   },
 } as const;
 

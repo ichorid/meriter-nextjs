@@ -12,9 +12,6 @@ export const validationSchema = Joi.object({
   BOT_USERNAME: Joi.string().default('meriterbot'),
   BOT_TOKEN: Joi.string().default(''),
 
-  // Telegram
-  GLOBAL_FEED_TG_CHAT_ID: Joi.string().default('-1001243037875'),
-
   // Database
   MONGO_URL: Joi.string().default('mongodb://127.0.0.1:27017/meriter'),
   MONGO_URL_SECONDARY: Joi.string().default('mongodb://127.0.0.1:27017/meriter_test'),
