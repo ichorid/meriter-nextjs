@@ -51,15 +51,15 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
   const router = useRouter();
   
   // Get comments data - useComments hook manages comment state
-  // Note: We don't need currentPlus/currentMinus here as this is read-only display
+  // API now provides enriched data (author, vote transaction fields) - no additional fetching needed
   const {
     comments,
   } = useComments(
     false, // forTransaction
     publicationSlug,
     '', // transactionId
-    '', // getCommentsApiPath
-    '', // getFreeBalanceApiPath
+    '', // getCommentsApiPath (legacy, unused)
+    '', // getFreeBalanceApiPath (legacy, unused)
     balance,
     updBalance,
     0, // plusGiven - not used for display only
@@ -71,29 +71,41 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
   );
 
   // Transform v1 API comment format to legacy format expected by Comment component
-  // Author data is now included in API response via meta.author
+  // API now returns enriched data: meta.author, plus/minus/amountTotal/directionPlus from vote transactions
   const transformedComments = useMemo(() => {
     if (!comments || !Array.isArray(comments)) return [];
     
     return comments.map((c: ApiComment | any) => {
-      // Use author data from API response (meta.author) if available
+      // Use author data directly from API response (meta.author)
       const author = c.meta?.author || {};
+      
+      // Use vote transaction fields from API when available (for vote transaction comments)
+      // Otherwise fall back to comment metrics
+      const hasVoteData = c.plus !== undefined || c.minus !== undefined || c.amountTotal !== undefined;
       
       return {
         _id: c.id || c._id,
-        comment: c.content || c.comment || '',
-        ts: c.createdAt || c.ts || new Date().toISOString(),
-        plus: c.metrics?.upvotes || c.plus || 0,
-        minus: c.metrics?.downvotes || c.minus || 0,
-        sum: c.metrics?.score || c.sum || 0,
-        fromUserTgName: author.name || c.fromUserTgName || 'Unknown',
-        fromUserTgId: c.authorId || author.telegramId || c.fromUserTgId,
-        fromUserTgUsername: author.username || c.fromUserTgUsername,
-        authorPhotoUrl: author.photoUrl || c.authorPhotoUrl,
-        // Calculate directionPlus from metrics if not provided
-        directionPlus: c.directionPlus ?? ((c.metrics?.score ?? 0) > 0 || ((c.metrics?.upvotes ?? 0) > (c.metrics?.downvotes ?? 0))),
-        // Keep other properties that might be useful
-        ...c,
+        // Use API data directly - author info from meta.author, vote data from API fields
+        comment: c.content || '',
+        ts: c.createdAt || new Date().toISOString(),
+        // Vote transaction fields from API (plus, minus, amountTotal) or comment metrics
+        plus: hasVoteData ? (c.plus ?? 0) : (c.metrics?.upvotes ?? 0),
+        minus: hasVoteData ? (c.minus ?? 0) : (c.metrics?.downvotes ?? 0),
+        sum: hasVoteData ? (c.sum ?? c.metrics?.score ?? 0) : (c.metrics?.score ?? 0),
+        // Legacy field names for backward compatibility
+        fromUserTgName: author.name || 'Unknown',
+        fromUserTgId: c.authorId || author.telegramId,
+        fromUserTgUsername: author.username,
+        authorPhotoUrl: author.photoUrl,
+        // Vote transaction data from API
+        amountTotal: c.amountTotal,
+        directionPlus: c.directionPlus,
+        // Pass through API response fields
+        meta: c.meta,
+        authorId: c.authorId,
+        metrics: c.metrics,
+        content: c.content,
+        createdAt: c.createdAt,
       };
     });
   }, [comments]);

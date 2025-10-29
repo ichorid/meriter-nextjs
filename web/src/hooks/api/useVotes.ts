@@ -20,7 +20,8 @@ export function useVoteOnPublication() {
       queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
       
       // Invalidate quota queries to update remaining quota (for quota votes)
-      queryClient.invalidateQueries({ queryKey: ['user-quota'] });
+      // Use prefix matching to invalidate all quota queries for all users and communities
+      queryClient.invalidateQueries({ queryKey: ['user-quota'], exact: false });
       
       // If a comment was created, invalidate comments
       if (result.comment) {

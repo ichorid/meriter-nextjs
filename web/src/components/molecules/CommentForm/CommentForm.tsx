@@ -36,6 +36,11 @@ export const CommentForm: React.FC<CommentFormProps> = ({
     onSubmit(comment, Math.abs(amount), directionPlus);
   };
 
+  const handleSliderChange = (value: number | number[]) => {
+    const newAmount = typeof value === 'number' ? value : value[0] || 0;
+    setAmount(newAmount);
+  };
+
   const directionPlus = amount > 0;
   const directionMinus = amount < 0;
 
@@ -66,7 +71,7 @@ export const CommentForm: React.FC<CommentFormProps> = ({
               min={-maxAmount}
               max={maxAmount}
               value={amount}
-              onChange={(value) => setAmount(typeof value === 'number' ? value : value[0] || 0)}
+              onChange={handleSliderChange}
               className="rc-slider-vertical"
             />
             {/* Center zero indicator */}

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
-import { commentsApiV1, votesApiV1, usersApiV1 } from '@/lib/api/v1';
+import { commentsApiV1, usersApiV1 } from '@/lib/api/v1';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
 import type { Dispatch, SetStateAction } from 'react';
@@ -20,8 +20,8 @@ export const useComments = (
     forTransaction: boolean,
     publicationSlug: string,
     transactionId: string,
-    getCommentsApiPath: string,
-    getFreeBalanceApiPath: string,
+    _getCommentsApiPath: string, // Legacy parameter, no longer used
+    _getFreeBalanceApiPath: string, // Legacy parameter, no longer used
     balance: Wallet | number | null,
     updBalance: () => Promise<void>,
     plusGiven: number,
@@ -62,6 +62,9 @@ export const useComments = (
             return [];
         },
         refetchOnWindowFocus: false,
+        // Prevent N+1 queries: only fetch replies when user expands a comment (showComments=true)
+        // For publication comments, always fetch (showComments is already true for onlyPublication)
+        enabled: forTransaction ? showComments && !!transactionId : !!publicationSlug,
     });
 
     // Get user quota for free balance

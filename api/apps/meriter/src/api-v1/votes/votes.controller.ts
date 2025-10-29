@@ -47,14 +47,15 @@ export class VotesController {
     // For quota votes, the frontend should pass sourceType: 'quota'
     const sourceType = createDto.sourceType || 'personal';
     
-    // Create vote
+    // Create vote with optional attached comment ID
     const vote = await this.voteService.createVote(
       req.user.id,
       'publication',
       id,
       createDto.amount,
       sourceType as 'personal' | 'quota',
-      communityId
+      communityId,
+      createDto.attachedCommentId
     );
     
     // Update publication metrics to reflect the vote immediately

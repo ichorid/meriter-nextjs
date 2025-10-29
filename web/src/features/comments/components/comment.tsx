@@ -9,7 +9,6 @@ import { useUIStore } from "@/stores/ui.store";
 import { classList } from "@lib/classList";
 import { useState, useEffect } from "react";
 import { GLOBAL_FEED_TG_CHAT_ID } from "@config/meriter";
-import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { Spinner } from "@shared/components/misc";
 import { FormWithdraw } from "@shared/components/form-withdraw";
@@ -83,13 +82,18 @@ export const Comment: React.FC<CommentProps> = ({
     const t = useTranslations('comments');
     
     // Support both legacy format and v1 API format with meta.author
+    // API now provides enriched data including author metadata and vote transaction fields
     const authorMeta = meta?.author || {};
     const effectiveFromUserTgName = fromUserTgName || authorMeta.name || 'Unknown';
     const effectiveFromUserTgId = fromUserTgId || authorId || authorMeta.telegramId;
     const effectiveComment = comment || content || '';
     const effectiveTs = ts || createdAt || '';
-    const effectivePlus = plus ?? metrics?.upvotes ?? 0;
-    const effectiveMinus = minus ?? metrics?.downvotes ?? 0;
+    
+    // API provides vote transaction fields (plus, minus, amountTotal) when comment represents a vote
+    // Prefer these over comment metrics for vote transaction comments
+    const hasVoteTransactionData = plus !== undefined || minus !== undefined || amountTotal !== undefined;
+    const effectivePlus = hasVoteTransactionData ? (plus ?? 0) : (metrics?.upvotes ?? plus ?? 0);
+    const effectiveMinus = hasVoteTransactionData ? (minus ?? 0) : (metrics?.downvotes ?? minus ?? 0);
     const baseSum = sum ?? metrics?.score ?? 0;
     
     // Check if current user is the author
@@ -99,14 +103,18 @@ export const Comment: React.FC<CommentProps> = ({
     const hasBeneficiary = toUserTgId && toUserTgId !== effectiveFromUserTgId;
     
     // Withdrawal state management (for author's own comments)
-    // Support both legacy format (sum) and v1 API format (metrics.score)
+    // Support both legacy format (sum) and v1 API format (metrics.score or sum from vote transaction)
     const [optimisticSum, setOptimisticSum] = useState(baseSum);
-    const effectiveSum = optimisticSum ?? baseSum;
     
     useEffect(() => {
+        // API provides sum for vote transactions, otherwise use metrics.score
         const currentSum = sum ?? metrics?.score ?? 0;
         setOptimisticSum(currentSum);
     }, [sum, metrics?.score]);
+    
+    // Use effectiveSum which handles both vote transaction data and legacy format
+    // This is used throughout the component for wallet calculations and display
+    const effectiveSum = optimisticSum ?? baseSum;
     
     const curr = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
     const currentBalance =
@@ -123,20 +131,40 @@ export const Comment: React.FC<CommentProps> = ({
     // Rate conversion no longer needed with v1 API - currencies are normalized
     const rate = 1;
     
-    // Calculate directionPlus from metrics if not provided
-    const calculatedDirectionPlus = directionPlus ?? ((effectivePlus > effectiveMinus) || (effectiveSum > 0));
+    // API provides directionPlus for vote transaction comments
+    // Calculate from vote data if available, otherwise infer from metrics
+    const calculatedDirectionPlus = directionPlus ?? 
+      (amountTotal !== undefined ? (amountTotal > 0 || effectivePlus > 0) : 
+       ((effectivePlus > effectiveMinus) || (baseSum > 0)));
+    
+    // For vote transaction comments, use API-provided plus/minus directly (they reflect the vote amount)
+    // For regular comments, use the metrics (votes on the comment itself)
+    const displayUpvotes = hasVoteTransactionData 
+      ? effectivePlus  // API provides plus which is the upvote amount
+      : effectivePlus; // For regular comments, use metrics.upvotes
+    const displayDownvotes = hasVoteTransactionData
+      ? effectiveMinus  // API provides minus which is the downvote amount  
+      : effectiveMinus; // For regular comments, use metrics.downvotes
     
     // Format the rate with currency icon
     const formatRate = () => {
-        const amount = Math.abs(amountTotal || 0);
+        // Only show vote amount if we have vote transaction data
+        if (!hasVoteTransactionData || amountTotal === undefined) {
+            // For regular comments without vote transaction, show score from metrics
+            const score = baseSum;
+            if (score === 0) return "0";
+            const sign = score > 0 ? "+" : "-";
+            return `${sign} ${Math.abs(score)}`;
+        }
+        const amount = Math.abs(amountTotal);
         const sign = calculatedDirectionPlus ? "+" : "-";
         return `${sign} ${amount}`;
     };
     
     // Determine vote type based on payment source
     const determineVoteType = () => {
-        const amountFree = Math.abs(amountTotal || 0) - Math.abs(sum || 0); // Calculate free amount
-        const amountWallet = Math.abs(sum || 0); // Personal wallet amount
+        const amountFree = Math.abs(amountTotal || 0) - Math.abs(effectiveSum || 0); // Calculate free amount
+        const amountWallet = Math.abs(effectiveSum || 0); // Personal wallet amount
         
         const isQuota = amountFree > 0;
         const isWallet = amountWallet > 0;
@@ -360,12 +388,14 @@ export const Comment: React.FC<CommentProps> = ({
                 currencyIcon={currencyIcon}
                 avatarUrl={avatarUrl}
                 voteType={voteType}
-                amountFree={Math.abs(amountTotal || 0) - Math.abs(effectiveSum || 0)}
+                amountFree={hasVoteTransactionData && amountTotal !== undefined 
+                    ? Math.abs(amountTotal) - Math.abs(effectiveSum || 0) 
+                    : 0}
                 amountWallet={Math.abs(effectiveSum || 0)}
                 beneficiaryName={toUserTgName}
                 beneficiaryAvatarUrl={telegramGetAvatarLink(toUserTgId || '')}
-                upvotes={effectivePlus}
-                downvotes={effectiveMinus}
+                upvotes={displayUpvotes}
+                downvotes={displayDownvotes}
                 onClick={!isDetailPage ? () => {
                     // Navigate to the post page only when not on detail page
                     if (inPublicationSlug && currencyOfCommunityTgChatId) {

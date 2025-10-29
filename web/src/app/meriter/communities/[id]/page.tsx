@@ -171,6 +171,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     const { user, isLoading: userLoading, isAuthenticated } = useAuth();
     const { data: wallets = [], isLoading: walletsLoading } = useWallets();
+    // Only fetch user profile when user ID is available (prevents empty string query)
     const { data: userdata = 0 } = useUserProfile(user?.id || '');
     
     // Get wallet balance for this community from user's wallets

@@ -42,8 +42,11 @@ export const FormCommentVoteVertical = ({
     const directionPlus = amount > 0 ? true : false;
     const directionMinus = amount < 0 ? true : false;
 
-    const sliderMin = isWithdrawMode ? 0 : -maxMinus;
-    const sliderMax = isWithdrawMode ? maxPlus : maxPlus;
+    // For symmetric range around 0 (to center the slider), use the max of both directions
+    // This ensures amount=0 is always at 50% (center)
+    const maxRange = Math.max(maxPlus, maxMinus);
+    const sliderMin = isWithdrawMode ? 0 : -maxRange;
+    const sliderMax = isWithdrawMode ? maxPlus : maxRange;
 
     return (
         <div
@@ -103,7 +106,14 @@ export const FormCommentVoteVertical = ({
                         min={sliderMin}
                         max={sliderMax}
                         value={amount}
-                        onChange={(value) => setAmount(typeof value === 'number' ? value : value[0] || 0)}
+                        onChange={(value) => {
+                            const newAmount = typeof value === 'number' ? value : value[0] || 0;
+                            // Clamp to actual limits even though slider range is symmetric
+                            const clampedAmount = isWithdrawMode 
+                                ? Math.max(0, Math.min(newAmount, maxPlus))
+                                : Math.max(-maxMinus, Math.min(newAmount, maxPlus));
+                            setAmount(clampedAmount);
+                        }}
                         className="rc-slider-vertical"
                         trackStyle={(() => {
                             const range = sliderMax - sliderMin;

@@ -20,9 +20,10 @@ export class VoteService {
     targetId: string,
     amount: number,
     sourceType: 'personal' | 'quota',
-    communityId?: string
+    communityId?: string,
+    attachedCommentId?: string
   ): Promise<Vote> {
-    this.logger.log(`Creating vote: user=${userId}, target=${targetType}:${targetId}, amount=${amount}, sourceType=${sourceType}, communityId=${communityId}`);
+    this.logger.log(`Creating vote: user=${userId}, target=${targetType}:${targetId}, amount=${amount}, sourceType=${sourceType}, communityId=${communityId}, attachedCommentId=${attachedCommentId}`);
 
     // Validate vote amount
     const voteAmount = amount > 0 ? VoteAmount.up(amount) : VoteAmount.down(Math.abs(amount));
@@ -39,6 +40,7 @@ export class VoteService {
       amount: voteAmount.getNumericValue(),
       sourceType,
       communityId,
+      attachedCommentId,
       createdAt: new Date(),
     }]);
 
@@ -72,6 +74,41 @@ export class VoteService {
 
   async getTargetVotes(targetType: string, targetId: string): Promise<Vote[]> {
     return this.voteModel.find({ targetType, targetId }).lean().exec();
+  }
+
+  async getVotesByAttachedComment(commentId: string): Promise<Vote[]> {
+    return this.voteModel.find({ attachedCommentId: commentId }).lean().exec();
+  }
+
+  async getVotesByAttachedComments(commentIds: string[]): Promise<Map<string, Vote[]>> {
+    if (commentIds.length === 0) return new Map();
+    
+    const votes = await this.voteModel
+      .find({ attachedCommentId: { $in: commentIds } })
+      .lean()
+      .exec();
+    
+    const votesMap = new Map<string, Vote[]>();
+    votes.forEach(vote => {
+      if (vote.attachedCommentId) {
+        const existing = votesMap.get(vote.attachedCommentId) || [];
+        existing.push(vote);
+        votesMap.set(vote.attachedCommentId, existing);
+      }
+    });
+    
+    return votesMap;
+  }
+
+  async getVotesOnPublicationWithAttachedComments(publicationId: string): Promise<Vote[]> {
+    return this.voteModel
+      .find({ 
+        targetType: 'publication', 
+        targetId: publicationId,
+        attachedCommentId: { $exists: true, $ne: null }
+      })
+      .lean()
+      .exec();
   }
 
   async hasUserVoted(userId: string, targetType: string, targetId: string): Promise<boolean> {
