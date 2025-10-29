@@ -6,6 +6,7 @@ import { walletKeys } from './useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateQuotaOptimistically, updateWalletOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';
 import { queryKeys } from '@/lib/constants/queryKeys';
+import { commentsKeys } from './useComments';
 
 // Vote on publication
 export function useVoteOnPublication() {
@@ -44,7 +45,7 @@ export function useVoteOnPublication() {
       
       return context;
     },
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       // Invalidate publications to update vote counts
       queryClient.invalidateQueries({ queryKey: queryKeys.publications.all });
       
@@ -55,9 +56,18 @@ export function useVoteOnPublication() {
       // Invalidate quota queries to update remaining quota (for quota votes)
       queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
       
-      // If a comment was created, invalidate all comments queries
-      if (result.comment) {
+      // If a comment was attached to the vote, invalidate comments queries
+      // This handles both cases: when result.comment exists (combined endpoint) 
+      // and when attachedCommentId is provided (regular endpoint)
+      if (result.comment || variables?.data?.attachedCommentId) {
         queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
+        // Also invalidate the specific publication's comments query
+        if (variables?.publicationId) {
+          queryClient.invalidateQueries({ 
+            queryKey: commentsKeys.byPublication(variables.publicationId),
+            exact: false 
+          });
+        }
       }
     },
     onError: (error: any, _vars, ctx) => {

@@ -1,10 +1,9 @@
 // Publication business logic hook
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useVoteOnPublication, useVoteOnComment } from '@/hooks/api';
-import { useCreateComment } from '@/hooks/api/useComments';
+import { useVoteOnPublication, useVoteOnComment, useVoteOnPublicationWithComment } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { walletKeys } from '@/hooks/api/useWallet';
+import { useUserQuota } from '@/hooks/api/useQuota';
 
 // Local type definitions
 interface Publication {
@@ -55,7 +54,18 @@ export function usePublication({
 
   const voteOnPublicationMutation = useVoteOnPublication();
   const voteOnCommentMutation = useVoteOnComment();
-  const createCommentMutation = useCreateComment();
+  const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
+  
+  // Get quota for the publication's community
+  const { data: quotaData } = useUserQuota(publication.communityId);
+  const quotaRemaining = quotaData?.remainingToday ?? 0;
+  
+  // Get wallet balance for the publication's community
+  const walletBalance = useMemo(() => {
+    if (!publication.communityId || !Array.isArray(wallets)) return 0;
+    const wallet = wallets.find((w: Wallet) => w.communityId === publication.communityId);
+    return wallet?.balance || 0;
+  }, [publication.communityId, wallets]);
 
   const handleVote = useCallback(async (direction: 'plus' | 'minus', amount: number = 1) => {
     if (!publication.id) return;
@@ -89,43 +99,70 @@ export function usePublication({
     if (!publication.id) return;
 
     try {
-      let commentId: string | undefined = undefined;
+      const absoluteAmount = Math.abs(amount);
+      const isUpvote = directionPlus;
       
-      // Create comment if provided
-      if (comment.trim()) {
-        const commentResult = await createCommentMutation.mutateAsync({
-          targetType: 'publication',
-          targetId: publication.id,
-          content: comment.trim(),
-        });
-        commentId = commentResult.id;
+      // Calculate vote breakdown: quota vs wallet
+      // For upvotes: use quota first, then wallet
+      // For downvotes: use wallet only
+      let quotaAmount = 0;
+      let walletAmount = 0;
+      
+      if (isUpvote) {
+        quotaAmount = Math.min(absoluteAmount, quotaRemaining);
+        walletAmount = Math.max(0, absoluteAmount - quotaRemaining);
+      } else {
+        // Downvotes use wallet only
+        walletAmount = absoluteAmount;
       }
 
-      // Determine sourceType: use quota if available, otherwise use personal wallet
-      // For now, prioritize quota for voting - user should use quota first
-      // We'll always use 'quota' for now if the user has quota available
-      // The backend should handle determining if quota is available
-      // Actually, for simplicity, we'll use 'personal' and let the backend decide based on available balance
-      // But for quota tracking, we need to explicitly mark quota votes
-      // Let's use 'quota' by default since users typically vote with their daily quota first
-      const sourceType: 'personal' | 'quota' = 'quota'; // Use quota first for voting
-
-      // Quota and wallet updates are now handled optimistically in the mutation hooks
-
-      // Create vote (with optional comment ID)
-      // amount can be negative for downvotes - pass it as-is
-      // The backend will determine direction from amount > 0
-      const voteResult = await voteOnPublicationMutation.mutateAsync({
-        publicationId: publication.id,
-        data: {
-          targetType: 'publication',
-          targetId: publication.id,
-          amount: amount, // Can be negative for downvotes
-          sourceType,
-          attachedCommentId: commentId,
-        },
-        communityId: publication.communityId,
-      });
+      // Use the combined endpoint that creates comment and vote atomically
+      // If we need both quota and wallet votes, make two calls
+      // but only create the comment with the first one
+      if (quotaAmount > 0 && walletAmount > 0) {
+        // First vote: quota + comment (if provided)
+        await voteOnPublicationWithCommentMutation.mutateAsync({
+          publicationId: publication.id,
+          data: {
+            amount: isUpvote ? quotaAmount : -quotaAmount,
+            sourceType: 'quota',
+            comment: comment.trim() || undefined,
+          },
+          communityId: publication.communityId,
+        });
+        
+        // Second vote: wallet only (comment already created)
+        await voteOnPublicationWithCommentMutation.mutateAsync({
+          publicationId: publication.id,
+          data: {
+            amount: isUpvote ? walletAmount : -walletAmount,
+            sourceType: 'personal',
+          },
+          communityId: publication.communityId,
+        });
+      } else if (quotaAmount > 0) {
+        // Vote with quota only, include comment
+        await voteOnPublicationWithCommentMutation.mutateAsync({
+          publicationId: publication.id,
+          data: {
+            amount: isUpvote ? quotaAmount : -quotaAmount,
+            sourceType: 'quota',
+            comment: comment.trim() || undefined,
+          },
+          communityId: publication.communityId,
+        });
+      } else if (walletAmount > 0) {
+        // Vote with wallet only, include comment
+        await voteOnPublicationWithCommentMutation.mutateAsync({
+          publicationId: publication.id,
+          data: {
+            amount: isUpvote ? walletAmount : -walletAmount,
+            sourceType: 'personal',
+            comment: comment.trim() || undefined,
+          },
+          communityId: publication.communityId,
+        });
+      }
 
       // Refresh data immediately to update UI (this will also refresh quota/wallet from server)
       if (updateAll) {
@@ -139,7 +176,7 @@ export function usePublication({
       // Re-throw to allow component to display error
       throw error;
     }
-  }, [publication, voteOnPublicationMutation, createCommentMutation, updateWalletBalance, updateAll]);
+  }, [publication, voteOnPublicationWithCommentMutation, quotaRemaining, updateAll]);
 
   const handleWithdraw = useCallback((postId: string | null) => {
     setActiveWithdrawPost(postId);
@@ -178,7 +215,7 @@ export function usePublication({
     
     // Loading states
     isVoting: voteOnPublicationMutation.isPending,
-    isCommenting: voteOnPublicationMutation.isPending,
+    isCommenting: voteOnPublicationWithCommentMutation.isPending,
   };
 }
 

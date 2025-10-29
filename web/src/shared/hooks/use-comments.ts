@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
 import type { Dispatch, SetStateAction } from 'react';
 import { useVoteOnComment } from '@/hooks/api/useVotes';
-import { useCreateComment } from '@/hooks/api/useComments';
+import { useCreateComment, commentsKeys } from '@/hooks/api/useComments';
 import { useUserQuota } from '@/hooks/api/useQuota';
 
 const { round } = Math;
@@ -50,9 +50,13 @@ export const useComments = (
     const voteOnCommentMutation = useVoteOnComment();
     const createCommentMutation = useCreateComment();
 
-    // Get comments using v1 API
+    // Get comments using v1 API with standard query keys
     const { data: comments = [] } = useQuery({
-        queryKey: ['comments', forTransaction ? transactionId : publicationSlug],
+        queryKey: forTransaction && transactionId
+            ? [...commentsKeys.byComment(transactionId), { sort: 'createdAt', order: 'desc' }]
+            : publicationSlug
+            ? [...commentsKeys.byPublication(publicationSlug), { sort: 'createdAt', order: 'desc' }]
+            : ['comments', 'empty'],
         queryFn: async () => {
             if (forTransaction && transactionId) {
                 // Get replies to a comment, sorted by newest first
