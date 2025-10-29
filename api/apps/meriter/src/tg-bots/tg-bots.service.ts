@@ -1036,11 +1036,29 @@ export class TgBotsService {
       throw new Error(`Hashtag #${cleanKeyword} is not configured for this community`);
     }
 
+    // Look up author user by telegramId to get internal id
+    const authorUser = await this.userModel.findOne({ telegramId: tgAuthorId }).lean();
+    if (!authorUser) {
+      this.logger.error(`Author user not found for telegramId ${tgAuthorId}`);
+      throw new Error(`Author user not found for telegramId ${tgAuthorId}`);
+    }
+
+    // Look up beneficiary user by telegramId to get internal id (if beneficiary exists)
+    let beneficiaryInternalId: string | undefined;
+    if (beneficiary?.telegramId) {
+      const beneficiaryUser = await this.userModel.findOne({ telegramId: beneficiary.telegramId }).lean();
+      if (beneficiaryUser) {
+        beneficiaryInternalId = beneficiaryUser.id;
+      } else {
+        this.logger.warn(`Beneficiary user not found for telegramId ${beneficiary.telegramId}`);
+      }
+    }
+
     const publicationData = {
       id: uid(),
-      authorId: tgAuthorId,
-      communityId: fromTgChatId,
-      beneficiaryId: beneficiary?.telegramId || undefined,
+      authorId: authorUser.id,
+      communityId: community.id,
+      beneficiaryId: beneficiaryInternalId,
       title: messageText.substring(0, 100), // Use first 100 chars as title
       content: messageText,
       type: 'text',
