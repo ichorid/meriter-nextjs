@@ -360,6 +360,12 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
 
           {/* Balance and Quota */}
           <div className="flex items-center gap-2 text-sm">
+            {community.settings?.iconUrl && (
+              <img src={community.settings.iconUrl} alt="Currency" className="w-5 h-5" />
+            )}
+            <span className="font-semibold">{balance}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
             <span className="opacity-60">Quota:</span>
             <span className="font-semibold">
               {quotaError 
@@ -367,12 +373,6 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
                 : (quota && typeof quota.remainingToday === 'number' ? quota.remainingToday : 0)
               }
             </span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            {community.settings?.iconUrl && (
-              <img src={community.settings.iconUrl} alt="Currency" className="w-5 h-5" />
-            )}
-            <span className="font-semibold">{balance}</span>
           </div>
         </div>
       </div>
