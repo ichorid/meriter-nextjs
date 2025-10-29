@@ -6,9 +6,9 @@ import { useTranslations } from 'next-intl';
 interface BarVoteUnifiedProps {
     score: number;
     onVoteClick: () => void;
-    onWithdrawClick?: () => void;
     isAuthor: boolean;
     isBeneficiary?: boolean;
+    hasBeneficiary?: boolean; // Whether the object has a beneficiary (different from author)
     commentCount?: number;
     onCommentClick?: () => void;
 }
@@ -16,9 +16,9 @@ interface BarVoteUnifiedProps {
 export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({ 
     score, 
     onVoteClick, 
-    onWithdrawClick,
     isAuthor,
     isBeneficiary = false,
+    hasBeneficiary = false,
     commentCount = 0,
     onCommentClick
 }) => {
@@ -34,14 +34,6 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
         onVoteClick();
     };
 
-    const handleWithdrawClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (isInTelegram) {
-            hapticFeedback.impactOccurred('soft');
-        }
-        onWithdrawClick && onWithdrawClick();
-    };
-
     const handleCommentClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (isInTelegram) {
@@ -50,10 +42,12 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
         onCommentClick && onCommentClick();
     };
 
-    const canWithdraw = isAuthor && score > 0;
+    // Mutual exclusivity: Vote and Withdraw are mutually exclusive
+    // Can vote if: NOT author AND NOT beneficiary
     const canVote = !isAuthor && !isBeneficiary;
-    const showDisabledWithdraw = isAuthor && score <= 0;
-    const showBeneficiaryWithdraw = isBeneficiary;
+    
+    // Cannot show withdraw button here - withdraw should be handled by separate BarWithdraw component
+    // This component only shows vote button when appropriate
 
     return (
         <div className="grid grid-cols-[1fr_140px] gap-4 px-5 py-2.5">
@@ -77,25 +71,6 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
                         onClick={handleVoteClick}
                     >
                         {t('vote')}
-                    </button>
-                )}
-                
-                {canWithdraw && onWithdrawClick && (
-                    <button
-                        className="btn btn-outline btn-success btn-sm"
-                        onClick={handleWithdrawClick}
-                    >
-                        {t('withdraw')}
-                    </button>
-                )}
-                
-                {(showDisabledWithdraw || showBeneficiaryWithdraw) && (
-                    <button
-                        className="btn btn-ghost btn-sm"
-                        disabled
-                        title={score === 0 ? t('noVotesToWithdraw') : undefined}
-                    >
-                        {t('withdraw')}
                     </button>
                 )}
             </div>

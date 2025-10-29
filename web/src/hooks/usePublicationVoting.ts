@@ -1,7 +1,7 @@
 // Publication voting and withdrawal logic
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { useVoteOnPublication, useRemovePublicationVote } from '@/hooks/api/useVotes';
+import { useWithdrawFromPublication } from '@/hooks/api/useVotes';
 
 interface Wallet {
   id: string;
@@ -51,9 +51,8 @@ export function usePublicationVoting({
 }: UsePublicationVotingProps) {
   const t = useTranslations('feed');
   
-  // Mutation hooks
-  const voteOnPublicationMutation = useVoteOnPublication();
-  const removeVoteMutation = useRemovePublicationVote();
+  // Withdraw mutation hook
+  const withdrawMutation = useWithdrawFromPublication();
   
   // State management
   const [optimisticSum, setOptimisticSum] = useState(sum);
@@ -62,8 +61,8 @@ export function usePublicationVoting({
   const [amountInMerits, setAmountInMerits] = useState(0);
   const [withdrawMerits, setWithdrawMerits] = useState(false);
   
-  // Use loading state from mutations
-  const loading = voteOnPublicationMutation.isPending || removeVoteMutation.isPending;
+  // Use loading state from mutation
+  const loading = withdrawMutation.isPending;
   
   // Update optimistic sum when sum changes
   useEffect(() => {
@@ -99,43 +98,38 @@ export function usePublicationVoting({
     ? activeWithdrawPost === postId + ':add' 
     : undefined;
   
-  // Submit withdrawal/vote
+  // Submit withdrawal - now uses withdraw endpoint instead of vote mutations
   const submitWithdrawal = async () => {
     if (!isAuthor) return;
     
-    const changeAmount = amount;
-    const newSum = directionAdd 
-      ? optimisticSum + changeAmount
-      : optimisticSum - changeAmount;
+    // Only handle withdrawal (not adding votes through this flow)
+    if (directionAdd) {
+      // This case (adding votes) should not happen in withdraw flow anymore
+      // If needed, it should use the voting popup instead
+      console.warn('Adding votes through withdraw flow is deprecated. Use voting popup instead.');
+      return;
+    }
     
+    const withdrawAmount = withdrawMerits ? amountInMerits : amount;
+    
+    if (withdrawAmount <= 0) {
+      return;
+    }
+    
+    const newSum = optimisticSum - withdrawAmount;
     setOptimisticSum(newSum);
     
-    const walletChange = directionAdd 
-      ? -changeAmount
-      : changeAmount;
-    
+    // Optimistic wallet update
     if (updateWalletBalance && curr) {
-      updateWalletBalance(curr, walletChange);
+      updateWalletBalance(curr, withdrawAmount);
     }
     
     try {
-      // Use mutation hooks for vote operations
-      if (directionAdd) {
-        // Adding votes - use vote mutation
-        await voteOnPublicationMutation.mutateAsync({
-          publicationId: slug,
-          data: {
-            targetType: 'publication',
-            targetId: slug,
-            amount: withdrawMerits ? amountInMerits : amount,
-            sourceType: withdrawMerits ? 'personal' : 'quota',
-          },
-          communityId: curr,
-        });
-      } else {
-        // Removing votes - use remove vote mutation
-        await removeVoteMutation.mutateAsync(slug);
-      }
+      // Use withdraw mutation
+      await withdrawMutation.mutateAsync({
+        publicationId: slug,
+        amount: withdrawAmount,
+      });
       
       setAmount(0);
       setAmountInMerits(0);
@@ -146,8 +140,9 @@ export function usePublicationVoting({
       console.error("Withdrawal failed:", error);
       setOptimisticSum(sum);
       if (updateWalletBalance && curr) {
-        updateWalletBalance(curr, -walletChange);
+        updateWalletBalance(curr, -withdrawAmount);
       }
+      throw error;
     }
   };
   

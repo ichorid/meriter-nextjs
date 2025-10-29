@@ -9,7 +9,7 @@ import { useUIStore } from "@/stores/ui.store";
 import { classList } from "@lib/classList";
 import { useState, useEffect } from "react";
 import { GLOBAL_FEED_TG_CHAT_ID } from "@config/meriter";
-import { useVoteOnComment, useRemoveCommentVote } from '@/hooks/api/useVotes';
+import { useVoteOnComment, useWithdrawFromComment } from '@/hooks/api/useVotes';
 import { Spinner } from "@shared/components/misc";
 import { FormWithdraw } from "@shared/components/form-withdraw";
 import { useTranslations } from 'next-intl';
@@ -103,18 +103,22 @@ export const Comment: React.FC<CommentProps> = ({
     const hasBeneficiary = toUserTgId && toUserTgId !== effectiveFromUserTgId;
     
     // Withdrawal state management (for author's own comments)
-    // Support both legacy format (sum) and v1 API format (metrics.score or sum from vote transaction)
-    const [optimisticSum, setOptimisticSum] = useState(baseSum);
+    // IMPORTANT: For withdrawal, we only use metrics.score (votes cast ON the comment)
+    // NOT sum from vote transaction data (which is the vote amount, not withdrawable)
+    // Vote transaction comments can't withdraw the vote amount - only votes cast on the comment itself
+    const withdrawableBalance = metrics?.score ?? 0; // Only use metrics.score for withdrawal
+    const [optimisticSum, setOptimisticSum] = useState(withdrawableBalance);
     
     useEffect(() => {
-        // API provides sum for vote transactions, otherwise use metrics.score
-        const currentSum = sum ?? metrics?.score ?? 0;
+        // For withdrawal, only use metrics.score (votes cast on the comment itself)
+        // Don't use sum from vote transaction data
+        const currentSum = metrics?.score ?? 0;
         setOptimisticSum(currentSum);
-    }, [sum, metrics?.score]);
+    }, [metrics?.score]);
     
     // Use effectiveSum which handles both vote transaction data and legacy format
     // This is used throughout the component for wallet calculations and display
-    const effectiveSum = optimisticSum ?? baseSum;
+    const effectiveSum = optimisticSum ?? withdrawableBalance;
     
     const curr = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
     const currentBalance =
@@ -197,67 +201,160 @@ export const Comment: React.FC<CommentProps> = ({
     const [withdrawMerits, setWithdrawMerits] = useState(isMerit);
     // Mutation hooks
     const voteOnCommentMutation = useVoteOnComment();
-    const removeVoteMutation = useRemoveCommentVote();
+    const withdrawMutation = useWithdrawFromComment();
     
     // Use loading state from mutations
-    const loading = voteOnCommentMutation.isPending || removeVoteMutation.isPending;
+    const loading = voteOnCommentMutation.isPending || withdrawMutation.isPending;
     
     const submitWithdrawal = async () => {
         if (!isAuthor) return;
-        const changeAmount = amount;
-        const newSum = directionAdd 
-            ? optimisticSum + changeAmount
-            : optimisticSum - changeAmount;
         
-        setOptimisticSum(newSum);
-        
-        const walletChange = directionAdd 
-            ? -changeAmount
-            : changeAmount;
-        
-        if (updateWalletBalance && curr) {
-            updateWalletBalance(curr, walletChange);
-        }
-        
-        try {
-            // Use mutation hooks for vote operations
-            if (directionAdd) {
-                // Adding votes - use vote mutation
+        if (directionAdd) {
+            // Adding votes - use vote mutation
+            const changeAmount = withdrawMerits ? amountInMerits : amount;
+            const newSum = optimisticSum + changeAmount;
+            
+            setOptimisticSum(newSum);
+            
+            const walletChange = -changeAmount;
+            
+            if (updateWalletBalance && curr) {
+                updateWalletBalance(curr, walletChange);
+            }
+            
+            try {
                 await voteOnCommentMutation.mutateAsync({
                     commentId: _id,
                     data: {
                         targetType: 'comment',
                         targetId: _id,
-                        amount: withdrawMerits ? amountInMerits : amount,
+                        amount: changeAmount,
                         sourceType: withdrawMerits ? 'personal' : 'quota',
                     },
                     communityId: commentCommunityId,
                 });
-            } else {
-                // Removing votes - use remove vote mutation
-                await removeVoteMutation.mutateAsync(_id);
+                
+                setAmount(0);
+                setAmountInMerits(0);
+                
+                if (updateAll) await updateAll();
+            } catch (error) {
+                console.error("Adding votes failed:", error);
+                setOptimisticSum(withdrawableBalance);
+                if (updateWalletBalance && curr) {
+                    updateWalletBalance(curr, -walletChange);
+                }
+            }
+        } else {
+            // Withdrawing votes - use withdraw mutation
+            const withdrawAmount = withdrawMerits ? amountInMerits : amount;
+            
+            if (withdrawAmount <= 0) {
+                return;
             }
             
-            setAmount(0);
-            setAmountInMerits(0);
+            // Check if there's actually a balance to withdraw
+            // Use withdrawableBalance which matches what backend checks (metrics.score)
+            if (withdrawableBalance <= 0) {
+                console.warn("Cannot withdraw: comment has no balance", {
+                    withdrawableBalance,
+                    metricsScore: metrics?.score,
+                    effectiveSum,
+                    baseSum,
+                    sum,
+                });
+                return;
+            }
             
-            if (updateAll) await updateAll();
-        } catch (error) {
-            console.error("Withdrawal failed:", error);
-            setOptimisticSum(sum);
+            const newSum = optimisticSum - withdrawAmount;
+            setOptimisticSum(newSum);
+            
+            // Optimistic wallet update
             if (updateWalletBalance && curr) {
-                updateWalletBalance(curr, -walletChange);
+                updateWalletBalance(curr, withdrawAmount);
+            }
+            
+            try {
+                // Use withdraw mutation
+                await withdrawMutation.mutateAsync({
+                    commentId: _id,
+                    amount: withdrawAmount,
+                });
+                
+                setAmount(0);
+                setAmountInMerits(0);
+                
+                if (updateAll) await updateAll();
+            } catch (error: any) {
+                // Log detailed error information - extract all properties properly
+                let errorMessage = 'Unknown error';
+                let errorCode = 'UNKNOWN';
+                let errorDetails: any = null;
+                
+                // Try to extract error information from various possible structures
+                if (error?.message) {
+                    errorMessage = error.message;
+                } else if (error?.details?.message) {
+                    errorMessage = error.details.message;
+                } else if (error?.details?.data?.message) {
+                    errorMessage = error.details.data.message;
+                } else if (error?.details?.data?.error?.message) {
+                    errorMessage = error.details.data.error.message;
+                } else if (typeof error === 'string') {
+                    errorMessage = error;
+                } else {
+                    // Try to extract from error object properties
+                    try {
+                        errorMessage = JSON.stringify(error, Object.getOwnPropertyNames(error));
+                    } catch {
+                        errorMessage = String(error);
+                    }
+                }
+                
+                if (error?.code) {
+                    errorCode = error.code;
+                } else if (error?.details?.status) {
+                    errorCode = `HTTP_${error.details.status}`;
+                } else if (error?.details?.code) {
+                    errorCode = error.details.code;
+                }
+                
+                if (error?.details) {
+                    errorDetails = error.details;
+                }
+                
+                console.error("Withdrawal failed:", {
+                    message: errorMessage,
+                    code: errorCode,
+                    details: errorDetails,
+                    fullError: error,
+                    errorType: typeof error,
+                    errorKeys: error ? Object.keys(error) : [],
+                });
+                setOptimisticSum(withdrawableBalance);
+                if (updateWalletBalance && curr) {
+                    updateWalletBalance(curr, -withdrawAmount);
+                }
+                
+                // Show user-friendly error message
+                if (errorMessage.includes('No balance available')) {
+                    // This is expected - the comment doesn't have a balance to withdraw
+                    console.warn('Comment has no balance available for withdrawal');
+                }
+                
+                throw error;
             }
         }
     };
     
-    // Use effectiveSum which handles both legacy and v1 API formats
+    // Calculate withdrawal amounts based on withdrawable balance (metrics.score only)
+    // NOT effectiveSum which might include vote transaction data
     const meritsAmount = isAuthor
-        ? Math.floor(10 * (withdrawMerits ? rate * effectiveSum : effectiveSum)) / 10
+        ? Math.floor(10 * (withdrawMerits ? rate * withdrawableBalance : withdrawableBalance)) / 10
         : 0;
     
     const maxWithdrawAmount = isAuthor
-        ? Math.floor(10 * (withdrawMerits ? rate * effectiveSum : effectiveSum)) / 10
+        ? Math.floor(10 * (withdrawMerits ? rate * withdrawableBalance : withdrawableBalance)) / 10
         : 0;
     
     const maxTopUpAmount = isAuthor
@@ -416,7 +513,10 @@ export const Comment: React.FC<CommentProps> = ({
                     }
                 }}
                 bottom={
-                    isAuthor && !hasBeneficiary ? (
+                    // Comments cannot have beneficiaries, so logic is simpler:
+                    // - If author: show withdraw (if balance > 0)
+                    // - If !author: show vote
+                    isAuthor ? (
                         <BarWithdraw
                             balance={meritsAmount}
                             onWithdraw={() => handleSetDirectionAdd(false)}
@@ -453,13 +553,9 @@ export const Comment: React.FC<CommentProps> = ({
                             onVoteClick={() => {
                                 useUIStore.getState().openVotingPopup(_id, 'comment');
                             }}
-                            onWithdrawClick={
-                                ((isAuthor || (toUserTgId && toUserTgId === myId)) && (currentPlus - currentMinus) > 0)
-                                    ? () => handleSetDirectionAdd(false)
-                                    : undefined
-                            }
                             isAuthor={isAuthor}
-                            isBeneficiary={!!(toUserTgId && toUserTgId === myId)}
+                            isBeneficiary={false}
+                            hasBeneficiary={false}
                             commentCount={comments?.length || 0}
                             onCommentClick={() => setShowComments(true)}
                         />

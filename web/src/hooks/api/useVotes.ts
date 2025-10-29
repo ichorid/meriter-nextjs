@@ -445,3 +445,93 @@ export function useVoteOnPublicationWithComment() {
     },
   });
 }
+
+// Withdraw from publication
+export function useWithdrawFromPublication() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  
+  return useMutation({
+    mutationFn: ({ publicationId, amount }: { publicationId: string; amount?: number }) => 
+      votesApiV1.withdrawFromPublication(publicationId, { amount }),
+    onSuccess: (result) => {
+      // Invalidate publications to update vote counts/balance
+      queryClient.invalidateQueries({ queryKey: ['publications'] });
+      
+      // Invalidate wallet queries to update balance
+      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
+      queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
+    },
+    onError: (error) => {
+      console.error('Withdraw from publication error:', error);
+      throw error;
+    },
+  });
+}
+
+// Withdraw from comment
+export function useWithdrawFromComment() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  
+  return useMutation({
+    mutationFn: ({ commentId, amount }: { commentId: string; amount?: number }) => 
+      votesApiV1.withdrawFromComment(commentId, { amount }),
+    onSuccess: (result) => {
+      // Invalidate comments to update vote counts/balance
+      queryClient.invalidateQueries({ queryKey: ['comments'], exact: false });
+      
+      // Invalidate wallet queries to update balance
+      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
+      queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
+    },
+    onError: (error: any) => {
+      // Log detailed error information - extract all properties properly
+      let errorMessage = 'Unknown error';
+      let errorCode = 'UNKNOWN';
+      let errorDetails: any = null;
+      
+      // Try to extract error information from various possible structures
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.details?.message) {
+        errorMessage = error.details.message;
+      } else if (error?.details?.data?.message) {
+        errorMessage = error.details.data.message;
+      } else if (error?.details?.data?.error?.message) {
+        errorMessage = error.details.data.error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else {
+        // Try to extract from error object properties
+        try {
+          errorMessage = JSON.stringify(error, Object.getOwnPropertyNames(error));
+        } catch {
+          errorMessage = String(error);
+        }
+      }
+      
+      if (error?.code) {
+        errorCode = error.code;
+      } else if (error?.details?.status) {
+        errorCode = `HTTP_${error.details.status}`;
+      } else if (error?.details?.code) {
+        errorCode = error.details.code;
+      }
+      
+      if (error?.details) {
+        errorDetails = error.details;
+      }
+      
+      console.error('Withdraw from comment error:', {
+        message: errorMessage,
+        code: errorCode,
+        details: errorDetails,
+        fullError: error,
+        errorType: typeof error,
+        errorKeys: error ? Object.keys(error) : [],
+      });
+      throw error;
+    },
+  });
+}

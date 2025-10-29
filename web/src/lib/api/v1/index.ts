@@ -354,6 +354,22 @@ export const votesApiV1 = {
     const response = await apiClient.post<{ success: true; data: { vote: Vote; comment?: Comment } }>(`/api/v1/publications/${publicationId}/vote-with-comment`, data);
     return response.data;
   },
+
+  async withdrawFromPublication(
+    publicationId: string,
+    data: { amount?: number }
+  ): Promise<{ success: boolean; data: { amount: number; balance: number; message: string } }> {
+    const response = await apiClient.post<{ success: boolean; data: { amount: number; balance: number; message: string }; meta: any }>(`/api/v1/publications/${publicationId}/withdraw`, data);
+    return response;
+  },
+
+  async withdrawFromComment(
+    commentId: string,
+    data: { amount?: number }
+  ): Promise<{ success: boolean; data: { amount: number; balance: number; message: string } }> {
+    const response = await apiClient.post<{ success: boolean; data: { amount: number; balance: number; message: string }; meta: any }>(`/api/v1/comments/${commentId}/withdraw`, data);
+    return response;
+  },
 };
 
 // Polls API

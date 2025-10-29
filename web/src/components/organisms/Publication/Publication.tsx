@@ -364,7 +364,21 @@ export const Publication: React.FC<PublicationProps> = ({
   const commentUnderReply = activeCommentHook[0] && activeCommentHook[0] !== slug && activeCommentHook[0] !== null;
   
   // Check if current user is the beneficiary (but not the author)
-  const isBeneficiary = stateLogic.hasBeneficiary && myId === beneficiaryId && myId !== tgAuthorId;
+  const isBeneficiary = !!(stateLogic.hasBeneficiary && myId === beneficiaryId && myId !== tgAuthorId);
+  
+  // Determine effective beneficiary
+  const effectiveBeneficiary = beneficiaryId || tgAuthorId;
+  const isEffectiveBeneficiary = myId === effectiveBeneficiary;
+  const isAuthor = myId === tgAuthorId;
+  const hasBeneficiary = !!stateLogic.hasBeneficiary;
+  const currentScore = currentPlus - currentMinus;
+  
+  // Mutual exclusivity logic:
+  // Show withdraw if: (isAuthor && !hasBeneficiary) || (isBeneficiary && currentScore > 0)
+  // Show vote if: !isAuthor && !isBeneficiary (or if isAuthor && hasBeneficiary - author can vote for beneficiary)
+  const showWithdraw = (isAuthor && !hasBeneficiary) || (isBeneficiary && currentScore > 0);
+  const showVote = !isAuthor && !isBeneficiary;
+  const showVoteForAuthor = isAuthor && hasBeneficiary; // Author can vote when there's a beneficiary
   
   const withdrawSliderContent = ((stateLogic.isAuthor && !stateLogic.hasBeneficiary) || isBeneficiary) && votingLogic.directionAdd !== undefined && (
     <>
@@ -429,7 +443,7 @@ export const Publication: React.FC<PublicationProps> = ({
         onClick={!isDetailPage ? navigationLogic.navigateToDetail : undefined}
         onDescriptionClick={stateLogic.handleDimensionsClick}
         bottom={
-          isBeneficiary ? (
+          showWithdraw ? (
             <BarWithdraw
               balance={votingLogic.meritsAmount}
               onWithdraw={() => votingLogic.handleSetDirectionAdd(false)}
@@ -460,60 +474,19 @@ export const Publication: React.FC<PublicationProps> = ({
                 </div>
               )}
             </BarWithdraw>
-          ) : stateLogic.isAuthor && stateLogic.hasBeneficiary ? (
+          ) : (showVote || showVoteForAuthor) ? (
             <BarVoteUnified
-              score={currentPlus - currentMinus}
+              score={currentScore}
               onVoteClick={() => {
                 useUIStore.getState().openVotingPopup(slug, 'publication');
               }}
-              isAuthor={stateLogic.isAuthor}
-              isBeneficiary={false}
+              isAuthor={isAuthor}
+              isBeneficiary={isBeneficiary}
+              hasBeneficiary={hasBeneficiary}
               commentCount={!isDetailPage ? comments?.length || 0 : 0}
               onCommentClick={navigationLogic.handleCommentClick}
             />
-          ) : stateLogic.isAuthor ? (
-            <BarWithdraw
-              balance={votingLogic.meritsAmount}
-              onWithdraw={() => votingLogic.handleSetDirectionAdd(false)}
-              onTopup={() => votingLogic.handleSetDirectionAdd(true)}
-            >
-              {stateLogic.showselector && (
-                <div className="select-currency">
-                  <span
-                    className={
-                      !votingLogic.withdrawMerits
-                        ? "clickable bar-withdraw-select"
-                        : "bar-withdraw-select-active"
-                    }
-                    onClick={() => votingLogic.setWithdrawMerits(true)}
-                  >
-                    {t('merits')}{" "}
-                  </span>
-                  <span
-                    className={
-                      votingLogic.withdrawMerits
-                        ? "clickable bar-withdraw-select"
-                        : "bar-withdraw-select-active"
-                    }
-                    onClick={() => votingLogic.setWithdrawMerits(false)}
-                  >
-                    {t('points')}
-                  </span>
-                </div>
-              )}
-            </BarWithdraw>
-          ) : (
-            <BarVoteUnified
-              score={currentPlus - currentMinus}
-              onVoteClick={() => {
-                useUIStore.getState().openVotingPopup(slug, 'publication');
-              }}
-              isAuthor={stateLogic.isAuthor}
-              isBeneficiary={false}
-              commentCount={!isDetailPage ? comments?.length || 0 : 0}
-              onCommentClick={navigationLogic.handleCommentClick}
-            />
-          )
+          ) : null
         }
         showCommunityAvatar={showCommunityAvatar}
         communityAvatarUrl={stateLogic.communityInfo?.avatarUrl}
