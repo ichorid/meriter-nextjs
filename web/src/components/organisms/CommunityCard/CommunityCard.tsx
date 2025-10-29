@@ -1,0 +1,105 @@
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+import { CommunityAvatar } from '@/shared/components/community-avatar';
+import { useCommunity } from '@/hooks/api';
+import { useWallets } from '@/hooks/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
+
+export interface CommunityCardProps {
+  communityId: string;
+  pathname: string | null;
+  isExpanded?: boolean;
+  wallet?: {
+    balance: number;
+    communityId: string;
+  };
+  quota?: {
+    remainingToday: number;
+  };
+}
+
+/**
+ * Community card component that displays community info horizontally
+ * Shows: avatar, title, and balance/quota in emoji: X+Y format
+ */
+export const CommunityCard: React.FC<CommunityCardProps> = ({
+  communityId,
+  pathname,
+  isExpanded = false,
+  wallet,
+  quota,
+}) => {
+  const { data: community } = useCommunity(communityId);
+  const isActive = pathname?.includes(`/communities/${communityId}`);
+
+  if (!community) {
+    return null;
+  }
+
+  // Format balance and quota display
+  const balance = wallet?.balance || 0;
+  const remainingQuota = quota?.remainingToday || 0;
+  const currencyIcon = community.settings?.iconUrl || '💎'; // Default emoji if no icon
+  
+  // Display icon - if it's an emoji, use it directly; if it's a URL, we'd need an img tag
+  // For now, assume iconUrl is either an emoji string or an image URL
+  const displayIcon = currencyIcon.length < 10 ? currencyIcon : '💎'; // Simple heuristic: emojis are short strings
+  
+  const balanceQuotaDisplay = `${displayIcon}: ${balance}+${remainingQuota}`;
+
+  // Expanded version (desktop)
+  if (isExpanded) {
+    return (
+      <Link href={`/meriter/communities/${communityId}`}>
+        <div
+          className={`w-full rounded-lg p-3 flex items-center gap-3 cursor-pointer transition-all ${
+            isActive
+              ? 'bg-primary text-primary-content'
+              : 'bg-base-100 hover:bg-base-200 border border-base-300'
+          }`}
+        >
+          <div className="flex-shrink-0">
+            <CommunityAvatar
+              avatarUrl={community.avatarUrl}
+              communityName={community.name}
+              size={40}
+              needsSetup={community.needsSetup}
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className={`text-sm font-medium truncate ${isActive ? 'text-primary-content' : ''}`}>
+              {community.name}
+            </div>
+            <div className={`text-xs truncate ${isActive ? 'text-primary-content/80' : 'text-base-content/60'}`}>
+              {balanceQuotaDisplay}
+            </div>
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
+  // Collapsed version (tablet - avatar only)
+  return (
+    <Link href={`/meriter/communities/${communityId}`}>
+      <div
+        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+          isActive
+            ? 'ring-2 ring-primary ring-offset-2 ring-offset-base-200'
+            : 'hover:ring-2 hover:ring-base-content/20'
+        }`}
+      >
+        <CommunityAvatar
+          avatarUrl={community.avatarUrl}
+          communityName={community.name}
+          size={48}
+          needsSetup={community.needsSetup}
+        />
+      </div>
+    </Link>
+  );
+};
+

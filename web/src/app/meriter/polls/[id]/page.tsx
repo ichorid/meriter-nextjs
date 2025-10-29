@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
-import Page from '@shared/components/page';
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useRouter } from "next/navigation";
 import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
 import {
@@ -71,13 +71,13 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
         await queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
     };
 
-    const updBalance = () => {
+    const updBalance = async () => {
         // Invalidate balance query to refresh
-        queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
+        await queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
     };
 
     const chatNameVerb = String(poll?.communityId ?? "");
-    const activeCommentHook = useState(null);
+    const activeCommentHook = useState<string | null>(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
@@ -102,7 +102,21 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
     // Handle case when poll is not found
     if (pollError || !poll) {
         return (
-            <Page className="feed">
+            <AdaptiveLayout 
+                className="feed"
+                communityId={chatId || ''}
+                balance={balance}
+                updBalance={updBalance}
+                wallets={wallets}
+                updateWalletBalance={updateWalletBalance}
+                updateAll={updateAll}
+                myId={user?.id}
+                activeCommentHook={activeCommentHook}
+                activeSlider={activeSlider}
+                setActiveSlider={setActiveSlider}
+                activeWithdrawPost={activeWithdrawPost}
+                setActiveWithdrawPost={setActiveWithdrawPost}
+            >
                 <MenuBreadcrumbs
                     chatId={chatId}
                     chatNameVerb={chatNameVerb}
@@ -122,14 +136,28 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
                         </button>
                     </div>
                 </div>
-            </Page>
+            </AdaptiveLayout>
         );
     }
 
     // Show loading state while poll data is being fetched
     if (!poll) {
         return (
-            <Page className="feed">
+            <AdaptiveLayout 
+                className="feed"
+                communityId={chatId || ''}
+                balance={balance}
+                updBalance={updBalance}
+                wallets={wallets}
+                updateWalletBalance={updateWalletBalance}
+                updateAll={updateAll}
+                myId={user?.id}
+                activeCommentHook={activeCommentHook}
+                activeSlider={activeSlider}
+                setActiveSlider={setActiveSlider}
+                activeWithdrawPost={activeWithdrawPost}
+                setActiveWithdrawPost={setActiveWithdrawPost}
+            >
                 <MenuBreadcrumbs
                     chatId={chatId}
                     chatNameVerb={chatNameVerb}
@@ -143,12 +171,26 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
                         <p className="mt-4">Loading poll...</p>
                     </div>
                 </div>
-            </Page>
+            </AdaptiveLayout>
         );
     }
 
     return (
-        <Page className="feed">
+        <AdaptiveLayout 
+            className="feed"
+            communityId={chatId || ''}
+            balance={balance}
+            updBalance={updBalance}
+            wallets={wallets}
+            updateWalletBalance={updateWalletBalance}
+            updateAll={updateAll}
+            myId={user?.id}
+            activeCommentHook={activeCommentHook}
+            activeSlider={activeSlider}
+            setActiveSlider={setActiveSlider}
+            activeWithdrawPost={activeWithdrawPost}
+            setActiveWithdrawPost={setActiveWithdrawPost}
+        >
             <MenuBreadcrumbs
                 chatId={chatId}
                 chatNameVerb={chatNameVerb}
@@ -178,7 +220,7 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     showCommunityAvatar={false}
                 />
             </div>
-        </Page>
+        </AdaptiveLayout>
     );
 };
 

@@ -1,6 +1,7 @@
 'use client';
 
-import Page from '@shared/components/page';
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { useWallets } from '@/hooks/api';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -20,8 +21,12 @@ const SettingsPage = () => {
     // Use centralized auth context
     const { user, isLoading, isAuthenticated } = useAuth();
     const queryClient = useQueryClient();
+    const { data: wallets = [] } = useWallets();
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncMessage, setSyncMessage] = useState('');
+    const activeCommentHook = useState<string | null>(null);
+    const [activeSlider, setActiveSlider] = useState<string | null>(null);
+    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
     // Redirect if not authenticated
     useEffect(() => {
@@ -64,11 +69,11 @@ const SettingsPage = () => {
     // Show loading state while checking authentication
     if (isLoading) {
         return (
-            <Page className="settings">
+            <AdaptiveLayout className="settings">
                 <div className="flex justify-center items-center min-h-[400px]">
                     <div className="loading loading-spinner loading-lg"></div>
                 </div>
-            </Page>
+            </AdaptiveLayout>
         );
     }
 
@@ -80,7 +85,18 @@ const SettingsPage = () => {
     const tgAuthorId = user?.telegramId;
 
     return (
-        <Page className="settings">
+        <AdaptiveLayout 
+            className="settings"
+            activeCommentHook={activeCommentHook}
+            activeSlider={activeSlider}
+            setActiveSlider={setActiveSlider}
+            activeWithdrawPost={activeWithdrawPost}
+            setActiveWithdrawPost={setActiveWithdrawPost}
+            wallets={Array.isArray(wallets) ? wallets : []}
+            updateWalletBalance={() => {}}
+            updateAll={async () => {}}
+            myId={user?.id}
+        >
             <div className="mb-6">
                 <div className="tip">
                     {t('subtitle')}
@@ -152,7 +168,7 @@ const SettingsPage = () => {
                     </div>
                 </div>
             </div>
-        </Page>
+        </AdaptiveLayout>
     );
 };
 

@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState, use } from "react";
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
-import { PageLayout } from '@/components/templates/PageLayout';
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useRouter, useSearchParams } from "next/navigation";
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
 import { FormPollCreate } from "@features/polls";
@@ -235,11 +235,14 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const chatName = comms?.name;
     const chatUrl = comms?.description;
     const chatNameVerb = String(comms?.name ?? "");
-    const activeCommentHook = useState(null);
     
-    // State for withdrawal functionality
-    const [activeWithdrawPost, setActiveWithdrawPost] = useState(null);
+    const queryClient = useQueryClient();
+    
+    // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+    // Declare all state hooks unconditionally at the top level
+    const activeCommentHook = useState<string | null>(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
+    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
     
     // Wallet update function for optimistic updates
     const updateWalletBalance = (currencyId: string, change: number) => {
@@ -252,6 +255,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         setActiveWithdrawPost(null);
     };
 
+    // Early return AFTER all hooks have been called
     if (!isAuthenticated) return null;
 
     const tgAuthorId = user?.id;
@@ -278,8 +282,30 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         })
         : publications;
 
+    const handlePostSelect = (postSlug: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('post', postSlug);
+        router.push(`?${params.toString()}`);
+    };
+
     return (
-        <PageLayout className="feed">
+        <AdaptiveLayout
+            className="feed"
+            communityId={chatId}
+            balance={balance}
+            updBalance={async () => {
+                await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user?.id, chatId] });
+            }}
+            wallets={Array.isArray(wallets) ? wallets : []}
+            updateWalletBalance={updateWalletBalance}
+            updateAll={updateAll}
+            myId={user?.id}
+            activeCommentHook={activeCommentHook}
+            activeSlider={activeSlider}
+            setActiveSlider={setActiveSlider}
+            activeWithdrawPost={activeWithdrawPost}
+            setActiveWithdrawPost={setActiveWithdrawPost}
+        >
             {error === false && (
                 <>
                     <div>
@@ -373,7 +399,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     </div>
                 </BottomPortal>
             )}
-        </PageLayout>
+        </AdaptiveLayout>
     );
 };
 

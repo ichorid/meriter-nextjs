@@ -1,6 +1,8 @@
 'use client';
 
-import Page from '@shared/components/page';
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { useWallets } from '@/hooks/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import TgEmbed from '@shared/components/tgembed';
@@ -141,21 +143,39 @@ const PageCommunityBalance = ({ searchParams }: { searchParams: Promise<{ chatId
     const t = useTranslations('pages');
     const resolvedSearchParams = use(searchParams);
     const chatId = resolvedSearchParams?.chatId;
+    const { user } = useAuth();
+    const { data: wallets = [] } = useWallets();
+    const activeCommentHook = useState<string | null>(null);
+    const [activeSlider, setActiveSlider] = useState<string | null>(null);
+    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
+    
     if (!chatId) return null;
 
     // Dead API calls - these endpoints don't exist: /api/d/meriter/*
     // This page is currently non-functional
     const [myPublications] = useState([]);
-    const [wallets] = useState([]);
     const [rate] = useState(0);
     const updRate = () => {}; // Placeholder for missing function
 
     return (
-        <Page className="balance">
+        <AdaptiveLayout 
+            className="balance"
+            communityId={chatId}
+            activeCommentHook={activeCommentHook}
+            activeSlider={activeSlider}
+            setActiveSlider={setActiveSlider}
+            activeWithdrawPost={activeWithdrawPost}
+            setActiveWithdrawPost={setActiveWithdrawPost}
+            wallets={Array.isArray(wallets) ? wallets : []}
+            updateWalletBalance={() => {}}
+            updateAll={async () => {}}
+            myId={user?.id}
+        >
             <div className="balance-available">
                 <div className="heading">{t('commbalance.availableBalance')}</div>
-                {wallets.map((w) => (
-                    <div>{verb(w)}</div>
+                {/* Note: This page is non-functional - wallet structure doesn't match verb function */}
+                {wallets.map((w: any, i: number) => (
+                    <div key={i}>{w.balance || 0} {w.communityId || 'points'}</div>
                 ))}
 
                 <div className="t">
@@ -181,7 +201,7 @@ const PageCommunityBalance = ({ searchParams }: { searchParams: Promise<{ chatId
                     </div>
                 </div>
             </div>
-        </Page>
+        </AdaptiveLayout>
     );
 };
 

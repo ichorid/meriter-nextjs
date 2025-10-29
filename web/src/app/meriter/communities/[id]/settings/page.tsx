@@ -15,7 +15,8 @@ import { useTranslations } from 'next-intl';
 import { initDataRaw, useSignal, backButton } from '@telegram-apps/sdk-react';
 
 import { DivFade } from '@shared/components/transitions';
-import Page from '@shared/components/page';
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { useWallets } from '@/hooks/api';
 import { Spinner } from '@shared/components/misc';
 import { IconPicker } from '@shared/components/iconpicker';
 import { CardWithAvatar } from '@shared/components/card-with-avatar';
@@ -48,6 +49,10 @@ const CommunitySettingsPage = () => {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
+    const { data: wallets = [] } = useWallets();
+    const activeCommentHook = useState<string | null>(null);
+    const [activeSlider, setActiveSlider] = useState<string | null>(null);
+    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
     const [saveSuccess, setSaveSuccess] = useState('');
     
     // Reset quota state
@@ -286,18 +291,40 @@ const CommunitySettingsPage = () => {
     // Loading state
     if (communityLoading) {
         return (
-            <Page>
+            <AdaptiveLayout 
+                communityId={chatId}
+                activeCommentHook={activeCommentHook}
+                activeSlider={activeSlider}
+                setActiveSlider={setActiveSlider}
+                activeWithdrawPost={activeWithdrawPost}
+                setActiveWithdrawPost={setActiveWithdrawPost}
+                wallets={Array.isArray(wallets) ? wallets : []}
+                updateWalletBalance={() => {}}
+                updateAll={async () => {}}
+                myId={user?.id}
+            >
                 <div className="flex justify-center items-center min-h-[400px]">
                     <Spinner />
                 </div>
-            </Page>
+            </AdaptiveLayout>
         );
     }
 
     // Error state
     if (communityError) {
         return (
-            <Page>
+            <AdaptiveLayout 
+                communityId={chatId}
+                activeCommentHook={activeCommentHook}
+                activeSlider={activeSlider}
+                setActiveSlider={setActiveSlider}
+                activeWithdrawPost={activeWithdrawPost}
+                setActiveWithdrawPost={setActiveWithdrawPost}
+                wallets={Array.isArray(wallets) ? wallets : []}
+                updateWalletBalance={() => {}}
+                updateAll={async () => {}}
+                myId={user?.id}
+            >
                 <div className="text-center py-8">
                     <h2 className="text-xl font-semibold mb-4">{t('communitySettings.error')}</h2>
                     <p className="text-base-content/70 mb-4">{communityError}</p>
@@ -305,7 +332,7 @@ const CommunitySettingsPage = () => {
                         {t('communitySettings.backToCommunities')}
                     </Link>
                 </div>
-            </Page>
+            </AdaptiveLayout>
         );
     }
 
@@ -317,7 +344,18 @@ const CommunitySettingsPage = () => {
     const currentErrors = validateForm();
 
     return (
-        <Page>
+        <AdaptiveLayout 
+            communityId={chatId}
+            activeCommentHook={activeCommentHook}
+            activeSlider={activeSlider}
+            setActiveSlider={setActiveSlider}
+            activeWithdrawPost={activeWithdrawPost}
+            setActiveWithdrawPost={setActiveWithdrawPost}
+            wallets={Array.isArray(wallets) ? wallets : []}
+            updateWalletBalance={() => {}}
+            updateAll={async () => {}}
+            myId={user?.id}
+        >
             <div className="mb-6">
                 <div className="tip mt-2">
                     {t('communitySettings.subtitle', { communityName: communityData?.name || 'this community' })}
@@ -616,7 +654,7 @@ const CommunitySettingsPage = () => {
                     </div>
                 </div>
             </div>
-        </Page>
+        </AdaptiveLayout>
     );
 };
 

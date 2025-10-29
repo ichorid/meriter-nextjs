@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import Page from '@shared/components/page';
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useRouter } from "next/navigation";
 import { Publication } from "@features/feed";
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,12 +61,12 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
         await queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
     };
 
-    const updBalance = () => {
+    const updBalance = async () => {
         // Invalidate balance query to refresh
-        queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
+        await queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
     };
 
-    const activeCommentHook = useState(null);
+    const activeCommentHook = useState<string | null>(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
@@ -81,7 +81,21 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     const tgAuthorId = user?.id;
 
     return (
-        <Page className="feed">
+        <AdaptiveLayout 
+            className="feed"
+            communityId={chatId}
+            balance={balance}
+            updBalance={updBalance}
+            wallets={wallets}
+            updateWalletBalance={updateWalletBalance}
+            updateAll={updateAll}
+            myId={user?.id}
+            activeCommentHook={activeCommentHook}
+            activeSlider={activeSlider}
+            setActiveSlider={setActiveSlider}
+            activeWithdrawPost={activeWithdrawPost}
+            setActiveWithdrawPost={setActiveWithdrawPost}
+        >
             <div className="space-y-4">
                 {publication && publication.content && (
                     <Publication
@@ -106,7 +120,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                     />
                 )}
             </div>
-        </Page>
+        </AdaptiveLayout>
     );
 };
 

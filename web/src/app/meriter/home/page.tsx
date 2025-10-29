@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useTranslations } from 'next-intl';
 import { useRouter } from "next/navigation";
-import { PageLayout } from '@/components/templates/PageLayout';
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
@@ -99,14 +99,13 @@ const PageHome = () => {
         }
     }, [isAuthenticated, userLoading, router]);
 
-
     if (userLoading || !isAuthenticated) {
         return (
-            <PageLayout className="balance">
+            <AdaptiveLayout className="balance">
                 <div className="flex justify-center items-center h-64">
                     <span className="loading loading-spinner loading-lg"></span>
                 </div>
-            </PageLayout>
+            </AdaptiveLayout>
         );
     }
 
@@ -122,7 +121,18 @@ const PageHome = () => {
     };
 
     return (
-        <PageLayout className="balance">
+        <AdaptiveLayout 
+            className="balance"
+            activeCommentHook={activeCommentHook}
+            activeSlider={activeSlider}
+            setActiveSlider={setActiveSlider}
+            activeWithdrawPost={activeWithdrawPost}
+            setActiveWithdrawPost={setActiveWithdrawPost}
+            wallets={Array.isArray(wallets) ? wallets : []}
+            updateWalletBalance={updateWalletBalance}
+            updateAll={updateAll}
+            myId={user?.id}
+        >
             <div className="balance-inpublications">
                 {currentTab === "updates" && (
                     <div className="balance-inpublications-list">
@@ -208,7 +218,7 @@ const PageHome = () => {
                     </div>
                 </BottomPortal>
             )}
-        </PageLayout>
+        </AdaptiveLayout>
     );
 };
 
