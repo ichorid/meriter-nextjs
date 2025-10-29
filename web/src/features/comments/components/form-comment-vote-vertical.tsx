@@ -105,6 +105,43 @@ export const FormCommentVoteVertical = ({
                         value={amount}
                         onChange={(value) => setAmount(typeof value === 'number' ? value : value[0] || 0)}
                         className="rc-slider-vertical"
+                        trackStyle={(() => {
+                            const range = sliderMax - sliderMin;
+                            if (amount > 0) {
+                                // Green for positive (top portion of slider)
+                                // Position of 0: (0 - sliderMin) / range
+                                // Position of amount: (amount - sliderMin) / range
+                                // Track from 0 position to amount position
+                                const zeroPosition = ((0 - sliderMin) / range) * 100;
+                                const amountPosition = ((amount - sliderMin) / range) * 100;
+                                return {
+                                    backgroundColor: '#10b981',
+                                    bottom: `${zeroPosition}%`,
+                                    height: `${amountPosition - zeroPosition}%`
+                                };
+                            } else if (amount < 0) {
+                                // Red for negative (bottom portion of slider)
+                                const zeroPosition = ((0 - sliderMin) / range) * 100;
+                                const amountPosition = ((amount - sliderMin) / range) * 100;
+                                return {
+                                    backgroundColor: '#ef4444',
+                                    top: `${amountPosition}%`,
+                                    height: `${zeroPosition - amountPosition}%`
+                                };
+                            }
+                            return { backgroundColor: 'transparent' };
+                        })()}
+                        railStyle={{ 
+                            // Rail shows red on bottom (negative), green on top (positive)
+                            // For vertical slider: 0% = top, 100% = bottom
+                            // So green at top (0%), red at bottom (100%)
+                            background: 'linear-gradient(to bottom, #10b981 0%, #10b981 35%, #e5e7eb 35%, #e5e7eb 65%, #ef4444 65%, #ef4444 100%)'
+                        }}
+                        handleStyle={{
+                            backgroundColor: amount > 0 ? '#10b981' : amount < 0 ? '#ef4444' : '#6b7280',
+                            borderColor: amount > 0 ? '#10b981' : amount < 0 ? '#ef4444' : '#6b7280',
+                            boxShadow: amount !== 0 ? `0 0 0 3px ${amount > 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}` : 'none',
+                        }}
                     />
                     {/* Center zero indicator for bidirectional sliders */}
                     {!isWithdrawMode && (

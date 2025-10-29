@@ -27,14 +27,8 @@ export class VoteService {
     // Validate vote amount
     const voteAmount = amount > 0 ? VoteAmount.up(amount) : VoteAmount.down(Math.abs(amount));
 
-    // Check if user already voted on this target
-    const existing = await this.voteModel.findOne(
-      { userId, targetType, targetId }
-    ).lean();
-    
-    if (existing) {
-      throw new BadRequestException('Already voted on this content');
-    }
+    // Allow multiple votes on the same content - remove the duplicate check
+    // Users can vote multiple times on the same publication/comment
 
     // Create vote
     const voteArray = await this.voteModel.create([{

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { UpdatesFrequency } from '@shared/components/updates-frequency';
 import { ThemeToggle } from '@shared/components/theme-toggle';
-import { LogoutButton } from '@shared/components/logout-button';
+import { LogoutButton } from '@/components/LogoutButton';
 import { LanguageSelector } from '@shared/components/language-selector';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';

@@ -38,4 +38,5 @@ export const VoteSchema = SchemaFactory.createForClass(Vote);
 // Add indexes for common queries
 VoteSchema.index({ targetType: 1, targetId: 1 });
 VoteSchema.index({ userId: 1, createdAt: -1 });
-VoteSchema.index({ userId: 1, targetType: 1, targetId: 1 }, { unique: true });
+// Removed unique constraint - users can vote multiple times on the same content
+VoteSchema.index({ userId: 1, targetType: 1, targetId: 1 });

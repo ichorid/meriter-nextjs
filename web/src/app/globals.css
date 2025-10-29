@@ -11,12 +11,6 @@
   }
 }
 
-@layer base {
-  body {
-    @apply bg-base-200 text-base-content;
-  }
-}
-
 @layer components {
   .page {
     @apply w-full min-h-screen bg-base-200;
@@ -115,46 +109,34 @@
   .rc-slider-vertical .rc-slider-rail {
     width: 8px;
     height: 100%;
+    /* For vertical slider: 0% = top, 100% = bottom
+       Green at top (positive), red at bottom (negative) */
     background: linear-gradient(to bottom, 
-      theme('colors.error') 0%,
-      theme('colors.error') 35%,
+      theme('colors.success') 0%,
+      theme('colors.success') 35%,
       theme('colors.base-300') 35%,
       theme('colors.base-300') 65%,
-      theme('colors.success') 65%,
-      theme('colors.success') 100%
+      theme('colors.error') 65%,
+      theme('colors.error') 100%
     );
     border-radius: 6px;
   }
 
   [data-theme="dark"] .rc-slider-vertical .rc-slider-rail {
     background: linear-gradient(to bottom, 
-      rgba(248, 113, 113, 0.5) 0%,
-      rgba(248, 113, 113, 0.5) 35%,
+      rgba(74, 222, 128, 0.5) 0%,
+      rgba(74, 222, 128, 0.5) 35%,
       rgba(107, 114, 128, 0.3) 35%,
       rgba(107, 114, 128, 0.3) 65%,
-      rgba(74, 222, 128, 0.5) 65%,
-      rgba(74, 222, 128, 0.5) 100%
+      rgba(248, 113, 113, 0.5) 65%,
+      rgba(248, 113, 113, 0.5) 100%
     );
   }
 
   .rc-slider-vertical .rc-slider-track {
     width: 8px;
-    background: linear-gradient(to bottom, 
-      theme('colors.error') 0%,
-      theme('colors.error') 50%,
-      theme('colors.success') 50%,
-      theme('colors.success') 100%
-    );
+    /* Track color is set via inline styles in component */
     border-radius: 6px;
-  }
-
-  [data-theme="dark"] .rc-slider-vertical .rc-slider-track {
-    background: linear-gradient(to bottom, 
-      theme('colors.error') 0%,
-      theme('colors.error') 50%,
-      theme('colors.success') 50%,
-      theme('colors.success') 100%
-    );
   }
 
   .rc-slider-vertical .rc-slider-handle {

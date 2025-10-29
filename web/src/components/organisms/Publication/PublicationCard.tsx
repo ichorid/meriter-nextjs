@@ -90,7 +90,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
         isVoting={isVoting}
         isCommenting={isCommenting}
         maxPlus={currentBalance}
-        maxMinus={currentBalance}
+        // maxMinus is calculated in PublicationActions using quota data
       />
     </article>
   );

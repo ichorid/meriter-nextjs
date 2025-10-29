@@ -34,27 +34,30 @@ export class WalletsController {
 
   @Get('users/:userId/wallets')
   async getUserWallets(@Param('userId') userId: string, @Req() req: any): Promise<Wallet[]> {
+    // Handle 'me' token for current user
+    const actualUserId = userId === 'me' ? req.user.id : userId;
+    
     // Users can only see their own wallets
-    if (userId !== req.user.id) {
+    if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
     
     // Get all active communities the user is a member of
     const allCommunities = await this.communityModel.find({ isActive: true }).lean();
-    this.logger.log(`Found ${allCommunities.length} active communities for user ${userId}`);
+    this.logger.log(`Found ${allCommunities.length} active communities for user ${actualUserId}`);
     
     // Create wallets for communities where user doesn't have one yet
     const walletPromises = allCommunities.map(async (community) => {
-      let wallet = await this.walletsService.getWallet(userId, community.id);
+      let wallet = await this.walletsService.getWallet(actualUserId, community.id);
       
       if (!wallet) {
         // Create wallet with community currency settings
         wallet = await this.walletsService.createOrGetWallet(
-          userId,
+          actualUserId,
           community.id,
           community.settings?.currencyNames || { singular: 'merit', plural: 'merits', genitive: 'merits' }
         );
-        this.logger.log(`Created wallet for user ${userId} in community ${community.name}`);
+        this.logger.log(`Created wallet for user ${actualUserId} in community ${community.name}`);
       }
       
       return wallet;
@@ -79,13 +82,16 @@ export class WalletsController {
     @Param('communityId') communityId: string,
     @Req() req: any,
   ): Promise<Wallet> {
+    // Handle 'me' token for current user
+    const actualUserId = userId === 'me' ? req.user.id : userId;
+    
     // Users can only see their own wallets
-    if (userId !== req.user.id) {
+    if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
-    const wallet = await this.walletsService.getUserWallet(userId, communityId);
+    const wallet = await this.walletsService.getUserWallet(actualUserId, communityId);
     if (!wallet) {
-      throw new NotFoundError('Wallet', `${userId}-${communityId}`);
+      throw new NotFoundError('Wallet', `${actualUserId}-${communityId}`);
     }
     const snapshot = wallet.toSnapshot();
     return {
@@ -102,13 +108,16 @@ export class WalletsController {
     @Query() query: any,
     @Req() req: any,
   ) {
+    // Handle 'me' token for current user
+    const actualUserId = userId === 'me' ? req.user.id : userId;
+    
     // Users can only see their own transactions
-    if (userId !== req.user.id) {
+    if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
-    const result = await this.walletsService.getUserTransactions(userId, 'all', pagination.limit, skip);
+    const result = await this.walletsService.getUserTransactions(actualUserId, 'all', pagination.limit, skip);
     return { data: result, total: result.length, skip, limit: pagination.limit };
   }
 
@@ -118,8 +127,11 @@ export class WalletsController {
     @Query('communityId') communityId: string,
     @Req() req: any,
   ) {
+    // Handle 'me' token for current user
+    const actualUserId = userId === 'me' ? req.user.id : userId;
+    
     // Users can only see their own quota
-    if (userId !== req.user.id) {
+    if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
     
@@ -154,21 +166,27 @@ export class WalletsController {
 
     // Query votes with sourceType='quota' for this user in this community today
     // Note: The schema uses 'quota' but some old data might have 'daily_quota'
+    // Use absolute value of amount - both upvotes and downvotes consume quota
     const usedToday = await this.mongoose.db
       .collection('votes')
       .aggregate([
         {
           $match: {
-            userId,
+            userId: actualUserId,
             communityId: community.id,
             sourceType: { $in: ['quota', 'daily_quota'] },
             createdAt: { $gte: today, $lt: tomorrow }
           }
         },
         {
+          $project: {
+            absAmount: { $abs: '$amount' }
+          }
+        },
+        {
           $group: {
             _id: null,
-            total: { $sum: '$amount' }
+            total: { $sum: '$absAmount' }
           }
         }
       ])
@@ -191,8 +209,11 @@ export class WalletsController {
     @Body() body: { amount: number; memo?: string },
     @Req() req: any,
   ) {
+    // Handle 'me' token for current user
+    const actualUserId = userId === 'me' ? req.user.id : userId;
+    
     // Users can only withdraw from their own wallets
-    if (userId !== req.user.id) {
+    if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
     // Withdraw functionality not implemented yet
@@ -206,8 +227,11 @@ export class WalletsController {
     @Body() body: { toUserId: string; amount: number; description?: string },
     @Req() req: any,
   ) {
+    // Handle 'me' token for current user
+    const actualUserId = userId === 'me' ? req.user.id : userId;
+    
     // Users can only transfer from their own wallets
-    if (userId !== req.user.id) {
+    if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
     // Transfer functionality not implemented yet

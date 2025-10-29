@@ -65,6 +65,21 @@ export class CommentService {
     // Save using Mongoose directly
     await this.commentModel.create(comment.toSnapshot());
 
+    // If comment is on a publication, update the publication's commentCount
+    if (dto.targetType === 'publication') {
+      const publication = await this.publicationModel.findOne({ id: dto.targetId }).lean();
+      if (publication) {
+        // Update publication metrics to increment comment count
+        const { Publication } = await import('../aggregates/publication/publication.entity');
+        const pub = Publication.fromSnapshot(publication as any);
+        pub.addComment();
+        await this.publicationModel.updateOne(
+          { id: dto.targetId },
+          { $set: pub.toSnapshot() }
+        );
+      }
+    }
+
     // Publish domain event
     await this.eventBus.publish(
       new CommentAddedEvent(comment.getId, dto.targetId, userId)

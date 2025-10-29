@@ -43,17 +43,33 @@ export class VotesController {
     
     const communityId = publication.getCommunityId.getValue();
     
-    // Create vote with optional comment (atomic operation)
-    const result = await this.voteService.createVoteFromDto(req.user.id, {
-      targetType: 'publication',
-      targetId: id,
-      amount: createDto.amount,
-      communityId,
-    });
+    // Determine sourceType - use 'quota' if not specified, otherwise use provided value
+    // For quota votes, the frontend should pass sourceType: 'quota'
+    const sourceType = createDto.sourceType || 'personal';
+    
+    // Create vote
+    const vote = await this.voteService.createVote(
+      req.user.id,
+      'publication',
+      id,
+      createDto.amount,
+      sourceType as 'personal' | 'quota',
+      communityId
+    );
+    
+    // Update publication metrics to reflect the vote immediately
+    const direction: 'up' | 'down' = createDto.amount > 0 ? 'up' : 'down';
+    await this.publicationService.voteOnPublication(id, req.user.id, Math.abs(createDto.amount), direction);
+    
+    // Note: If there's an attached comment, the comment count was already incremented
+    // in CommentService.createComment when the comment was created
+    
+    // Get updated wallet/balance info
+    const { WalletsController } = await import('../wallets/wallets.controller');
     
     return {
       data: {
-        vote: result,
+        vote,
       },
       meta: {
         timestamp: new Date().toISOString(),

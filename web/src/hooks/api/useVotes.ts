@@ -2,6 +2,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { votesApiV1 } from '@/lib/api/v1';
 import type { CreateVoteRequest } from '@/types/api-v1';
+import { walletKeys } from './useWallet';
 
 // Vote on publication
 export function useVoteOnPublication() {
@@ -15,15 +16,21 @@ export function useVoteOnPublication() {
       queryClient.invalidateQueries({ queryKey: ['publications'] });
       
       // Invalidate wallet queries to update balance
-      queryClient.invalidateQueries({ queryKey: ['wallets'] });
+      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
+      queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
+      
+      // Invalidate quota queries to update remaining quota (for quota votes)
+      queryClient.invalidateQueries({ queryKey: ['user-quota'] });
       
       // If a comment was created, invalidate comments
       if (result.comment) {
         queryClient.invalidateQueries({ queryKey: ['comments'] });
       }
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Vote on publication error:', error);
+      // Re-throw to allow component to handle
+      throw error;
     },
   });
 }

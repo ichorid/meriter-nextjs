@@ -134,6 +134,9 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
           />
         </div>
       )}
+      
+      {/* Bottom Widget Area - for BottomPortal to render forms */}
+      <div className="bottom-widget-area fixed inset-0 z-50 pointer-events-none touch-none" />
     </div>
   );
 };
