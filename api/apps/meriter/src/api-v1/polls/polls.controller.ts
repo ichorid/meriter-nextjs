@@ -12,6 +12,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PollService } from '../../domain/services/poll.service';
+import { PollVoteService } from '../../domain/services/poll-vote.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
@@ -22,7 +23,10 @@ import { Poll, CreatePollDto, CreatePollVoteDto } from '../../../../../../libs/s
 export class PollsController {
   private readonly logger = new Logger(PollsController.name);
 
-  constructor(private readonly pollsService: PollService) {}
+  constructor(
+    private readonly pollsService: PollService,
+    private readonly pollVoteService: PollVoteService,
+  ) {}
 
   @Get()
   async getPolls(@Query() query: any) {
@@ -45,8 +49,8 @@ export class PollsController {
       communityId: snapshot.communityId,
       question: snapshot.question,
       description: snapshot.description,
-      options: snapshot.options.map((opt, index) => ({
-        id: opt.id || `${snapshot.id}-${index}`,
+      options: snapshot.options.map((opt) => ({
+        id: opt.id,
         text: opt.text,
         votes: opt.votes,
         amount: opt.amount || 0,
@@ -68,12 +72,10 @@ export class PollsController {
     @Req() req: any,
   ) {
     // Transform API CreatePollDto to domain CreatePollDto
-    const { uid } = require('uid');
     const domainDto = {
       ...createDto,
-      options: createDto.options.map(opt => ({ id: opt.id || uid(), text: opt.text })),
       expiresAt: new Date(createDto.expiresAt),
-    };
+    } as any;
     
     const poll = await this.pollsService.createPoll(req.user.id, domainDto);
     const snapshot = poll.toSnapshot();
@@ -85,8 +87,8 @@ export class PollsController {
       communityId: snapshot.communityId,
       question: snapshot.question,
       description: snapshot.description,
-      options: snapshot.options.map((opt, index) => ({
-        id: opt.id || `${snapshot.id}-${index}`,
+      options: snapshot.options.map((opt) => ({
+        id: opt.id,
         text: opt.text,
         votes: opt.votes,
         amount: opt.amount || 0,
@@ -133,8 +135,22 @@ export class PollsController {
     @Body() createDto: CreatePollVoteDto,
     @Req() req: any,
   ) {
-    const result = await this.pollsService.voteOnPoll(id, req.user.id, createDto.optionId, createDto.amount);
-    return { success: true, data: result };
+    const poll = await this.pollsService.getPoll(id);
+    if (!poll) {
+      throw new NotFoundError('Poll', id);
+    }
+    
+    const snapshot = poll.toSnapshot();
+    const vote = await this.pollVoteService.createVote(
+      id,
+      req.user.id,
+      createDto.optionId,
+      createDto.amount,
+      (createDto as any).sourceType || 'personal',
+      snapshot.communityId
+    );
+    
+    return { success: true, data: vote };
   }
 
   @Get(':id/results')
@@ -162,6 +178,39 @@ export class PollsController {
       pagination.limit,
       skip
     );
-    return { data: result, total: result.length, skip, limit: pagination.limit };
+    
+    // Transform domain Polls to API Poll format
+    const apiPolls: Poll[] = result.map(poll => {
+      const snapshot = poll.toSnapshot();
+      return {
+        id: snapshot.id,
+        authorId: snapshot.authorId,
+        communityId: snapshot.communityId,
+        question: snapshot.question,
+        description: snapshot.description,
+        options: snapshot.options.map((opt) => ({
+          id: opt.id,
+          text: opt.text,
+          votes: opt.votes,
+          amount: opt.amount || 0,
+          voterCount: opt.voterCount,
+        })),
+        metrics: snapshot.metrics,
+        expiresAt: snapshot.expiresAt.toISOString(),
+        isActive: snapshot.isActive,
+        createdAt: snapshot.createdAt.toISOString(),
+        updatedAt: snapshot.updatedAt.toISOString(),
+      };
+    });
+    
+    return { 
+      success: true, 
+      data: { 
+        data: apiPolls, 
+        total: result.length, 
+        skip, 
+        limit: pagination.limit 
+      } 
+    };
   }
 }

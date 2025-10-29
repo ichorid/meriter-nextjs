@@ -8,10 +8,12 @@ import { PublicationCardComponent as PublicationCard } from "@/components/organi
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useTranslations } from 'next-intl';
-import { useWallets, useUserProfile, useCommunity, useInfinitePublicationsByCommunity } from '@/hooks/api';
+import { useWallets, useUserProfile, useCommunity } from '@/hooks/api';
+import { useCommunityFeed } from '@/hooks/api/useCommunityFeed';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { routes } from '@/lib/constants/routes';
+import { queryKeys } from '@/lib/constants/queryKeys';
 
 interface Publication {
   id: string;
@@ -83,10 +85,10 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         hasNextPage,
         isFetchingNextPage,
         error: err
-    } = useInfinitePublicationsByCommunity(chatId, {
+    } = useCommunityFeed(chatId, {
         pageSize: 5,
-        sort: 'score',
-        order: 'desc'
+        sort: sortBy === 'recent' ? 'recent' : 'score',
+        tag: selectedTag || undefined,
     });
 
     // Derive paginationEnd from hasNextPage instead of setting it in getNextPageParam
@@ -101,21 +103,10 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         return (data?.pages ?? [])
             .flatMap((page: any) => {
                 // The API returns PaginatedResponse which has a 'data' property with the array
-                // But apiClient.get may return { success: true, data: PaginatedResponse }
-                // So we need to handle both cases
                 if (page?.data && Array.isArray(page.data)) {
                     return page.data;
                 }
-                // If page is already an array (shouldn't happen, but handle it)
-                if (Array.isArray(page)) {
-                    return page;
-                }
-                // If page.data.data exists (double wrapped)
-                if (page?.data?.data && Array.isArray(page.data.data)) {
-                    return page.data.data;
-                }
                 // Fallback: empty array
-                console.warn('Unexpected page structure:', page);
                 return [];
             })
             .map((p: any) => ({
@@ -125,6 +116,8 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 beneficiaryName: p.meta?.beneficiary?.name,
                 beneficiaryPhotoUrl: p.meta?.beneficiary?.photoUrl,
                 beneficiaryUsername: p.meta?.beneficiary?.username,
+                // Ensure type is set for polls
+                type: p.type || 'text',
             }))
             .filter((p: Publication, index: number, self: Publication[]) => 
                 index === self.findIndex((t: Publication) => t?.id === p?.id)
@@ -338,7 +331,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
             <div className="space-y-4">
                 {isAuthenticated &&
-                    sortItems(filteredPublications)
+                    filteredPublications
                         .filter((p) => p?.content || p?.type === 'poll')
                         .map((p) => {
                             // Console logging for debugging
@@ -385,15 +378,24 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             </div>
             {showPollCreate && (
                 <BottomPortal>
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-5 overflow-y-auto">
-                        <FormPollCreate
-                            communityId={chatId}
-                            onSuccess={(pollId) => {
-                                handlePollClose();
-                                window.location.reload();
-                            }}
-                            onCancel={handlePollClose}
-                        />
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-5 overflow-y-auto pointer-events-auto">
+                        <div className="pointer-events-auto">
+                            <FormPollCreate
+                                communityId={chatId}
+                                onSuccess={(pollId) => {
+                                    handlePollClose();
+                                    // Invalidate feed query to refresh data
+                                    queryClient.invalidateQueries({ 
+                                        queryKey: queryKeys.communities.feed(chatId, {
+                                            pageSize: 5,
+                                            sort: sortBy === 'recent' ? 'recent' : 'score',
+                                            tag: selectedTag || undefined,
+                                        })
+                                    });
+                                }}
+                                onCancel={handlePollClose}
+                            />
+                        </div>
                     </div>
                 </BottomPortal>
             )}

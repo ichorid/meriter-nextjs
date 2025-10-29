@@ -205,16 +205,19 @@ const PageHome = () => {
                         justifyContent: "center",
                         zIndex: 9999,
                         padding: "20px",
-                        overflowY: "auto"
+                        overflowY: "auto",
+                        pointerEvents: "auto"
                     }}>
-                        <FormPollCreate
-                            wallets={Array.isArray(wallets) ? wallets : []}
-                            onSuccess={(pollId) => {
-                                setShowPollCreate(false);
-                                updateAll();
-                            }}
-                            onCancel={() => setShowPollCreate(false)}
-                        />
+                        <div className="pointer-events-auto">
+                            <FormPollCreate
+                                wallets={Array.isArray(wallets) ? wallets : []}
+                                onSuccess={(pollId) => {
+                                    setShowPollCreate(false);
+                                    updateAll();
+                                }}
+                                onCancel={() => setShowPollCreate(false)}
+                            />
+                        </div>
                     </div>
                 </BottomPortal>
             )}

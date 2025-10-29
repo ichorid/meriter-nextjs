@@ -19,6 +19,7 @@ import { PollVoteRepository } from './domain/models/poll/poll-vote.repository';
 import { PublicationService } from './domain/services/publication.service';
 import { CommentService } from './domain/services/comment.service';
 import { PollService } from './domain/services/poll.service';
+import { CommunityFeedService } from './domain/services/community-feed.service';
 import { WalletService } from './domain/services/wallet.service';
 import { VoteService } from './domain/services/vote.service';
 import { PollVoteService } from './domain/services/poll-vote.service';
@@ -51,6 +52,7 @@ import { EventBus } from './domain/events/event-bus';
     PublicationService,
     CommentService,
     PollService,
+    CommunityFeedService,
     WalletService,
     VoteService,
     PollVoteService,
@@ -68,6 +70,7 @@ import { EventBus } from './domain/events/event-bus';
     PublicationService,
     CommentService,
     PollService,
+    CommunityFeedService,
     WalletService,
     VoteService,
     PollVoteService,

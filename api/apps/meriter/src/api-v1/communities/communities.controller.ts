@@ -14,6 +14,7 @@ import {
 import { CommunityService } from '../../domain/services/community.service';
 import { PublicationService } from '../../domain/services/publication.service';
 import { UserService } from '../../domain/services/user.service';
+import { CommunityFeedService } from '../../domain/services/community-feed.service';
 import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
@@ -29,6 +30,7 @@ export class CommunitiesController {
     private readonly communityService: CommunityService,
     private readonly publicationService: PublicationService,
     private readonly userService: UserService,
+    private readonly communityFeedService: CommunityFeedService,
     private readonly tgBotsService: TgBotsService,
   ) {}
 
@@ -335,6 +337,38 @@ export class CommunitiesController {
     });
 
     return PaginationHelper.createResult(mappedPublications, mappedPublications.length, pagination);
+  }
+
+  @Get(':id/feed')
+  async getCommunityFeed(
+    @Param('id') id: string,
+    @Query() query: any,
+    @Req() req: any,
+  ) {
+    const pagination = PaginationHelper.parseOptions(query);
+    const sort = query.sort === 'recent' ? 'recent' : 'score';
+    const tag = query.tag;
+
+    const result = await this.communityFeedService.getCommunityFeed(id, {
+      page: pagination.page,
+      pageSize: pagination.limit,
+      sort,
+      tag,
+    });
+
+    return {
+      success: true,
+      data: result.data,
+      meta: {
+        pagination: {
+          page: result.pagination.page,
+          pageSize: result.pagination.pageSize,
+          total: result.pagination.total,
+          hasNext: result.pagination.hasMore,
+          hasPrev: result.pagination.page > 1,
+        },
+      },
+    };
   }
 
 }

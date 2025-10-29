@@ -67,13 +67,35 @@ export class PublicationService {
     return doc ? Publication.fromSnapshot(doc as IPublicationDocument) : null;
   }
 
-  async getPublicationsByCommunity(communityId: string, limit: number = 20, skip: number = 0): Promise<Publication[]> {
+  async getPublicationsByCommunity(
+    communityId: string, 
+    limit: number = 20, 
+    skip: number = 0,
+    sortBy?: 'createdAt' | 'score',
+    hashtag?: string
+  ): Promise<Publication[]> {
+    // Build query
+    const query: any = { communityId };
+    
+    // Apply hashtag filter if provided
+    if (hashtag) {
+      query.hashtags = hashtag;
+    }
+    
+    // Build sort object
+    const sort: any = {};
+    if (sortBy === 'score') {
+      sort['metrics.score'] = -1;
+    } else {
+      sort.createdAt = -1;
+    }
+    
     // Direct Mongoose query - no repository wrapper needed
     const docs = await this.publicationModel
-      .find({ communityId })
+      .find(query)
       .limit(limit)
       .skip(skip)
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .lean();
     
     return docs.map(doc => Publication.fromSnapshot(doc as IPublicationDocument));

@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { A } from "@shared/components/simple/simple-elements";
 import { useTranslations } from 'next-intl';
-import { initDataRaw, useSignal, hapticFeedback, mainButton, backButton } from '@telegram-apps/sdk-react';
+import { initDataRaw, useSignal, mainButton, backButton } from '@telegram-apps/sdk-react';
 import { pollsApiV1 } from '@/lib/api/v1';
+import { safeHapticFeedback } from '@/shared/lib/utils/haptic-utils';
+import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 
 interface IPollOption {
     id: string;
@@ -99,7 +101,7 @@ export const FormPollCreate = ({
 
     const handleCreate = useCallback(async () => {
         if (!validate()) {
-            hapticFeedback.notificationOccurred('error');
+            safeHapticFeedback('error', isInTelegram);
             return;
         }
 
@@ -153,13 +155,13 @@ export const FormPollCreate = ({
 
             console.log('📊 Poll creation response:', poll);
 
-            hapticFeedback.notificationOccurred('success');
+            safeHapticFeedback('success', isInTelegram);
             onSuccess && onSuccess(poll.id);
         } catch (err: unknown) {
             console.error('📊 Poll creation error:', err);
-            const errorMessage = err instanceof Error ? (err as any).response?.data?.message || err.message : t('errorCreating');
+            const errorMessage = extractErrorMessage(err, t('errorCreating'));
             setError(errorMessage);
-            hapticFeedback.notificationOccurred('error');
+            safeHapticFeedback('error', isInTelegram);
         } finally {
             setIsCreating(false);
             if (isInTelegram && isMountedRef.current) {

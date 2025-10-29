@@ -7,6 +7,9 @@ import { PublicationHeader } from './PublicationHeader';
 import { PublicationContent } from './PublicationContent';
 import { PublicationActions } from './PublicationActions';
 import { usePublication } from '@/hooks/usePublication';
+import { PollVoting } from '@features/polls/components/poll-voting';
+import { usePollCardData } from '@/hooks/usePollCardData';
+import { useWalletBalance } from '@/hooks/api/useWallet';
 
 // Local type definitions
 interface IPublication {
@@ -57,6 +60,16 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   const router = useRouter();
   const searchParams = useSearchParams();
   
+  // Check if this is a poll
+  const isPoll = publication.type === 'poll';
+  
+  // For polls, fetch poll-specific data
+  const { pollData, userVote, userVoteSummary } = usePollCardData(isPoll ? publication.id : undefined);
+  
+  // Get wallet balance for polls
+  const { data: pollBalance = 0 } = useWalletBalance(isPoll ? publication.communityId : '');
+  
+  // For publications, use the publication hook
   const {
     activeCommentHook,
     activeSlider,
@@ -69,7 +82,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
     isVoting,
     isCommenting,
   } = usePublication({
-    publication,
+    publication: isPoll ? { ...publication, type: 'text' } : publication, // Temporarily set type to avoid errors
     wallets,
     updateWalletBalance,
     updateAll,
@@ -98,6 +111,36 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
     }
   };
 
+  // Render poll card
+  if (isPoll && pollData) {
+    return (
+      <article 
+        className={`card bg-base-100 shadow-md rounded-lg p-6 ${className}`}
+      >
+        <PublicationHeader
+          publication={publication}
+          showCommunityAvatar={showCommunityAvatar}
+          className="mb-4"
+        />
+        
+        <PollVoting
+          pollData={pollData}
+          pollId={publication.id}
+          userVote={userVote}
+          userVoteSummary={userVoteSummary}
+          balance={pollBalance}
+          onVoteSuccess={() => {
+            if (updateAll) updateAll();
+          }}
+          updateWalletBalance={updateWalletBalance}
+          communityId={publication.communityId}
+          initiallyExpanded={false}
+        />
+      </article>
+    );
+  }
+
+  // Render publication card
   return (
     <article 
       className={`card bg-base-100 shadow-md rounded-lg p-6 cursor-pointer hover:shadow-lg transition-shadow ${className}`}

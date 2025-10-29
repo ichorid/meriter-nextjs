@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { IPollData, IPollVote, IPollUserVoteSummary } from "../types";
 import { useTranslations } from 'next-intl';
 import { pollsApiV1 } from '@/lib/api/v1';
+import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 
 interface IPollVotingProps {
     pollData: IPollData;
@@ -85,7 +86,7 @@ export const PollVoting = ({
 
             onVoteSuccess && onVoteSuccess();
         } catch (err: unknown) {
-            const errorMessage = err instanceof Error ? (err as any)?.response?.data?.message || err.message : t('voteError');
+            const errorMessage = extractErrorMessage(err, t('voteError'));
             setError(errorMessage);
             // Revert optimistic update on error
             if (updateWalletBalance && communityId) {

@@ -186,6 +186,7 @@ export const CreatePollVoteDtoSchema = z.object({
   pollId: z.string(),
   optionId: z.string(), // Changed from optionIndex to optionId
   amount: z.number().int().min(1),
+  sourceType: z.enum(['personal', 'quota']).default('personal'),
 });
 
 export const TransferDtoSchema = z.object({
@@ -255,6 +256,54 @@ export const FilterParamsSchema = z.object({
 
 export const ListQueryParamsSchema = PaginationParamsSchema.merge(SortParamsSchema).merge(FilterParamsSchema);
 
+// Feed Item Schema - Unified type for publications and polls
+export const FeedItemMetaSchema = z.object({
+  author: z.object({
+    name: z.string(),
+    username: z.string().optional(),
+    photoUrl: z.string().url().optional(),
+  }),
+  beneficiary: z.object({
+    name: z.string(),
+    username: z.string().optional(),
+    photoUrl: z.string().url().optional(),
+  }).optional(),
+  origin: z.object({
+    telegramChatName: z.string().optional(),
+  }).optional(),
+});
+
+export const PublicationFeedItemSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
+  type: z.literal('publication'),
+  communityId: z.string(),
+  authorId: z.string(),
+  beneficiaryId: z.string().optional(),
+  content: z.string().min(1),
+  slug: z.string().optional(),
+  hashtags: z.array(z.string()).default([]),
+  metrics: PublicationMetricsSchema,
+  meta: FeedItemMetaSchema,
+});
+
+export const PollFeedItemSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
+  type: z.literal('poll'),
+  communityId: z.string(),
+  authorId: z.string(),
+  question: z.string().min(1),
+  description: z.string().optional(),
+  slug: z.string().optional(),
+  options: z.array(PollOptionSchema).min(2),
+  expiresAt: z.string().datetime(),
+  isActive: z.boolean(),
+  metrics: PollMetricsSchema,
+  meta: FeedItemMetaSchema,
+});
+
+export const FeedItemSchema = z.discriminatedUnion('type', [
+  PublicationFeedItemSchema,
+  PollFeedItemSchema,
+]);
+
 // Export types
 export type User = z.infer<typeof UserSchema>;
 export type Community = z.infer<typeof CommunitySchema>;
@@ -282,3 +331,6 @@ export type PaginationParams = z.infer<typeof PaginationParamsSchema>;
 export type SortParams = z.infer<typeof SortParamsSchema>;
 export type FilterParams = z.infer<typeof FilterParamsSchema>;
 export type ListQueryParams = z.infer<typeof ListQueryParamsSchema>;
+export type FeedItem = z.infer<typeof FeedItemSchema>;
+export type PublicationFeedItem = z.infer<typeof PublicationFeedItemSchema>;
+export type PollFeedItem = z.infer<typeof PollFeedItemSchema>;

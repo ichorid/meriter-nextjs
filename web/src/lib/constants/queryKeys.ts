@@ -49,6 +49,8 @@ export const queryKeys = {
     list: (params: Record<string, any>) => [...queryKeys.communities.lists(), serializeQueryParams(params)] as const,
     details: () => [...queryKeys.communities.all, 'detail'] as const,
     detail: (id: string) => [...queryKeys.communities.details(), id] as const,
+    feed: (communityId: string, params: { pageSize?: number; sort?: string; tag?: string } = {}) => 
+      [...queryKeys.communities.detail(communityId), 'feed', serializeQueryParams(params)] as const,
   },
 
   // Polls

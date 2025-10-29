@@ -210,6 +210,47 @@ export const communitiesApiV1 = {
     const response = await apiClient.get<{ success: true; data: PaginatedResponse<LeaderboardEntry> }>(`/api/v1/communities/${id}/leaderboard`, { params });
     return response.data;
   },
+
+  async getCommunityFeed(
+    id: string, 
+    params: { 
+      page?: number; 
+      pageSize?: number; 
+      sort?: 'recent' | 'score'; 
+      tag?: string;
+    } = {}
+  ): Promise<PaginatedResponse<any>> {
+    const queryParams: any = {};
+    if (params.page !== undefined) queryParams.page = params.page;
+    if (params.pageSize !== undefined) queryParams.pageSize = params.pageSize;
+    if (params.sort) queryParams.sort = params.sort;
+    if (params.tag) queryParams.tag = params.tag;
+    
+    const response = await apiClient.get<{ 
+      success: true; 
+      data: any[]; 
+      meta: { pagination: { page: number; pageSize: number; total: number; hasNext: boolean; hasPrev: boolean } } 
+    }>(`/api/v1/communities/${id}/feed`, { params: queryParams });
+    
+    return {
+      data: response.data,
+      total: response.meta.pagination.total,
+      skip: (response.meta.pagination.page - 1) * response.meta.pagination.pageSize,
+      limit: response.meta.pagination.pageSize,
+      meta: {
+        pagination: {
+          page: response.meta.pagination.page,
+          pageSize: response.meta.pagination.pageSize,
+          total: response.meta.pagination.total,
+          totalPages: Math.ceil(response.meta.pagination.total / response.meta.pagination.pageSize),
+          hasNext: response.meta.pagination.hasNext,
+          hasPrev: response.meta.pagination.hasPrev,
+        },
+        timestamp: new Date().toISOString(),
+        requestId: '',
+      },
+    };
+  },
 };
 
 // Publications API with Zod validation and query parameter transformations
@@ -414,26 +455,37 @@ export const votesApiV1 = {
   },
 };
 
+/**
+ * Unwraps API response ensuring type safety
+ * Throws error if response structure is invalid
+ */
+function unwrapApiResponse<T>(response: { success: true; data: T }): T {
+  if (!response || !response.success || response.data === undefined) {
+    throw new Error('Invalid API response structure');
+  }
+  return response.data;
+}
+
 // Polls API
 export const pollsApiV1 = {
   async getPolls(params: { skip?: number; limit?: number; communityId?: string } = {}): Promise<PaginatedResponse<Poll>> {
     const response = await apiClient.get<{ success: true; data: PaginatedResponse<Poll> }>('/api/v1/polls', { params });
-    return response.data;
+    return unwrapApiResponse(response);
   },
 
   async getPoll(id: string): Promise<Poll> {
     const response = await apiClient.get<{ success: true; data: Poll }>(`/api/v1/polls/${id}`);
-    return response.data;
+    return unwrapApiResponse(response);
   },
 
   async createPoll(data: CreatePollDto): Promise<Poll> {
     const response = await apiClient.post<{ success: true; data: Poll }>('/api/v1/polls', data);
-    return response.data;
+    return unwrapApiResponse(response);
   },
 
   async updatePoll(id: string, data: Partial<CreatePollDto>): Promise<Poll> {
     const response = await apiClient.put<{ success: true; data: Poll }>(`/api/v1/polls/${id}`, data);
-    return response.data;
+    return unwrapApiResponse(response);
   },
 
   async deletePoll(id: string): Promise<void> {
@@ -442,17 +494,17 @@ export const pollsApiV1 = {
 
   async voteOnPoll(pollId: string, data: CreatePollVoteDto): Promise<PollVote> {
     const response = await apiClient.post<{ success: true; data: PollVote }>(`/api/v1/polls/${pollId}/votes`, data);
-    return response.data;
+    return unwrapApiResponse(response);
   },
 
   async getPollResults(pollId: string): Promise<any> {
     const response = await apiClient.get<{ success: true; data: any }>(`/api/v1/polls/${pollId}/results`);
-    return response.data;
+    return unwrapApiResponse(response);
   },
 
   async getMyPollVotes(pollId: string): Promise<any> {
     const response = await apiClient.get<{ success: true; data: any }>(`/api/v1/polls/${pollId}/my-votes`);
-    return response.data;
+    return unwrapApiResponse(response);
   },
 };
 

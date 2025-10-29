@@ -6,14 +6,7 @@ import { Poll as PollSchema, PollDocument } from '../models/poll/poll.schema';
 import { PollVoteRepository } from '../models/poll/poll-vote.repository';
 import { PollCreatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
-
-export interface CreatePollDto {
-  communityId: string;
-  question: string;
-  description?: string;
-  options: Array<{ id: string; text: string }>;
-  expiresAt: Date;
-}
+import { CreatePollDto } from '../../../../../../libs/shared-types/dist/index';
 
 @Injectable()
 export class PollService {
@@ -30,24 +23,19 @@ export class PollService {
     this.logger.log(`Creating poll: user=${userId}, community=${dto.communityId}`);
 
     // Validate expiration is in the future
-    if (dto.expiresAt <= new Date()) {
+    const expiresAt = dto.expiresAt instanceof Date ? dto.expiresAt : new Date(dto.expiresAt);
+    if (expiresAt <= new Date()) {
       throw new BadRequestException('Poll expiration must be in the future');
     }
 
-    // Create poll aggregate with option IDs
-    const { uid } = require('uid');
-    const pollOptions = dto.options.map(opt => ({
-      id: opt.id || uid(),
-      text: opt.text,
-    }));
-    
+    // Create poll aggregate - entity will handle ID generation if needed
     const poll = Poll.create(
       userId,
       dto.communityId,
       dto.question,
       dto.description,
-      pollOptions,
-      dto.expiresAt
+      dto.options,
+      expiresAt
     );
 
     // Save using Mongoose directly
@@ -67,12 +55,25 @@ export class PollService {
     return doc ? Poll.fromSnapshot(doc as any) : null;
   }
 
-  async getPollsByCommunity(communityId: string, limit: number = 20, skip: number = 0): Promise<Poll[]> {
+  async getPollsByCommunity(
+    communityId: string, 
+    limit: number = 20, 
+    skip: number = 0,
+    sortBy?: 'createdAt' | 'score'
+  ): Promise<Poll[]> {
+    // Build sort object
+    const sort: any = {};
+    if (sortBy === 'score') {
+      sort['metrics.totalAmount'] = -1; // Use totalAmount as score for polls
+    } else {
+      sort.createdAt = -1;
+    }
+    
     const docs = await this.pollModel
       .find({ communityId, isActive: true })
       .limit(limit)
       .skip(skip)
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .lean();
     
     return docs.map(doc => Poll.fromSnapshot(doc as any));
@@ -117,23 +118,5 @@ export class PollService {
     }
     
     return poll;
-  }
-
-  async voteOnPoll(
-    pollId: string,
-    userId: string,
-    optionId: string,
-    amount: number,
-  ): Promise<any> {
-    // This is a simplified implementation
-    // In reality, you'd create a poll vote document
-    return {
-      id: 'vote-' + Date.now(),
-      pollId,
-      userId,
-      optionId,
-      amount,
-      createdAt: new Date(),
-    };
   }
 }

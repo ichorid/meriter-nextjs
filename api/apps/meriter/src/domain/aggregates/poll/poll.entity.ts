@@ -94,7 +94,7 @@ export class Poll {
     communityId: string,
     question: string,
     description: string | undefined,
-    options: Array<{ id: string; text: string }>,
+    options: Array<{ id?: string; text: string }>,
     expiresAt: Date
   ): Poll {
     if (options.length < 2) {
@@ -103,7 +103,10 @@ export class Poll {
     
     const { uid } = require('uid');
     
-    const pollOptions = options.map(opt => PollOption.create(opt.id, opt.text, 0, 0, 0));
+    // Generate IDs for options that don't have them
+    const pollOptions = options.map(opt => 
+      PollOption.create(opt.id || uid(), opt.text, 0, 0, 0)
+    );
     
     return new Poll(
       uid(),
