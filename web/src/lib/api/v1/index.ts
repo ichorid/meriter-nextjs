@@ -117,8 +117,19 @@ export const usersApiV1 = {
 
   async getUserQuota(userId: string, communityId?: string): Promise<{ dailyQuota: number; usedToday: number; remainingToday: number; resetAt: string }> {
     const params = communityId ? { communityId } : {};
-    const response = await apiClient.get(`/api/v1/users/${userId}/quota`, { params });
-    return response;
+    const response = await apiClient.get<{ success: boolean; data: { dailyQuota: number; usedToday: number; remainingToday: number; resetAt: string }; meta?: any }>(`/api/v1/users/${userId}/quota`, { params });
+    console.log('[usersApiV1.getUserQuota] Raw API response:', {
+      userId,
+      communityId,
+      params,
+      response,
+      responseData: response?.data,
+      remainingToday: response?.data?.remainingToday,
+      dailyQuota: response?.data?.dailyQuota,
+      usedToday: response?.data?.usedToday,
+    });
+    // Extract data from wrapped response
+    return response?.data || response;
   },
 };
 
@@ -187,8 +198,8 @@ export const publicationsApiV1 = {
     if (params.userId) queryParams.append('authorId', params.userId); // Transform userId to authorId
     if (params.tag) queryParams.append('hashtag', params.tag); // Transform tag to hashtag
 
-    const response = await apiClient.get(`/api/v1/publications?${queryParams.toString()}`);
-    return response;
+    const response = await apiClient.get<{ success: true; data: Publication[] }>(`/api/v1/publications?${queryParams.toString()}`);
+    return response.data;
   },
 
   async getMyPublications(params: { skip?: number; limit?: number } = {}): Promise<Publication[]> {
@@ -197,8 +208,8 @@ export const publicationsApiV1 = {
     if (params.skip) queryParams.append('page', (Math.floor(params.skip / (params.limit || 10)) + 1).toString());
     if (params.limit) queryParams.append('pageSize', params.limit.toString());
 
-    const response = await apiClient.get(`/api/v1/publications/my?${queryParams.toString()}`);
-    return response;
+    const response = await apiClient.get<{ success: true; data: Publication[] }>(`/api/v1/publications/my?${queryParams.toString()}`);
+    return response.data;
   },
 
   async getPublicationsByCommunity(
@@ -212,23 +223,23 @@ export const publicationsApiV1 = {
     if (params.sort) queryParams.append('sort', params.sort);
     if (params.order) queryParams.append('order', params.order);
 
-    const response = await apiClient.get(`/api/v1/publications?communityId=${communityId}&${queryParams.toString()}`);
-    return response;
+    const response = await apiClient.get<{ success: true; data: Publication[] }>(`/api/v1/publications?communityId=${communityId}&${queryParams.toString()}`);
+    return response.data;
   },
 
   async getPublication(id: string): Promise<Publication> {
-    const response = await apiClient.get(`/api/v1/publications/${id}`);
-    return response;
+    const response = await apiClient.get<{ success: true; data: Publication }>(`/api/v1/publications/${id}`);
+    return response.data;
   },
 
   async createPublication(data: CreatePublicationDto): Promise<Publication> {
-    const response = await apiClient.post('/api/v1/publications', data);
-    return response;
+    const response = await apiClient.post<{ success: true; data: Publication }>('/api/v1/publications', data);
+    return response.data;
   },
 
   async updatePublication(id: string, data: Partial<CreatePublicationDto>): Promise<Publication> {
-    const response = await apiClient.put(`/api/v1/publications/${id}`, data);
-    return response;
+    const response = await apiClient.put<{ success: true; data: Publication }>(`/api/v1/publications/${id}`, data);
+    return response.data;
   },
 
   async deletePublication(id: string): Promise<{ success: boolean }> {
@@ -311,16 +322,16 @@ export const votesApiV1 = {
     publicationId: string,
     params: { page?: number; pageSize?: number } = {}
   ): Promise<{ data: Vote[] }> {
-    const response = await apiClient.get(`/api/v1/publications/${publicationId}/votes`, { params });
-    return response;
+    const response = await apiClient.get<{ success: true; data: { data: Vote[] } }>(`/api/v1/publications/${publicationId}/votes`, { params });
+    return response.data;
   },
 
   async getCommentVotes(
     commentId: string,
     params: { page?: number; pageSize?: number } = {}
   ): Promise<{ data: Vote[] }> {
-    const response = await apiClient.get(`/api/v1/comments/${commentId}/votes`, { params });
-    return response;
+    const response = await apiClient.get<{ success: true; data: { data: Vote[] } }>(`/api/v1/comments/${commentId}/votes`, { params });
+    return response.data;
   },
 
   async removePublicationVote(publicationId: string): Promise<void> {
@@ -332,8 +343,8 @@ export const votesApiV1 = {
   },
 
   async getVoteDetails(voteId: string): Promise<{ vote: Vote; comment?: Comment }> {
-    const response = await apiClient.get<{ vote: Vote; comment?: Comment }>(`/api/v1/votes/${voteId}/details`);
-    return response;
+    const response = await apiClient.get<{ success: true; data: { vote: Vote; comment?: Comment } }>(`/api/v1/votes/${voteId}/details`);
+    return response.data;
   },
 };
 
@@ -382,13 +393,13 @@ export const pollsApiV1 = {
 // Wallet API with missing functionality
 export const walletApiV1 = {
   async getWallets(): Promise<Wallet[]> {
-    const response = await apiClient.get<Wallet[]>('/api/v1/users/me/wallets');
-    return response;
+    const response = await apiClient.get<{ success: true; data: Wallet[] }>('/api/v1/users/me/wallets');
+    return response.data;
   },
 
   async getBalance(communityId: string): Promise<number> {
-    const response = await apiClient.get<Wallet>(`/api/v1/users/me/wallets/${communityId}`);
-    return response.balance;
+    const response = await apiClient.get<{ success: true; data: Wallet }>(`/api/v1/users/me/wallets/${communityId}`);
+    return response.data.balance;
   },
 
   async getTransactions(params: { 
@@ -397,15 +408,15 @@ export const walletApiV1 = {
     positive?: boolean;
     userId?: string;
   } = {}): Promise<PaginatedResponse<Transaction>> {
-    const response = await apiClient.get<PaginatedResponse<Transaction>>('/api/v1/users/me/transactions', { params });
-    return response;
+    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Transaction> }>('/api/v1/users/me/transactions', { params });
+    return response.data;
   },
 
   async getTransactionUpdates(): Promise<Transaction[]> {
-    const response = await apiClient.get<PaginatedResponse<Transaction>>('/api/v1/users/me/transactions', { 
+    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Transaction> }>('/api/v1/users/me/transactions', { 
       params: { updates: true } 
     });
-    return response.data;
+    return response.data.data || response.data;
   },
 
   async getAllTransactions(params: { 
@@ -414,23 +425,23 @@ export const walletApiV1 = {
     userId?: string;
     communityId?: string;
   } = {}): Promise<PaginatedResponse<Transaction>> {
-    const response = await apiClient.get<PaginatedResponse<Transaction>>('/api/v1/users/me/transactions', { params });
-    return response;
+    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Transaction> }>('/api/v1/users/me/transactions', { params });
+    return response.data;
   },
 
   async withdraw(communityId: string, data: { amount: number; memo?: string }): Promise<Transaction> {
-    const response = await apiClient.post<Transaction>(`/api/v1/users/me/wallets/${communityId}/withdraw`, data);
-    return response;
+    const response = await apiClient.post<{ success: true; data: Transaction }>(`/api/v1/users/me/wallets/${communityId}/withdraw`, data);
+    return response.data;
   },
 
   async transfer(communityId: string, data: { toUserId: string; amount: number; description?: string }): Promise<Transaction> {
-    const response = await apiClient.post<Transaction>(`/api/v1/users/me/wallets/${communityId}/transfer`, data);
-    return response;
+    const response = await apiClient.post<{ success: true; data: Transaction }>(`/api/v1/users/me/wallets/${communityId}/transfer`, data);
+    return response.data;
   },
 
   async getFreeBalance(communityId: string): Promise<number> {
-    const response = await apiClient.get<number>(`/api/v1/users/me/quota?communityId=${communityId}`);
-    return response;
+    const response = await apiClient.get<{ success: true; data: number }>(`/api/v1/users/me/quota?communityId=${communityId}`);
+    return response.data;
   },
 };
 
@@ -439,8 +450,8 @@ export const communitiesApiV1Enhanced = {
   ...communitiesApiV1,
   
   async syncCommunities(): Promise<{ message: string; syncedCount: number }> {
-    const response = await apiClient.post<{ message: string; syncedCount: number }>('/api/v1/communities/sync');
-    return response;
+    const response = await apiClient.post<{ success: true; data: { message: string; syncedCount: number } }>('/api/v1/communities/sync');
+    return response.data;
   },
 };
 

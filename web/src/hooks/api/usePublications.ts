@@ -53,7 +53,7 @@ export function usePublications(params: ListQueryParams = {}) {
 export function useMyPublications(params: { skip?: number; limit?: number } = {}) {
   return useQuery({
     queryKey: queryKeys.publications.myPublications(params),
-    queryFn: () => publicationsApiV1.getPublications({ skip: params.skip, limit: params.limit }),
+    queryFn: () => publicationsApiV1.getMyPublications({ skip: params.skip, limit: params.limit }),
   });
 }
 

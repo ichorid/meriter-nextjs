@@ -21,9 +21,21 @@ export const WithTelegramEntities = ({
     }[];
     children: string;
 }) => {
-    const messageText = children;
+    // Ensure messageText is a string
+    let messageText: string;
+    if (typeof children === 'string') {
+        messageText = children;
+    } else if (typeof children === 'number') {
+        messageText = String(children);
+    } else if (children === null || children === undefined) {
+        return null;
+    } else {
+        // If it's something else (object, etc.), try to stringify or return empty
+        console.warn('[WithTelegramEntities] Expected string but got:', typeof children, children);
+        messageText = String(children || '');
+    }
     
-    // Handle undefined or null messageText
+    // Handle empty messageText
     if (!messageText) {
         return null;
     }

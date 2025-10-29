@@ -72,6 +72,12 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
             const wallet = wallets.find((w: any) => w.communityId === communityId);
             const quota = quotasMap.get(communityId);
             
+            console.log(`[VerticalSidebar] Community ${communityId}:`, {
+              quota,
+              quotaFromMap: quotasMap.get(communityId),
+              remainingToday: quota?.remainingToday,
+            });
+            
             return (
               <CommunityCard
                 key={communityId}
@@ -79,7 +85,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 pathname={pathname}
                 isExpanded={isExpanded}
                 wallet={wallet ? { balance: wallet.balance || 0, communityId } : undefined}
-                quota={quota ? { remainingToday: quota.remainingToday } : undefined}
+                quota={quota && typeof quota.remainingToday === 'number' ? { remainingToday: quota.remainingToday } : undefined}
               />
             );
           })}

@@ -208,14 +208,30 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
   const balance = wallet?.balance || 0;
 
   // Get free vote quota
-  const { data: quota } = useQuery({
+  const { data: quota, error: quotaError } = useQuery({
     queryKey: ['user-quota', user?.id, community?.id],
-    queryFn: () => {
+    queryFn: async () => {
       if (!user?.id || !community?.id) return { dailyQuota: 0, usedToday: 0, remainingToday: 0, resetAt: '' };
-      return usersApiV1.getUserQuota(user.id, community.id);
+      const quotaData = await usersApiV1.getUserQuota(user.id, community.id);
+      console.log('[ContextTopBar] Raw quotaData from API:', quotaData);
+      // Ensure we have the expected structure
+      const normalizedQuota = {
+        dailyQuota: quotaData?.dailyQuota ?? 0,
+        usedToday: quotaData?.usedToday ?? 0,
+        remainingToday: quotaData?.remainingToday ?? 0,
+        resetAt: quotaData?.resetAt ?? '',
+      };
+      console.log('[ContextTopBar] Normalized quota:', normalizedQuota);
+      return normalizedQuota;
     },
     enabled: !!user?.id && !!community?.id,
+    retry: false, // Don't retry on quota errors
   });
+
+  // Debug log quota value
+  React.useEffect(() => {
+    console.log('[ContextTopBar] Quota state:', { quota, quotaError, remainingToday: quota?.remainingToday });
+  }, [quota, quotaError]);
 
   // Get sortBy from URL params
   const sortBy = searchParams.get('sort') || 'recent';
@@ -345,7 +361,12 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
           {/* Balance and Quota */}
           <div className="flex items-center gap-2 text-sm">
             <span className="opacity-60">Quota:</span>
-            <span className="font-semibold">{quota?.remainingToday ?? 0}</span>
+            <span className="font-semibold">
+              {quotaError 
+                ? '-' 
+                : (quota && typeof quota.remainingToday === 'number' ? quota.remainingToday : 0)
+              }
+            </span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             {community.settings?.iconUrl && (

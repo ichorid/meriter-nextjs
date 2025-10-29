@@ -133,7 +133,18 @@ export class WalletsController {
       throw new NotFoundError('Community', communityId);
     }
 
-    const dailyQuota = community.settings?.dailyEmission || 10;
+    // Hard check that settings exist and dailyEmission is configured
+    if (!community.settings) {
+      this.logger.warn(`Community ${communityId} missing settings`);
+      throw new BadRequestException('Community settings are not configured. Please complete community setup.');
+    }
+
+    if (typeof community.settings.dailyEmission !== 'number' || community.settings.dailyEmission == null) {
+      this.logger.warn(`Community ${communityId} missing dailyEmission:`, community.settings.dailyEmission);
+      throw new BadRequestException('Daily emission quota is not configured. Please complete community setup.');
+    }
+
+    const dailyQuota = community.settings.dailyEmission;
 
     // Calculate today's date range (00:00:00 to 23:59:59)
     const today = new Date();

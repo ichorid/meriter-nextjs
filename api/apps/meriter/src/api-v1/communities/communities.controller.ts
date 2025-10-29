@@ -66,17 +66,21 @@ export class CommunitiesController {
     const hasNoSingular = !community.settings?.currencyNames?.singular;
     const hasNoPlural = !community.settings?.currencyNames?.plural;
     const hasNoGenitive = !community.settings?.currencyNames?.genitive;
+    const hasNoDailyEmission = typeof community.settings?.dailyEmission !== 'number' || 
+                                community.settings?.dailyEmission == null;
     
-    const needsSetup = hasNoHashtags || hasNoSingular || hasNoPlural || hasNoGenitive;
+    const needsSetup = hasNoHashtags || hasNoSingular || hasNoPlural || hasNoGenitive || hasNoDailyEmission;
     
     this.logger.log(`Community ${id} setup check:`, {
       hasNoHashtags,
       hasNoSingular,
       hasNoPlural,
       hasNoGenitive,
+      hasNoDailyEmission,
       needsSetup,
       hashtags: community.hashtags,
       currencyNames: community.settings?.currencyNames,
+      dailyEmission: community.settings?.dailyEmission,
       iconUrl: community.settings?.iconUrl
     });
     
@@ -100,8 +104,10 @@ export class CommunitiesController {
     const hasNoSingular = !community.settings?.currencyNames?.singular;
     const hasNoPlural = !community.settings?.currencyNames?.plural;
     const hasNoGenitive = !community.settings?.currencyNames?.genitive;
+    const hasNoDailyEmission = typeof community.settings?.dailyEmission !== 'number' || 
+                                community.settings?.dailyEmission == null;
     
-    const needsSetup = hasNoHashtags || hasNoSingular || hasNoPlural || hasNoGenitive;
+    const needsSetup = hasNoHashtags || hasNoSingular || hasNoPlural || hasNoGenitive || hasNoDailyEmission;
     
     return {
       ...community,
@@ -132,17 +138,21 @@ export class CommunitiesController {
     const hasNoSingular = !community.settings?.currencyNames?.singular;
     const hasNoPlural = !community.settings?.currencyNames?.plural;
     const hasNoGenitive = !community.settings?.currencyNames?.genitive;
+    const hasNoDailyEmission = typeof community.settings?.dailyEmission !== 'number' || 
+                                community.settings?.dailyEmission == null;
     
-    const needsSetup = hasNoHashtags || hasNoSingular || hasNoPlural || hasNoGenitive;
+    const needsSetup = hasNoHashtags || hasNoSingular || hasNoPlural || hasNoGenitive || hasNoDailyEmission;
     
     this.logger.log(`Community ${id} setup check after update:`, {
       hasNoHashtags,
       hasNoSingular,
       hasNoPlural,
       hasNoGenitive,
+      hasNoDailyEmission,
       needsSetup,
       hashtags: community.hashtags,
       currencyNames: community.settings?.currencyNames,
+      dailyEmission: community.settings?.dailyEmission,
       iconUrl: community.settings?.iconUrl
     });
     

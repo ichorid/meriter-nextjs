@@ -67,11 +67,17 @@ export const useComments = (
         queryKey: ['quota', user?.id, communityId],
         queryFn: async () => {
             if (!user?.id || !communityId) return { plus: 0, minus: 0 };
-            const quota = await usersApiV1.getUserQuota(user.id, communityId);
-            return { plus: quota?.remainingToday || 0, minus: 0 }; // Use remainingToday from quota object
+            try {
+                const quota = await usersApiV1.getUserQuota(user.id, communityId);
+                return { plus: quota?.remainingToday || 0, minus: 0 }; // Use remainingToday from quota object
+            } catch (error) {
+                // Quota not configured - return 0
+                return { plus: 0, minus: 0 };
+            }
         },
         refetchOnWindowFocus: false,
         enabled: !!communityId, // Only fetch when communityId is available
+        retry: false, // Don't retry on quota errors
     });
 
     const currentPlus = round(

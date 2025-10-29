@@ -34,7 +34,11 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
       <WithTelegramEntities
         entities={publication.meta?.commentTgEntities || []}
       >
-        {publication.meta?.comment || publication.content || ''}
+        {typeof publication.meta?.comment === 'string' 
+          ? publication.meta.comment 
+          : typeof publication.content === 'string' 
+            ? publication.content 
+            : ''}
       </WithTelegramEntities>
     </div>
   );

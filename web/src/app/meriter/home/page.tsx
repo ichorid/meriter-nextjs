@@ -164,9 +164,9 @@ const PageHome = () => {
                                         });
                                         return passes;
                                     })
-                                    .map((p) => (
+                                    .map((p, index) => (
                                         <PublicationCard
-                                            key={p.id}
+                                            key={p?.id || `pub-${index}-${p?.slug || p?.createdAt || Date.now()}`}
                                             publication={p}
                                             wallets={Array.isArray(wallets) ? wallets : []}
                                             showCommunityAvatar={true}

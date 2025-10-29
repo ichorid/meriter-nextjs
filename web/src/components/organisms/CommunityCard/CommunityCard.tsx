@@ -35,13 +35,24 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const { data: community } = useCommunity(communityId);
   const isActive = pathname?.includes(`/communities/${communityId}`);
 
-  if (!community) {
-    return null;
-  }
-
   // Format balance and quota display
   const balance = wallet?.balance || 0;
   const remainingQuota = quota?.remainingToday || 0;
+  
+  // Debug log quota prop - MUST be called before any early returns (Rules of Hooks)
+  React.useEffect(() => {
+    if (community) {
+      console.log(`[CommunityCard] ${communityId} quota prop:`, {
+        quota,
+        remainingToday: quota?.remainingToday,
+        finalDisplayValue: remainingQuota,
+      });
+    }
+  }, [communityId, quota, remainingQuota, community]);
+
+  if (!community) {
+    return null;
+  }
   
   // Get currency icon from community settings (stored as data URL or image URL)
   const currencyIconUrl = community.settings?.iconUrl;
