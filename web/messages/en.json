@@ -210,8 +210,8 @@
     "other": "Other",
     "unconfigured": {
       "banner": {
-        "admin": "This community is unconfigured. Click to configure",
-        "user": "This community is unconfigured. Community admin will configure it soon"
+        "admin": "This community has not been setup",
+        "user": "This community will be setup by your admin soon"
       },
       "tooltip": "Community is unconfigured"
     }

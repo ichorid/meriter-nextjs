@@ -13,6 +13,7 @@ import { useWallets, useUserProfile, useCommunity } from '@/hooks/api';
 import { usersApiV1 } from '@/lib/api/v1';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Wallet } from '@/types/api-v1';
+import { routes } from '@/lib/constants/routes';
 
 interface Publication {
   id: string;
@@ -56,6 +57,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const t = useTranslations('pages');
+    const tCommunities = useTranslations('communities');
     const resolvedParams = use(params);
     const chatId = resolvedParams.id;
     const pathname = `/meriter/communities/${chatId}`;
@@ -296,6 +298,29 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 </>
             )}
             {error === true && <div>{t('communities.noAccess')}</div>}
+
+            {/* Setup banner */}
+            {comms?.needsSetup && (
+                <div 
+                    className={comms?.isAdmin ? "alert alert-warning cursor-pointer" : "alert alert-info"}
+                    onClick={comms?.isAdmin ? () => router.push(routes.communitySettings(chatId)) : undefined}
+                    role={comms?.isAdmin ? "button" : undefined}
+                    tabIndex={comms?.isAdmin ? 0 : undefined}
+                    onKeyDown={comms?.isAdmin ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            router.push(routes.communitySettings(chatId));
+                        }
+                    } : undefined}
+                >
+                    <span>
+                        {comms?.isAdmin 
+                            ? tCommunities('unconfigured.banner.admin')
+                            : tCommunities('unconfigured.banner.user')
+                        }
+                    </span>
+                </div>
+            )}
 
             <div className="space-y-4">
                 {isAuthenticated &&
