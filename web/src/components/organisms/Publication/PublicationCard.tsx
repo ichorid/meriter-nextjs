@@ -2,6 +2,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { PublicationHeader } from './PublicationHeader';
 import { PublicationContent } from './PublicationContent';
 import { PublicationActions } from './PublicationActions';
@@ -41,6 +42,7 @@ interface PublicationCardProps {
   updateAll?: () => void;
   showCommunityAvatar?: boolean;
   className?: string;
+  isSelected?: boolean;
 }
 
 export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
@@ -50,7 +52,11 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   updateAll,
   showCommunityAvatar = false,
   className = '',
+  isSelected = false,
 }) => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const {
     activeCommentHook,
     activeSlider,
@@ -69,8 +75,34 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
     updateAll,
   });
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't navigate if clicking on interactive elements (buttons, links, etc.)
+    // Note: PublicationActions already uses stopPropagation on its buttons,
+    // but we check here as an additional safeguard
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('a') ||
+      target.closest('[class*="clickable"]') ||
+      target.closest('[class*="btn"]')
+    ) {
+      return;
+    }
+
+    // Only navigate if we have a slug or id
+    const postSlug = publication.slug || publication.id;
+    if (postSlug) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('post', postSlug);
+      router.push(`?${params.toString()}`);
+    }
+  };
+
   return (
-    <article className={`card bg-base-100 shadow-md rounded-lg p-6 ${className}`}>
+    <article 
+      className={`card bg-base-100 shadow-md rounded-lg p-6 cursor-pointer hover:shadow-lg transition-shadow ${className}`}
+      onClick={handleCardClick}
+    >
       <PublicationHeader
         publication={publication}
         showCommunityAvatar={showCommunityAvatar}

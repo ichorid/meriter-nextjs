@@ -1,12 +1,24 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 
+export type VotingTargetType = 'publication' | 'comment' | null;
+
+interface VotingFormData {
+  comment: string;
+  delta: number;
+  error: string;
+}
+
 interface UIState {
   activeModal: string | null;
   activeSidebar: string | null;
   activeWithdrawPost: string | null;
   activeSlider: string | null;
   activeTab: string | null;
+  // Voting popup state - non-persistent
+  activeVotingTarget: string | null;
+  votingTargetType: VotingTargetType;
+  activeVotingFormData: VotingFormData | null;
 }
 
 interface UIActions {
@@ -18,6 +30,10 @@ interface UIActions {
   setActiveSlider: (id: string | null) => void;
   setActiveTab: (tab: string | null) => void;
   resetUI: () => void;
+  // Voting popup actions
+  openVotingPopup: (targetId: string, targetType: VotingTargetType) => void;
+  closeVotingPopup: () => void;
+  updateVotingFormData: (data: Partial<VotingFormData>) => void;
 }
 
 const initialState: UIState = {
@@ -26,6 +42,9 @@ const initialState: UIState = {
   activeWithdrawPost: null,
   activeSlider: null,
   activeTab: null,
+  activeVotingTarget: null,
+  votingTargetType: null,
+  activeVotingFormData: null,
 };
 
 export const useUIStore = create<UIState & UIActions>()(
@@ -42,8 +61,32 @@ export const useUIStore = create<UIState & UIActions>()(
         setActiveSlider: (id) => set({ activeSlider: id }),
         setActiveTab: (tab) => set({ activeTab: tab }),
         resetUI: () => set(initialState),
+        openVotingPopup: (targetId, targetType) => set({ 
+          activeVotingTarget: targetId,
+          votingTargetType: targetType,
+          activeVotingFormData: { comment: '', delta: 0, error: '' }
+        }),
+        closeVotingPopup: () => set({ 
+          activeVotingTarget: null,
+          votingTargetType: null,
+          activeVotingFormData: null
+        }),
+        updateVotingFormData: (data) => set((state) => ({
+          activeVotingFormData: state.activeVotingFormData
+            ? { ...state.activeVotingFormData, ...data }
+            : { comment: '', delta: 0, error: '', ...data }
+        })),
       }),
-      { name: 'meriter-ui' }
+      { 
+        name: 'meriter-ui',
+        // Exclude voting popup state from persistence to prevent auto-show on page load
+        partialize: (state) => ({
+          activeModal: state.activeModal,
+          activeSidebar: state.activeSidebar,
+          activeTab: state.activeTab,
+          // Don't persist activeSlider, activeWithdrawPost, or voting popup state
+        }),
+      }
     ),
     { name: 'UIStore' }
   )

@@ -14,8 +14,7 @@ import { BarVoteUnified } from "@shared/components/bar-vote-unified";
 import { BarWithdraw } from "@shared/components/bar-withdraw";
 import { WithTelegramEntities } from "@shared/components/withTelegramEntities";
 import { FormDimensionsEditor } from "@shared/components/form-dimensions-editor";
-import { BottomPortal } from "@shared/components/bottom-portal";
-import { FormComment } from "@features/comments/components/form-comment";
+import { useUIStore } from "@/stores/ui.store";
 import { classList } from "@lib/classList";
 import { Comment } from "@features/comments/components/comment";
 import { PollVoting } from "@features/polls/components/poll-voting";
@@ -556,8 +555,7 @@ export const Publication = ({
                         <BarVoteUnified
                             score={currentPlus - currentMinus}
                             onVoteClick={() => {
-                                showPlus();
-                                setActiveSlider && setActiveSlider(postId);
+                                useUIStore.getState().openVotingPopup(postId, 'publication');
                             }}
                             isAuthor={isAuthor}
                             isBeneficiary={false}
@@ -603,8 +601,7 @@ export const Publication = ({
                         <BarVoteUnified
                             score={currentPlus - currentMinus}
                             onVoteClick={() => {
-                                showPlus();
-                                setActiveSlider && setActiveSlider(postId);
+                                useUIStore.getState().openVotingPopup(postId, 'publication');
                             }}
                             isAuthor={isAuthor}
                             isBeneficiary={false}
@@ -687,12 +684,6 @@ export const Publication = ({
                         ))}
                     </div>
                 </div>
-            )}
-            {publicationUnderReply && !((isAuthor && !hasBeneficiary) || isBeneficiary) && (
-                <BottomPortal>
-                    {" "}
-                    <FormComment key={formCommentProps.uid} {...formCommentProps} />
-                </BottomPortal>
             )}
         </div>
     );

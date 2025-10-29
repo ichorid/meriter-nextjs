@@ -116,6 +116,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         .flat()
         .map((p: any) => ({
             ...p,
+            slug: p.slug || p.id, // Ensure slug is set (use id as fallback)
             beneficiaryId: p.beneficiaryId || p.meta?.beneficiary?.username,
             beneficiaryName: p.meta?.beneficiary?.name,
             beneficiaryPhotoUrl: p.meta?.beneficiary?.photoUrl,
@@ -363,11 +364,20 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                 fullPublication: p
                             });
                             
+                            // Check if this post is selected (for comments)
+                            const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug));
+                            
                             return (
                                 <div
                                     key={p.id}
                                     id={`post-${p.id}`}
-                                    className={highlightedPostId === p.id ? 'ring-2 ring-primary ring-opacity-50 rounded-lg p-2 bg-primary bg-opacity-10' : ''}
+                                    className={
+                                        highlightedPostId === p.id 
+                                            ? 'ring-2 ring-primary ring-opacity-50 rounded-lg p-2 bg-primary bg-opacity-10' 
+                                            : isSelected
+                                            ? 'ring-2 ring-secondary ring-opacity-70 rounded-lg p-2 bg-secondary bg-opacity-10 transition-all duration-300'
+                                            : ''
+                                    }
                                 >
                                     <PublicationCard
                                         publication={p}
@@ -375,6 +385,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                         updateWalletBalance={updateWalletBalance}
                                         updateAll={updateAll}
                                         showCommunityAvatar={false}
+                                        isSelected={isSelected}
                                     />
                                 </div>
                             );

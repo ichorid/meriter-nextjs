@@ -5,8 +5,7 @@ import { CardCommentVote } from "@shared/components/card-comment-vote";
 import { telegramGetAvatarLink, telegramGetAvatarLinkUpd } from "@lib/telegram";
 import { BarVoteUnified } from "@shared/components/bar-vote-unified";
 import { BarWithdraw } from "@shared/components/bar-withdraw";
-import { BottomPortal } from "@shared/components/bottom-portal";
-import { FormComment } from "./form-comment";
+import { useUIStore } from "@/stores/ui.store";
 import { classList } from "@lib/classList";
 import { useState, useEffect } from "react";
 import { GLOBAL_FEED_TG_CHAT_ID } from "@config/meriter";
@@ -233,6 +232,9 @@ export const Comment: React.FC<CommentProps> = ({
     const communityId = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
     const { data: communityInfo } = useCommunity(communityId || '');
     
+    // Get the correct community ID for wallet lookup
+    const commentCommunityId = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
+    
     const {
         comments,
         showPlus,
@@ -252,7 +254,10 @@ export const Comment: React.FC<CommentProps> = ({
         updBalance,
         plus || 0,
         minus || 0,
-        activeCommentHook
+        activeCommentHook,
+        false, // onlyPublication
+        commentCommunityId, // communityId
+        wallets // wallets array for balance lookup
     );
     const commentUnderReply = activeCommentHook[0] == (forTransactionId || _id);
     const nobodyUnderReply = activeCommentHook[0] === null;
@@ -386,8 +391,7 @@ export const Comment: React.FC<CommentProps> = ({
                         <BarVoteUnified
                             score={currentPlus - currentMinus}
                             onVoteClick={() => {
-                                showPlus();
-                                setActiveSlider && setActiveSlider(_id);
+                                useUIStore.getState().openVotingPopup(_id, 'comment');
                             }}
                             onWithdrawClick={
                                 isAuthor && (currentPlus - currentMinus) > 0
@@ -457,12 +461,6 @@ export const Comment: React.FC<CommentProps> = ({
                         ))}
                     </div>
                 </div>
-            )}
-            {commentUnderReply && !(isAuthor && !hasBeneficiary) && (
-                <BottomPortal>
-                    {" "}
-                    <FormComment key={formCommentProps.uid} {...formCommentProps} />
-                </BottomPortal>
             )}
         </div>
     );

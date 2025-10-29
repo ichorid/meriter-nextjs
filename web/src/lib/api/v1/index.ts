@@ -290,7 +290,7 @@ export const commentsApiV1 = {
   },
 
   async getPublicationComments(publicationId: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<Comment>> {
-    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Comment> }>(`/api/v1/publications/${publicationId}/comments`, { params });
+    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Comment> }>(`/api/v1/comments/publications/${publicationId}`, { params });
     return response.data;
   },
 

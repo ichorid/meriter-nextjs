@@ -22,10 +22,6 @@ export const BottomPortal: React.FC<BottomPortalProps> = ({ children }) => {
         findElement();
     }, []);
     if (!el) {
-        // Log for debugging
-        if (typeof window !== 'undefined') {
-            console.log('⚠️ BottomPortal: .bottom-widget-area not found');
-        }
         return null;
     }
     return createPortal(children, el);

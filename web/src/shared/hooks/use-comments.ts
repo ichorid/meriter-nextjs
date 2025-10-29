@@ -22,13 +22,14 @@ export const useComments = (
     transactionId: string,
     getCommentsApiPath: string,
     getFreeBalanceApiPath: string,
-    balance: Wallet | null,
+    balance: Wallet | number | null,
     updBalance: () => Promise<void>,
     plusGiven: number,
     minusGiven: number,
     activeCommentHook: [string | null, Dispatch<SetStateAction<string | null>>],
     onlyPublication = false,
-    communityId?: string
+    communityId?: string,
+    wallets?: Wallet[]
 ) => {
     const t = useTranslations('comments');
     const uid = transactionId || publicationSlug;
@@ -50,11 +51,13 @@ export const useComments = (
             if (forTransaction && transactionId) {
                 // Get replies to a comment
                 const result = await commentsApiV1.getCommentReplies(transactionId);
-                return result.data || [];
+                // Handle PaginatedResponse structure - result is PaginatedResponse, result.data is the array
+                return (result && result.data && Array.isArray(result.data)) ? result.data : [];
             } else if (publicationSlug) {
                 // Get comments on a publication
                 const result = await commentsApiV1.getPublicationComments(publicationSlug);
-                return result.data || [];
+                // Handle PaginatedResponse structure - result is PaginatedResponse, result.data is the array
+                return (result && result.data && Array.isArray(result.data)) ? result.data : [];
             }
             return [];
         },
@@ -104,15 +107,30 @@ export const useComments = (
         }
     };
 
+    // Extract wallet balance from balance prop or wallets array
+    // balance can be a Wallet object, a number, or null
+    // If communityId is provided and wallets array is available, prefer wallet from that community
+    let walletBalance = 0;
+    if (communityId && wallets && Array.isArray(wallets)) {
+        const wallet = wallets.find((w: Wallet) => w.communityId === communityId);
+        walletBalance = wallet?.balance || 0;
+    } else if (typeof balance === 'number') {
+        walletBalance = balance;
+    } else if (balance && typeof balance === 'object' && 'balance' in balance && typeof balance.balance === 'number') {
+        walletBalance = balance.balance;
+    }
+
     const formCommentProps = {
         uid,
-        hasPoints: (free?.plus || 0) > 0,
+        // User has points if they have either quota OR wallet balance
+        hasPoints: (free?.plus || 0) > 0 || walletBalance > 0,
         comment,
         setComment,
         amount: Math.abs(delta),
         setAmount: setDelta,
         free: free?.plus || 0,
-        maxPlus: free?.plus || 0,
+        // maxPlus should consider both quota and wallet balance
+        maxPlus: Math.max(free?.plus || 0, walletBalance || 0),
         maxMinus: free?.minus || 0,
         commentAdd: async (directionPlus: boolean) => {
             try {

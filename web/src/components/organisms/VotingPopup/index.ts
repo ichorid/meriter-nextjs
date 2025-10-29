@@ -1,0 +1,2 @@
+export { VotingPopup } from './VotingPopup';
+

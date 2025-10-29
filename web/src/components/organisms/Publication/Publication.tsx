@@ -13,8 +13,7 @@ import { useCommunity, usePoll } from '@/hooks/api';
 import { telegramGetAvatarLink, telegramGetAvatarLinkUpd } from '@shared/lib/telegram';
 import { WithTelegramEntities } from '@shared/components/withTelegramEntities';
 import { FormDimensionsEditor } from '@shared/components/form-dimensions-editor';
-import { BottomPortal } from '@shared/components/bottom-portal';
-import { FormComment } from '@features/comments/components/form-comment';
+import { useUIStore } from '@/stores/ui.store';
 import { Comment } from '@features/comments/components/comment';
 import { PollVoting } from '@features/polls/components/poll-voting';
 import { BarVoteUnified } from '@shared/components/bar-vote-unified';
@@ -465,8 +464,7 @@ export const Publication: React.FC<PublicationProps> = ({
             <BarVoteUnified
               score={currentPlus - currentMinus}
               onVoteClick={() => {
-                showPlus();
-                setActiveSlider && setActiveSlider(slug);
+                useUIStore.getState().openVotingPopup(slug, 'publication');
               }}
               isAuthor={stateLogic.isAuthor}
               isBeneficiary={false}
@@ -508,8 +506,7 @@ export const Publication: React.FC<PublicationProps> = ({
             <BarVoteUnified
               score={currentPlus - currentMinus}
               onVoteClick={() => {
-                showPlus();
-                setActiveSlider && setActiveSlider(slug);
+                useUIStore.getState().openVotingPopup(slug, 'publication');
               }}
               isAuthor={stateLogic.isAuthor}
               isBeneficiary={false}
@@ -591,11 +588,6 @@ export const Publication: React.FC<PublicationProps> = ({
         </div>
       )}
       
-      {publicationUnderReply && !((stateLogic.isAuthor && !stateLogic.hasBeneficiary) || isBeneficiary) && (
-        <BottomPortal>
-          <FormComment key={formCommentProps.uid} {...formCommentProps} />
-        </BottomPortal>
-      )}
     </div>
   );
 };
