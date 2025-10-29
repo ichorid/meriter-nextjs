@@ -15,6 +15,7 @@ import { useTranslations } from 'next-intl';
 import { ellipsize } from "@shared/lib/text";
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommunity, usePolls, usePoll, useUserProfile, useWallets } from '@/hooks/api';
+import { useWalletBalance } from '@/hooks/api/useWallet';
 import { usersApiV1, pollsApiV1 } from '@/lib/api/v1';
 
 const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
@@ -30,37 +31,16 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
     
     const { data: comms } = useCommunity(chatId || '');
     
-    const { data: balance = 0 } = useQuery({
-        queryKey: ['wallet-balance', user?.id, chatId],
-        queryFn: async () => {
-            if (!user?.id || !chatId) return 0;
-            const wallets = await usersApiV1.getUserWallets(user.id);
-            const wallet = wallets.find((w: any) => w.communityId === chatId);
-            return wallet?.balance || 0;
-        },
-        enabled: !!user?.id && !!chatId,
-    });
+    const { data: balance = 0 } = useWalletBalance(chatId);
 
     const { data: userdata = {} } = useUserProfile(user?.id || '');
     const { data: wallets = [] } = useWallets();
 
     const queryClient = useQueryClient();
 
-    const updateWalletBalance = (communityId: string, amountChange: number) => {
-        // Optimistically update wallet balance using React Query's cache
-        queryClient.setQueryData(['wallets'], (oldWallets: any) => {
-            if (!Array.isArray(oldWallets)) return oldWallets;
-            
-            return oldWallets.map((wallet) => {
-                if (wallet.communityId === communityId) {
-                    return {
-                        ...wallet,
-                        balance: (wallet.balance || 0) + amountChange,
-                    };
-                }
-                return wallet;
-            });
-        });
+    // Wallet balance updates are handled optimistically in vote mutation hooks
+    const updateWalletBalance = () => {
+        // No-op - optimistic updates handled in hooks
     };
 
     const updateAll = async () => {

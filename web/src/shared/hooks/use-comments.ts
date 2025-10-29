@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
-import { commentsApiV1, usersApiV1 } from '@/lib/api/v1';
+import { commentsApiV1 } from '@/lib/api/v1';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
 import type { Dispatch, SetStateAction } from 'react';
+import { useVoteOnComment } from '@/hooks/api/useVotes';
+import { useCreateComment } from '@/hooks/api/useComments';
+import { useUserQuota } from '@/hooks/api/useQuota';
 
 const { round } = Math;
 
@@ -43,19 +45,29 @@ export const useComments = (
     const [plusSign, setPlusSign] = useState(true);
     const [delta, setDelta] = useState(0);
     const [error, setError] = useState("");
+    
+    // Mutation hooks
+    const voteOnCommentMutation = useVoteOnComment();
+    const createCommentMutation = useCreateComment();
 
     // Get comments using v1 API
     const { data: comments = [] } = useQuery({
         queryKey: ['comments', forTransaction ? transactionId : publicationSlug],
         queryFn: async () => {
             if (forTransaction && transactionId) {
-                // Get replies to a comment
-                const result = await commentsApiV1.getCommentReplies(transactionId);
+                // Get replies to a comment, sorted by newest first
+                const result = await commentsApiV1.getCommentReplies(transactionId, {
+                    sort: 'createdAt',
+                    order: 'desc',
+                });
                 // Handle PaginatedResponse structure - result is PaginatedResponse, result.data is the array
                 return (result && result.data && Array.isArray(result.data)) ? result.data : [];
             } else if (publicationSlug) {
-                // Get comments on a publication
-                const result = await commentsApiV1.getPublicationComments(publicationSlug);
+                // Get comments on a publication, sorted by newest first
+                const result = await commentsApiV1.getPublicationComments(publicationSlug, {
+                    sort: 'createdAt',
+                    order: 'desc',
+                });
                 // Handle PaginatedResponse structure - result is PaginatedResponse, result.data is the array
                 return (result && result.data && Array.isArray(result.data)) ? result.data : [];
             }
@@ -67,24 +79,18 @@ export const useComments = (
         enabled: forTransaction ? showComments && !!transactionId : !!publicationSlug,
     });
 
-    // Get user quota for free balance
+    // Get user quota for free balance using standardized hook
     const { user } = useAuth();
-    const { data: free = { plus: 0, minus: 0 } } = useQuery({
-        queryKey: ['quota', user?.id, communityId],
-        queryFn: async () => {
-            if (!user?.id || !communityId) return { plus: 0, minus: 0 };
-            try {
-                const quota = await usersApiV1.getUserQuota(user.id, communityId);
-                return { plus: quota?.remainingToday || 0, minus: 0 }; // Use remainingToday from quota object
-            } catch (error) {
-                // Quota not configured - return 0
-                return { plus: 0, minus: 0 };
-            }
-        },
-        refetchOnWindowFocus: false,
-        enabled: !!communityId, // Only fetch when communityId is available
-        retry: false, // Don't retry on quota errors
-    });
+    const { data: quotaData } = useUserQuota(communityId);
+    
+    // Transform quota data to { plus, minus } format for backwards compatibility
+    const free = useMemo(() => {
+        if (!quotaData) return { plus: 0, minus: 0 };
+        return {
+            plus: quotaData.remainingToday || 0,
+            minus: 0,
+        };
+    }, [quotaData]);
 
     const currentPlus = round(
         (plusGiven + (delta as any)) || 0
@@ -137,38 +143,47 @@ export const useComments = (
         maxMinus: free?.minus || 0,
         commentAdd: async (directionPlus: boolean) => {
             try {
-                // Use appropriate v1 endpoint based on whether it's a comment or vote
+                // Use mutation hooks based on whether it's a comment or vote
                 if (forTransaction) {
                     // This is a vote for a comment
-                    const response = await apiClient.post(`/api/v1/comments/${transactionId}/votes`, {
-                        amount: directionPlus ? Math.abs(delta) : -Math.abs(delta),
-                        sourceType: 'personal',
-                        comment: comment.trim() ? { content: comment.trim() } : undefined,
+                    await voteOnCommentMutation.mutateAsync({
+                        commentId: transactionId,
+                        data: {
+                            targetType: 'comment',
+                            targetId: transactionId,
+                            amount: directionPlus ? Math.abs(delta) : -Math.abs(delta),
+                            sourceType: 'quota',
+                        },
+                        communityId,
                     });
-                    if (response.success) {
-                        setComment("");
-                        setDelta(0);
-                        setError("");
-                        updBalance();
-                        if (activeCommentHook) {
-                            activeCommentHook[1](null);
-                        }
+                    // Create comment separately if there's comment text
+                    if (comment.trim()) {
+                        await createCommentMutation.mutateAsync({
+                            targetType: 'comment',
+                            targetId: transactionId,
+                            content: comment.trim(),
+                        });
+                    }
+                    setComment("");
+                    setDelta(0);
+                    setError("");
+                    updBalance();
+                    if (activeCommentHook) {
+                        activeCommentHook[1](null);
                     }
                 } else {
                     // This is a comment on a publication
-                    const response = await apiClient.post("/api/v1/comments", {
+                    await createCommentMutation.mutateAsync({
                         targetType: 'publication',
                         targetId: publicationSlug,
                         content: comment.trim(),
                     });
-                    if (response.success) {
-                        setComment("");
-                        setDelta(0);
-                        setError("");
-                        updBalance();
-                        if (activeCommentHook) {
-                            activeCommentHook[1](null);
-                        }
+                    setComment("");
+                    setDelta(0);
+                    setError("");
+                    updBalance();
+                    if (activeCommentHook) {
+                        activeCommentHook[1](null);
                     }
                 }
             } catch (err: unknown) {

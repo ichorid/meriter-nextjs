@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Publication } from "@features/feed";
 import { useAuth } from '@/contexts/AuthContext';
 import { usePublication, useCommunity, useUserProfile, useWallets } from '@/hooks/api';
-import { usersApiV1 } from '@/lib/api/v1';
+import { useWalletBalance } from '@/hooks/api/useWallet';
 
 const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> }) => {
     const router = useRouter();
@@ -20,37 +20,16 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     const { data: publication } = usePublication(slug);
     const { data: comms } = useCommunity(chatId);
     
-    const { data: balance = 0 } = useQuery({
-        queryKey: ['wallet-balance', user?.id, chatId],
-        queryFn: async () => {
-            if (!user?.id || !chatId) return 0;
-            const wallets = await usersApiV1.getUserWallets(user.id);
-            const wallet = wallets.find((w: any) => w.communityId === chatId);
-            return wallet?.balance || 0;
-        },
-        enabled: !!user?.id && !!chatId,
-    });
+    const { data: balance = 0 } = useWalletBalance(chatId);
 
     const { data: userdata = {} } = useUserProfile(user?.id || '');
     const { data: wallets = [] } = useWallets();
 
     const queryClient = useQueryClient();
 
-    const updateWalletBalance = (communityId: string, amountChange: number) => {
-        // Optimistically update wallet balance using React Query's cache
-        queryClient.setQueryData(['wallets'], (oldWallets: any) => {
-            if (!Array.isArray(oldWallets)) return oldWallets;
-            
-            return oldWallets.map((wallet) => {
-                if (wallet.communityId === communityId) {
-                    return {
-                        ...wallet,
-                        balance: wallet.balance + amountChange,
-                    };
-                }
-                return wallet;
-            });
-        });
+    // Wallet balance updates are handled optimistically in vote mutation hooks
+    const updateWalletBalance = () => {
+        // No-op - optimistic updates handled in hooks
     };
 
     const updateAll = async () => {
@@ -58,12 +37,12 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
         setActiveWithdrawPost(null);
         // Invalidate queries to refresh data
         await queryClient.invalidateQueries({ queryKey: ['wallets'] });
-        await queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
+        await queryClient.invalidateQueries({ queryKey: ['wallet', 'balance', chatId] });
     };
 
     const updBalance = async () => {
         // Invalidate balance query to refresh
-        await queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
+        await queryClient.invalidateQueries({ queryKey: ['wallet', 'balance', chatId] });
     };
 
     const activeCommentHook = useState<string | null>(null);

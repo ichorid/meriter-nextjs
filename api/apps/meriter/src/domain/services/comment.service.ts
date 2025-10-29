@@ -98,24 +98,54 @@ export class CommentService {
     targetType: 'publication' | 'comment',
     targetId: string,
     limit: number = 50,
-    skip: number = 0
+    skip: number = 0,
+    sortField: string = 'metrics.score',
+    sortOrder: 'asc' | 'desc' = 'desc'
   ): Promise<Comment[]> {
+    // Map sort field to actual database field
+    let dbSortField = sortField;
+    if (sortField === 'createdAt') {
+      dbSortField = 'createdAt';
+    } else if (sortField === 'score') {
+      dbSortField = 'metrics.score';
+    }
+    
+    const sortValue = sortOrder === 'asc' ? 1 : -1;
+    const sort: Record<string, 1 | -1> = { [dbSortField]: sortValue };
+    
     const docs = await this.commentModel
       .find({ targetType, targetId })
       .limit(limit)
       .skip(skip)
-      .sort({ 'metrics.score': -1 })
+      .sort(sort as any)
       .lean();
     
     return docs.map(doc => Comment.fromSnapshot(doc as ICommentDocument));
   }
 
-  async getCommentReplies(commentId: string, limit: number = 50, skip: number = 0): Promise<Comment[]> {
+  async getCommentReplies(
+    commentId: string,
+    limit: number = 50,
+    skip: number = 0,
+    sortField: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc'
+  ): Promise<Comment[]> {
+    // Map sort field to actual database field
+    let dbSortField = sortField;
+    if (sortField === 'createdAt') {
+      dbSortField = 'createdAt';
+    } else if (sortField === 'score') {
+      dbSortField = 'metrics.score';
+    }
+    
+    const sortValue = sortOrder === 'asc' ? 1 : -1;
+    const sort: Record<string, 1 | -1> = { [dbSortField]: sortValue };
+    
     const docs = await this.commentModel
       .find({ parentCommentId: commentId })
       .limit(limit)
       .skip(skip)
-      .sort({ createdAt: 1 })
+      .sort(sort as any)
       .lean();
     
     return docs.map(doc => Comment.fromSnapshot(doc as ICommentDocument));

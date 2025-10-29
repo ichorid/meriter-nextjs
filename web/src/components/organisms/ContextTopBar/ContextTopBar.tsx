@@ -4,8 +4,7 @@ import React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommunity, useWallets } from '@/hooks/api';
-import { useQuery } from '@tanstack/react-query';
-import { usersApiV1 } from '@/lib/api/v1';
+import { useUserQuota } from '@/hooks/api/useQuota';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
@@ -207,31 +206,9 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
   const wallet = wallets.find((w: any) => w.communityId === communityId);
   const balance = wallet?.balance || 0;
 
-  // Get free vote quota
-  const { data: quota, error: quotaError } = useQuery({
-    queryKey: ['user-quota', user?.id, community?.id],
-    queryFn: async () => {
-      if (!user?.id || !community?.id) return { dailyQuota: 0, usedToday: 0, remainingToday: 0, resetAt: '' };
-      const quotaData = await usersApiV1.getUserQuota(user.id, community.id);
-      console.log('[ContextTopBar] Raw quotaData from API:', quotaData);
-      // Ensure we have the expected structure
-      const normalizedQuota = {
-        dailyQuota: quotaData?.dailyQuota ?? 0,
-        usedToday: quotaData?.usedToday ?? 0,
-        remainingToday: quotaData?.remainingToday ?? 0,
-        resetAt: quotaData?.resetAt ?? '',
-      };
-      console.log('[ContextTopBar] Normalized quota:', normalizedQuota);
-      return normalizedQuota;
-    },
-    enabled: !!user?.id && !!community?.id,
-    retry: false, // Don't retry on quota errors
-  });
+  // Get free vote quota using standardized hook
+  const { data: quota, error: quotaError } = useUserQuota(community?.id);
 
-  // Debug log quota value
-  React.useEffect(() => {
-    console.log('[ContextTopBar] Quota state:', { quota, quotaError, remainingToday: quota?.remainingToday });
-  }, [quota, quotaError]);
 
   // Get sortBy from URL params
   const sortBy = searchParams.get('sort') || 'recent';

@@ -9,7 +9,7 @@ import { useUIStore } from "@/stores/ui.store";
 import { classList } from "@lib/classList";
 import { useState, useEffect } from "react";
 import { GLOBAL_FEED_TG_CHAT_ID } from "@config/meriter";
-import { apiClient } from '@/lib/api/client';
+import { useVoteOnComment, useRemoveCommentVote } from '@/hooks/api/useVotes';
 import { Spinner } from "@shared/components/misc";
 import { FormWithdraw } from "@shared/components/form-withdraw";
 import { useTranslations } from 'next-intl';
@@ -195,12 +195,15 @@ export const Comment: React.FC<CommentProps> = ({
     const [amount, setAmount] = useState(0);
     const [amountInMerits, setAmountInMerits] = useState(0);
     const [withdrawMerits, setWithdrawMerits] = useState(isMerit);
-    const [loading, setLoading] = useState(false);
+    // Mutation hooks
+    const voteOnCommentMutation = useVoteOnComment();
+    const removeVoteMutation = useRemoveCommentVote();
+    
+    // Use loading state from mutations
+    const loading = voteOnCommentMutation.isPending || removeVoteMutation.isPending;
     
     const submitWithdrawal = async () => {
         if (!isAuthor) return;
-        
-        setLoading(true);
         const changeAmount = amount;
         const newSum = directionAdd 
             ? optimisticSum + changeAmount
@@ -217,18 +220,22 @@ export const Comment: React.FC<CommentProps> = ({
         }
         
         try {
-            // Use v1 API for vote withdrawal
+            // Use mutation hooks for vote operations
             if (directionAdd) {
-                // Adding votes - use POST to create vote
-                await apiClient.post("/api/v1/votes", {
-                    targetType: 'comment',
-                    targetId: _id,
-                    amount: withdrawMerits ? amountInMerits : amount,
-                    sourceType: 'personal',
+                // Adding votes - use vote mutation
+                await voteOnCommentMutation.mutateAsync({
+                    commentId: _id,
+                    data: {
+                        targetType: 'comment',
+                        targetId: _id,
+                        amount: withdrawMerits ? amountInMerits : amount,
+                        sourceType: withdrawMerits ? 'personal' : 'quota',
+                    },
+                    communityId: commentCommunityId,
                 });
             } else {
-                // Removing votes - use DELETE to remove vote
-                await apiClient.delete(`/api/v1/votes?targetType=comment&targetId=${_id}`);
+                // Removing votes - use remove vote mutation
+                await removeVoteMutation.mutateAsync(_id);
             }
             
             setAmount(0);
@@ -241,8 +248,6 @@ export const Comment: React.FC<CommentProps> = ({
             if (updateWalletBalance && curr) {
                 updateWalletBalance(curr, -walletChange);
             }
-        } finally {
-            setLoading(false);
         }
     };
     

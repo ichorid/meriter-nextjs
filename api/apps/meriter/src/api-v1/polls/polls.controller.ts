@@ -31,7 +31,7 @@ export class PollsController {
   }
 
   @Get(':id')
-  async getPoll(@Param('id') id: string, @Req() req: any): Promise<Poll> {
+  async getPoll(@Param('id') id: string, @Req() req: any) {
     const poll = await this.pollsService.getPoll(id);
     if (!poll) {
       throw new NotFoundError('Poll', id);
@@ -59,14 +59,14 @@ export class PollsController {
       updatedAt: snapshot.updatedAt.toISOString(),
     };
     
-    return apiPoll;
+    return { success: true, data: apiPoll };
   }
 
   @Post()
   async createPoll(
     @Body() createDto: CreatePollDto,
     @Req() req: any,
-  ): Promise<Poll> {
+  ) {
     // Transform API CreatePollDto to domain CreatePollDto
     const { uid } = require('uid');
     const domainDto = {
@@ -99,7 +99,7 @@ export class PollsController {
       updatedAt: snapshot.updatedAt.toISOString(),
     };
     
-    return apiPoll;
+    return { success: true, data: apiPoll };
   }
 
   @Put(':id')
@@ -133,17 +133,20 @@ export class PollsController {
     @Body() createDto: CreatePollVoteDto,
     @Req() req: any,
   ) {
-    return this.pollsService.voteOnPoll(id, req.user.id, createDto.optionId, createDto.amount);
+    const result = await this.pollsService.voteOnPoll(id, req.user.id, createDto.optionId, createDto.amount);
+    return { success: true, data: result };
   }
 
   @Get(':id/results')
   async getPollResults(@Param('id') id: string, @Req() req: any) {
-    return this.pollsService.getPollResults(id);
+    const results = await this.pollsService.getPollResults(id);
+    return { success: true, data: results };
   }
 
   @Get(':id/my-votes')
   async getMyPollVotes(@Param('id') id: string, @Req() req: any) {
-    return this.pollsService.getUserVotes(id, req.user.id);
+    const votes = await this.pollsService.getUserVotes(id, req.user.id);
+    return { success: true, data: votes };
   }
 
   @Get('communities/:communityId')

@@ -289,12 +289,12 @@ export const commentsApiV1 = {
     await apiClient.delete(`/api/v1/comments/${id}`);
   },
 
-  async getPublicationComments(publicationId: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<Comment>> {
+  async getPublicationComments(publicationId: string, params: { skip?: number; limit?: number; sort?: string; order?: string } = {}): Promise<PaginatedResponse<Comment>> {
     const response = await apiClient.get<{ success: true; data: PaginatedResponse<Comment> }>(`/api/v1/comments/publications/${publicationId}`, { params });
     return response.data;
   },
 
-  async getCommentReplies(commentId: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<Comment>> {
+  async getCommentReplies(commentId: string, params: { skip?: number; limit?: number; sort?: string; order?: string } = {}): Promise<PaginatedResponse<Comment>> {
     const response = await apiClient.get<{ success: true; data: PaginatedResponse<Comment> }>(`/api/v1/comments/${commentId}/replies`, { params });
     return response.data;
   },
@@ -344,6 +344,14 @@ export const votesApiV1 = {
 
   async getVoteDetails(voteId: string): Promise<{ vote: Vote; comment?: Comment }> {
     const response = await apiClient.get<{ success: true; data: { vote: Vote; comment?: Comment } }>(`/api/v1/votes/${voteId}/details`);
+    return response.data;
+  },
+
+  async voteOnPublicationWithComment(
+    publicationId: string,
+    data: { amount: number; sourceType?: 'personal' | 'quota'; comment?: string }
+  ): Promise<{ vote: Vote; comment?: Comment }> {
+    const response = await apiClient.post<{ success: true; data: { vote: Vote; comment?: Comment } }>(`/api/v1/publications/${publicationId}/vote-with-comment`, data);
     return response.data;
   },
 };

@@ -20,6 +20,10 @@ interface iFormCommentVoteVerticalProps {
     error: string;
     reason?: string;
     isWithdrawMode?: boolean;
+    quotaAmount?: number;
+    walletAmount?: number;
+    quotaRemaining?: number;
+    currencyIconUrl?: string;
 }
 
 export const FormCommentVoteVertical = ({
@@ -35,6 +39,10 @@ export const FormCommentVoteVertical = ({
     error,
     reason,
     isWithdrawMode = false,
+    quotaAmount = 0,
+    walletAmount = 0,
+    quotaRemaining = 0,
+    currencyIconUrl,
 }: iFormCommentVoteVerticalProps) => {
     const t = useTranslations('comments');
     const [selected, setSelected] = useState(false);
@@ -60,10 +68,40 @@ export const FormCommentVoteVertical = ({
             {/* Amount display at top */}
             <div className="text-center mb-4">
                 <div className={classList(
-                    "text-3xl font-bold",
+                    "text-3xl font-bold flex items-center justify-center gap-2",
                     directionPlus ? "text-success" : directionMinus ? "text-error" : "text-secondary"
                 )}>
-                    {amount > 0 ? '+' : ''}{amount}
+                    {directionPlus ? (
+                        <>
+                            {quotaAmount > 0 && <span>+{quotaAmount}</span>}
+                            {walletAmount > 0 && (
+                                <span className="flex items-center gap-1">
+                                    {currencyIconUrl && (
+                                        <img src={currencyIconUrl} alt="Currency" className="w-6 h-6" />
+                                    )}
+                                    :+{walletAmount}
+                                </span>
+                            )}
+                            {quotaAmount === 0 && walletAmount === 0 && (
+                                <span>{amount > 0 ? '+' : ''}{amount}</span>
+                            )}
+                        </>
+                    ) : directionMinus ? (
+                        <>
+                            {walletAmount > 0 ? (
+                                <>
+                                    {currencyIconUrl && (
+                                        <img src={currencyIconUrl} alt="Currency" className="w-6 h-6" />
+                                    )}
+                                    <span>:{Math.abs(amount)}</span>
+                                </>
+                            ) : (
+                                <span>{amount}</span>
+                            )}
+                        </>
+                    ) : (
+                        <span>{amount > 0 ? '+' : ''}{amount}</span>
+                    )}
                 </div>
                 <div className="text-xs opacity-60 mt-1">
                     {isWithdrawMode ? t('withdrawAmount') : t('voteAmount')}

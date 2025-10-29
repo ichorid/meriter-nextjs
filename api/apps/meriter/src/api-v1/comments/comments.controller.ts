@@ -37,7 +37,7 @@ export class CommentsController {
   }
 
   @Get(':id')
-  async getComment(@Param('id') id: string, @Req() req: any): Promise<Comment> {
+  async getComment(@Param('id') id: string, @Req() req: any) {
     const comment = await this.commentsService.getComment(id);
     if (!comment) {
       throw new NotFoundError('Comment', id);
@@ -74,7 +74,7 @@ export class CommentsController {
     const isUpvote = vote && vote.amount > 0;
     const isDownvote = vote && vote.amount < 0;
 
-    return {
+    const commentData = {
       ...snapshot,
       createdAt: snapshot.createdAt.toISOString(),
       updatedAt: snapshot.updatedAt.toISOString(),
@@ -100,6 +100,8 @@ export class CommentsController {
         sum: vote.amount, // Can be negative for downvotes
       }),
     };
+
+    return { success: true, data: commentData };
   }
 
   @Post()
@@ -175,11 +177,15 @@ export class CommentsController {
   ) {
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
+    const sortField = query.sort || 'createdAt';
+    const sortOrder = (query.order || 'desc') === 'asc' ? 'asc' : 'desc';
     const comments = await this.commentsService.getCommentsByTarget(
       'publication',
       publicationId,
       pagination.limit,
-      skip
+      skip,
+      sortField,
+      sortOrder
     );
 
     // Extract unique author IDs
@@ -294,10 +300,14 @@ export class CommentsController {
   ) {
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
+    const sortField = query.sort || 'createdAt';
+    const sortOrder = (query.order || 'desc') === 'asc' ? 'asc' : 'desc';
     const comments = await this.commentsService.getCommentReplies(
       id,
       pagination.limit,
-      skip
+      skip,
+      sortField,
+      sortOrder
     );
 
     // Extract unique author IDs

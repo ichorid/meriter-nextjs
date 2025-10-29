@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { walletApiV1 } from '@/lib/api/v1';
 
 // Local type definitions
-interface Wallet {
+export interface Wallet {
   id: string;
   userId: string;
   communityId: string;
@@ -40,6 +40,8 @@ interface PaginatedResponse<T> {
 export const walletKeys = {
   all: ['wallet'] as const,
   wallets: () => [...walletKeys.all, 'wallets'] as const,
+  wallet: (communityId?: string) => 
+    [...walletKeys.all, 'wallet', communityId] as const,
   balance: (currencyOfCommunityTgChatId?: string) => 
     [...walletKeys.all, 'balance', currencyOfCommunityTgChatId] as const,
   transactions: () => [...walletKeys.all, 'transactions'] as const,
@@ -114,6 +116,72 @@ export function useTransactions(params: {
     queryFn: () => walletApiV1.getAllTransactions(params),
     staleTime: 1 * 60 * 1000, // 1 minute
   });
+}
+
+// Get a single wallet by community ID
+export function useWallet(communityId?: string) {
+  return useQuery({
+    queryKey: walletKeys.wallet(communityId),
+    queryFn: async () => {
+      if (!communityId) throw new Error('communityId required');
+      const wallets = await walletApiV1.getWallets();
+      return wallets.find(w => w.communityId === communityId) || null;
+    },
+    enabled: !!communityId,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+}
+
+// Wallet controller for optimistic updates
+export function useWalletController() {
+  const queryClient = useQueryClient();
+
+  const updateOptimistic = (communityId: string, delta: number) => {
+    if (!communityId) return;
+
+    // Update wallets array
+    const walletsKey = walletKeys.wallets();
+    queryClient.setQueryData<Wallet[]>(walletsKey, (old) => {
+      if (!old) return old;
+      return old.map(w => {
+        if (w.communityId === communityId) {
+          return {
+            ...w,
+            balance: Math.max(0, (w.balance || 0) + delta),
+          };
+        }
+        return w;
+      });
+    });
+
+    // Update balance query if it exists
+    const balanceKey = walletKeys.balance(communityId);
+    queryClient.setQueryData<number>(balanceKey, (old) => {
+      if (old === undefined) return old;
+      return Math.max(0, old + delta);
+    });
+  };
+
+  const rollbackWallets = (communityId: string, previousWallets?: Wallet[]) => {
+    if (!communityId || !previousWallets) return;
+    queryClient.setQueryData(walletKeys.wallets(), previousWallets);
+  };
+
+  const rollbackBalance = (communityId: string, previousBalance?: number) => {
+    if (!communityId || previousBalance === undefined) return;
+    queryClient.setQueryData(walletKeys.balance(communityId), previousBalance);
+  };
+
+  const invalidate = (communityId?: string) => {
+    queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
+    if (communityId) {
+      queryClient.invalidateQueries({ queryKey: walletKeys.balance(communityId) });
+    } else {
+      queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
+    }
+  };
+
+  return { updateOptimistic, rollbackWallets, rollbackBalance, invalidate };
 }
 
 // Create transaction (vote/comment) - TODO: Implement proper transaction creation

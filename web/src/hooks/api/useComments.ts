@@ -89,20 +89,15 @@ export function useCreateComment() {
   return useMutation({
     mutationFn: (data: CreateCommentRequest) => commentsApiV1.createComment(data),
     onSuccess: (newComment) => {
-      // Invalidate and refetch comments lists
-      queryClient.invalidateQueries({ queryKey: commentsKeys.lists() });
+      // Invalidate all comments queries to ensure the new comment appears everywhere
+      // This uses prefix matching to catch all comment queries including:
+      // - ['comments', publicationSlug] (used by use-comments.ts)
+      // - ['comments', 'list', ...] (used by commentsKeys.lists())
+      // - ['comments', 'publication', ...] (used by commentsKeys.byPublication)
+      // - ['comments', 'comment', ...] (used by commentsKeys.byComment)
+      queryClient.invalidateQueries({ queryKey: ['comments'], exact: false });
       
-      // Add the new comment to relevant caches
-      if (newComment.targetType === 'publication') {
-        queryClient.invalidateQueries({ 
-          queryKey: commentsKeys.byPublication(newComment.targetId) 
-        });
-      } else if (newComment.targetType === 'comment') {
-        queryClient.invalidateQueries({ 
-          queryKey: commentsKeys.byComment(newComment.targetId) 
-        });
-      }
-      
+      // Update the detail cache with the new comment
       queryClient.setQueryData(commentsKeys.detail(newComment.id), newComment);
     },
     onError: (error) => {

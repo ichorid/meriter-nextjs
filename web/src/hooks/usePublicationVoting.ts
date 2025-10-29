@@ -1,7 +1,7 @@
 // Publication voting and withdrawal logic
 import { useState, useEffect } from 'react';
-import { apiClient } from '@/lib/api/client';
 import { useTranslations } from 'next-intl';
+import { useVoteOnPublication, useRemovePublicationVote } from '@/hooks/api/useVotes';
 
 interface Wallet {
   id: string;
@@ -51,13 +51,19 @@ export function usePublicationVoting({
 }: UsePublicationVotingProps) {
   const t = useTranslations('feed');
   
+  // Mutation hooks
+  const voteOnPublicationMutation = useVoteOnPublication();
+  const removeVoteMutation = useRemovePublicationVote();
+  
   // State management
   const [optimisticSum, setOptimisticSum] = useState(sum);
   const [amount, setAmount] = useState(0);
   const [comment, setComment] = useState("");
   const [amountInMerits, setAmountInMerits] = useState(0);
   const [withdrawMerits, setWithdrawMerits] = useState(false);
-  const [loading, setLoading] = useState(false);
+  
+  // Use loading state from mutations
+  const loading = voteOnPublicationMutation.isPending || removeVoteMutation.isPending;
   
   // Update optimistic sum when sum changes
   useEffect(() => {
@@ -97,7 +103,6 @@ export function usePublicationVoting({
   const submitWithdrawal = async () => {
     if (!isAuthor) return;
     
-    setLoading(true);
     const changeAmount = amount;
     const newSum = directionAdd 
       ? optimisticSum + changeAmount
@@ -114,18 +119,22 @@ export function usePublicationVoting({
     }
     
     try {
-      // Use v1 API for vote withdrawal
+      // Use mutation hooks for vote operations
       if (directionAdd) {
-        // Adding votes - use POST to create vote
-        await apiClient.post("/api/v1/votes", {
-          targetType: 'publication',
-          targetId: slug,
-          amount: withdrawMerits ? amountInMerits : amount,
-          sourceType: 'personal',
+        // Adding votes - use vote mutation
+        await voteOnPublicationMutation.mutateAsync({
+          publicationId: slug,
+          data: {
+            targetType: 'publication',
+            targetId: slug,
+            amount: withdrawMerits ? amountInMerits : amount,
+            sourceType: withdrawMerits ? 'personal' : 'quota',
+          },
+          communityId: curr,
         });
       } else {
-        // Removing votes - use DELETE to remove vote
-        await apiClient.delete(`/api/v1/votes?targetType=publication&targetId=${slug}`);
+        // Removing votes - use remove vote mutation
+        await removeVoteMutation.mutateAsync(slug);
       }
       
       setAmount(0);
@@ -139,8 +148,6 @@ export function usePublicationVoting({
       if (updateWalletBalance && curr) {
         updateWalletBalance(curr, -walletChange);
       }
-    } finally {
-      setLoading(false);
     }
   };
   

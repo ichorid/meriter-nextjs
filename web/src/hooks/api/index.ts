@@ -6,6 +6,7 @@ export * from './usePolls';
 export * from './usePublications';
 export * from './useVotes';
 export * from './useUsers';
-export * from './useWallets';
+export * from './useWallet';
+export * from './useQuota';
 export * from './useCommunityQuota';
 

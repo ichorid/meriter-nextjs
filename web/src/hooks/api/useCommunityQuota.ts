@@ -2,6 +2,7 @@
 import { useQueries } from '@tanstack/react-query';
 import { usersApiV1 } from '@/lib/api/v1';
 import { useAuth } from '@/contexts/AuthContext';
+import { quotaKeys } from './useQuota';
 
 export interface CommunityQuota {
   communityId: string;
@@ -21,7 +22,7 @@ export function useCommunityQuotas(communityIds: string[]) {
 
   const queries = useQueries({
     queries: communityIds.map((communityId) => ({
-      queryKey: ['user-quota', user?.id, communityId],
+      queryKey: quotaKeys.quota(user?.id, communityId),
       queryFn: () => usersApiV1.getUserQuota(user?.id || '', communityId),
       enabled: !!user?.id && !!communityId,
       staleTime: 1 * 60 * 1000, // 1 minute

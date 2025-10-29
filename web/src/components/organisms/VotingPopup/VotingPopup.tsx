@@ -5,13 +5,11 @@ import { useUIStore } from '@/stores/ui.store';
 import { BottomPortal } from '@/shared/components/bottom-portal';
 import { FormComment } from '@/features/comments/components/form-comment';
 import { useAuth } from '@/contexts/AuthContext';
-import { useWallets } from '@/hooks/api';
+import { useWallets, useCommunity } from '@/hooks/api';
 import { useFreeBalance } from '@/hooks/api/useWallet';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
-import { apiClient } from '@/lib/api/client';
-import { commentsApiV1, votesApiV1 } from '@/lib/api/v1';
-import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
+import { useVoteOnPublicationWithComment, useVoteOnComment } from '@/hooks/api/useVotes';
 
 interface VotingPopupProps {
   communityId?: string;
@@ -26,7 +24,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 }) => {
   const t = useTranslations('comments');
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const {
     activeVotingTarget,
     votingTargetType,
@@ -34,6 +31,10 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     closeVotingPopup,
     updateVotingFormData,
   } = useUIStore();
+
+  // Use mutation hooks for voting and commenting
+  const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
+  const voteOnCommentMutation = useVoteOnComment();
 
   const isOpen = !!activeVotingTarget && !!votingTargetType;
 
@@ -43,10 +44,15 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   // Determine which community to use - prefer prop, otherwise try to derive from target
   const targetCommunityId = communityId || (wallets[0]?.communityId);
 
+  // Get community data to access currency icon
+  const { data: communityData } = useCommunity(targetCommunityId || '');
+  const currencyIconUrl = communityData?.settings?.iconUrl;
+
   // Get quota for the community
   const { quotasMap } = useCommunityQuotas(targetCommunityId ? [targetCommunityId] : []);
   const quotaData = targetCommunityId ? quotasMap.get(targetCommunityId) : null;
-  const freePlus = quotaData?.remainingToday ?? 0;
+  const quotaRemaining = quotaData?.remainingToday ?? 0;
+  const freePlus = quotaRemaining;
   const freeMinus = 0; // Downvotes typically don't have free quota
 
   // Get wallet balance for the community
@@ -58,7 +64,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   // Get free balance as fallback (different API endpoint)
   const { data: freeBalance } = useFreeBalance(targetCommunityId);
-  const effectiveFreePlus = freePlus > 0 ? freePlus : (typeof freeBalance === 'number' ? freeBalance : 0);
+  const effectiveFreePlus = quotaRemaining > 0 ? quotaRemaining : (typeof freeBalance === 'number' ? freeBalance : 0);
+
+  // Note: Quota and wallet optimistic updates are handled by mutation hooks
 
   const hasPoints = effectiveFreePlus > 0 || walletBalance > 0;
   const maxPlus = Math.max(effectiveFreePlus, walletBalance || 0);
@@ -84,13 +92,38 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     updateVotingFormData({ delta: amount, error: '' });
   };
 
+  // Calculate vote breakdown: quota vs wallet
+  const voteBreakdown = useMemo(() => {
+    const amount = Math.abs(formData.delta);
+    const isUpvote = formData.delta > 0;
+    
+    if (!isUpvote) {
+      // Downvotes use wallet only (no quota)
+      return {
+        quotaAmount: 0,
+        walletAmount: amount,
+        isSplit: false,
+      };
+    }
+    
+    // Upvotes: use quota first, then wallet
+    const quotaAmount = Math.min(amount, quotaRemaining);
+    const walletAmount = Math.max(0, amount - quotaRemaining);
+    
+    return {
+      quotaAmount,
+      walletAmount,
+      isSplit: walletAmount > 0,
+    };
+  }, [formData.delta, quotaRemaining]);
+
   const handleClose = () => {
     closeVotingPopup();
     updateVotingFormData({ comment: '', delta: 0, error: '' });
   };
 
   const handleSubmit = async (directionPlus: boolean) => {
-    if (!activeVotingTarget || !votingTargetType) return;
+    if (!activeVotingTarget || !votingTargetType || !targetCommunityId) return;
 
     const delta = formData.delta;
     if (delta === 0) {
@@ -98,78 +131,108 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       return;
     }
 
+    const isUpvote = directionPlus;
+    const absoluteAmount = Math.abs(delta);
+    
+    // Calculate vote breakdown
+    let quotaAmount = 0;
+    let walletAmount = 0;
+    
+    if (isUpvote) {
+      quotaAmount = Math.min(absoluteAmount, quotaRemaining);
+      walletAmount = Math.max(0, absoluteAmount - quotaRemaining);
+    } else {
+      // Downvotes use wallet only
+      walletAmount = absoluteAmount;
+    }
+
     try {
       updateVotingFormData({ error: '' });
 
-      if (votingTargetType === 'comment') {
-        // Vote on a comment (comment text is handled via separate comment creation if needed)
-        const response = await votesApiV1.voteOnComment(activeVotingTarget, {
-          targetType: 'comment',
-          targetId: activeVotingTarget,
-          amount: directionPlus ? Math.abs(delta) : -Math.abs(delta),
-          sourceType: 'personal',
-        });
-        
-        // If there's a comment text, create a comment separately
-        if (formData.comment.trim()) {
-          await commentsApiV1.createComment({
-            targetType: 'comment',
-            targetId: activeVotingTarget,
-            content: formData.comment.trim(),
+      const targetId = activeVotingTarget;
+
+      // For publications, use the combined endpoint that creates comment and vote atomically
+      if (votingTargetType === 'publication') {
+        // If we need both quota and wallet votes, make two calls
+        // The combined endpoint only supports one vote at a time, so we'll make two calls
+        // but only create the comment with the first one
+        if (quotaAmount > 0 && walletAmount > 0) {
+          // First vote: quota + comment (if provided)
+          await voteOnPublicationWithCommentMutation.mutateAsync({
+            publicationId: targetId,
+            data: {
+              amount: isUpvote ? quotaAmount : -quotaAmount,
+              sourceType: 'quota',
+              comment: formData.comment.trim() || undefined,
+            },
+            communityId: targetCommunityId,
+          });
+          
+          // Second vote: wallet only (comment already created)
+          await voteOnPublicationWithCommentMutation.mutateAsync({
+            publicationId: targetId,
+            data: {
+              amount: isUpvote ? walletAmount : -walletAmount,
+              sourceType: 'personal',
+            },
+            communityId: targetCommunityId,
+          });
+        } else if (quotaAmount > 0) {
+          // Vote with quota only, include comment
+          await voteOnPublicationWithCommentMutation.mutateAsync({
+            publicationId: targetId,
+            data: {
+              amount: isUpvote ? quotaAmount : -quotaAmount,
+              sourceType: 'quota',
+              comment: formData.comment.trim() || undefined,
+            },
+            communityId: targetCommunityId,
+          });
+        } else if (walletAmount > 0) {
+          // Vote with wallet only, include comment
+          await voteOnPublicationWithCommentMutation.mutateAsync({
+            publicationId: targetId,
+            data: {
+              amount: isUpvote ? walletAmount : -walletAmount,
+              sourceType: 'personal',
+              comment: formData.comment.trim() || undefined,
+            },
+            communityId: targetCommunityId,
+          });
+        }
+      } else {
+        // For comments, use the regular vote endpoint (no combined endpoint for comment votes yet)
+        if (quotaAmount > 0) {
+          await voteOnCommentMutation.mutateAsync({
+            commentId: targetId,
+            data: {
+              targetType: 'comment',
+              targetId: targetId,
+              amount: isUpvote ? quotaAmount : -quotaAmount,
+              sourceType: 'quota',
+            },
+            communityId: targetCommunityId,
           });
         }
 
-        if (response) {
-          // Update wallet balance optimistically if needed
-          if (targetCommunityId && updateWalletBalance && delta !== 0) {
-            const amountChange = directionPlus ? -Math.abs(delta) : Math.abs(delta);
-            updateWalletBalance(targetCommunityId, amountChange);
-          }
-
-          // Invalidate queries
-          await updBalance();
-          queryClient.invalidateQueries({ queryKey: ['comments'] });
-          queryClient.invalidateQueries({ queryKey: ['quota'] });
-
-          // Close popup and reset form
-          handleClose();
-        }
-      } else if (votingTargetType === 'publication') {
-        // Vote on a publication
-        const response = await votesApiV1.voteOnPublication(activeVotingTarget, {
-          targetType: 'publication',
-          targetId: activeVotingTarget,
-          amount: directionPlus ? Math.abs(delta) : -Math.abs(delta),
-          sourceType: 'personal',
-        });
-        
-        // If there's a comment text, create a comment separately
-        if (formData.comment.trim()) {
-          await commentsApiV1.createComment({
-            targetType: 'publication',
-            targetId: activeVotingTarget,
-            content: formData.comment.trim(),
+        if (walletAmount > 0) {
+          await voteOnCommentMutation.mutateAsync({
+            commentId: targetId,
+            data: {
+              targetType: 'comment',
+              targetId: targetId,
+              amount: isUpvote ? walletAmount : -walletAmount,
+              sourceType: 'personal',
+            },
+            communityId: targetCommunityId,
           });
-        }
-
-        if (response) {
-          // Update wallet balance optimistically if needed
-          if (targetCommunityId && updateWalletBalance && delta !== 0) {
-            const amountChange = directionPlus ? -Math.abs(delta) : Math.abs(delta);
-            updateWalletBalance(targetCommunityId, amountChange);
-          }
-
-          // Invalidate queries
-          await updBalance();
-          queryClient.invalidateQueries({ queryKey: ['comments'] });
-          queryClient.invalidateQueries({ queryKey: ['publications'] });
-          queryClient.invalidateQueries({ queryKey: ['quota'] });
-
-          // Close popup and reset form
-          handleClose();
         }
       }
+
+      // Close popup and reset form
+      handleClose();
     } catch (err: unknown) {
+      // Mutation hooks handle rollback automatically via onError
       const message = err instanceof Error ? err.message : t('errorCommenting') || 'Failed to submit';
       updateVotingFormData({ error: message });
     }
@@ -202,6 +265,10 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
             commentAdd={handleSubmit}
             error={formData.error}
             onClose={handleClose}
+            quotaAmount={voteBreakdown.quotaAmount}
+            walletAmount={voteBreakdown.walletAmount}
+            quotaRemaining={quotaRemaining}
+            currencyIconUrl={currencyIconUrl}
           />
         </div>
       </div>

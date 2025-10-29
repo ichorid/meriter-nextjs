@@ -237,17 +237,21 @@ export class CommunitiesController {
       this.logger.log(`Synced ${syncedCount} communities for user ${userId}`);
       return {
         success: true,
-        message: 'Communities synced successfully',
-        syncedCount: syncedCount,
-        membershipsUpdated: syncedCount,
+        data: {
+          message: 'Communities synced successfully',
+          syncedCount: syncedCount,
+          membershipsUpdated: syncedCount,
+        },
       };
     } catch (error) {
       this.logger.error(`Error syncing communities for user ${userId}:`, error);
       return {
         success: false,
-        message: 'Error syncing communities',
-        syncedCount: 0,
-        membershipsUpdated: 0,
+        data: {
+          message: 'Error syncing communities',
+          syncedCount: 0,
+          membershipsUpdated: 0,
+        },
       };
     }
   }

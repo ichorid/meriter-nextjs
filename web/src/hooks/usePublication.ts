@@ -63,25 +63,7 @@ export function usePublication({
     try {
       const sourceType: 'personal' | 'quota' = 'quota'; // Use quota first for voting
       
-      // Optimistically update quota if using quota
-      if (sourceType === 'quota' && publication.communityId && user?.id) {
-        const quotaQueryKey = ['user-quota', user.id, publication.communityId];
-        queryClient.setQueryData(quotaQueryKey, (oldQuota: any) => {
-          if (!oldQuota || typeof oldQuota.remainingToday !== 'number') {
-            return oldQuota;
-          }
-          const newRemainingToday = Math.max(0, oldQuota.remainingToday - amount);
-          const newUsedToday = (oldQuota.usedToday || 0) + amount;
-          return {
-            ...oldQuota,
-            remainingToday: newRemainingToday,
-            usedToday: newUsedToday,
-          };
-        });
-      }
-
-      // Note: Wallet balance updates for 'personal' sourceType are handled via updateWalletBalance callback
-      // if needed in the future
+      // Quota and wallet updates are now handled optimistically in the mutation hooks
 
       await voteOnPublicationMutation.mutateAsync({
         publicationId: publication.id,
@@ -91,6 +73,7 @@ export function usePublication({
           amount,
           sourceType,
         },
+        communityId: publication.communityId,
       });
 
       // Refresh data
@@ -127,28 +110,7 @@ export function usePublication({
       // Let's use 'quota' by default since users typically vote with their daily quota first
       const sourceType: 'personal' | 'quota' = 'quota'; // Use quota first for voting
 
-      // Optimistically update quota if using quota
-      if (sourceType === 'quota' && publication.communityId && user?.id) {
-        const quotaQueryKey = ['user-quota', user.id, publication.communityId];
-        queryClient.setQueryData(quotaQueryKey, (oldQuota: any) => {
-          if (!oldQuota || typeof oldQuota.remainingToday !== 'number') {
-            // If no cached quota, skip optimistic update (will be fetched after mutation)
-            return oldQuota;
-          }
-          // Decrement remainingToday by the absolute vote amount (quota is used regardless of up/down)
-          const voteAmountUsed = Math.abs(amount);
-          const newRemainingToday = Math.max(0, oldQuota.remainingToday - voteAmountUsed);
-          const newUsedToday = (oldQuota.usedToday || 0) + voteAmountUsed;
-          return {
-            ...oldQuota,
-            remainingToday: newRemainingToday,
-            usedToday: newUsedToday,
-          };
-        });
-      }
-
-      // Note: Wallet balance updates for 'personal' sourceType are handled via updateWalletBalance callback
-      // Currently using 'quota' sourceType, so wallet updates are not needed here
+      // Quota and wallet updates are now handled optimistically in the mutation hooks
 
       // Create vote (with optional comment ID)
       // amount can be negative for downvotes - pass it as-is
@@ -162,6 +124,7 @@ export function usePublication({
           sourceType,
           attachedCommentId: commentId,
         },
+        communityId: publication.communityId,
       });
 
       // Refresh data immediately to update UI (this will also refresh quota/wallet from server)

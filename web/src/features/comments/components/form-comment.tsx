@@ -18,6 +18,10 @@ interface FormCommentProps {
     error: string;
     reason?: string;
     onClose: () => void;
+    quotaAmount?: number;
+    walletAmount?: number;
+    quotaRemaining?: number;
+    currencyIconUrl?: string;
 }
 
 export const FormComment: React.FC<FormCommentProps> = ({
@@ -33,6 +37,10 @@ export const FormComment: React.FC<FormCommentProps> = ({
     commentAdd,
     error,
     onClose,
+    quotaAmount = 0,
+    walletAmount = 0,
+    quotaRemaining = 0,
+    currencyIconUrl,
 }) => {
     const t = useTranslations('comments');
     return (
@@ -120,6 +128,10 @@ export const FormComment: React.FC<FormCommentProps> = ({
                 maxMinus={maxMinus}
                 commentAdd={commentAdd}
                 error={error}
+                quotaAmount={quotaAmount}
+                walletAmount={walletAmount}
+                quotaRemaining={quotaRemaining}
+                currencyIconUrl={currencyIconUrl}
             />
         )}
     </div>

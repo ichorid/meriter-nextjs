@@ -21,8 +21,8 @@ import { PollVoting } from "@features/polls/components/poll-voting";
 import type { IPollData } from "@features/polls/types";
 import { useRouter } from "next/navigation";
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
 import { GLOBAL_FEED_TG_CHAT_ID } from "@config/meriter";
+import { useVoteOnPublication, useRemovePublicationVote } from '@/hooks/api/useVotes';
 import { Spinner } from "@shared/components/misc";
 import { FormWithdraw } from "@shared/components/form-withdraw";
 import { useTranslations } from 'next-intl';
@@ -149,12 +149,17 @@ export const Publication = ({
     const [comment, setComment] = useState("");
     const [amountInMerits, setAmountInMerits] = useState(0);
     const [withdrawMerits, setWithdrawMerits] = useState(isMerit);
-    const [loading, setLoading] = useState(false);
+    
+    // Mutation hooks
+    const voteOnPublicationMutation = useVoteOnPublication();
+    const removeVoteMutation = useRemovePublicationVote();
+    
+    // Use loading state from mutations
+    const loading = voteOnPublicationMutation.isPending || removeVoteMutation.isPending;
     
     const submitWithdrawal = async () => {
         if (!isAuthor) return;
         
-        setLoading(true);
         const changeAmount = amount;
         const newSum = directionAdd 
             ? optimisticSum + changeAmount
@@ -171,18 +176,21 @@ export const Publication = ({
         }
         
         try {
-            // Use v1 API for vote withdrawal
+            // Use mutation hooks for vote operations
             if (directionAdd) {
-                // Adding votes - use POST to create vote
-                await apiClient.post("/api/v1/votes", {
-                    targetType: 'publication',
-                    targetId: slug,
-                    amount: withdrawMerits ? amountInMerits : amount,
-                    sourceType: 'personal',
+                // Adding votes - use vote mutation
+                await voteOnPublicationMutation.mutateAsync({
+                    publicationId: slug,
+                    data: {
+                        targetType: 'publication',
+                        targetId: slug,
+                        amount: withdrawMerits ? amountInMerits : amount,
+                        sourceType: 'personal',
+                    },
                 });
             } else {
-                // Removing votes - use DELETE to remove vote
-                await apiClient.delete(`/api/v1/votes?targetType=publication&targetId=${slug}`);
+                // Removing votes - use remove vote mutation
+                await removeVoteMutation.mutateAsync(slug);
             }
             
             setAmount(0);
@@ -196,8 +204,6 @@ export const Publication = ({
             if (updateWalletBalance && curr) {
                 updateWalletBalance(curr, -walletChange);
             }
-        } finally {
-            setLoading(false);
         }
     };
     

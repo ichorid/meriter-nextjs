@@ -13,6 +13,7 @@ import {
 import { VoteService } from '../../domain/services/vote.service';
 import { PublicationService } from '../../domain/services/publication.service';
 import { CommentService } from '../../domain/services/comment.service';
+import { UserService } from '../../domain/services/user.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ValidationError } from '../../common/exceptions/api.exceptions';
@@ -27,6 +28,7 @@ export class VotesController {
     private readonly voteService: VoteService,
     private readonly publicationService: PublicationService,
     private readonly commentService: CommentService,
+    private readonly userService: UserService,
   ) {}
 
   @Post('publications/:id/votes')
@@ -45,7 +47,7 @@ export class VotesController {
     
     // Determine sourceType - use 'quota' if not specified, otherwise use provided value
     // For quota votes, the frontend should pass sourceType: 'quota'
-    const sourceType = createDto.sourceType || 'personal';
+    const sourceType = createDto.sourceType || 'quota';
     
     // Create vote with optional attached comment ID
     const vote = await this.voteService.createVote(
@@ -135,13 +137,15 @@ export class VotesController {
       communityId = publication.getCommunityId.getValue();
     }
     
-    // Create vote with optional comment (atomic operation)
-    const result = await this.voteService.createVoteFromDto(req.user.id, {
-      targetType: 'comment',
-      targetId: id,
-      amount: createDto.amount,
+    // Create vote directly, forwarding sourceType (default to 'quota')
+    const result = await this.voteService.createVote(
+      req.user.id,
+      'comment',
+      id,
+      createDto.amount,
+      (createDto.sourceType || 'quota') as 'personal' | 'quota',
       communityId,
-    });
+    );
     
     return {
       data: {
@@ -183,6 +187,102 @@ export class VotesController {
     return {
       data: {
         vote: null,
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.headers['x-request-id'] || 'unknown',
+      },
+    };
+  }
+
+  @Post('publications/:id/vote-with-comment')
+  async votePublicationWithComment(
+    @Param('id') id: string,
+    @Body() body: {
+      amount: number;
+      sourceType?: 'personal' | 'quota';
+      comment?: string;
+    },
+    @Req() req: any,
+  ) {
+    // Get the publication to find the communityId
+    const publication = await this.publicationService.getPublication(id);
+    if (!publication) {
+      throw new NotFoundError('Publication', id);
+    }
+    
+    const communityId = publication.getCommunityId.getValue();
+    const sourceType = body.sourceType || 'quota';
+    
+    let commentId: string | undefined;
+    let comment = null;
+    
+    // Create comment first if provided
+    if (body.comment && body.comment.trim()) {
+      try {
+        const createdComment = await this.commentService.createComment(req.user.id, {
+          targetType: 'publication',
+          targetId: id,
+          content: body.comment.trim(),
+        });
+        commentId = createdComment.getId;
+        
+        // Fetch comment with full metadata for response
+        const commentSnapshot = createdComment.toSnapshot();
+        const authorId = createdComment.getAuthorId.getValue();
+        let author = null;
+        try {
+          author = await this.userService.getUser(authorId);
+        } catch (error) {
+          this.logger.warn(`Failed to fetch author ${authorId}:`, error.message);
+        }
+        
+        comment = {
+          ...commentSnapshot,
+          createdAt: commentSnapshot.createdAt.toISOString(),
+          updatedAt: commentSnapshot.updatedAt.toISOString(),
+          meta: {
+            author: author ? {
+              name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
+              username: author.username,
+              telegramId: author.telegramId,
+              photoUrl: author.avatarUrl,
+            } : {
+              name: 'Unknown',
+              username: undefined,
+              telegramId: undefined,
+              photoUrl: undefined,
+            },
+          },
+        };
+      } catch (error) {
+        this.logger.error('Failed to create comment:', error);
+        throw new ValidationError('Failed to create comment: ' + error.message);
+      }
+    }
+    
+    // Create vote with attached comment ID
+    const vote = await this.voteService.createVote(
+      req.user.id,
+      'publication',
+      id,
+      body.amount,
+      sourceType as 'personal' | 'quota',
+      communityId,
+      commentId // Attach comment to vote
+    );
+    
+    // Update publication metrics to reflect the vote immediately
+    const direction: 'up' | 'down' = body.amount > 0 ? 'up' : 'down';
+    await this.publicationService.voteOnPublication(id, req.user.id, Math.abs(body.amount), direction);
+    
+    // Get updated wallet/balance info if needed
+    const { WalletsController } = await import('../wallets/wallets.controller');
+    
+    return {
+      data: {
+        vote,
+        comment: comment || undefined,
       },
       meta: {
         timestamp: new Date().toISOString(),

@@ -10,9 +10,8 @@ import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useTranslations } from 'next-intl';
 import { useWallets, useUserProfile, useCommunity } from '@/hooks/api';
-import { usersApiV1 } from '@/lib/api/v1';
+import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Wallet } from '@/types/api-v1';
 import { routes } from '@/lib/constants/routes';
 
 interface Publication {
@@ -174,30 +173,8 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     // Only fetch user profile when user ID is available (prevents empty string query)
     const { data: userdata = 0 } = useUserProfile(user?.id || '');
     
-    // Get wallet balance for this community from user's wallets
-    const { data: balance = 0 } = useQuery({
-        queryKey: ['wallet-balance', user?.id, chatId],
-        queryFn: async () => {
-            if (!user?.id || !chatId) return 0;
-            try {
-                const wallets = await usersApiV1.getUserWallets(user.id);
-                const wallet = wallets.find((w: Wallet) => w.communityId === chatId);
-                return wallet?.balance || 0;
-            } catch (error: any) {
-                // Handle 404 and other wallet errors gracefully
-                if (error?.response?.status === 404 || error?.response?.statusCode === 404) {
-                    console.debug('Wallet not found for user:', user.id, 'community:', chatId, '- returning 0 balance');
-                    return 0;
-                }
-                // Only log non-404 errors to avoid console noise
-                if (error?.response?.status !== 404 && error?.response?.statusCode !== 404) {
-                    console.error('Error fetching wallet balance:', error);
-                }
-                return 0;
-            }
-        },
-        enabled: !!user?.id && !!chatId,
-    });
+    // Get wallet balance using standardized hook
+    const { data: balance = 0 } = useWalletBalance(chatId);
 
     useEffect(() => {
         if (!userLoading && !isAuthenticated) {
@@ -246,10 +223,9 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
     
-    // Wallet update function for optimistic updates
-    const updateWalletBalance = (currencyId: string, change: number) => {
-        // This will be handled by React Query mutations
-        // Optimistic updates are handled in the hooks
+    // Wallet balance updates are handled optimistically in vote mutation hooks
+    const updateWalletBalance = () => {
+        // No-op - optimistic updates handled in hooks
     };
     
     const updateAll = async () => {
@@ -296,7 +272,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             communityId={chatId}
             balance={balance}
             updBalance={async () => {
-                await queryClient.invalidateQueries({ queryKey: ['wallet-balance', user?.id, chatId] });
+                await queryClient.invalidateQueries({ queryKey: ['wallet', 'balance', chatId] });
             }}
             wallets={Array.isArray(wallets) ? wallets : []}
             updateWalletBalance={updateWalletBalance}

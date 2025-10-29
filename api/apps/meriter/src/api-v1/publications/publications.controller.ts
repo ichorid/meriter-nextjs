@@ -24,12 +24,14 @@ export class PublicationsController {
       videoUrl?: string;
     },
   ) {
-    return this.publicationService.createPublication(user.id, dto);
+    const publication = await this.publicationService.createPublication(user.id, dto);
+    return { success: true, data: publication };
   }
 
   @Get(':id')
   async getPublication(@Param('id') id: string) {
-    return this.publicationService.getPublication(id);
+    const publication = await this.publicationService.getPublication(id);
+    return { success: true, data: publication };
   }
 
   @Get()

@@ -11,7 +11,7 @@ import { LogoutButton } from '@/components/LogoutButton';
 import { LanguageSelector } from '@shared/components/language-selector';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
-import { useQueryClient } from '@tanstack/react-query';
+import { useSyncCommunities } from '@/hooks/api/useCommunities';
 
 const SettingsPage = () => {
     const router = useRouter();
@@ -20,9 +20,8 @@ const SettingsPage = () => {
     
     // Use centralized auth context
     const { user, isLoading, isAuthenticated } = useAuth();
-    const queryClient = useQueryClient();
     const { data: wallets = [] } = useWallets();
-    const [isSyncing, setIsSyncing] = useState(false);
+    const syncCommunitiesMutation = useSyncCommunities();
     const [syncMessage, setSyncMessage] = useState('');
     const activeCommentHook = useState<string | null>(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
@@ -36,33 +35,15 @@ const SettingsPage = () => {
     }, [isAuthenticated, isLoading, router]);
 
     const handleSyncCommunities = async () => {
-        setIsSyncing(true);
         setSyncMessage('');
         
         try {
-            const response = await fetch('/api/v1/communities/sync', {
-                method: 'POST',
-                credentials: 'include',
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                setSyncMessage(t('syncSuccess', { count: data.membershipsUpdated }));
-                setTimeout(() => setSyncMessage(''), 3000);
-                
-                // Invalidate SWR cache for communities data to refresh the home page
-                // Invalidate React Query caches instead of SWR mutate
-                queryClient.invalidateQueries({ queryKey: ['user-communities'] });
-                queryClient.invalidateQueries({ queryKey: ['user'] });
-            } else {
-                setSyncMessage(data.message || t('syncError'));
-            }
+            const result = await syncCommunitiesMutation.mutateAsync();
+            setSyncMessage(t('syncSuccess', { count: result.syncedCount }));
+            setTimeout(() => setSyncMessage(''), 3000);
         } catch (error) {
             console.error('Sync communities error:', error);
             setSyncMessage(t('syncError'));
-        } finally {
-            setIsSyncing(false);
         }
     };
 
@@ -143,11 +124,11 @@ const SettingsPage = () => {
                     </p>
                     <div className="py-2">
                         <button 
-                            className={`btn btn-primary ${isSyncing ? 'loading' : ''}`}
+                            className={`btn btn-primary ${syncCommunitiesMutation.isPending ? 'loading' : ''}`}
                             onClick={handleSyncCommunities}
-                            disabled={isSyncing}
+                            disabled={syncCommunitiesMutation.isPending}
                         >
-                            {isSyncing ? t('syncing') : t('syncCommunities')}
+                            {syncCommunitiesMutation.isPending ? t('syncing') : t('syncCommunities')}
                         </button>
                         {syncMessage && (
                             <div className={`mt-2 text-sm ${syncMessage.includes(t('syncError')) ? 'text-error' : 'text-success'}`}>

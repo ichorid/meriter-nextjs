@@ -1,6 +1,7 @@
 // Communities React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { communitiesApiV1 } from '@/lib/api/v1';
+import { communitiesApiV1Enhanced } from '@/lib/api/v1';
 import { queryKeys } from '@/lib/constants/queryKeys';
 
 // Local type definition
@@ -34,6 +35,22 @@ export const useUpdateCommunity = () => {
       communitiesApiV1.updateCommunity(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.communities.all });
+    },
+  });
+};
+
+export const useSyncCommunities = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: () => communitiesApiV1Enhanced.syncCommunities(),
+    onSuccess: () => {
+      // Invalidate user communities and user queries to refresh the home page
+      queryClient.invalidateQueries({ queryKey: ['user-communities'] });
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+    },
+    onError: (error) => {
+      console.error('Sync communities error:', error);
     },
   });
 };
