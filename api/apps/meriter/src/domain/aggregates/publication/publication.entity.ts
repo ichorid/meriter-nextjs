@@ -151,6 +151,13 @@ export class Publication {
     return this.beneficiaryId !== null;
   }
 
+  /**
+   * Get the effective beneficiary: beneficiaryId if set, otherwise authorId
+   */
+  getEffectiveBeneficiary(): UserId {
+    return this.beneficiaryId || this.authorId;
+  }
+
   // Getters
   get getId(): PublicationId {
     return this.id;

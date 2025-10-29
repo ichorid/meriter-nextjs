@@ -122,6 +122,12 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
         isVoting={isVoting}
         isCommenting={isCommenting}
         maxPlus={currentBalance}
+        activeWithdrawPost={activeWithdrawPost}
+        setActiveWithdrawPost={setActiveWithdrawPost}
+        activeSlider={activeSlider}
+        setActiveSlider={setActiveSlider}
+        wallets={wallets}
+        updateAll={updateAll}
         // maxMinus is calculated in PublicationActions using quota data
       />
     </article>

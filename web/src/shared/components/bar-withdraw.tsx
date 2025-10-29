@@ -8,15 +8,17 @@ interface BarWithdrawProps {
     balance: number;
     children: React.ReactNode;
     showDisabled?: boolean; // If true, show disabled button even when balance <= 0
+    isLoading?: boolean; // If true, show loading state
 }
 
-export const BarWithdraw: React.FC<BarWithdrawProps> = ({ onWithdraw, onTopup, balance, children, showDisabled = false }) => {
+export const BarWithdraw: React.FC<BarWithdrawProps> = ({ onWithdraw, onTopup, balance, children, showDisabled = false, isLoading = false }) => {
     const t = useTranslations('shared');
     const displayBalance = balance ?? 0;
     
     console.log('[BarWithdraw] Component Logic:', {
       displayBalance,
       showDisabled,
+      isLoading,
       willShow: showDisabled || (displayBalance > 0),
       isDisabled: displayBalance <= 0,
     });
@@ -28,12 +30,13 @@ export const BarWithdraw: React.FC<BarWithdrawProps> = ({ onWithdraw, onTopup, b
         return null;
     }
     
-    const isDisabled = displayBalance <= 0;
+    const isDisabled = displayBalance <= 0 || isLoading;
     
     console.log('[BarWithdraw] Rendering button:', {
       isDisabled,
       displayBalance,
       showDisabled,
+      isLoading,
     });
     
     return (
@@ -52,9 +55,18 @@ export const BarWithdraw: React.FC<BarWithdrawProps> = ({ onWithdraw, onTopup, b
                         onWithdraw();
                     }
                 }}
-                title={isDisabled ? t('noVotesToWithdraw') || 'No votes to withdraw' : undefined}
+                title={isDisabled ? (isLoading ? 'Withdrawing...' : (t('noVotesToWithdraw') || 'No votes to withdraw')) : undefined}
             >
-                {t('withdraw')} <span className="font-bold">{displayBalance}</span>
+                {isLoading ? (
+                    <>
+                        <span className="loading loading-spinner loading-xs"></span>
+                        {t('withdraw')} <span className="font-bold">{displayBalance}</span>
+                    </>
+                ) : (
+                    <>
+                        {t('withdraw')} <span className="font-bold">{displayBalance}</span>
+                    </>
+                )}
             </button>
         </div>
     );

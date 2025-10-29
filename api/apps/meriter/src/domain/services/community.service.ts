@@ -266,26 +266,27 @@ export class CommunityService {
     return true;
   }
 
-  async resetDailyQuota(communityId: string): Promise<number> {
+  async resetDailyQuota(communityId: string): Promise<{ resetAt: Date }> {
     this.logger.log(`Resetting daily quota for community ${communityId}`);
 
-    // Calculate today's date range (00:00:00 to 23:59:59)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Update lastQuotaResetAt timestamp to current time
+    const resetAt = new Date();
+    const updatedCommunity = await this.communityModel.findOneAndUpdate(
+      { id: communityId },
+      { 
+        $set: { 
+          lastQuotaResetAt: resetAt,
+          updatedAt: new Date()
+        }
+      },
+      { new: true }
+    ).lean();
 
-    // Delete all votes with sourceType='quota' for this community today
-    // Note: The schema uses 'quota' but some old data might have 'daily_quota'
-    const result = await this.mongoose.db
-      .collection('votes')
-      .deleteMany({
-        communityId: communityId, // Use internal ID
-        sourceType: { $in: ['quota', 'daily_quota'] },
-        createdAt: { $gte: today, $lt: tomorrow }
-      });
+    if (!updatedCommunity) {
+      throw new NotFoundException('Community not found');
+    }
 
-    this.logger.log(`Deleted ${result.deletedCount} quota votes for community ${communityId}`);
-    return result.deletedCount;
+    this.logger.log(`Quota reset timestamp updated for community ${communityId} at ${resetAt.toISOString()}`);
+    return { resetAt };
   }
 }

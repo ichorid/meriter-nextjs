@@ -142,6 +142,30 @@ export class PublicationService {
     return docs.map(doc => Publication.fromSnapshot(doc as IPublicationDocument));
   }
 
+  /**
+   * Get the effective beneficiary for a publication
+   * Returns beneficiaryId if set, otherwise authorId
+   */
+  async getEffectiveBeneficiary(publicationId: string): Promise<string | null> {
+    const publication = await this.getPublication(publicationId);
+    if (!publication) {
+      return null;
+    }
+    return publication.getEffectiveBeneficiary().getValue();
+  }
+
+  /**
+   * Check if user can withdraw from a publication
+   * User must be the effective beneficiary
+   */
+  async canUserWithdraw(publicationId: string, userId: string): Promise<boolean> {
+    const effectiveBeneficiary = await this.getEffectiveBeneficiary(publicationId);
+    if (!effectiveBeneficiary) {
+      return false;
+    }
+    return effectiveBeneficiary === userId;
+  }
+
   async updatePublication(publicationId: string, userId: string, updateData: Partial<CreatePublicationDto>): Promise<Publication> {
     const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
     if (!doc) {

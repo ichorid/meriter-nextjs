@@ -386,8 +386,23 @@ export const votesApiV1 = {
     publicationId: string,
     data: { amount?: number }
   ): Promise<{ success: boolean; data: { amount: number; balance: number; message: string } }> {
-    const response = await apiClient.post<{ success: boolean; data: { amount: number; balance: number; message: string }; meta: any }>(`/api/v1/publications/${publicationId}/withdraw`, data);
-    return response;
+    try {
+      console.log('[API] Calling withdrawFromPublication:', { publicationId, data });
+      const response = await apiClient.post<{ success: boolean; data: { amount: number; balance: number; message: string }; meta: any }>(`/api/v1/publications/${publicationId}/withdraw`, data);
+      console.log('[API] withdrawFromPublication response:', response);
+      return response;
+    } catch (error: any) {
+      console.error('[API] withdrawFromPublication error:', {
+        error,
+        errorType: typeof error,
+        errorKeys: error ? Object.keys(error) : [],
+        errorMessage: error?.message,
+        errorResponse: error?.response,
+        errorDetails: error?.details,
+        errorCode: error?.code,
+      });
+      throw error;
+    }
   },
 
   async withdrawFromComment(

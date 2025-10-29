@@ -86,17 +86,34 @@ export class WalletService {
       { upsert: true }
     );
 
+    // Map transaction type: credit -> deposit/withdrawal, debit -> withdrawal
+    // The actual transaction type depends on referenceType (e.g., 'publication_withdrawal' -> 'withdrawal')
+    let transactionType: 'vote' | 'comment' | 'poll_vote' | 'withdrawal' | 'deposit';
+    if (referenceType === 'publication_withdrawal' || referenceType === 'comment_withdrawal') {
+      transactionType = 'withdrawal';
+    } else if (referenceType === 'vote' || referenceType === 'publication_vote' || referenceType === 'comment_vote') {
+      transactionType = 'vote';
+    } else if (referenceType === 'comment') {
+      transactionType = 'comment';
+    } else if (referenceType === 'poll_vote') {
+      transactionType = 'poll_vote';
+    } else if (type === 'credit') {
+      transactionType = 'deposit';
+    } else {
+      transactionType = 'withdrawal';
+    }
+    
     // Create transaction record
     await this.mongoose.models.Transaction.create([{
       id: uid(),
       walletId: wallet.getId.getValue(),
-      type,
-      amount,
-      sourceType,
+      type: transactionType,
+      amount: Math.abs(amount), // Always positive for transaction record
+      description: description || `${transactionType} ${referenceType ? `(${referenceType})` : ''}`,
       referenceType,
       referenceId,
-      description,
       createdAt: new Date(),
+      updatedAt: new Date(),
     }]);
 
     // Publish event

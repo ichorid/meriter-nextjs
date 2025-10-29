@@ -158,13 +158,15 @@ export class WalletsController {
 
     const dailyQuota = community.settings.dailyEmission;
 
-    // Calculate today's date range (00:00:00 to 23:59:59)
+    // Determine the start time for quota calculation
+    // Use lastQuotaResetAt if set, otherwise use start of today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const quotaStartTime = community.lastQuotaResetAt 
+      ? new Date(community.lastQuotaResetAt)
+      : today;
 
-    // Query votes with sourceType='quota' for this user in this community today
+    // Query votes with sourceType='quota' for this user in this community created after quotaStartTime
     // Note: The schema uses 'quota' but some old data might have 'daily_quota'
     // Use absolute value of amount - both upvotes and downvotes consume quota
     const usedToday = await this.mongoose.db
@@ -175,7 +177,7 @@ export class WalletsController {
             userId: actualUserId,
             communityId: community.id,
             sourceType: { $in: ['quota', 'daily_quota'] },
-            createdAt: { $gte: today, $lt: tomorrow }
+            createdAt: { $gte: quotaStartTime }
           }
         },
         {
@@ -194,11 +196,18 @@ export class WalletsController {
 
     const used = usedToday.length > 0 ? usedToday[0].total : 0;
 
+    // Calculate resetAt as next midnight or next reset time if reset was done today
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const resetAt = community.lastQuotaResetAt && community.lastQuotaResetAt >= today
+      ? new Date(community.lastQuotaResetAt.getTime() + 24 * 60 * 60 * 1000) // 24 hours after reset
+      : tomorrow;
+
     return {
       dailyQuota,
       usedToday: used,
       remainingToday: Math.max(0, dailyQuota - used),
-      resetAt: tomorrow.toISOString()
+      resetAt: resetAt.toISOString()
     };
   }
 

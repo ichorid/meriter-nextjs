@@ -57,6 +57,9 @@ export class Community {
   @Prop({ default: true })
   isActive: boolean;
 
+  @Prop({ type: Date, required: false })
+  lastQuotaResetAt?: Date;
+
   @Prop({ required: true })
   createdAt: Date;
 

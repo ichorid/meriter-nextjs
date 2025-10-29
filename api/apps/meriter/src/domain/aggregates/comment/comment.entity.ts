@@ -121,6 +121,13 @@ export class Comment {
     return this.authorId.equals(userId);
   }
 
+  /**
+   * Get the effective beneficiary: always the author (comments cannot have beneficiaries)
+   */
+  getEffectiveBeneficiary(): UserId {
+    return this.authorId;
+  }
+
   // Getters
   get getId(): string {
     return this.id;

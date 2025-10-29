@@ -9,11 +9,14 @@ import {
   Req,
   UseGuards,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { VoteService } from '../../domain/services/vote.service';
 import { PublicationService } from '../../domain/services/publication.service';
 import { CommentService } from '../../domain/services/comment.service';
 import { UserService } from '../../domain/services/user.service';
+import { WalletService } from '../../domain/services/wallet.service';
+import { CommunityService } from '../../domain/services/community.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ValidationError } from '../../common/exceptions/api.exceptions';
@@ -29,6 +32,8 @@ export class VotesController {
     private readonly publicationService: PublicationService,
     private readonly commentService: CommentService,
     private readonly userService: UserService,
+    private readonly walletService: WalletService,
+    private readonly communityService: CommunityService,
   ) {}
 
   @Post('publications/:id/votes')
@@ -187,6 +192,176 @@ export class VotesController {
     return {
       data: {
         vote: null,
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.headers['x-request-id'] || 'unknown',
+      },
+    };
+  }
+
+  @Post('publications/:id/withdraw')
+  async withdrawFromPublication(
+    @Param('id') id: string,
+    @Body() body: { amount?: number },
+    @Req() req: any,
+  ) {
+    // Get the publication
+    const publication = await this.publicationService.getPublication(id);
+    if (!publication) {
+      throw new NotFoundError('Publication', id);
+    }
+    
+    // Check if user can withdraw
+    const canWithdraw = await this.voteService.canUserWithdraw(req.user.id, 'publication', id);
+    if (!canWithdraw) {
+      throw new BadRequestException('You are not authorized to withdraw from this publication');
+    }
+    
+    // Check balance
+    const balance = publication.getScore;
+    if (balance <= 0) {
+      throw new BadRequestException('No balance available to withdraw');
+    }
+    
+    // Get effective beneficiary
+    const effectiveBeneficiaryId = publication.getEffectiveBeneficiary().getValue();
+    const communityId = publication.getCommunityId.getValue();
+    
+    // Get community to get currency info
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      throw new NotFoundError('Community', communityId);
+    }
+    
+    // Get withdrawable amount (if amount specified, use it, otherwise withdraw all)
+    const withdrawAmount = body.amount ? Math.min(body.amount, balance) : balance;
+    
+    if (withdrawAmount <= 0) {
+      throw new BadRequestException('Withdraw amount must be positive');
+    }
+    
+    // Transfer to wallet
+    await this.walletService.addTransaction(
+      effectiveBeneficiaryId,
+      communityId,
+      'credit',
+      withdrawAmount,
+      'personal',
+      'publication_withdrawal',
+      id,
+      community.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      },
+      `Withdrawal from publication ${id}`
+    );
+    
+    // Update publication metrics
+    await this.publicationService.voteOnPublication(id, req.user.id, withdrawAmount, 'down');
+    
+    return {
+      success: true,
+      data: {
+        amount: withdrawAmount,
+        balance: balance - withdrawAmount,
+        message: `Successfully withdrew ${withdrawAmount} from publication`,
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.headers['x-request-id'] || 'unknown',
+      },
+    };
+  }
+
+  @Post('comments/:id/withdraw')
+  async withdrawFromComment(
+    @Param('id') id: string,
+    @Body() body: { amount?: number },
+    @Req() req: any,
+  ) {
+    // Get the comment
+    const comment = await this.commentService.getComment(id);
+    if (!comment) {
+      throw new NotFoundError('Comment', id);
+    }
+    
+    // Check if user can withdraw
+    const canWithdraw = await this.voteService.canUserWithdraw(req.user.id, 'comment', id);
+    if (!canWithdraw) {
+      throw new BadRequestException('You are not authorized to withdraw from this comment');
+    }
+    
+    // Check balance
+    const balance = comment.getScore;
+    if (balance <= 0) {
+      throw new BadRequestException('No balance available to withdraw');
+    }
+    
+    // Get effective beneficiary (always author for comments)
+    const effectiveBeneficiaryId = comment.getEffectiveBeneficiary().getValue();
+    
+    // Get community - need to trace to publication
+    let communityId: string;
+    if (comment.getTargetType === 'publication') {
+      const publication = await this.publicationService.getPublication(comment.getTargetId);
+      if (!publication) {
+        throw new NotFoundError('Publication', comment.getTargetId);
+      }
+      communityId = publication.getCommunityId.getValue();
+    } else {
+      // Comment on comment - find root publication
+      const parentComment = await this.commentService.getComment(comment.getTargetId);
+      if (!parentComment || parentComment.getTargetType !== 'publication') {
+        throw new NotFoundError('Root publication not found for comment', id);
+      }
+      const publication = await this.publicationService.getPublication(parentComment.getTargetId);
+      if (!publication) {
+        throw new NotFoundError('Publication', parentComment.getTargetId);
+      }
+      communityId = publication.getCommunityId.getValue();
+    }
+    
+    // Get community to get currency info
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      throw new NotFoundError('Community', communityId);
+    }
+    
+    // Get withdrawable amount (if amount specified, use it, otherwise withdraw all)
+    const withdrawAmount = body.amount ? Math.min(body.amount, balance) : balance;
+    
+    if (withdrawAmount <= 0) {
+      throw new BadRequestException('Withdraw amount must be positive');
+    }
+    
+    // Transfer to wallet
+    await this.walletService.addTransaction(
+      effectiveBeneficiaryId,
+      communityId,
+      'credit',
+      withdrawAmount,
+      'personal',
+      'comment_withdrawal',
+      id,
+      community.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      },
+      `Withdrawal from comment ${id}`
+    );
+    
+    // Update comment metrics
+    await this.commentService.voteOnComment(id, req.user.id, withdrawAmount, 'down');
+    
+    return {
+      success: true,
+      data: {
+        amount: withdrawAmount,
+        balance: balance - withdrawAmount,
+        message: `Successfully withdrew ${withdrawAmount} from comment`,
       },
       meta: {
         timestamp: new Date().toISOString(),

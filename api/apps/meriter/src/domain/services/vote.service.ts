@@ -1,9 +1,11 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, forwardRef, Inject } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
 import { Vote, VoteDocument } from '../models/vote/vote.schema';
 import { VoteAmount, UserId } from '../value-objects';
 import { uid } from 'uid';
+import { PublicationService } from './publication.service';
+import { CommentService } from './comment.service';
 
 @Injectable()
 export class VoteService {
@@ -12,7 +14,81 @@ export class VoteService {
   constructor(
     @InjectModel(Vote.name) private voteModel: Model<VoteDocument>,
     @InjectConnection() private mongoose: Connection,
+    @Inject(forwardRef(() => PublicationService)) private publicationService: PublicationService,
+    @Inject(forwardRef(() => CommentService)) private commentService: CommentService,
   ) {}
+
+  /**
+   * Check if user can vote on a publication or comment
+   * Rules:
+   * - Cannot vote if user is the effective beneficiary
+   * - For publications: effective beneficiary = beneficiaryId if set, otherwise authorId
+   * - For comments: effective beneficiary = authorId (comments can't have beneficiaries)
+   */
+  async canUserVote(userId: string, targetType: 'publication' | 'comment', targetId: string): Promise<boolean> {
+    if (targetType === 'publication') {
+      const publication = await this.publicationService.getPublication(targetId);
+      if (!publication) {
+        return false;
+      }
+      
+      const effectiveBeneficiary = publication.getEffectiveBeneficiary();
+      if (!effectiveBeneficiary) {
+        return false;
+      }
+      
+      // Cannot vote if user is the effective beneficiary
+      return effectiveBeneficiary.getValue() !== userId;
+    } else {
+      // Comment
+      const comment = await this.commentService.getComment(targetId);
+      if (!comment) {
+        return false;
+      }
+      
+      // Comments can't have beneficiaries, so effective beneficiary is always author
+      const authorId = comment.getAuthorId.getValue();
+      
+      // Cannot vote if user is the author
+      return authorId !== userId;
+    }
+  }
+
+  /**
+   * Check if user can withdraw from a publication or comment
+   * Rules:
+   * - Can withdraw only if user is the effective beneficiary
+   * - For publications: effective beneficiary = beneficiaryId if set, otherwise authorId
+   * - For comments: effective beneficiary = authorId (comments can't have beneficiaries)
+   */
+  async canUserWithdraw(userId: string, targetType: 'publication' | 'comment', targetId: string): Promise<boolean> {
+    if (targetType === 'publication') {
+      const publication = await this.publicationService.getPublication(targetId);
+      if (!publication) {
+        return false;
+      }
+      
+      const effectiveBeneficiary = publication.getEffectiveBeneficiary();
+      if (!effectiveBeneficiary) {
+        return false;
+      }
+      
+      // Can withdraw only if user is the effective beneficiary
+      return effectiveBeneficiary.getValue() === userId;
+    } else {
+      // Comment
+      const comment = await this.commentService.getComment(targetId);
+      if (!comment) {
+        return false;
+      }
+      
+      // Comments can't have beneficiaries, so effective beneficiary is always author
+      const authorId = comment.getAuthorId.getValue();
+      
+      // Can withdraw only if user is the author
+      return authorId === userId;
+    }
+  }
 
   async createVote(
     userId: string,
@@ -24,6 +100,12 @@ export class VoteService {
     attachedCommentId?: string
   ): Promise<Vote> {
     this.logger.log(`Creating vote: user=${userId}, target=${targetType}:${targetId}, amount=${amount}, sourceType=${sourceType}, communityId=${communityId}, attachedCommentId=${attachedCommentId}`);
+
+    // Validate that user can vote (mutual exclusivity check)
+    const canVote = await this.canUserVote(userId, targetType, targetId);
+    if (!canVote) {
+      throw new BadRequestException('Cannot vote: you are the effective beneficiary of this content');
+    }
 
     // Validate vote amount
     const voteAmount = amount > 0 ? VoteAmount.up(amount) : VoteAmount.down(Math.abs(amount));

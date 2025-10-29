@@ -162,6 +162,30 @@ export class CommentService {
     return docs.map(doc => Comment.fromSnapshot(doc as ICommentDocument));
   }
 
+  /**
+   * Get the effective beneficiary for a comment
+   * Comments cannot have beneficiaries, so always returns authorId
+   */
+  async getEffectiveBeneficiary(commentId: string): Promise<string | null> {
+    const comment = await this.getComment(commentId);
+    if (!comment) {
+      return null;
+    }
+    return comment.getEffectiveBeneficiary().getValue();
+  }
+
+  /**
+   * Check if user can withdraw from a comment
+   * User must be the author (comments can't have beneficiaries)
+   */
+  async canUserWithdraw(commentId: string, userId: string): Promise<boolean> {
+    const comment = await this.getComment(commentId);
+    if (!comment) {
+      return false;
+    }
+    return comment.getAuthorId.getValue() === userId;
+  }
+
   async voteOnComment(commentId: string, userId: string, amount: number, direction: 'up' | 'down'): Promise<Comment> {
     // Load aggregate
     const doc = await this.commentModel.findOne({ id: commentId }).lean();

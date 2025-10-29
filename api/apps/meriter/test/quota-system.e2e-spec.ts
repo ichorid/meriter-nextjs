@@ -175,13 +175,44 @@ describe('Quota System Integration (e2e)', () => {
       expect(votesBefore).toHaveLength(4);
 
       // Reset quota
-      const deletedCount = await communityService.resetDailyQuota(testCommunityId);
-      expect(deletedCount).toBe(3);
+      const result = await communityService.resetDailyQuota(testCommunityId);
+      expect(result.resetAt).toBeInstanceOf(Date);
 
-      // Verify only quota votes were deleted
+      // Verify all votes remain in database (no votes deleted)
       const votesAfter = await voteModel.find({ communityId: testCommunityId }).lean();
-      expect(votesAfter).toHaveLength(1);
-      expect(votesAfter[0].sourceType).toBe('personal');
+      expect(votesAfter).toHaveLength(4); // All votes should still exist
+
+      // Verify lastQuotaResetAt was updated
+      const communityAfter = await communityModel.findOne({ id: testCommunityId }).lean();
+      expect(communityAfter?.lastQuotaResetAt).toBeDefined();
+      expect(communityAfter?.lastQuotaResetAt).toBeInstanceOf(Date);
+
+      // Verify quota is replenished by checking user quota
+      // Since resetAt is now after all votes, usedToday should be 0
+      const quotaCheck = await connection.db.collection('votes').aggregate([
+        {
+          $match: {
+            userId: testUserId1,
+            communityId: testCommunityId,
+            sourceType: { $in: ['quota', 'daily_quota'] },
+            createdAt: { $gte: communityAfter!.lastQuotaResetAt! }
+          }
+        },
+        {
+          $project: {
+            absAmount: { $abs: '$amount' }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$absAmount' }
+          }
+        }
+      ]).toArray();
+      
+      const usedAfterReset = quotaCheck.length > 0 ? quotaCheck[0].total : 0;
+      expect(usedAfterReset).toBe(0); // No votes after reset timestamp
     });
 
     it('should only reset quota votes for the specific community', async () => {
@@ -255,18 +286,50 @@ describe('Quota System Integration (e2e)', () => {
       ]);
 
       // Reset quota for community 1 only
-      const deletedCount = await communityService.resetDailyQuota(testCommunityId1);
-      expect(deletedCount).toBe(1);
+      const result = await communityService.resetDailyQuota(testCommunityId1);
+      expect(result.resetAt).toBeInstanceOf(Date);
 
-      // Verify only community 1 votes were deleted
+      // Verify all votes remain in database (no votes deleted)
       const votes1 = await voteModel.find({ communityId: testCommunityId1 }).lean();
-      expect(votes1).toHaveLength(0);
+      expect(votes1).toHaveLength(1); // Vote still exists
 
       const votes2 = await voteModel.find({ communityId: testCommunityId2 }).lean();
       expect(votes2).toHaveLength(1);
+
+      // Verify lastQuotaResetAt was updated for community 1 only
+      const community1After = await communityModel.findOne({ id: testCommunityId1 }).lean();
+      const community2After = await communityModel.findOne({ id: testCommunityId2 }).lean();
+      expect(community1After?.lastQuotaResetAt).toBeDefined();
+      expect(community2After?.lastQuotaResetAt).toBeUndefined();
+
+      // Verify quota is replenished for community 1
+      const quotaCheck1 = await connection.db.collection('votes').aggregate([
+        {
+          $match: {
+            userId: testUserId,
+            communityId: testCommunityId1,
+            sourceType: { $in: ['quota', 'daily_quota'] },
+            createdAt: { $gte: community1After!.lastQuotaResetAt! }
+          }
+        },
+        {
+          $project: {
+            absAmount: { $abs: '$amount' }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$absAmount' }
+          }
+        }
+      ]).toArray();
+      
+      const usedAfterReset1 = quotaCheck1.length > 0 ? quotaCheck1[0].total : 0;
+      expect(usedAfterReset1).toBe(0); // No votes after reset timestamp
     });
 
-    it('should only delete votes from today', async () => {
+    it('should reset quota timestamp without deleting votes', async () => {
       const testCommunityId = uid();
       const testUserId = uid();
 
@@ -324,14 +387,44 @@ describe('Quota System Integration (e2e)', () => {
         createdAt: yesterday,
       });
 
-      // Reset quota (should only delete today's votes)
-      const deletedCount = await communityService.resetDailyQuota(testCommunityId);
-      expect(deletedCount).toBe(1);
+      // Reset quota (should update timestamp, not delete votes)
+      const result = await communityService.resetDailyQuota(testCommunityId);
+      expect(result.resetAt).toBeInstanceOf(Date);
 
-      // Verify yesterday's vote still exists
+      // Verify all votes remain in database
       const remainingVotes = await voteModel.find({ communityId: testCommunityId }).lean();
-      expect(remainingVotes).toHaveLength(1);
-      expect(remainingVotes[0].createdAt.getTime()).toBeLessThan(today.getTime());
+      expect(remainingVotes).toHaveLength(2); // Both votes should still exist
+
+      // Verify lastQuotaResetAt was updated
+      const communityAfter = await communityModel.findOne({ id: testCommunityId }).lean();
+      expect(communityAfter?.lastQuotaResetAt).toBeDefined();
+      expect(communityAfter?.lastQuotaResetAt).toBeInstanceOf(Date);
+
+      // Verify quota calculation only counts votes after reset timestamp
+      const quotaCheck = await connection.db.collection('votes').aggregate([
+        {
+          $match: {
+            userId: testUserId,
+            communityId: testCommunityId,
+            sourceType: { $in: ['quota', 'daily_quota'] },
+            createdAt: { $gte: communityAfter!.lastQuotaResetAt! }
+          }
+        },
+        {
+          $project: {
+            absAmount: { $abs: '$amount' }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$absAmount' }
+          }
+        }
+      ]).toArray();
+      
+      const usedAfterReset = quotaCheck.length > 0 ? quotaCheck[0].total : 0;
+      expect(usedAfterReset).toBe(0); // No votes after reset timestamp
     });
   });
 

@@ -184,8 +184,8 @@ export class CommunitiesController {
       throw new ForbiddenError('Only administrators can reset daily quota');
     }
 
-    const deletedCount = await this.communityService.resetDailyQuota(id);
-    return { success: true, data: { deletedCount } };
+    const { resetAt } = await this.communityService.resetDailyQuota(id);
+    return { success: true, data: { resetAt: resetAt.toISOString() } };
   }
 
   // TODO: Implement getCommunityMembers in CommunityService
