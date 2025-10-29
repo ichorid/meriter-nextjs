@@ -51,7 +51,7 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = ({ className = '' }) 
   // Default top bar
   return (
     <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="container mx-auto px-4 h-full flex items-center">
+      <div className="px-4 h-full flex items-center">
         <h1 className="text-xl font-semibold">Meriter</h1>
       </div>
     </header>
@@ -126,7 +126,7 @@ const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
 
   return (
     <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="container mx-auto px-4 h-full flex items-center gap-2">
+      <div className="px-4 h-full flex items-center gap-2">
         <h1 className="text-xl font-semibold mr-4">Home</h1>
         <div className="flex gap-1 bg-base-200 rounded-lg p-1">
           <button
@@ -271,7 +271,7 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
 
   return (
     <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="container mx-auto px-4 h-full flex items-center justify-between">
+      <div className="px-4 h-full flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold">{community.name}</h1>
           {community.isAdmin && (
@@ -384,7 +384,7 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
 const SettingsTopBar: React.FC<{ className?: string }> = ({ className }) => {
   return (
     <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="container mx-auto px-4 h-full flex items-center">
+      <div className="px-4 h-full flex items-center">
         <h1 className="text-xl font-semibold">Settings</h1>
       </div>
     </header>
@@ -407,7 +407,7 @@ const PostDetailTopBar: React.FC<{ pathname: string; className?: string }> = ({ 
 
   return (
     <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="container mx-auto px-4 h-full flex items-center gap-3">
+      <div className="px-4 h-full flex items-center gap-3">
         {/* Mobile back button */}
         <button
           onClick={handleBack}

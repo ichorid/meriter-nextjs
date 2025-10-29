@@ -38,15 +38,12 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
     return null;
   }
 
-  // Hide sidebar on mobile when viewing post details
-  const isPostDetailPage = pathname?.includes('/posts/');
-
   // Determine width based on expanded state
   const widthClass = isExpanded ? 'w-[280px]' : 'w-[72px]';
   const paddingClass = isExpanded ? 'px-4' : 'px-2';
 
   return (
-    <aside className={`${isPostDetailPage ? 'hidden md:flex' : 'flex'} fixed lg:sticky left-0 top-0 h-screen ${widthClass} bg-base-200 border-r border-base-300 z-40 flex-col py-4 transition-all duration-300 ${className}`}>
+    <aside className={`flex fixed lg:sticky left-0 top-0 h-screen ${widthClass} bg-base-200 border-r border-base-300 z-40 flex-col py-4 transition-all duration-300 ${className}`}>
       {/* Home Icon */}
       <div className={paddingClass}>
         <Link href={routes.home}>

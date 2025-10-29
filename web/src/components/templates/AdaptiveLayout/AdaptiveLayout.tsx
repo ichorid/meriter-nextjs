@@ -54,20 +54,59 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   // Comments column shows on desktop (lg) only
   const showCommentsColumn = showComments && selectedPostSlug && communityId;
 
+  // Sidebar responsive behavior when comments are shown:
+  // - xl+ (≥1280px): Keep expanded (default, prioritize full-size on broad windows)
+  // - lg-xl (1024-1279px): Shrink to avatar-only (medium desktop, constrained space)
+  // - < lg: Always avatar-only (mobile/tablet)
+  // When comments NOT shown:
+  // - lg+: Expanded
+  // - < lg: Avatar-only
+  const sidebarExpandedDesktop = !showCommentsColumn;
+  
+  // Calculate minimum required width: sidebar(280) + comments(400) + content(min ~600) = ~1280px
+  // Below xl (1280px), shrink sidebar when comments shown
+
   return (
     <div className={`min-h-screen flex ${className}`}>
       {/* Left Sidebar - Communities */}
-      {/* Hidden on mobile, avatar-only on tablet (md), expanded on desktop (lg) */}
-      {/* Use separate instances for responsive behavior */}
-      <div className="hidden md:flex lg:hidden">
-        <VerticalSidebar isExpanded={false} />
+      {/* Responsive behavior:
+          - Mobile small (< 640px): Hide when comments shown (very cramped), show avatar-only otherwise
+          - Mobile/Tablet (640px - lg): always avatar-only, fixed positioning
+          - Desktop lg-xl (1024-1279px): expanded when no comments, avatar when comments shown
+          - Desktop xl+ (≥1280px): always expanded (prioritize full-size on broad windows)
+      */}
+      {/* Mobile/Tablet (< lg): avatar-only, fixed positioning */}
+      {/* On small screens (< 640px), hide when comments shown to save space */}
+      {!showCommentsColumn && (
+        <div className="flex lg:hidden flex-shrink-0">
+          <VerticalSidebar isExpanded={false} />
+        </div>
+      )}
+      {showCommentsColumn && (
+        <div className="hidden sm:flex lg:hidden flex-shrink-0">
+          <VerticalSidebar isExpanded={false} />
+        </div>
+      )}
+      {/* Desktop lg-xl (1024-1279px): shrink to avatar when comments shown */}
+      <div className="hidden lg:flex xl:hidden flex-shrink-0" style={{ width: sidebarExpandedDesktop ? '280px' : '72px' }}>
+        <VerticalSidebar isExpanded={sidebarExpandedDesktop} />
       </div>
-      <div className="hidden lg:flex">
+      {/* Desktop xl+ (≥1280px): always expanded (default, broad windows) */}
+      <div className="hidden xl:flex flex-shrink-0 w-[280px]">
         <VerticalSidebar isExpanded={true} />
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col transition-all duration-300 md:pl-[72px] lg:pl-[280px]">
+      {/* Padding needed where sidebar is fixed:
+          - Mobile small (< 640px) with comments: No padding (sidebar hidden)
+          - Mobile/Tablet: 72px (avatar-only sidebar)
+          - Desktop: sidebar uses sticky positioning, takes natural space (no padding)
+      */}
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${
+        showCommentsColumn 
+          ? 'pl-0 sm:pl-[72px] lg:pl-0' // No padding on small mobile when comments shown (sidebar hidden), 72px on larger mobile/tablet
+          : 'pl-[72px] lg:pl-0' // 72px on mobile/tablet, no padding on desktop
+      }`}>
         {/* Top Bar */}
         <ContextTopBar />
         
@@ -75,13 +114,13 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
         <div className="flex-1 flex relative">
           {/* Center Column - Posts */}
           <div 
-            className={`flex-1 transition-all duration-300 ${
+            className={`transition-all duration-300 ${
               showCommentsColumn 
-                ? 'lg:mr-[400px]' // Make room for comments column when shown
-                : 'max-w-2xl mx-auto lg:mx-auto' // Center when no comments
+                ? 'flex-1 lg:mr-[400px]' // Make room for comments column when shown
+                : 'flex-1' // Take full width, start from left
             }`}
           >
-            <main className="container mx-auto px-4 py-6">
+            <main className="px-4 py-6">
               {children}
             </main>
           </div>

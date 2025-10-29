@@ -53,7 +53,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
   
   return (
     <nav className={`sticky top-0 z-50 navbar bg-base-100 shadow-md ${className}`}>
-      <div className="container mx-auto px-4">
+      <div className="px-4">
         <div className="flex items-center justify-between w-full">
           {/* Logo/Brand */}
           <Link href={routes.home} className="btn btn-ghost normal-case text-xl">
