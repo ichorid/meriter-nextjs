@@ -14,6 +14,7 @@ import { Spinner } from "@shared/components/misc";
 import { FormWithdraw } from "@shared/components/form-withdraw";
 import { useTranslations } from 'next-intl';
 import { useCommunity } from '@/hooks/api';
+import { CommentDetailsPopup } from "@shared/components/comment-details-popup";
 
 interface CommentProps {
     _id: string;
@@ -127,6 +128,9 @@ export const Comment: React.FC<CommentProps> = ({
                 ?.amount) ||
         0;
     const [showselector, setShowselector] = useState(false);
+    
+    // State for comment details popup
+    const [showDetailsPopup, setShowDetailsPopup] = useState(false);
     
     // Fetch community info to get currency icon using v1 API
     const { data: currencyCommunityInfo } = useCommunity(curr || '');
@@ -464,6 +468,7 @@ export const Comment: React.FC<CommentProps> = ({
                 beneficiaryAvatarUrl={telegramGetAvatarLink(toUserTgId || '')}
                 upvotes={displayUpvotes}
                 downvotes={displayDownvotes}
+                onDetailsClick={() => setShowDetailsPopup(true)}
                 onClick={!isDetailPage ? () => {
                     // Navigate to the post page only when not on detail page
                     if (inPublicationSlug && currencyOfCommunityTgChatId) {
@@ -487,6 +492,8 @@ export const Comment: React.FC<CommentProps> = ({
                             balance={maxWithdrawAmount}
                             onWithdraw={() => handleSetDirectionAdd(false)}
                             onTopup={() => handleSetDirectionAdd(true)}
+                            commentCount={comments?.length || 0}
+                            onCommentClick={() => setShowComments(true)}
                         />
                     ) : (
                         <BarVoteUnified
@@ -559,6 +566,19 @@ export const Comment: React.FC<CommentProps> = ({
                     </div>
                 </div>
             )}
+            <CommentDetailsPopup
+                isOpen={showDetailsPopup}
+                onClose={() => setShowDetailsPopup(false)}
+                rate={formatRate()}
+                currencyIcon={currencyIcon}
+                amountWallet={Math.abs(effectiveSum || 0)}
+                amountFree={hasVoteTransactionData && amountTotal !== undefined 
+                    ? Math.abs(amountTotal) - Math.abs(effectiveSum || 0) 
+                    : 0}
+                upvotes={displayUpvotes}
+                downvotes={displayDownvotes}
+                isUpvote={calculatedDirectionPlus}
+            />
         </div>
     );
 };

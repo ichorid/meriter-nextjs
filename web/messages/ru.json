@@ -206,7 +206,12 @@
     "upvoteFromMixed": "Голосование с суточной квоты и баланса",
     "downvoteFromQuota": "Негативное голосование с суточной квоты",
     "downvoteFromWallet": "Негативное голосование с баланса кошелька",
-    "downvoteFromMixed": "Негативное голосование с суточной квоты и баланса"
+    "downvoteFromMixed": "Негативное голосование с суточной квоты и баланса",
+    "commentDetails": "Детали комментария",
+    "totalVote": "Всего голосов",
+    "breakdown": "Разбивка",
+    "upvotes": "за",
+    "downvotes": "против"
   },
   "communities": {
     "other": "Другое",

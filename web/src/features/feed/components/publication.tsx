@@ -515,6 +515,12 @@ export const Publication = ({
                                     onWithdraw={() => handleSetDirectionAdd(false)}
                                     onTopup={() => handleSetDirectionAdd(true)}
                                     showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)} // Show disabled state for beneficiaries and authors without beneficiary
+                                    commentCount={!isDetailPage ? comments?.length || 0 : 0}
+                                    onCommentClick={!isDetailPage ? () => {
+                                        if (tgChatId && slug) {
+                                            router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
+                                        }
+                                    } : undefined}
                                 />
                             );
                         } else if (showVote || showVoteForAuthor) {

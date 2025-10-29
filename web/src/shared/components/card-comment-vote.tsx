@@ -30,19 +30,32 @@ export const CardCommentVote = ({
     communityIsAdmin,
     upvotes,
     downvotes,
+    onDetailsClick,
 }:any) => {
     const t = useTranslations('comments');
     
-    // Get tooltip text based on vote type
-    const getTooltipText = () => {
-        switch(voteType) {
-            case 'upvote-quota': return t('upvoteFromQuota');
-            case 'upvote-wallet': return t('upvoteFromWallet');
-            case 'upvote-mixed': return t('upvoteFromMixed');
-            case 'downvote-quota': return t('downvoteFromQuota');
-            case 'downvote-wallet': return t('downvoteFromWallet');
-            case 'downvote-mixed': return t('downvoteFromMixed');
-            default: return '';
+    // Determine direction from voteType or rate
+    const isUpvote = voteType?.includes('upvote') || (!voteType && rate && !rate.startsWith('-'));
+    
+    // Handle card click - open details popup if onDetailsClick provided, otherwise use onClick
+    const handleCardClick = (e: React.MouseEvent) => {
+        // Don't trigger if clicking on buttons or interactive elements
+        const target = e.target as HTMLElement;
+        const isClickable = target.closest('button') || 
+                           target.closest('.clickable') ||
+                           (target.closest('.cursor-pointer') && target.closest('.cursor-pointer') !== e.currentTarget);
+        
+        if (isClickable) {
+            return; // Let the button handle its own click
+        }
+        
+        // Prioritize onDetailsClick if provided (opens popup)
+        // Otherwise fall back to onClick (navigation)
+        if (onDetailsClick) {
+            e.stopPropagation();
+            onDetailsClick();
+        } else if (onClick) {
+            onClick();
         }
     };
     
@@ -51,69 +64,29 @@ export const CardCommentVote = ({
         <div 
             className={classList(
                 "card bg-base-100 shadow-md rounded-xl overflow-hidden",
-                onClick && "cursor-pointer hover:shadow-lg transition-shadow"
+                (onDetailsClick || onClick) && "cursor-pointer hover:shadow-lg transition-shadow"
             )}
-            onClick={onClick}
+            onClick={handleCardClick}
         >
             <div className="flex">
-                <div className={classList(
-                    "font-bold text-center py-2 px-3 min-w-[3rem] flex flex-col items-center justify-center gap-1",
-                    // Default styling if no voteType
-                    !voteType ? "bg-secondary text-secondary-content" : "",
-                    // Upvote styles
-                    voteType === 'upvote-wallet' ? "bg-success text-success-content" : "",
-                    voteType === 'upvote-quota' ? "bg-transparent border-2 border-success text-success" : "",
-                    voteType === 'upvote-mixed' ? "bg-gradient-to-r from-success/80 to-success text-success-content" : "",
-                    // Downvote styles
-                    voteType === 'downvote-wallet' ? "bg-error text-error-content" : "",
-                    voteType === 'downvote-quota' ? "bg-transparent border-2 border-error text-error" : "",
-                    voteType === 'downvote-mixed' ? "bg-gradient-to-r from-error/80 to-error text-error-content" : ""
-                )}>
-                    <div className="flex items-center justify-center gap-1">
+                <div 
+                    className={classList(
+                        "font-bold text-center py-2 px-3 min-w-[3rem] flex flex-col items-center justify-center gap-1",
+                        // Default styling if no voteType
+                        !voteType ? "bg-secondary text-secondary-content" : "",
+                        // Upvote styles
+                        voteType === 'upvote-wallet' ? "bg-success text-success-content" : "",
+                        voteType === 'upvote-quota' ? "bg-transparent border-2 border-success text-success" : "",
+                        voteType === 'upvote-mixed' ? "bg-gradient-to-r from-success/80 to-success text-success-content" : "",
+                        // Downvote styles
+                        voteType === 'downvote-wallet' ? "bg-error text-error-content" : "",
+                        voteType === 'downvote-quota' ? "bg-transparent border-2 border-error text-error" : "",
+                        voteType === 'downvote-mixed' ? "bg-gradient-to-r from-error/80 to-error text-error-content" : ""
+                    )}
+                >
+                    <div className="flex items-center justify-center">
                         <span>{rate}</span>
-                        {currencyIcon && (
-                            <img 
-                                src={currencyIcon} 
-                                alt="Currency" 
-                                className="w-4 h-4"
-                                style={{ maxWidth: '16px', maxHeight: '16px' }}
-                            />
-                        )}
                     </div>
-                    {/* Payment source icons */}
-                    {voteType && (
-                        <div className="flex flex-col items-center gap-0.5" title={getTooltipText()}>
-                            {voteType.includes('quota') && !voteType.includes('mixed') && (
-                                <span className="text-xs">⚡</span>
-                            )}
-                            {voteType.includes('wallet') && !voteType.includes('mixed') && (
-                                <span className="text-xs">💰</span>
-                            )}
-                            {voteType.includes('mixed') && (
-                                <>
-                                    <span className="text-xs">⚡</span>
-                                    <span className="text-xs">💰</span>
-                                </>
-                            )}
-                        </div>
-                    )}
-                    {/* Quota and wallet amounts displayed vertically */}
-                    {(amountFree > 0 || amountWallet > 0) && (
-                        <div className="flex flex-col items-center gap-0.5 text-[10px] mt-1">
-                            {amountFree > 0 && (
-                                <div className="flex items-center gap-0.5">
-                                    <span>⚡</span>
-                                    <span>{amountFree}</span>
-                                </div>
-                            )}
-                            {amountWallet > 0 && (
-                                <div className="flex items-center gap-0.5">
-                                    <span>💰</span>
-                                    <span>{amountWallet}</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
                 </div>
                 <div className="flex-1">
                     <div className="p-4">
@@ -158,23 +131,6 @@ export const CardCommentVote = ({
                                     size={16}
                                 />
                                 <span>{beneficiaryName}</span>
-                            </div>
-                        )}
-                        {/* Upvotes and downvotes display */}
-                        {(upvotes !== undefined || downvotes !== undefined) && (
-                            <div className="flex items-center gap-3 mb-2 text-xs opacity-60">
-                                {upvotes !== undefined && (
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-success">↑</span>
-                                        <span>{upvotes}</span>
-                                    </div>
-                                )}
-                                {downvotes !== undefined && (
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-error">↓</span>
-                                        <span>{downvotes}</span>
-                                    </div>
-                                )}
                             </div>
                         )}
                         <div className="bottom" onClick={(e) => e.stopPropagation()}>{bottom}</div>

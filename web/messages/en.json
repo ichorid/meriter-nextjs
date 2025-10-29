@@ -205,7 +205,12 @@
     "upvoteFromMixed": "Vote using daily quota and wallet",
     "downvoteFromQuota": "Vote negatively using daily quota",
     "downvoteFromWallet": "Vote negatively using wallet balance",
-    "downvoteFromMixed": "Vote negatively using daily quota and wallet"
+    "downvoteFromMixed": "Vote negatively using daily quota and wallet",
+    "commentDetails": "Comment Details",
+    "totalVote": "Total Vote",
+    "breakdown": "Breakdown",
+    "upvotes": "upvotes",
+    "downvotes": "downvotes"
   },
   "communities": {
     "other": "Other",

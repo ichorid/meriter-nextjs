@@ -442,6 +442,8 @@ export const Publication: React.FC<PublicationProps> = ({
                   onWithdraw={() => votingLogic.handleSetDirectionAdd(false)}
                   onTopup={() => votingLogic.handleSetDirectionAdd(true)}
                   showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)} // Show disabled state for beneficiaries and authors without beneficiary
+                  commentCount={!isDetailPage ? comments?.length || 0 : 0}
+                  onCommentClick={navigationLogic.handleCommentClick}
                 >
                   {null}
                 </BarWithdraw>

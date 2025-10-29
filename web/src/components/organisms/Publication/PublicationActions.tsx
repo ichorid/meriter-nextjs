@@ -278,6 +278,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
             onTopup={handleTopupClick}
             showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)}
             isLoading={withdrawMutation.isPending}
+            commentCount={publication.metrics?.commentCount || 0}
+            onCommentClick={handleCommentToggle}
           />
         ) : (showVote || showVoteForAuthor) ? (
           <BarVoteUnified
