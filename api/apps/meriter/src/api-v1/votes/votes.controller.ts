@@ -54,6 +54,12 @@ export class VotesController {
     // For quota votes, the frontend should pass sourceType: 'quota'
     const sourceType = createDto.sourceType || 'quota';
     
+    // Get community to get currency info (needed for wallet operations)
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      throw new NotFoundError('Community', communityId);
+    }
+    
     // Create vote with optional attached comment ID
     const vote = await this.voteService.createVote(
       req.user.id,
@@ -69,11 +75,27 @@ export class VotesController {
     const direction: 'up' | 'down' = createDto.amount > 0 ? 'up' : 'down';
     await this.publicationService.voteOnPublication(id, req.user.id, Math.abs(createDto.amount), direction);
     
+    // Deduct from wallet if sourceType is 'personal'
+    if (sourceType === 'personal') {
+      await this.walletService.addTransaction(
+        req.user.id,
+        communityId,
+        'debit',
+        Math.abs(createDto.amount),
+        'personal',
+        'publication_vote',
+        id,
+        community.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        `Vote on publication ${id}`
+      );
+    }
+    
     // Note: If there's an attached comment, the comment count was already incremented
     // in CommentService.createComment when the comment was created
-    
-    // Get updated wallet/balance info
-    const { WalletsController } = await import('../wallets/wallets.controller');
     
     return {
       data: {
@@ -142,15 +164,47 @@ export class VotesController {
       communityId = publication.getCommunityId.getValue();
     }
     
-    // Create vote directly, forwarding sourceType (default to 'quota')
+    // Determine sourceType - use 'quota' if not specified, otherwise use provided value
+    const sourceType = (createDto.sourceType || 'quota') as 'personal' | 'quota';
+    
+    // Get community to get currency info (needed for wallet operations)
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      throw new NotFoundError('Community', communityId);
+    }
+    
+    // Create vote directly, forwarding sourceType
     const result = await this.voteService.createVote(
       req.user.id,
       'comment',
       id,
       createDto.amount,
-      (createDto.sourceType || 'quota') as 'personal' | 'quota',
+      sourceType,
       communityId,
     );
+    
+    // Update comment metrics to reflect the vote immediately
+    const direction: 'up' | 'down' = createDto.amount > 0 ? 'up' : 'down';
+    await this.commentService.voteOnComment(id, req.user.id, Math.abs(createDto.amount), direction);
+    
+    // Deduct from wallet if sourceType is 'personal'
+    if (sourceType === 'personal') {
+      await this.walletService.addTransaction(
+        req.user.id,
+        communityId,
+        'debit',
+        Math.abs(createDto.amount),
+        'personal',
+        'comment_vote',
+        id,
+        community.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        `Vote on comment ${id}`
+      );
+    }
     
     return {
       data: {
@@ -389,6 +443,12 @@ export class VotesController {
     const communityId = publication.getCommunityId.getValue();
     const sourceType = body.sourceType || 'quota';
     
+    // Get community to get currency info (needed for wallet operations)
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      throw new NotFoundError('Community', communityId);
+    }
+    
     let commentId: string | undefined;
     let comment = null;
     
@@ -451,8 +511,24 @@ export class VotesController {
     const direction: 'up' | 'down' = body.amount > 0 ? 'up' : 'down';
     await this.publicationService.voteOnPublication(id, req.user.id, Math.abs(body.amount), direction);
     
-    // Get updated wallet/balance info if needed
-    const { WalletsController } = await import('../wallets/wallets.controller');
+    // Deduct from wallet if sourceType is 'personal'
+    if (sourceType === 'personal') {
+      await this.walletService.addTransaction(
+        req.user.id,
+        communityId,
+        'debit',
+        Math.abs(body.amount),
+        'personal',
+        'publication_vote',
+        id,
+        community.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        `Vote on publication ${id}`
+      );
+    }
     
     return {
       data: {
