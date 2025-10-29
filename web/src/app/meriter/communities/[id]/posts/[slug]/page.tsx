@@ -7,7 +7,8 @@ import { useRouter } from "next/navigation";
 import { Publication } from "@features/feed";
 import { useAuth } from '@/contexts/AuthContext';
 import { usePublication, useCommunity, useUserProfile, useWallets } from '@/hooks/api';
-import { useWalletBalance } from '@/hooks/api/useWallet';
+import { useWalletBalance, walletKeys } from '@/hooks/api/useWallet';
+import { queryKeys } from '@/lib/constants/queryKeys';
 
 const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> }) => {
     const router = useRouter();
@@ -36,13 +37,13 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
         // Close the active withdraw slider after successful update
         setActiveWithdrawPost(null);
         // Invalidate queries to refresh data
-        await queryClient.invalidateQueries({ queryKey: ['wallets'] });
-        await queryClient.invalidateQueries({ queryKey: ['wallet', 'balance', chatId] });
+        await queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
+        await queryClient.invalidateQueries({ queryKey: walletKeys.balance(chatId) });
     };
 
     const updBalance = async () => {
         // Invalidate balance query to refresh
-        await queryClient.invalidateQueries({ queryKey: ['wallet', 'balance', chatId] });
+        await queryClient.invalidateQueries({ queryKey: walletKeys.balance(chatId) });
     };
 
     const activeCommentHook = useState<string | null>(null);

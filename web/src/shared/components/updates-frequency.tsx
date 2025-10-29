@@ -1,50 +1,17 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from "@/lib/api/client";
 import { ChangeEvent, useState } from "react";
 import { useTranslations } from 'next-intl';
+import { useUpdatesFrequency, useSetUpdatesFrequency } from '@/hooks/api/useUsers';
 
 export const UpdatesFrequency = () => {
     const t = useTranslations('pages');
-    const queryClient = useQueryClient();
     const [isUpdating, setIsUpdating] = useState(false);
-
-    // Use React Query instead of SWR
-    const { data: frequencyData = null } = useQuery({
-        queryKey: ['updates-frequency'],
-        queryFn: async () => {
-            console.log('🌐 React Query fetching updates frequency');
-            const response = await apiClient.get('/api/v1/users/me/updates-frequency');
-            console.log('🌐 React Query updates frequency response:', response);
-            return response;
-        },
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        refetchOnWindowFocus: false,
-    });
+    
+    const { data: frequencyData } = useUpdatesFrequency();
+    const setFrequencyMutation = useSetUpdatesFrequency();
 
     const frequency = frequencyData?.frequency || 'daily';
-
-    console.log('🌐 Current frequency value:', frequency);
-
-    const setFrequencyMutation = useMutation({
-        mutationFn: async (freq: string) => {
-            console.log('Setting frequency to:', freq);
-            const response = await apiClient.put('/api/v1/users/me/updates-frequency', { frequency: freq });
-            console.log('Frequency update response:', response);
-            return { freq, response };
-        },
-        onSuccess: (data) => {
-            console.log('Mutation success, updating cache with:', data.freq);
-            console.log('Current cache before update:', queryClient.getQueryData(['updates-frequency']));
-            // Update the cache with the new value
-            queryClient.setQueryData(['updates-frequency'], { frequency: data.freq });
-            console.log('Cache after update:', queryClient.getQueryData(['updates-frequency']));
-        },
-        onError: (error) => {
-            console.error('Failed to update frequency:', error);
-        },
-    });
 
     const setFrequency = async (freq: string) => {
         setIsUpdating(true);

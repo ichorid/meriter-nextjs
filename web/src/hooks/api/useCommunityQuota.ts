@@ -1,5 +1,6 @@
 // Community quota React Query hooks
 import { useQueries } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { usersApiV1 } from '@/lib/api/v1';
 import { useAuth } from '@/contexts/AuthContext';
 import { quotaKeys } from './useQuota';
@@ -20,14 +21,23 @@ export interface CommunityQuota {
 export function useCommunityQuotas(communityIds: string[]) {
   const { user } = useAuth();
 
-  const queries = useQueries({
-    queries: communityIds.map((communityId) => ({
+  // Memoize queries array to prevent infinite loops
+  // useQueries compares the queries array by reference, so we need stable references
+  // Use JSON.stringify to compare array contents instead of reference
+  const communityIdsKey = useMemo(() => JSON.stringify([...communityIds].sort()), [communityIds]);
+  
+  const queriesConfig = useMemo(() => {
+    return communityIds.map((communityId) => ({
       queryKey: quotaKeys.quota(user?.id, communityId),
       queryFn: () => usersApiV1.getUserQuota(user?.id || '', communityId),
       enabled: !!user?.id && !!communityId,
       staleTime: 1 * 60 * 1000, // 1 minute
       retry: false, // Don't retry on quota errors (community not configured)
-    })),
+    }));
+  }, [communityIdsKey, user?.id]); // Depend on stringified key and user.id
+
+  const queries = useQueries({
+    queries: queriesConfig,
   });
 
   // Map results to include communityId for easier access

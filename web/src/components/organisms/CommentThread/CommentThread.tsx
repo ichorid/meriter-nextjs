@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardBody } from '@/components/atoms';
 import { UserCard, VoteIndicator } from '@/components/molecules';
 import { Avatar, Badge, Button, Icon, Divider } from '@/components/atoms';
-import { formatDate } from '@/lib/utils/date';
+import { formatDate } from '@/shared/lib/date';
 
 // Local Comment type definition
 interface Comment {

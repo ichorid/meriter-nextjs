@@ -1,15 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState, use } from "react";
-import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
+import { useEffect, useRef, useState, use, useMemo } from "react";
+import { useQueryClient } from '@tanstack/react-query';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useRouter, useSearchParams } from "next/navigation";
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useTranslations } from 'next-intl';
-import { useWallets, useUserProfile, useCommunity } from '@/hooks/api';
+import { useWallets, useUserProfile, useCommunity, useInfinitePublicationsByCommunity } from '@/hooks/api';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { routes } from '@/lib/constants/routes';
@@ -47,10 +46,6 @@ interface Publication {
   [key: string]: unknown;
 }
 
-interface PageData {
-  data: Publication[];
-  [key: string]: unknown;
-}
 
 const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
@@ -88,19 +83,10 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         hasNextPage,
         isFetchingNextPage,
         error: err
-    } = useInfiniteQuery({
-        queryKey: ['publications', chatId],
-        queryFn: async ({ pageParam = 1 }) => {
-            const response = await apiClient.get(`/api/v1/communities/${chatId}/publications?page=${pageParam}&pageSize=5&sort=score&order=desc`);
-            return response;
-        },
-        getNextPageParam: (lastPage, pages) => {
-            if (!lastPage.meta?.pagination?.hasNext) {
-                return undefined;
-            }
-            return pages.length + 1;
-        },
-        initialPageParam: 1,
+    } = useInfinitePublicationsByCommunity(chatId, {
+        pageSize: 5,
+        sort: 'score',
+        order: 'desc'
     });
 
     // Derive paginationEnd from hasNextPage instead of setting it in getNextPageParam
@@ -110,27 +96,51 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         }
     }, [hasNextPage]);
 
-    const publications = (data?.pages ?? [])
-        .map((page: PageData) => page.data)
-        .flat()
-        .map((p: any) => ({
-            ...p,
-            slug: p.slug || p.id, // Ensure slug is set (use id as fallback)
-            beneficiaryId: p.beneficiaryId || p.meta?.beneficiary?.username,
-            beneficiaryName: p.meta?.beneficiary?.name,
-            beneficiaryPhotoUrl: p.meta?.beneficiary?.photoUrl,
-            beneficiaryUsername: p.meta?.beneficiary?.username,
-        }))
-        .filter((p: Publication, index: number, self: Publication[]) => 
-            index === self.findIndex((t: Publication) => t?.id === p?.id)
-        );
+    // Memoize publications array to prevent unnecessary recalculations and infinite loops
+    const publications = useMemo(() => {
+        return (data?.pages ?? [])
+            .flatMap((page: any) => {
+                // The API returns PaginatedResponse which has a 'data' property with the array
+                // But apiClient.get may return { success: true, data: PaginatedResponse }
+                // So we need to handle both cases
+                if (page?.data && Array.isArray(page.data)) {
+                    return page.data;
+                }
+                // If page is already an array (shouldn't happen, but handle it)
+                if (Array.isArray(page)) {
+                    return page;
+                }
+                // If page.data.data exists (double wrapped)
+                if (page?.data?.data && Array.isArray(page.data.data)) {
+                    return page.data.data;
+                }
+                // Fallback: empty array
+                console.warn('Unexpected page structure:', page);
+                return [];
+            })
+            .map((p: any) => ({
+                ...p,
+                slug: p.slug || p.id, // Ensure slug is set (use id as fallback)
+                beneficiaryId: p.beneficiaryId || p.meta?.beneficiary?.username,
+                beneficiaryName: p.meta?.beneficiary?.name,
+                beneficiaryPhotoUrl: p.meta?.beneficiary?.photoUrl,
+                beneficiaryUsername: p.meta?.beneficiary?.username,
+            }))
+            .filter((p: Publication, index: number, self: Publication[]) => 
+                index === self.findIndex((t: Publication) => t?.id === p?.id)
+            );
+    }, [data?.pages]); // Only recalculate when data.pages changes
 
-    const setJwt = data?.pages?.[0]?.setJwt;
+    // Debug logging
     useEffect(() => {
-        if (setJwt) {
-            document.location.href = "/auth/" + setJwt;
+        if (data) {
+            console.log('📊 Publications data:', {
+                pagesCount: data.pages?.length,
+                firstPage: data.pages?.[0],
+                publicationsCount: publications.length
+            });
         }
-    }, [setJwt]);
+    }, [data, publications.length]);
 
     // Handle deep linking to specific post
     useEffect(() => {

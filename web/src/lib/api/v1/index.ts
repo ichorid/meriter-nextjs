@@ -74,6 +74,11 @@ export const usersApiV1 = {
     const response = await apiClient.get<{ success: true; data: User }>(`/api/v1/users/${userId}`);
     return response.data;
   },
+  
+  async getMe(): Promise<User> {
+    const response = await apiClient.get<{ success: true; data: User }>('/api/v1/users/me');
+    return response.data;
+  },
 
   async getUserProfile(userId: string): Promise<User> {
     const response = await apiClient.get<{ success: true; data: User }>(`/api/v1/users/${userId}/profile`);
@@ -131,6 +136,16 @@ export const usersApiV1 = {
     // Extract data from wrapped response
     return response?.data || response;
   },
+
+  async getUpdatesFrequency(): Promise<{ frequency: string }> {
+    const response = await apiClient.get<{ success: true; data: { frequency: string } }>('/api/v1/users/me/updates-frequency');
+    return response.data;
+  },
+
+  async setUpdatesFrequency(frequency: string): Promise<{ frequency: string }> {
+    const response = await apiClient.put<{ success: true; data: { frequency: string } }>('/api/v1/users/me/updates-frequency', { frequency });
+    return response.data;
+  },
 };
 
 // Communities API
@@ -159,9 +174,9 @@ export const communitiesApiV1 = {
     await apiClient.delete(`/api/v1/communities/${id}`);
   },
 
-  async resetDailyQuota(communityId: string): Promise<{ deletedCount: number }> {
-    const response = await apiClient.post<{ success: true; data: { deletedCount: number } }>(`/api/v1/communities/${communityId}/reset-quota`);
-    return response.data;
+  async resetDailyQuota(communityId: string): Promise<{ success: boolean; resetAt: string }> {
+    const response = await apiClient.post<{ success: true; data: { resetAt: string } }>(`/api/v1/communities/${communityId}/reset-quota`);
+    return { success: response.success, resetAt: response.data.resetAt };
   },
 
   async getCommunityMembers(id: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<CommunityMember>> {
@@ -169,8 +184,20 @@ export const communitiesApiV1 = {
     return response.data;
   },
 
-  async getCommunityPublications(id: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<Publication>> {
-    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Publication> }>(`/api/v1/communities/${id}/publications`, { params });
+  async getCommunityPublications(id: string, params: { skip?: number; limit?: number; page?: number; pageSize?: number; sort?: string; order?: string } = {}): Promise<PaginatedResponse<Publication>> {
+    // Transform page/pageSize to skip/limit if needed, or use skip/limit directly
+    const queryParams: any = {};
+    if (params.page !== undefined && params.pageSize !== undefined) {
+      queryParams.page = params.page;
+      queryParams.pageSize = params.pageSize;
+    } else if (params.skip !== undefined && params.limit !== undefined) {
+      queryParams.skip = params.skip;
+      queryParams.limit = params.limit;
+    }
+    if (params.sort) queryParams.sort = params.sort;
+    if (params.order) queryParams.order = params.order;
+    
+    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Publication> }>(`/api/v1/communities/${id}/publications`, { params: queryParams });
     return response.data;
   },
 

@@ -15,7 +15,7 @@ import { useTranslations } from 'next-intl';
 import { ellipsize } from "@shared/lib/text";
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommunity, usePolls, usePoll, useUserProfile, useWallets } from '@/hooks/api';
-import { useWalletBalance } from '@/hooks/api/useWallet';
+import { useWalletBalance, walletKeys } from '@/hooks/api/useWallet';
 import { usersApiV1, pollsApiV1 } from '@/lib/api/v1';
 
 const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
@@ -47,13 +47,17 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
         // Close the active withdraw slider after successful update
         setActiveWithdrawPost(null);
         // Invalidate queries to refresh data
-        await queryClient.invalidateQueries({ queryKey: ['wallets'] });
-        await queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
+        await queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
+        if (chatId) {
+            await queryClient.invalidateQueries({ queryKey: walletKeys.balance(chatId) });
+        }
     };
 
     const updBalance = async () => {
         // Invalidate balance query to refresh
-        await queryClient.invalidateQueries({ queryKey: ['wallet', chatId] });
+        if (chatId) {
+            await queryClient.invalidateQueries({ queryKey: walletKeys.balance(chatId) });
+        }
     };
 
     const chatNameVerb = String(poll?.communityId ?? "");

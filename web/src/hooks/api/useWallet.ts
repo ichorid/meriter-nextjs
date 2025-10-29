@@ -1,6 +1,7 @@
 // Wallet React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { walletApiV1 } from '@/lib/api/v1';
+import { serializeQueryParams } from '@/lib/utils/queryKeys';
 
 // Local type definitions
 export interface Wallet {
@@ -45,8 +46,8 @@ export const walletKeys = {
   balance: (currencyOfCommunityTgChatId?: string) => 
     [...walletKeys.all, 'balance', currencyOfCommunityTgChatId] as const,
   transactions: () => [...walletKeys.all, 'transactions'] as const,
-  transactionsList: (params: any) => [...walletKeys.transactions(), params] as const,
-  myTransactions: (params: any) => [...walletKeys.all, 'myTransactions', params] as const,
+  transactionsList: (params: any) => [...walletKeys.transactions(), serializeQueryParams(params)] as const,
+  myTransactions: (params: any) => [...walletKeys.all, 'myTransactions', serializeQueryParams(params)] as const,
   updates: () => [...walletKeys.all, 'updates'] as const,
   freeBalance: (currencyOfCommunityTgChatId?: string) => 
     [...walletKeys.all, 'freeBalance', currencyOfCommunityTgChatId] as const,

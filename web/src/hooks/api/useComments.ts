@@ -1,6 +1,8 @@
 // Comments React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { commentsApiV1 } from '@/lib/api/v1';
+import { queryKeys } from '@/lib/constants/queryKeys';
+import { serializeQueryParams } from '@/lib/utils/queryKeys';
 
 // Local type definitions
 interface Comment {
@@ -30,7 +32,7 @@ interface GetCommentsRequest {
 export const commentsKeys = {
   all: ['comments'] as const,
   lists: () => [...commentsKeys.all, 'list'] as const,
-  list: (params: GetCommentsRequest) => [...commentsKeys.lists(), params] as const,
+  list: (params: GetCommentsRequest) => [...commentsKeys.lists(), serializeQueryParams(params)] as const,
   details: () => [...commentsKeys.all, 'detail'] as const,
   detail: (id: string) => [...commentsKeys.details(), id] as const,
   byPublication: (publicationId: string) => [...commentsKeys.all, 'publication', publicationId] as const,
@@ -52,7 +54,7 @@ export function useCommentsByPublication(
   params: { page?: number; pageSize?: number; sort?: string; order?: string } = {}
 ) {
   return useQuery({
-    queryKey: [...commentsKeys.byPublication(publicationId), params],
+    queryKey: [...commentsKeys.byPublication(publicationId), serializeQueryParams(params)],
     queryFn: () => commentsApiV1.getCommentsByPublication(publicationId, params),
     staleTime: 2 * 60 * 1000, // 2 minutes
     enabled: !!publicationId,
@@ -65,7 +67,7 @@ export function useCommentsByComment(
   params: { page?: number; pageSize?: number; sort?: string; order?: string } = {}
 ) {
   return useQuery({
-    queryKey: [...commentsKeys.byComment(commentId), params],
+    queryKey: [...commentsKeys.byComment(commentId), serializeQueryParams(params)],
     queryFn: () => commentsApiV1.getCommentsByComment(commentId, params),
     staleTime: 2 * 60 * 1000, // 2 minutes
     enabled: !!commentId,
@@ -95,7 +97,7 @@ export function useCreateComment() {
       // - ['comments', 'list', ...] (used by commentsKeys.lists())
       // - ['comments', 'publication', ...] (used by commentsKeys.byPublication)
       // - ['comments', 'comment', ...] (used by commentsKeys.byComment)
-      queryClient.invalidateQueries({ queryKey: ['comments'], exact: false });
+      queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
       
       // Update the detail cache with the new comment
       queryClient.setQueryData(commentsKeys.detail(newComment.id), newComment);
