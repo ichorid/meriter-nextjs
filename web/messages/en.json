@@ -294,21 +294,7 @@
       "chooseSymbol": "✓ Choose a symbol for points",
       "sendGuide": "✓ Send a guide to members"
     },
-    "commbalance": {
-      "withdraw": "Withdraw",
-      "available": "Available {amount}",
-      "topup": "Top up",
-      "ok": "OK",
-      "add": "Add",
-      "remove": "Remove",
-      "merits": "merits",
-      "communityPoints": "community points",
-      "availableBalance": "Available Community Balance",
-      "exchangeRate": "Exchange Rate: {rate}",
-      "accumulatedInPublications": "Accumulated by community in publications",
-      "tip1": "transfer points from publications to available balance to use them",
-      "tip2": "transfer available balance to publications to increase their visibility"
-    },
+    
     "updateFrequency": {
       "telegramBotFrequency": "Telegram bot notification frequency:",
       "immediately": "Immediately",

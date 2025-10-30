@@ -65,7 +65,6 @@ export function middleware(request: NextRequest) {
     const knownStaticRoutes = [
         '/meriter/login',
         '/meriter/home',
-        '/meriter/commbalance',
         '/meriter/communities',
         '/meriter/spaces',
         '/meriter/settings',

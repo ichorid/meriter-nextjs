@@ -29,7 +29,7 @@ import {
 const CommunitySettingsPage = () => {
     const router = useRouter();
     const params = useParams();
-    const chatId = params.id as string;
+    const chatId = (params as any)?.id as string;
     const t = useTranslations('pages');
     
     // Telegram SDK integration

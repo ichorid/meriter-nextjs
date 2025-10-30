@@ -27,5 +27,4 @@ export const routes = {
   // Wallet
   wallet: '/meriter/wallet',
   transactions: '/meriter/wallet/transactions',
-  commBalance: '/meriter/commbalance',
 } as const;

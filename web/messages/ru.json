@@ -296,21 +296,7 @@
       "chooseSymbol": "✓ Выбрать символ для баллов",
       "sendGuide": "✓ Отправить памятку участникам"
     },
-    "commbalance": {
-      "withdraw": "Снять",
-      "available": "Доступно {amount}",
-      "topup": "Пополнить",
-      "ok": "ок",
-      "add": "Добавить",
-      "remove": "Снять",
-      "merits": "меритов",
-      "communityPoints": "баллов сообщества",
-      "availableBalance": "Доступный баланс сообщества",
-      "exchangeRate": "Обменный курс: {rate}",
-      "accumulatedInPublications": "Накоплено сообществом в публикациях",
-      "tip1": "переводите баллы из публикаций на доступный баланс, чтобы пользоваться ими",
-      "tip2": "переводите доступный баланс на публикации, чтобы их видело больше людей"
-    },
+    
     "updateFrequency": {
       "telegramBotFrequency": "Частота уведомлений бота Telegram:",
       "immediately": "Сразу",

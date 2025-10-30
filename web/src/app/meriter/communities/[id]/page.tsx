@@ -29,20 +29,20 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const pathname = `/meriter/communities/${chatId}`;
     
     // Get the post parameter from URL for deep linking
-    const targetPostSlug = searchParams.get('post');
-    const targetPollId = searchParams.get('poll');
+    const targetPostSlug = searchParams?.get('post');
+    const targetPollId = searchParams?.get('poll');
     
     // Get sort and modal state from URL params
-    const sortBy = searchParams.get('sort') || 'recent';
-    const selectedTag = searchParams.get('tag');
-    const showPollCreate = searchParams.get('modal') === 'createPoll';
+    const sortBy = searchParams?.get('sort') || 'recent';
+    const selectedTag = searchParams?.get('tag');
+    const showPollCreate = searchParams?.get('modal') === 'createPoll';
 
     const [paginationEnd, setPaginationEnd] = useState(false);
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
     
     // Handle poll modal close
     const handlePollClose = () => {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(searchParams?.toString() ?? '');
         params.delete('modal');
         router.push(`?${params.toString()}`);
     };
@@ -252,7 +252,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         : publications;
 
     const handlePostSelect = (postSlug: string) => {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(searchParams?.toString() ?? '');
         params.set('post', postSlug);
         router.push(`?${params.toString()}`);
     };

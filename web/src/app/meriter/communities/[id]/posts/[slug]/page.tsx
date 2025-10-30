@@ -17,7 +17,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     const slug = resolvedParams.slug;
     
     // Get highlight parameter from URL for comment highlighting
-    const highlightCommentId = searchParams.get('highlight');
+    const highlightCommentId = searchParams?.get('highlight');
 
     // Use v1 API hooks
     const { user } = useAuth();

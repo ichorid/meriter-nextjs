@@ -219,7 +219,7 @@ const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
           <button 
             onClick={() => handleSortClick('recent')}
             className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-              sortByTab[activeTab] === 'recent' ? 'btn-active btn-primary' : ''
+              sortByTab[activeTab] === 'recent' ? 'btn-active btn-primary' : 'btn-ghost'
             }`}
           >
             {t('sort.recent')}
@@ -227,7 +227,7 @@ const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
           <button 
             onClick={() => handleSortClick('voted')}
             className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-              sortByTab[activeTab] === 'voted' ? 'btn-active btn-primary' : ''
+              sortByTab[activeTab] === 'voted' ? 'btn-active btn-primary' : 'btn-ghost'
             }`}
           >
             {t('sort.voted')}
@@ -258,19 +258,19 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
 
 
   // Get sortBy from URL params
-  const sortBy = searchParams.get('sort') || 'recent';
-  const selectedTag = searchParams.get('tag');
+  const sortBy = searchParams?.get('sort') || 'recent';
+  const selectedTag = searchParams?.get('tag');
 
   // Handle sort change
   const handleSortChange = (sort: 'recent' | 'voted') => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
     params.set('sort', sort);
     router.push(`?${params.toString()}`);
   };
 
   // Handle tag filter
   const handleTagClick = (tag: string) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
     if (selectedTag === tag) {
       params.delete('tag');
     } else {
@@ -282,7 +282,7 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
 
   // Handle create poll - set modal state via URL param
   const handleCreatePoll = () => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
     params.set('modal', 'createPoll');
     router.push(`?${params.toString()}`);
   };
@@ -386,7 +386,7 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
             <button 
               onClick={() => handleSortChange('recent')}
               className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-                sortBy === 'recent' ? 'btn-active btn-primary' : ''
+                sortBy === 'recent' ? 'btn-active btn-primary' : 'btn-ghost'
               }`}
             >
               {t('byDate')}
@@ -394,7 +394,7 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
             <button 
               onClick={() => handleSortChange('voted')}
               className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-                sortBy === 'voted' ? 'btn-active btn-primary' : ''
+                sortBy === 'voted' ? 'btn-active btn-primary' : 'btn-ghost'
               }`}
             >
               {t('byRating')}
@@ -426,11 +426,11 @@ const SettingsTopBar: React.FC<{ className?: string }> = ({ className }) => {
 };
 
 // Post Detail Top Bar with Back Button
-const PostDetailTopBar: React.FC<{ pathname: string; className?: string }> = ({ pathname, className }) => {
+const PostDetailTopBar: React.FC<{ pathname: string | null; className?: string }> = ({ pathname, className }) => {
   const router = useRouter();
   
   // Extract community ID from pathname
-  const match = pathname.match(/\/meriter\/communities\/([^\/]+)\/posts\/(.+)/);
+  const match = pathname?.match(/\/meriter\/communities\/([^\/]+)\/posts\/(.+)/);
   const communityId = match?.[1];
 
   const { data: community } = useCommunity(communityId || '');

@@ -81,7 +81,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
       ? (publication as PublicationFeedItem).slug || publication.id
       : publication.id;
     if (postSlug) {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParams?.toString() ?? '');
       params.set('post', postSlug);
       router.push(`?${params.toString()}`);
     }

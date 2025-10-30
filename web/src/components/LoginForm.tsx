@@ -46,7 +46,7 @@ export function LoginForm({ className = '' }: LoginFormProps) {
   const telegramWidgetRef = useRef<HTMLDivElement>(null);
   
   // Get return URL
-  const returnTo = searchParams.get('returnTo');
+  const returnTo = searchParams?.get('returnTo');
   
   // Initialize Telegram Web App state
   useEffect(() => {

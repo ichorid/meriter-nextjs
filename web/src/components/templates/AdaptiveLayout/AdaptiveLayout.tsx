@@ -45,7 +45,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   setActiveWithdrawPost = () => {},
 }) => {
   const searchParams = useSearchParams();
-  const selectedPostSlug = searchParams.get('post');
+  const selectedPostSlug = searchParams?.get('post');
   const showComments = !!selectedPostSlug;
 
   // Comments column shows on desktop (lg) only
@@ -298,7 +298,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
                 showBackButton={true}
                 onBack={() => {
                   // Remove post query param
-                  const params = new URLSearchParams(searchParams.toString());
+                  const params = new URLSearchParams(searchParams?.toString() ?? '');
                   params.delete('post');
                   window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`);
                 }}
@@ -326,7 +326,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
             showBackButton={true}
             onBack={() => {
               // Remove post query param
-              const params = new URLSearchParams(searchParams.toString());
+              const params = new URLSearchParams(searchParams?.toString() ?? '');
               params.delete('post');
               window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`);
             }}
