@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { PublicationService } from '../../domain/services/publication.service';
 import { UserService } from '../../domain/services/user.service';
 import { CommunityService } from '../../domain/services/community.service';
@@ -28,7 +29,68 @@ export class PublicationsController {
   @Get(':id')
   async getPublication(@Param('id') id: string) {
     const publication = await this.publicationService.getPublication(id);
-    return { success: true, data: publication };
+    
+    if (!publication) {
+      throw new NotFoundException('Publication not found');
+    }
+
+    // Transform domain entity to DTO format with enriched metadata
+    const authorId = publication.getAuthorId.getValue();
+    const beneficiaryId = publication.getBeneficiaryId?.getValue();
+    const communityId = publication.getCommunityId.getValue();
+
+    // Fetch author, beneficiary, and community in parallel
+    const [author, beneficiary, community] = await Promise.all([
+      this.userService.getUser(authorId),
+      beneficiaryId ? this.userService.getUser(beneficiaryId) : Promise.resolve(null),
+      this.communityService.getCommunity(communityId),
+    ]);
+
+    const mappedPublication = {
+      id: publication.getId.getValue(),
+      _id: publication.getId.getValue(), // For compatibility with Publication component
+      slug: publication.getId.getValue(), // Use id as slug for navigation
+      communityId,
+      authorId,
+      beneficiaryId: beneficiaryId || undefined,
+      content: publication.getContent,
+      type: publication.getType,
+      hashtags: publication.getHashtags,
+      imageUrl: undefined, // Not available in current entity
+      videoUrl: undefined, // Not available in current entity
+      metrics: {
+        upvotes: publication.getMetrics.upvotes,
+        downvotes: publication.getMetrics.downvotes,
+        score: publication.getMetrics.score,
+        commentCount: publication.getMetrics.commentCount,
+        viewCount: 0, // Not available in current entity
+      },
+      meta: {
+        author: {
+          id: authorId,
+          name: author?.displayName || author?.firstName || 'Unknown',
+          photoUrl: author?.avatarUrl,
+          username: author?.username,
+        },
+        ...(beneficiary && {
+          beneficiary: {
+            id: beneficiaryId,
+            name: beneficiary.displayName || beneficiary.firstName || 'Unknown',
+            photoUrl: beneficiary.avatarUrl,
+            username: beneficiary.username,
+          },
+        }),
+        ...(community && {
+          origin: {
+            telegramChatName: community.name,
+          },
+        }),
+      },
+      createdAt: publication.toSnapshot().createdAt.toISOString(),
+      updatedAt: publication.toSnapshot().updatedAt.toISOString(),
+    };
+
+    return { success: true, data: mappedPublication };
   }
 
   @Get()

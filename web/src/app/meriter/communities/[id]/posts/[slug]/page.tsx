@@ -21,7 +21,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
 
     // Use v1 API hooks
     const { user } = useAuth();
-    const { data: publication } = usePublication(slug);
+    const { data: publication, isLoading: publicationLoading, error: publicationError } = usePublication(slug);
     const { data: comms } = useCommunity(chatId);
     
     const { data: balance = 0 } = useWalletBalance(chatId);
@@ -62,6 +62,56 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
 
     const tgAuthorId = user?.id;
 
+    // Show loading state
+    if (publicationLoading) {
+        return (
+            <AdaptiveLayout 
+                className="feed"
+                communityId={chatId}
+                balance={balance}
+                wallets={wallets}
+                myId={user?.id}
+                activeCommentHook={activeCommentHook}
+                activeSlider={activeSlider}
+                setActiveSlider={setActiveSlider}
+                activeWithdrawPost={activeWithdrawPost}
+                setActiveWithdrawPost={setActiveWithdrawPost}
+            >
+                <div className="flex justify-center items-center h-64">
+                    <span className="loading loading-spinner loading-lg"></span>
+                </div>
+            </AdaptiveLayout>
+        );
+    }
+
+    // Show error state
+    if (publicationError || !publication) {
+        return (
+            <AdaptiveLayout 
+                className="feed"
+                communityId={chatId}
+                balance={balance}
+                wallets={wallets}
+                myId={user?.id}
+                activeCommentHook={activeCommentHook}
+                activeSlider={activeSlider}
+                setActiveSlider={setActiveSlider}
+                activeWithdrawPost={activeWithdrawPost}
+                setActiveWithdrawPost={setActiveWithdrawPost}
+            >
+                <div className="flex flex-col items-center justify-center h-64">
+                    <p className="text-error">Publication not found</p>
+                    <button 
+                        className="btn btn-primary mt-4"
+                        onClick={() => router.push(`/meriter/communities/${chatId}`)}
+                    >
+                        Back to Community
+                    </button>
+                </div>
+            </AdaptiveLayout>
+        );
+    }
+
     return (
         <AdaptiveLayout 
             className="feed"
@@ -76,7 +126,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
             setActiveWithdrawPost={setActiveWithdrawPost}
         >
             <div className="space-y-4">
-                {publication && publication.content && (
+                {publication && (
                     <Publication
                         key={publication.id}
                         {...publication}
