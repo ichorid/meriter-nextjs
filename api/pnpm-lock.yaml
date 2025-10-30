@@ -15,8 +15,8 @@ importers:
         specifier: ^3.920.0
         version: 3.920.0(@aws-sdk/client-s3@3.920.0)
       '@meriter/shared-types':
-        specifier: file:../libs/shared-types
-        version: file:../libs/shared-types
+        specifier: link:../libs/shared-types
+        version: link:../libs/shared-types
       '@nestjs/common':
         specifier: ^10.4.20
         version: 10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -843,9 +843,6 @@ packages:
   '@mapbox/node-pre-gyp@1.0.11':
     resolution: {integrity: sha512-Yhlar6v9WQgUp/He7BdgzOz8lqMQ8sU+jkCq7Wx8Myc5YFJLbEe7lgui/V7G1qB1DJykHSGwreceSaD60Y0PUQ==}
     hasBin: true
-
-  '@meriter/shared-types@file:../libs/shared-types':
-    resolution: {directory: ../libs/shared-types, type: directory}
 
   '@mongodb-js/saslprep@1.3.2':
     resolution: {integrity: sha512-QgA5AySqB27cGTXBFmnpifAi7HxoGUeezwo6p9dI03MuDB6Pp33zgclqVb6oVK3j6I9Vesg0+oojW2XxB59SGg==}
@@ -5217,10 +5214,6 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
-
-  '@meriter/shared-types@file:../libs/shared-types':
-    dependencies:
-      zod: 4.1.12
 
   '@mongodb-js/saslprep@1.3.2':
     dependencies:
