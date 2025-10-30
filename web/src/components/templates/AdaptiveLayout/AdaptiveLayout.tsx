@@ -248,10 +248,10 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
         <div className="flex-1 flex relative">
           {/* Center Column - Posts */}
           <div 
-            className={`transition-all duration-300 ${
+            className={`transition-all duration-300 flex-1 sm:max-w-2xl lg:max-w-4xl ${
               showCommentsColumn 
-                ? 'flex-1' // Make room for comments column when shown via margin
-                : 'flex-1' // Take full width, start from left
+                ? '' // Make room for comments column when shown via margin
+                : 'mx-auto' // Center content when comments hidden
             }`}
             style={showCommentsColumn && isDesktop ? { marginRight: 'var(--right-column-width)' } : undefined}
           >
