@@ -46,8 +46,11 @@ export function useVoteOnPublication() {
       return context;
     },
     onSuccess: (result, variables) => {
-      // Invalidate publications to update vote counts
-      queryClient.invalidateQueries({ queryKey: queryKeys.publications.all });
+      // Invalidate publications to update vote counts (all publication query patterns)
+      queryClient.invalidateQueries({ queryKey: queryKeys.publications.all, exact: false });
+      
+      // Invalidate community feeds to update vote counts on community pages
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.all, exact: false });
       
       // Invalidate wallet queries to update balance
       queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
@@ -167,8 +170,11 @@ export function useRemovePublicationVote() {
   return useMutation({
     mutationFn: (publicationId: string) => votesApiV1.removePublicationVote(publicationId),
     onSuccess: () => {
-      // Invalidate publications to update vote counts
-      queryClient.invalidateQueries({ queryKey: queryKeys.publications.all });
+      // Invalidate publications to update vote counts (all publication query patterns)
+      queryClient.invalidateQueries({ queryKey: queryKeys.publications.all, exact: false });
+      
+      // Invalidate community feeds to update vote counts on community pages
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.all, exact: false });
       
       // Invalidate wallet queries to update balance
       queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
@@ -247,8 +253,11 @@ export function useVoteOnPublicationWithComment() {
       return context;
     },
     onSuccess: (result) => {
-      // Invalidate publications to update vote counts
-      queryClient.invalidateQueries({ queryKey: queryKeys.publications.all });
+      // Invalidate publications to update vote counts (all publication query patterns)
+      queryClient.invalidateQueries({ queryKey: queryKeys.publications.all, exact: false });
+      
+      // Invalidate community feeds to update vote counts on community pages
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.all, exact: false });
       
       // Invalidate comments to refresh list with new comment
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
@@ -277,8 +286,11 @@ export function useWithdrawFromPublication() {
     mutationFn: ({ publicationId, amount }: { publicationId: string; amount?: number }) => 
       votesApiV1.withdrawFromPublication(publicationId, { amount }),
     onSuccess: (result) => {
-      // Invalidate publications to update vote counts/balance
-      queryClient.invalidateQueries({ queryKey: queryKeys.publications.all });
+      // Invalidate publications to update vote counts/balance (all publication query patterns)
+      queryClient.invalidateQueries({ queryKey: queryKeys.publications.all, exact: false });
+      
+      // Invalidate community feeds to update vote counts on community pages
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.all, exact: false });
       
       // Invalidate wallet queries to update balance
       queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });

@@ -17,8 +17,8 @@ export const CommentMetricsSchema = VotableMetricsSchema.extend({
 });
 
 export const PollMetricsSchema = z.object({
-  totalVotes: z.number().int().min(0),
-  voterCount: z.number().int().min(0),
+  totalCasts: z.number().int().min(0),
+  casterCount: z.number().int().min(0),
   totalAmount: z.number().int().min(0),
 });
 
@@ -41,7 +41,7 @@ export const PollOptionSchema = z.object({
   text: z.string().min(1).max(200),
   votes: z.number().int().min(0),
   amount: z.number().int().min(0),
-  voterCount: z.number().int().min(0),
+  casterCount: z.number().int().min(0),
 });
 
 // Main entity schemas
@@ -125,7 +125,7 @@ export const PollSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   metrics: PollMetricsSchema,
 });
 
-export const PollVoteSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
+export const PollCastSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   pollId: z.string(),
   optionId: z.string(), // Changed from optionIndex to optionId
   userId: z.string(),
@@ -145,7 +145,7 @@ export const WalletSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
 // Transaction schema - ADDED (was missing)
 export const TransactionSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   walletId: z.string(),
-  type: z.enum(['vote', 'comment', 'poll_vote', 'withdrawal', 'deposit']),
+  type: z.enum(['vote', 'comment', 'poll_cast', 'withdrawal', 'deposit']),
   amount: z.number().int(),
   description: z.string().optional(), // Made optional to match current usage
   referenceType: z.string().optional(),
@@ -182,8 +182,7 @@ export const CreatePollDtoSchema = z.object({
   expiresAt: z.string().datetime(),
 });
 
-export const CreatePollVoteDtoSchema = z.object({
-  pollId: z.string(),
+export const CreatePollCastDtoSchema = z.object({
   optionId: z.string(), // Changed from optionIndex to optionId
   amount: z.number().int().min(1),
   sourceType: z.enum(['personal', 'quota']).default('personal'),
@@ -311,7 +310,7 @@ export type Publication = z.infer<typeof PublicationSchema>;
 export type Comment = z.infer<typeof CommentSchema>;
 export type Vote = z.infer<typeof VoteSchema>;
 export type Poll = z.infer<typeof PollSchema>;
-export type PollVote = z.infer<typeof PollVoteSchema>;
+export type PollCast = z.infer<typeof PollCastSchema>;
 export type Wallet = z.infer<typeof WalletSchema>;
 export type Transaction = z.infer<typeof TransactionSchema>;
 
@@ -319,7 +318,7 @@ export type CreatePublicationDto = z.infer<typeof CreatePublicationDtoSchema>;
 export type CreateCommentDto = z.infer<typeof CreateCommentDtoSchema>;
 export type CreateVoteDto = z.infer<typeof CreateVoteDtoSchema>;
 export type CreatePollDto = z.infer<typeof CreatePollDtoSchema>;
-export type CreatePollVoteDto = z.infer<typeof CreatePollVoteDtoSchema>;
+export type CreatePollCastDto = z.infer<typeof CreatePollCastDtoSchema>;
 export type TransferDto = z.infer<typeof TransferDtoSchema>;
 export type WithdrawDto = z.infer<typeof WithdrawDtoSchema>;
 export type UpdateCommunityDto = z.infer<typeof UpdateCommunityDtoSchema>;
