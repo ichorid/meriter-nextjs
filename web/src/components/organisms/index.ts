@@ -10,3 +10,4 @@ export * from './CommunityCard';
 export * from './CommentsColumn';
 export * from './WithdrawPopup/WithdrawPopup';
 export * from './VotingPopup/VotingPopup';
+export * from './UpdateCard';

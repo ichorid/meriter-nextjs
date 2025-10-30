@@ -251,6 +251,7 @@ export const Comment: React.FC<CommentProps> = ({
                 activeSlider && activeSlider !== _id ? "scale-95 opacity-60" : "scale-100 opacity-100",
                 highlightTransactionId == _id ? "highlight" : ""
             )}
+            data-comment-id={_id}
             key={_id}
             onClick={(e) => {
                 if (

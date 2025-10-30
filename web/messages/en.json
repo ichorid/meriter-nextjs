@@ -28,6 +28,37 @@
     "sort": {
       "recent": "By Date",
       "voted": "By Rating"
+    },
+    "empty": {
+      "publications": {
+        "title": "No Publications",
+        "message": "You haven't created any publications yet."
+      },
+      "comments": {
+        "title": "No Comments",
+        "message": "You haven't written any comments yet."
+      },
+      "polls": {
+        "title": "No Polls",
+        "message": "You haven't created any polls yet."
+      },
+      "updates": {
+        "title": "No Updates",
+        "message": "No updates available."
+      }
+    },
+    "updates": {
+      "voteUp": "upvoted your {targetType}",
+      "voteDown": "downvoted your {targetType}",
+      "beneficiary": "created a post with you as beneficiary",
+      "targetType": {
+        "post": "post",
+        "comment": "comment"
+      },
+      "timeJustNow": "just now",
+      "timeMinutesAgo": "m ago",
+      "timeHoursAgo": "h ago",
+      "timeDaysAgo": "d ago"
     }
   },
   "settings": {
@@ -231,7 +262,8 @@
     "voteType": "Vote Type",
     "upvote": "Upvote",
     "downvote": "Downvote",
-    "beneficiary": "Beneficiary"
+    "beneficiary": "Beneficiary",
+    "viewInPublication": "View in publication →"
   },
   "communities": {
     "other": "Other",

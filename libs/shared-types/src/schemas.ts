@@ -85,9 +85,9 @@ export const PublicationSchema = IdentifiableSchema.merge(TimestampsSchema).exte
 });
 
 export const CommentAuthorMetaSchema = z.object({
+  id: z.string().optional(),
   name: z.string(),
   username: z.string().optional(),
-  telegramId: z.string().optional(),
   photoUrl: z.string().url().optional(),
 });
 

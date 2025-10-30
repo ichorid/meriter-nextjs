@@ -57,14 +57,14 @@ interface CastPollRequest {
 export const pollsKeys = {
   all: ['polls'] as const,
   lists: () => [...pollsKeys.all, 'list'] as const,
-  list: (params: { skip?: number; limit?: number }) => [...pollsKeys.lists(), params] as const,
+  list: (params: { skip?: number; limit?: number; userId?: string }) => [...pollsKeys.lists(), params] as const,
   details: () => [...pollsKeys.all, 'detail'] as const,
   detail: (id: string) => [...pollsKeys.details(), id] as const,
   results: (id: string) => [...pollsKeys.all, 'results', id] as const,
 } as const;
 
 // Get polls with pagination
-export function usePolls(params: { skip?: number; limit?: number } = {}) {
+export function usePolls(params: { skip?: number; limit?: number; userId?: string } = {}) {
   return useQuery({
     queryKey: pollsKeys.list(params),
     queryFn: () => pollsApiV1.getPolls(params),

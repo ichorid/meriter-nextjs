@@ -112,11 +112,18 @@ const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
     } else if (tab === 'updates') {
       hashPart = '#updates-frequency';
     }
+    // For publications, hashPart stays empty (default)
 
     // Use the stored sort preference for this tab
     const urlParams = new URLSearchParams();
     urlParams.set('sort', sortByTab[tab]);
-    window.location.hash = hashPart ? `${hashPart}?${urlParams.toString()}` : '';
+    
+    // Set hash: for publications, use empty hash with sort params, for others use hashPart with sort
+    if (tab === 'publications') {
+      window.location.hash = urlParams.toString() ? `?${urlParams.toString()}` : '';
+    } else {
+      window.location.hash = `${hashPart}?${urlParams.toString()}`;
+    }
   };
 
   const handleSortClick = (sort: 'recent' | 'voted') => {
@@ -139,7 +146,12 @@ const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
     }
     // For publications tab, hashPart stays empty (default hash)
     
-    window.location.hash = hashPart ? `${hashPart}?${urlParams.toString()}` : `?${urlParams.toString()}`;
+    // Set hash: for publications, use empty hash with sort params, for others use hashPart with sort
+    if (activeTab === 'publications') {
+      window.location.hash = urlParams.toString() ? `?${urlParams.toString()}` : '';
+    } else {
+      window.location.hash = `${hashPart}?${urlParams.toString()}`;
+    }
   };
 
   return (

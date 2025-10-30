@@ -29,6 +29,37 @@
       "recent": "По дате",
       "thanked": "По рейтингу",
       "voted": "По рейтингу"
+    },
+    "empty": {
+      "publications": {
+        "title": "Нет публикаций",
+        "message": "Вы еще не создали ни одной публикации."
+      },
+      "comments": {
+        "title": "Нет комментариев",
+        "message": "Вы еще не написали ни одного комментария."
+      },
+      "polls": {
+        "title": "Нет опросов",
+        "message": "Вы еще не создали ни одного опроса."
+      },
+      "updates": {
+        "title": "Нет обновлений",
+        "message": "Нет доступных обновлений."
+      }
+    },
+    "updates": {
+      "voteUp": "проголосовал за ваш {targetType}",
+      "voteDown": "проголосовал против вашего {targetType}",
+      "beneficiary": "создал пост с вами как получателем",
+      "targetType": {
+        "post": "пост",
+        "comment": "комментарий"
+      },
+      "timeJustNow": "только что",
+      "timeMinutesAgo": "м назад",
+      "timeHoursAgo": "ч назад",
+      "timeDaysAgo": "д назад"
     }
   },
   "settings": {
@@ -232,7 +263,8 @@
     "voteType": "Тип голоса",
     "upvote": "За",
     "downvote": "Против",
-    "beneficiary": "Получатель"
+    "beneficiary": "Получатель",
+    "viewInPublication": "Посмотреть в публикации →"
   },
   "communities": {
     "other": "Другое",

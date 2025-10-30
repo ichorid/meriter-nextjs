@@ -19,6 +19,7 @@ import type {
 } from '@/types/api-v1';
 import type { PaginatedResponse } from '@/types/api-v1';
 import type { TelegramUser, AuthResult, CommunityMember, LeaderboardEntry, PollCastResult } from '@/types/api-responses';
+import type { UpdateEvent } from '@/types/updates';
 
 // Auth API with enhanced response handling
 export const authApiV1 = {
@@ -101,8 +102,29 @@ export const usersApiV1 = {
   },
 
   async getUserComments(userId: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<Comment>> {
-    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Comment> }>(`/api/v1/users/${userId}/comments`, { params });
-    return response.data;
+    const response = await apiClient.get<{ success?: boolean; data?: any }>(`/api/v1/comments/users/${userId}`, { params });
+    // Handle both response formats: wrapped { success: true, data: {...} } and direct { data: [...], total: ... }
+    if (response.data && typeof response.data === 'object' && 'data' in response.data && Array.isArray(response.data.data)) {
+      // Direct format from backend
+      const backendData = response.data as any;
+      return {
+        data: backendData.data || [],
+        meta: {
+          pagination: {
+            page: backendData.skip ? Math.floor(backendData.skip / (backendData.limit || 10)) + 1 : 1,
+            pageSize: backendData.limit || 10,
+            total: backendData.total || 0,
+            totalPages: backendData.limit ? Math.ceil((backendData.total || 0) / backendData.limit) : 1,
+            hasNext: backendData.skip !== undefined && backendData.limit !== undefined && (backendData.skip + backendData.limit) < (backendData.total || 0),
+            hasPrev: backendData.skip !== undefined && backendData.skip > 0,
+          },
+          timestamp: new Date().toISOString(),
+          requestId: '',
+        },
+      };
+    }
+    // Wrapped format
+    return response.data as PaginatedResponse<Comment>;
   },
 
   async getUserWallets(userId: string): Promise<Wallet[]> {
@@ -144,6 +166,11 @@ export const usersApiV1 = {
 
   async setUpdatesFrequency(frequency: string): Promise<{ frequency: string }> {
     const response = await apiClient.put<{ success: true; data: { frequency: string } }>('/api/v1/users/me/updates-frequency', { frequency });
+    return response.data;
+  },
+
+  async getUpdates(userId: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<UpdateEvent>> {
+    const response = await apiClient.get<{ success: true; data: PaginatedResponse<UpdateEvent> }>(`/api/v1/users/${userId}/updates`, { params });
     return response.data;
   },
 };
@@ -268,13 +295,28 @@ export const publicationsApiV1 = {
   },
 
   async getMyPublications(params: { skip?: number; limit?: number } = {}): Promise<Publication[]> {
+    // Use /api/v1/users/me/publications endpoint
+    // Note: The backend endpoint accepts userId as param, but we need to get the current user ID
+    // For now, we'll use the publications endpoint with authorId query param instead
     const queryParams = new URLSearchParams();
     
-    if (params.skip) queryParams.append('page', (Math.floor(params.skip / (params.limit || 10)) + 1).toString());
-    if (params.limit) queryParams.append('pageSize', params.limit.toString());
+    if (params.skip !== undefined) queryParams.append('skip', params.skip.toString());
+    if (params.limit !== undefined) queryParams.append('limit', params.limit.toString());
 
-    const response = await apiClient.get<{ success: true; data: Publication[] }>(`/api/v1/publications/my?${queryParams.toString()}`);
-    return response.data;
+    // First get current user ID, then fetch publications
+    // Actually, we should use /api/v1/publications?authorId=... but that requires knowing the user ID
+    // Let's use /api/v1/users/me/publications and handle the response properly
+    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Publication> } | { success: true; data: Publication[] }>(`/api/v1/users/me/publications?${queryParams.toString()}`);
+    
+    // Handle both response formats: PaginatedResponse or direct array
+    if (response.data && typeof response.data === 'object' && 'data' in response.data && Array.isArray(response.data.data)) {
+      // PaginatedResponse format
+      return response.data.data;
+    } else if (Array.isArray(response.data)) {
+      // Direct array format
+      return response.data;
+    }
+    return [];
   },
 
   async getPublicationsByCommunity(
@@ -534,7 +576,7 @@ function unwrapApiResponse<T>(response: { success: true; data: T }): T {
 
 // Polls API
 export const pollsApiV1 = {
-  async getPolls(params: { skip?: number; limit?: number; communityId?: string } = {}): Promise<PaginatedResponse<Poll>> {
+  async getPolls(params: { skip?: number; limit?: number; communityId?: string; userId?: string } = {}): Promise<PaginatedResponse<Poll>> {
     const response = await apiClient.get<{ success: true; data: PaginatedResponse<Poll> }>('/api/v1/polls', { params });
     return unwrapApiResponse(response);
   },

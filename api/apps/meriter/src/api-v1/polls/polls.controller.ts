@@ -15,6 +15,7 @@ import { PollService } from '../../domain/services/poll.service';
 import { PollCastService } from '../../domain/services/poll-cast.service';
 import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
+import { UserService } from '../../domain/services/user.service';
 import { Wallet } from '../../domain/aggregates/wallet/wallet.entity';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
@@ -31,12 +32,107 @@ export class PollsController {
     private readonly pollCastService: PollCastService,
     private readonly walletService: WalletService,
     private readonly communityService: CommunityService,
+    private readonly userService: UserService,
   ) {}
 
   @Get()
-  async getPolls(@Query() query: any) {
-    // For now, return empty array - this endpoint needs to be implemented based on business requirements
-    return { data: [], total: 0, skip: 0, limit: 50 };
+  async getPolls(@Query() query: any, @Req() req: any) {
+    const pagination = PaginationHelper.parseOptions(query);
+    const skip = PaginationHelper.getSkip(pagination);
+    
+    // If userId is provided, return polls created by user or where user has cast votes
+    if (query.userId) {
+      const result = await this.pollsService.getPollsByUser(
+        query.userId,
+        pagination.limit,
+        skip
+      );
+      
+      // Extract unique user IDs (authors) and community IDs
+      const authorIds = [...new Set(result.map(poll => poll.toSnapshot().authorId))];
+      const communityIds = [...new Set(result.map(poll => poll.toSnapshot().communityId))];
+      
+      // Batch fetch all users and communities
+      const usersMap = new Map<string, any>();
+      await Promise.all(
+        authorIds.map(async (userId) => {
+          const user = await this.userService.getUser(userId);
+          if (user) {
+            usersMap.set(userId, user);
+          }
+        })
+      );
+      
+      const communitiesMap = new Map<string, any>();
+      await Promise.all(
+        communityIds.map(async (communityId) => {
+          const community = await this.communityService.getCommunity(communityId);
+          if (community) {
+            communitiesMap.set(communityId, community);
+          }
+        })
+      );
+      
+      // Transform domain Polls to API format with enriched metadata
+      const apiPolls = result.map(poll => {
+        const snapshot = poll.toSnapshot();
+        const authorId = snapshot.authorId;
+        const communityId = snapshot.communityId;
+        const author = usersMap.get(authorId);
+        const community = communitiesMap.get(communityId);
+        
+        return {
+          id: snapshot.id,
+          authorId,
+          communityId,
+          question: snapshot.question,
+          description: snapshot.description,
+          options: snapshot.options.map((opt) => ({
+            id: opt.id,
+            text: opt.text,
+            votes: opt.votes,
+            amount: opt.amount || 0,
+            casterCount: opt.casterCount,
+          })),
+          metrics: snapshot.metrics,
+          expiresAt: snapshot.expiresAt.toISOString(),
+          isActive: snapshot.isActive,
+          createdAt: snapshot.createdAt.toISOString(),
+          updatedAt: snapshot.updatedAt.toISOString(),
+          // Add metadata for frontend compatibility with PublicationCard
+          meta: {
+            author: {
+              id: authorId,
+              name: author?.displayName || author?.firstName || 'Unknown',
+              photoUrl: author?.avatarUrl,
+              username: author?.username,
+            },
+            ...(community && {
+              origin: {
+                telegramChatName: community.name,
+              },
+            }),
+          },
+          // Add type field to indicate this is a poll (for PublicationCard compatibility)
+          type: 'poll' as const,
+          // Add content field using question for PublicationCard compatibility
+          content: snapshot.question,
+        };
+      });
+      
+      return {
+        success: true,
+        data: {
+          data: apiPolls,
+          total: apiPolls.length,
+          skip,
+          limit: pagination.limit,
+        },
+      };
+    }
+    
+    // Default behavior: return empty array for now
+    return { success: true, data: { data: [], total: 0, skip: 0, limit: pagination.limit } };
   }
 
   @Get(':id')

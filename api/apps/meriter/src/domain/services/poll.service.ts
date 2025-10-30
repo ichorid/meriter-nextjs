@@ -141,4 +141,39 @@ export class PollService {
     
     return poll;
   }
+
+  async getPollsByUser(
+    userId: string,
+    limit: number = 20,
+    skip: number = 0
+  ): Promise<Poll[]> {
+    // Get poll IDs where user has cast votes
+    const userCasts = await this.pollCastRepository.findByUser(userId, 1000, 0);
+    const pollIdsWithCasts = [...new Set(userCasts.map(cast => cast.pollId))];
+    
+    // Build query: polls created by user OR polls where user has cast votes
+    let query: any;
+    
+    if (pollIdsWithCasts.length > 0) {
+      // User has casts: get polls created by user OR polls where user has cast votes
+      query = {
+        $or: [
+          { authorId: userId },
+          { id: { $in: pollIdsWithCasts } },
+        ],
+      };
+    } else {
+      // User has no casts: only get polls created by user
+      query = { authorId: userId };
+    }
+    
+    const docs = await this.pollModel
+      .find(query)
+      .limit(limit)
+      .skip(skip)
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    return docs.map(doc => Poll.fromSnapshot(doc as any));
+  }
 }

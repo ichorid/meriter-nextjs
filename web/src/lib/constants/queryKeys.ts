@@ -17,6 +17,7 @@ export const queryKeys = {
     all: ['users'] as const,
     profile: (userId: string) => [...queryKeys.users.all, 'profile', userId] as const,
     updatesFrequency: () => [...queryKeys.users.all, 'updates-frequency'] as const,
+    updates: (userId: string, params?: Record<string, any>) => [...queryKeys.users.all, 'updates', userId, serializeQueryParams(params || {})] as const,
   },
 
   // Publications
@@ -40,6 +41,8 @@ export const queryKeys = {
     list: (targetType: string, targetId: string) => [...queryKeys.comments.lists(), targetType, targetId] as const,
     details: () => [...queryKeys.comments.all, 'detail'] as const,
     detail: (id: string) => [...queryKeys.comments.details(), id] as const,
+    my: (userId: string) => [...queryKeys.comments.all, 'my', userId] as const,
+    myComments: (userId: string, params: Record<string, any>) => [...queryKeys.comments.my(userId), serializeQueryParams(params)] as const,
   },
 
   // Communities

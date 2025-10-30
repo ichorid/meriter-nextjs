@@ -1,6 +1,6 @@
 // Comments React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { commentsApiV1 } from '@/lib/api/v1';
+import { commentsApiV1, usersApiV1 } from '@/lib/api/v1';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import { serializeQueryParams } from '@/lib/utils/queryKeys';
 
@@ -163,5 +163,15 @@ export function useDeleteComment() {
     onError: (error) => {
       console.error('Delete comment error:', error);
     },
+  });
+}
+
+// Get user's comments
+export function useMyComments(userId: string, params: { skip?: number; limit?: number } = {}) {
+  return useQuery({
+    queryKey: queryKeys.comments.myComments(userId, params),
+    queryFn: () => usersApiV1.getUserComments(userId, params),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    enabled: !!userId,
   });
 }

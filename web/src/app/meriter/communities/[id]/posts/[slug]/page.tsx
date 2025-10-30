@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useRouter } from "next/navigation";
 import { Publication } from "@features/feed";
@@ -10,9 +11,13 @@ import { useWalletBalance } from '@/hooks/api/useWallet';
 
 const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> }) => {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const resolvedParams = use(params);
     const chatId = resolvedParams.id;
     const slug = resolvedParams.slug;
+    
+    // Get highlight parameter from URL for comment highlighting
+    const highlightCommentId = searchParams.get('highlight');
 
     // Use v1 API hooks
     const { user } = useAuth();
@@ -32,6 +37,26 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
             router.push("/meriter/login?returnTo=" + encodeURIComponent(window.location.pathname));
         }
     }, [user, router]);
+
+    // Auto-scroll to highlighted comment when page loads
+    useEffect(() => {
+        if (highlightCommentId && publication) {
+            // Wait for comments to render, then scroll to highlighted comment
+            const timer = setTimeout(() => {
+                const highlightedElement = document.querySelector(`[data-comment-id="${highlightCommentId}"]`);
+                if (highlightedElement) {
+                    highlightedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Add a temporary highlight effect
+                    highlightedElement.classList.add('highlight');
+                    setTimeout(() => {
+                        highlightedElement.classList.remove('highlight');
+                    }, 3000);
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+        return undefined;
+    }, [highlightCommentId, publication]);
 
     // if (!user?.token) return null;
 
@@ -65,7 +90,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                         dimensionConfig={undefined}
                         myId={user?.id}
                         onlyPublication={true}
-                        highlightTransactionId={undefined}
+                        highlightTransactionId={highlightCommentId || undefined}
                         isDetailPage={true}
                         showCommunityAvatar={false}
                     />

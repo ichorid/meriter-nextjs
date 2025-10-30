@@ -32,10 +32,29 @@ export function usePublications(params: ListQueryParams = {}) {
   });
 }
 
-export function useMyPublications(params: { skip?: number; limit?: number } = {}) {
+export function useMyPublications(params: { skip?: number; limit?: number; userId?: string } = {}) {
   return useQuery({
     queryKey: queryKeys.publications.myPublications(params),
-    queryFn: () => publicationsApiV1.getMyPublications({ skip: params.skip, limit: params.limit }),
+    queryFn: async () => {
+      // If userId is provided, use the publications endpoint with authorId query param
+      if (params.userId) {
+        return publicationsApiV1.getPublications({ 
+          skip: params.skip, 
+          limit: params.limit,
+          userId: params.userId 
+        });
+      } else {
+        // Try to use /api/v1/users/me/publications endpoint (may not exist)
+        // Fallback: return empty array if no userId provided
+        try {
+          return await publicationsApiV1.getMyPublications({ skip: params.skip, limit: params.limit });
+        } catch (error) {
+          console.warn('getMyPublications failed, returning empty array:', error);
+          return [];
+        }
+      }
+    },
+    enabled: !!params.userId, // Only enable if userId is provided
   });
 }
 
