@@ -1,6 +1,17 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
+/**
+ * Poll Mongoose Schema
+ * 
+ * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - PollSchema (Zod)
+ * 
+ * This Mongoose schema implements the Poll entity defined in shared-types.
+ * Any changes to the Poll entity MUST be made in the Zod schema first,
+ * then this Mongoose schema should be updated to match.
+ * 
+ * Fields correspond to PollSchema in libs/shared-types/src/schemas.ts
+ */
 export type PollDocument = Poll & Document;
 
 @Schema({ collection: 'polls', timestamps: true })

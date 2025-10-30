@@ -2,24 +2,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { z } from 'zod';
 import { config } from '@/config';
-
-// Local type definitions
-interface ApiError {
-  code: string;
-  message: string;
-  timestamp: string;
-  details?: {
-    status?: number;
-    data?: any;
-    url?: string;
-  };
-}
-
-interface ApiErrorResponse {
-  success: false;
-  error: string;
-  code?: string;
-}
+import { transformAxiosError } from './errors';
 
 interface RequestConfig {
   timeout?: number;
@@ -63,43 +46,10 @@ export class ApiClient {
         return response;
       },
       (error: AxiosError) => {
-        const apiError = this.transformError(error);
+        const apiError = transformAxiosError(error);
         return Promise.reject(apiError);
       }
     );
-  }
-
-  private transformError(error: AxiosError): ApiError {
-    const apiError: ApiError = {
-      code: 'UNKNOWN_ERROR',
-      message: 'An unexpected error occurred',
-      timestamp: new Date().toISOString(),
-    };
-
-    if (error.response) {
-      // Server responded with error status
-      const { status, data } = error.response;
-      
-      apiError.code = `HTTP_${status}`;
-      // Type guard for error response data
-      const errorData = data as { message?: string };
-      apiError.message = errorData?.message || error.message;
-      apiError.details = {
-        status,
-        data,
-        url: error.config?.url,
-      };
-    } else if (error.request) {
-      // Request was made but no response received
-      apiError.code = 'NETWORK_ERROR';
-      apiError.message = 'Network error - please check your connection';
-    } else {
-      // Something else happened
-      apiError.code = 'REQUEST_ERROR';
-      apiError.message = error.message;
-    }
-
-    return apiError;
   }
 
   async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {

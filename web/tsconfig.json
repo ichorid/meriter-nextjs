@@ -46,6 +46,9 @@
       "@lib/*": [
         "shared/lib/*"
       ],
+      "@meriter/shared-types": [
+        "../../libs/shared-types/dist/index.d.ts"
+      ],
       "@config/*": [
         "../config/*"
       ],

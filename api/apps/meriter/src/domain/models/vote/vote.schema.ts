@@ -1,6 +1,17 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
+/**
+ * Vote Mongoose Schema
+ * 
+ * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - VoteSchema (Zod)
+ * 
+ * This Mongoose schema implements the Vote entity defined in shared-types.
+ * Any changes to the Vote entity MUST be made in the Zod schema first,
+ * then this Mongoose schema should be updated to match.
+ * 
+ * Fields correspond to VoteSchema in libs/shared-types/src/schemas.ts
+ */
 export type VoteDocument = Vote & Document;
 
 @Schema({ collection: 'votes', timestamps: true })

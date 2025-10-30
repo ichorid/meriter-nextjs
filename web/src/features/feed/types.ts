@@ -1,6 +1,8 @@
 // Feed feature types
-// Migrated from content/publications/publication.type.ts
+// DEPRECATED: Publication type should be imported from @meriter/shared-types
+// Use: import type { Publication } from '@meriter/shared-types';
 
+// Legacy types kept for backwards compatibility
 export interface PublicationAuthor {
     id: string;
     name: string;
@@ -8,6 +10,7 @@ export interface PublicationAuthor {
     username?: string;
 }
 
+// Legacy Publication type - DO NOT USE, use @meriter/shared-types instead
 export interface Publication {
     _id: string;
     slug: string;

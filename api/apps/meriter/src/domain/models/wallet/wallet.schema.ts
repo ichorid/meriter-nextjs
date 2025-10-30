@@ -1,6 +1,17 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
+/**
+ * Wallet Mongoose Schema
+ * 
+ * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - WalletSchema (Zod)
+ * 
+ * This Mongoose schema implements the Wallet entity defined in shared-types.
+ * Any changes to the Wallet entity MUST be made in the Zod schema first,
+ * then this Mongoose schema should be updated to match.
+ * 
+ * Fields correspond to WalletSchema in libs/shared-types/src/schemas.ts
+ */
 export type WalletDocument = Wallet & Document;
 
 @Schema({ collection: 'wallets', timestamps: true })

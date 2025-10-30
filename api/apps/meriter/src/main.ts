@@ -21,8 +21,8 @@ async function bootstrap() {
   
   const configService = app.get(ConfigService);
 
-  // Global exception filter - use new API exception filter for v1 endpoints
-  app.useGlobalFilters(new AllExceptionsFilter());
+  // Global exception filter - using standardized API exception filter for all endpoints
+  app.useGlobalFilters(new ApiExceptionFilter());
 
   // Global API response interceptor for standardized responses
   app.useGlobalInterceptors(new ApiResponseInterceptor());

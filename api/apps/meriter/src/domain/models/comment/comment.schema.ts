@@ -1,6 +1,17 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
+/**
+ * Comment Mongoose Schema
+ * 
+ * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - CommentSchema (Zod)
+ * 
+ * This Mongoose schema implements the Comment entity defined in shared-types.
+ * Any changes to the Comment entity MUST be made in the Zod schema first,
+ * then this Mongoose schema should be updated to match.
+ * 
+ * Fields correspond to CommentSchema in libs/shared-types/src/schemas.ts
+ */
 export type CommentDocument = Comment & Document;
 
 @Schema({ collection: 'comments', timestamps: true })

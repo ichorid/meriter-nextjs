@@ -1,6 +1,17 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
+/**
+ * Publication Mongoose Schema
+ * 
+ * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - PublicationSchema (Zod)
+ * 
+ * This Mongoose schema implements the Publication entity defined in shared-types.
+ * Any changes to the Publication entity MUST be made in the Zod schema first,
+ * then this Mongoose schema should be updated to match.
+ * 
+ * Fields correspond to PublicationSchema in libs/shared-types/src/schemas.ts
+ */
 export type PublicationDocument = Publication & Document;
 
 @Schema({ collection: 'publications', timestamps: true })

@@ -1,6 +1,8 @@
 // Polls feature types
-// From content/publications/publication.type.ts
+// DEPRECATED: Poll, PollCast, and PollOption types should be imported from @meriter/shared-types
+// Use: import type { Poll, PollCast, PollOption } from '@meriter/shared-types';
 
+// Legacy poll types - kept for backwards compatibility
 export interface IPollData {
     title: string;
     description?: string;
@@ -30,6 +32,7 @@ export interface IPollUserCastSummary {
     byOption: Record<string, number>; // optionId -> total amount
 }
 
+// Legacy Poll type - DO NOT USE, use @meriter/shared-types instead
 export interface Poll {
     _id: string;
     data: IPollData;

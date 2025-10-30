@@ -1,245 +1,15 @@
-// Frontend types - local definitions since shared-types is not working
-// User types
-export interface User {
-  id: string;
-  telegramId: string;
-  username?: string;
-  firstName?: string;
-  lastName?: string;
-  displayName: string;
-  avatarUrl?: string;
-  communityTags?: string[];
-  profile?: {
-    bio?: string;
-    location?: string;
-    website?: string;
-    isVerified?: boolean;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
+// Frontend API types - Re-exported from shared-types (Zod schemas as single source of truth)
+// All domain types come from @meriter/shared-types
+// NOTE: Due to TypeScript module resolution issues with symlinked packages,
+// we're using a workaround that re-exports types via wildcard import
+export * from '@meriter/shared-types';
 
-// Community types
-export interface Community {
-  id: string;
-  telegramChatId: string;
-  name: string;
-  description?: string;
-  avatarUrl?: string;
-  memberCount: number;
-  isActive: boolean;
-  isAdmin?: boolean; // Whether the current user is an admin of this community
-  needsSetup?: boolean; // Whether community needs setup (missing hashtags, currency names, or icon)
-  hashtags?: string[];
-  hashtagDescriptions?: Record<string, string>;
-  settings?: {
-    iconUrl?: string;
-    currencyNames?: {
-      singular: string;
-      plural: string;
-      genitive: string;
-    };
-    dailyEmission?: number;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
+// Import Poll type for PollOption definition
+// Using type-only import to avoid runtime issues
+import type { Poll } from '@meriter/shared-types';
 
-// Publication types
-export interface Publication {
-  id: string;
-  content: string;
-  authorId: string;
-  beneficiaryId?: string;
-  communityId: string;
-  type: 'text' | 'image' | 'video' | 'poll';
-  imageUrl?: string;
-  videoUrl?: string;
-  hashtags?: string[];
-  slug?: string;
-  createdAt: string;
-  updatedAt: string;
-  metrics?: {
-    upvotes: number;
-    downvotes: number;
-    score: number;
-    commentCount: number;
-  };
-  meta?: {
-    author?: {
-      id: string;
-      name: string;
-      photoUrl?: string;
-      username?: string;
-    };
-    beneficiary?: {
-      id: string;
-      name: string;
-      photoUrl?: string;
-      username?: string;
-    };
-    origin?: {
-      telegramChatName?: string;
-    };
-    hashtagName?: string;
-  };
-}
-
-// Comment types
-export interface Comment {
-  id: string;
-  authorId: string;
-  content: string;
-  targetType: 'publication' | 'comment';
-  targetId: string;
-  parentCommentId?: string;
-  metrics?: {
-    upvotes: number;
-    downvotes: number;
-    score: number;
-    replyCount: number;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Vote types
-export interface Vote {
-  id: string;
-  userId: string;
-  targetType: 'publication' | 'comment';
-  targetId: string;
-  amount: number;
-  sourceType?: 'personal' | 'quota';
-  communityId?: string;
-  attachedCommentId?: string;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-// Poll types
-export interface Poll {
-  id: string;
-  question: string; // Changed from 'title' to 'question'
-  description?: string;
-  options: PollOption[];
-  communityId: string;
-  authorId: string;
-  expiresAt?: string; // Optional expiration date
-  createdAt: string;
-  updatedAt: string;
-  metrics?: {
-    totalCasts: number;
-    casterCount: number;
-    totalAmount: number;
-  };
-}
-
-export interface PollOption {
-  id: string;
-  text: string;
-  votes: number;
-  amount: number;
-  casterCount: number;
-  percentage?: number; // Computed field, optional
-}
-
-export interface PollCast {
-  id: string;
-  pollId: string;
-  optionId: string;
-  userId: string;
-  amount: number;
-  createdAt: string;
-}
-
-// Wallet types
-export interface Wallet {
-  id: string;
-  userId: string;
-  communityId: string;
-  balance: number;
-  createdAt: string;
-  updatedAt: string;
-  [key: string]: unknown;
-}
-
-// Transaction types
-export interface Transaction {
-  id: string;
-  userId: string;
-  communityId: string;
-  amount: number;
-  type: string;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// DTO types
-export interface CreatePublicationDto {
-  content: string;
-  communityId: string;
-  type: 'text' | 'image' | 'video';
-  beneficiaryId?: string;
-  imageUrl?: string;
-  videoUrl?: string;
-  hashtags?: string[];
-}
-
-export interface CreateCommentDto {
-  content: string;
-  targetType: 'publication' | 'comment';
-  targetId: string;
-  parentCommentId?: string;
-}
-
-export interface CreateVoteDto {
-  targetType: 'publication' | 'comment';
-  targetId: string;
-  amount: number;
-  sourceType?: 'personal' | 'quota';
-  attachedCommentId?: string;
-}
-
-export interface CreatePollDto {
-  question: string;
-  description?: string;
-  options: { id?: string; text: string }[];
-  communityId: string;
-  expiresAt: string;
-}
-
-export interface CreatePollCastDto {
-  optionId: string;
-  amount: number;
-}
-
-export interface UpdateCommunityDto {
-  name?: string;
-  description?: string;
-  avatarUrl?: string;
-  isActive?: boolean;
-  hashtags?: string[];
-  hashtagDescriptions?: Record<string, string>;
-  settings?: {
-    iconUrl?: string;
-    currencyNames?: {
-      singular: string;
-      plural: string;
-      genitive: string;
-    };
-    dailyEmission?: number;
-  };
-}
-
-// Query parameter types
-export interface ListQueryParams {
-  skip?: number;
-  limit?: number;
-  sort?: string;
-  order?: string;
-}
+// Re-export PollOption type (inferred from PollOptionSchema)
+export type PollOption = NonNullable<Poll['options']>[number];
 
 // Additional frontend-specific types
 export interface ApiError {
@@ -266,23 +36,32 @@ export interface PaginatedResponse<T> {
   };
 }
 
-// Frontend-specific query parameter types (extending shared types)
-export interface GetPublicationsRequest extends ListQueryParams {
+// Frontend-specific query parameter types (supporting both skip/limit and page/pageSize)
+export interface FrontendQueryParams {
+  skip?: number;
+  limit?: number;
+  page?: number;
+  pageSize?: number;
+  sort?: string;
+  order?: string;
+}
+
+export interface GetPublicationsRequest extends FrontendQueryParams {
   communityId?: string;
   userId?: string;
 }
 
-export interface GetCommentsRequest extends ListQueryParams {
+export interface GetCommentsRequest extends FrontendQueryParams {
   targetType?: 'publication' | 'comment';
   targetId?: string;
   userId?: string;
 }
 
-export interface GetCommunitiesRequest extends ListQueryParams {
+export interface GetCommunitiesRequest extends FrontendQueryParams {
   // No additional fields needed
 }
 
-export interface GetPollsRequest extends ListQueryParams {
+export interface GetPollsRequest extends FrontendQueryParams {
   communityId?: string;
 }
 
@@ -293,11 +72,12 @@ export interface GetCommunitiesResponse extends PaginatedResponse<Community> {}
 export interface GetPollsResponse extends PaginatedResponse<Poll> {}
 
 // Frontend-specific request types (using shared DTOs)
-export interface CreatePublicationRequest extends CreatePublicationDto {}
-export interface CreateCommentRequest extends CreateCommentDto {}
-export interface CreateVoteRequest extends CreateVoteDto {}
-export interface CreatePollRequest extends CreatePollDto {}
-export interface CreatePollCastRequest extends CreatePollCastDto {}
+// These are type aliases for convenience - actual types come from shared-types
+export type CreatePublicationRequest = CreatePublicationDto;
+export type CreateCommentRequest = CreateCommentDto;
+export type CreateVoteRequest = CreateVoteDto;
+export type CreatePollRequest = CreatePollDto;
+export type CreatePollCastRequest = CreatePollCastDto;
 
 // Frontend-specific response types
 export interface CreatePublicationResponse {
@@ -359,6 +139,8 @@ export interface TelegramAuthRequest {
   hash: string;
 }
 
+// WithdrawRequest is frontend-specific (includes communityId)
+// Base WithdrawDto from shared-types only has amount and memo
 export interface WithdrawRequest {
   communityId: string;
   amount: number;

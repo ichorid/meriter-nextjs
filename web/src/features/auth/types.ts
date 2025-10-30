@@ -1,15 +1,9 @@
 // Auth feature types
-
-export interface User {
-    id: string;
-    username?: string;
-    firstName?: string;
-    lastName?: string;
-    photoUrl?: string;
-}
+// NOTE: User type is now imported from @meriter/shared-types
+// This file only contains auth-specific types not in shared-types
 
 export interface Session {
-    user: User;
+    user: import('@meriter/shared-types').User;
     token: string;
     expiresAt: Date;
 }

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommunity, useUpdateCommunity } from '@/hooks/api';
 import { communitiesApiV1 } from '@/lib/api/v1';
-import type { Community } from '@/types/api-v1';
+import type { Community } from '@meriter/shared-types';
 import { etv } from '@shared/lib/input-utils';
 import { nanoid } from "nanoid";
 import { useParams, useRouter } from "next/navigation";

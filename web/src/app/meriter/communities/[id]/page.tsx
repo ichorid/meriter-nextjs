@@ -14,39 +14,9 @@ import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { routes } from '@/lib/constants/routes';
 import { queryKeys } from '@/lib/constants/queryKeys';
+import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 
-interface Publication {
-  id: string;
-  slug: string;
-  title: string;
-  content: string;
-  authorId: string;
-  communityId: string;
-  type: 'text' | 'image' | 'video' | 'poll';
-  createdAt: string;
-  updatedAt: string;
-  metrics?: {
-    score: number;
-    commentCount: number;
-  };
-  meta?: {
-    author?: {
-      name?: string;
-      photoUrl?: string;
-      username?: string;
-    };
-    beneficiary?: {
-      name?: string;
-      photoUrl?: string;
-      username?: string;
-    };
-    origin?: {
-      telegramChatName?: string;
-    };
-    hashtagName?: string;
-  };
-  [key: string]: unknown;
-}
+// Publication type imported from shared-types (single source of truth)
 
 
 const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
@@ -98,7 +68,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         }
     }, [hasNextPage]);
 
-    // Memoize publications array to prevent unnecessary recalculations and infinite loops
+    // Memoize feed items array (can contain both publications and polls)
     const publications = useMemo(() => {
         return (data?.pages ?? [])
             .flatMap((page: any) => {
@@ -116,11 +86,11 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 beneficiaryName: p.meta?.beneficiary?.name,
                 beneficiaryPhotoUrl: p.meta?.beneficiary?.photoUrl,
                 beneficiaryUsername: p.meta?.beneficiary?.username,
-                // Ensure type is set for polls
-                type: p.type || 'text',
+                // Ensure type is set
+                type: p.type || (p.content ? 'publication' : 'poll'),
             }))
-            .filter((p: Publication, index: number, self: Publication[]) => 
-                index === self.findIndex((t: Publication) => t?.id === p?.id)
+            .filter((p: FeedItem, index: number, self: FeedItem[]) => 
+                index === self.findIndex((t: FeedItem) => t?.id === p?.id)
             );
     }, [data?.pages]); // Only recalculate when data.pages changes
 
@@ -139,9 +109,9 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     useEffect(() => {
         if (targetPostSlug && publications.length > 0) {
             console.log('🔍 Looking for post with slug:', targetPostSlug);
-            console.log('🔍 Available publications:', publications.map((p: Publication) => ({ slug: p.slug, id: p.id })));
+            console.log('🔍 Available publications:', publications.map((p: FeedItem) => ({ slug: p.slug, id: p.id, type: p.type })));
             
-            const targetPost = publications.find((p: Publication) => p.slug === targetPostSlug);
+            const targetPost = publications.find((p: FeedItem) => p.slug === targetPostSlug);
             if (targetPost) {
                 console.log('🎯 Found target post for deep link:', targetPostSlug, 'with id:', targetPost.id);
                 setHighlightedPostId(targetPost.id);
@@ -230,24 +200,36 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const tgAuthorId = user?.id;
 
     const onlyPublication =
-        publications.filter((p: Publication) => p?.content)?.length == 1;
-
-    const sortItems = (items: Publication[]): Publication[] => {
+        publications.filter((p: FeedItem) => (p.type === 'publication' ? p.content : true) || p.type === 'poll')?.length == 1;
+    
+    const sortItems = (items: FeedItem[]): FeedItem[] => {
         if (!items) return [];
         return [...items].sort((a, b) => {
             if (sortBy === "recent") {
                 return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
             } else {
-                return (b.metrics?.score || 0) - (a.metrics?.score || 0);
+                // Handle score sorting - publications have score, polls have totalAmount
+                const aScore = a.type === 'publication' 
+                    ? (a.metrics?.score || 0)
+                    : (a.metrics?.totalAmount || 0);
+                const bScore = b.type === 'publication'
+                    ? (b.metrics?.score || 0)
+                    : (b.metrics?.totalAmount || 0);
+                return bScore - aScore;
             }
         });
     };
 
     // Filter publications by tag if selected
     const filteredPublications = selectedTag
-        ? publications.filter((p: Publication) => {
-            const tags = p.hashtags as string[] | undefined;
-            return tags && Array.isArray(tags) && tags.includes(selectedTag);
+        ? publications.filter((p: FeedItem) => {
+            if (p.type === 'publication') {
+                const tags = p.hashtags as string[] | undefined;
+                return tags && Array.isArray(tags) && tags.includes(selectedTag);
+            } else {
+                // Polls don't have hashtags in the schema, skip filtering
+                return true;
+            }
         })
         : publications;
 
@@ -315,7 +297,13 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             <div className="space-y-4">
                 {isAuthenticated &&
                     filteredPublications
-                        .filter((p) => p?.content || p?.type === 'poll')
+                        .filter((p: FeedItem) => {
+                            if (p.type === 'publication') {
+                                return !!p.content;
+                            } else {
+                                return p.type === 'poll';
+                            }
+                        })
                         .map((p) => {
                             // Console logging for debugging
                             console.log('📄 Rendering publication card:', {

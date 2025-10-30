@@ -1,6 +1,21 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
+/**
+ * User Mongoose Schema
+ * 
+ * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - UserSchema (Zod)
+ * 
+ * This Mongoose schema implements the User entity defined in shared-types.
+ * Any changes to the User entity MUST be made in the Zod schema first,
+ * then this Mongoose schema should be updated to match.
+ * 
+ * Fields correspond to UserSchema in libs/shared-types/src/schemas.ts:
+ * - id, telegramId, username, firstName, lastName, displayName, avatarUrl
+ * - profile (bio, location, website, isVerified)
+ * - communityTags, communityMemberships
+ * - createdAt, updatedAt (handled by timestamps: true)
+ */
 export type UserDocument = User & Document;
 
 @Schema({ collection: 'users', timestamps: true })

@@ -2,7 +2,9 @@ import React from 'react';
 import { Card, CardBody, CardHeader, CardTitle, Badge, Button } from '@/components/atoms';
 import { Avatar } from '@/components/atoms';
 
-export interface Wallet {
+// Frontend-specific Wallet interface for UI display
+// Extends the base Wallet from shared-types
+export interface WalletDisplay {
   id: string;
   currency: string;
   currencyIcon?: string;
@@ -11,7 +13,7 @@ export interface Wallet {
 }
 
 export interface WalletSummaryProps {
-  wallets: Wallet[];
+  wallets: WalletDisplay[];
   onWithdraw?: (walletId: string) => void;
   onTopup?: (walletId: string) => void;
   totalBalance?: number;

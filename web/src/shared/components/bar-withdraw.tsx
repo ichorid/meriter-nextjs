@@ -27,7 +27,8 @@ export const BarWithdraw: React.FC<BarWithdrawProps> = ({
     const t = useTranslations('shared');
     const rawData = useSignal(initDataRaw);
     const isInTelegram = !!rawData;
-    const displayBalance = balance ?? 0;
+    // Handle NaN, null, and undefined values
+    const displayBalance = (typeof balance === 'number' && !isNaN(balance)) ? balance : 0;
     
     console.log('[BarWithdraw] Component Logic:', {
       displayBalance,

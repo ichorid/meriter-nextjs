@@ -1,5 +1,8 @@
 // Wallet feature types
+// DEPRECATED: Wallet and Transaction types should be imported from @meriter/shared-types
+// Use: import type { Wallet, Transaction } from '@meriter/shared-types';
 
+// Legacy Wallet type - DO NOT USE, use @meriter/shared-types instead
 export interface Wallet {
     userId: string; // Internal ID
     amount: number;
@@ -7,6 +10,7 @@ export interface Wallet {
     currencyNames: Record<number, string>;
 }
 
+// Legacy Transaction type - DO NOT USE, use @meriter/shared-types instead
 export interface Transaction {
     _id: string;
     transactionId: string;

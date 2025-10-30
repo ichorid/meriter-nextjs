@@ -10,10 +10,10 @@ import { PollCasting } from '@features/polls/components/poll-casting';
 import { usePollCardData } from '@/hooks/usePollCardData';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 
-import type { Publication, Wallet } from '@/types/api-v1';
+import type { FeedItem, PublicationFeedItem, PollFeedItem, Wallet } from '@/types/api-v1';
 
 interface PublicationCardProps {
-  publication: Publication;
+  publication: FeedItem;
   wallets?: Wallet[];
   showCommunityAvatar?: boolean;
   className?: string;
@@ -34,10 +34,12 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   const isPoll = publication.type === 'poll';
   
   // For polls, fetch poll-specific data
-  const { pollData, userCast, userCastSummary } = usePollCardData(isPoll ? publication.id : undefined);
+  const pollId = isPoll ? (publication as PollFeedItem).id : undefined;
+  const { pollData, userCast, userCastSummary } = usePollCardData(pollId);
   
   // Get wallet balance for polls
-  const { data: pollBalance = 0 } = useWalletBalance(isPoll ? publication.communityId : '');
+  const communityId = publication.communityId;
+  const { data: pollBalance = 0 } = useWalletBalance(isPoll ? communityId : '');
   
   // For publications, use the publication hook
   // Note: usePublication expects a different Publication type, so we need to adapt
@@ -75,7 +77,9 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
     }
 
     // Only navigate if we have a slug or id
-    const postSlug = publication.slug || publication.id;
+    const postSlug = publication.type === 'publication' 
+      ? (publication as PublicationFeedItem).slug || publication.id
+      : publication.id;
     if (postSlug) {
       const params = new URLSearchParams(searchParams.toString());
       params.set('post', postSlug);
@@ -85,15 +89,17 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
 
   // Render poll card
   if (isPoll && pollData) {
+    const pollItem = publication as PollFeedItem;
     return (
       <article 
         className={`card bg-base-100 shadow-md rounded-lg p-6 ${className}`}
       >
         <PublicationHeader
           publication={{
-            ...publication,
-            createdAt: publication.createdAt,
-            id: publication.id,
+            id: pollItem.id,
+            slug: undefined,
+            createdAt: pollItem.createdAt,
+            meta: pollItem.meta,
           }}
           showCommunityAvatar={showCommunityAvatar}
           className="mb-4"
@@ -101,14 +107,14 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
         
         <PollCasting
           pollData={pollData}
-          pollId={publication.id}
+          pollId={pollItem.id}
           userCast={userCast}
           userCastSummary={userCastSummary}
           balance={pollBalance}
           onCastSuccess={() => {
             // Mutations handle query invalidation automatically
           }}
-          communityId={publication.communityId}
+          communityId={pollItem.communityId}
           initiallyExpanded={false}
         />
       </article>
@@ -116,6 +122,23 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   }
 
   // Render publication card
+  const pubItem = publication as PublicationFeedItem;
+  
+  // Transform meta to include id fields expected by child components
+  const transformedMeta = {
+    ...pubItem.meta,
+    author: {
+      ...pubItem.meta.author,
+      id: pubItem.authorId,
+    },
+    beneficiary: pubItem.meta.beneficiary && pubItem.beneficiaryId
+      ? {
+          ...pubItem.meta.beneficiary,
+          id: pubItem.beneficiaryId,
+        }
+      : undefined,
+  };
+  
   return (
     <article 
       className={`card bg-base-100 shadow-md rounded-lg p-6 cursor-pointer hover:shadow-lg transition-shadow ${className}`}
@@ -123,9 +146,10 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
     >
       <PublicationHeader
         publication={{
-          ...publication,
-          createdAt: publication.createdAt,
-          id: publication.id,
+          id: pubItem.id,
+          slug: pubItem.slug,
+          createdAt: pubItem.createdAt,
+          meta: pubItem.meta,
         }}
         showCommunityAvatar={showCommunityAvatar}
         className="mb-4"
@@ -133,21 +157,25 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
       
       <PublicationContent
         publication={{
-          ...publication,
-          createdAt: publication.createdAt,
-          id: publication.id,
-          content: publication.content,
+          id: pubItem.id,
+          createdAt: pubItem.createdAt,
+          content: pubItem.content,
+          meta: transformedMeta,
         }}
         className="mb-6"
       />
       
       <PublicationActions
         publication={{
-          ...publication,
-          createdAt: publication.createdAt,
-          id: publication.id,
-          authorId: publication.authorId,
-          communityId: publication.communityId,
+          id: pubItem.id,
+          createdAt: pubItem.createdAt,
+          authorId: pubItem.authorId,
+          communityId: pubItem.communityId,
+          slug: pubItem.slug,
+          content: pubItem.content,
+          type: pubItem.type,
+          metrics: pubItem.metrics,
+          meta: transformedMeta,
         }}
         onVote={handleVote}
         onComment={handleComment}

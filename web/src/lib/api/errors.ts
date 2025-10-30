@@ -1,7 +1,8 @@
-// Error handling utilities
+// Error handling utilities - Single source of truth for error handling
+import { AxiosError } from 'axios';
 
-// Local type definitions
-interface ApiError {
+// ApiError type definition (matching AppError interface)
+export interface ApiError {
   code: string;
   message: string;
   timestamp: string;
@@ -128,4 +129,44 @@ export function handleApiError(error: unknown): never {
   }
   
   throw new AppError('An unexpected error occurred');
+}
+
+/**
+ * Transform Axios errors to AppError format
+ * This function centralizes error transformation logic from API client
+ */
+export function transformAxiosError(error: AxiosError): AppError {
+  if (error.response) {
+    // Server responded with error status
+    const { status, data } = error.response;
+    
+    // Try to extract error message from various response formats
+    let message = error.message;
+    if (data && typeof data === 'object') {
+      // Check for standardized API error format
+      if ('error' in data && data.error && typeof data.error === 'object') {
+        if ('message' in data.error && typeof data.error.message === 'string') {
+          message = data.error.message;
+        }
+      } else if ('message' in data && typeof data.message === 'string') {
+        message = data.message;
+      }
+    }
+    
+    return new AppError(
+      message,
+      `HTTP_${status}`,
+      {
+        status,
+        data,
+        url: error.config?.url,
+      }
+    );
+  } else if (error.request) {
+    // Request was made but no response received
+    return new NetworkError('Network error - please check your connection');
+  } else {
+    // Something else happened
+    return new AppError(error.message, 'REQUEST_ERROR');
+  }
 }

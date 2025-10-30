@@ -1,5 +1,6 @@
 // New v1 API client with improved types and structure
 import { apiClient } from '../client';
+import { buildQueryString, convertPaginationToSkipLimit, mergeQueryParams } from '@/lib/utils/query-params';
 import type { 
   User,
   Community,
@@ -212,17 +213,15 @@ export const communitiesApiV1 = {
   },
 
   async getCommunityPublications(id: string, params: { skip?: number; limit?: number; page?: number; pageSize?: number; sort?: string; order?: string } = {}): Promise<PaginatedResponse<Publication>> {
-    // Transform page/pageSize to skip/limit if needed, or use skip/limit directly
-    const queryParams: any = {};
-    if (params.page !== undefined && params.pageSize !== undefined) {
-      queryParams.page = params.page;
-      queryParams.pageSize = params.pageSize;
-    } else if (params.skip !== undefined && params.limit !== undefined) {
-      queryParams.skip = params.skip;
-      queryParams.limit = params.limit;
-    }
-    if (params.sort) queryParams.sort = params.sort;
-    if (params.order) queryParams.order = params.order;
+    // Use query utility to build params
+    const queryParams = mergeQueryParams(
+      params.page !== undefined ? { page: params.page } : {},
+      params.pageSize !== undefined ? { pageSize: params.pageSize } : {},
+      params.skip !== undefined ? { skip: params.skip } : {},
+      params.limit !== undefined ? { limit: params.limit } : {},
+      params.sort ? { sort: params.sort } : {},
+      params.order ? { order: params.order } : {}
+    );
     
     const response = await apiClient.get<{ success: true; data: PaginatedResponse<Publication> }>(`/api/v1/communities/${id}/publications`, { params: queryParams });
     return response.data;
@@ -247,11 +246,12 @@ export const communitiesApiV1 = {
       tag?: string;
     } = {}
   ): Promise<PaginatedResponse<any>> {
-    const queryParams: any = {};
-    if (params.page !== undefined) queryParams.page = params.page;
-    if (params.pageSize !== undefined) queryParams.pageSize = params.pageSize;
-    if (params.sort) queryParams.sort = params.sort;
-    if (params.tag) queryParams.tag = params.tag;
+    const queryParams = mergeQueryParams(
+      params.page !== undefined ? { page: params.page } : {},
+      params.pageSize !== undefined ? { pageSize: params.pageSize } : {},
+      params.sort ? { sort: params.sort } : {},
+      params.tag ? { tag: params.tag } : {}
+    );
     
     const response = await apiClient.get<{ 
       success: true; 
@@ -280,33 +280,35 @@ export const communitiesApiV1 = {
 // Publications API with Zod validation and query parameter transformations
 export const publicationsApiV1 = {
   async getPublications(params: { skip?: number; limit?: number; type?: string; communityId?: string; userId?: string; tag?: string; sort?: string; order?: string } = {}): Promise<Publication[]> {
-    const queryParams = new URLSearchParams();
+    // Convert skip/limit to page/pageSize for API
+    const page = params.skip !== undefined && params.limit !== undefined
+      ? Math.floor(params.skip / params.limit) + 1
+      : undefined;
     
-    if (params.skip) queryParams.append('page', (Math.floor(params.skip / (params.limit || 10)) + 1).toString());
-    if (params.limit) queryParams.append('pageSize', params.limit.toString());
-    if (params.sort) queryParams.append('sort', params.sort);
-    if (params.order) queryParams.append('order', params.order);
-    if (params.communityId) queryParams.append('communityId', params.communityId);
-    if (params.userId) queryParams.append('authorId', params.userId); // Transform userId to authorId
-    if (params.tag) queryParams.append('hashtag', params.tag); // Transform tag to hashtag
+    const queryParams = mergeQueryParams(
+      page !== undefined ? { page } : {},
+      params.limit !== undefined ? { pageSize: params.limit } : {},
+      params.sort ? { sort: params.sort } : {},
+      params.order ? { order: params.order } : {},
+      params.communityId ? { communityId: params.communityId } : {},
+      params.userId ? { authorId: params.userId } : {}, // Transform userId to authorId
+      params.tag ? { hashtag: params.tag } : {} // Transform tag to hashtag
+    );
 
-    const response = await apiClient.get<{ success: true; data: Publication[] }>(`/api/v1/publications?${queryParams.toString()}`);
+    const queryString = buildQueryString(queryParams);
+    const response = await apiClient.get<{ success: true; data: Publication[] }>(`/api/v1/publications${queryString ? `?${queryString}` : ''}`);
     return response.data;
   },
 
   async getMyPublications(params: { skip?: number; limit?: number } = {}): Promise<Publication[]> {
-    // Use /api/v1/users/me/publications endpoint
-    // Note: The backend endpoint accepts userId as param, but we need to get the current user ID
-    // For now, we'll use the publications endpoint with authorId query param instead
-    const queryParams = new URLSearchParams();
-    
-    if (params.skip !== undefined) queryParams.append('skip', params.skip.toString());
-    if (params.limit !== undefined) queryParams.append('limit', params.limit.toString());
+    // Use query utility to build params
+    const queryParams = mergeQueryParams(
+      params.skip !== undefined ? { skip: params.skip } : {},
+      params.limit !== undefined ? { limit: params.limit } : {}
+    );
 
-    // First get current user ID, then fetch publications
-    // Actually, we should use /api/v1/publications?authorId=... but that requires knowing the user ID
-    // Let's use /api/v1/users/me/publications and handle the response properly
-    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Publication> } | { success: true; data: Publication[] }>(`/api/v1/users/me/publications?${queryParams.toString()}`);
+    const queryString = buildQueryString(queryParams);
+    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Publication> } | { success: true; data: Publication[] }>(`/api/v1/users/me/publications${queryString ? `?${queryString}` : ''}`);
     
     // Handle both response formats: PaginatedResponse or direct array
     if (response.data && typeof response.data === 'object' && 'data' in response.data && Array.isArray(response.data.data)) {
@@ -323,14 +325,21 @@ export const publicationsApiV1 = {
     communityId: string, 
     params: { skip?: number; limit?: number; sort?: string; order?: string } = {}
   ): Promise<Publication[]> {
-    const queryParams = new URLSearchParams();
+    const pagination = convertPaginationToSkipLimit(
+      params.skip ? Math.floor(params.skip / (params.limit || 10)) + 1 : undefined,
+      params.limit
+    );
     
-    if (params.skip) queryParams.append('page', (Math.floor(params.skip / (params.limit || 10)) + 1).toString());
-    if (params.limit) queryParams.append('pageSize', params.limit.toString());
-    if (params.sort) queryParams.append('sort', params.sort);
-    if (params.order) queryParams.append('order', params.order);
+    const queryParams = mergeQueryParams(
+      { communityId },
+      { page: pagination.skip ? Math.floor(pagination.skip / (pagination.limit || 10)) + 1 : undefined },
+      { pageSize: pagination.limit },
+      params.sort ? { sort: params.sort } : {},
+      params.order ? { order: params.order } : {}
+    );
 
-    const response = await apiClient.get<{ success: true; data: Publication[] }>(`/api/v1/publications?communityId=${communityId}&${queryParams.toString()}`);
+    const queryString = buildQueryString(queryParams);
+    const response = await apiClient.get<{ success: true; data: Publication[] }>(`/api/v1/publications?${queryString}`);
     return response.data;
   },
 

@@ -4,25 +4,11 @@ import { walletApiV1 } from '@/lib/api/v1';
 import { serializeQueryParams } from '@/lib/utils/queryKeys';
 import type { PaginatedResponse } from '@/types/api-v1';
 
-// Local type definitions
-export interface Wallet {
-  id: string;
-  userId: string;
-  communityId: string;
-  balance: number;
-  amount?: number;
-}
+// Import types from shared-types (single source of truth)
+import type { Wallet, Transaction } from '@meriter/shared-types';
 
-interface Transaction {
-  id: string;
-  userId: string;
-  communityId: string;
-  amount: number;
-  type: string;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// Re-export Wallet type for convenience
+export type { Wallet };
 
 interface WithdrawRequest {
   communityId: string;

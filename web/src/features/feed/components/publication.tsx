@@ -161,8 +161,14 @@ export const Publication = ({
     // Rate conversion no longer needed with v1 API - currencies are normalized
     const rate = 1;
     
+    // Ensure we have a valid number before doing arithmetic
+    // Handle NaN, null, and undefined values
+    const isValidNumber = (value: number | null | undefined): value is number => {
+        return typeof value === 'number' && !isNaN(value);
+    };
+    const calculatedSum = isValidNumber(optimisticSum) ? optimisticSum : (isValidNumber(sum) ? sum : 0);
     const maxWithdrawAmount = isAuthor
-        ? Math.floor(10 * (optimisticSum ?? sum)) / 10
+        ? Math.floor(10 * calculatedSum) / 10
         : 0;
     
     const maxTopUpAmount = isAuthor
@@ -362,10 +368,11 @@ export const Publication = ({
             {showComments && (
                 <div className="publication-comments">
                     <div className="comments">
-                        {comments?.map((c: any) => (
+                        {comments?.map((c: any, index: number) => (
                             <Comment
-                                key={c._id}
+                                key={c.id || c._id || `comment-${index}`}
                                 {...c}
+                                _id={c._id || c.id || `comment-${index}`}
                                 balance={balance}
                                 updBalance={updBalance}
                                 spaceSlug={spaceSlug}

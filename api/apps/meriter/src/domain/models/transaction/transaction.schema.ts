@@ -1,6 +1,17 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
+/**
+ * Transaction Mongoose Schema
+ * 
+ * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - TransactionSchema (Zod)
+ * 
+ * This Mongoose schema implements the Transaction entity defined in shared-types.
+ * Any changes to the Transaction entity MUST be made in the Zod schema first,
+ * then this Mongoose schema should be updated to match.
+ * 
+ * Fields correspond to TransactionSchema in libs/shared-types/src/schemas.ts
+ */
 export type TransactionDocument = Transaction & Document;
 
 @Schema({ collection: 'transactions', timestamps: true })
