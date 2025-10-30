@@ -11,8 +11,19 @@ describe('ZodValidationPipe', () => {
     email: z.string().email().optional(),
   });
 
+  const bodyMeta: any = { type: 'body' };
+  let consoleErrorSpy: jest.SpyInstance;
+
   beforeEach(() => {
     pipe = new ZodValidationPipe(testSchema);
+  });
+
+  beforeAll(() => {
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   it('should be defined', () => {
@@ -26,7 +37,7 @@ describe('ZodValidationPipe', () => {
       email: 'john@example.com',
     };
 
-    const result = pipe.transform(validData, {} as any);
+    const result = pipe.transform(validData, bodyMeta as any);
     expect(result).toEqual(validData);
   });
 
@@ -34,9 +45,9 @@ describe('ZodValidationPipe', () => {
     const invalidData = {
       name: '', // Empty string violates min(1)
       age: 25,
-    };
+    } as any;
 
-    expect(() => pipe.transform(invalidData, {} as any)).toThrow(BadRequestException);
+    expect(() => pipe.transform(invalidData, bodyMeta as any)).toThrow(BadRequestException);
   });
 
   it('should throw BadRequestException with formatted errors', () => {
@@ -44,27 +55,24 @@ describe('ZodValidationPipe', () => {
       name: '',
       age: -5, // Negative violates positive()
       email: 'not-an-email',
-    };
+    } as any;
 
     try {
-      pipe.transform(invalidData, {} as any);
+      pipe.transform(invalidData, bodyMeta as any);
       fail('Should have thrown BadRequestException');
-    } catch (error) {
+    } catch (error: any) {
       expect(error).toBeInstanceOf(BadRequestException);
-      expect(error.getResponse()).toHaveProperty('message');
-      expect(error.getResponse()).toHaveProperty('errors');
-      expect(Array.isArray(error.getResponse().errors)).toBe(true);
+      const response = error.getResponse();
+      expect(response).toHaveProperty('message', 'Validation failed');
+      expect(response).toHaveProperty('errors');
+      expect(Array.isArray(response.errors)).toBe(true);
+      expect(response.errors.length).toBeGreaterThan(0);
     }
   });
 
-  it('should handle optional fields correctly', () => {
-    const validDataWithoutEmail = {
-      name: 'John Doe',
-      age: 25,
-    };
-
-    const result = pipe.transform(validDataWithoutEmail, {} as any);
-    expect(result).toEqual(validDataWithoutEmail);
+  it('should skip validation for non-body metadata', () => {
+    const result = pipe.transform({ any: 'value' }, {} as any);
+    expect(result).toEqual({ any: 'value' });
   });
 
   it('should handle nested errors correctly', () => {
@@ -81,23 +89,22 @@ describe('ZodValidationPipe', () => {
         name: '',
         age: 25,
       },
-    };
+    } as any;
 
     try {
-      nestedPipe.transform(invalidNestedData, {} as any);
+      nestedPipe.transform(invalidNestedData, bodyMeta as any);
       fail('Should have thrown BadRequestException');
-    } catch (error) {
+    } catch (error: any) {
       expect(error).toBeInstanceOf(BadRequestException);
       const response = error.getResponse();
       expect(response.errors).toBeDefined();
       expect(response.errors.length).toBeGreaterThan(0);
       // Check that path includes nested field
-      expect(response.errors.some((e: any) => e.path.includes('user'))).toBe(true);
+      expect(response.errors.some((e: any) => String(e.path).includes('user'))).toBe(true);
     }
   });
 
-  it('should handle non-Zod errors gracefully', () => {
-    // Create a pipe with a schema that might cause non-Zod errors
+  it('should wrap non-Zod errors into BadRequestException', () => {
     const problemSchema = z.object({
       value: z.string().transform((val) => {
         if (val === 'error') {
@@ -109,7 +116,7 @@ describe('ZodValidationPipe', () => {
     const problemPipe = new ZodValidationPipe(problemSchema);
 
     expect(() => {
-      problemPipe.transform({ value: 'error' }, {} as any);
+      problemPipe.transform({ value: 'error' } as any, bodyMeta as any);
     }).toThrow(BadRequestException);
   });
 });

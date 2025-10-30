@@ -202,4 +202,16 @@ export class VoteService {
     return this.hasUserVoted(userId, targetType, targetId);
   }
 
+  /**
+   * Returns the sum of positive vote amounts cast ON the given comment.
+   * Uses MongoDB aggregation to avoid loading all documents.
+   */
+  async getPositiveSumForComment(commentId: string): Promise<number> {
+    const result = await this.voteModel.aggregate([
+      { $match: { targetType: 'comment', targetId: commentId, amount: { $gt: 0 } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]).exec();
+    return (result && result[0] && result[0].total) || 0;
+  }
+
 }

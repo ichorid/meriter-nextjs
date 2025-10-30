@@ -263,7 +263,11 @@
     "upvote": "Upvote",
     "downvote": "Downvote",
     "beneficiary": "Beneficiary",
-    "viewInPublication": "View in publication →"
+    "viewInPublication": "View in publication →",
+    "totals": "Totals on this comment",
+    "totalSum": "Total sum",
+    "totalReceived": "Total received",
+    "authorWithdrawn": "Author withdrawn"
   },
   "communities": {
     "other": "Other",

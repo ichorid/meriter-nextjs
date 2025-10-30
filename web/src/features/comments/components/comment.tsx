@@ -100,9 +100,12 @@ export const Comment: React.FC<CommentProps> = ({
     
     // API provides vote transaction fields (plus, minus, amountTotal) when comment represents a vote
     const hasVoteTransactionData = plus !== undefined || minus !== undefined || amountTotal !== undefined;
-    const displayPlus = hasVoteTransactionData ? (plus ?? 0) : (metrics?.upvotes ?? 0);
-    const displayMinus = hasVoteTransactionData ? (minus ?? 0) : (metrics?.downvotes ?? 0);
-    const displaySum = sum ?? metrics?.score ?? 0;
+    // For UI display of comment stats, always use metrics (accumulated votes on the comment)
+    const commentUpvotes = metrics?.upvotes ?? 0;
+    const commentDownvotes = metrics?.downvotes ?? 0;
+    const commentScore = metrics?.score ?? 0;
+    // Sum from API is used only for displaying transaction header when present
+    const displaySum = sum ?? commentScore;
     
     // Check if current user is the author
     const isAuthor = myId === commentAuthorId;
@@ -144,13 +147,12 @@ export const Comment: React.FC<CommentProps> = ({
     // API provides directionPlus for vote transaction comments
     // Calculate from vote data if available, otherwise infer from metrics
     const calculatedDirectionPlus = directionPlus ?? 
-      (amountTotal !== undefined ? (amountTotal > 0 || displayPlus > 0) : 
-       ((displayPlus > displayMinus) || (displaySum > 0)));
+      (amountTotal !== undefined ? (amountTotal > 0 || commentUpvotes > 0) : 
+       ((commentUpvotes > commentDownvotes) || (displaySum > 0)));
     
-    // For vote transaction comments, use API-provided plus/minus directly (they reflect the vote amount)
-    // For regular comments, use the metrics (votes on the comment itself)
-    const displayUpvotes = displayPlus;
-    const displayDownvotes = displayMinus;
+    // Always display comment's accumulated upvotes/downvotes
+    const displayUpvotes = commentUpvotes;
+    const displayDownvotes = commentDownvotes;
     
     // Format the rate with currency icon
     const formatRate = () => {
@@ -232,8 +234,8 @@ export const Comment: React.FC<CommentProps> = ({
         forTransactionId || _id,
         balance,
         updBalance,
-        displayPlus,
-        displayMinus,
+        commentUpvotes,
+        commentDownvotes,
         activeCommentHook,
         false, // onlyPublication
         communityId, // communityId
@@ -322,7 +324,7 @@ export const Comment: React.FC<CommentProps> = ({
                         />
                     ) : (
                         <BarVoteUnified
-                            score={currentPlus - currentMinus}
+                            score={commentScore}
                             onVoteClick={() => {
                                 useUIStore.getState().openVotingPopup(_id, 'comment');
                             }}
@@ -413,6 +415,9 @@ export const Comment: React.FC<CommentProps> = ({
                 beneficiaryName={commentDetails?.beneficiary?.name ?? recipientName}
                 beneficiaryAvatar={commentDetails?.beneficiary?.photoUrl ?? recipientAvatar}
                 isVoteTransaction={!!commentDetails?.voteTransaction || hasVoteTransactionData}
+                totalScore={commentDetails?.metrics?.score ?? displaySum}
+                totalReceived={commentDetails?.metrics?.totalReceived}
+                totalWithdrawn={commentDetails?.withdrawals?.totalWithdrawn}
             />
         </div>
     );

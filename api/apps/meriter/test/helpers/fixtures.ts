@@ -1,10 +1,10 @@
 import { uid } from 'uid';
-import { CreateUserDto, CreateCommunityDto, CreatePublicationDto, CreateCommentDto, CreateVoteDto, CreatePollDto } from '../../../../../../libs/shared-types/dist/index';
+import { CreateCommunityDto, CreatePublicationDto, CreateCommentDto, CreateVoteDto, CreatePollDto } from '@meriter/shared-types';
 
 /**
  * Create test user fixtures
  */
-export function createTestUser(overrides: Partial<CreateUserDto> = {}): CreateUserDto {
+export function createTestUser(overrides: Partial<any> = {}): any {
   return {
     telegramId: uid(),
     username: `testuser_${uid()}`,
@@ -17,7 +17,7 @@ export function createTestUser(overrides: Partial<CreateUserDto> = {}): CreateUs
     website: 'https://example.com',
     isVerified: false,
     ...overrides,
-  };
+  } as any;
 }
 
 /**
@@ -47,7 +47,7 @@ export function createTestCommunity(overrides: Partial<CreateCommunityDto> = {})
     },
     isActive: true,
     ...overrides,
-  };
+  } as any;
 }
 
 /**
@@ -61,7 +61,7 @@ export function createTestPublication(communityId: string, authorId: string, ove
     type: 'text',
     hashtags: ['test'],
     ...overrides,
-  };
+  } as any;
 }
 
 /**
@@ -72,7 +72,7 @@ export function createTestComment(targetType: 'publication' | 'comment', targetI
     targetType,
     targetId,
     content: content || `Test comment ${uid()}`,
-  };
+  } as any;
 }
 
 /**
@@ -84,7 +84,7 @@ export function createTestVote(targetType: 'publication' | 'comment', targetId: 
     targetId,
     amount,
     sourceType,
-  };
+  } as any;
 }
 
 /**
@@ -105,7 +105,7 @@ export function createTestPoll(communityId: string, overrides: Partial<CreatePol
     ],
     expiresAt: expiresAt.toISOString(),
     ...overrides,
-  };
+  } as any;
 }
 
 /**

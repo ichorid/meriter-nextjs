@@ -460,6 +460,10 @@ export const commentsApiV1 = {
       upvotes: number;
       downvotes: number;
       score: number;
+      totalReceived: number;
+    };
+    withdrawals: {
+      totalWithdrawn: number;
     };
   }> {
     const response = await apiClient.get<{ success: true; data: {
@@ -493,6 +497,10 @@ export const commentsApiV1 = {
         upvotes: number;
         downvotes: number;
         score: number;
+        totalReceived: number;
+      };
+      withdrawals: {
+        totalWithdrawn: number;
       };
     } }>(`/api/v1/comments/${id}/details`);
     return response.data;

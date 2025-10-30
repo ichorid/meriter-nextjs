@@ -26,6 +26,9 @@ interface CommentDetailsPopupProps {
     beneficiaryName?: string;
     beneficiaryAvatar?: string;
     isVoteTransaction?: boolean;
+    totalScore?: number;
+    totalReceived?: number;
+    totalWithdrawn?: number;
 }
 
 export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
@@ -47,6 +50,9 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
     beneficiaryName,
     beneficiaryAvatar,
     isVoteTransaction = false,
+    totalScore,
+    totalReceived,
+    totalWithdrawn,
 }) => {
     const t = useTranslations('comments');
 
@@ -204,6 +210,33 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                                             <div className="text-xs opacity-60 ml-6">
                                                 {t('quotaExplanation') || 'Used from daily free quota'}
                                             </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Totals on Comment */}
+                        {(totalScore !== undefined || totalReceived !== undefined || totalWithdrawn !== undefined) && (
+                            <div className="mb-6">
+                                <div className="text-sm opacity-70 mb-2">{t('totals') || 'Totals on this comment'}</div>
+                                <div className="bg-base-200 rounded-lg p-4 space-y-2">
+                                    {totalScore !== undefined && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm opacity-70">{t('totalSum') || 'Total sum'}</span>
+                                            <span className="text-sm font-medium">{totalScore}</span>
+                                        </div>
+                                    )}
+                                    {totalReceived !== undefined && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm opacity-70">{t('totalReceived') || 'Total received'}</span>
+                                            <span className="text-sm font-medium">{totalReceived}</span>
+                                        </div>
+                                    )}
+                                    {totalWithdrawn !== undefined && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm opacity-70">{t('authorWithdrawn') || 'Author withdrawn'}</span>
+                                            <span className="text-sm font-medium">{totalWithdrawn}</span>
                                         </div>
                                     )}
                                 </div>

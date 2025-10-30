@@ -264,7 +264,11 @@
     "upvote": "За",
     "downvote": "Против",
     "beneficiary": "Получатель",
-    "viewInPublication": "Посмотреть в публикации →"
+    "viewInPublication": "Посмотреть в публикации →",
+    "totals": "Итоги по этому комментарию",
+    "totalSum": "Итого",
+    "totalReceived": "Всего получено",
+    "authorWithdrawn": "Автор вывел"
   },
   "communities": {
     "other": "Другое",

@@ -219,4 +219,16 @@ export class WalletService {
   async deleteTransaction(id: string): Promise<void> {
     // This is a simplified implementation
   }
+
+  /**
+   * Returns total withdrawn amount for a reference (e.g., comment/publication) via wallet transactions.
+   * Aggregates by referenceType and referenceId to avoid N+1.
+   */
+  async getTotalWithdrawnByReference(referenceType: string, referenceId: string): Promise<number> {
+    const result = await this.mongoose.models.Transaction.aggregate([
+      { $match: { referenceType, referenceId, type: 'withdrawal' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]).exec();
+    return (result && result[0] && result[0].total) || 0;
+  }
 }

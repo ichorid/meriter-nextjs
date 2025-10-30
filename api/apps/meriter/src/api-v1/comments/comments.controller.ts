@@ -15,6 +15,7 @@ import { CommentService } from '../../domain/services/comment.service';
 import { UserService } from '../../domain/services/user.service';
 import { VoteService } from '../../domain/services/vote.service';
 import { PublicationService } from '../../domain/services/publication.service';
+import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
@@ -33,6 +34,7 @@ export class CommentsController {
     private readonly voteService: VoteService,
     private readonly publicationService: PublicationService,
     private readonly communityService: CommunityService,
+    private readonly walletService: WalletService,
   ) {}
 
   @Get()
@@ -146,6 +148,23 @@ export class CommentsController {
     const downvotes = commentVotes.filter(v => v.amount < 0).length;
     const score = commentVotes.reduce((sum, v) => sum + v.amount, 0);
 
+    // Aggregated totals (avoid loading extra docs unnecessarily)
+    let totalReceived = 0;
+    let totalWithdrawn = 0;
+    try {
+      totalReceived = await this.voteService.getPositiveSumForComment(id);
+    } catch (err) {
+      this.logger.warn(`Failed to aggregate positive votes for comment ${id}:`, err?.message || err);
+    }
+    try {
+      // Sum of all withdrawals referencing this comment
+      totalWithdrawn = await (this as any).walletService?.getTotalWithdrawnByReference
+        ? await (this as any).walletService.getTotalWithdrawnByReference('comment_withdrawal', id)
+        : 0;
+    } catch (err) {
+      this.logger.warn(`Failed to aggregate withdrawals for comment ${id}:`, err?.message || err);
+    }
+
     const response = {
       comment: {
         ...snapshot,
@@ -170,6 +189,10 @@ export class CommentsController {
         upvotes,
         downvotes,
         score,
+        totalReceived,
+      },
+      withdrawals: {
+        totalWithdrawn,
       },
     };
 
