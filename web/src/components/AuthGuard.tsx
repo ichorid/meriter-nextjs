@@ -34,7 +34,7 @@ export function AuthGuard({
   useEffect(() => {
     if (!isLoading && hasChecked) {
       if (requireAuth && !isAuthenticated) {
-        const currentPath = window.location.pathname;
+        const currentPath = window.location.pathname + window.location.search;
         const returnTo = encodeURIComponent(currentPath);
         router.push(`${redirectTo}?returnTo=${returnTo}`);
       }

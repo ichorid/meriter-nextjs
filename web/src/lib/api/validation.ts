@@ -59,13 +59,19 @@ export function validatePaginatedResponse<T>(
 ): { data: T[]; meta: any } {
   // First validate the response structure
   if (typeof response !== 'object' || response === null) {
-    throw new ValidationError('Invalid response format', new ZodError([]), { context });
+    const zerr = new ZodError([
+      { code: 'custom', path: [], message: 'Response is not an object' } as any,
+    ]);
+    throw new ValidationError('Invalid response format', zerr, { context });
   }
 
   const responseObj = response as { data?: unknown; meta?: unknown };
   
   if (!Array.isArray(responseObj.data)) {
-    throw new ValidationError('Response data is not an array', new ZodError([]), { context });
+    const zerr = new ZodError([
+      { code: 'custom', path: ['data'], message: 'Expected array at data' } as any,
+    ]);
+    throw new ValidationError('Response data is not an array', zerr, { context });
   }
 
   // Validate each item in the array
@@ -88,17 +94,26 @@ export function validateApiResponse<T>(
   context?: string
 ): T {
   if (typeof response !== 'object' || response === null) {
-    throw new ValidationError('Invalid response format', new ZodError([]), { context });
+    const zerr = new ZodError([
+      { code: 'custom', path: [], message: 'Response is not an object' } as any,
+    ]);
+    throw new ValidationError('Invalid response format', zerr, { context });
   }
 
   const responseObj = response as { success?: boolean; data?: unknown };
   
   if (responseObj.success === false) {
-    throw new ValidationError('API request failed', new ZodError([]), { context });
+    const zerr = new ZodError([
+      { code: 'custom', path: ['success'], message: 'API indicated failure' } as any,
+    ]);
+    throw new ValidationError('API request failed', zerr, { context });
   }
 
   if (responseObj.data === undefined) {
-    throw new ValidationError('Response data is missing', new ZodError([]), { context });
+    const zerr = new ZodError([
+      { code: 'custom', path: ['data'], message: 'Missing data property' } as any,
+    ]);
+    throw new ValidationError('Response data is missing', zerr, { context });
   }
 
   return validateData(schema, responseObj.data, context);

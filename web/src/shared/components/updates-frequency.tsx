@@ -24,7 +24,7 @@ export const UpdatesFrequency = () => {
 
     const options = [
         {
-            frequency: 'immediately',
+            frequency: 'immediate',
             label: t('updateFrequency.immediately'),
         },
         {
@@ -36,12 +36,16 @@ export const UpdatesFrequency = () => {
             frequency: 'daily',
             label: t('updateFrequency.oncePerDay'),
         },
+        {
+            frequency: 'never',
+            label: t('updateFrequency.never'),
+        },
     ];
 
     return (
         <div id={"updates-frequency"} className="form-control w-full">
             <label className="label">
-                <span className="label-text">{t('updateFrequency.selectFrequency')}</span>
+                <span className="label-text">{t('updateFrequency.telegramBotFrequency')}</span>
             </label>
             <select
                 className="select select-bordered w-full max-w-xs"

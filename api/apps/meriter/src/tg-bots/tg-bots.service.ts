@@ -30,6 +30,7 @@ import * as stream from "stream";
 
 import { encodeTelegramDeepLink, formatDualLinksFromEncoded, formatDualLinks, escapeMarkdownV2 } from '../common/helpers/telegram';
 import { t } from '../i18n';
+import { UpdateEventItem } from '../domain/services/user-updates.service';
 
 @Injectable()
 export class TgBotsService {
@@ -50,6 +51,77 @@ export class TgBotsService {
       region: process.env.S3_REGION || "ru-msk",
     });
     this.telegramApiUrl = process.env.TELEGRAM_API_URL || "https://api.telegram.org";
+  }
+
+  async sendUserUpdates(userId: string, events: UpdateEventItem[], locale: 'en' | 'ru' = 'en') {
+    try {
+      const user = await this.userModel.findOne({ id: userId }).lean();
+      const tgChatId = user?.telegramId;
+      if (!tgChatId) return;
+      if (!events || events.length === 0) return;
+
+      const text = this.formatUpdatesList(events, locale);
+      await this.tgSend({ tgChatId, text });
+    } catch (e) {
+      this.logger.error('Failed to send user updates', e as any);
+    }
+  }
+
+  formatUpdatesList(events: UpdateEventItem[], locale: 'en' | 'ru' = 'en'): string {
+    const header = locale === 'ru' ? 'Ваши обновления:' : 'Your updates:';
+    const lines = events.slice(0, 20).map(ev => {
+      if (ev.eventType === 'vote') {
+        const sign = ev.direction === 'up' ? '+' : '-';
+        const signStr = sign === '+' ? '\\+' : '\\-';
+        const rawActor = ev.actor.username ? `@${ev.actor.username}` : ev.actor.name;
+        const actor = escapeMarkdownV2(rawActor || '');
+        const targetRaw = ev.targetType === 'publication' ? (locale === 'ru' ? 'пост' : 'publication') : (locale === 'ru' ? 'комментарий' : 'comment');
+        const target = escapeMarkdownV2(targetRaw);
+        const byText = escapeMarkdownV2(locale === 'ru' ? 'от' : 'by');
+        const onYourText = escapeMarkdownV2(locale === 'ru' ? 'на ваш' : 'on your');
+        return `${signStr}${Math.abs(ev.amount || 0)} ${byText} ${actor} ${onYourText} ${target}`;
+      }
+      // beneficiary
+      const rawActor = ev.actor.username ? `@${ev.actor.username}` : ev.actor.name;
+      const actor = escapeMarkdownV2(rawActor || '');
+      const prefix = escapeMarkdownV2(locale === 'ru' ? 'Вы стали бенефициаром в посте от' : 'You are beneficiary in a post by');
+      return `${prefix} ${actor}`;
+    });
+    const more = events.length > 20 ? (locale === 'ru' ? `+${events.length - 20} ещё…` : `+${events.length - 20} more…`) : '';
+    const escapedHeader = escapeMarkdownV2(header);
+    return [escapedHeader, ...lines, more].filter(Boolean).join('\n');
+  }
+
+  async sendImmediateVoteNotification(userId: string, data: {
+    actorId: string;
+    actorName: string;
+    actorUsername?: string;
+    targetType: 'publication' | 'comment';
+    targetId: string;
+    publicationId: string;
+    communityId?: string;
+    amount: number;
+    direction: 'up' | 'down';
+    createdAt?: Date;
+  }, locale: 'en' | 'ru' = 'en') {
+    this.logger.log(`Preparing immediate vote notification: toUser=${userId}, from=${data.actorUsername || data.actorName}, amount=${data.amount}, dir=${data.direction}, targetType=${data.targetType}`);
+    const event: UpdateEventItem = {
+      id: `vote-${Date.now()}`,
+      eventType: 'vote',
+      actor: {
+        id: data.actorId,
+        name: data.actorName,
+        username: data.actorUsername,
+      },
+      targetType: data.targetType,
+      targetId: data.targetId,
+      publicationId: data.publicationId,
+      communityId: data.communityId,
+      amount: data.amount,
+      direction: data.direction,
+      createdAt: (data.createdAt || new Date()).toISOString(),
+    };
+    await this.sendUserUpdates(userId, [event], locale);
   }
   private async getCommunityLanguageByChatId(chatId: string): Promise<'en' | 'ru'> {
     const community = await this.communityModel.findOne({ telegramChatId: String(chatId) }).lean();
@@ -543,7 +615,7 @@ export class TgBotsService {
 
     const { publication, communityId } = result;
     const slug = publication.id; // Use publication ID as slug
-    const link = `communities/${communityId}/posts/${slug}`;
+    const link = `communities/${communityId}?post=${slug}`;
     
     this.logger.log(`✅ Publication created: slug=${slug}, communityId=${communityId}, tgChatId=${tgChatId}`);
     this.logger.log(`🔗 Generated link: ${link} (using internal community ID, not Telegram chat ID)`);
@@ -716,23 +788,24 @@ export class TgBotsService {
   async tgSend({ tgChatId, text }) {
     //console.log(tgChatId, text )
     if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
+    if (!process.env.BOT_TOKEN) {
+      this.logger.warn('BOT_TOKEN is empty; Telegram send skipped');
+      return "ok";
+    }
+    this.logger.log(`Sending Telegram message to chat_id=${tgChatId}`);
     const params = { chat_id: tgChatId, text, parse_mode: "MarkdownV2" };
     try {
-      await Promise.all([
-        ,
-        /*  SentTGMessageLog.create({
-          toUserTgId: tgChatId,
-          text,
-          tgChatId,
-          meta: params,
-          ts: Date.now(),
-        })*/ !process.env.noAxios &&
-          Axios.get(BOT_URL + "/sendMessage", {
-            params,
-          }),
-      ]);
+      if (!process.env.noAxios) {
+        await Axios.get(BOT_URL + "/sendMessage", { params });
+      }
     } catch (e) {
-      this.logger.error(e);
+      const anyErr: any = e;
+      const description = anyErr?.response?.data?.description;
+      if (description) {
+        this.logger.error(`Telegram send failed: ${description}`);
+      } else {
+        this.logger.error(anyErr);
+      }
     }
 
     return "ok";

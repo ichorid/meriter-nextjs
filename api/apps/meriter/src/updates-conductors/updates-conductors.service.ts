@@ -10,6 +10,8 @@ import { TgBotsService } from '../tg-bots/tg-bots.service';
 import { Cron, SchedulerRegistry } from '@nestjs/schedule';
 import { URL as WEB_BASE_URL, BOT_USERNAME } from '../config';
 import { formatDualLinks } from '../common/helpers/telegram';
+import { UserSettingsService } from '../domain/services/user-settings.service';
+import { UserUpdatesService } from '../domain/services/user-updates.service';
 
 export class PushUpdateDto {
   actorUri: string;
@@ -30,6 +32,8 @@ export class UpdatesConductorsService {
     updatesConductorModel: Model<UpdatesConductorDocument>,
 
     private readonly tgBotsService: TgBotsService,
+    private readonly userSettingsService: UserSettingsService,
+    private readonly userUpdatesService: UserUpdatesService,
   ) {
     this.model = updatesConductorModel;
   }
@@ -76,81 +80,43 @@ export class UpdatesConductorsService {
   async testCron() {
     this.logger.log('test cron' + Date.now());
   }
-  @Cron('* * * * *')
+  @Cron('0 * * * *')
   async maybeTrigger() {
-    const updateList = await this.model.find({
-      nextUpdateAfter: { $lte: new Date() },
-    });
+    // Hourly batch using period boundaries (UTC)
+    const to = new Date();
+    to.setUTCMinutes(0, 0, 0);
+    const from = new Date(to.getTime() - 60 * 60 * 1000);
 
-    // console.log(updateList);
+    // Users with hourly setting
+    const hourlyUsers = await (this as any).userSettingsService['model']
+      .find({ updatesFrequency: 'hourly' })
+      .lean();
+    for (const u of hourlyUsers) {
+      const events = await this.userUpdatesService.getUserUpdateEvents(u.userId, from, to);
+      if (events.length > 0) {
+        await this.tgBotsService.sendUserUpdates(u.userId, events, 'en');
+        await this.userSettingsService.markHourlyDelivered(u.userId, to);
+      }
+    }
 
-    const promisesTgSend = [];
-    const promisesResetConductor = updateList
-      .map((u) => u.toObject())
-      .map((upd) => {
-        const tgUserId = (upd.actorUri ?? '').replace(
-          'actor.user://telegram',
-          '',
-        );
-        if (tgUserId) {
-          if (
-            upd.counterPlus !== 0 ||
-            upd.counterMinus !== 0 ||
-            upd.counterSum !== 0
-          ) {
-            this.logger.log(
-              upd,
-              upd.counterPlus !== 0 ||
-                upd.counterMinus !== 0 ||
-                upd.counterSum !== 0,
-              typeof upd.counterSum,
-            );
-            const publicationsN = upd.publicationUids.filter(Boolean).length;
-            const transactionsN = upd.commentsUids.filter(Boolean).length;
-            const actorsN = upd.votersActorUris.filter(Boolean).length;
-            const dualLinks = formatDualLinks('updates', {}, BOT_USERNAME, WEB_BASE_URL);
-            const text = `Для Вас есть обновления\!
-Активность ${publicationsN} постов и ${transactionsN} комментариев:
-Пришла обратная связь от ${actorsN} пользователей, из них плюсов ${upd.counterPlus} и ${upd.counterMinus} минусов
-Посмотреть подробнее ${dualLinks}`;
-            const tgPromise = this.tgBotsService.tgSend({
-              tgChatId: tgUserId,
-
-              text,
-            });
-            promisesTgSend.push(tgPromise);
-
-            const nextUpdateAfter = new Date(
-              Date.now() + parseInt(String(upd.updateFrequencyMs ?? 1000 * 60)),
-            );
-
-            const updPromise = this.model.updateOne(
-              { _id: upd._id },
-              {
-                $set: {
-                  publicationUids: [],
-                  commentsUids: [],
-                  votersActorUris: [],
-                  counterSum: 0,
-                  counterMinus: 0,
-                  counterPlus: 0,
-                  nextUpdateAfter,
-                },
-              },
-              { setDefaultsOnInsert: true },
-            );
-            return updPromise;
-          }
-        }
-      });
-
-    const r = await Promise.all([
-      Promise.all(promisesResetConductor),
-      Promise.all(promisesTgSend),
-    ]);
-
-    //  console.log('cron tick', r);
     return;
+  }
+
+  @Cron('0 0 * * *')
+  async dailyTrigger() {
+    const to = new Date();
+    to.setUTCHours(0, 0, 0, 0);
+    const from = new Date(to.getTime() - 24 * 60 * 60 * 1000);
+    const dailyUsers = await (this as any).userSettingsService['model']
+      .find({ updatesFrequency: 'daily' })
+      .lean();
+    for (const u of dailyUsers) {
+      const events = await this.userUpdatesService.getUserUpdateEvents(u.userId, from, to);
+      if (events.length > 0) {
+        await this.tgBotsService.sendUserUpdates(u.userId, events, 'en');
+        await this.userSettingsService.markDailyDelivered(u.userId, to);
+      }
+    }
   }
 
   async setFrequency(actorUri: string, updateFrequencyMs: number) {

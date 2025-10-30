@@ -30,6 +30,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     
     // Get the post parameter from URL for deep linking
     const targetPostSlug = searchParams.get('post');
+    const targetPollId = searchParams.get('poll');
     
     // Get sort and modal state from URL params
     const sortBy = searchParams.get('sort') || 'recent';
@@ -105,15 +106,34 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         }
     }, [data, publications.length]);
 
-    // Handle deep linking to specific post
+    // Handle deep linking to specific post or poll
     useEffect(() => {
-        if (targetPostSlug && publications.length > 0) {
-            console.log('🔍 Looking for post with slug:', targetPostSlug);
-            console.log('🔍 Available publications:', publications.map((p: FeedItem) => ({ slug: p.slug, id: p.id, type: p.type })));
+        if ((targetPostSlug || targetPollId) && publications.length > 0) {
+            let targetPost: FeedItem | undefined;
             
-            const targetPost = publications.find((p: FeedItem) => p.slug === targetPostSlug);
+            if (targetPollId) {
+                console.log('🔍 Looking for poll with id:', targetPollId);
+                console.log('🔍 Available publications:', publications.map((p: FeedItem) => ({ slug: p.slug, id: p.id, type: p.type })));
+                
+                targetPost = publications.find((p: FeedItem) => p.id === targetPollId && p.type === 'poll');
+                if (targetPost) {
+                    console.log('🎯 Found target poll for deep link:', targetPollId);
+                } else {
+                    console.log('❌ Target poll not found with id:', targetPollId);
+                }
+            } else if (targetPostSlug) {
+                console.log('🔍 Looking for post with slug:', targetPostSlug);
+                console.log('🔍 Available publications:', publications.map((p: FeedItem) => ({ slug: p.slug, id: p.id, type: p.type })));
+                
+                targetPost = publications.find((p: FeedItem) => p.slug === targetPostSlug);
+                if (targetPost) {
+                    console.log('🎯 Found target post for deep link:', targetPostSlug, 'with id:', targetPost.id);
+                } else {
+                    console.log('❌ Target post not found with slug:', targetPostSlug);
+                }
+            }
+            
             if (targetPost) {
-                console.log('🎯 Found target post for deep link:', targetPostSlug, 'with id:', targetPost.id);
                 setHighlightedPostId(targetPost.id);
                 
                 // Scroll to the post after a short delay to ensure it's rendered
@@ -128,11 +148,9 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                         console.log('❌ Post element not found with id:', `post-${targetPost.id}`);
                     }
                 }, 500);
-            } else {
-                console.log('❌ Target post not found with slug:', targetPostSlug);
             }
         }
-    }, [targetPostSlug, publications]);
+    }, [targetPostSlug, targetPollId, publications]);
 
     const error =
         (publications??[])?.[0]?.error || err
@@ -315,8 +333,9 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                 fullPublication: p
                             });
                             
-                            // Check if this post is selected (for comments)
-                            const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug));
+                            // Check if this post is selected (for comments or polls)
+                            const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug)) 
+                                || !!(targetPollId && p.id === targetPollId);
                             
                             return (
                                 <div

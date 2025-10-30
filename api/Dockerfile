@@ -9,7 +9,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
 # Copy package files
-COPY package.json pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml ./
 COPY tsconfig*.json ./
 COPY nest-cli.json ./
 
@@ -35,7 +35,7 @@ RUN addgroup --system --gid 1001 nestjs && \
     adduser --system --uid 1001 nestjs
 
 # Copy package files and install production dependencies only
-COPY package.json pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod
 
 # Copy built application from builder

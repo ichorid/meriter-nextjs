@@ -9,7 +9,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
 # Copy package files
-COPY package.json pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile --prod=false
@@ -43,7 +43,6 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/next.config.js ./
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/.npmrc ./.npmrc
 
 # Copy built application
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next

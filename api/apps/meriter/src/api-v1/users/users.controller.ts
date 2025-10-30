@@ -17,6 +17,7 @@ import { CommentService } from '../../domain/services/comment.service';
 import { UserGuard } from '../../user.guard';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { User, UpdatesFrequencySchema } from '../../../../../../libs/shared-types/dist/index';
+import { UserSettingsService } from '../../domain/services/user-settings.service';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 
@@ -30,6 +31,7 @@ export class UsersController {
     private readonly publicationService: PublicationService,
     private readonly commentService: CommentService,
     @InjectConnection() private mongoose: Connection,
+    private readonly userSettingsService: UserSettingsService,
   ) {}
 
   @Get(':userId')
@@ -73,8 +75,10 @@ export class UsersController {
     if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
-    // TODO: Implement user settings
-    return { frequency: 'daily' };
+    const settings = await this.userSettingsService.getOrCreate(actualUserId);
+    // map legacy 'immediately' to 'immediate' for internal usage if needed
+    const frequency = settings.updatesFrequency;
+    return { frequency };
   }
 
   @Put(':userId/updates-frequency')
@@ -91,8 +95,13 @@ export class UsersController {
     if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
-    // TODO: Implement user settings update
-    return { frequency: body.frequency };
+    const allowed = ['immediate', 'hourly', 'daily', 'never'];
+    const frequency = body.frequency;
+    if (!allowed.includes(frequency)) {
+      return { frequency: 'daily' };
+    }
+    const updated = await this.userSettingsService.setUpdatesFrequency(actualUserId, frequency);
+    return { frequency: updated.updatesFrequency };
   }
 
   @Get(':userId/publications')

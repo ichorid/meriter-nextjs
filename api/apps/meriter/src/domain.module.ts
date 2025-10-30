@@ -10,6 +10,7 @@ import { PollCast, PollCastSchema } from './domain/models/poll/poll-cast.schema'
 import { Wallet, WalletSchema } from './domain/models/wallet/wallet.schema';
 import { User, UserSchema } from './domain/models/user/user.schema';
 import { Community, CommunitySchema } from './domain/models/community/community.schema';
+import { UserSettings, UserSettingsSchema } from './domain/models/user-settings.schema';
 import { Transaction, TransactionSchema } from './domain/models/transaction/transaction.schema';
 
 // Import repositories (only those with valuable logic)
@@ -25,6 +26,8 @@ import { VoteService } from './domain/services/vote.service';
 import { PollCastService } from './domain/services/poll-cast.service';
 import { UserService } from './domain/services/user.service';
 import { CommunityService } from './domain/services/community.service';
+import { UserUpdatesService } from './domain/services/user-updates.service';
+import { UserSettingsService } from './domain/services/user-settings.service';
 
 // Import event bus
 import { EventBus } from './domain/events/event-bus';
@@ -42,6 +45,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: User.name, schema: UserSchema },
       { name: Community.name, schema: CommunitySchema },
       { name: Transaction.name, schema: TransactionSchema },
+      { name: UserSettings.name, schema: UserSettingsSchema },
     ]),
   ],
   providers: [
@@ -58,6 +62,8 @@ import { EventBus } from './domain/events/event-bus';
     PollCastService,
     UserService,
     CommunityService,
+    UserUpdatesService,
+    UserSettingsService,
     
     // Event bus
     EventBus,
@@ -76,6 +82,8 @@ import { EventBus } from './domain/events/event-bus';
     PollCastService,
     UserService,
     CommunityService,
+    UserUpdatesService,
+    UserSettingsService,
     
     // Export event bus
     EventBus,

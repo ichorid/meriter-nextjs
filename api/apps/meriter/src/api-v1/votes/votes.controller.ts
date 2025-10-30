@@ -12,6 +12,9 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { VoteService } from '../../domain/services/vote.service';
+import { UserSettingsService } from '../../domain/services/user-settings.service';
+import { UserUpdatesService } from '../../domain/services/user-updates.service';
+import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { PublicationService } from '../../domain/services/publication.service';
 import { CommentService } from '../../domain/services/comment.service';
 import { UserService } from '../../domain/services/user.service';
@@ -35,6 +38,9 @@ export class VotesController {
     private readonly userService: UserService,
     private readonly walletService: WalletService,
     private readonly communityService: CommunityService,
+    private readonly userSettingsService: UserSettingsService,
+    private readonly userUpdatesService: UserUpdatesService,
+    private readonly tgBotsService: TgBotsService,
   ) {}
 
   @Post('publications/:id/votes')
@@ -99,6 +105,35 @@ export class VotesController {
     // Note: If there's an attached comment, the comment count was already incremented
     // in CommentService.createComment when the comment was created
     
+    // Immediate notification if enabled for beneficiary
+    try {
+      const beneficiaryId = publication.getEffectiveBeneficiary()?.getValue();
+      if (beneficiaryId) {
+        const settings = await this.userSettingsService.getOrCreate(beneficiaryId);
+        if (settings.updatesFrequency === 'immediate') {
+          this.logger.log(`Immediate updates enabled; sending Telegram notification to beneficiary=${beneficiaryId} for publication=${id}`);
+          const voterDisplayName = req.user.displayName || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'Unknown';
+          const directionNow: 'up' | 'down' = createDto.amount > 0 ? 'up' : 'down';
+          await this.tgBotsService.sendImmediateVoteNotification(
+            beneficiaryId,
+            {
+              actorId: req.user.id,
+              actorName: voterDisplayName,
+              actorUsername: req.user.username,
+              targetType: 'publication',
+              targetId: id,
+              publicationId: id,
+              communityId: communityId,
+              amount: Math.abs(createDto.amount),
+              direction: directionNow,
+              createdAt: new Date(),
+            },
+            'en'
+          );
+        }
+      }
+    } catch {}
+
     return {
       data: {
         vote,
@@ -532,6 +567,35 @@ export class VotesController {
       );
     }
     
+    // Immediate notification if enabled for beneficiary
+    try {
+      const beneficiaryId = publication.getEffectiveBeneficiary()?.getValue();
+      if (beneficiaryId) {
+        const settings = await this.userSettingsService.getOrCreate(beneficiaryId);
+        if (settings.updatesFrequency === 'immediate') {
+          this.logger.log(`Immediate updates enabled; sending Telegram notification to beneficiary=${beneficiaryId} for publication=${id}`);
+          const voterDisplayName = req.user.displayName || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'Unknown';
+          const directionNow: 'up' | 'down' = body.amount > 0 ? 'up' : 'down';
+          await this.tgBotsService.sendImmediateVoteNotification(
+            beneficiaryId,
+            {
+              actorId: req.user.id,
+              actorName: voterDisplayName,
+              actorUsername: req.user.username,
+              targetType: 'publication',
+              targetId: id,
+              publicationId: id,
+              communityId: communityId,
+              amount: Math.abs(body.amount),
+              direction: directionNow,
+              createdAt: new Date(),
+            },
+            'en'
+          );
+        }
+      }
+    } catch {}
+
     return {
       data: {
         vote,

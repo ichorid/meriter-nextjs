@@ -251,7 +251,8 @@ export const TelegramWebAppDataSchema = z.object({
 });
 
 export const UpdatesFrequencySchema = z.object({
-  frequency: z.enum(['immediately', 'daily', 'weekly', 'never']),
+  // Allowed values must match web UI: immediate | hourly | daily | never
+  frequency: z.enum(['immediate', 'hourly', 'daily', 'never']),
 });
 
 export const WithdrawAmountDtoSchema = z.object({

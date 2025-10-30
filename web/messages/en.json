@@ -72,7 +72,7 @@
     "theme": "Theme",
     "themeSection": "Theme",
     "themeToggle": "Toggle theme:",
-    "updatesFrequency": "Update Frequency",
+    "updatesFrequency": "Telegram bot notification frequency",
     "communities": "Communities",
     "communitiesDescription": "Update your community list by checking membership in Telegram groups",
     "syncCommunities": "🔄 Sync Communities",
@@ -310,10 +310,11 @@
       "tip2": "transfer available balance to publications to increase their visibility"
     },
     "updateFrequency": {
-      "selectFrequency": "Select update frequency:",
+      "telegramBotFrequency": "Telegram bot notification frequency:",
       "immediately": "Immediately",
       "oncePerHour": "No more than once per hour",
-      "oncePerDay": "No more than once per day"
+      "oncePerDay": "No more than once per day",
+      "never": "Never"
     },
     "iconPicker": {
       "changeIcon": "Change icon",

@@ -1,8 +1,10 @@
 // Base API client with error handling and Zod validation
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { z } from 'zod';
+import { z, ZodError } from 'zod';
 import { config } from '@/config';
 import { transformAxiosError } from './errors';
+import { ValidationError as ZodValidationError } from './validation';
+import { formatValidationError, logValidationError } from './validation-error-handler';
 
 interface RequestConfig {
   timeout?: number;
@@ -85,12 +87,26 @@ export class ApiClient {
   // Method for validating API responses with Zod schemas
   async getValidated<T>(url: string, schema: z.ZodSchema<T>, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.get(url, config);
-    return schema.parse(response);
+    const parsed = schema.safeParse(response);
+    if (!parsed.success) {
+      const zerr: ZodError = parsed.error;
+      logValidationError(zerr, { endpoint: url, method: 'GET', responseData: response });
+      const message = formatValidationError(zerr);
+      throw new ZodValidationError(message, zerr, { endpoint: url, method: 'GET' });
+    }
+    return parsed.data;
   }
 
   async postValidated<T>(url: string, data: any, schema: z.ZodSchema<T>, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.post(url, data, config);
-    return schema.parse(response);
+    const parsed = schema.safeParse(response);
+    if (!parsed.success) {
+      const zerr: ZodError = parsed.error;
+      logValidationError(zerr, { endpoint: url, method: 'POST', requestData: data, responseData: response });
+      const message = formatValidationError(zerr);
+      throw new ZodValidationError(message, zerr, { endpoint: url, method: 'POST' });
+    }
+    return parsed.data;
   }
 }
 
