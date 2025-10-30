@@ -5,6 +5,7 @@ import { apiClient } from '@/lib/api/client';
 import { useEffect, useState } from "react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommunity, useUpdateCommunity } from '@/hooks/api';
+import { useSendCommunityMemo } from '@/hooks/api/useCommunities';
 import { communitiesApiV1 } from '@/lib/api/v1';
 import type { Community } from '@meriter/shared-types';
 import { etv } from '@shared/lib/input-utils';
@@ -60,6 +61,9 @@ const CommunitySettingsPage = () => {
     const [resetQuotaError, setResetQuotaError] = useState('');
     const [resetQuotaSuccess, setResetQuotaSuccess] = useState('');
     const [showResetConfirm, setShowResetConfirm] = useState(false);
+    const [sendMemoSuccess, setSendMemoSuccess] = useState('');
+    const [sendMemoError, setSendMemoError] = useState('');
+    const [sendingMemo, setSendingMemo] = useState(false);
 
     // Load user data using v1 API
     const { user } = useAuth();
@@ -94,6 +98,7 @@ const CommunitySettingsPage = () => {
 
     // Load community data using v1 API
     const { data: communityResponse, isLoading: communityIsLoading, error: communityErr } = useCommunity(chatId);
+    const sendMemoMutation = useSendCommunityMemo();
     
     useEffect(() => {
         if (communityResponse) {
@@ -272,6 +277,22 @@ const CommunitySettingsPage = () => {
             setResetQuotaError(message);
         } finally {
             setResettingQuota(false);
+        }
+    };
+
+    const handleSendMemo = async () => {
+        setSendMemoSuccess('');
+        setSendMemoError('');
+        setSendingMemo(true);
+        try {
+            await sendMemoMutation.mutateAsync(chatId);
+            setSendMemoSuccess(t('communitySettings.sendMemoSuccess'));
+            setTimeout(() => setSendMemoSuccess(''), 3000);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : t('communitySettings.sendMemoError');
+            setSendMemoError(message);
+        } finally {
+            setSendingMemo(false);
         }
     };
 
@@ -566,6 +587,31 @@ const CommunitySettingsPage = () => {
                 <div className="card bg-base-100 shadow-xl mb-6">
                     <div className="card-body">
                         <h2 className="card-title">{t('communitySettings.adminActions')}</h2>
+                        {sendMemoSuccess && (
+                            <div className="alert alert-success mb-4">{sendMemoSuccess}</div>
+                        )}
+                        {sendMemoError && (
+                            <div className="alert alert-error mb-4">{sendMemoError}</div>
+                        )}
+                        <div className="form-control mb-6">
+                            <label className="label">
+                                <span className="label-text">{t('communitySettings.sendMemoDescription')}</span>
+                            </label>
+                            <button
+                                className="btn btn-primary"
+                                disabled={sendingMemo}
+                                onClick={handleSendMemo}
+                            >
+                                {sendingMemo ? (
+                                    <>
+                                        <span className="loading loading-spinner loading-sm"></span>
+                                        &nbsp;{t('communitySettings.sendingMemo')}
+                                    </>
+                                ) : (
+                                    t('communitySettings.sendMemo')
+                                )}
+                            </button>
+                        </div>
                         
                         {resetQuotaSuccess && (
                             <div className="alert alert-success mb-4">

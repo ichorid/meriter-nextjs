@@ -13,7 +13,7 @@ export interface CreateCommunityDto {
   description?: string;
   avatarUrl?: string;
   // Telegram user IDs
-  administratorsTg: string[];
+  adminsTG: string[];
   settings?: {
     iconUrl?: string;
     currencyNames?: {
@@ -30,7 +30,7 @@ export interface UpdateCommunityDto {
   description?: string;
   avatarUrl?: string;
   // Telegram user IDs
-  administratorsTg?: string[];
+  adminsTG?: string[];
   hashtags?: string[];
   hashtagDescriptions?: Record<string, string>;
   settings?: {
@@ -68,7 +68,7 @@ export class CommunityService {
       name: dto.name,
       description: dto.description,
       avatarUrl: dto.avatarUrl,
-      administratorsTg: dto.administratorsTg,
+      adminsTG: dto.adminsTG,
       members: [],
       settings: {
         iconUrl: dto.settings?.iconUrl,
@@ -99,7 +99,7 @@ export class CommunityService {
     if (dto.name !== undefined) updateData.name = dto.name;
     if (dto.description !== undefined) updateData.description = dto.description;
     if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
-    if (dto.administratorsTg !== undefined) updateData.administratorsTg = dto.administratorsTg;
+    if (dto.adminsTG !== undefined) updateData.adminsTG = dto.adminsTG;
     if (dto.hashtags !== undefined) updateData.hashtags = dto.hashtags;
     if (dto.hashtagDescriptions !== undefined) {
       updateData.hashtagDescriptions = dto.hashtagDescriptions;
@@ -192,7 +192,7 @@ export class CommunityService {
     if (!telegramId) return false;
     const community = await this.communityModel.findOne({ 
       id: communityId,
-      administratorsTg: telegramId,
+      adminsTG: telegramId,
     }).lean();
     return community !== null;
   }
@@ -225,7 +225,7 @@ export class CommunityService {
     const user = await this.userModel.findOne({ id: userId }, { telegramId: 1 }).lean();
     const telegramId = user?.telegramId || '___none___';
     return this.communityModel
-      .find({ administratorsTg: telegramId })
+      .find({ adminsTG: telegramId })
       .sort({ createdAt: -1 })
       .lean() as any as Community[];
   }

@@ -33,7 +33,7 @@ export class Community {
 
   // Telegram user IDs of administrators
   @Prop({ type: [String], default: [] })
-  administratorsTg: string[];
+  adminsTG: string[];
 
   @Prop({ type: [String], default: [] })
   members: string[];
@@ -86,5 +86,5 @@ export const CommunitySchema = SchemaFactory.createForClass(Community);
 // Add indexes for common queries
 CommunitySchema.index({ telegramChatId: 1 }, { unique: true });
 CommunitySchema.index({ id: 1 }, { unique: true });
-CommunitySchema.index({ administratorsTg: 1 });
+CommunitySchema.index({ adminsTG: 1 });
 CommunitySchema.index({ isActive: 1 });

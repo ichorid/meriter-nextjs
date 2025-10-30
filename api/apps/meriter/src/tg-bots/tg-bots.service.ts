@@ -191,7 +191,7 @@ export class TgBotsService {
         .map((a) => String(a.id))
         .map((admin, i) => {
           this.logger.log(`✉️  Sending setup message to admin ${admin}`);
-          const links = `[Web](${WEB_BASE_URL}/meriter/setup-community) [App](https://t.me/${BOT_USERNAME}?startapp=setup)`;
+          const links = `[Web](${WEB_BASE_URL}) [App](https://t.me/${BOT_USERNAME}?startapp=setup)`;
           const text = `${escapeMarkdownV2(t('setup.admin.hi', lang, { community: title }))} ${links}`;
           p[i] = this.tgSend({ tgChatId: admin, text });
         });
@@ -209,7 +209,7 @@ export class TgBotsService {
         name: title,
         description: description || '',
         avatarUrl: chatAvatarUrl,
-        administrators: admins.map((a) => String(a.id)),
+        adminsTG: admins.map((a) => String(a.id)),
         members: [],
         settings: {
           iconUrl: chatAvatarUrl,

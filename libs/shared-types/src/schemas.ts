@@ -64,7 +64,7 @@ export const CommunitySchema = IdentifiableSchema.merge(TimestampsSchema).extend
   description: z.string().optional(),
   avatarUrl: z.string().url().optional(),
   // Telegram user IDs of administrators
-  administratorsTg: z.array(z.string()).default([]),
+  adminsTG: z.array(z.string()).default([]),
   members: z.array(z.string()).default([]),
   settings: CommunitySettingsSchema,
   hashtags: z.array(z.string()).default([]),

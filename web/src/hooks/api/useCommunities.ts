@@ -61,3 +61,14 @@ export const useSyncCommunities = () => {
     },
   });
 };
+
+export const useSendCommunityMemo = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (communityId: string) => communitiesApiV1.sendUsageMemo(communityId),
+    onSuccess: () => {
+      // nothing to invalidate specifically; keep for consistency
+      queryClient.invalidateQueries({ queryKey: queryKeys.communities.all });
+    },
+  });
+};

@@ -49,7 +49,7 @@ export function buildDesktopUrl(action: string, params: Record<string, string | 
     case 'updates':
       return `${baseUrl}/meriter/home?updates=1`;
     case 'setup':
-      return `${baseUrl}/meriter/setup-community`;
+      return `${baseUrl}`;
     case 'publication': {
       // Prefer explicit desktopPath if provided; else build from ids
       const desktopPath = params['desktopPath'];

@@ -241,6 +241,11 @@ export const communitiesApiV1 = {
     return { success: response.success, resetAt: response.data.resetAt };
   },
 
+  async sendUsageMemo(communityId: string): Promise<{ success: boolean }> {
+    const response = await apiClient.post<{ success: true; data: { sent: boolean } }>(`/api/v1/communities/${communityId}/send-memo`);
+    return { success: response.success };
+  },
+
   async getCommunityMembers(id: string, params: { skip?: number; limit?: number } = {}): Promise<PaginatedResponse<CommunityMember>> {
     const response = await apiClient.get<{ success: true; data: PaginatedResponse<CommunityMember> }>(`/api/v1/communities/${id}/members`, { params });
     return response.data;

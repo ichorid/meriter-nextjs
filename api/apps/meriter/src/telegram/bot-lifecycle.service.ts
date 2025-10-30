@@ -54,7 +54,7 @@ export class TelegramBotLifecycleService {
       telegramChatId: chatInfo.chatId,
       name: chatInfo.title || `Chat ${chatInfo.chatId}`,
       description: chatInfo.description,
-      administrators: [],
+      adminsTG: [],
       members: [],
       settings: {
         currencyNames: {

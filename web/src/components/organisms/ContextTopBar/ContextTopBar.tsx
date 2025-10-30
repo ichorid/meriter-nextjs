@@ -305,8 +305,8 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
   // Determine admin rights: prefer backend-computed flag, fallback to telegram-based list
   const isAdmin = Boolean(
     community.isAdmin ?? (
-      Array.isArray((community as any).administratorsTg) && user?.telegramId
-        ? (community as any).administratorsTg.includes(user.telegramId)
+      Array.isArray((community as any).adminsTG) && user?.telegramId
+        ? (community as any).adminsTG.includes(user.telegramId)
         : false
     )
   );

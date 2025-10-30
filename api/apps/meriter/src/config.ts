@@ -10,7 +10,7 @@ export const WELCOME_LEADER_MESSAGE = `Добро пожаловать в Мер
 
 Добавьте этого бота (@${BOT_USERNAME}) в один из чатов, в котором являетесь администратором. Для этого кликните на заголовок этого чата, далее на кнопку "еще"/"more", а затем на "добавить в группу"/"add to group" и выберите сообщество, в которое будет добавлен бот.`;
 
-export const LEADER_MESSAGE_AFTER_ADDED = `Бот добавлен в сообщество {username}\\. Авторизуйтесь и настройте сообщество: [Web](${URL}/meriter/setup-community) [App](https://t.me/${BOT_USERNAME}?startapp=setup)`;
+export const LEADER_MESSAGE_AFTER_ADDED = `Бот добавлен в сообщество {username}\. Авторизуйтесь и настройте сообщество: [Web](${URL}) [App](https://t.me/${BOT_USERNAME}?startapp=setup)`;
 
 export const WELCOME_USER_MESSAGE = `Добро пожаловать в Меритер\! Войдите: [Web](${URL}/meriter/login) [App](https://t.me/${BOT_USERNAME}?startapp=login)`;
 export const AUTH_USER_MESSAGE = `Авторизация: [Web](${URL}/meriter/login) [App](https://t.me/${BOT_USERNAME}?startapp=login)`;

@@ -397,7 +397,12 @@
       "languageOption": {
         "en": "Английский",
         "ru": "Русский"
-      }
+      },
+      "sendMemo": "Отправить памятку",
+      "sendingMemo": "Отправка...",
+      "sendMemoDescription": "Отправить в Telegram-группу памятку по использованию Meriter.",
+      "sendMemoSuccess": "Памятка отправлена в группу",
+      "sendMemoError": "Не удалось отправить памятку"
     }
   }
 }

@@ -21,6 +21,9 @@ import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
 import { Community, UpdateCommunityDto, UpdateCommunityDtoSchema, CreateCommunityDtoSchema } from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
+import { formatDualLinks, escapeMarkdownV2 } from '../../common/helpers/telegram';
+import { BOT_USERNAME, URL as WEB_BASE_URL } from '../../config';
+import { t } from '../../i18n';
 
 @Controller('api/v1/communities')
 @UseGuards(UserGuard)
@@ -89,8 +92,8 @@ export class CommunitiesController {
     
     return {
       ...community,
-      // Normalize administratorsTg from legacy field if necessary
-      administratorsTg: (community as any).administratorsTg || (community as any).administrators || [],
+      // Normalize adminsTG from legacy fields if necessary
+      adminsTG: (community as any).adminsTG || (community as any).administratorsTg || (community as any).administrators || [],
       // Ensure settings.language is provided to match type expectations
       settings: {
         currencyNames: community.settings?.currencyNames,
@@ -124,7 +127,7 @@ export class CommunitiesController {
     
     return {
       ...community,
-      administratorsTg: (community as any).administratorsTg || (community as any).administrators || [],
+      adminsTG: (community as any).adminsTG || (community as any).administratorsTg || (community as any).administrators || [],
       settings: {
         currencyNames: community.settings?.currencyNames,
         dailyEmission: community.settings?.dailyEmission as number,
@@ -179,7 +182,7 @@ export class CommunitiesController {
     
     return {
       ...community,
-      administratorsTg: (community as any).administratorsTg || (community as any).administrators || [],
+      adminsTG: (community as any).adminsTG || (community as any).administratorsTg || (community as any).administrators || [],
       settings: {
         currencyNames: community.settings?.currencyNames,
         dailyEmission: community.settings?.dailyEmission as number,
@@ -214,6 +217,40 @@ export class CommunitiesController {
 
     const { resetAt } = await this.communityService.resetDailyQuota(id);
     return { success: true, data: { resetAt: resetAt.toISOString() } };
+  }
+
+  @Post(':id/send-memo')
+  async sendCommunityMemo(@Param('id') id: string, @Req() req: any) {
+    const isAdmin = await this.communityService.isUserAdmin(id, req.user.id);
+    if (!isAdmin) {
+      throw new ForbiddenError('Only administrators can send memo');
+    }
+
+    const community = await this.communityService.getCommunity(id);
+    if (!community) {
+      throw new NotFoundError('Community', id);
+    }
+
+    const tgChatId = String((community as any).telegramChatId || '');
+    if (!tgChatId) {
+      throw new ValidationError('Community has no telegram chat id');
+    }
+
+    const lang = ((community.settings as any)?.language as 'en' | 'ru') || 'en';
+
+    const dualLinksCommunity = formatDualLinks('community', { id }, BOT_USERNAME, WEB_BASE_URL);
+    const hashtagsRaw = (community.hashtags || []).map((h) => `#${h}`).join(' ');
+    const hashtagsEscaped = escapeMarkdownV2(hashtagsRaw);
+
+    // Escape MarkdownV2 for template content, but preserve the dual links
+    const LINK_TOKEN = '__DUAL_LINKS__';
+    const templated = t('community.welcome', lang, { dualLinksCommunity: LINK_TOKEN, hashtags: hashtagsEscaped });
+    const escaped = escapeMarkdownV2(templated);
+    const text = escaped.replace(escapeMarkdownV2(LINK_TOKEN), dualLinksCommunity);
+
+    await this.tgBotsService.tgSend({ tgChatId, text });
+
+    return { success: true, data: { sent: true } };
   }
 
   // TODO: Implement getCommunityMembers in CommunityService

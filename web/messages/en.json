@@ -395,7 +395,12 @@
       "languageOption": {
         "en": "English",
         "ru": "Russian"
-      }
+      },
+      "sendMemo": "Send usage memo",
+      "sendingMemo": "Sending...",
+      "sendMemoDescription": "Send a memo to the Telegram group about how to use Meriter.",
+      "sendMemoSuccess": "Memo sent to the group",
+      "sendMemoError": "Failed to send memo"
     }
   }
 }
