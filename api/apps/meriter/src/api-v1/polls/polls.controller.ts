@@ -20,7 +20,8 @@ import { Wallet } from '../../domain/aggregates/wallet/wallet.entity';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
-import { Poll, CreatePollDto, CreatePollCastDto } from '../../../../../../libs/shared-types/dist/index';
+import { Poll, CreatePollDto, CreatePollDtoSchema, CreatePollCastDto, CreatePollCastDtoSchema, UpdatePollDtoSchema } from '../../../../../../libs/shared-types/dist/index';
+import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 
 @Controller('api/v1/polls')
 @UseGuards(UserGuard)
@@ -168,6 +169,7 @@ export class PollsController {
   }
 
   @Post()
+  @ZodValidation(CreatePollDtoSchema)
   async createPoll(
     @Body() createDto: CreatePollDto,
     @Req() req: any,
@@ -206,9 +208,10 @@ export class PollsController {
   }
 
   @Put(':id')
+  @ZodValidation(UpdatePollDtoSchema)
   async updatePoll(
     @Param('id') id: string,
-    @Body() updateDto: Partial<CreatePollDto>,
+    @Body() updateDto: any,
     @Req() req: any,
   ): Promise<Poll> {
     // Update functionality not implemented yet
@@ -231,6 +234,7 @@ export class PollsController {
   }
 
   @Post(':id/casts')
+  @ZodValidation(CreatePollCastDtoSchema)
   async castPoll(
     @Param('id') id: string,
     @Body() createDto: CreatePollCastDto,

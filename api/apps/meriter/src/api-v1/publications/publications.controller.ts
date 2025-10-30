@@ -6,7 +6,13 @@ import { CommunityService } from '../../domain/services/community.service';
 import { User } from '../../decorators/user.decorator';
 import { UserGuard } from '../../user.guard';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
-import { CreatePublicationDto } from '../../../../../../libs/shared-types/dist/index';
+import { 
+  CreatePublicationDto,
+  CreatePublicationDtoSchema,
+  UpdatePublicationDtoSchema,
+  VoteDirectionDtoSchema,
+} from '../../../../../../libs/shared-types/dist/index';
+import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 
 @Controller('api/v1/publications')
 @UseGuards(UserGuard)
@@ -18,6 +24,7 @@ export class PublicationsController {
   ) {}
 
   @Post()
+  @ZodValidation(CreatePublicationDtoSchema)
   async createPublication(
     @User() user: AuthenticatedUser,
     @Body() dto: CreatePublicationDto,
@@ -222,13 +229,11 @@ export class PublicationsController {
   }
 
   @Put(':id')
+  @ZodValidation(UpdatePublicationDtoSchema)
   async updatePublication(
     @User() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() updates: Partial<{
-      content: string;
-      hashtags: string[];
-    }>,
+    @Body() updates: any,
   ) {
     return this.publicationService.updatePublication(id, user.id, updates);
   }
@@ -243,10 +248,11 @@ export class PublicationsController {
   }
 
   @Post(':id/vote')
+  @ZodValidation(VoteDirectionDtoSchema)
   async voteOnPublication(
     @User() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() dto: { amount: number; direction: 'up' | 'down' },
+    @Body() dto: any,
   ) {
     return this.publicationService.voteOnPublication(id, user.id, dto.amount, dto.direction);
   }

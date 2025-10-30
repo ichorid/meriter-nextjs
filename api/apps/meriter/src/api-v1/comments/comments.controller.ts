@@ -19,7 +19,8 @@ import { CommunityService } from '../../domain/services/community.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError } from '../../common/exceptions/api.exceptions';
-import { Comment, CreateCommentDto } from '../../../../../../libs/shared-types/dist/index';
+import { Comment, CreateCommentDto, CreateCommentDtoSchema, UpdateCommentDtoSchema } from '../../../../../../libs/shared-types/dist/index';
+import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 
 @Controller('api/v1/comments')
 @UseGuards(UserGuard)
@@ -242,6 +243,7 @@ export class CommentsController {
   }
 
   @Post()
+  @ZodValidation(CreateCommentDtoSchema)
   async createComment(
     @Body() createDto: CreateCommentDto,
     @Req() req: any,
@@ -279,9 +281,10 @@ export class CommentsController {
   }
 
   @Put(':id')
+  @ZodValidation(UpdateCommentDtoSchema)
   async updateComment(
     @Param('id') id: string,
-    @Body() updateDto: Partial<CreateCommentDto>,
+    @Body() updateDto: any,
     @Req() req: any,
   ): Promise<Comment> {
     // Update functionality not implemented yet

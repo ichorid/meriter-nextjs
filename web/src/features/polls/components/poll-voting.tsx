@@ -82,6 +82,7 @@ export const PollCasting = ({
             await pollsApiV1.castPoll(pollId, {
                 optionId: selectedOptionId,
                 amount: castAmount,
+                sourceType: 'personal', // Default to personal quota
             });
 
             onCastSuccess && onCastSuccess();

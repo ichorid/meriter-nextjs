@@ -17,7 +17,8 @@ import { CommunityService } from '../../domain/services/community.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
-import { Wallet, Transaction, WithdrawDto, TransferDto } from '../../../../../../libs/shared-types/dist/index';
+import { Wallet, Transaction, WithdrawDto, TransferDto, WithdrawDtoSchema, TransferDtoSchema } from '../../../../../../libs/shared-types/dist/index';
+import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import { Community, CommunityDocument } from '../../domain/models/community/community.schema';
 
 @Controller('api/v1')
@@ -211,6 +212,7 @@ export class WalletsController {
   }
 
   @Post('users/:userId/wallets/:communityId/withdraw')
+  @ZodValidation(WithdrawDtoSchema)
   async withdrawFromWallet(
     @Param('userId') userId: string,
     @Param('communityId') communityId: string,
@@ -229,6 +231,7 @@ export class WalletsController {
   }
 
   @Post('users/:userId/wallets/:communityId/transfer')
+  @ZodValidation(TransferDtoSchema)
   async transferToUser(
     @Param('userId') userId: string,
     @Param('communityId') communityId: string,

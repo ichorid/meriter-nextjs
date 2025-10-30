@@ -51,6 +51,7 @@ interface PollCast {
 interface CastPollRequest {
   optionId: string;
   amount: number;
+  sourceType?: 'personal' | 'quota'; // Optional, defaults to 'personal' in schema
 }
 
 // Query keys
@@ -118,7 +119,10 @@ export function useCastPoll() {
   
   return useMutation({
     mutationFn: ({ id, data, communityId }: { id: string; data: CastPollRequest; communityId?: string }) => 
-      pollsApiV1.castPoll(id, data),
+      pollsApiV1.castPoll(id, {
+        ...data,
+        sourceType: data.sourceType || 'personal', // Ensure sourceType is provided
+      }),
     onMutate: async (variables) => {
       const { data, communityId } = variables || {};
       const shouldOptimistic = !!user?.id && !!communityId;

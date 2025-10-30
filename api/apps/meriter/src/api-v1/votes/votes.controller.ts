@@ -20,7 +20,8 @@ import { CommunityService } from '../../domain/services/community.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ValidationError } from '../../common/exceptions/api.exceptions';
-import { Vote, CreateVoteDto } from '../../../../../../libs/shared-types/dist/index';
+import { Vote, CreateVoteDto, CreateVoteDtoSchema, CreateTargetlessVoteDtoSchema, WithdrawAmountDtoSchema, VoteWithCommentDtoSchema } from '../../../../../../libs/shared-types/dist/index';
+import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 
 @Controller('api/v1')
 @UseGuards(UserGuard)
@@ -37,6 +38,7 @@ export class VotesController {
   ) {}
 
   @Post('publications/:id/votes')
+  @ZodValidation(CreateVoteDtoSchema)
   async votePublication(
     @Param('id') id: string,
     @Body() createDto: CreateVoteDto,
@@ -129,6 +131,7 @@ export class VotesController {
   }
 
   @Post('comments/:id/votes')
+  @ZodValidation(CreateTargetlessVoteDtoSchema)
   async voteComment(
     @Param('id') id: string,
     @Body() createDto: CreateVoteDto,
@@ -255,9 +258,10 @@ export class VotesController {
   }
 
   @Post('publications/:id/withdraw')
+  @ZodValidation(WithdrawAmountDtoSchema)
   async withdrawFromPublication(
     @Param('id') id: string,
-    @Body() body: { amount?: number },
+    @Body() body: any,
     @Req() req: any,
   ) {
     // Get the publication
@@ -330,9 +334,10 @@ export class VotesController {
   }
 
   @Post('comments/:id/withdraw')
+  @ZodValidation(WithdrawAmountDtoSchema)
   async withdrawFromComment(
     @Param('id') id: string,
-    @Body() body: { amount?: number },
+    @Body() body: any,
     @Req() req: any,
   ) {
     // Get the comment
@@ -425,13 +430,10 @@ export class VotesController {
   }
 
   @Post('publications/:id/vote-with-comment')
+  @ZodValidation(VoteWithCommentDtoSchema)
   async votePublicationWithComment(
     @Param('id') id: string,
-    @Body() body: {
-      amount: number;
-      sourceType?: 'personal' | 'quota';
-      comment?: string;
-    },
+    @Body() body: any,
     @Req() req: any,
   ) {
     // Get the publication to find the communityId

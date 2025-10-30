@@ -168,9 +168,18 @@ export const CreateCommentDtoSchema = PolymorphicReferenceSchema.extend({
   parentCommentId: z.string().optional(),
 });
 
+export const UpdateCommentDtoSchema = CreateCommentDtoSchema.partial();
+
 export const CreateVoteDtoSchema = PolymorphicReferenceSchema.extend({
   amount: z.number().int(),
   sourceType: z.enum(['personal', 'quota']),
+  attachedCommentId: z.string().optional(),
+});
+
+// Target-less vote DTO for routes where target is implied by the URL (e.g., comments/:id/votes)
+export const CreateTargetlessVoteDtoSchema = z.object({
+  amount: z.number().int(),
+  sourceType: z.enum(['personal', 'quota']).optional().default('quota'),
   attachedCommentId: z.string().optional(),
 });
 
@@ -181,6 +190,8 @@ export const CreatePollDtoSchema = z.object({
   options: z.array(z.object({ id: z.string().optional(), text: z.string().min(1).max(200) })).min(2),
   expiresAt: z.string().datetime(),
 });
+
+export const UpdatePollDtoSchema = CreatePollDtoSchema.partial();
 
 export const CreatePollCastDtoSchema = z.object({
   optionId: z.string(), // Changed from optionIndex to optionId
@@ -207,8 +218,53 @@ export const UpdateCommunityDtoSchema = z.object({
   settings: CommunitySettingsSchema.partial().optional(),
 });
 
+export const UpdatePublicationDtoSchema = z.object({
+  content: z.string().min(1).max(10000).optional(),
+  hashtags: z.array(z.string()).optional(),
+});
+
+export const CreateCommunityDtoSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  telegramChatId: z.string().optional(),
+}).passthrough(); // Allow additional fields
+
+export const VoteDirectionDtoSchema = z.object({
+  amount: z.number().int(),
+  direction: z.enum(['up', 'down']),
+});
+
+export const TelegramAuthDataSchema = z.object({
+  id: z.number(),
+  first_name: z.string(),
+  last_name: z.string().optional(),
+  username: z.string().optional(),
+  photo_url: z.string().url().optional(),
+  auth_date: z.number(),
+  hash: z.string(),
+});
+
+export const TelegramWebAppDataSchema = z.object({
+  initData: z.string(),
+});
+
+export const UpdatesFrequencySchema = z.object({
+  frequency: z.enum(['immediately', 'daily', 'weekly', 'never']),
+});
+
+export const WithdrawAmountDtoSchema = z.object({
+  amount: z.number().int().min(1).optional(),
+});
+
+export const VoteWithCommentDtoSchema = z.object({
+  amount: z.number().int(),
+  sourceType: z.enum(['personal', 'quota']).optional(),
+  comment: z.string().optional(),
+});
+
 // API Response schemas
 export const ApiResponseSchema = z.object({
+  success: z.boolean(),
   data: z.any(),
   meta: z.object({
     timestamp: z.string().datetime(),
@@ -221,8 +277,53 @@ export const ApiResponseSchema = z.object({
       hasNext: z.boolean(),
       hasPrev: z.boolean(),
     }).optional(),
-  }),
+  }).optional(),
 });
+
+/**
+ * Generic API response schema factory
+ * Creates a response schema with typed data
+ */
+export function createApiResponseSchema<T extends z.ZodTypeAny>(dataSchema: T) {
+  return z.object({
+    success: z.literal(true),
+    data: dataSchema,
+    meta: z.object({
+      timestamp: z.string().datetime(),
+      requestId: z.string(),
+      pagination: z.object({
+        page: z.number().int().min(1),
+        pageSize: z.number().int().min(1),
+        total: z.number().int().min(0),
+        totalPages: z.number().int().min(0),
+        hasNext: z.boolean(),
+        hasPrev: z.boolean(),
+      }).optional(),
+    }).optional(),
+  });
+}
+
+/**
+ * Paginated response schema factory
+ */
+export function createPaginatedResponseSchema<T extends z.ZodTypeAny>(itemSchema: T) {
+  return z.object({
+    success: z.literal(true),
+    data: z.array(itemSchema),
+    meta: z.object({
+      timestamp: z.string().datetime(),
+      requestId: z.string(),
+      pagination: z.object({
+        page: z.number().int().min(1),
+        pageSize: z.number().int().min(1),
+        total: z.number().int().min(0),
+        totalPages: z.number().int().min(0),
+        hasNext: z.boolean(),
+        hasPrev: z.boolean(),
+      }),
+    }),
+  });
+}
 
 export const ApiErrorResponseSchema = z.object({
   error: z.object({
@@ -316,12 +417,23 @@ export type Transaction = z.infer<typeof TransactionSchema>;
 
 export type CreatePublicationDto = z.infer<typeof CreatePublicationDtoSchema>;
 export type CreateCommentDto = z.infer<typeof CreateCommentDtoSchema>;
+export type UpdateCommentDto = z.infer<typeof UpdateCommentDtoSchema>;
 export type CreateVoteDto = z.infer<typeof CreateVoteDtoSchema>;
+export type CreateTargetlessVoteDto = z.infer<typeof CreateTargetlessVoteDtoSchema>;
 export type CreatePollDto = z.infer<typeof CreatePollDtoSchema>;
+export type UpdatePollDto = z.infer<typeof UpdatePollDtoSchema>;
 export type CreatePollCastDto = z.infer<typeof CreatePollCastDtoSchema>;
 export type TransferDto = z.infer<typeof TransferDtoSchema>;
 export type WithdrawDto = z.infer<typeof WithdrawDtoSchema>;
 export type UpdateCommunityDto = z.infer<typeof UpdateCommunityDtoSchema>;
+export type CreateCommunityDto = z.infer<typeof CreateCommunityDtoSchema>;
+export type UpdatePublicationDto = z.infer<typeof UpdatePublicationDtoSchema>;
+export type VoteDirectionDto = z.infer<typeof VoteDirectionDtoSchema>;
+export type TelegramAuthData = z.infer<typeof TelegramAuthDataSchema>;
+export type TelegramWebAppData = z.infer<typeof TelegramWebAppDataSchema>;
+export type UpdatesFrequency = z.infer<typeof UpdatesFrequencySchema>;
+export type WithdrawAmountDto = z.infer<typeof WithdrawAmountDtoSchema>;
+export type VoteWithCommentDto = z.infer<typeof VoteWithCommentDtoSchema>;
 
 export type ApiResponse<T> = z.infer<typeof ApiResponseSchema> & { data: T };
 export type ApiErrorResponse = z.infer<typeof ApiErrorResponseSchema>;

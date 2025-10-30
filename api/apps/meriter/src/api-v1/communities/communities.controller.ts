@@ -19,7 +19,8 @@ import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
-import { Community, UpdateCommunityDto } from '../../../../../../libs/shared-types/dist/index';
+import { Community, UpdateCommunityDto, UpdateCommunityDtoSchema, CreateCommunityDtoSchema } from '../../../../../../libs/shared-types/dist/index';
+import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 
 @Controller('api/v1/communities')
 @UseGuards(UserGuard)
@@ -97,6 +98,7 @@ export class CommunitiesController {
   }
 
   @Post()
+  @ZodValidation(CreateCommunityDtoSchema)
   async createCommunity(@Body() createDto: any, @Req() req: any): Promise<Community> {
     const community = await this.communityService.createCommunity(createDto);
     
@@ -122,6 +124,7 @@ export class CommunitiesController {
   }
 
   @Put(':id')
+  @ZodValidation(UpdateCommunityDtoSchema)
   async updateCommunity(
     @Param('id') id: string,
     @Body() updateDto: UpdateCommunityDto,

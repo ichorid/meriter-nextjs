@@ -28,6 +28,9 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ApiResponseInterceptor());
 
   // Global validation pipe
+  // Note: ZodValidationPipe applied via @ZodValidation decorator takes precedence
+  // for specific routes. The global ValidationPipe remains for backward compatibility
+  // and routes without explicit Zod validation.
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

@@ -1,6 +1,20 @@
 // New v1 API client with improved types and structure
 import { apiClient } from '../client';
 import { buildQueryString, convertPaginationToSkipLimit, mergeQueryParams } from '@/lib/utils/query-params';
+import { validateApiResponse, validatePaginatedResponse } from '../validation';
+import { 
+  UserSchema,
+  CommunitySchema,
+  PublicationSchema,
+  CommentSchema,
+  PollSchema,
+  CreatePublicationDtoSchema,
+  CreateCommentDtoSchema,
+  CreateVoteDtoSchema,
+  CreatePollDtoSchema,
+  CreatePollCastDtoSchema,
+  UpdateCommunityDtoSchema,
+} from '@/types/api-v1';
 import type { 
   User,
   Community,
@@ -345,12 +359,12 @@ export const publicationsApiV1 = {
 
   async getPublication(id: string): Promise<Publication> {
     const response = await apiClient.get<{ success: true; data: Publication }>(`/api/v1/publications/${id}`);
-    return response.data;
+    return validateApiResponse(PublicationSchema, response, 'getPublication');
   },
 
   async createPublication(data: CreatePublicationDto): Promise<Publication> {
     const response = await apiClient.post<{ success: true; data: Publication }>('/api/v1/publications', data);
-    return response.data;
+    return validateApiResponse(PublicationSchema, response, 'createPublication');
   },
 
   async updatePublication(id: string, data: Partial<CreatePublicationDto>): Promise<Publication> {
@@ -393,7 +407,7 @@ export const commentsApiV1 = {
 
   async createComment(data: CreateCommentDto): Promise<Comment> {
     const response = await apiClient.post<{ success: true; data: Comment }>('/api/v1/comments', data);
-    return response.data;
+    return validateApiResponse(CommentSchema, response, 'createComment');
   },
 
   async updateComment(id: string, data: Partial<CreateCommentDto>): Promise<Comment> {
@@ -573,12 +587,16 @@ export const votesApiV1 = {
 };
 
 /**
- * Unwraps API response ensuring type safety
+ * Unwraps API response ensuring type safety with Zod validation
  * Throws error if response structure is invalid
+ * @deprecated Use validateApiResponse directly instead
  */
-function unwrapApiResponse<T>(response: { success: true; data: T }): T {
+function unwrapApiResponse<T>(response: { success: true; data: T }, schema?: any, context?: string): T {
   if (!response || !response.success || response.data === undefined) {
     throw new Error('Invalid API response structure');
+  }
+  if (schema) {
+    return validateApiResponse(schema, response, context);
   }
   return response.data;
 }
@@ -587,22 +605,23 @@ function unwrapApiResponse<T>(response: { success: true; data: T }): T {
 export const pollsApiV1 = {
   async getPolls(params: { skip?: number; limit?: number; communityId?: string; userId?: string } = {}): Promise<PaginatedResponse<Poll>> {
     const response = await apiClient.get<{ success: true; data: PaginatedResponse<Poll> }>('/api/v1/polls', { params });
-    return unwrapApiResponse(response);
+    // Note: PaginatedResponse validation would need a schema wrapper
+    return response.data;
   },
 
   async getPoll(id: string): Promise<Poll> {
     const response = await apiClient.get<{ success: true; data: Poll }>(`/api/v1/polls/${id}`);
-    return unwrapApiResponse(response);
+    return validateApiResponse(PollSchema, response, 'getPoll');
   },
 
   async createPoll(data: CreatePollDto): Promise<Poll> {
     const response = await apiClient.post<{ success: true; data: Poll }>('/api/v1/polls', data);
-    return unwrapApiResponse(response);
+    return validateApiResponse(PollSchema, response, 'createPoll');
   },
 
   async updatePoll(id: string, data: Partial<CreatePollDto>): Promise<Poll> {
     const response = await apiClient.put<{ success: true; data: Poll }>(`/api/v1/polls/${id}`, data);
-    return unwrapApiResponse(response);
+    return validateApiResponse(PollSchema, response, 'updatePoll');
   },
 
   async deletePoll(id: string): Promise<void> {
@@ -611,17 +630,18 @@ export const pollsApiV1 = {
 
   async castPoll(pollId: string, data: CreatePollCastDto): Promise<PollCast> {
     const response = await apiClient.post<{ success: true; data: PollCast }>(`/api/v1/polls/${pollId}/casts`, data);
-    return unwrapApiResponse(response);
+    // Note: PollCast schema would need to be imported
+    return response.data;
   },
 
   async getPollResults(pollId: string): Promise<any> {
     const response = await apiClient.get<{ success: true; data: any }>(`/api/v1/polls/${pollId}/results`);
-    return unwrapApiResponse(response);
+    return response.data;
   },
 
   async getMyPollCasts(pollId: string): Promise<any> {
     const response = await apiClient.get<{ success: true; data: any }>(`/api/v1/polls/${pollId}/my-casts`);
-    return unwrapApiResponse(response);
+    return response.data;
   },
 };
 

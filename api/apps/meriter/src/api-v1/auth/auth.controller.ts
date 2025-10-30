@@ -11,7 +11,8 @@ import {
 import { AuthService } from './auth.service';
 import { UserGuard } from '../../user.guard';
 import { ApiError, UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
-import { User } from '../../../../../../libs/shared-types/dist/index';
+import { TelegramAuthDataSchema, TelegramWebAppDataSchema } from '../../../../../../libs/shared-types/dist/index';
+import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 
 interface TelegramAuthData {
   id: number;
@@ -34,6 +35,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('telegram/widget')
+  @ZodValidation(TelegramAuthDataSchema)
   async authenticateWidget(
     @Body() authData: TelegramAuthData,
     @Res() res: any,
@@ -75,6 +77,7 @@ export class AuthController {
   }
 
   @Post('telegram/webapp')
+  @ZodValidation(TelegramWebAppDataSchema)
   async authenticateWebApp(
     @Body() body: TelegramWebAppData,
     @Res() res: any,

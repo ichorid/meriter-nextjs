@@ -4,9 +4,23 @@
 // we're using a workaround that re-exports types via wildcard import
 export * from '@meriter/shared-types';
 
-// Import Poll type for PollOption definition
+// Import types for use in interface definitions
 // Using type-only import to avoid runtime issues
-import type { Poll } from '@meriter/shared-types';
+import type { 
+  User,
+  Poll, 
+  PollCast,
+  Publication, 
+  Comment, 
+  Community,
+  Vote,
+  Wallet,
+  CreatePublicationDto,
+  CreateCommentDto,
+  CreateVoteDto,
+  CreatePollDto,
+  CreatePollCastDto
+} from '@meriter/shared-types';
 
 // Re-export PollOption type (inferred from PollOptionSchema)
 export type PollOption = NonNullable<Poll['options']>[number];

@@ -1,2 +1,2 @@
 export { WalletSummary } from './WalletSummary';
-export type { WalletSummaryProps, Wallet } from './WalletSummary';
+export type { WalletSummaryProps, WalletDisplay } from './WalletSummary';

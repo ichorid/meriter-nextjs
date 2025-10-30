@@ -2,17 +2,9 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { publicationsApiV1, communitiesApiV1 } from '@/lib/api/v1';
 import { queryKeys } from '@/lib/constants/queryKeys';
-import type { Publication, PaginatedResponse } from '@/types/api-v1';
-
-interface CreatePublicationDto {
-  title: string;
-  content: string;
-  communityId: string;
-  type: 'text' | 'image' | 'video';
-  imageUrl?: string;
-  videoUrl?: string;
-  hashtags?: string[];
-}
+import { useValidatedQuery, useValidatedMutation } from '@/lib/api/validated-query';
+import { PublicationSchema, CreatePublicationDtoSchema } from '@/types/api-v1';
+import type { Publication, PaginatedResponse, CreatePublicationDto } from '@/types/api-v1';
 
 interface ListQueryParams {
   skip?: number;
@@ -59,9 +51,11 @@ export function useMyPublications(params: { skip?: number; limit?: number; userI
 }
 
 export function usePublication(id: string) {
-  return useQuery({
+  return useValidatedQuery({
     queryKey: queryKeys.publications.detail(id),
     queryFn: () => publicationsApiV1.getPublication(id),
+    schema: PublicationSchema,
+    context: `usePublication(${id})`,
     enabled: !!id,
   });
 }
@@ -96,8 +90,11 @@ export function useInfinitePublicationsByCommunity(
 export function useCreatePublication() {
   const queryClient = useQueryClient();
   
-  return useMutation({
+  return useValidatedMutation({
     mutationFn: (data: CreatePublicationDto) => publicationsApiV1.createPublication(data),
+    inputSchema: CreatePublicationDtoSchema,
+    outputSchema: PublicationSchema,
+    context: 'useCreatePublication',
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.publications.lists() });
     },

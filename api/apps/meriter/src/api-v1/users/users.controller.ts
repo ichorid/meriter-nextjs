@@ -16,7 +16,8 @@ import { PublicationService } from '../../domain/services/publication.service';
 import { CommentService } from '../../domain/services/comment.service';
 import { UserGuard } from '../../user.guard';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
-import { User } from '../../../../../../libs/shared-types/dist/index';
+import { User, UpdatesFrequencySchema } from '../../../../../../libs/shared-types/dist/index';
+import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 
 @Controller('api/v1/users')
@@ -77,9 +78,10 @@ export class UsersController {
   }
 
   @Put(':userId/updates-frequency')
+  @ZodValidation(UpdatesFrequencySchema)
   async updateUpdatesFrequency(
     @Param('userId') userId: string,
-    @Body() body: { frequency: string },
+    @Body() body: any,
     @Req() req: any,
   ) {
     // Handle 'me' token for current user

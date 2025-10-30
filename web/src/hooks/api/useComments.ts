@@ -3,23 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { commentsApiV1, usersApiV1 } from '@/lib/api/v1';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import { serializeQueryParams } from '@/lib/utils/queryKeys';
-
-// Local type definitions
-interface Comment {
-  id: string;
-  authorId: string;
-  content: string;
-  targetType: 'publication' | 'comment';
-  targetId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface CreateCommentRequest {
-  content: string;
-  targetType: 'publication' | 'comment';
-  targetId: string;
-}
+import { useValidatedQuery, useValidatedMutation } from '@/lib/api/validated-query';
+import { CommentSchema, CreateCommentDtoSchema } from '@/types/api-v1';
+import type { Comment, CreateCommentDto } from '@/types/api-v1';
 
 interface GetCommentsRequest {
   skip?: number;
@@ -77,9 +63,11 @@ export function useCommentsByComment(
 
 // Get single comment
 export function useComment(id: string) {
-  return useQuery({
+  return useValidatedQuery({
     queryKey: commentsKeys.detail(id),
     queryFn: () => commentsApiV1.getComment(id),
+    schema: CommentSchema,
+    context: `useComment(${id})`,
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !!id,
   });
@@ -99,15 +87,13 @@ export function useCommentDetails(id: string) {
 export function useCreateComment() {
   const queryClient = useQueryClient();
   
-  return useMutation({
-    mutationFn: (data: CreateCommentRequest) => commentsApiV1.createComment(data),
+  return useValidatedMutation({
+    mutationFn: (data: CreateCommentDto) => commentsApiV1.createComment(data),
+    inputSchema: CreateCommentDtoSchema,
+    outputSchema: CommentSchema,
+    context: 'useCreateComment',
     onSuccess: (newComment) => {
       // Invalidate all comments queries to ensure the new comment appears everywhere
-      // This uses prefix matching to catch all comment queries including:
-      // - ['comments', publicationSlug] (used by use-comments.ts)
-      // - ['comments', 'list', ...] (used by commentsKeys.lists())
-      // - ['comments', 'publication', ...] (used by commentsKeys.byPublication)
-      // - ['comments', 'comment', ...] (used by commentsKeys.byComment)
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
       
       // Update the detail cache with the new comment
@@ -124,7 +110,7 @@ export function useUpdateComment() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CreateCommentRequest> }) => 
+    mutationFn: ({ id, data }: { id: string; data: Partial<CreateCommentDto> }) => 
       commentsApiV1.updateComment(id, data),
     onSuccess: (updatedComment) => {
       // Update the comment in cache
