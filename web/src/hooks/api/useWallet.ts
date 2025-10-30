@@ -1,7 +1,7 @@
 // Wallet React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { walletApiV1 } from '@/lib/api/v1';
-import { serializeQueryParams } from '@/lib/utils/queryKeys';
+import { queryKeys } from '@/lib/constants/queryKeys';
 import type { PaginatedResponse } from '@/types/api-v1';
 
 // Import types from shared-types (single source of truth)
@@ -16,26 +16,10 @@ interface WithdrawRequest {
   memo?: string;
 }
 
-// Query keys
-export const walletKeys = {
-  all: ['wallet'] as const,
-  wallets: () => [...walletKeys.all, 'wallets'] as const,
-  wallet: (communityId?: string) => 
-    [...walletKeys.all, 'wallet', communityId] as const,
-  balance: (communityId?: string) => 
-    [...walletKeys.all, 'balance', communityId] as const,
-  transactions: () => [...walletKeys.all, 'transactions'] as const,
-  transactionsList: (params: any) => [...walletKeys.transactions(), serializeQueryParams(params)] as const,
-  myTransactions: (params: any) => [...walletKeys.all, 'myTransactions', serializeQueryParams(params)] as const,
-  updates: () => [...walletKeys.all, 'updates'] as const,
-  freeBalance: (communityId?: string) => 
-    [...walletKeys.all, 'freeBalance', communityId] as const,
-} as const;
-
 // Get user wallets
 export function useWallets() {
   return useQuery({
-    queryKey: walletKeys.wallets(),
+    queryKey: queryKeys.wallet.wallets(),
     queryFn: () => walletApiV1.getWallets(),
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -44,7 +28,7 @@ export function useWallets() {
 // Get wallet balance
 export function useWalletBalance(communityId?: string) {
   return useQuery({
-    queryKey: walletKeys.balance(communityId),
+    queryKey: queryKeys.wallet.balance(communityId),
     queryFn: () => walletApiV1.getBalance(communityId!),
     staleTime: 1 * 60 * 1000, // 1 minute
     enabled: !!communityId,
@@ -54,7 +38,7 @@ export function useWalletBalance(communityId?: string) {
 // Get free balance for voting
 export function useFreeBalance(communityId?: string) {
   return useQuery({
-    queryKey: walletKeys.freeBalance(communityId),
+    queryKey: queryKeys.wallet.freeBalance(communityId),
     queryFn: () => walletApiV1.getFreeBalance(communityId!),
     staleTime: 30 * 1000, // 30 seconds
     enabled: !!communityId,
@@ -68,7 +52,7 @@ export function useMyTransactions(params: {
   positive?: boolean;
 } = {}) {
   return useQuery({
-    queryKey: walletKeys.myTransactions(params),
+    queryKey: queryKeys.wallet.myTransactions(params),
     queryFn: () => walletApiV1.getTransactions(params),
     staleTime: 1 * 60 * 1000, // 1 minute
   });
@@ -77,7 +61,7 @@ export function useMyTransactions(params: {
 // Get transaction updates
 export function useTransactionUpdates() {
   return useQuery({
-    queryKey: walletKeys.updates(),
+    queryKey: queryKeys.wallet.updates(),
     queryFn: () => walletApiV1.getTransactionUpdates(),
     staleTime: 30 * 1000, // 30 seconds
   });
@@ -91,7 +75,7 @@ export function useTransactions(params: {
   communityId?: string;
 } = {}) {
   return useQuery({
-    queryKey: walletKeys.transactionsList(params),
+    queryKey: queryKeys.wallet.transactionsList(params),
     queryFn: () => walletApiV1.getAllTransactions(params),
     staleTime: 1 * 60 * 1000, // 1 minute
   });
@@ -100,7 +84,7 @@ export function useTransactions(params: {
 // Get a single wallet by community ID
 export function useWallet(communityId?: string) {
   return useQuery({
-    queryKey: walletKeys.wallet(communityId),
+    queryKey: queryKeys.wallet.wallet(communityId),
     queryFn: async () => {
       if (!communityId) throw new Error('communityId required');
       const wallets = await walletApiV1.getWallets();
@@ -119,7 +103,7 @@ export function useWalletController() {
     if (!communityId) return;
 
     // Update wallets array
-    const walletsKey = walletKeys.wallets();
+    const walletsKey = queryKeys.wallet.wallets();
     queryClient.setQueryData<Wallet[]>(walletsKey, (old) => {
       if (!old) return old;
       return old.map(w => {
@@ -134,7 +118,7 @@ export function useWalletController() {
     });
 
     // Update balance query if it exists
-    const balanceKey = walletKeys.balance(communityId);
+    const balanceKey = queryKeys.wallet.balance(communityId);
     queryClient.setQueryData<number>(balanceKey, (old) => {
       if (old === undefined) return old;
       return Math.max(0, old + delta);
@@ -143,20 +127,20 @@ export function useWalletController() {
 
   const rollbackWallets = (communityId: string, previousWallets?: Wallet[]) => {
     if (!communityId || !previousWallets) return;
-    queryClient.setQueryData(walletKeys.wallets(), previousWallets);
+    queryClient.setQueryData(queryKeys.wallet.wallets(), previousWallets);
   };
 
   const rollbackBalance = (communityId: string, previousBalance?: number) => {
     if (!communityId || previousBalance === undefined) return;
-    queryClient.setQueryData(walletKeys.balance(communityId), previousBalance);
+    queryClient.setQueryData(queryKeys.wallet.balance(communityId), previousBalance);
   };
 
   const invalidate = (communityId?: string) => {
-    queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
+    queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
     if (communityId) {
-      queryClient.invalidateQueries({ queryKey: walletKeys.balance(communityId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance(communityId) });
     } else {
-      queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
     }
   };
 
@@ -179,12 +163,12 @@ export function useWalletController() {
 //     }) => walletApiV1.createTransaction(data),
 //     onSuccess: (newTransaction) => {
 //       // Invalidate wallet-related queries
-//       queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-//       queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
-//       queryClient.invalidateQueries({ queryKey: walletKeys.freeBalance() });
-//       queryClient.invalidateQueries({ queryKey: walletKeys.transactions() });
-//       queryClient.invalidateQueries({ queryKey: walletKeys.myTransactions({}) });
-//       queryClient.invalidateQueries({ queryKey: walletKeys.updates() });
+//       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
+//       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
+//       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.freeBalance() });
+//       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.transactions() });
+//       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.myTransactions({}) });
+//       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.updates() });
 //       
 //       // Also invalidate comments and publications since transactions affect them
 //       queryClient.invalidateQueries({ queryKey: ['comments'] });
@@ -204,10 +188,10 @@ export function useWithdraw() {
     mutationFn: (data: WithdrawRequest) => walletApiV1.withdraw(data.communityId, data),
     onSuccess: (result) => {
       // Invalidate wallet-related queries
-      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.transactions() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.myTransactions({}) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.transactions() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.myTransactions({}) });
     },
     onError: (error) => {
       console.error('Withdraw error:', error);
@@ -228,10 +212,10 @@ export function useTransfer() {
     }) => walletApiV1.transfer(data.communityId, data),
     onSuccess: () => {
       // Invalidate wallet-related queries
-      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.transactions() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.myTransactions({}) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.transactions() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.myTransactions({}) });
     },
     onError: (error) => {
       console.error('Transfer error:', error);

@@ -1,7 +1,7 @@
 // Polls React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { pollsApiV1 } from '@/lib/api/v1';
-import { walletKeys } from './useWallet';
+import { queryKeys } from '@/lib/constants/queryKeys';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateWalletOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';
 
@@ -136,7 +136,7 @@ export function useCastPoll() {
           queryClient,
           communityId,
           Math.abs(data.amount || 0), // Pass positive amount - helper will convert to negative delta for spending
-          walletKeys
+          queryKeys.wallet
         );
         if (walletUpdate) {
           context.walletsKey = walletUpdate.walletsKey;
@@ -159,8 +159,8 @@ export function useCastPoll() {
       queryClient.invalidateQueries({ queryKey: pollsKeys.detail(id) });
       
       // Invalidate wallet queries to ensure balance is up to date
-      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
     },
     onError: (error, variables, context) => {
       console.error('Cast poll error:', error);
@@ -169,8 +169,8 @@ export function useCastPoll() {
     onSettled: (_data, _err, vars, ctx) => {
       const communityId = vars?.communityId;
       if (communityId) {
-        queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-        queryClient.invalidateQueries({ queryKey: walletKeys.balance(communityId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance(communityId) });
       }
     },
   });

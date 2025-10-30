@@ -69,8 +69,13 @@ export const queryKeys = {
   wallet: {
     all: ['wallet'] as const,
     wallets: () => [...queryKeys.wallet.all, 'wallets'] as const,
+    wallet: (communityId?: string) => [...queryKeys.wallet.all, 'wallet', communityId] as const,
+    balance: (communityId?: string) => [...queryKeys.wallet.all, 'balance', communityId] as const,
+    freeBalance: (communityId?: string) => [...queryKeys.wallet.all, 'freeBalance', communityId] as const,
     transactions: () => [...queryKeys.wallet.all, 'transactions'] as const,
     transactionsList: (params: Record<string, any>) => [...queryKeys.wallet.transactions(), serializeQueryParams(params)] as const,
+    myTransactions: (params: Record<string, any>) => [...queryKeys.wallet.all, 'myTransactions', serializeQueryParams(params)] as const,
+    updates: () => [...queryKeys.wallet.all, 'updates'] as const,
   },
 
   // Settings

@@ -2,7 +2,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { votesApiV1 } from '@/lib/api/v1';
 import type { CreateVoteRequest } from '@/types/api-v1';
-import { walletKeys } from './useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateQuotaOptimistically, updateWalletOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';
 import { queryKeys } from '@/lib/constants/queryKeys';
@@ -34,7 +33,7 @@ export function useVoteOnPublication() {
       
       // Handle wallet optimistic update
       if (data.sourceType === 'personal' && communityId) {
-        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, data.amount || 0, walletKeys);
+        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, data.amount || 0, queryKeys.wallet);
         if (walletUpdate) {
           context.walletsKey = walletUpdate.walletsKey;
           context.balanceKey = walletUpdate.balanceKey;
@@ -53,8 +52,8 @@ export function useVoteOnPublication() {
       queryClient.invalidateQueries({ queryKey: queryKeys.communities.all, exact: false });
       
       // Invalidate wallet queries to update balance
-      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
       
       // Invalidate quota queries to update remaining quota (for quota votes)
       queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
@@ -88,8 +87,8 @@ export function useVoteOnPublication() {
         queryClient.invalidateQueries({ queryKey: ctx.quotaKey });
       }
       if (communityId) {
-        queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-        queryClient.invalidateQueries({ queryKey: walletKeys.balance(communityId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance(communityId) });
       }
     },
   });
@@ -121,7 +120,7 @@ export function useVoteOnComment() {
       
       // Handle wallet optimistic update
       if (data.sourceType === 'personal' && communityId) {
-        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, data.amount || 0, walletKeys);
+        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, data.amount || 0, queryKeys.wallet);
         if (walletUpdate) {
           context.walletsKey = walletUpdate.walletsKey;
           context.balanceKey = walletUpdate.balanceKey;
@@ -137,8 +136,8 @@ export function useVoteOnComment() {
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
       
       // Invalidate wallet queries to update balance
-      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
       
       // Invalidate quota queries to update remaining quota (for quota votes)
       queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
@@ -156,8 +155,8 @@ export function useVoteOnComment() {
         queryClient.invalidateQueries({ queryKey: ctx.quotaKey });
       }
       if (communityId) {
-        queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-        queryClient.invalidateQueries({ queryKey: walletKeys.balance(communityId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance(communityId) });
       }
     },
   });
@@ -177,7 +176,7 @@ export function useRemovePublicationVote() {
       queryClient.invalidateQueries({ queryKey: queryKeys.communities.all, exact: false });
       
       // Invalidate wallet queries to update balance
-      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
     },
     onError: (error) => {
       console.error('Remove publication vote error:', error);
@@ -196,7 +195,7 @@ export function useRemoveCommentVote() {
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
       
       // Invalidate wallet queries to update balance
-      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
     },
     onError: (error) => {
       console.error('Remove comment vote error:', error);
@@ -241,7 +240,7 @@ export function useVoteOnPublicationWithComment() {
       
       // Handle wallet optimistic update
       if (data.sourceType === 'personal' && communityId) {
-        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, data.amount || 0, walletKeys);
+        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, data.amount || 0, queryKeys.wallet);
         if (walletUpdate) {
           context.walletsKey = walletUpdate.walletsKey;
           context.balanceKey = walletUpdate.balanceKey;
@@ -263,7 +262,7 @@ export function useVoteOnPublicationWithComment() {
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
       
       // Invalidate wallet queries to update balance
-      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
       
       // If comment was created, invalidate quota queries
       if (result.comment) {
@@ -294,8 +293,8 @@ export function useWithdrawFromPublication() {
       
       // Invalidate wallet queries to update balance
       // Invalidate all balance queries (with and without communityId)
-      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-      queryClient.invalidateQueries({ queryKey: [...walletKeys.all, 'balance'], exact: false });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
+      queryClient.invalidateQueries({ queryKey: [...queryKeys.wallet.all, 'balance'], exact: false });
     },
     onError: (error: any) => {
       // Extract error information from various possible structures
@@ -365,8 +364,8 @@ export function useWithdrawFromComment() {
       
       // Invalidate wallet queries to update balance
       // Invalidate all balance queries (with and without communityId)
-      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-      queryClient.invalidateQueries({ queryKey: [...walletKeys.all, 'balance'], exact: false });
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
+      queryClient.invalidateQueries({ queryKey: [...queryKeys.wallet.all, 'balance'], exact: false });
     },
     onError: (error: any) => {
       // Log detailed error information - extract all properties properly

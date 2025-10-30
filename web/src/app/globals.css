@@ -1,9 +1,9 @@
+@import 'rc-slider/assets/index.css';
+@import '@telegram-apps/telegram-ui/dist/styles.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import 'rc-slider/assets/index.css';
-@import '@telegram-apps/telegram-ui/dist/styles.css';
 
 @layer base {
   body {

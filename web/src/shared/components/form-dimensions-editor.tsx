@@ -3,7 +3,7 @@
 import { iDimensionCatEnum, iDimensionConfig, iDimensions,iDimensionTags } from '../types/dimensions'
 import { useEffect, useState } from 'react'
 import { classList } from '@lib/classList';
-import useDebounce from '@lib/debounce';
+import { useDebounce } from '@/hooks/useDebounce';
 import { etv } from '@shared/lib/input-utils';
 import { useTranslations } from 'next-intl';
 
@@ -42,7 +42,7 @@ const CatEnum = ({dimensionProto, setDimension, initialValue}: any) => {
     const std = !tagSelected||totalEnum.find((t: any) => t===tagSelected)
     
     const [customTagEdit,setCustomTagEdit] =useState(false)
-    const tagSelectedDebounced = useDebounce(tagSelected,500,true);
+    const tagSelectedDebounced = useDebounce(tagSelected, 500);
     useEffect(()=>{
         setDimension(tagSelected)
     },[tagSelectedDebounced])
