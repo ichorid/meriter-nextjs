@@ -246,7 +246,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     // Filter publications by tag if selected
     const filteredPublications = selectedTag
         ? publications.filter((p: Publication) => {
-            const tags = p.tags as string[] | undefined;
+            const tags = p.hashtags as string[] | undefined;
             return tags && Array.isArray(tags) && tags.includes(selectedTag);
         })
         : publications;

@@ -51,7 +51,6 @@ export class AuthService {
 
     // Find or create user
     const telegramId = authData.id.toString();
-    const identity = `telegram://${telegramId}`;
 
     // Get existing user to compare avatar
     const existingUser = await this.userService.getUserByTelegramId(telegramId);
@@ -111,7 +110,7 @@ export class AuthService {
       {
         uid: user.id,
         telegramId,
-        tags: user.communityTags || [],
+        communityTags: user.communityTags || [],
       },
       jwtSecret,
       '365d',
@@ -145,7 +144,6 @@ export class AuthService {
 
     // Reuse existing user creation logic
     const telegramId = webAppUser.id.toString();
-    const identity = `telegram://${telegramId}`;
 
     const existingUser = await this.userService.getUserByTelegramId(telegramId);
 
@@ -196,7 +194,7 @@ export class AuthService {
       {
         uid: user.id,
         telegramId,
-        tags: user.communityTags || [],
+        communityTags: user.communityTags || [],
       },
       jwtSecret,
       '365d',
@@ -212,18 +210,18 @@ export class AuthService {
   async getCurrentUser(reqUser: any): Promise<User> {
     this.logger.log(`Getting current user for reqUser:`, JSON.stringify(reqUser, null, 2));
     
-    const tgUserId = reqUser?.tgUserId || reqUser?.telegramId;
-    this.logger.log(`Looking up user with telegramId: ${tgUserId}`);
+    const userId = reqUser?.id;
+    this.logger.log(`Looking up user with id: ${userId}`);
 
-    if (!tgUserId) {
-      this.logger.error('No telegramId found in reqUser');
-      throw new Error('No telegramId found in request user');
+    if (!userId) {
+      this.logger.error('No user id found in reqUser');
+      throw new Error('No user id found in request user');
     }
 
-    const user = await this.userService.getUserByTelegramId(tgUserId);
+    const user = await this.userService.getUserById(userId);
 
     if (!user) {
-      this.logger.error(`User not found for telegramId: ${tgUserId}`);
+      this.logger.error(`User not found for id: ${userId}`);
       throw new Error('User not found');
     }
 
@@ -328,6 +326,7 @@ export class AuthService {
   private mapUserToV1Format(user: any): User {
     return {
       id: user.id,
+      telegramId: user.telegramId,
       username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,

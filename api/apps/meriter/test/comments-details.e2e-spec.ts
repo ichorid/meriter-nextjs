@@ -92,7 +92,6 @@ describe('Comment Details Endpoint E2E Tests', () => {
         communityMemberships: [],
         communityTags: [],
         profile: {},
-        token: testToken,
         createdAt: new Date(),
         updatedAt: new Date(),
       },

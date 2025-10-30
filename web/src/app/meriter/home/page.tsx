@@ -21,7 +21,15 @@ const PageHome = () => {
     
     // Read tab and sort from URL hash
     const [currentTab, setCurrentTab] = useState<"publications" | "comments" | "updates">("publications");
-    const [sortBy, setSortBy] = useState<"recent" | "voted">("recent");
+    const [sortByTab, setSortByTab] = useState<{
+        publications: "recent" | "voted";
+        comments: "recent" | "voted";
+        updates: "recent" | "voted";
+    }>({
+        publications: "recent",
+        comments: "recent",
+        updates: "recent",
+    });
     const [showPollCreate, setShowPollCreate] = useState(false);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
@@ -46,22 +54,26 @@ const PageHome = () => {
             const hash = window.location.hash;
             
             // Parse tab from hash
+            let detectedTab: "publications" | "comments" | "updates" = "publications";
             if (hash.includes('comments')) {
-                setCurrentTab('comments');
+                detectedTab = 'comments';
             } else if (hash.includes('updates-frequency')) {
-                setCurrentTab('updates');
+                detectedTab = 'updates';
             } else {
-                setCurrentTab('publications');
+                detectedTab = 'publications';
             }
+            setCurrentTab(detectedTab);
             
-            // Parse sort from hash
+            // Parse sort from hash per tab
             const urlParams = new URLSearchParams(hash.replace(/^#/, '').split('?')[1] || '');
             const sortParam = urlParams.get('sort');
-            if (sortParam === 'voted') {
-                setSortBy('voted');
-            } else {
-                setSortBy('recent');
-            }
+            const sortValue = sortParam === 'voted' ? 'voted' : 'recent';
+            
+            // Update sort for the detected tab
+            setSortByTab(prev => ({
+                ...prev,
+                [detectedTab]: sortValue,
+            }));
         };
 
         // Initial load
@@ -97,8 +109,9 @@ const PageHome = () => {
         );
     }
 
-    const sortItems = (items: any[]) => {
+    const sortItems = (items: any[], tab: "publications" | "comments" | "updates" = currentTab) => {
         if (!items || !Array.isArray(items)) return [];
+        const sortBy = sortByTab[tab];
         return [...items].sort((a, b) => {
             if (sortBy === "recent") {
                 return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -107,6 +120,7 @@ const PageHome = () => {
             }
         });
     };
+
 
     return (
         <AdaptiveLayout 
@@ -139,7 +153,7 @@ const PageHome = () => {
                                     <span className="loading loading-spinner loading-lg"></span>
                                 </div>
                             ) : (
-                                sortItems(myPublications || [])
+                                sortItems(myPublications || [], "publications")
                                     .filter((p) => {
                                         const passes = p.content || p.type === 'poll';
                                         console.log('Filtering publication:', {

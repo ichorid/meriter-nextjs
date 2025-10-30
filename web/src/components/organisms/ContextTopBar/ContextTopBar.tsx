@@ -64,28 +64,42 @@ const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
   const t = useTranslations('home');
 
   const [activeTab, setActiveTab] = React.useState<'publications' | 'comments' | 'polls' | 'updates'>('publications');
-  const [sortBy, setSortBy] = React.useState<'recent' | 'voted'>('recent');
+  const [sortByTab, setSortByTab] = React.useState<{
+    publications: 'recent' | 'voted';
+    comments: 'recent' | 'voted';
+    polls: 'recent' | 'voted';
+    updates: 'recent' | 'voted';
+  }>({
+    publications: 'recent',
+    comments: 'recent',
+    polls: 'recent',
+    updates: 'recent',
+  });
 
   React.useEffect(() => {
     // Parse hash for tab
+    let detectedTab: 'publications' | 'comments' | 'polls' | 'updates' = 'publications';
     if (hash.includes('comments')) {
-      setActiveTab('comments');
+      detectedTab = 'comments';
     } else if (hash.includes('polls')) {
-      setActiveTab('polls');
-    } else if (hash.includes('updates')) {
-      setActiveTab('updates');
+      detectedTab = 'polls';
+    } else if (hash.includes('updates-frequency')) {
+      detectedTab = 'updates';
     } else {
-      setActiveTab('publications');
+      detectedTab = 'publications';
     }
+    setActiveTab(detectedTab);
 
-    // Parse hash for sort
+    // Parse hash for sort per tab
     const urlParams = new URLSearchParams(hash.replace(/^#/, '').split('?')[1] || '');
     const sortParam = urlParams.get('sort');
-    if (sortParam === 'voted') {
-      setSortBy('voted');
-    } else {
-      setSortBy('recent');
-    }
+    const sortValue = sortParam === 'voted' ? 'voted' : 'recent';
+    
+    // Update sort for the detected tab
+    setSortByTab(prev => ({
+      ...prev,
+      [detectedTab]: sortValue,
+    }));
   }, [hash]);
 
   const handleTabClick = (tab: 'publications' | 'comments' | 'polls' | 'updates') => {
@@ -99,26 +113,31 @@ const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
       hashPart = '#updates-frequency';
     }
 
+    // Use the stored sort preference for this tab
     const urlParams = new URLSearchParams();
-    urlParams.set('sort', sortBy);
+    urlParams.set('sort', sortByTab[tab]);
     window.location.hash = hashPart ? `${hashPart}?${urlParams.toString()}` : '';
   };
 
   const handleSortClick = (sort: 'recent' | 'voted') => {
-    setSortBy(sort);
+    // Update sort for the current active tab
+    setSortByTab(prev => ({
+      ...prev,
+      [activeTab]: sort,
+    }));
+    
     const urlParams = new URLSearchParams();
     urlParams.set('sort', sort);
     
-    let hashPart = window.location.hash.split('?')[0];
-    if (hashPart === '#comments') {
+    let hashPart = '';
+    if (activeTab === 'comments') {
       hashPart = '#comments';
-    } else if (hashPart === '#polls') {
+    } else if (activeTab === 'polls') {
       hashPart = '#polls';
-    } else if (hashPart === '#updates-frequency') {
+    } else if (activeTab === 'updates') {
       hashPart = '#updates-frequency';
-    } else {
-      hashPart = '';
     }
+    // For publications tab, hashPart stays empty (default hash)
     
     window.location.hash = hashPart ? `${hashPart}?${urlParams.toString()}` : `?${urlParams.toString()}`;
   };
@@ -169,11 +188,12 @@ const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
             {t('tabs.updates')}
           </button>
         </div>
+        {/* Sort Toggle - contextual to active tab */}
         <div className="ml-auto join shadow-sm">
           <button 
             onClick={() => handleSortClick('recent')}
             className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-              sortBy === 'recent' ? 'btn-active btn-primary' : ''
+              sortByTab[activeTab] === 'recent' ? 'btn-active btn-primary' : ''
             }`}
           >
             {t('sort.recent')}
@@ -181,7 +201,7 @@ const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
           <button 
             onClick={() => handleSortClick('voted')}
             className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-              sortBy === 'voted' ? 'btn-active btn-primary' : ''
+              sortByTab[activeTab] === 'voted' ? 'btn-active btn-primary' : ''
             }`}
           >
             {t('sort.voted')}

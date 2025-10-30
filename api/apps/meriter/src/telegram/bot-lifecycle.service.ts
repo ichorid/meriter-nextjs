@@ -95,11 +95,11 @@ export class TelegramBotLifecycleService {
     );
 
     // Remove community tag from all users
-    const users = await this.userModel.find({ tags: chatId }).lean();
+    const users = await this.userModel.find({ communityTags: chatId }).lean();
     for (const user of users) {
       await this.userModel.updateOne(
         { _id: user._id },
-        { $pull: { tags: chatId } }
+        { $pull: { communityTags: chatId } }
       );
     }
 
@@ -124,7 +124,7 @@ export class TelegramBotLifecycleService {
     // Add community tag to user
     await this.userModel.updateOne(
       { _id: user._id },
-      { $addToSet: { tags: chatId } }
+      { $addToSet: { communityTags: chatId } }
     );
 
     // Add user to community members
@@ -151,7 +151,7 @@ export class TelegramBotLifecycleService {
     // Remove community tag from user
     await this.userModel.updateOne(
       { _id: user._id },
-      { $pull: { tags: chatId } }
+      { $pull: { communityTags: chatId } }
     );
 
     // Remove user from community members

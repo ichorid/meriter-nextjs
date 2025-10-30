@@ -99,10 +99,10 @@ describe('Telegram Web App Authentication - Integration Test', () => {
         json: () => Promise.resolve({
           success: true,
           user: {
-            tgUserId: mockUserData.id.toString(),
+            id: mockUserData.id.toString(),
             name: `${mockUserData.first_name} ${mockUserData.last_name}`,
             token: 'mock-user-token',
-            chatsIds: [],
+            communityTags: [],
           },
         }),
       });
@@ -437,10 +437,10 @@ describe('Telegram Web App Authentication - Integration Test', () => {
               json: () => Promise.resolve({
                 success: true,
                 user: {
-                  tgUserId: mockUserData.id.toString(),
+                  id: mockUserData.id.toString(),
                   name: `${mockUserData.first_name} ${mockUserData.last_name}`,
                   token: 'mock-user-token',
-                  chatsIds: [],
+                  communityTags: [],
                 },
               }),
             }), 100)

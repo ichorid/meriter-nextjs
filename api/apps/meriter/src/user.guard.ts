@@ -47,14 +47,9 @@ export class UserGuard implements CanActivate {
         throw new UnauthorizedException('User not found');
       }
 
-      const tgUserId = user?.telegramId;
-      const tgUserName = user?.displayName;
-
       request.user = {
         ...user,
-        chatsIds: data.tags ?? user.communityTags ?? [],
-        tgUserId,
-        tgUserName,
+        communityTags: data.communityTags ?? user.communityTags ?? [],
       };
       return true;
     } catch (e) {

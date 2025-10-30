@@ -7,7 +7,6 @@ import { ConfigService } from '@nestjs/config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 import { ApiResponseInterceptor } from './common/interceptors/api-response.interceptor';
-// import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 declare const module: any;
 
 async function bootstrap() {
@@ -39,10 +38,6 @@ async function bootstrap() {
       },
     }),
   );
-
-  // Note: TransformInterceptor is available but not enabled by default
-  // to avoid breaking existing API contracts. Enable if needed:
-  // app.useGlobalInterceptors(new TransformInterceptor());
 
   app.use(cookieParser());
   

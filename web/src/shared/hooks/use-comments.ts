@@ -29,7 +29,8 @@ export const useComments = (
     activeCommentHook: [string | null, Dispatch<SetStateAction<string | null>>],
     onlyPublication = false,
     communityId?: string,
-    wallets?: Wallet[]
+    wallets?: Wallet[],
+    sortBy: 'recent' | 'voted' = 'recent'
 ) => {
     const t = useTranslations('comments');
     const uid = transactionId || publicationSlug;
@@ -48,27 +49,31 @@ export const useComments = (
     const voteOnCommentMutation = useVoteOnComment();
     const createCommentMutation = useCreateComment();
 
+    // Map sort preference to API parameters
+    const apiSort = sortBy === 'voted' ? 'score' : 'createdAt';
+    const apiOrder = 'desc'; // Always descending for both recent and voted
+
     // Get comments using v1 API with standard query keys
     const { data: comments = [] } = useQuery({
         queryKey: forTransaction && transactionId
-            ? [...commentsKeys.byComment(transactionId), { sort: 'createdAt', order: 'desc' }]
+            ? [...commentsKeys.byComment(transactionId), { sort: apiSort, order: apiOrder }]
             : publicationSlug
-            ? [...commentsKeys.byPublication(publicationSlug), { sort: 'createdAt', order: 'desc' }]
+            ? [...commentsKeys.byPublication(publicationSlug), { sort: apiSort, order: apiOrder }]
             : ['comments', 'empty'],
         queryFn: async () => {
             if (forTransaction && transactionId) {
-                // Get replies to a comment, sorted by newest first
+                // Get replies to a comment
                 const result = await commentsApiV1.getCommentReplies(transactionId, {
-                    sort: 'createdAt',
-                    order: 'desc',
+                    sort: apiSort,
+                    order: apiOrder,
                 });
                 // Handle PaginatedResponse structure - result is PaginatedResponse, result.data is the array
                 return (result && result.data && Array.isArray(result.data)) ? result.data : [];
             } else if (publicationSlug) {
-                // Get comments on a publication, sorted by newest first
+                // Get comments on a publication
                 const result = await commentsApiV1.getPublicationComments(publicationSlug, {
-                    sort: 'createdAt',
-                    order: 'desc',
+                    sort: apiSort,
+                    order: apiOrder,
                 });
                 // Handle PaginatedResponse structure - result is PaginatedResponse, result.data is the array
                 return (result && result.data && Array.isArray(result.data)) ? result.data : [];

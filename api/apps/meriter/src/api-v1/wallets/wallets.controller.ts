@@ -17,7 +17,7 @@ import { CommunityService } from '../../domain/services/community.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
-import { Wallet, Transaction } from '../../../../../../libs/shared-types/dist/index';
+import { Wallet, Transaction, WithdrawDto, TransferDto } from '../../../../../../libs/shared-types/dist/index';
 import { Community, CommunityDocument } from '../../domain/models/community/community.schema';
 
 @Controller('api/v1')
@@ -167,7 +167,6 @@ export class WalletsController {
       : today;
 
     // Query votes with sourceType='quota' for this user in this community created after quotaStartTime
-    // Note: The schema uses 'quota' but some old data might have 'daily_quota'
     // Use absolute value of amount - both upvotes and downvotes consume quota
     const usedToday = await this.mongoose.db
       .collection('votes')
@@ -176,7 +175,7 @@ export class WalletsController {
           $match: {
             userId: actualUserId,
             communityId: community.id,
-            sourceType: { $in: ['quota', 'daily_quota'] },
+            sourceType: 'quota',
             createdAt: { $gte: quotaStartTime }
           }
         },
@@ -215,7 +214,7 @@ export class WalletsController {
   async withdrawFromWallet(
     @Param('userId') userId: string,
     @Param('communityId') communityId: string,
-    @Body() body: { amount: number; memo?: string },
+    @Body() body: WithdrawDto,
     @Req() req: any,
   ) {
     // Handle 'me' token for current user
@@ -233,7 +232,7 @@ export class WalletsController {
   async transferToUser(
     @Param('userId') userId: string,
     @Param('communityId') communityId: string,
-    @Body() body: { toUserId: string; amount: number; description?: string },
+    @Body() body: TransferDto,
     @Req() req: any,
   ) {
     // Handle 'me' token for current user

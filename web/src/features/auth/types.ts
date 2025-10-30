@@ -2,7 +2,6 @@
 
 export interface User {
     id: string;
-    tgUserId?: string;
     username?: string;
     firstName?: string;
     lastName?: string;

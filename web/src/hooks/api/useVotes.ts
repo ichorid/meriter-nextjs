@@ -293,8 +293,9 @@ export function useWithdrawFromPublication() {
       queryClient.invalidateQueries({ queryKey: queryKeys.communities.all, exact: false });
       
       // Invalidate wallet queries to update balance
+      // Invalidate all balance queries (with and without communityId)
       queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
+      queryClient.invalidateQueries({ queryKey: [...walletKeys.all, 'balance'], exact: false });
     },
     onError: (error: any) => {
       // Extract error information from various possible structures
@@ -363,8 +364,9 @@ export function useWithdrawFromComment() {
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
       
       // Invalidate wallet queries to update balance
+      // Invalidate all balance queries (with and without communityId)
       queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-      queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
+      queryClient.invalidateQueries({ queryKey: [...walletKeys.all, 'balance'], exact: false });
     },
     onError: (error: any) => {
       // Log detailed error information - extract all properties properly

@@ -5,7 +5,7 @@ export interface Comment {
     transactionId: string;
     publicationSlug: string;
     text: string;
-    tgUserId: string;
+    userId: string;
     tgUsername?: string;
     authorPhotoUrl?: string;
     plus: number;

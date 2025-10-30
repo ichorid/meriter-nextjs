@@ -219,12 +219,10 @@ export class CommentsController {
       updatedAt: snapshot.updatedAt.toISOString(),
       meta: {
         author: author ? {
-          id: author.id,
           name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
           username: author.username,
           photoUrl: author.avatarUrl,
         } : {
-          id: undefined,
           name: 'Unknown',
           username: undefined,
           photoUrl: undefined,
@@ -268,12 +266,10 @@ export class CommentsController {
       updatedAt: snapshot.updatedAt.toISOString(),
       meta: {
         author: author ? {
-          id: author.id,
           name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
           username: author.username,
           photoUrl: author.avatarUrl,
         } : {
-          id: undefined,
           name: 'Unknown',
           username: undefined,
           photoUrl: undefined,

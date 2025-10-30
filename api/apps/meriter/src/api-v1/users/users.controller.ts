@@ -132,16 +132,17 @@ export class UsersController {
   private mapUserToV1Format(user: any): User {
     return {
       id: user.id,
+      telegramId: user.telegramId,
       username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
       profile: {
-        bio: user.bio,
-        location: user.location,
-        website: user.website,
-        isVerified: user.isVerified,
+        bio: user.profile?.bio,
+        location: user.profile?.location,
+        website: user.profile?.website,
+        isVerified: user.profile?.isVerified,
       },
       communityTags: user.communityTags || [],
       communityMemberships: user.communityMemberships || [],

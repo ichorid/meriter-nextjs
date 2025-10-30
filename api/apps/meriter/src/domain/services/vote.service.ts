@@ -202,12 +202,4 @@ export class VoteService {
     return this.hasUserVoted(userId, targetType, targetId);
   }
 
-  /**
-   * @deprecated Use createVote(userId, targetType, targetId, amount, sourceType, communityId, attachedCommentId?) instead.
-   * This helper hard-codes sourceType and is ambiguous. It will be removed in a future release.
-   */
-  async createVoteFromDto(userId: string, dto: { targetType: 'publication' | 'comment'; targetId: string; amount: number; communityId?: string }): Promise<Vote> {
-    this.logger.warn('VoteService.createVoteFromDto is deprecated. Use createVote with explicit sourceType.');
-    return this.createVote(userId, dto.targetType, dto.targetId, dto.amount, 'personal', dto.communityId);
-  }
 }

@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Comment } from '@/features/comments/components/comment';
 import { useComments } from '@/shared/hooks/use-comments';
 import { Button } from '@/components/atoms';
+import { useTranslations } from 'next-intl';
 
 export interface CommentsColumnProps {
   publicationSlug: string;
@@ -42,6 +43,10 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
   showBackButton = false,
 }) => {
   const router = useRouter();
+  const t = useTranslations('home');
+  
+  // Sort state for comments
+  const [sortBy, setSortBy] = useState<'recent' | 'voted'>('recent');
   
   // Get comments data - useComments hook manages comment state
   // API provides enriched data (author, vote transaction fields)
@@ -58,7 +63,8 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
     activeCommentHook,
     true, // onlyPublication - show comments by default
     communityId, // communityId
-    wallets // wallets array for balance lookup
+    wallets, // wallets array for balance lookup
+    sortBy // sort preference
   );
 
   const handleBack = () => {
@@ -74,36 +80,59 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-base-100 border-l border-base-300">
-      {/* Header with close/back button */}
-      <div className="flex items-center gap-2 p-4 border-b border-base-300 bg-base-200">
-        {(showBackButton || onBack) ? (
-          <>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBack}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              <span className="ml-2 hidden sm:inline">Back</span>
-            </Button>
+      {/* Header with close/back button and sort toggle */}
+      <div className="flex flex-col border-b border-base-300 bg-base-200">
+        <div className="flex items-center gap-2 p-4">
+          {(showBackButton || onBack) ? (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBack}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="ml-2 hidden sm:inline">Back</span>
+              </Button>
+              <h2 className="text-lg font-semibold flex-1">Comments</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBack}
+                className="hidden lg:flex"
+                title="Close comments"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </Button>
+            </>
+          ) : (
             <h2 className="text-lg font-semibold flex-1">Comments</h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBack}
-              className="hidden lg:flex"
-              title="Close comments"
+          )}
+        </div>
+        {/* Sort Toggle */}
+        <div className="px-4 pb-3 flex justify-end">
+          <div className="join shadow-sm">
+            <button 
+              onClick={() => setSortBy('recent')}
+              className={`join-item btn btn-sm font-medium transition-all duration-200 ${
+                sortBy === 'recent' ? 'btn-active btn-primary' : ''
+              }`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </Button>
-          </>
-        ) : (
-          <h2 className="text-lg font-semibold flex-1">Comments</h2>
-        )}
+              {t('sort.recent')}
+            </button>
+            <button 
+              onClick={() => setSortBy('voted')}
+              className={`join-item btn btn-sm font-medium transition-all duration-200 ${
+                sortBy === 'voted' ? 'btn-active btn-primary' : ''
+              }`}
+            >
+              {t('sort.voted')}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Comments list */}

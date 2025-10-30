@@ -38,7 +38,6 @@ export interface PollCastResult {
 export interface AuthResult {
   user: {
     id: string;
-    tgUserId: string;
     username?: string;
     firstName?: string;
     lastName?: string;

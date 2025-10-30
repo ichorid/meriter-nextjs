@@ -83,7 +83,6 @@ export function renderWithProviders(
 // Mock user data generator
 export const mockUser = {
   id: '1',
-  tgUserId: '12345',
   username: 'testuser',
   firstName: 'Test',
   lastName: 'User',

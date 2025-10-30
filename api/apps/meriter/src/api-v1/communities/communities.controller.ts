@@ -89,7 +89,7 @@ export class CommunitiesController {
     return {
       ...community,
       hashtagDescriptions: this.convertHashtagDescriptions(community.hashtagDescriptions),
-      isAdmin: await this.communityService.isUserAdmin(id, req.user.tgUserId),
+      isAdmin: await this.communityService.isUserAdmin(id, req.user.id),
       needsSetup,
       createdAt: community.createdAt.toISOString(),
       updatedAt: community.updatedAt.toISOString(),
@@ -127,7 +127,7 @@ export class CommunitiesController {
     @Body() updateDto: UpdateCommunityDto,
     @Req() req: any,
   ): Promise<Community> {
-    const isAdmin = await this.communityService.isUserAdmin(id, req.user.tgUserId);
+    const isAdmin = await this.communityService.isUserAdmin(id, req.user.id);
     if (!isAdmin) {
       throw new ForbiddenError('Only administrators can update community settings');
     }
@@ -161,7 +161,7 @@ export class CommunitiesController {
     return {
       ...community,
       hashtagDescriptions: this.convertHashtagDescriptions(community.hashtagDescriptions),
-      isAdmin: await this.communityService.isUserAdmin(id, req.user.tgUserId),
+      isAdmin: await this.communityService.isUserAdmin(id, req.user.id),
       needsSetup,
       createdAt: community.createdAt.toISOString(),
       updatedAt: community.updatedAt.toISOString(),
@@ -170,7 +170,7 @@ export class CommunitiesController {
 
   @Delete(':id')
   async deleteCommunity(@Param('id') id: string, @Req() req: any) {
-    const isAdmin = await this.communityService.isUserAdmin(id, req.user.tgUserId);
+    const isAdmin = await this.communityService.isUserAdmin(id, req.user.id);
     if (!isAdmin) {
       throw new ForbiddenError('Only administrators can delete communities');
     }
@@ -181,7 +181,7 @@ export class CommunitiesController {
 
   @Post(':id/reset-quota')
   async resetDailyQuota(@Param('id') id: string, @Req() req: any) {
-    const isAdmin = await this.communityService.isUserAdmin(id, req.user.tgUserId);
+    const isAdmin = await this.communityService.isUserAdmin(id, req.user.id);
     if (!isAdmin) {
       throw new ForbiddenError('Only administrators can reset daily quota');
     }
@@ -200,7 +200,7 @@ export class CommunitiesController {
 
   @Post('sync')
   async syncCommunities(@Req() req: any) {
-    const userId = req.user.tgUserId;
+    const userId = req.user.id;
     this.logger.log(`Syncing communities for user: ${userId}`);
     
     try {

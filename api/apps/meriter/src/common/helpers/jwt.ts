@@ -3,7 +3,7 @@ import * as jwt from 'jsonwebtoken';
 export interface JwtPayload {
   uid: string;
   telegramId: string;
-  tags: string[];
+  communityTags: string[];
 }
 
 /**

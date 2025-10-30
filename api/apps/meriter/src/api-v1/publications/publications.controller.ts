@@ -3,6 +3,7 @@ import { PublicationService } from '../../domain/services/publication.service';
 import { User } from '../../decorators/user.decorator';
 import { UserGuard } from '../../user.guard';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
+import { CreatePublicationDto } from '../../../../../../libs/shared-types/dist/index';
 
 @Controller('api/v1/publications')
 @UseGuards(UserGuard)
@@ -14,15 +15,7 @@ export class PublicationsController {
   @Post()
   async createPublication(
     @User() user: AuthenticatedUser,
-    @Body() dto: {
-      communityId: string;
-      content: string;
-      type: 'text' | 'image' | 'video';
-      beneficiaryId?: string;
-      hashtags?: string[];
-      imageUrl?: string;
-      videoUrl?: string;
-    },
+    @Body() dto: CreatePublicationDto,
   ) {
     const publication = await this.publicationService.createPublication(user.id, dto);
     return { success: true, data: publication };
