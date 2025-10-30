@@ -6,7 +6,7 @@
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
-    "prebuild": "rimraf dist",
+    "prebuild": "pnpm --dir ../libs/shared-types build && rimraf dist",
     "build": "nest build",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "node dist/apps/meriter/main",
@@ -120,5 +120,6 @@
       "@common/tg-sync/(.*)": "<rootDir>/libs/tg-sync/src/$1",
       "@common/tg-sync": "<rootDir>/libs/tg-sync/src"
     }
-  }
+  },
+  "packageManager": "pnpm@10.18.2"
 }
