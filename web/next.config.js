@@ -13,6 +13,7 @@ const nextConfig = {
         },
     },
     transpilePackages: ['@telegram-apps/sdk-react', '@telegram-apps/telegram-ui'],
+    output: 'standalone',
 };
 
 module.exports = withNextIntl(nextConfig);

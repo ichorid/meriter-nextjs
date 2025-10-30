@@ -10,6 +10,7 @@
     "build": "nest build",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "node dist/apps/meriter/main",
+    "start:prod": "node dist/apps/meriter/main",
     "dev": "nest build --webpack --webpackPath webpack-hmr.config.js --watch",
     "debug": "nest start --debug --watch",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
