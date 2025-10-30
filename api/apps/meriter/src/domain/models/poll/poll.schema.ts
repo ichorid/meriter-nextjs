@@ -26,7 +26,7 @@ export class Poll {
       text: String,
       votes: Number,
       amount: Number,
-      voterCount: Number,
+      casterCount: Number,
     }],
     required: true,
   })
@@ -35,7 +35,7 @@ export class Poll {
     text: string;
     votes: number;
     amount: number;
-    voterCount: number;
+    casterCount: number;
   }>;
 
   @Prop({ required: true })
@@ -46,19 +46,19 @@ export class Poll {
 
   @Prop({
     type: {
-      totalVotes: { type: Number, default: 0 },
-      voterCount: { type: Number, default: 0 },
+      totalCasts: { type: Number, default: 0 },
+      casterCount: { type: Number, default: 0 },
       totalAmount: { type: Number, default: 0 },
     },
     default: {
-      totalVotes: 0,
-      voterCount: 0,
+      totalCasts: 0,
+      casterCount: 0,
       totalAmount: 0,
     },
   })
   metrics: {
-    totalVotes: number;
-    voterCount: number;
+    totalCasts: number;
+    casterCount: number;
     totalAmount: number;
   };
 

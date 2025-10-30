@@ -2,11 +2,20 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 
 export type VotingTargetType = 'publication' | 'comment' | null;
+export type WithdrawTargetType = 'publication-withdraw' | 'publication-topup' | 'comment-withdraw' | 'comment-topup' | null;
 
 interface VotingFormData {
   comment: string;
   delta: number;
   error: string;
+}
+
+interface WithdrawFormData {
+  comment: string;
+  amount: number;
+  error: string;
+  maxWithdrawAmount?: number;
+  maxTopUpAmount?: number;
 }
 
 interface UIState {
@@ -19,6 +28,10 @@ interface UIState {
   activeVotingTarget: string | null;
   votingTargetType: VotingTargetType;
   activeVotingFormData: VotingFormData | null;
+  // Withdraw popup state - non-persistent
+  activeWithdrawTarget: string | null;
+  withdrawTargetType: WithdrawTargetType;
+  activeWithdrawFormData: WithdrawFormData | null;
 }
 
 interface UIActions {
@@ -34,6 +47,10 @@ interface UIActions {
   openVotingPopup: (targetId: string, targetType: VotingTargetType) => void;
   closeVotingPopup: () => void;
   updateVotingFormData: (data: Partial<VotingFormData>) => void;
+  // Withdraw popup actions
+  openWithdrawPopup: (targetId: string, targetType: WithdrawTargetType, maxWithdrawAmount?: number, maxTopUpAmount?: number) => void;
+  closeWithdrawPopup: () => void;
+  updateWithdrawFormData: (data: Partial<WithdrawFormData>) => void;
 }
 
 const initialState: UIState = {
@@ -45,6 +62,9 @@ const initialState: UIState = {
   activeVotingTarget: null,
   votingTargetType: null,
   activeVotingFormData: null,
+  activeWithdrawTarget: null,
+  withdrawTargetType: null,
+  activeWithdrawFormData: null,
 };
 
 export const useUIStore = create<UIState & UIActions>()(
@@ -75,6 +95,21 @@ export const useUIStore = create<UIState & UIActions>()(
           activeVotingFormData: state.activeVotingFormData
             ? { ...state.activeVotingFormData, ...data }
             : { comment: '', delta: 0, error: '', ...data }
+        })),
+        openWithdrawPopup: (targetId, targetType, maxWithdrawAmount, maxTopUpAmount) => set({ 
+          activeWithdrawTarget: targetId,
+          withdrawTargetType: targetType,
+          activeWithdrawFormData: { comment: '', amount: 0, error: '', maxWithdrawAmount, maxTopUpAmount }
+        }),
+        closeWithdrawPopup: () => set({ 
+          activeWithdrawTarget: null,
+          withdrawTargetType: null,
+          activeWithdrawFormData: null
+        }),
+        updateWithdrawFormData: (data) => set((state) => ({
+          activeWithdrawFormData: state.activeWithdrawFormData
+            ? { ...state.activeWithdrawFormData, ...data }
+            : { comment: '', amount: 0, error: '', ...data }
         })),
       }),
       { 

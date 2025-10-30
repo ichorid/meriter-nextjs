@@ -34,10 +34,10 @@ export interface LeaderboardEntry {
   commentCount: number;
 }
 
-export interface PollVoteResult {
+export interface PollCastResult {
   optionIndex: number;
   totalAmount: number;
-  voteCount: number;
+  castCount: number;
   percentage?: number;
 }
 

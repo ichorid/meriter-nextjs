@@ -15,11 +15,9 @@ import { WithTelegramEntities } from '@shared/components/withTelegramEntities';
 import { FormDimensionsEditor } from '@shared/components/form-dimensions-editor';
 import { useUIStore } from '@/stores/ui.store';
 import { Comment } from '@features/comments/components/comment';
-import { PollVoting } from '@features/polls/components/poll-voting';
+import { PollCasting } from '@features/polls/components/poll-casting';
 import { BarVoteUnified } from '@shared/components/bar-vote-unified';
 import { BarWithdraw } from '@shared/components/bar-withdraw';
-import { FormWithdraw } from '@shared/components/form-withdraw';
-import { Spinner } from '@shared/components/misc';
 import { CardPublication } from '@features/feed/components/card-publication';
 import { classList } from '@lib/classList';
 import { dateVerbose } from '@shared/lib/date';
@@ -90,8 +88,6 @@ export interface PublicationProps {
   // Withdrawal functionality
   wallets?: any[];
   updateWalletBalance?: (currency: string, change: number) => void;
-  activeWithdrawPost?: string | null;
-  setActiveWithdrawPost?: (post: string | null) => void;
   updateAll?: () => Promise<void>;
   currency?: string;
   inMerits?: boolean;
@@ -138,8 +134,6 @@ export const Publication: React.FC<PublicationProps> = ({
   showCommunityAvatar,
   wallets,
   updateWalletBalance,
-  activeWithdrawPost,
-  setActiveWithdrawPost,
   updateAll,
   currency,
   inMerits,
@@ -167,8 +161,6 @@ export const Publication: React.FC<PublicationProps> = ({
     tgChatId,
     updateWalletBalance,
     updateAll,
-    activeWithdrawPost,
-    setActiveWithdrawPost,
     activeSlider,
     setActiveSlider,
   });
@@ -240,8 +232,8 @@ export const Publication: React.FC<PublicationProps> = ({
   }, [onlyPublication, isDetailPage]);
   
   // State for polls
-  const [pollUserVote, setPollUserVote] = useState(null);
-  const [pollUserVoteSummary, setPollUserVoteSummary] = useState(null);
+  const [pollUserCast, setPollUserCast] = useState(null);
+  const [pollUserCastSummary, setPollUserCastSummary] = useState(null);
   const [pollData, setPollData] = useState<IPollData | null>(type === 'poll' ? content : null);
   
   // Fetch poll data using v1 API
@@ -256,27 +248,6 @@ export const Publication: React.FC<PublicationProps> = ({
   // Render poll publication
   if (type === 'poll' && pollData) {
     const avatarUrl = authorPhotoUrl || (tgAuthorId ? telegramGetAvatarLink(tgAuthorId) : undefined);
-    
-    const withdrawSliderContent = stateLogic.isAuthor && votingLogic.directionAdd !== undefined && (
-      votingLogic.loading ? (
-        <Spinner />
-      ) : (
-        <FormWithdraw
-          comment={votingLogic.comment}
-          setComment={votingLogic.setComment}
-          amount={votingLogic.amount}
-          setAmount={votingLogic.setAmount}
-          maxWithdrawAmount={votingLogic.maxWithdrawAmount}
-          maxTopUpAmount={votingLogic.maxTopUpAmount}
-          isWithdrawal={!votingLogic.directionAdd}
-          onSubmit={() => !votingLogic.disabled && votingLogic.submitWithdrawal()}
-        >
-          <div>
-            {votingLogic.directionAdd ? t('addCommunityPoints', { amount: votingLogic.amount }) : t('removeCommunityPoints', { amount: votingLogic.amount })}
-          </div>
-        </FormWithdraw>
-      )
-    );
     
     return (
       <div className="mb-5" key={slug}>
@@ -316,16 +287,14 @@ export const Publication: React.FC<PublicationProps> = ({
           }}
           communityNeedsSetup={stateLogic.communityInfo?.needsSetup}
           communityIsAdmin={stateLogic.communityInfo?.isAdmin}
-          withdrawSliderContent={withdrawSliderContent}
         >
-          <PollVoting
+          <PollCasting
             pollData={pollData}
             pollId={_id || slug}
-            userVote={pollUserVote || undefined}
-            userVoteSummary={pollUserVoteSummary || undefined}
+            userCast={pollUserCast || undefined}
+            userCastSummary={pollUserCastSummary || undefined}
             balance={stateLogic.effectiveBalance || 0}
-            onVoteSuccess={stateLogic.handlePollVoteSuccess}
-            updateWalletBalance={updateWalletBalance}
+            onCastSuccess={stateLogic.handlePollCastSuccess}
             communityId={pollData?.communityId}
             initiallyExpanded={isDetailPage}
           />
@@ -384,26 +353,6 @@ export const Publication: React.FC<PublicationProps> = ({
     finalChoice: showWithdraw ? 'WITHDRAW' : (showVote || showVoteForAuthor ? 'VOTE' : 'NONE'),
   });
   
-  const withdrawSliderContent = ((stateLogic.isAuthor && !stateLogic.hasBeneficiary) || isBeneficiary) && votingLogic.directionAdd !== undefined && (
-    votingLogic.loading ? (
-      <Spinner />
-    ) : (
-      <FormWithdraw
-        comment={votingLogic.comment}
-        setComment={votingLogic.setComment}
-        amount={votingLogic.amount}
-        setAmount={votingLogic.setAmount}
-        maxWithdrawAmount={votingLogic.maxWithdrawAmount}
-        maxTopUpAmount={votingLogic.maxTopUpAmount}
-        isWithdrawal={!votingLogic.directionAdd}
-        onSubmit={() => !votingLogic.disabled && votingLogic.submitWithdrawal()}
-      >
-        <div>
-          {votingLogic.directionAdd ? t('addCommunityPoints', { amount: votingLogic.amount }) : t('removeCommunityPoints', { amount: votingLogic.amount })}
-        </div>
-      </FormWithdraw>
-    )
-  );
   
   return (
     <div
@@ -439,8 +388,22 @@ export const Publication: React.FC<PublicationProps> = ({
               return (
                 <BarWithdraw
                   balance={votingLogic.maxWithdrawAmount}
-                  onWithdraw={() => votingLogic.handleSetDirectionAdd(false)}
-                  onTopup={() => votingLogic.handleSetDirectionAdd(true)}
+                  onWithdraw={() => {
+                    useUIStore.getState().openWithdrawPopup(
+                      slug,
+                      'publication-withdraw',
+                      votingLogic.maxWithdrawAmount,
+                      votingLogic.maxTopUpAmount
+                    );
+                  }}
+                  onTopup={() => {
+                    useUIStore.getState().openWithdrawPopup(
+                      slug,
+                      'publication-topup',
+                      votingLogic.maxWithdrawAmount,
+                      votingLogic.maxTopUpAmount
+                    );
+                  }}
                   showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)} // Show disabled state for beneficiaries and authors without beneficiary
                   commentCount={!isDetailPage ? comments?.length || 0 : 0}
                   onCommentClick={navigationLogic.handleCommentClick}
@@ -502,7 +465,6 @@ export const Publication: React.FC<PublicationProps> = ({
         }}
         communityNeedsSetup={stateLogic.communityInfo?.needsSetup}
         communityIsAdmin={stateLogic.communityInfo?.isAdmin}
-        withdrawSliderContent={withdrawSliderContent}
       >
         <WithTelegramEntities entities={entities}>
           {messageText}
@@ -538,8 +500,6 @@ export const Publication: React.FC<PublicationProps> = ({
                 highlightTransactionId={highlightTransactionId}
                 wallets={wallets}
                 updateWalletBalance={updateWalletBalance}
-                activeWithdrawPost={activeWithdrawPost}
-                setActiveWithdrawPost={setActiveWithdrawPost}
                 updateAll={updateAll}
                 isDetailPage={isDetailPage}
               />

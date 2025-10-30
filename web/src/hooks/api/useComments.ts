@@ -35,6 +35,7 @@ export const commentsKeys = {
   list: (params: GetCommentsRequest) => [...commentsKeys.lists(), serializeQueryParams(params)] as const,
   details: () => [...commentsKeys.all, 'detail'] as const,
   detail: (id: string) => [...commentsKeys.details(), id] as const,
+  detailData: (id: string) => [...commentsKeys.detail(id), 'details'] as const,
   byPublication: (publicationId: string) => [...commentsKeys.all, 'publication', publicationId] as const,
   byComment: (commentId: string) => [...commentsKeys.all, 'comment', commentId] as const,
 } as const;
@@ -79,6 +80,16 @@ export function useComment(id: string) {
   return useQuery({
     queryKey: commentsKeys.detail(id),
     queryFn: () => commentsApiV1.getComment(id),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!id,
+  });
+}
+
+// Get comment details (with all metadata for popup)
+export function useCommentDetails(id: string) {
+  return useQuery({
+    queryKey: commentsKeys.detailData(id),
+    queryFn: () => commentsApiV1.getCommentDetails(id),
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !!id,
   });

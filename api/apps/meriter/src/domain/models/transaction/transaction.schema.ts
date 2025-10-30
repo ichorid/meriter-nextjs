@@ -12,7 +12,7 @@ export class Transaction {
   walletId: string;
 
   @Prop({ required: true })
-  type: 'vote' | 'comment' | 'poll_vote' | 'withdrawal' | 'deposit';
+  type: 'vote' | 'comment' | 'poll_cast' | 'withdrawal' | 'deposit';
 
   @Prop({ required: true })
   amount: number;

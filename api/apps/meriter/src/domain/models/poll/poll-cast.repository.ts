@@ -1,21 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { PollVote, PollVoteDocument } from './poll-vote.schema';
+import { PollCast, PollCastDocument } from './poll-cast.schema';
 
 @Injectable()
-export class PollVoteRepository {
-  constructor(@InjectModel(PollVote.name) private readonly model: Model<PollVoteDocument>) {}
+export class PollCastRepository {
+  constructor(@InjectModel(PollCast.name) private readonly model: Model<PollCastDocument>) {}
 
-  async findByPoll(pollId: string): Promise<PollVote[]> {
+  async findByPoll(pollId: string): Promise<PollCast[]> {
     return this.model.find({ pollId }).lean().exec();
   }
 
-  async findByPollAndUser(pollId: string, userId: string): Promise<PollVote[]> {
+  async findByPollAndUser(pollId: string, userId: string): Promise<PollCast[]> {
     return this.model.find({ pollId, userId }).lean().exec();
   }
 
-  async findByUser(userId: string, limit: number = 100, skip: number = 0): Promise<PollVote[]> {
+  async findByUser(userId: string, limit: number = 100, skip: number = 0): Promise<PollCast[]> {
     return this.model
       .find({ userId })
       .limit(limit)
@@ -25,26 +25,26 @@ export class PollVoteRepository {
       .exec();
   }
 
-  async create(voteData: Partial<PollVote>): Promise<PollVote> {
-    const vote = await this.model.create(voteData);
-    return vote.toObject();
+  async create(castData: Partial<PollCast>): Promise<PollCast> {
+    const cast = await this.model.create(castData);
+    return cast.toObject();
   }
 
-  async aggregateByOption(pollId: string): Promise<Array<{ optionId: string; totalAmount: number; voteCount: number }>> {
+  async aggregateByOption(pollId: string): Promise<Array<{ optionId: string; totalAmount: number; castCount: number }>> {
     return this.model.aggregate([
       { $match: { pollId } },
       {
         $group: {
           _id: '$optionId',
           totalAmount: { $sum: '$amount' },
-          voteCount: { $sum: 1 }
+          castCount: { $sum: 1 }
         }
       },
       {
         $project: {
           optionId: '$_id',
           totalAmount: 1,
-          voteCount: 1
+          castCount: 1
         }
       },
       { $sort: { optionId: 1 } }

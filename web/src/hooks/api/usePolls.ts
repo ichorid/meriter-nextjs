@@ -1,6 +1,9 @@
 // Polls React Query hooks
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { pollsApiV1 } from '@/lib/api/v1';
+import { walletKeys } from './useWallet';
+import { useAuth } from '@/contexts/AuthContext';
+import { updateWalletOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';
 
 // Local type definitions
 interface Poll {
@@ -32,11 +35,11 @@ interface PollCreate {
 
 interface PollResult {
   poll: Poll;
-  userVote?: PollVote;
-  totalVotes: number;
+  userCast?: PollCast;
+  totalCasts: number;
 }
 
-interface PollVote {
+interface PollCast {
   id: string;
   pollId: string;
   optionId: string;
@@ -45,7 +48,7 @@ interface PollVote {
   createdAt: string;
 }
 
-interface VotePollRequest {
+interface CastPollRequest {
   optionId: string;
   amount: number;
 }
@@ -108,15 +111,41 @@ export function useCreatePoll() {
   });
 }
 
-// Vote on poll
-export function useVotePoll() {
+// Cast poll
+export function useCastPoll() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: VotePollRequest }) => 
-      pollsApiV1.voteOnPoll(id, data),
+    mutationFn: ({ id, data, communityId }: { id: string; data: CastPollRequest; communityId?: string }) => 
+      pollsApiV1.castPoll(id, data),
+    onMutate: async (variables) => {
+      const { data, communityId } = variables || {};
+      const shouldOptimistic = !!user?.id && !!communityId;
+      if (!shouldOptimistic) return {} as OptimisticUpdateContext;
+      
+      const context: OptimisticUpdateContext = {};
+      
+      // Handle wallet optimistic update (poll casts always use personal wallet)
+      if (communityId) {
+        const walletUpdate = await updateWalletOptimistically(
+          queryClient,
+          communityId,
+          Math.abs(data.amount || 0), // Pass positive amount - helper will convert to negative delta for spending
+          walletKeys
+        );
+        if (walletUpdate) {
+          context.walletsKey = walletUpdate.walletsKey;
+          context.balanceKey = walletUpdate.balanceKey;
+          context.previousWallets = walletUpdate.previousWallets;
+          context.previousBalance = walletUpdate.previousBalance;
+        }
+      }
+      
+      return context;
+    },
     onSuccess: (result, { id }) => {
-      // Invalidate poll results to get updated vote counts
+      // Invalidate poll results to get updated cast counts
       queryClient.invalidateQueries({ queryKey: pollsKeys.results(id) });
       
       // Invalidate polls list to ensure consistency
@@ -124,9 +153,21 @@ export function useVotePoll() {
       
       // Invalidate the specific poll to refetch with updated data
       queryClient.invalidateQueries({ queryKey: pollsKeys.detail(id) });
+      
+      // Invalidate wallet queries to ensure balance is up to date
+      queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
+      queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
     },
-    onError: (error) => {
-      console.error('Vote poll error:', error);
+    onError: (error, variables, context) => {
+      console.error('Cast poll error:', error);
+      rollbackOptimisticUpdates(queryClient, context);
+    },
+    onSettled: (_data, _err, vars, ctx) => {
+      const communityId = vars?.communityId;
+      if (communityId) {
+        queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
+        queryClient.invalidateQueries({ queryKey: walletKeys.balance(communityId) });
+      }
     },
   });
 }

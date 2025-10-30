@@ -64,8 +64,8 @@ export function usePublicationState({
   // State management
   const [showselector, setShowselector] = useState(false);
   const [showDimensionsEditor, setShowDimensionsEditor] = useState(false);
-  const [pollUserVote, setPollUserVote] = useState<string | null>(null);
-  const [pollUserVoteSummary, setPollUserVoteSummary] = useState<string | null>(null);
+  const [pollUserCast, setPollUserCast] = useState<string | null>(null);
+  const [pollUserCastSummary, setPollUserCastSummary] = useState<string | null>(null);
   const [pollData, setPollData] = useState<unknown>(type === 'poll' ? content : null);
   
   // Check if current user is the author
@@ -114,8 +114,8 @@ export function usePublicationState({
       .flat(),
   ].join(" ");
   
-  // Handle poll vote success
-  const handlePollVoteSuccess = () => {
+  // Handle poll cast success
+  const handlePollCastSuccess = () => {
     if (type === 'poll' && _id) {
       updBalance && updBalance();
     }
@@ -134,10 +134,10 @@ export function usePublicationState({
     setShowselector,
     showDimensionsEditor,
     setShowDimensionsEditor,
-    pollUserVote,
-    setPollUserVote,
-    pollUserVoteSummary,
-    setPollUserVoteSummary,
+    pollUserCast,
+    setPollUserCast,
+    pollUserCastSummary,
+    setPollUserCastSummary,
     pollData,
     setPollData,
     
@@ -152,7 +152,7 @@ export function usePublicationState({
     
     // Actions
     handleAvatarError,
-    handlePollVoteSuccess,
+    handlePollCastSuccess,
     handleDimensionsClick,
   };
 }

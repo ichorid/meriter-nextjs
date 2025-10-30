@@ -1,7 +1,7 @@
 // CommentForm molecule component with vertical slider
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import { Button } from '@/components/atoms/Button';
 import Slider from 'rc-slider';
 import { classList } from '@lib/classList';
@@ -17,7 +17,7 @@ interface CommentFormProps {
   className?: string;
 }
 
-export const CommentForm: React.FC<CommentFormProps> = ({
+export const CommentForm: React.FC<CommentFormProps> = memo(({
   onSubmit,
   onCancel,
   maxAmount,
@@ -36,10 +36,11 @@ export const CommentForm: React.FC<CommentFormProps> = ({
     onSubmit(comment, Math.abs(amount), directionPlus);
   };
 
-  const handleSliderChange = (value: number | number[]) => {
+  // Memoize onChange handler to prevent unnecessary re-renders
+  const handleSliderChange = useCallback((value: number | number[]) => {
     const newAmount = typeof value === 'number' ? value : value[0] || 0;
     setAmount(newAmount);
-  };
+  }, []);
 
   const directionPlus = amount > 0;
   const directionMinus = amount < 0;
@@ -119,4 +120,6 @@ export const CommentForm: React.FC<CommentFormProps> = ({
       </form>
     </div>
   );
-};
+});
+
+CommentForm.displayName = 'CommentForm';

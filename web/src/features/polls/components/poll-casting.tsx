@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { IPollData, IPollCast, IPollUserCastSummary } from "../types";
 import { useTranslations } from 'next-intl';
-import { pollsApiV1 } from '@/lib/api/v1';
+import { useCastPoll } from '@/hooks/api/usePolls';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 
 interface IPollCastingProps {
@@ -13,7 +13,6 @@ interface IPollCastingProps {
     userCastSummary?: IPollUserCastSummary;
     balance: number;
     onCastSuccess?: () => void;
-    updateWalletBalance?: (currencyOfCommunityTgChatId: string, amountChange: number) => void;
     communityId?: string;
     initiallyExpanded?: boolean;
 }
@@ -25,7 +24,6 @@ export const PollCasting = ({
     userCastSummary,
     balance,
     onCastSuccess,
-    updateWalletBalance,
     communityId,
     initiallyExpanded = false,
 }: IPollCastingProps) => {
@@ -33,12 +31,14 @@ export const PollCasting = ({
     const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
     const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
     const [castAmount, setCastAmount] = useState<number>(1);
-    const [isCasting, setIsCasting] = useState(false);
     const [error, setError] = useState<string>("");
+
+    const castPollMutation = useCastPoll();
 
     const now = new Date();
     const expiresAt = new Date(pollData.expiresAt);
     const isExpired = now > expiresAt;
+    const isCasting = castPollMutation.isPending;
 
     // Calculate time remaining
     const getTimeRemaining = () => {
@@ -70,30 +70,26 @@ export const PollCasting = ({
             return;
         }
 
-        setIsCasting(true);
         setError("");
 
-        // Optimistically update the wallet balance (casting decreases balance)
-        if (updateWalletBalance && communityId) {
-            updateWalletBalance(communityId, -castAmount);
-        }
-
         try {
-            await pollsApiV1.castPoll(pollId, {
-                optionId: selectedOptionId,
-                amount: castAmount,
+            await castPollMutation.mutateAsync({
+                id: pollId,
+                data: {
+                    optionId: selectedOptionId,
+                    amount: castAmount,
+                },
+                communityId,
             });
 
+            // Reset form
+            setCastAmount(1);
+            setSelectedOptionId(null);
+            
             onCastSuccess && onCastSuccess();
         } catch (err: unknown) {
             const errorMessage = extractErrorMessage(err, t('castError'));
             setError(errorMessage);
-            // Revert optimistic update on error
-            if (updateWalletBalance && communityId) {
-                updateWalletBalance(communityId, castAmount);
-            }
-        } finally {
-            setIsCasting(false);
         }
     };
 

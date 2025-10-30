@@ -7,7 +7,7 @@ import { PublicationHeader } from './PublicationHeader';
 import { PublicationContent } from './PublicationContent';
 import { PublicationActions } from './PublicationActions';
 import { usePublication } from '@/hooks/usePublication';
-import { PollVoting } from '@features/polls/components/poll-voting';
+import { PollCasting } from '@features/polls/components/poll-casting';
 import { usePollCardData } from '@/hooks/usePollCardData';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 
@@ -64,7 +64,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   const isPoll = publication.type === 'poll';
   
   // For polls, fetch poll-specific data
-  const { pollData, userVote, userVoteSummary } = usePollCardData(isPoll ? publication.id : undefined);
+  const { pollData, userCast, userCastSummary } = usePollCardData(isPoll ? publication.id : undefined);
   
   // Get wallet balance for polls
   const { data: pollBalance = 0 } = useWalletBalance(isPoll ? publication.communityId : '');
@@ -74,8 +74,6 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
     activeCommentHook,
     activeSlider,
     setActiveSlider,
-    activeWithdrawPost,
-    setActiveWithdrawPost,
     handleVote,
     handleComment,
     currentBalance,
@@ -123,16 +121,15 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           className="mb-4"
         />
         
-        <PollVoting
+        <PollCasting
           pollData={pollData}
           pollId={publication.id}
-          userVote={userVote}
-          userVoteSummary={userVoteSummary}
+          userCast={userCast}
+          userCastSummary={userCastSummary}
           balance={pollBalance}
-          onVoteSuccess={() => {
+          onCastSuccess={() => {
             if (updateAll) updateAll();
           }}
-          updateWalletBalance={updateWalletBalance}
           communityId={publication.communityId}
           initiallyExpanded={false}
         />
@@ -165,8 +162,6 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
         isVoting={isVoting}
         isCommenting={isCommenting}
         maxPlus={currentBalance}
-        activeWithdrawPost={activeWithdrawPost}
-        setActiveWithdrawPost={setActiveWithdrawPost}
         activeSlider={activeSlider}
         setActiveSlider={setActiveSlider}
         wallets={wallets}

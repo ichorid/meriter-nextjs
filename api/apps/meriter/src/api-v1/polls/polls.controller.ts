@@ -12,11 +12,14 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PollService } from '../../domain/services/poll.service';
-import { PollVoteService } from '../../domain/services/poll-vote.service';
+import { PollCastService } from '../../domain/services/poll-cast.service';
+import { WalletService } from '../../domain/services/wallet.service';
+import { CommunityService } from '../../domain/services/community.service';
+import { Wallet } from '../../domain/aggregates/wallet/wallet.entity';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
-import { Poll, CreatePollDto, CreatePollVoteDto } from '../../../../../../libs/shared-types/dist/index';
+import { Poll, CreatePollDto, CreatePollCastDto } from '../../../../../../libs/shared-types/dist/index';
 
 @Controller('api/v1/polls')
 @UseGuards(UserGuard)
@@ -25,7 +28,9 @@ export class PollsController {
 
   constructor(
     private readonly pollsService: PollService,
-    private readonly pollVoteService: PollVoteService,
+    private readonly pollCastService: PollCastService,
+    private readonly walletService: WalletService,
+    private readonly communityService: CommunityService,
   ) {}
 
   @Get()
@@ -54,7 +59,7 @@ export class PollsController {
         text: opt.text,
         votes: opt.votes,
         amount: opt.amount || 0,
-        voterCount: opt.voterCount,
+        casterCount: opt.casterCount,
       })),
       metrics: snapshot.metrics,
       expiresAt: snapshot.expiresAt.toISOString(),
@@ -92,7 +97,7 @@ export class PollsController {
         text: opt.text,
         votes: opt.votes,
         amount: opt.amount || 0,
-        voterCount: opt.voterCount,
+        casterCount: opt.casterCount,
       })),
       metrics: snapshot.metrics,
       expiresAt: snapshot.expiresAt.toISOString(),
@@ -129,10 +134,10 @@ export class PollsController {
     throw new Error('Delete poll functionality not implemented');
   }
 
-  @Post(':id/votes')
-  async voteOnPoll(
+  @Post(':id/casts')
+  async castPoll(
     @Param('id') id: string,
-    @Body() createDto: CreatePollVoteDto,
+    @Body() createDto: CreatePollCastDto,
     @Req() req: any,
   ) {
     const poll = await this.pollsService.getPoll(id);
@@ -141,16 +146,80 @@ export class PollsController {
     }
     
     const snapshot = poll.toSnapshot();
-    const vote = await this.pollVoteService.createVote(
+    const sourceType = (createDto as any).sourceType || 'personal';
+    const communityId = snapshot.communityId;
+    
+    // Validate amount
+    if (createDto.amount <= 0) {
+      throw new ValidationError('Cast amount must be positive');
+    }
+    
+    // Get community to get currency info (needed for wallet operations)
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      throw new NotFoundError('Community', communityId);
+    }
+    
+    // If using personal wallet, validate and deduct balance BEFORE creating cast
+    // This prevents race conditions by checking balance first
+    let updatedWallet: Wallet | null = null;
+    if (sourceType === 'personal') {
+      const wallet = await this.walletService.getWallet(req.user.id, communityId);
+      if (!wallet) {
+        throw new ValidationError('Wallet not found');
+      }
+      
+      // Check balance - throws error if insufficient
+      if (!wallet.canAfford(Math.abs(createDto.amount))) {
+        throw new ValidationError('Insufficient balance to cast this amount');
+      }
+      
+      // Deduct from wallet FIRST - this will throw if balance is insufficient
+      // By doing this before creating the cast, we prevent orphaned casts
+      updatedWallet = await this.walletService.addTransaction(
+        req.user.id,
+        communityId,
+        'debit',
+        Math.abs(createDto.amount),
+        'personal',
+        'poll_cast',
+        id,
+        community.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        `Cast on poll ${id}`
+      );
+    }
+    
+    // Check if this is a new caster
+    const existingCasts = await this.pollsService.getUserCasts(id, req.user.id);
+    const isNewCaster = existingCasts.length === 0;
+    
+    // Create the cast record
+    const cast = await this.pollCastService.createCast(
       id,
       req.user.id,
       createDto.optionId,
       createDto.amount,
-      (createDto as any).sourceType || 'personal',
-      snapshot.communityId
+      sourceType,
+      communityId
     );
     
-    return { success: true, data: vote };
+    // Update poll aggregate to reflect the cast
+    await this.pollsService.updatePollForCast(id, createDto.optionId, createDto.amount, isNewCaster);
+    
+    // Get final wallet balance to return
+    if (!updatedWallet && sourceType === 'personal') {
+      updatedWallet = await this.walletService.getWallet(req.user.id, communityId);
+    }
+    
+    return {
+      success: true,
+      data: cast,
+      walletBalance: updatedWallet?.getBalance() || 0,
+    };
   }
 
   @Get(':id/results')
@@ -159,10 +228,10 @@ export class PollsController {
     return { success: true, data: results };
   }
 
-  @Get(':id/my-votes')
-  async getMyPollVotes(@Param('id') id: string, @Req() req: any) {
-    const votes = await this.pollsService.getUserVotes(id, req.user.id);
-    return { success: true, data: votes };
+  @Get(':id/my-casts')
+  async getMyPollCasts(@Param('id') id: string, @Req() req: any) {
+    const casts = await this.pollsService.getUserCasts(id, req.user.id);
+    return { success: true, data: casts };
   }
 
   @Get('communities/:communityId')
@@ -193,7 +262,7 @@ export class PollsController {
           text: opt.text,
           votes: opt.votes,
           amount: opt.amount || 0,
-          voterCount: opt.voterCount,
+          casterCount: opt.casterCount,
         })),
         metrics: snapshot.metrics,
         expiresAt: snapshot.expiresAt.toISOString(),

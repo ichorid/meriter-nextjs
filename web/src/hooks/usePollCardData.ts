@@ -4,8 +4,8 @@ import { usePoll, usePollResults } from './api/usePolls';
 
 interface PollCardData {
   pollData: any;
-  userVote: any;
-  userVoteSummary: any;
+  userCast: any;
+  userCastSummary: any;
 }
 
 export function usePollCardData(pollId: string | undefined) {
@@ -16,12 +16,12 @@ export function usePollCardData(pollId: string | undefined) {
     if (!poll) {
       return {
         pollData: null,
-        userVote: undefined,
-        userVoteSummary: undefined,
+        userCast: undefined,
+        userCastSummary: undefined,
       };
     }
 
-    // Transform poll to match PollVoting component interface
+    // Transform poll to match PollCasting component interface
     const pollData = {
       title: poll.question,
       description: poll.description,
@@ -31,19 +31,19 @@ export function usePollCardData(pollId: string | undefined) {
         votes: opt.votes || 0,
       })),
       expiresAt: poll.expiresAt,
-      totalVotes: poll.metrics?.totalVotes || 0,
+      totalCasts: poll.metrics?.totalCasts || 0,
       communityId: poll.communityId,
     };
 
-    // Extract user vote summary from pollResults if available
+    // Extract user cast summary from pollResults if available
     // Note: pollResults structure may vary - adjust based on actual API response
-    const userVoteSummary = pollResults?.userVoteSummary || undefined;
-    const userVote = pollResults?.userVote || undefined;
+    const userCastSummary = pollResults?.userCastSummary || undefined;
+    const userCast = pollResults?.userCast || undefined;
 
     return {
       pollData,
-      userVote,
-      userVoteSummary,
+      userCast,
+      userCastSummary,
     };
   }, [poll, pollResults]);
 }

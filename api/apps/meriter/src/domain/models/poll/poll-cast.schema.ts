@@ -1,10 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-export type PollVoteDocument = PollVote & Document;
+export type PollCastDocument = PollCast & Document;
 
-@Schema({ collection: 'poll_votes', timestamps: true })
-export class PollVote {
+@Schema({ collection: 'poll_casts', timestamps: true })
+export class PollCast {
   @Prop({ required: true, unique: true })
   id: string;
 
@@ -30,9 +30,9 @@ export class PollVote {
   createdAt: Date;
 }
 
-export const PollVoteSchema = SchemaFactory.createForClass(PollVote);
+export const PollCastSchema = SchemaFactory.createForClass(PollCast);
 
 // Add indexes for common queries
-PollVoteSchema.index({ pollId: 1, createdAt: -1 });
-PollVoteSchema.index({ userId: 1, pollId: 1 });
-PollVoteSchema.index({ userId: 1, pollId: 1, optionId: 1 }); // Updated to use optionId
+PollCastSchema.index({ pollId: 1, createdAt: -1 });
+PollCastSchema.index({ userId: 1, pollId: 1 });
+PollCastSchema.index({ userId: 1, pollId: 1, optionId: 1 }); // Updated to use optionId

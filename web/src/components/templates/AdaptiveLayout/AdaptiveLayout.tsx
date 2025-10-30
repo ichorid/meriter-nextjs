@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { VerticalSidebar, ContextTopBar } from '@/components/organisms';
 import { CommentsColumn } from '@/components/organisms/CommentsColumn';
 import { VotingPopup } from '@/components/organisms/VotingPopup';
+import { WithdrawPopup } from '@/components/organisms/WithdrawPopup';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
@@ -353,6 +354,13 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
         communityId={communityId}
         updateWalletBalance={updateWalletBalance}
         updBalance={updBalance}
+      />
+      
+      {/* Global Withdraw Popup */}
+      <WithdrawPopup
+        communityId={communityId}
+        updateWalletBalance={updateWalletBalance}
+        updateAll={updBalance}
       />
     </div>
   );

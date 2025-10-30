@@ -50,7 +50,6 @@ export function usePublication({
   const { user } = useAuth();
   const [activeCommentHook, setActiveCommentHook] = useState<string | null>(null);
   const [activeSlider, setActiveSlider] = useState<string | null>(null);
-  const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
   const voteOnPublicationMutation = useVoteOnPublication();
   const voteOnCommentMutation = useVoteOnComment();
@@ -178,10 +177,6 @@ export function usePublication({
     }
   }, [publication, voteOnPublicationWithCommentMutation, quotaRemaining, updateAll]);
 
-  const handleWithdraw = useCallback((postId: string | null) => {
-    setActiveWithdrawPost(postId);
-  }, []);
-
   const handleSliderToggle = useCallback((sliderId: string | null) => {
     setActiveSlider(sliderId);
   }, []);
@@ -203,8 +198,6 @@ export function usePublication({
     activeCommentHook: [activeCommentHook, handleCommentToggle] as const,
     activeSlider,
     setActiveSlider: handleSliderToggle,
-    activeWithdrawPost,
-    setActiveWithdrawPost: handleWithdraw,
     
     // Actions
     handleVote,

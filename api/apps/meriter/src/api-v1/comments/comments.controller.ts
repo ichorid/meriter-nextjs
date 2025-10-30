@@ -14,6 +14,8 @@ import {
 import { CommentService } from '../../domain/services/comment.service';
 import { UserService } from '../../domain/services/user.service';
 import { VoteService } from '../../domain/services/vote.service';
+import { PublicationService } from '../../domain/services/publication.service';
+import { CommunityService } from '../../domain/services/community.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError } from '../../common/exceptions/api.exceptions';
@@ -28,12 +30,152 @@ export class CommentsController {
     private readonly commentsService: CommentService,
     private readonly userService: UserService,
     private readonly voteService: VoteService,
+    private readonly publicationService: PublicationService,
+    private readonly communityService: CommunityService,
   ) {}
 
   @Get()
   async getComments(@Query() query: any) {
     // For now, return empty array - this endpoint needs to be implemented based on business requirements
     return { data: [], total: 0, skip: 0, limit: 50 };
+  }
+
+  @Get(':id/details')
+  async getCommentDetails(@Param('id') id: string, @Req() req: any) {
+    const comment = await this.commentsService.getComment(id);
+    if (!comment) {
+      throw new NotFoundError('Comment', id);
+    }
+
+    const snapshot = comment.toSnapshot();
+    const authorId = comment.getAuthorId.getValue();
+    
+    // Fetch author data
+    let author = null;
+    if (authorId) {
+      try {
+        author = await this.userService.getUser(authorId);
+      } catch (error) {
+        this.logger.warn(`Failed to fetch author ${authorId}:`, error.message);
+      }
+    }
+
+    // Fetch associated vote if this comment represents a vote transaction
+    let vote = null;
+    let voteTransactionData = null;
+    let beneficiary = null;
+    let community = null;
+
+    try {
+      const votes = await this.voteService.getVotesByAttachedComment(id);
+      if (votes && votes.length > 0) {
+        // Prefer vote by comment author
+        const authorVote = votes.find((v: any) => v.userId === authorId);
+        vote = authorVote || votes[0];
+
+        // If vote is on a publication, fetch publication and beneficiary
+        if (vote.targetType === 'publication') {
+          const publication = await this.publicationService.getPublication(vote.targetId);
+          if (publication) {
+            // Get effective beneficiary (beneficiaryId if set, otherwise authorId)
+            const effectiveBeneficiaryId = publication.getEffectiveBeneficiary().getValue();
+            
+            // Fetch beneficiary user
+            if (effectiveBeneficiaryId && effectiveBeneficiaryId !== authorId) {
+              try {
+                const beneficiaryUser = await this.userService.getUser(effectiveBeneficiaryId);
+                if (beneficiaryUser) {
+                  beneficiary = {
+                    id: beneficiaryUser.id,
+                    name: beneficiaryUser.displayName || `${beneficiaryUser.firstName || ''} ${beneficiaryUser.lastName || ''}`.trim() || beneficiaryUser.username || 'Unknown',
+                    username: beneficiaryUser.username,
+                    telegramId: beneficiaryUser.telegramId,
+                    photoUrl: beneficiaryUser.avatarUrl,
+                  };
+                }
+              } catch (error) {
+                this.logger.warn(`Failed to fetch beneficiary ${effectiveBeneficiaryId}:`, error.message);
+              }
+            }
+
+            // Fetch community
+            const communityId = publication.getCommunityId.getValue();
+            if (communityId) {
+              try {
+                const communityData = await this.communityService.getCommunity(communityId);
+                if (communityData) {
+                  community = {
+                    id: communityData.id,
+                    name: communityData.name,
+                    avatarUrl: communityData.avatarUrl,
+                    iconUrl: communityData.settings?.iconUrl,
+                  };
+                }
+              } catch (error) {
+                this.logger.warn(`Failed to fetch community ${communityId}:`, error.message);
+              }
+            }
+          }
+
+          // Prepare vote transaction data
+          const voteAmount = Math.abs(vote.amount);
+          const isUpvote = vote.amount > 0;
+          voteTransactionData = {
+            amountTotal: voteAmount,
+            plus: isUpvote ? voteAmount : 0,
+            minus: isUpvote ? 0 : voteAmount,
+            directionPlus: isUpvote,
+            sum: vote.amount, // Can be negative for downvotes
+          };
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to fetch vote for comment ${id}:`, error.message);
+    }
+
+    // Fetch votes on the comment itself (for metrics)
+    let commentVotes = [];
+    try {
+      commentVotes = await this.voteService.getTargetVotes('comment', id);
+    } catch (error) {
+      this.logger.warn(`Failed to fetch votes on comment ${id}:`, error.message);
+    }
+
+    // Calculate comment metrics from votes
+    const upvotes = commentVotes.filter(v => v.amount > 0).length;
+    const downvotes = commentVotes.filter(v => v.amount < 0).length;
+    const score = commentVotes.reduce((sum, v) => sum + v.amount, 0);
+
+    const response = {
+      comment: {
+        ...snapshot,
+        createdAt: snapshot.createdAt.toISOString(),
+        updatedAt: snapshot.updatedAt.toISOString(),
+      },
+      author: author ? {
+        id: author.id,
+        name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
+        username: author.username,
+        telegramId: author.telegramId,
+        photoUrl: author.avatarUrl,
+      } : {
+        id: undefined,
+        name: 'Unknown',
+        username: undefined,
+        telegramId: undefined,
+        photoUrl: undefined,
+      },
+      voteTransaction: voteTransactionData,
+      beneficiary: beneficiary,
+      community: community,
+      metrics: {
+        upvotes,
+        downvotes,
+        score,
+      },
+    };
+
+    return { success: true, data: response };
   }
 
   @Get(':id')

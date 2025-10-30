@@ -7,7 +7,7 @@ export interface IPollData {
     options: IPollOption[];
     expiresAt: Date | string;
     createdAt: Date | string;
-    totalVotes: number;
+    totalCasts: number;
     communityId: string;
 }
 
@@ -15,17 +15,17 @@ export interface IPollOption {
     id: string;
     text: string;
     votes: number; // total score allocated
-    voterCount: number;
+    casterCount: number;
 }
 
-export interface IPollVote {
+export interface IPollCast {
     optionId: string;
     amount: number;
-    votedAt: Date | string;
+    castAt: Date | string;
 }
 
-export interface IPollUserVoteSummary {
-    voteCount: number;
+export interface IPollUserCastSummary {
+    castCount: number;
     totalAmount: number;
     byOption: Record<string, number>; // optionId -> total amount
 }

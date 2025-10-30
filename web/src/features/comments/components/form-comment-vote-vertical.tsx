@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import { etv } from '@shared/lib/input-utils';
 import Slider from "rc-slider";
 import { classList } from '@lib/classList';
@@ -26,7 +26,7 @@ interface iFormCommentVoteVerticalProps {
     currencyIconUrl?: string;
 }
 
-export const FormCommentVoteVertical = ({
+export const FormCommentVoteVertical = memo(({
     comment,
     setComment,
     freePlus,
@@ -55,6 +55,59 @@ export const FormCommentVoteVertical = ({
     const maxRange = Math.max(maxPlus, maxMinus);
     const sliderMin = isWithdrawMode ? 0 : -maxRange;
     const sliderMax = isWithdrawMode ? maxPlus : maxRange;
+
+    // Memoize onChange handler to prevent unnecessary re-renders
+    const handleSliderChange = useCallback((value: number | number[]) => {
+        const newAmount = typeof value === 'number' ? value : value[0] || 0;
+        // Clamp to actual limits even though slider range is symmetric
+        const clampedAmount = isWithdrawMode 
+            ? Math.max(0, Math.min(newAmount, maxPlus))
+            : Math.max(-maxMinus, Math.min(newAmount, maxPlus));
+        setAmount(clampedAmount);
+    }, [isWithdrawMode, maxPlus, maxMinus, setAmount]);
+
+    // Memoize trackStyle calculation - extract complex IIFE to useMemo
+    const trackStyle = useMemo(() => {
+        const range = sliderMax - sliderMin;
+        if (amount > 0) {
+            // Green for positive (top portion of slider)
+            // Position of 0: (0 - sliderMin) / range
+            // Position of amount: (amount - sliderMin) / range
+            // Track from 0 position to amount position
+            const zeroPosition = ((0 - sliderMin) / range) * 100;
+            const amountPosition = ((amount - sliderMin) / range) * 100;
+            return {
+                backgroundColor: '#10b981',
+                bottom: `${zeroPosition}%`,
+                height: `${amountPosition - zeroPosition}%`
+            };
+        } else if (amount < 0) {
+            // Red for negative (bottom portion of slider)
+            const zeroPosition = ((0 - sliderMin) / range) * 100;
+            const amountPosition = ((amount - sliderMin) / range) * 100;
+            return {
+                backgroundColor: '#ef4444',
+                top: `${amountPosition}%`,
+                height: `${zeroPosition - amountPosition}%`
+            };
+        }
+        return { backgroundColor: 'transparent' };
+    }, [amount, sliderMin, sliderMax]);
+
+    // Memoize rail style
+    const railStyle = useMemo(() => ({ 
+        // Rail shows red on bottom (negative), green on top (positive)
+        // For vertical slider: 0% = top, 100% = bottom
+        // So green at top (0%), red at bottom (100%)
+        background: 'linear-gradient(to bottom, #10b981 0%, #10b981 35%, #e5e7eb 35%, #e5e7eb 65%, #ef4444 65%, #ef4444 100%)'
+    }), []);
+
+    // Memoize handle style
+    const handleStyle = useMemo(() => ({
+        backgroundColor: amount > 0 ? '#10b981' : amount < 0 ? '#ef4444' : '#6b7280',
+        borderColor: amount > 0 ? '#10b981' : amount < 0 ? '#ef4444' : '#6b7280',
+        boxShadow: amount !== 0 ? `0 0 0 3px ${amount > 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}` : 'none',
+    }), [amount]);
 
     return (
         <div
@@ -144,52 +197,11 @@ export const FormCommentVoteVertical = ({
                         min={sliderMin}
                         max={sliderMax}
                         value={amount}
-                        onChange={(value) => {
-                            const newAmount = typeof value === 'number' ? value : value[0] || 0;
-                            // Clamp to actual limits even though slider range is symmetric
-                            const clampedAmount = isWithdrawMode 
-                                ? Math.max(0, Math.min(newAmount, maxPlus))
-                                : Math.max(-maxMinus, Math.min(newAmount, maxPlus));
-                            setAmount(clampedAmount);
-                        }}
+                        onChange={handleSliderChange}
                         className="rc-slider-vertical"
-                        trackStyle={(() => {
-                            const range = sliderMax - sliderMin;
-                            if (amount > 0) {
-                                // Green for positive (top portion of slider)
-                                // Position of 0: (0 - sliderMin) / range
-                                // Position of amount: (amount - sliderMin) / range
-                                // Track from 0 position to amount position
-                                const zeroPosition = ((0 - sliderMin) / range) * 100;
-                                const amountPosition = ((amount - sliderMin) / range) * 100;
-                                return {
-                                    backgroundColor: '#10b981',
-                                    bottom: `${zeroPosition}%`,
-                                    height: `${amountPosition - zeroPosition}%`
-                                };
-                            } else if (amount < 0) {
-                                // Red for negative (bottom portion of slider)
-                                const zeroPosition = ((0 - sliderMin) / range) * 100;
-                                const amountPosition = ((amount - sliderMin) / range) * 100;
-                                return {
-                                    backgroundColor: '#ef4444',
-                                    top: `${amountPosition}%`,
-                                    height: `${zeroPosition - amountPosition}%`
-                                };
-                            }
-                            return { backgroundColor: 'transparent' };
-                        })()}
-                        railStyle={{ 
-                            // Rail shows red on bottom (negative), green on top (positive)
-                            // For vertical slider: 0% = top, 100% = bottom
-                            // So green at top (0%), red at bottom (100%)
-                            background: 'linear-gradient(to bottom, #10b981 0%, #10b981 35%, #e5e7eb 35%, #e5e7eb 65%, #ef4444 65%, #ef4444 100%)'
-                        }}
-                        handleStyle={{
-                            backgroundColor: amount > 0 ? '#10b981' : amount < 0 ? '#ef4444' : '#6b7280',
-                            borderColor: amount > 0 ? '#10b981' : amount < 0 ? '#ef4444' : '#6b7280',
-                            boxShadow: amount !== 0 ? `0 0 0 3px ${amount > 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}` : 'none',
-                        }}
+                        trackStyle={trackStyle}
+                        railStyle={railStyle}
+                        handleStyle={handleStyle}
                     />
                     {/* Center zero indicator for bidirectional sliders */}
                     {!isWithdrawMode && (
@@ -227,4 +239,6 @@ export const FormCommentVoteVertical = ({
             {error && <div className="alert alert-error mt-2">{error}</div>}
         </div>
     );
-};
+});
+
+FormCommentVoteVertical.displayName = 'FormCommentVoteVertical';

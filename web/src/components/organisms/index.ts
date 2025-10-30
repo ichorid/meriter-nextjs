@@ -8,4 +8,5 @@ export * from './VerticalSidebar';
 export * from './ContextTopBar';
 export * from './CommunityCard';
 export * from './CommentsColumn';
-
+export * from './WithdrawPopup/WithdrawPopup';
+export * from './VotingPopup/VotingPopup';

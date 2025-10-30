@@ -17,13 +17,10 @@ import { FormDimensionsEditor } from "@shared/components/form-dimensions-editor"
 import { useUIStore } from "@/stores/ui.store";
 import { classList } from "@lib/classList";
 import { Comment } from "@features/comments/components/comment";
-import { PollVoting } from "@features/polls/components/poll-voting";
+import { PollCasting } from "@features/polls/components/poll-casting";
 import type { IPollData } from "@features/polls/types";
 import { useRouter } from "next/navigation";
 import { useQuery } from '@tanstack/react-query';
-import { useVoteOnPublication, useRemovePublicationVote } from '@/hooks/api/useVotes';
-import { Spinner } from "@shared/components/misc";
-import { FormWithdraw } from "@shared/components/form-withdraw";
 import { useTranslations } from 'next-intl';
 
 export interface IPublication {
@@ -89,8 +86,6 @@ export const Publication = ({
     // New props for author withdraw functionality
     wallets,
     updateWalletBalance,
-    activeWithdrawPost,
-    setActiveWithdrawPost,
     updateAll,
     currency,
     inMerits,
@@ -165,71 +160,6 @@ export const Publication = ({
     // Create a unique identifier for this post
     const postId = slug || _id;
     
-    // Parse the activeWithdrawPost to get post ID and direction
-    const isThisPostActive = activeWithdrawPost && activeWithdrawPost.startsWith(postId + ':');
-    const directionAdd = isThisPostActive 
-        ? activeWithdrawPost === postId + ':add' 
-        : undefined;
-    
-    const [amount, setAmount] = useState(0);
-    const [comment, setComment] = useState("");
-    
-    // Mutation hooks
-    const voteOnPublicationMutation = useVoteOnPublication();
-    const removeVoteMutation = useRemovePublicationVote();
-    
-    // Use loading state from mutations
-    const loading = voteOnPublicationMutation.isPending || removeVoteMutation.isPending;
-    
-    const submitWithdrawal = async () => {
-        if (!isAuthor) return;
-        
-        const changeAmount = amount;
-        const newSum = directionAdd 
-            ? optimisticSum + changeAmount
-            : optimisticSum - changeAmount;
-        
-        setOptimisticSum(newSum);
-        
-        const walletChange = directionAdd 
-            ? -changeAmount
-            : changeAmount;
-        
-        if (updateWalletBalance && curr) {
-            updateWalletBalance(curr, walletChange);
-        }
-        
-        try {
-            // Use mutation hooks for vote operations
-            if (directionAdd) {
-                // Adding votes - use vote mutation
-                await voteOnPublicationMutation.mutateAsync({
-                    publicationId: slug,
-                    data: {
-                        targetType: 'publication',
-                        targetId: slug,
-                        amount: amount,
-                        sourceType: 'personal',
-                    },
-                });
-            } else {
-                // Removing votes - use remove vote mutation
-                await removeVoteMutation.mutateAsync(slug);
-            }
-            
-            setAmount(0);
-            setComment("");
-            
-            if (updateAll) await updateAll();
-        } catch (error) {
-            console.error("Withdrawal failed:", error);
-            setOptimisticSum(sum);
-            if (updateWalletBalance && curr) {
-                updateWalletBalance(curr, -walletChange);
-            }
-        }
-    };
-    
     const maxWithdrawAmount = isAuthor
         ? Math.floor(10 * effectiveSum) / 10
         : 0;
@@ -238,27 +168,9 @@ export const Publication = ({
         ? Math.floor(10 * currentBalance) / 10
         : 0;
     
-    const handleSetDirectionAdd = (direction: boolean | undefined) => {
-        if (!setActiveWithdrawPost) return;
-        
-        if (direction === undefined) {
-            setActiveWithdrawPost(null);
-            setActiveSlider && setActiveSlider(null);
-        } else {
-            const newState = postId + ':' + (direction ? 'add' : 'withdraw');
-            if (activeWithdrawPost === newState) {
-                setActiveWithdrawPost(null);
-                setActiveSlider && setActiveSlider(null);
-            } else {
-                setActiveWithdrawPost(newState);
-                setActiveSlider && setActiveSlider(postId);
-            }
-        }
-    };
-    
     // State for polls
-    const [pollUserVote, setPollUserVote] = useState(null);
-    const [pollUserVoteSummary, setPollUserVoteSummary] = useState(null);
+    const [pollUserCast, setPollUserCast] = useState(null);
+    const [pollUserCastSummary, setPollUserCastSummary] = useState(null);
     const [pollData, setPollData] = useState<IPollData | null>(type === 'poll' ? content : null);
     
     // For polls, fetch the wallet balance for the specific community ONLY when not on community page
@@ -269,7 +181,7 @@ export const Publication = ({
     const communityId = tgChatId || pollCommunityId;
     const { data: communityInfo } = useCommunity(communityId || '');
     
-    // Fetch poll vote status if this is a poll using v1 API
+    // Fetch poll cast status if this is a poll using v1 API
     const { data: pollData_v1 } = usePoll(_id || '');
     
     useEffect(() => {
@@ -279,8 +191,8 @@ export const Publication = ({
         }
     }, [pollData_v1]);
 
-    const handlePollVoteSuccess = () => {
-        // Refresh poll data after voting - polling will be handled by React Query
+    const handlePollCastSuccess = () => {
+        // Refresh poll data after casting - polling will be handled by React Query
         if (type === 'poll' && _id) {
             // Refresh balance
             updBalance();
@@ -301,28 +213,6 @@ export const Publication = ({
         }
         
         const disabled = !amount;
-        
-        // Prepare withdraw slider content for author's polls
-        const withdrawSliderContent = isAuthor && directionAdd !== undefined && (
-            loading ? (
-                <Spinner />
-            ) : (
-                <FormWithdraw
-                    comment={comment}
-                    setComment={setComment}
-                    amount={amount}
-                    setAmount={setAmount}
-                    maxWithdrawAmount={maxWithdrawAmount}
-                    maxTopUpAmount={maxTopUpAmount}
-                    isWithdrawal={!directionAdd}
-                    onSubmit={() => !disabled && submitWithdrawal()}
-                >
-                    <div>
-                        {directionAdd ? t('addCommunityPoints', { amount }) : t('removeCommunityPoints', { amount })}
-                    </div>
-                </FormWithdraw>
-            )
-        );
         
         return (
             <div className="mb-5" key={slug}>
@@ -368,16 +258,14 @@ export const Publication = ({
                     }}
                     communityNeedsSetup={communityInfo?.needsSetup}
                     communityIsAdmin={communityInfo?.isAdmin}
-                    withdrawSliderContent={withdrawSliderContent}
                 >
-                    <PollVoting
+                    <PollCasting
                         pollData={pollData}
                         pollId={_id || slug}
-                        userVote={pollUserVote || undefined}
-                        userVoteSummary={pollUserVoteSummary || undefined}
+                        userCast={pollUserCast || undefined}
+                        userCastSummary={pollUserCastSummary || undefined}
                         balance={effectiveBalance}
-                        onVoteSuccess={handlePollVoteSuccess}
-                        updateWalletBalance={updateWalletBalance}
+                        onCastSuccess={handlePollCastSuccess}
                         communityId={pollCommunityId}
                         initiallyExpanded={isDetailPage}
                     />
@@ -431,30 +319,6 @@ export const Publication = ({
     ].join(" ");
 
     const avatarUrl = authorPhotoUrl || telegramGetAvatarLink(tgAuthorId);
-    
-    // Prepare withdraw slider content for author's regular posts
-    const disabled = !amount;
-    
-    const withdrawSliderContent = ((isAuthor && !hasBeneficiary) || isBeneficiary) && directionAdd !== undefined && (
-        loading ? (
-            <Spinner />
-        ) : (
-            <FormWithdraw
-                comment={comment}
-                setComment={setComment}
-                amount={amount}
-                setAmount={setAmount}
-                maxWithdrawAmount={maxWithdrawAmount}
-                maxTopUpAmount={maxTopUpAmount}
-                isWithdrawal={!directionAdd}
-                onSubmit={() => !disabled && submitWithdrawal()}
-            >
-                <div>
-                    {directionAdd ? t('addCommunityPoints', { amount }) : t('removeCommunityPoints', { amount })}
-                </div>
-            </FormWithdraw>
-        )
-    );
     
     return (
         <div
@@ -512,8 +376,22 @@ export const Publication = ({
                             return (
                                 <BarWithdraw
                                     balance={maxWithdrawAmount}
-                                    onWithdraw={() => handleSetDirectionAdd(false)}
-                                    onTopup={() => handleSetDirectionAdd(true)}
+                                    onWithdraw={() => {
+                                        useUIStore.getState().openWithdrawPopup(
+                                            postId,
+                                            'publication-withdraw',
+                                            maxWithdrawAmount,
+                                            maxTopUpAmount
+                                        );
+                                    }}
+                                    onTopup={() => {
+                                        useUIStore.getState().openWithdrawPopup(
+                                            postId,
+                                            'publication-topup',
+                                            maxWithdrawAmount,
+                                            maxTopUpAmount
+                                        );
+                                    }}
                                     showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)} // Show disabled state for beneficiaries and authors without beneficiary
                                     commentCount={!isDetailPage ? comments?.length || 0 : 0}
                                     onCommentClick={!isDetailPage ? () => {
@@ -580,7 +458,6 @@ export const Publication = ({
                 }}
                 communityNeedsSetup={communityInfo?.needsSetup}
                 communityIsAdmin={communityInfo?.isAdmin}
-                withdrawSliderContent={withdrawSliderContent}
             >
                 <WithTelegramEntities entities={entities}>
                     {messageText}
@@ -616,8 +493,6 @@ export const Publication = ({
                                 highlightTransactionId={highlightTransactionId}
                                 wallets={wallets}
                                 updateWalletBalance={updateWalletBalance}
-                                activeWithdrawPost={activeWithdrawPost}
-                                setActiveWithdrawPost={setActiveWithdrawPost}
                                 updateAll={updateAll}
                                 isDetailPage={isDetailPage}
                             />

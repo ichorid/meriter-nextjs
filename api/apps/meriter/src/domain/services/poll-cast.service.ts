@@ -1,32 +1,32 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { PollVoteRepository } from '../models/poll/poll-vote.repository';
+import { PollCastRepository } from '../models/poll/poll-cast.repository';
 import { Poll, PollDocument } from '../models/poll/poll.schema';
-import { PollVote } from '../models/poll/poll-vote.schema';
-import { PollVotedEvent } from '../events';
+import { PollCast } from '../models/poll/poll-cast.schema';
+import { PollCastedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { uid } from 'uid';
 
 @Injectable()
-export class PollVoteService {
-  private readonly logger = new Logger(PollVoteService.name);
+export class PollCastService {
+  private readonly logger = new Logger(PollCastService.name);
 
   constructor(
-    private pollVoteRepository: PollVoteRepository,
+    private pollCastRepository: PollCastRepository,
     @InjectModel(Poll.name) private pollModel: Model<PollDocument>,
     private eventBus: EventBus,
   ) {}
 
-  async createVote(
+  async createCast(
     pollId: string,
     userId: string,
     optionId: string,
     amount: number,
     sourceType: 'personal' | 'quota',
     communityId: string
-  ): Promise<PollVote> {
-    this.logger.log(`Creating poll vote: poll=${pollId}, user=${userId}, option=${optionId}, amount=${amount}`);
+  ): Promise<PollCast> {
+    this.logger.log(`Creating poll cast: poll=${pollId}, user=${userId}, option=${optionId}, amount=${amount}`);
 
     // Validate poll exists and is active
     const poll = await this.pollModel.findOne({ id: pollId }).lean();
@@ -50,10 +50,10 @@ export class PollVoteService {
 
     // Validate amount
     if (amount <= 0) {
-      throw new BadRequestException('Vote amount must be positive');
+      throw new BadRequestException('Cast amount must be positive');
     }
 
-    const vote = await this.pollVoteRepository.create({
+    const cast = await this.pollCastRepository.create({
       id: uid(),
       pollId,
       userId,
@@ -66,26 +66,26 @@ export class PollVoteService {
 
     // Publish event
     await this.eventBus.publish(
-      new PollVotedEvent(pollId, userId, optionId, amount)
+      new PollCastedEvent(pollId, userId, optionId, amount)
     );
 
-    this.logger.log(`Poll vote created successfully: ${vote.id}`);
-    return vote;
+    this.logger.log(`Poll cast created successfully: ${cast.id}`);
+    return cast;
   }
 
-  async getUserVotes(pollId: string, userId: string): Promise<PollVote[]> {
-    return this.pollVoteRepository.findByPollAndUser(pollId, userId);
+  async getUserCasts(pollId: string, userId: string): Promise<PollCast[]> {
+    return this.pollCastRepository.findByPollAndUser(pollId, userId);
   }
 
-  async getPollResults(pollId: string): Promise<Array<{ optionId: string; totalAmount: number; voteCount: number }>> {
-    return this.pollVoteRepository.aggregateByOption(pollId);
+  async getPollResults(pollId: string): Promise<Array<{ optionId: string; totalAmount: number; castCount: number }>> {
+    return this.pollCastRepository.aggregateByOption(pollId);
   }
 
-  async getAllVotes(pollId: string): Promise<PollVote[]> {
-    return this.pollVoteRepository.findByPoll(pollId);
+  async getAllCasts(pollId: string): Promise<PollCast[]> {
+    return this.pollCastRepository.findByPoll(pollId);
   }
 
-  async voteOnPoll(pollId: string, userId: string, optionId: string, amount: number, communityId: string): Promise<PollVote> {
-    return this.createVote(pollId, userId, optionId, amount, 'personal', communityId);
+  async castPoll(pollId: string, userId: string, optionId: string, amount: number, communityId: string): Promise<PollCast> {
+    return this.createCast(pollId, userId, optionId, amount, 'personal', communityId);
   }
 }

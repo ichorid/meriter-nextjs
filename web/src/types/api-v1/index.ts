@@ -108,8 +108,8 @@ export interface Poll {
   createdAt: string;
   updatedAt: string;
   metrics?: {
-    totalVotes: number;
-    voterCount: number;
+    totalCasts: number;
+    casterCount: number;
     totalAmount: number;
   };
 }
@@ -119,11 +119,11 @@ export interface PollOption {
   text: string;
   votes: number;
   amount: number;
-  voterCount: number;
+  casterCount: number;
   percentage?: number; // Computed field, optional
 }
 
-export interface PollVote {
+export interface PollCast {
   id: string;
   pollId: string;
   optionId: string;
@@ -188,7 +188,7 @@ export interface CreatePollDto {
   expiresAt: string;
 }
 
-export interface CreatePollVoteDto {
+export interface CreatePollCastDto {
   optionId: string;
   amount: number;
 }
@@ -282,7 +282,7 @@ export interface CreatePublicationRequest extends CreatePublicationDto {}
 export interface CreateCommentRequest extends CreateCommentDto {}
 export interface CreateVoteRequest extends CreateVoteDto {}
 export interface CreatePollRequest extends CreatePollDto {}
-export interface CreatePollVoteRequest extends CreatePollVoteDto {}
+export interface CreatePollCastRequest extends CreatePollCastDto {}
 
 // Frontend-specific response types
 export interface CreatePublicationResponse {
@@ -321,8 +321,8 @@ export interface CreatePollResponse {
   };
 }
 
-export interface CreatePollVoteResponse {
-  data: PollVote;
+export interface CreatePollCastResponse {
+  data: PollCast;
   meta: {
     timestamp: string;
     requestId: string;
@@ -350,7 +350,7 @@ export interface WithdrawRequest {
   memo?: string;
 }
 
-export interface VotePollRequest extends CreatePollVoteDto {}
+export interface CastPollRequest extends CreatePollCastDto {}
 
 // Auth response types
 export interface AuthResponse {

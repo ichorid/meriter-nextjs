@@ -7,18 +7,18 @@ import type {
   Comment,
   Vote,
   Poll,
-  PollVote,
+  PollCast,
   Wallet,
   Transaction,
   CreatePublicationDto,
   CreateCommentDto,
   CreateVoteDto,
   CreatePollDto,
-  CreatePollVoteDto,
+  CreatePollCastDto,
   UpdateCommunityDto,
 } from '@/types/api-v1';
 import type { PaginatedResponse } from '@/types/api-v1';
-import type { TelegramUser, AuthResult, CommunityMember, LeaderboardEntry, PollVoteResult } from '@/types/api-responses';
+import type { TelegramUser, AuthResult, CommunityMember, LeaderboardEntry, PollCastResult } from '@/types/api-responses';
 
 // Auth API with enhanced response handling
 export const authApiV1 = {
@@ -366,6 +366,79 @@ export const commentsApiV1 = {
     const response = await apiClient.get<{ success: true; data: PaginatedResponse<Comment> }>(`/api/v1/comments/${commentId}/replies`, { params });
     return response.data;
   },
+
+  async getCommentDetails(id: string): Promise<{
+    comment: Comment;
+    author: {
+      id?: string;
+      name: string;
+      username?: string;
+      telegramId?: string;
+      photoUrl?: string;
+    };
+    voteTransaction: {
+      amountTotal: number;
+      plus: number;
+      minus: number;
+      directionPlus: boolean;
+      sum: number;
+    } | null;
+    beneficiary: {
+      id: string;
+      name: string;
+      username?: string;
+      telegramId?: string;
+      photoUrl?: string;
+    } | null;
+    community: {
+      id: string;
+      name: string;
+      avatarUrl?: string;
+      iconUrl?: string;
+    } | null;
+    metrics: {
+      upvotes: number;
+      downvotes: number;
+      score: number;
+    };
+  }> {
+    const response = await apiClient.get<{ success: true; data: {
+      comment: Comment;
+      author: {
+        id?: string;
+        name: string;
+        username?: string;
+        telegramId?: string;
+        photoUrl?: string;
+      };
+      voteTransaction: {
+        amountTotal: number;
+        plus: number;
+        minus: number;
+        directionPlus: boolean;
+        sum: number;
+      } | null;
+      beneficiary: {
+        id: string;
+        name: string;
+        username?: string;
+        telegramId?: string;
+        photoUrl?: string;
+      } | null;
+      community: {
+        id: string;
+        name: string;
+        avatarUrl?: string;
+        iconUrl?: string;
+      } | null;
+      metrics: {
+        upvotes: number;
+        downvotes: number;
+        score: number;
+      };
+    } }>(`/api/v1/comments/${id}/details`);
+    return response.data;
+  },
 };
 
 // Votes API with complex response structures and missing endpoints
@@ -492,8 +565,8 @@ export const pollsApiV1 = {
     await apiClient.delete(`/api/v1/polls/${id}`);
   },
 
-  async voteOnPoll(pollId: string, data: CreatePollVoteDto): Promise<PollVote> {
-    const response = await apiClient.post<{ success: true; data: PollVote }>(`/api/v1/polls/${pollId}/votes`, data);
+  async castPoll(pollId: string, data: CreatePollCastDto): Promise<PollCast> {
+    const response = await apiClient.post<{ success: true; data: PollCast }>(`/api/v1/polls/${pollId}/casts`, data);
     return unwrapApiResponse(response);
   },
 
@@ -502,8 +575,8 @@ export const pollsApiV1 = {
     return unwrapApiResponse(response);
   },
 
-  async getMyPollVotes(pollId: string): Promise<any> {
-    const response = await apiClient.get<{ success: true; data: any }>(`/api/v1/polls/${pollId}/my-votes`);
+  async getMyPollCasts(pollId: string): Promise<any> {
+    const response = await apiClient.get<{ success: true; data: any }>(`/api/v1/polls/${pollId}/my-casts`);
     return unwrapApiResponse(response);
   },
 };

@@ -165,7 +165,7 @@ export class PollCreatedEvent extends DomainEvent {
   }
 }
 
-export class PollVotedEvent extends DomainEvent {
+export class PollCastedEvent extends DomainEvent {
   constructor(
     private readonly pollId: string,
     private readonly userId: string,
@@ -177,7 +177,7 @@ export class PollVotedEvent extends DomainEvent {
   }
 
   getEventName(): string {
-    return 'PollVoted';
+    return 'PollCasted';
   }
 
   getAggregateId(): string {

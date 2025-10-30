@@ -20,6 +20,10 @@ export class WalletService {
     private eventBus: EventBus,
   ) {}
 
+  async startSession() {
+    return await this.mongoose.startSession();
+  }
+
   async getWallet(userId: string, communityId: string): Promise<Wallet | null> {
     // Direct Mongoose - no repository wrapper needed
     const doc = await this.walletModel
@@ -88,15 +92,15 @@ export class WalletService {
 
     // Map transaction type: credit -> deposit/withdrawal, debit -> withdrawal
     // The actual transaction type depends on referenceType (e.g., 'publication_withdrawal' -> 'withdrawal')
-    let transactionType: 'vote' | 'comment' | 'poll_vote' | 'withdrawal' | 'deposit';
+    let transactionType: 'vote' | 'comment' | 'poll_cast' | 'withdrawal' | 'deposit';
     if (referenceType === 'publication_withdrawal' || referenceType === 'comment_withdrawal') {
       transactionType = 'withdrawal';
     } else if (referenceType === 'vote' || referenceType === 'publication_vote' || referenceType === 'comment_vote') {
       transactionType = 'vote';
     } else if (referenceType === 'comment') {
       transactionType = 'comment';
-    } else if (referenceType === 'poll_vote') {
-      transactionType = 'poll_vote';
+    } else if (referenceType === 'poll_cast') {
+      transactionType = 'poll_cast';
     } else if (type === 'credit') {
       transactionType = 'deposit';
     } else {

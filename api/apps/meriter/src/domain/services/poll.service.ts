@@ -3,7 +3,7 @@ import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { Poll } from '../aggregates/poll/poll.entity';
 import { Poll as PollSchema, PollDocument } from '../models/poll/poll.schema';
-import { PollVoteRepository } from '../models/poll/poll-vote.repository';
+import { PollCastRepository } from '../models/poll/poll-cast.repository';
 import { PollCreatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { CreatePollDto } from '../../../../../../libs/shared-types/dist/index';
@@ -14,7 +14,7 @@ export class PollService {
 
   constructor(
     @InjectModel(PollSchema.name) private pollModel: Model<PollDocument>,
-    private pollVoteRepository: PollVoteRepository,
+    private pollCastRepository: PollCastRepository,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
   ) {}
@@ -23,7 +23,7 @@ export class PollService {
     this.logger.log(`Creating poll: user=${userId}, community=${dto.communityId}`);
 
     // Validate expiration is in the future
-    const expiresAt = dto.expiresAt instanceof Date ? dto.expiresAt : new Date(dto.expiresAt);
+    const expiresAt = typeof dto.expiresAt === 'string' ? new Date(dto.expiresAt) : dto.expiresAt;
     if (expiresAt <= new Date()) {
       throw new BadRequestException('Poll expiration must be in the future');
     }
@@ -91,11 +91,11 @@ export class PollService {
   }
 
   async getPollResults(pollId: string): Promise<Array<{ optionId: string; totalAmount: number }>> {
-    return this.pollVoteRepository.aggregateByOption(pollId);
+    return this.pollCastRepository.aggregateByOption(pollId);
   }
 
-  async getUserVotes(pollId: string, userId: string) {
-    return this.pollVoteRepository.findByPollAndUser(pollId, userId);
+  async getUserCasts(pollId: string, userId: string) {
+    return this.pollCastRepository.findByPollAndUser(pollId, userId);
   }
 
   async expirePoll(pollId: string): Promise<Poll | null> {
@@ -116,6 +116,28 @@ export class PollService {
       
       return poll;
     }
+    
+    return poll;
+  }
+
+  async updatePollForCast(pollId: string, optionId: string, amount: number, isNewCaster: boolean): Promise<Poll> {
+    const doc = await this.pollModel.findOne({ id: pollId }).lean();
+    if (!doc) {
+      throw new NotFoundException('Poll not found');
+    }
+
+    const poll = Poll.fromSnapshot(doc as any);
+    
+    // Add cast to poll aggregate
+    poll.addCast(optionId, amount, isNewCaster);
+    
+    // Save updated poll
+    await this.pollModel.updateOne(
+      { id: poll.getId },
+      { $set: poll.toSnapshot() }
+    );
+    
+    this.logger.log(`Poll updated for cast: poll=${pollId}, option=${optionId}, amount=${amount}`);
     
     return poll;
   }

@@ -19,7 +19,6 @@ export const CardCommentVote = ({
     communityName,
     communityIconUrl,
     onCommunityClick,
-    withdrawSliderContent,
     currencyIcon,
     voteType,
     amountFree,
@@ -135,14 +134,6 @@ export const CardCommentVote = ({
                         )}
                         <div className="bottom" onClick={(e) => e.stopPropagation()}>{bottom}</div>
                     </div>
-                    {withdrawSliderContent && (
-                        <>
-                            <div className="divider my-0"></div>
-                            <div className="withdraw-slider-section px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                                {withdrawSliderContent}
-                            </div>
-                        </>
-                    )}
                 </div>
             </div>
         </div>

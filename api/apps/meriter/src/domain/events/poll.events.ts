@@ -10,7 +10,7 @@ export class PollCreatedEvent extends DomainEvent {
   }
 }
 
-export class PollVotedEvent extends DomainEvent {
+export class PollCastedEvent extends DomainEvent {
   constructor(
     public readonly pollId: string,
     public readonly userId: string,

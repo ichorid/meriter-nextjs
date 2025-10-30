@@ -141,7 +141,7 @@ export class CommunityFeedService {
         metrics: {
           upvotes: snapshot.metrics.upvotes,
           downvotes: snapshot.metrics.downvotes,
-          score: snapshot.metrics.score,
+          score: snapshot.metrics.upvotes - snapshot.metrics.downvotes,
           commentCount: snapshot.metrics.commentCount,
         },
         meta: {
@@ -182,13 +182,13 @@ export class CommunityFeedService {
           text: opt.text,
           votes: opt.votes,
           amount: opt.amount,
-          voterCount: opt.voterCount,
+          casterCount: opt.casterCount,
         })),
         expiresAt: snapshot.expiresAt.toISOString(),
         isActive: snapshot.isActive,
         metrics: {
-          totalVotes: snapshot.metrics.totalVotes,
-          voterCount: snapshot.metrics.voterCount,
+          totalCasts: snapshot.metrics.totalCasts,
+          casterCount: snapshot.metrics.casterCount,
           totalAmount: snapshot.metrics.totalAmount,
         },
         meta: {
