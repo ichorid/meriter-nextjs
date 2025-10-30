@@ -1,0 +1,4 @@
+---
+alwaysApply: true
+---
+when refactoring, apply KISS, DRY, SOLID, CLEAN rules. Avoid overengineering like hell. Disregard backwards compatibility. Do the "proper thing"
