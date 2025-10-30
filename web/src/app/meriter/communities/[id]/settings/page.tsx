@@ -23,8 +23,7 @@ import { CardWithAvatar } from '@shared/components/card-with-avatar';
 import { CommunityAvatar } from '@shared/components/community-avatar';
 import {
     telegramGetAvatarLink,
-    telegramGetAvatarLinkUpd,
-} from '@lib/telegram';
+} from '@/lib/utils/telegram';
 
 const CommunitySettingsPage = () => {
     const router = useRouter();
@@ -299,8 +298,6 @@ const CommunitySettingsPage = () => {
                 activeWithdrawPost={activeWithdrawPost}
                 setActiveWithdrawPost={setActiveWithdrawPost}
                 wallets={Array.isArray(wallets) ? wallets : []}
-                updateWalletBalance={() => {}}
-                updateAll={async () => {}}
                 myId={user?.id}
             >
                 <div className="flex justify-center items-center min-h-[400px]">
@@ -321,8 +318,6 @@ const CommunitySettingsPage = () => {
                 activeWithdrawPost={activeWithdrawPost}
                 setActiveWithdrawPost={setActiveWithdrawPost}
                 wallets={Array.isArray(wallets) ? wallets : []}
-                updateWalletBalance={() => {}}
-                updateAll={async () => {}}
                 myId={user?.id}
             >
                 <div className="text-center py-8">
@@ -352,8 +347,6 @@ const CommunitySettingsPage = () => {
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
             wallets={Array.isArray(wallets) ? wallets : []}
-            updateWalletBalance={() => {}}
-            updateAll={async () => {}}
             myId={user?.id}
         >
             <div className="mb-6">

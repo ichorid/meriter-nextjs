@@ -234,9 +234,6 @@ export const communitiesApiV1 = {
     
     return {
       data: response.data,
-      total: response.meta.pagination.total,
-      skip: (response.meta.pagination.page - 1) * response.meta.pagination.pageSize,
-      limit: response.meta.pagination.pageSize,
       meta: {
         pagination: {
           page: response.meta.pagination.page,
@@ -370,10 +367,9 @@ export const commentsApiV1 = {
   async getCommentDetails(id: string): Promise<{
     comment: Comment;
     author: {
-      id?: string;
+      id: string;
       name: string;
       username?: string;
-      telegramId?: string;
       photoUrl?: string;
     };
     voteTransaction: {
@@ -387,7 +383,6 @@ export const commentsApiV1 = {
       id: string;
       name: string;
       username?: string;
-      telegramId?: string;
       photoUrl?: string;
     } | null;
     community: {
@@ -405,10 +400,9 @@ export const commentsApiV1 = {
     const response = await apiClient.get<{ success: true; data: {
       comment: Comment;
       author: {
-        id?: string;
+        id: string;
         name: string;
         username?: string;
-        telegramId?: string;
         photoUrl?: string;
       };
       voteTransaction: {
@@ -422,7 +416,6 @@ export const commentsApiV1 = {
         id: string;
         name: string;
         username?: string;
-        telegramId?: string;
         photoUrl?: string;
       } | null;
       community: {

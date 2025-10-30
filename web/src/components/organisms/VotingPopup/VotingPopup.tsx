@@ -13,14 +13,10 @@ import { useVoteOnPublicationWithComment, useVoteOnComment } from '@/hooks/api/u
 
 interface VotingPopupProps {
   communityId?: string;
-  updateWalletBalance?: (communityId: string, change: number) => void;
-  updBalance?: () => Promise<void>;
 }
 
 export const VotingPopup: React.FC<VotingPopupProps> = ({
   communityId,
-  updateWalletBalance,
-  updBalance = async () => {},
 }) => {
   const t = useTranslations('comments');
   const { user } = useAuth();
@@ -64,14 +60,14 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   // Get free balance as fallback (different API endpoint)
   const { data: freeBalance } = useFreeBalance(targetCommunityId);
-  const effectiveFreePlus = quotaRemaining > 0 ? quotaRemaining : (typeof freeBalance === 'number' ? freeBalance : 0);
+  const freePlusAmount = quotaRemaining > 0 ? quotaRemaining : (typeof freeBalance === 'number' ? freeBalance : 0);
 
   // Note: Quota and wallet optimistic updates are handled by mutation hooks
 
-  const hasPoints = effectiveFreePlus > 0 || walletBalance > 0;
-  const maxPlus = Math.max(effectiveFreePlus, walletBalance || 0);
-  const calculatedMaxMinus = effectiveFreePlus > 0
-    ? Math.min(effectiveFreePlus, Math.max(walletBalance || 0, 1))
+  const hasPoints = freePlusAmount > 0 || walletBalance > 0;
+  const maxPlus = Math.max(freePlusAmount, walletBalance || 0);
+  const calculatedMaxMinus = freePlusAmount > 0
+    ? Math.min(freePlusAmount, Math.max(walletBalance || 0, 1))
     : Math.max(walletBalance || 0, 1);
 
   // Initialize form data if not present
@@ -259,7 +255,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
             setComment={handleCommentChange}
             amount={formData.delta}
             setAmount={handleAmountChange}
-            free={effectiveFreePlus}
+            free={freePlusAmount}
             maxPlus={maxPlus}
             maxMinus={calculatedMaxMinus}
             commentAdd={handleSubmit}

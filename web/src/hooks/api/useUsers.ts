@@ -1,26 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApiV1 } from '@/lib/api/v1';
 import { queryKeys } from '@/lib/constants/queryKeys';
-
-// Local User type definition
-interface User {
-  id: string;
-  telegramId: string;
-  username?: string;
-  firstName?: string;
-  lastName?: string;
-  displayName: string;
-  avatarUrl?: string;
-  communityTags?: string[];
-  profile?: {
-    bio?: string;
-    location?: string;
-    website?: string;
-    isVerified?: boolean;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
+import type { User } from '@/types/api-v1';
 
 export const useUserProfile = (userId: string) => {
   return useQuery({

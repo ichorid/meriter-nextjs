@@ -1,14 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-
-interface TelegramUser {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-  language_code?: string;
-  photo_url?: string;
-}
+import type { TelegramWebAppUser } from '@/types/telegram';
 
 interface TelegramState {
   isInTelegram: boolean;
@@ -18,13 +10,13 @@ interface TelegramState {
   platform: string;
   colorScheme: 'light' | 'dark';
   themeParams: any;
-  user: TelegramUser | null;
+  user: TelegramWebAppUser | null;
   ready: boolean;
 }
 
 interface TelegramActions {
   init: () => void;
-  setUser: (user: TelegramUser | null) => void;
+  setUser: (user: TelegramWebAppUser | null) => void;
   setInitData: (initData: string) => void;
   setColorScheme: (scheme: 'light' | 'dark') => void;
   setReady: (ready: boolean) => void;

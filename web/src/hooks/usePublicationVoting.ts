@@ -6,7 +6,6 @@ interface Wallet {
   userId: string;
   communityId: string;
   balance: number;
-  currencyOfCommunityTgChatId?: string;
   [key: string]: unknown;
 }
 
@@ -15,13 +14,11 @@ export interface UsePublicationVotingProps {
   _id?: string;
   sum: number;
   isAuthor: boolean;
-  tgAuthorId?: string;
+  authorId?: string;
   myId?: string;
   wallets?: Wallet[];
-  currencyOfCommunityTgChatId?: string;
-  fromTgChatId?: string;
-  tgChatId?: string;
-  updateWalletBalance?: (currency: string, change: number) => void;
+  communityId: string;
+  updateWalletBalance?: (communityId: string, change: number) => void;
   updateAll?: () => Promise<void>;
   activeSlider?: string | null;
   setActiveSlider?: (slider: string | null) => void;
@@ -32,12 +29,10 @@ export function usePublicationVoting({
   _id,
   sum,
   isAuthor,
-  tgAuthorId,
+  authorId,
   myId,
   wallets,
-  currencyOfCommunityTgChatId,
-  fromTgChatId,
-  tgChatId,
+  communityId,
   updateWalletBalance,
   updateAll,
   activeSlider,
@@ -52,15 +47,14 @@ export function usePublicationVoting({
   }, [sum]);
   
   // Calculate current balance
-  const curr = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
   const currentBalance = (Array.isArray(wallets) &&
-    wallets.find((w) => w.currencyOfCommunityTgChatId == curr)?.balance) || 0;
+    wallets.find((w) => w.communityId === communityId)?.balance) || 0;
   
-  const effectiveSum = optimisticSum ?? sum;
+  const calculatedSum = optimisticSum ?? sum;
   
   // Calculate withdrawal amounts
   const maxWithdrawAmount = isAuthor
-    ? Math.floor(10 * effectiveSum) / 10
+    ? Math.floor(10 * calculatedSum) / 10
     : 0;
   
   const maxTopUpAmount = isAuthor
@@ -70,7 +64,7 @@ export function usePublicationVoting({
   return {
     // State
     optimisticSum,
-    effectiveSum,
+    calculatedSum,
     
     // Calculated values
     maxWithdrawAmount,

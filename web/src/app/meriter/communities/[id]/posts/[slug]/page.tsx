@@ -1,14 +1,12 @@
 'use client';
 
 import { use, useEffect, useState } from "react";
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useRouter } from "next/navigation";
 import { Publication } from "@features/feed";
 import { useAuth } from '@/contexts/AuthContext';
-import { usePublication, useCommunity, useUserProfile, useWallets } from '@/hooks/api';
-import { useWalletBalance, walletKeys } from '@/hooks/api/useWallet';
-import { queryKeys } from '@/lib/constants/queryKeys';
+import { usePublication, useCommunity, useWallets } from '@/hooks/api';
+import { useWalletBalance } from '@/hooks/api/useWallet';
 
 const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> }) => {
     const router = useRouter();
@@ -23,28 +21,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     
     const { data: balance = 0 } = useWalletBalance(chatId);
 
-    const { data: userdata = {} } = useUserProfile(user?.id || '');
     const { data: wallets = [] } = useWallets();
-
-    const queryClient = useQueryClient();
-
-    // Wallet balance updates are handled optimistically in vote mutation hooks
-    const updateWalletBalance = () => {
-        // No-op - optimistic updates handled in hooks
-    };
-
-    const updateAll = async () => {
-        // Close the active withdraw slider after successful update
-        setActiveWithdrawPost(null);
-        // Invalidate queries to refresh data
-        await queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-        await queryClient.invalidateQueries({ queryKey: walletKeys.balance(chatId) });
-    };
-
-    const updBalance = async () => {
-        // Invalidate balance query to refresh
-        await queryClient.invalidateQueries({ queryKey: walletKeys.balance(chatId) });
-    };
 
     const activeCommentHook = useState<string | null>(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
@@ -65,10 +42,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
             className="feed"
             communityId={chatId}
             balance={balance}
-            updBalance={updBalance}
             wallets={wallets}
-            updateWalletBalance={updateWalletBalance}
-            updateAll={updateAll}
             myId={user?.id}
             activeCommentHook={activeCommentHook}
             activeSlider={activeSlider}
@@ -82,15 +56,12 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                         key={publication.id}
                         {...publication}
                         balance={balance}
-                        updBalance={updBalance}
                         activeCommentHook={activeCommentHook}
                         activeSlider={activeSlider}
                         setActiveSlider={setActiveSlider}
                         activeWithdrawPost={activeWithdrawPost}
                         setActiveWithdrawPost={setActiveWithdrawPost}
                         wallets={wallets}
-                        updateWalletBalance={updateWalletBalance}
-                        updateAll={updateAll}
                         dimensionConfig={undefined}
                         myId={user?.id}
                         onlyPublication={true}

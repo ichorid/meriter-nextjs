@@ -278,8 +278,8 @@ export class VotesController {
       throw new BadRequestException('No balance available to withdraw');
     }
     
-    // Get effective beneficiary
-    const effectiveBeneficiaryId = publication.getEffectiveBeneficiary().getValue();
+    // Get beneficiary (beneficiaryId if set, otherwise authorId)
+    const beneficiaryId = publication.getBeneficiaryId?.getValue() || publication.getAuthorId.getValue();
     const communityId = publication.getCommunityId.getValue();
     
     // Get community to get currency info
@@ -297,7 +297,7 @@ export class VotesController {
     
     // Transfer to wallet
     await this.walletService.addTransaction(
-      effectiveBeneficiaryId,
+      beneficiaryId,
       communityId,
       'credit',
       withdrawAmount,
@@ -353,8 +353,8 @@ export class VotesController {
       throw new BadRequestException('No balance available to withdraw');
     }
     
-    // Get effective beneficiary (always author for comments)
-    const effectiveBeneficiaryId = comment.getEffectiveBeneficiary().getValue();
+    // Get beneficiary (always author for comments)
+    const beneficiaryId = comment.getAuthorId.getValue();
     
     // Get community - need to trace to publication
     let communityId: string;
@@ -392,7 +392,7 @@ export class VotesController {
     
     // Transfer to wallet
     await this.walletService.addTransaction(
-      effectiveBeneficiaryId,
+      beneficiaryId,
       communityId,
       'credit',
       withdrawAmount,
@@ -478,14 +478,14 @@ export class VotesController {
           updatedAt: commentSnapshot.updatedAt.toISOString(),
           meta: {
             author: author ? {
+              id: author.id,
               name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
               username: author.username,
-              telegramId: author.telegramId,
               photoUrl: author.avatarUrl,
             } : {
+              id: undefined,
               name: 'Unknown',
               username: undefined,
-              telegramId: undefined,
               photoUrl: undefined,
             },
           },

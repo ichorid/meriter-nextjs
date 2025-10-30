@@ -4,12 +4,7 @@ import { useComments } from "@shared/hooks/use-comments";
 import { useEffect, useState } from "react";
 import { CardPublication } from "./card-publication";
 import { useCommunity, usePoll } from '@/hooks/api';
-import { usersApiV1 } from '@/lib/api/v1';
 import { dateVerbose } from "@shared/lib/date";
-import {
-    telegramGetAvatarLink,
-    telegramGetAvatarLinkUpd,
-} from "@lib/telegram";
 import { BarVoteUnified } from "@shared/components/bar-vote-unified";
 import { BarWithdraw } from "@shared/components/bar-withdraw";
 import { WithTelegramEntities } from "@shared/components/withTelegramEntities";
@@ -20,38 +15,10 @@ import { Comment } from "@features/comments/components/comment";
 import { PollCasting } from "@features/polls/components/poll-casting";
 import type { IPollData } from "@features/polls/types";
 import { useRouter } from "next/navigation";
-import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-
-export interface IPublication {
-    tgChatName: string;
-    tgMessageId: string;
-    minus: number;
-    plus: number;
-    sum: number;
-    slug: string;
-    spaceSlug: string;
-    balance: any;
-    updBalance?: any;
-    messageText: string;
-    authorPhotoUrl: string;
-    tgAuthorName: string;
-    tgAuthorId?: string;
-    beneficiaryName?: string;
-    beneficiaryPhotoUrl?: string;
-    beneficiaryId?: string;
-    beneficiaryUsername?: string;
-    keyword: string;
-    ts: string;
-    type?: string;
-    content?: any;
-    _id?: string;
-}
+import type { Publication as PublicationType } from '@/types/api-v1';
 
 export const Publication = ({
-    tgChatName,
-    tgChatId,
-    tgMessageId,
     minus,
     plus,
     sum,
@@ -61,13 +28,11 @@ export const Publication = ({
     updBalance = () => {}, // Default no-op function
     messageText,
     authorPhotoUrl,
-    tgAuthorName,
     keyword,
     ts,
     activeCommentHook,
     activeSlider,
     setActiveSlider,
-    tgAuthorId,
     beneficiaryName,
     beneficiaryPhotoUrl,
     beneficiaryId,
@@ -91,19 +56,60 @@ export const Publication = ({
     inMerits,
     currencyOfCommunityTgChatId,
     fromTgChatId,
+    // Internal IDs (required)
+    communityId,
+    authorId,
+    meta,
 }: any) => {
     const t = useTranslations('feed');
-    if (!tgChatName && type !== 'poll') return null;
+    // Use internal IDs only - no legacy fallbacks
+    const displayAuthorName = meta?.author?.name || 'Unknown';
+    const displayChatName = meta?.origin?.telegramChatName || '';
+    
+    if (!displayChatName && type !== 'poll') return null;
     const router = useRouter();
     
-    // Check if current user is the author
-    const isAuthor = myId === tgAuthorId;
+    // Require communityId and authorId - fail gracefully if missing
+    if (!communityId || !authorId) {
+        console.warn('Publication missing required IDs:', { communityId, authorId });
+        return null;
+    }
+    
+    // Check if current user is the author - use internal IDs for comparison
+    const isAuthor = myId === authorId;
     
     // Check if there's a beneficiary and it's different from the author
-    const hasBeneficiary = beneficiaryId && beneficiaryId !== tgAuthorId;
+    const hasBeneficiary = beneficiaryId && beneficiaryId !== authorId;
     
     // Check if current user is the beneficiary (but not the author)
     const isBeneficiary = hasBeneficiary && beneficiaryId === myId;
+    
+    // Create a unique identifier for this post (needed before useComments)
+    const postId = slug || _id;
+    
+    // Get comments data first (needed for currentPlus/currentMinus)
+    const {
+        comments,
+        showPlus,
+        currentPlus,
+        currentMinus,
+        showMinus,
+        showComments,
+        setShowComments,
+        formCommentProps,
+    } = useComments(
+        false,
+        slug,
+        "",
+        balance,
+        updBalance,
+        plus,
+        minus,
+        activeCommentHook,
+        onlyPublication,
+        communityId,
+        wallets
+    );
     
     // Mutual exclusivity logic:
     // Show withdraw if: (isAuthor && !hasBeneficiary) || isBeneficiary
@@ -118,7 +124,7 @@ export const Publication = ({
     console.log('[Publication Feed] Mutual Exclusivity Debug:', {
       slug: postId,
       myId,
-      tgAuthorId,
+      authorId,
       beneficiaryId,
       hasBeneficiary,
       isAuthor,
@@ -126,7 +132,6 @@ export const Publication = ({
       currentScore,
       currentPlus,
       currentMinus,
-      meritsAmount,
     });
     
     console.log('[Publication Feed] Button Visibility Logic:', {
@@ -140,165 +145,37 @@ export const Publication = ({
     
     // Withdrawal state management (for author's own posts)
     const [optimisticSum, setOptimisticSum] = useState(sum);
-    const effectiveSum = optimisticSum ?? sum;
     
     useEffect(() => {
         setOptimisticSum(sum);
     }, [sum]);
     
-    const curr = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
+    const curr = communityId;
     const currentBalance =
         (Array.isArray(wallets) &&
-            wallets.find((w) => w.communityId == curr)
-                ?.amount) ||
+            wallets.find((w) => w.communityId === curr)
+                ?.balance) ||
         0;
     const [showselector, setShowselector] = useState(false);
     
     // Rate conversion no longer needed with v1 API - currencies are normalized
     const rate = 1;
     
-    // Create a unique identifier for this post
-    const postId = slug || _id;
-    
     const maxWithdrawAmount = isAuthor
-        ? Math.floor(10 * effectiveSum) / 10
+        ? Math.floor(10 * (optimisticSum ?? sum)) / 10
         : 0;
     
     const maxTopUpAmount = isAuthor
         ? Math.floor(10 * currentBalance) / 10
         : 0;
     
-    // State for polls
-    const [pollUserCast, setPollUserCast] = useState(null);
-    const [pollUserCastSummary, setPollUserCastSummary] = useState(null);
-    const [pollData, setPollData] = useState<IPollData | null>(type === 'poll' ? content : null);
-    
-    // For polls, fetch the wallet balance for the specific community ONLY when not on community page
-    // When on community page (showCommunityAvatar=false), the balance prop is already correct
-    const pollCommunityId = type === 'poll' ? content?.communityId : null;
-    // Use v1 API for poll balance
-    const pollBalance = 0; // TODO: Get from wallets array for poll community
-    const communityId = tgChatId || pollCommunityId;
+    // Community info - use communityId
     const { data: communityInfo } = useCommunity(communityId || '');
+    const communityIdForRouting = communityInfo?.id || communityId;
     
-    // Fetch poll cast status if this is a poll using v1 API
-    const { data: pollData_v1 } = usePoll(_id || '');
+    // Display title - use meta.author.name
+    const displayTitle = displayAuthorName;
     
-    useEffect(() => {
-        if (pollData_v1) {
-            setPollData(pollData_v1 as any);
-            // TODO: Extract user votes and summary from pollData_v1
-        }
-    }, [pollData_v1]);
-
-    const handlePollCastSuccess = () => {
-        // Refresh poll data after casting - polling will be handled by React Query
-        if (type === 'poll' && _id) {
-            // Refresh balance
-            updBalance();
-            // Data will auto-refresh via React Query
-        }
-    };
-
-    // Render poll publication (early return to avoid hooks)
-    if (type === 'poll' && pollData) {
-        const avatarUrl = authorPhotoUrl || telegramGetAvatarLink(tgAuthorId);
-        // For author: use wallet balance from wallets array; for others: use pollBalance or passed balance
-        let effectiveBalance = balance;
-        if (isAuthor && Array.isArray(wallets) && pollCommunityId) {
-            const pollWalletBalance = wallets.find((w: any) => w.communityId === pollCommunityId)?.amount || 0;
-            effectiveBalance = pollWalletBalance;
-        } else {
-            effectiveBalance = showCommunityAvatar ? (pollBalance || 0) : balance;
-        }
-        
-        const disabled = !amount;
-        
-        return (
-            <div className="mb-5" key={slug}>
-                <CardPublication
-                    title={displayTitle}
-                    subtitle={dateVerbose(ts)}
-                    avatarUrl={avatarUrl}
-                    onAvatarUrlNotFound={() => {
-                        const fallbackUrl = telegramGetAvatarLinkUpd(tgAuthorId);
-                        if (fallbackUrl !== avatarUrl) {
-                            // Force re-render with fallback avatar
-                            const imgElement = document.querySelector(`img[src="${avatarUrl}"]`) as HTMLImageElement;
-                            if (imgElement) imgElement.src = fallbackUrl;
-                        }
-                    }}
-                    description={isAuthor ? t('pollMy') : t('poll')}
-                    onClick={undefined}
-                    onDescriptionClick={undefined}
-                    bottom={undefined}
-                    showCommunityAvatar={showCommunityAvatar}
-                    communityAvatarUrl={communityInfo?.avatarUrl}
-                    communityName={communityInfo?.name || tgChatName}
-                    communityIconUrl={communityInfo?.settings?.iconUrl}
-                    onCommunityClick={() => {
-                        if (!communityId) return;
-                        
-                        if (communityInfo?.needsSetup) {
-                            if (communityInfo?.isAdmin) {
-                                // Admin: redirect to settings
-                                router.push(`/meriter/communities/${communityId}/settings`);
-                            } else {
-                                // Non-admin: show toast
-                                const { useToastStore } = require('@/shared/stores/toast.store');
-                                useToastStore.getState().addToast(
-                                    t('communitySetupPending'),
-                                    'info'
-                                );
-                            }
-                        } else {
-                            // Normal navigation
-                            router.push(`/meriter/communities/${communityId}`);
-                        }
-                    }}
-                    communityNeedsSetup={communityInfo?.needsSetup}
-                    communityIsAdmin={communityInfo?.isAdmin}
-                >
-                    <PollCasting
-                        pollData={pollData}
-                        pollId={_id || slug}
-                        userCast={pollUserCast || undefined}
-                        userCastSummary={pollUserCastSummary || undefined}
-                        balance={effectiveBalance}
-                        onCastSuccess={handlePollCastSuccess}
-                        communityId={pollCommunityId}
-                        initiallyExpanded={isDetailPage}
-                    />
-                </CardPublication>
-            </div>
-        );
-    }
-    
-    // Regular publication code below - use comments hook
-    const {
-        comments,
-        showPlus,
-        currentPlus,
-        currentMinus,
-        showMinus,
-        showComments,
-        setShowComments,
-        formCommentProps,
-    } = useComments(
-        false,
-        slug,
-        "",
-        "", // No longer used - path handled internally
-        "", // No longer used - quota handled internally
-        balance,
-        updBalance,
-        plus,
-        minus,
-        activeCommentHook,
-        onlyPublication,
-        spaceSlug
-    );
-
     useEffect(() => {
         if (onlyPublication || isDetailPage) {
             showPlus();
@@ -318,7 +195,7 @@ export const Publication = ({
             .flat(),
     ].join(" ");
 
-    const avatarUrl = authorPhotoUrl || telegramGetAvatarLink(tgAuthorId);
+    const avatarUrl = authorPhotoUrl || meta?.author?.photoUrl;
     
     return (
         <div
@@ -330,7 +207,7 @@ export const Publication = ({
             onClick={(e) => {
                 if (
                     activeSlider === postId &&
-                    myId !== tgAuthorId &&
+                    myId !== authorId &&
                     !(e.target as any)?.className?.match("clickable")
                 ) {
                     setActiveSlider && setActiveSlider(null);
@@ -343,8 +220,9 @@ export const Publication = ({
                 subtitle={dateVerbose(ts)}
                 avatarUrl={avatarUrl}
                 onAvatarUrlNotFound={() => {
-                    const fallbackUrl = telegramGetAvatarLinkUpd(tgAuthorId);
-                    if (fallbackUrl !== avatarUrl) {
+                    // Avatar error handling - use meta.author.photoUrl as fallback
+                    const fallbackUrl = meta?.author?.photoUrl;
+                    if (fallbackUrl && fallbackUrl !== avatarUrl) {
                         // Force re-render with fallback avatar
                         const imgElement = document.querySelector(`img[src="${avatarUrl}"]`) as HTMLImageElement;
                         if (imgElement) imgElement.src = fallbackUrl;
@@ -352,13 +230,14 @@ export const Publication = ({
                 }}
                 description={tagsStr}
                 onClick={!isDetailPage ? () => {
-                    // Navigate to post detail page
-                    if (tgChatId && slug) {
-                        router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
+                    // Navigate to post detail page - use internal community ID
+                    const routingCommunityId = communityInfo?.id || communityId;
+                    if (routingCommunityId && slug) {
+                        router.push(`/meriter/communities/${routingCommunityId}/posts/${slug}`);
                     }
                 } : undefined}
                 onDescriptionClick={
-                    myId == tgAuthorId ? () => setShowDimensionsEditor(true) : undefined
+                    myId == authorId ? () => setShowDimensionsEditor(true) : undefined
                 }
                 bottom={
                     (() => {
@@ -394,11 +273,12 @@ export const Publication = ({
                                     }}
                                     showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)} // Show disabled state for beneficiaries and authors without beneficiary
                                     commentCount={!isDetailPage ? comments?.length || 0 : 0}
-                                    onCommentClick={!isDetailPage ? () => {
-                                        if (tgChatId && slug) {
-                                            router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
-                                        }
-                                    } : undefined}
+                        onCommentClick={!isDetailPage ? () => {
+                            const routingCommunityId = communityInfo?.id || communityId;
+                            if (routingCommunityId && slug) {
+                                router.push(`/meriter/communities/${routingCommunityId}/posts/${slug}`);
+                            }
+                        } : undefined}
                                 />
                             );
                         } else if (showVote || showVoteForAuthor) {
@@ -419,11 +299,12 @@ export const Publication = ({
                                     isBeneficiary={isBeneficiary}
                                     hasBeneficiary={hasBeneficiary}
                                     commentCount={!isDetailPage ? comments?.length || 0 : 0}
-                                    onCommentClick={!isDetailPage ? () => {
-                                        if (tgChatId && slug) {
-                                            router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
-                                        }
-                                    } : undefined}
+                        onCommentClick={!isDetailPage ? () => {
+                            const routingCommunityId = communityInfo?.id || communityId;
+                            if (routingCommunityId && slug) {
+                                router.push(`/meriter/communities/${routingCommunityId}/posts/${slug}`);
+                            }
+                        } : undefined}
                                 />
                             );
                         } else {
@@ -434,15 +315,17 @@ export const Publication = ({
                 }
                 showCommunityAvatar={showCommunityAvatar}
                 communityAvatarUrl={communityInfo?.avatarUrl}
-                communityName={communityInfo?.name || tgChatName}
+                communityName={communityInfo?.name || displayChatName}
                 communityIconUrl={communityInfo?.settings?.iconUrl}
                 onCommunityClick={() => {
-                    if (!communityId) return;
+                    // Use internal community ID for routing if available
+                    const routingCommunityId = communityInfo?.id || communityIdForRouting;
+                    if (!routingCommunityId) return;
                     
                     if (communityInfo?.needsSetup) {
                         if (communityInfo?.isAdmin) {
                             // Admin: redirect to settings
-                            router.push(`/meriter/communities/${communityId}/settings`);
+                            router.push(`/meriter/communities/${routingCommunityId}/settings`);
                         } else {
                             // Non-admin: show toast
                             const { useToastStore } = require('@/shared/stores/toast.store');
@@ -453,7 +336,7 @@ export const Publication = ({
                         }
                     } else {
                         // Normal navigation
-                        router.push(`/meriter/communities/${communityId}`);
+                        router.push(`/meriter/communities/${routingCommunityId}`);
                     }
                 }}
                 communityNeedsSetup={communityInfo?.needsSetup}
@@ -463,14 +346,15 @@ export const Publication = ({
                     {messageText}
                 </WithTelegramEntities>
             </CardPublication>
-            {showDimensionsEditor && dimensionConfig && tgAuthorId == myId && (
+            {showDimensionsEditor && dimensionConfig && authorId == myId && (
                 <FormDimensionsEditor
                     level="publication"
                     dimensions={dimensions}
                     dimensionConfig={dimensionConfig}
                     onSave={(dimensions) => {
-                        // Dead API call - endpoint /api/d/meriter/setdimensions doesn't exist
-                        console.warn('SetDimensions endpoint not implemented', { slug, dimensions });
+                        // Dimensions editing removed - endpoint not implemented
+                        console.warn('Dimensions editing not implemented', { slug, dimensions });
+                        setShowDimensionsEditor(false);
                     }}
                 />
             )}
@@ -494,6 +378,7 @@ export const Publication = ({
                                 wallets={wallets}
                                 updateWalletBalance={updateWalletBalance}
                                 updateAll={updateAll}
+                                communityId={communityId}
                                 isDetailPage={isDetailPage}
                             />
                         ))}

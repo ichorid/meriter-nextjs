@@ -7,7 +7,7 @@ import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
-import { useMyPublications, useWallets, useUserProfile } from '@/hooks/api';
+import { useMyPublications, useWallets } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 const PageHome = () => {
@@ -26,16 +26,6 @@ const PageHome = () => {
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const activeCommentHook = useState<string | null>(null);
-
-    const updateWalletBalance = (currencyOfCommunityTgChatId: string, amountChange: number) => {
-        // This will be handled by React Query mutations
-        // Optimistic updates are handled in the hooks
-    };
-
-    const updateAll = async () => {
-        // Close the active withdraw slider after successful update
-        setActiveWithdrawPost(null);
-    };
     
     useEffect(() => {
         if (document.location.search.match("updates")) {
@@ -87,8 +77,6 @@ const PageHome = () => {
         setActiveWithdrawPost(null);
     }, [currentTab]);
 
-    // Get user profile data
-    const { data: userdata = 0 } = useUserProfile(user?.id || '');
     const tgAuthorId = user?.id;
     const authCheckDone = useRef(false);
 
@@ -129,8 +117,6 @@ const PageHome = () => {
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
             wallets={Array.isArray(wallets) ? wallets : []}
-            updateWalletBalance={updateWalletBalance}
-            updateAll={updateAll}
             myId={user?.id}
         >
             <div className="balance-inpublications">
@@ -170,8 +156,6 @@ const PageHome = () => {
                                             publication={p}
                                             wallets={Array.isArray(wallets) ? wallets : []}
                                             showCommunityAvatar={true}
-                                            updateAll={updateAll}
-                                            updateWalletBalance={updateWalletBalance}
                                         />
                                     ))
                             )}
@@ -213,7 +197,6 @@ const PageHome = () => {
                                 wallets={Array.isArray(wallets) ? wallets : []}
                                 onSuccess={(pollId) => {
                                     setShowPollCreate(false);
-                                    updateAll();
                                 }}
                                 onCancel={() => setShowPollCreate(false)}
                             />

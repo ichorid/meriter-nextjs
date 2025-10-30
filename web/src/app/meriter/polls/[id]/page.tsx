@@ -8,14 +8,13 @@ import { useRouter } from "next/navigation";
 import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
 import {
     telegramGetAvatarLink,
-    telegramGetAvatarLinkUpd,
-} from '@lib/telegram';
+} from '@/lib/utils/telegram';
 import { Publication } from "@features/feed";
 import { useTranslations } from 'next-intl';
 import { ellipsize } from "@shared/lib/text";
 import { useAuth } from '@/contexts/AuthContext';
-import { useCommunity, usePolls, usePoll, useUserProfile, useWallets } from '@/hooks/api';
-import { useWalletBalance, walletKeys } from '@/hooks/api/useWallet';
+import { useCommunity, usePolls, usePoll, useWallets } from '@/hooks/api';
+import { useWalletBalance } from '@/hooks/api/useWallet';
 import { usersApiV1, pollsApiV1 } from '@/lib/api/v1';
 
 const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
@@ -33,32 +32,7 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
     
     const { data: balance = 0 } = useWalletBalance(chatId);
 
-    const { data: userdata = {} } = useUserProfile(user?.id || '');
     const { data: wallets = [] } = useWallets();
-
-    const queryClient = useQueryClient();
-
-    // Wallet balance updates are handled optimistically in vote mutation hooks
-    const updateWalletBalance = () => {
-        // No-op - optimistic updates handled in hooks
-    };
-
-    const updateAll = async () => {
-        // Close the active withdraw slider after successful update
-        setActiveWithdrawPost(null);
-        // Invalidate queries to refresh data
-        await queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });
-        if (chatId) {
-            await queryClient.invalidateQueries({ queryKey: walletKeys.balance(chatId) });
-        }
-    };
-
-    const updBalance = async () => {
-        // Invalidate balance query to refresh
-        if (chatId) {
-            await queryClient.invalidateQueries({ queryKey: walletKeys.balance(chatId) });
-        }
-    };
 
     const chatNameVerb = String(poll?.communityId ?? "");
     const activeCommentHook = useState<string | null>(null);
@@ -90,10 +64,7 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 className="feed"
                 communityId={chatId || ''}
                 balance={balance}
-                updBalance={updBalance}
                 wallets={wallets}
-                updateWalletBalance={updateWalletBalance}
-                updateAll={updateAll}
                 myId={user?.id}
                 activeCommentHook={activeCommentHook}
                 activeSlider={activeSlider}
@@ -131,10 +102,7 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 className="feed"
                 communityId={chatId || ''}
                 balance={balance}
-                updBalance={updBalance}
                 wallets={wallets}
-                updateWalletBalance={updateWalletBalance}
-                updateAll={updateAll}
                 myId={user?.id}
                 activeCommentHook={activeCommentHook}
                 activeSlider={activeSlider}
@@ -161,14 +129,11 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     return (
         <AdaptiveLayout 
-            className="feed"
-            communityId={chatId || ''}
-            balance={balance}
-            updBalance={updBalance}
-            wallets={wallets}
-            updateWalletBalance={updateWalletBalance}
-            updateAll={updateAll}
-            myId={user?.id}
+                className="feed"
+                communityId={chatId || ''}
+                balance={balance}
+                wallets={wallets}
+                myId={user?.id}
             activeCommentHook={activeCommentHook}
             activeSlider={activeSlider}
             setActiveSlider={setActiveSlider}
@@ -187,15 +152,12 @@ const PollPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     key={poll.id}
                     {...poll}
                     balance={balance}
-                    updBalance={updBalance}
                     activeCommentHook={activeCommentHook}
                     activeSlider={activeSlider}
                     setActiveSlider={setActiveSlider}
                     activeWithdrawPost={activeWithdrawPost}
                     setActiveWithdrawPost={setActiveWithdrawPost}
                     wallets={wallets}
-                    updateWalletBalance={updateWalletBalance}
-                    updateAll={updateAll}
                     dimensionConfig={undefined}
                     myId={user?.id}
                     onlyPublication={true}

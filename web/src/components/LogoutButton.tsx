@@ -12,6 +12,7 @@
 
 import React, { useState } from 'react';
 import { useLogout } from '@/hooks/api/useAuth';
+import { clearAuthStorage, redirectToLogin } from '@/lib/utils/auth';
 
 export function LogoutButton() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -21,36 +22,13 @@ export function LogoutButton() {
     setIsLoggingOut(true);
     try {
       await logoutMutation.mutateAsync();
-      
-      // Manually clear all cookies
-      document.cookie.split(";").forEach((c) => {
-        const eqPos = c.indexOf("=");
-        const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim();
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
-      });
-      
-      // Clear localStorage and sessionStorage
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      // Redirect to login page
-      window.location.href = '/meriter/login';
+      clearAuthStorage();
+      redirectToLogin();
     } catch (error: unknown) {
       console.error('Logout failed:', error);
-      
       // Still clear everything and redirect on error
-      document.cookie.split(";").forEach((c) => {
-        const eqPos = c.indexOf("=");
-        const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim();
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
-      });
-      
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      window.location.href = '/meriter/login';
+      clearAuthStorage();
+      redirectToLogin();
     } finally {
       setIsLoggingOut(false);
     }

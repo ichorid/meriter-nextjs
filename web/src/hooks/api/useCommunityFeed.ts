@@ -38,10 +38,10 @@ export function useCommunityFeed(
       });
     },
     getNextPageParam: (lastPage: PaginatedResponse<FeedItem>) => {
-      if (!lastPage.meta?.hasNext) {
+      if (!lastPage.meta?.pagination?.hasNext) {
         return undefined;
       }
-      return (lastPage.meta?.page || 1) + 1;
+      return (lastPage.meta?.pagination?.page || 1) + 1;
     },
     initialPageParam: 1,
     enabled: !!communityId,

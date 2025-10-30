@@ -67,9 +67,9 @@ describe('Comments UI - Vote Amount Display', () => {
       },
       meta: {
         author: {
+          id: 'user-1',
           name: 'Test User',
           username: 'testuser',
-          telegramId: '12345',
           photoUrl: 'https://example.com/avatar.jpg',
         },
       },
@@ -143,9 +143,9 @@ describe('Comments UI - Vote Amount Display', () => {
       },
       meta: {
         author: {
+          id: 'user-1',
           name: 'Test User',
           username: 'testuser',
-          telegramId: '12345',
           photoUrl: 'https://example.com/avatar.jpg',
         },
       },

@@ -16,28 +16,11 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMe, useTelegramAuth, useTelegramWebAppAuth, useLogout } from '@/hooks/api/useAuth';
 import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
+import { clearAuthStorage, redirectToLogin } from '@/lib/utils/auth';
 import type { TelegramUser } from '@/types/telegram';
+import type { User } from '@/types/api-v1';
 import type { Router } from 'next/router';
 import type { ParsedUrlQuery } from 'querystring';
-
-// Local User type definition
-interface User {
-  id: string;
-  telegramId: string;
-  username?: string;
-  firstName?: string;
-  lastName?: string;
-  displayName: string;
-  avatarUrl?: string;
-  profile?: {
-    bio?: string;
-    location?: string;
-    website?: string;
-    isVerified?: boolean;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface AuthContextType {
   user: User | null;
@@ -108,36 +91,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setAuthError(null);
       await logoutMutation.mutateAsync();
       
-      // Manually clear all cookies (JWT is httpOnly so backend handles it, but clear others)
-      document.cookie.split(";").forEach((c) => {
-        const eqPos = c.indexOf("=");
-        const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim();
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
-      });
-      
-      // Clear localStorage and sessionStorage
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      // Redirect to login page
-      window.location.href = '/meriter/login';
+      clearAuthStorage();
+      redirectToLogin();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Logout failed';
       setAuthError(message);
       
       // Still clear everything and redirect on error
-      document.cookie.split(";").forEach((c) => {
-        const eqPos = c.indexOf("=");
-        const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim();
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
-      });
-      
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      window.location.href = '/meriter/login';
+      clearAuthStorage();
+      redirectToLogin();
     } finally {
       setIsAuthenticating(false);
     }

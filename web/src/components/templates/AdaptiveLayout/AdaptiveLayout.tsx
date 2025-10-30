@@ -14,10 +14,7 @@ export interface AdaptiveLayoutProps {
   className?: string;
   communityId?: string;
   balance?: any;
-  updBalance?: () => Promise<void>;
   wallets?: any[];
-  updateWalletBalance?: (communityId: string, change: number) => void;
-  updateAll?: () => Promise<void>;
   myId?: string;
   highlightTransactionId?: string;
   activeCommentHook?: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
@@ -38,10 +35,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   className = '',
   communityId,
   balance,
-  updBalance = async () => {},
   wallets = [],
-  updateWalletBalance = () => {},
-  updateAll = async () => {},
   myId,
   highlightTransactionId,
   activeCommentHook = [null, () => {}],
@@ -293,10 +287,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
                 publicationSlug={selectedPostSlug!}
                 communityId={communityId!}
                 balance={balance}
-                updBalance={updBalance}
                 wallets={wallets}
-                updateWalletBalance={updateWalletBalance}
-                updateAll={updateAll}
                 myId={myId}
                 highlightTransactionId={highlightTransactionId}
                 activeCommentHook={activeCommentHook}
@@ -324,10 +315,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
             publicationSlug={selectedPostSlug}
             communityId={communityId}
             balance={balance}
-            updBalance={updBalance}
             wallets={wallets}
-            updateWalletBalance={updateWalletBalance}
-            updateAll={updateAll}
             myId={myId}
             highlightTransactionId={highlightTransactionId}
             activeCommentHook={activeCommentHook}
@@ -352,15 +340,11 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
       {/* Global Voting Popup */}
       <VotingPopup
         communityId={communityId}
-        updateWalletBalance={updateWalletBalance}
-        updBalance={updBalance}
       />
       
       {/* Global Withdraw Popup */}
       <WithdrawPopup
         communityId={communityId}
-        updateWalletBalance={updateWalletBalance}
-        updateAll={updBalance}
       />
     </div>
   );

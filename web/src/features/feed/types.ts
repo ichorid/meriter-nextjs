@@ -2,9 +2,9 @@
 // Migrated from content/publications/publication.type.ts
 
 export interface PublicationAuthor {
+    id: string;
     name: string;
     photoUrl?: string;
-    telegramId: string;
     username?: string;
 }
 

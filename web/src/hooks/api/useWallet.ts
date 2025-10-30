@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { walletApiV1 } from '@/lib/api/v1';
 import { serializeQueryParams } from '@/lib/utils/queryKeys';
+import type { PaginatedResponse } from '@/types/api-v1';
 
 // Local type definitions
 export interface Wallet {
@@ -9,7 +10,6 @@ export interface Wallet {
   userId: string;
   communityId: string;
   balance: number;
-  currencyOfCommunityTgChatId?: string;
   amount?: number;
 }
 
@@ -30,27 +30,20 @@ interface WithdrawRequest {
   memo?: string;
 }
 
-interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  skip: number;
-  limit: number;
-}
-
 // Query keys
 export const walletKeys = {
   all: ['wallet'] as const,
   wallets: () => [...walletKeys.all, 'wallets'] as const,
   wallet: (communityId?: string) => 
     [...walletKeys.all, 'wallet', communityId] as const,
-  balance: (currencyOfCommunityTgChatId?: string) => 
-    [...walletKeys.all, 'balance', currencyOfCommunityTgChatId] as const,
+  balance: (communityId?: string) => 
+    [...walletKeys.all, 'balance', communityId] as const,
   transactions: () => [...walletKeys.all, 'transactions'] as const,
   transactionsList: (params: any) => [...walletKeys.transactions(), serializeQueryParams(params)] as const,
   myTransactions: (params: any) => [...walletKeys.all, 'myTransactions', serializeQueryParams(params)] as const,
   updates: () => [...walletKeys.all, 'updates'] as const,
-  freeBalance: (currencyOfCommunityTgChatId?: string) => 
-    [...walletKeys.all, 'freeBalance', currencyOfCommunityTgChatId] as const,
+  freeBalance: (communityId?: string) => 
+    [...walletKeys.all, 'freeBalance', communityId] as const,
 } as const;
 
 // Get user wallets
@@ -63,22 +56,22 @@ export function useWallets() {
 }
 
 // Get wallet balance
-export function useWalletBalance(currencyOfCommunityTgChatId?: string) {
+export function useWalletBalance(communityId?: string) {
   return useQuery({
-    queryKey: walletKeys.balance(currencyOfCommunityTgChatId),
-    queryFn: () => walletApiV1.getBalance(currencyOfCommunityTgChatId!),
+    queryKey: walletKeys.balance(communityId),
+    queryFn: () => walletApiV1.getBalance(communityId!),
     staleTime: 1 * 60 * 1000, // 1 minute
-    enabled: !!currencyOfCommunityTgChatId,
+    enabled: !!communityId,
   });
 }
 
 // Get free balance for voting
-export function useFreeBalance(currencyOfCommunityTgChatId?: string) {
+export function useFreeBalance(communityId?: string) {
   return useQuery({
-    queryKey: walletKeys.freeBalance(currencyOfCommunityTgChatId),
-    queryFn: () => walletApiV1.getFreeBalance(currencyOfCommunityTgChatId!),
+    queryKey: walletKeys.freeBalance(communityId),
+    queryFn: () => walletApiV1.getFreeBalance(communityId!),
     staleTime: 30 * 1000, // 30 seconds
-    enabled: !!currencyOfCommunityTgChatId,
+    enabled: !!communityId,
   });
 }
 
@@ -244,9 +237,9 @@ export function useTransfer() {
     mutationFn: (data: {
       amount: number;
       toUserId: string;
-      currencyOfCommunityTgChatId: string;
+      communityId: string;
       description?: string;
-    }) => walletApiV1.transfer(data.currencyOfCommunityTgChatId, data),
+    }) => walletApiV1.transfer(data.communityId, data),
     onSuccess: () => {
       // Invalidate wallet-related queries
       queryClient.invalidateQueries({ queryKey: walletKeys.wallets() });

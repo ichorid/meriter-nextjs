@@ -8,7 +8,7 @@ import { PublicationCardComponent as PublicationCard } from "@/components/organi
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
 import { useTranslations } from 'next-intl';
-import { useWallets, useUserProfile, useCommunity } from '@/hooks/api';
+import { useWallets, useCommunity } from '@/hooks/api';
 import { useCommunityFeed } from '@/hooks/api/useCommunityFeed';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
@@ -173,8 +173,6 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     const { user, isLoading: userLoading, isAuthenticated } = useAuth();
     const { data: wallets = [], isLoading: walletsLoading } = useWallets();
-    // Only fetch user profile when user ID is available (prevents empty string query)
-    const { data: userdata = 0 } = useUserProfile(user?.id || '');
     
     // Get wallet balance using standardized hook
     const { data: balance = 0 } = useWalletBalance(chatId);
@@ -225,16 +223,6 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const activeCommentHook = useState<string | null>(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
-    
-    // Wallet balance updates are handled optimistically in vote mutation hooks
-    const updateWalletBalance = () => {
-        // No-op - optimistic updates handled in hooks
-    };
-    
-    const updateAll = async () => {
-        // Close the active withdraw slider after successful update
-        setActiveWithdrawPost(null);
-    };
 
     // Early return AFTER all hooks have been called
     if (!isAuthenticated) return null;
@@ -274,12 +262,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             className="feed"
             communityId={chatId}
             balance={balance}
-            updBalance={async () => {
-                await queryClient.invalidateQueries({ queryKey: ['wallet', 'balance', chatId] });
-            }}
             wallets={Array.isArray(wallets) ? wallets : []}
-            updateWalletBalance={updateWalletBalance}
-            updateAll={updateAll}
             myId={user?.id}
             activeCommentHook={activeCommentHook}
             activeSlider={activeSlider}
@@ -362,8 +345,6 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                     <PublicationCard
                                         publication={p}
                                         wallets={Array.isArray(wallets) ? wallets : []}
-                                        updateWalletBalance={updateWalletBalance}
-                                        updateAll={updateAll}
                                         showCommunityAvatar={false}
                                         isSelected={isSelected}
                                     />

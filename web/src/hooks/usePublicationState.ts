@@ -1,6 +1,5 @@
 // Publication state management logic
 import { useState, useEffect } from 'react';
-import { telegramGetAvatarLink, telegramGetAvatarLinkUpd } from '@shared/lib/telegram';
 import { useCommunity } from '@/hooks/api';
 import type { Dispatch, SetStateAction } from 'react';
 import { useTranslations } from 'next-intl';
@@ -10,18 +9,16 @@ interface Wallet {
   userId: string;
   communityId: string;
   balance: number;
-  currencyOfCommunityTgChatId?: string;
   [key: string]: unknown;
 }
 
 export interface UsePublicationStateProps {
-  tgAuthorId?: string;
   authorPhotoUrl?: string;
-  tgAuthorName?: string;
+  authorName?: string;
   beneficiaryId?: string;
   beneficiaryName?: string;
   myId?: string;
-  tgChatId?: string;
+  communityId?: string;
   showCommunityAvatar?: boolean;
   wallets?: Wallet[];
   balance?: number;
@@ -35,16 +32,22 @@ export interface UsePublicationStateProps {
   dimensions?: Record<string, unknown>;
   keyword?: string;
   entities?: Record<string, unknown>;
+  meta?: {
+    author?: {
+      id: string;
+      name: string;
+      photoUrl?: string;
+    };
+  };
 }
 
 export function usePublicationState({
-  tgAuthorId,
   authorPhotoUrl,
-  tgAuthorName,
+  authorName,
   beneficiaryId,
   beneficiaryName,
   myId,
-  tgChatId,
+  communityId,
   showCommunityAvatar,
   wallets,
   balance,
@@ -58,6 +61,7 @@ export function usePublicationState({
   dimensions,
   keyword,
   entities,
+  meta,
 }: UsePublicationStateProps) {
   const t = useTranslations('feed');
   
@@ -68,43 +72,35 @@ export function usePublicationState({
   const [pollUserCastSummary, setPollUserCastSummary] = useState<string | null>(null);
   const [pollData, setPollData] = useState<unknown>(type === 'poll' ? content : null);
   
+  // Get author ID from meta or props
+  const authorId = meta?.author?.id;
+  
   // Check if current user is the author
-  const isAuthor = myId === tgAuthorId;
+  const isAuthor = myId === authorId;
   
   // Check if there's a beneficiary and it's different from the author
-  const hasBeneficiary = beneficiaryId && beneficiaryId !== tgAuthorId;
+  const hasBeneficiary = beneficiaryId && beneficiaryId !== authorId;
   
   // Determine the title based on beneficiary
   const displayTitle = hasBeneficiary 
-    ? t('forBeneficiary', { author: tgAuthorName, beneficiary: beneficiaryName })
-    : tgAuthorName;
+    ? t('forBeneficiary', { author: authorName || meta?.author?.name || 'Unknown', beneficiary: beneficiaryName })
+    : (authorName || meta?.author?.name || 'Unknown');
   
   // Get community info
-  const communityId = tgChatId || (type === 'poll' ? (content as any)?.communityId : null);
   const { data: communityInfo } = useCommunity(communityId || '');
   
   // Calculate poll balance
   const pollCommunityId = type === 'poll' ? (content as any)?.communityId : null;
-  let effectiveBalance = balance || 0;
+  let calculatedBalance = balance || 0;
   if (isAuthor && Array.isArray(wallets) && pollCommunityId) {
     const pollWalletBalance = wallets.find((w: Wallet) => w.communityId === pollCommunityId)?.balance || 0;
-    effectiveBalance = pollWalletBalance;
+    calculatedBalance = pollWalletBalance;
   } else {
-    effectiveBalance = showCommunityAvatar ? 0 : (balance || 0);
+    calculatedBalance = showCommunityAvatar ? 0 : (balance || 0);
   }
   
   // Generate avatar URL
-  const avatarUrl = authorPhotoUrl || (tgAuthorId ? telegramGetAvatarLink(tgAuthorId) : undefined);
-  
-  // Handle avatar error
-  const handleAvatarError = () => {
-    const fallbackUrl = tgAuthorId ? telegramGetAvatarLinkUpd(tgAuthorId) : undefined;
-    if (fallbackUrl !== avatarUrl) {
-      // Force re-render with fallback avatar
-      const imgElement = document.querySelector(`img[src="${avatarUrl}"]`) as HTMLImageElement;
-      if (imgElement && fallbackUrl) imgElement.src = fallbackUrl;
-    }
-  };
+  const avatarUrl = authorPhotoUrl || meta?.author?.photoUrl;
   
   // Generate tags string
   const tagsStr = [
@@ -123,7 +119,7 @@ export function usePublicationState({
   
   // Handle dimensions editor
   const handleDimensionsClick = () => {
-    if (myId == tgAuthorId) {
+    if (myId == authorId) {
       setShowDimensionsEditor(true);
     }
   };
@@ -146,12 +142,11 @@ export function usePublicationState({
     hasBeneficiary,
     displayTitle,
     communityInfo,
-    effectiveBalance,
+    calculatedBalance,
     avatarUrl,
     tagsStr,
     
     // Actions
-    handleAvatarError,
     handlePollCastSuccess,
     handleDimensionsClick,
   };

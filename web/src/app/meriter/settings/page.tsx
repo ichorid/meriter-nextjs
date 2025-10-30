@@ -63,8 +63,6 @@ const SettingsPage = () => {
         return null;
     }
 
-    const tgAuthorId = user?.telegramId;
-
     return (
         <AdaptiveLayout 
             className="settings"
@@ -74,8 +72,6 @@ const SettingsPage = () => {
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
             wallets={Array.isArray(wallets) ? wallets : []}
-            updateWalletBalance={() => {}}
-            updateAll={async () => {}}
             myId={user?.id}
         >
             <div className="mb-6">

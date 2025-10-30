@@ -14,6 +14,22 @@ interface Publication {
     score?: number;
   };
   meta?: {
+    author?: {
+      id: string;
+      name: string;
+      photoUrl?: string;
+      username?: string;
+    };
+    beneficiary?: {
+      id: string;
+      name: string;
+      photoUrl?: string;
+      username?: string;
+    };
+    origin?: {
+      telegramChatName?: string;
+    };
+    hashtagName?: string;
     commentTgEntities?: any[];
     comment?: string;
   };

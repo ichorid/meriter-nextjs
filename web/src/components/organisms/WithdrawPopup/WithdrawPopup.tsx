@@ -12,14 +12,10 @@ import { useVoteOnPublicationWithComment, useVoteOnComment } from '@/hooks/api/u
 
 interface WithdrawPopupProps {
   communityId?: string;
-  updateWalletBalance?: (communityId: string, change: number) => void;
-  updateAll?: () => Promise<void>;
 }
 
 export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
   communityId,
-  updateWalletBalance,
-  updateAll = async () => {},
 }) => {
   const t = useTranslations('shared');
   const { user } = useAuth();
@@ -135,11 +131,7 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
 
       // Close popup and reset form
       handleClose();
-      
-      // Refresh data
-      if (updateAll) {
-        await updateAll();
-      }
+      // Mutations handle query invalidation automatically
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t('errorSubmitting') || 'Failed to submit';
       updateWithdrawFormData({ error: message });

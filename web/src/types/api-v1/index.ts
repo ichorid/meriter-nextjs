@@ -2,12 +2,12 @@
 // User types
 export interface User {
   id: string;
-  telegramId: string;
   username?: string;
   firstName?: string;
   lastName?: string;
   displayName: string;
   avatarUrl?: string;
+  communityTags?: string[];
   profile?: {
     bio?: string;
     location?: string;
@@ -51,10 +51,11 @@ export interface Publication {
   authorId: string;
   beneficiaryId?: string;
   communityId: string;
-  type: 'text' | 'image' | 'video';
+  type: 'text' | 'image' | 'video' | 'poll';
   imageUrl?: string;
   videoUrl?: string;
   hashtags?: string[];
+  slug?: string;
   createdAt: string;
   updatedAt: string;
   metrics?: {
@@ -62,6 +63,24 @@ export interface Publication {
     downvotes: number;
     score: number;
     commentCount: number;
+  };
+  meta?: {
+    author?: {
+      id: string;
+      name: string;
+      photoUrl?: string;
+      username?: string;
+    };
+    beneficiary?: {
+      id: string;
+      name: string;
+      photoUrl?: string;
+      username?: string;
+    };
+    origin?: {
+      telegramChatName?: string;
+    };
+    hashtagName?: string;
   };
 }
 
@@ -105,6 +124,7 @@ export interface Poll {
   options: PollOption[];
   communityId: string;
   authorId: string;
+  expiresAt?: string; // Optional expiration date
   createdAt: string;
   updatedAt: string;
   metrics?: {
@@ -140,6 +160,7 @@ export interface Wallet {
   balance: number;
   createdAt: string;
   updatedAt: string;
+  [key: string]: unknown;
 }
 
 // Transaction types
@@ -219,14 +240,6 @@ export interface ListQueryParams {
   order?: string;
 }
 
-// Pagination types
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  skip: number;
-  limit: number;
-}
-
 // Additional frontend-specific types
 export interface ApiError {
   code: string;
@@ -235,6 +248,7 @@ export interface ApiError {
   timestamp: string;
 }
 
+// Pagination types - using meta-based structure
 export interface PaginatedResponse<T> {
   data: T[];
   meta: {

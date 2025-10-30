@@ -3,20 +3,20 @@ import { useRouter } from 'next/navigation';
 
 export interface UsePublicationNavigationProps {
   slug: string;
-  tgChatId?: string;
+  communityId: string; // Internal community ID (required)
   isDetailPage?: boolean;
   myId?: string;
-  tgAuthorId?: string;
+  authorId: string; // Internal author ID (required)
   activeSlider?: string | null;
   setActiveSlider?: (slider: string | null) => void;
 }
 
 export function usePublicationNavigation({
   slug,
-  tgChatId,
+  communityId,
   isDetailPage,
   myId,
-  tgAuthorId,
+  authorId,
   activeSlider,
   setActiveSlider,
 }: UsePublicationNavigationProps) {
@@ -27,15 +27,16 @@ export function usePublicationNavigation({
   
   // Navigate to post detail page
   const navigateToDetail = () => {
-    if (!isDetailPage && tgChatId && slug) {
-      router.push(`/meriter/communities/${tgChatId}/posts/${slug}`);
+    if (!isDetailPage && communityId && slug) {
+      router.push(`/meriter/communities/${communityId}/posts/${slug}`);
     }
   };
   
   // Navigate to community page
-  const navigateToCommunity = (communityId: string) => {
-    if (communityId) {
-      router.push(`/meriter/communities/${communityId}`);
+  const navigateToCommunity = (id?: string) => {
+    const targetId = id || communityId;
+    if (targetId) {
+      router.push(`/meriter/communities/${targetId}`);
     }
   };
   
@@ -43,7 +44,7 @@ export function usePublicationNavigation({
   const handleContainerClick = (e: React.MouseEvent) => {
     if (
       activeSlider === postId &&
-      myId !== tgAuthorId &&
+      myId !== authorId &&
       !(e.target as any)?.className?.match("clickable")
     ) {
       setActiveSlider && setActiveSlider(null);

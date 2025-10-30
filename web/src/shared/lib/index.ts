@@ -9,6 +9,6 @@ export * from './s3';
 export * from './security';
 // swrMerge exports swr which conflicts, so skip it for now
 // export * from './swrMerge';
-export * from './telegram';
+// telegram utilities moved to @/lib/utils/telegram
 export * from './text';
 

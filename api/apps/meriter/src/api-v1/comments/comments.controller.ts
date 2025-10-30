@@ -77,24 +77,23 @@ export class CommentsController {
         if (vote.targetType === 'publication') {
           const publication = await this.publicationService.getPublication(vote.targetId);
           if (publication) {
-            // Get effective beneficiary (beneficiaryId if set, otherwise authorId)
-            const effectiveBeneficiaryId = publication.getEffectiveBeneficiary().getValue();
+            // Get beneficiary (beneficiaryId if set, otherwise authorId)
+            const beneficiaryId = publication.getBeneficiaryId?.getValue() || publication.getAuthorId.getValue();
             
             // Fetch beneficiary user
-            if (effectiveBeneficiaryId && effectiveBeneficiaryId !== authorId) {
+            if (beneficiaryId && beneficiaryId !== authorId) {
               try {
-                const beneficiaryUser = await this.userService.getUser(effectiveBeneficiaryId);
+                const beneficiaryUser = await this.userService.getUser(beneficiaryId);
                 if (beneficiaryUser) {
                   beneficiary = {
                     id: beneficiaryUser.id,
                     name: beneficiaryUser.displayName || `${beneficiaryUser.firstName || ''} ${beneficiaryUser.lastName || ''}`.trim() || beneficiaryUser.username || 'Unknown',
                     username: beneficiaryUser.username,
-                    telegramId: beneficiaryUser.telegramId,
                     photoUrl: beneficiaryUser.avatarUrl,
                   };
                 }
               } catch (error) {
-                this.logger.warn(`Failed to fetch beneficiary ${effectiveBeneficiaryId}:`, error.message);
+                this.logger.warn(`Failed to fetch beneficiary ${beneficiaryId}:`, error.message);
               }
             }
 
@@ -156,13 +155,11 @@ export class CommentsController {
         id: author.id,
         name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
         username: author.username,
-        telegramId: author.telegramId,
         photoUrl: author.avatarUrl,
       } : {
         id: undefined,
         name: 'Unknown',
         username: undefined,
-        telegramId: undefined,
         photoUrl: undefined,
       },
       voteTransaction: voteTransactionData,
@@ -222,14 +219,14 @@ export class CommentsController {
       updatedAt: snapshot.updatedAt.toISOString(),
       meta: {
         author: author ? {
+          id: author.id,
           name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
           username: author.username,
-          telegramId: author.telegramId,
           photoUrl: author.avatarUrl,
         } : {
+          id: undefined,
           name: 'Unknown',
           username: undefined,
-          telegramId: undefined,
           photoUrl: undefined,
         },
       },
@@ -271,14 +268,14 @@ export class CommentsController {
       updatedAt: snapshot.updatedAt.toISOString(),
       meta: {
         author: author ? {
+          id: author.id,
           name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
           username: author.username,
-          telegramId: author.telegramId,
           photoUrl: author.avatarUrl,
         } : {
+          id: undefined,
           name: 'Unknown',
           username: undefined,
-          telegramId: undefined,
           photoUrl: undefined,
         },
       },
@@ -409,14 +406,14 @@ export class CommentsController {
         updatedAt: snapshot.updatedAt.toISOString(),
         meta: {
           author: author ? {
+            id: author.id,
             name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
             username: author.username,
-            telegramId: author.telegramId,
             photoUrl: author.avatarUrl,
           } : {
+            id: undefined,
             name: 'Unknown',
             username: undefined,
-            telegramId: undefined,
             photoUrl: undefined,
           },
         },
@@ -535,14 +532,14 @@ export class CommentsController {
         updatedAt: snapshot.updatedAt.toISOString(),
         meta: {
           author: author ? {
+            id: author.id,
             name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
             username: author.username,
-            telegramId: author.telegramId,
             photoUrl: author.avatarUrl,
           } : {
+            id: undefined,
             name: 'Unknown',
             username: undefined,
-            telegramId: undefined,
             photoUrl: undefined,
           },
         },

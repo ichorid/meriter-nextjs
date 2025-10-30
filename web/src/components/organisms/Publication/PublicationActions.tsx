@@ -22,12 +22,22 @@ interface Publication {
     commentCount?: number;
   };
   meta?: {
-    beneficiary?: {
-      telegramId?: string;
-      username?: string;
-      name?: string;
+    author?: {
+      id: string;
+      name: string;
       photoUrl?: string;
+      username?: string;
     };
+    beneficiary?: {
+      id: string;
+      name: string;
+      photoUrl?: string;
+      username?: string;
+    };
+    origin?: {
+      telegramChatName?: string;
+    };
+    hashtagName?: string;
   };
   [key: string]: unknown;
 }
@@ -73,10 +83,10 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
 }) => {
   const { user } = useAuth();
   const t = useTranslations('feed');
-  const myId = user?.id || user?.telegramId;
+  const myId = user?.id;
   
   // Extract beneficiary information
-  const beneficiaryId = publication.beneficiaryId || publication.meta?.beneficiary?.telegramId;
+  const beneficiaryId = publication.beneficiaryId || publication.meta?.beneficiary?.id;
   const authorId = publication.authorId;
   
   // Calculate beneficiary status

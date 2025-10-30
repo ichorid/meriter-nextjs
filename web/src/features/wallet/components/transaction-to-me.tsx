@@ -1,7 +1,7 @@
 'use client';
 
 import { CardCommentVote } from "@shared/components/card-comment-vote";
-import { telegramGetAvatarLink } from "@lib/telegram";
+import { telegramGetAvatarLink } from "@/lib/utils/telegram";
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { useCommunity } from '@/hooks/api';

@@ -3,12 +3,9 @@
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useWallets } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
 import TgEmbed from '@shared/components/tgembed';
 import { useState, use } from "react";
 import { etv } from '@shared/lib/input-utils';
-import { Spinner } from '@shared/components/misc';
 import { useTranslations } from 'next-intl';
 
 interface iCommunityProps {
@@ -35,16 +32,10 @@ const PublicationMy = ({
 
     const [amount, setAmount] = useState(0);
     const [directionAdd, setDirectionAdd] = useState<boolean | undefined>(undefined);
-    const [loading, setLoading] = useState(false);
     const disabled = !amount;
-    const submit = () => {
-        setLoading(true);
-        // Dead API call - endpoint /api/d/meriter/withdraw doesn't exist
-        // This feature is currently non-functional
-        console.warn('Withdraw endpoint not implemented');
-        setLoading(false);
-        setAmount(0);
-    };
+    
+    // Note: Submit functionality removed - endpoint /api/d/meriter/withdraw doesn't exist
+    // This feature is currently non-functional
 
     return (
         <div className="publication-my">
@@ -81,16 +72,9 @@ const PublicationMy = ({
                                 min={0}
                                 max={sum}
                             />
-                            {loading ? (
-                                <Spinner />
-                            ) : (
-                                <button
-                                    disabled={disabled}
-                                    onClick={() => !disabled && submit()}
-                                >
-                                    {t('commbalance.ok')}
-                                </button>
-                            )}
+                            <button disabled>
+                                {t('commbalance.ok')}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -120,11 +104,9 @@ const PageCommunityBalance = ({ searchParams }: { searchParams: Promise<{ chatId
     
     if (!chatId) return null;
 
-    // Dead API calls - these endpoints don't exist: /api/d/meriter/*
-    // This page is currently non-functional
+    // Note: This page is non-functional - endpoints /api/d/meriter/* don't exist
     const [myPublications] = useState([]);
     const [rate] = useState(0);
-    const updRate = () => {}; // Placeholder for missing function
 
     return (
         <AdaptiveLayout 
@@ -136,8 +118,6 @@ const PageCommunityBalance = ({ searchParams }: { searchParams: Promise<{ chatId
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
             wallets={Array.isArray(wallets) ? wallets : []}
-            updateWalletBalance={() => {}}
-            updateAll={async () => {}}
             myId={user?.id}
         >
             <div className="balance-available">
@@ -165,7 +145,7 @@ const PageCommunityBalance = ({ searchParams }: { searchParams: Promise<{ chatId
                     <div className="balance-inpublications-filters"></div>
                     <div className="balance-inpublications-publications">
                         {myPublications.map((p: any, i: number) => (
-                            <PublicationMy key={i} {...p} updRate={updRate} />
+                            <PublicationMy key={i} {...p} />
                         ))}
                     </div>
                 </div>

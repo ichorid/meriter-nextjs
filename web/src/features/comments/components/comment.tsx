@@ -2,13 +2,11 @@
 
 import { useComments } from "../hooks/use-comments";
 import { CardCommentVote } from "@shared/components/card-comment-vote";
-import { telegramGetAvatarLink, telegramGetAvatarLinkUpd } from "@lib/telegram";
 import { BarVoteUnified } from "@shared/components/bar-vote-unified";
 import { BarWithdraw } from "@shared/components/bar-withdraw";
 import { useUIStore } from "@/stores/ui.store";
 import { classList } from "@lib/classList";
 import { useState, useEffect } from "react";
-import { GLOBAL_FEED_TG_CHAT_ID } from "@config/meriter";
 import { useTranslations } from 'next-intl';
 import { useCommunity } from '@/hooks/api';
 import { CommentDetailsPopup } from "@shared/components/comment-details-popup";
@@ -21,15 +19,36 @@ interface CommentProps {
     updBalance?: any;
     plus?: number;
     minus?: number;
-    fromUserTgName?: string;
     ts?: string;
     comment?: string;
     directionPlus?: boolean;
     reason?: string;
-    toUserTgId?: string;
-    toUserTgName?: string;
-    fromUserTgId?: string;
     amountTotal?: number;
+    communityId?: string; // Internal community ID (required)
+    // V1 API format
+    meta?: {
+        author?: {
+            id: string;
+            name: string;
+            username?: string;
+            photoUrl?: string;
+        };
+        beneficiary?: {
+            id: string;
+            name: string;
+            username?: string;
+            photoUrl?: string;
+        };
+    };
+    authorId?: string;
+    metrics?: {
+        upvotes: number;
+        downvotes: number;
+        score: number;
+    };
+    content?: string;
+    createdAt?: string;
+    sum?: number;
     [key: string]: any;
 }
 
@@ -40,14 +59,10 @@ export const Comment: React.FC<CommentProps> = ({
     updBalance,
     plus,
     minus,
-    fromUserTgName,
     ts,
     comment,
     directionPlus,
     reason,
-    toUserTgId,
-    toUserTgName,
-    fromUserTgId,
     amountTotal,
     inPublicationSlug,
     activeCommentHook,
@@ -63,12 +78,10 @@ export const Comment: React.FC<CommentProps> = ({
     sum,
     currency,
     inMerits,
-    currencyOfCommunityTgChatId,
-    fromTgChatId,
-    tgChatId,
+    communityId,
     showCommunityAvatar,
     isDetailPage,
-    // Support v1 API format with meta.author
+    // V1 API format
     meta,
     authorId,
     metrics,
@@ -78,26 +91,25 @@ export const Comment: React.FC<CommentProps> = ({
 }) => {
     const t = useTranslations('comments');
     
-    // Support both legacy format and v1 API format with meta.author
-    // API now provides enriched data including author metadata and vote transaction fields
-    const authorMeta = meta?.author || {};
-    const effectiveFromUserTgName = fromUserTgName || authorMeta.name || 'Unknown';
-    const effectiveFromUserTgId = fromUserTgId || authorId || authorMeta.telegramId;
-    const effectiveComment = comment || content || '';
-    const effectiveTs = ts || createdAt || '';
+    // Use API data directly - no fallbacks
+    const authorMeta = meta?.author;
+    const authorName = authorMeta?.name || 'Unknown';
+    const commentAuthorId = authorId || authorMeta?.id || '';
+    const commentText = content || comment || '';
+    const commentTimestamp = createdAt || ts || '';
     
     // API provides vote transaction fields (plus, minus, amountTotal) when comment represents a vote
-    // Prefer these over comment metrics for vote transaction comments
     const hasVoteTransactionData = plus !== undefined || minus !== undefined || amountTotal !== undefined;
-    const effectivePlus = hasVoteTransactionData ? (plus ?? 0) : (metrics?.upvotes ?? plus ?? 0);
-    const effectiveMinus = hasVoteTransactionData ? (minus ?? 0) : (metrics?.downvotes ?? minus ?? 0);
-    const baseSum = sum ?? metrics?.score ?? 0;
+    const displayPlus = hasVoteTransactionData ? (plus ?? 0) : (metrics?.upvotes ?? 0);
+    const displayMinus = hasVoteTransactionData ? (minus ?? 0) : (metrics?.downvotes ?? 0);
+    const displaySum = sum ?? metrics?.score ?? 0;
     
     // Check if current user is the author
-    const isAuthor = myId === effectiveFromUserTgId;
+    const isAuthor = myId === commentAuthorId;
     
     // Check if there's a beneficiary and it's different from the author
-    const hasBeneficiary = toUserTgId && toUserTgId !== effectiveFromUserTgId;
+    const beneficiaryMeta = meta?.beneficiary;
+    const hasBeneficiary = beneficiaryMeta && beneficiaryMeta.id !== commentAuthorId;
     
     // Withdrawal state management (for author's own comments)
     // IMPORTANT: For withdrawal, we only use metrics.score (votes cast ON the comment)
@@ -113,23 +125,18 @@ export const Comment: React.FC<CommentProps> = ({
         setOptimisticSum(currentSum);
     }, [metrics?.score]);
     
-    // Use effectiveSum which handles both vote transaction data and legacy format
-    // This is used throughout the component for wallet calculations and display
-    const effectiveSum = optimisticSum ?? withdrawableBalance;
+    // Fetch community info once (consolidated from two calls)
+    const { data: communityInfo } = useCommunity(communityId || '');
     
-    const curr = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
     const currentBalance =
         (Array.isArray(wallets) &&
-            wallets.find((w) => w.communityId == curr)
-                ?.amount) ||
+            wallets.find((w) => w.communityId === communityId)
+                ?.balance) ||
         0;
     const [showselector, setShowselector] = useState(false);
     
     // State for comment details popup
     const [showDetailsPopup, setShowDetailsPopup] = useState(false);
-    
-    // Fetch community info to get currency icon using v1 API
-    const { data: currencyCommunityInfo } = useCommunity(curr || '');
     
     // Rate conversion no longer needed with v1 API - currencies are normalized
     const rate = 1;
@@ -137,24 +144,20 @@ export const Comment: React.FC<CommentProps> = ({
     // API provides directionPlus for vote transaction comments
     // Calculate from vote data if available, otherwise infer from metrics
     const calculatedDirectionPlus = directionPlus ?? 
-      (amountTotal !== undefined ? (amountTotal > 0 || effectivePlus > 0) : 
-       ((effectivePlus > effectiveMinus) || (baseSum > 0)));
+      (amountTotal !== undefined ? (amountTotal > 0 || displayPlus > 0) : 
+       ((displayPlus > displayMinus) || (displaySum > 0)));
     
     // For vote transaction comments, use API-provided plus/minus directly (they reflect the vote amount)
     // For regular comments, use the metrics (votes on the comment itself)
-    const displayUpvotes = hasVoteTransactionData 
-      ? effectivePlus  // API provides plus which is the upvote amount
-      : effectivePlus; // For regular comments, use metrics.upvotes
-    const displayDownvotes = hasVoteTransactionData
-      ? effectiveMinus  // API provides minus which is the downvote amount  
-      : effectiveMinus; // For regular comments, use metrics.downvotes
+    const displayUpvotes = displayPlus;
+    const displayDownvotes = displayMinus;
     
     // Format the rate with currency icon
     const formatRate = () => {
         // Only show vote amount if we have vote transaction data
         if (!hasVoteTransactionData || amountTotal === undefined) {
             // For regular comments without vote transaction, show score from metrics
-            const score = baseSum;
+            const score = displaySum;
             if (score === 0) return "0";
             const sign = score > 0 ? "+" : "-";
             return `${sign} ${Math.abs(score)}`;
@@ -166,8 +169,9 @@ export const Comment: React.FC<CommentProps> = ({
     
     // Determine vote type based on payment source
     const determineVoteType = () => {
-        const amountFree = Math.abs(amountTotal || 0) - Math.abs(effectiveSum || 0); // Calculate free amount
-        const amountWallet = Math.abs(effectiveSum || 0); // Personal wallet amount
+        const withdrawableAmount = optimisticSum ?? withdrawableBalance;
+        const amountFree = Math.abs(amountTotal || 0) - Math.abs(withdrawableAmount || 0); // Calculate free amount
+        const amountWallet = Math.abs(withdrawableAmount || 0); // Personal wallet amount
         
         const isQuota = amountFree > 0;
         const isWallet = amountWallet > 0;
@@ -183,14 +187,13 @@ export const Comment: React.FC<CommentProps> = ({
     
     const voteType = determineVoteType();
     
-    // Get currency icon for separate rendering
-    const currencyIcon = currencyCommunityInfo?.settings?.iconUrl;
+    // Get currency icon from community info
+    const currencyIcon = communityInfo?.settings?.iconUrl;
     
     // Create a unique identifier for this comment
     const postId = _id;
     
     // Calculate withdrawal amounts based on withdrawable balance (metrics.score only)
-    // NOT effectiveSum which might include vote transaction data
     const maxWithdrawAmount = isAuthor
         ? Math.floor(10 * withdrawableBalance) / 10
         : 0;
@@ -199,27 +202,19 @@ export const Comment: React.FC<CommentProps> = ({
         ? Math.floor(10 * currentBalance) / 10
         : 0;
     
-    // Fetch community info for displaying community avatar using v1 API
-    const communityId = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
-    const { data: communityInfo } = useCommunity(communityId || '');
-    
-    // Get the correct community ID for wallet lookup
-    const commentCommunityId = currencyOfCommunityTgChatId || fromTgChatId || tgChatId;
-    
     // Fetch comment details when popup is open (for popup display)
     const { data: commentDetails } = useCommentDetails(showDetailsPopup ? _id : '');
     
-    // Determine recipient from comment details if available, otherwise fallback to legacy props
+    // Determine recipient from comment details if available
     let recipientName: string | undefined;
     let recipientAvatar: string | undefined;
     
     if (commentDetails?.beneficiary) {
         recipientName = commentDetails.beneficiary.name;
         recipientAvatar = commentDetails.beneficiary.photoUrl;
-    } else if (hasVoteTransactionData && toUserTgName && toUserTgName !== effectiveFromUserTgName) {
-        // Legacy fallback: only use toUserTgName if it's different from the author
-        recipientName = toUserTgName;
-        recipientAvatar = toUserTgId ? telegramGetAvatarLink(toUserTgId) : undefined;
+    } else if (beneficiaryMeta) {
+        recipientName = beneficiaryMeta.name;
+        recipientAvatar = beneficiaryMeta.photoUrl;
     }
     
     const {
@@ -235,21 +230,18 @@ export const Comment: React.FC<CommentProps> = ({
         true,
         inPublicationSlug,
         forTransactionId || _id,
-        "", // No longer used - path handled internally
-        "", // No longer used - quota handled internally
         balance,
         updBalance,
-        effectivePlus,
-        effectiveMinus,
+        displayPlus,
+        displayMinus,
         activeCommentHook,
         false, // onlyPublication
-        commentCommunityId, // communityId
+        communityId, // communityId
         wallets // wallets array for balance lookup
     );
     const commentUnderReply = activeCommentHook[0] == (forTransactionId || _id);
     const nobodyUnderReply = activeCommentHook[0] === null;
-    const userTgId = reason === "withdrawalFromPublication" ? toUserTgId : effectiveFromUserTgId;
-    const avatarUrl = authorMeta.photoUrl || telegramGetAvatarLink(userTgId || '');
+    const avatarUrl = authorMeta?.photoUrl || '';
     
     return (
         <div
@@ -270,17 +262,17 @@ export const Comment: React.FC<CommentProps> = ({
             }}
         >
             <CardCommentVote
-                title={effectiveFromUserTgName}
-                subtitle={new Date(effectiveTs || '').toLocaleString()}
-                content={effectiveComment}
+                title={authorName}
+                subtitle={new Date(commentTimestamp || '').toLocaleString()}
+                content={commentText}
                 rate={formatRate()}
                 currencyIcon={currencyIcon}
                 avatarUrl={avatarUrl}
                 voteType={voteType}
                 amountFree={hasVoteTransactionData && amountTotal !== undefined 
-                    ? Math.abs(amountTotal) - Math.abs(effectiveSum || 0) 
+                    ? Math.abs(amountTotal) - Math.abs((optimisticSum ?? withdrawableBalance) || 0) 
                     : 0}
-                amountWallet={Math.abs(effectiveSum || 0)}
+                amountWallet={Math.abs((optimisticSum ?? withdrawableBalance) || 0)}
                 beneficiaryName={recipientName}
                 beneficiaryAvatarUrl={recipientAvatar}
                 upvotes={displayUpvotes}
@@ -288,13 +280,14 @@ export const Comment: React.FC<CommentProps> = ({
                 onDetailsClick={() => setShowDetailsPopup(true)}
                 onClick={!isDetailPage ? () => {
                     // Navigate to the post page only when not on detail page
-                    if (inPublicationSlug && currencyOfCommunityTgChatId) {
-                        window.location.href = `/meriter/communities/${currencyOfCommunityTgChatId}/posts/${inPublicationSlug}`;
+                    if (inPublicationSlug && communityId) {
+                        window.location.href = `/meriter/communities/${communityId}/posts/${inPublicationSlug}`;
                     }
                 } : undefined}
                 onAvatarUrlNotFound={() => {
-                    const fallbackUrl = telegramGetAvatarLinkUpd(userTgId || '');
-                    if (fallbackUrl !== avatarUrl) {
+                    // Avatar error handling - use meta.author.photoUrl as fallback
+                    const fallbackUrl = authorMeta?.photoUrl;
+                    if (fallbackUrl && fallbackUrl !== avatarUrl) {
                         // Force re-render with fallback avatar
                         const imgElement = document.querySelector(`img[src="${avatarUrl}"]`) as HTMLImageElement;
                         if (imgElement) imgElement.src = fallbackUrl;
@@ -383,12 +376,12 @@ export const Comment: React.FC<CommentProps> = ({
                                 activeSlider={activeSlider}
                                 setActiveSlider={setActiveSlider}
                                 highlightTransactionId={highlightTransactionId}
-                                wallets={wallets}
-                                updateWalletBalance={updateWalletBalance}
-                                updateAll={updateAll}
-                                tgChatId={tgChatId}
-                                showCommunityAvatar={showCommunityAvatar}
-                                isDetailPage={isDetailPage}
+                        wallets={wallets}
+                        updateWalletBalance={updateWalletBalance}
+                        updateAll={updateAll}
+                        communityId={communityId}
+                        showCommunityAvatar={showCommunityAvatar}
+                        isDetailPage={isDetailPage}
                             />
                         ))}
                     </div>
@@ -401,19 +394,19 @@ export const Comment: React.FC<CommentProps> = ({
                 currencyIcon={commentDetails?.community?.iconUrl || currencyIcon}
                 amountWallet={commentDetails?.voteTransaction 
                     ? Math.abs(commentDetails.voteTransaction.sum) 
-                    : Math.abs(effectiveSum || 0)}
+                    : Math.abs((optimisticSum ?? withdrawableBalance) || 0)}
                 amountFree={commentDetails?.voteTransaction && commentDetails.voteTransaction.amountTotal !== undefined
                     ? Math.abs(commentDetails.voteTransaction.amountTotal) - Math.abs(commentDetails.voteTransaction.sum)
                     : (hasVoteTransactionData && amountTotal !== undefined 
-                        ? Math.abs(amountTotal) - Math.abs(effectiveSum || 0) 
+                        ? Math.abs(amountTotal) - Math.abs((optimisticSum ?? withdrawableBalance) || 0) 
                         : 0)}
                 upvotes={commentDetails?.metrics?.upvotes ?? displayUpvotes}
                 downvotes={commentDetails?.metrics?.downvotes ?? displayDownvotes}
                 isUpvote={commentDetails?.voteTransaction?.directionPlus ?? calculatedDirectionPlus}
-                authorName={commentDetails?.author?.name ?? effectiveFromUserTgName}
+                authorName={commentDetails?.author?.name ?? authorName}
                 authorAvatar={commentDetails?.author?.photoUrl ?? avatarUrl}
-                commentContent={commentDetails?.comment?.content ?? effectiveComment}
-                timestamp={commentDetails?.comment?.createdAt ?? effectiveTs}
+                commentContent={commentDetails?.comment?.content ?? commentText}
+                timestamp={commentDetails?.comment?.createdAt ?? commentTimestamp}
                 communityName={commentDetails?.community?.name ?? communityInfo?.name}
                 communityAvatar={commentDetails?.community?.avatarUrl ?? communityInfo?.avatarUrl}
                 beneficiaryName={commentDetails?.beneficiary?.name ?? recipientName}

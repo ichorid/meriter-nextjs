@@ -22,10 +22,8 @@ export const useComments = (
     forTransaction: boolean,
     publicationSlug: string,
     transactionId: string,
-    _getCommentsApiPath: string, // Legacy parameter, no longer used
-    _getFreeBalanceApiPath: string, // Legacy parameter, no longer used
     balance: Wallet | number | null,
-    updBalance: () => Promise<void>,
+    _updBalance: () => Promise<void>, // Legacy parameter - mutations handle invalidation
     plusGiven: number,
     minusGiven: number,
     activeCommentHook: [string | null, Dispatch<SetStateAction<string | null>>],
@@ -87,14 +85,9 @@ export const useComments = (
     const { user } = useAuth();
     const { data: quotaData } = useUserQuota(communityId);
     
-    // Transform quota data to { plus, minus } format for backwards compatibility
-    const free = useMemo(() => {
-        if (!quotaData) return { plus: 0, minus: 0 };
-        return {
-            plus: quotaData.remainingToday || 0,
-            minus: 0,
-        };
-    }, [quotaData]);
+    // Use quota data directly
+    const freePlus = quotaData?.remainingToday || 0;
+    const freeMinus = 0;
 
     const currentPlus = round(
         (plusGiven + (delta as any)) || 0
@@ -136,15 +129,15 @@ export const useComments = (
     const formCommentProps = {
         uid,
         // User has points if they have either quota OR wallet balance
-        hasPoints: (free?.plus || 0) > 0 || walletBalance > 0,
+        hasPoints: freePlus > 0 || walletBalance > 0,
         comment,
         setComment,
         amount: Math.abs(delta),
         setAmount: setDelta,
-        free: free?.plus || 0,
+        free: freePlus,
         // maxPlus should consider both quota and wallet balance
-        maxPlus: Math.max(free?.plus || 0, walletBalance || 0),
-        maxMinus: free?.minus || 0,
+        maxPlus: Math.max(freePlus, walletBalance || 0),
+        maxMinus: freeMinus,
         commentAdd: async (directionPlus: boolean) => {
             try {
                 // Use mutation hooks based on whether it's a comment or vote
@@ -171,7 +164,7 @@ export const useComments = (
                     setComment("");
                     setDelta(0);
                     setError("");
-                    updBalance();
+                    // Mutations handle query invalidation automatically
                     if (activeCommentHook) {
                         activeCommentHook[1](null);
                     }
@@ -185,7 +178,7 @@ export const useComments = (
                     setComment("");
                     setDelta(0);
                     setError("");
-                    updBalance();
+                    // Mutations handle query invalidation automatically
                     if (activeCommentHook) {
                         activeCommentHook[1](null);
                     }
@@ -205,7 +198,8 @@ export const useComments = (
 
     return {
         comments,
-        free,
+        freePlus,
+        freeMinus,
         currentPlus,
         currentMinus,
         showPlus,
