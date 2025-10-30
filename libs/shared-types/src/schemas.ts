@@ -34,6 +34,7 @@ export const CommunitySettingsSchema = z.object({
   iconUrl: z.string().url().optional(),
   currencyNames: CurrencySchema,
   dailyEmission: z.number().int().min(0).default(10),
+  language: z.enum(['en', 'ru']).default('en'),
 });
 
 export const PollOptionSchema = z.object({
@@ -62,7 +63,8 @@ export const CommunitySchema = IdentifiableSchema.merge(TimestampsSchema).extend
   name: z.string().min(1),
   description: z.string().optional(),
   avatarUrl: z.string().url().optional(),
-  administrators: z.array(z.string()).default([]),
+  // Telegram user IDs of administrators
+  administratorsTg: z.array(z.string()).default([]),
   members: z.array(z.string()).default([]),
   settings: CommunitySettingsSchema,
   hashtags: z.array(z.string()).default([]),
