@@ -389,7 +389,13 @@
       "resetQuotaConfirm": "Are you sure? This will reset today's quota usage for all community members.",
       "resetQuotaSuccess": "Daily quota reset successfully",
       "resetQuotaError": "Failed to reset daily quota",
-      "adminActions": "Admin Actions"
+      "adminActions": "Admin Actions",
+      "language": "Telegram messages language",
+      "languageDescription": "Language used by the bot in this community",
+      "languageOption": {
+        "en": "English",
+        "ru": "Russian"
+      }
     }
   }
 }

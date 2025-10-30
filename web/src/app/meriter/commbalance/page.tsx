@@ -110,7 +110,7 @@ const PageCommunityBalance = ({ searchParams }: { searchParams: Promise<{ chatId
 
     return (
         <AdaptiveLayout 
-            className="balance"
+            className="feed"
             communityId={chatId}
             activeCommentHook={activeCommentHook}
             activeSlider={activeSlider}
@@ -131,7 +131,7 @@ const PageCommunityBalance = ({ searchParams }: { searchParams: Promise<{ chatId
                     {t('commbalance.exchangeRate', { rate: Math.round(rate * 1000) / 1000 })}
                 </div>
             </div>
-            <div className="balance-inpublications">
+            <div>
                 <div className="heading">
                     {t('commbalance.accumulatedInPublications')}
                 </div>
@@ -141,13 +141,10 @@ const PageCommunityBalance = ({ searchParams }: { searchParams: Promise<{ chatId
                 <div className="tip">
                     {t('commbalance.tip2')}
                 </div>
-                <div className="balance-inpublications-list">
-                    <div className="balance-inpublications-filters"></div>
-                    <div className="balance-inpublications-publications">
-                        {myPublications.map((p: any, i: number) => (
-                            <PublicationMy key={i} {...p} />
-                        ))}
-                    </div>
+                <div className="space-y-4">
+                    {myPublications.map((p: any, i: number) => (
+                        <PublicationMy key={i} {...p} />
+                    ))}
                 </div>
             </div>
         </AdaptiveLayout>

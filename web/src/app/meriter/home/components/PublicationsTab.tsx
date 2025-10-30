@@ -45,20 +45,19 @@ export function PublicationsTab({
   );
 
   return (
-    <div className="balance-inpublications-list">
-      <div className="balance-inpublications-publications space-y-4">
-        {sortItems(filteredPublications, sortOrder).map((p, index) => {
-          const key = generateKey(p?.id, index, 'pub');
-          return (
-            <PublicationCard
-              key={key}
-              publication={p}
-              wallets={wallets}
-              showCommunityAvatar={true}
-            />
-          );
-        })}
-      </div>
+    <div className="space-y-4">
+      {sortItems(filteredPublications, sortOrder).map((p, index) => {
+        const key = generateKey(p?.id, index, 'pub');
+        return (
+          <PublicationCard
+            key={key}
+            publication={p}
+            wallets={wallets}
+            showCommunityAvatar={true}
+            className="w-full"
+          />
+        );
+      })}
     </div>
   );
 }

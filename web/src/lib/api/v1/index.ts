@@ -198,8 +198,28 @@ export const communitiesApiV1 = {
   },
 
   async getCommunity(id: string): Promise<Community> {
-    const response = await apiClient.get<{ success: true; data: Community }>(`/api/v1/communities/${id}`);
-    return response.data;
+    // Backend may return either a wrapped { success, data } or a direct object.
+    const response = await apiClient.get<any>(`/api/v1/communities/${id}`);
+    if (response && typeof response === 'object' && 'data' in response && response.data) {
+      const community = response.data as Community;
+      try {
+        // Log when isAdmin is present from the API response (wrapped)
+        if (Object.prototype.hasOwnProperty.call(community, 'isAdmin')) {
+          // eslint-disable-next-line no-console
+          console.log('[API v1] getCommunity:', { id, isAdmin: (community as any).isAdmin });
+        }
+      } catch {}
+      return community;
+    }
+    const community = response as Community;
+    try {
+      // Log when isAdmin is present from the API response (direct)
+      if (community && Object.prototype.hasOwnProperty.call(community as any, 'isAdmin')) {
+        // eslint-disable-next-line no-console
+        console.log('[API v1] getCommunity:', { id, isAdmin: (community as any).isAdmin });
+      }
+    } catch {}
+    return community;
   },
 
   async createCommunity(data: { name: string; description?: string; [key: string]: unknown }): Promise<Community> {

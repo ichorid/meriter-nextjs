@@ -40,20 +40,16 @@ export function UpdatesTab({
   }
 
   return (
-    <div className="balance-inpublications-list">
-      <div className="balance-inpublications-publications">
-        <div className="space-y-3">
-          {sortItems(updates, sortOrder).map((update: UpdateEvent, index: number) => {
-            const key = generateKey(update?.id, index, 'update');
-            return (
-              <UpdateCard
-                key={key}
-                update={update}
-              />
-            );
-          })}
-        </div>
-      </div>
+    <div className="space-y-4">
+      {sortItems(updates, sortOrder).map((update: UpdateEvent, index: number) => {
+        const key = generateKey(update?.id, index, 'update');
+        return (
+          <UpdateCard
+            key={key}
+            update={update}
+          />
+        );
+      })}
     </div>
   );
 }

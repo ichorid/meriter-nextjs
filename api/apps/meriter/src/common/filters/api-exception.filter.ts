@@ -30,12 +30,31 @@ export class ApiExceptionFilter implements ExceptionFilter {
         errorResponse = exceptionResponse as ApiErrorResponse;
       } else {
         // Convert NestJS HttpException to our format
+        const details = typeof exceptionResponse === 'object' ? exceptionResponse : undefined;
+
+        // Try to craft a more informative message when Zod validation errors are present
+        let informativeMessage: string | undefined;
+        if (
+          details &&
+          typeof (details as any).errors === 'object' &&
+          Array.isArray((details as any).errors) &&
+          (details as any).errors.length > 0
+        ) {
+          const firstIssue = (details as any).errors[0];
+          const path = Array.isArray(firstIssue?.path) ? firstIssue.path.join('.') : firstIssue?.path;
+          const msg = firstIssue?.message ?? 'Invalid value';
+          informativeMessage = path ? `${path}: ${msg}` : msg;
+        }
+
         errorResponse = {
           success: false,
           error: {
             code: this.getErrorCode(status),
-            message: typeof exceptionResponse === 'string' ? exceptionResponse : exception.message,
-            details: typeof exceptionResponse === 'object' ? exceptionResponse : undefined,
+            message:
+              typeof exceptionResponse === 'string'
+                ? exceptionResponse
+                : informativeMessage || exception.message,
+            details,
           },
         };
       }

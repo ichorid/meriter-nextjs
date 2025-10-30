@@ -10,6 +10,13 @@ interface UpdateCommunityDto {
   description?: string;
   avatarUrl?: string;
   isActive?: boolean;
+  settings?: {
+    iconUrl?: string;
+    currencyNames?: { singular: string; plural: string; genitive: string };
+    dailyEmission?: number;
+  };
+  hashtags?: string[];
+  hashtagDescriptions?: Record<string, string>;
 }
 
 export const useCommunities = () => {

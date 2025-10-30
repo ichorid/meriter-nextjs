@@ -142,26 +142,44 @@ export function transformAxiosError(error: AxiosError): AppError {
     
     // Try to extract error message from various response formats
     let message = error.message;
+    // Extract validation details if present (Zod issues propagated by API)
+    let validationMessages: string[] | undefined;
     if (data && typeof data === 'object') {
       // Check for standardized API error format
       if ('error' in data && data.error && typeof data.error === 'object') {
-        if ('message' in data.error && typeof data.error.message === 'string') {
-          message = data.error.message;
+        const errObj: any = (data as any).error;
+        if (typeof errObj.message === 'string' && errObj.message.trim().length > 0) {
+          message = errObj.message;
         }
-      } else if ('message' in data && typeof data.message === 'string') {
-        message = data.message;
+        const details = errObj.details;
+        if (
+          details &&
+          typeof details === 'object' &&
+          Array.isArray((details as any).errors)
+        ) {
+          validationMessages = (details as any).errors
+            .map((e: any) => {
+              const path = Array.isArray(e?.path) ? e.path.join('.') : e?.path;
+              const msg = e?.message ?? 'Invalid value';
+              return path ? `${path}: ${msg}` : msg;
+            })
+            .filter((s: unknown) => typeof s === 'string' && (s as string).length > 0);
+          if (validationMessages && validationMessages.length > 0) {
+            // Prefer the first specific validation issue for the main message
+            message = validationMessages[0] ?? message;
+          }
+        }
+      } else if ('message' in data && typeof (data as any).message === 'string') {
+        message = (data as any).message;
       }
     }
     
-    return new AppError(
-      message,
-      `HTTP_${status}`,
-      {
-        status,
-        data,
-        url: error.config?.url,
-      }
-    );
+    return new AppError(message, `HTTP_${status}`, {
+      status,
+      data,
+      url: error.config?.url,
+      ...(validationMessages ? { validationMessages } : {}),
+    });
   } else if (error.request) {
     // Request was made but no response received
     return new NetworkError('Network error - please check your connection');

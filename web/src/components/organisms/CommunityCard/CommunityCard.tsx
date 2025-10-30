@@ -106,22 +106,27 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     );
   }
 
-  // Collapsed version (tablet - avatar only)
+  // Collapsed version (tablet/mobile - avatar only with compact metrics below)
   return (
     <Link href={`/meriter/communities/${communityId}`}>
-      <div
-        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-          isActive
-            ? 'ring-2 ring-primary ring-offset-2 ring-offset-base-200'
-            : 'hover:ring-2 hover:ring-base-content/20'
-        }`}
-      >
-        <CommunityAvatar
-          avatarUrl={community.avatarUrl}
-          communityName={community.name}
-          size={48}
-          needsSetup={community.needsSetup}
-        />
+      <div className="w-12 flex flex-col items-center">
+        <div
+          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+            isActive
+              ? 'ring-2 ring-primary ring-offset-2 ring-offset-base-200'
+              : 'hover:ring-2 hover:ring-base-content/20'
+          }`}
+        >
+          <CommunityAvatar
+            avatarUrl={community.avatarUrl}
+            communityName={community.name}
+            size={48}
+            needsSetup={community.needsSetup}
+          />
+        </div>
+        <div className="mt-1 text-[10px] leading-none text-base-content/60 text-center truncate max-w-[48px]">
+          {balance}+{remainingQuota}
+        </div>
       </div>
     </Link>
   );

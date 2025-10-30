@@ -12,7 +12,8 @@ export interface CreateCommunityDto {
   name: string;
   description?: string;
   avatarUrl?: string;
-  administrators: string[];
+  // Telegram user IDs
+  administratorsTg: string[];
   settings?: {
     iconUrl?: string;
     currencyNames?: {
@@ -28,7 +29,8 @@ export interface UpdateCommunityDto {
   name?: string;
   description?: string;
   avatarUrl?: string;
-  administrators?: string[];
+  // Telegram user IDs
+  administratorsTg?: string[];
   hashtags?: string[];
   hashtagDescriptions?: Record<string, string>;
   settings?: {
@@ -66,7 +68,7 @@ export class CommunityService {
       name: dto.name,
       description: dto.description,
       avatarUrl: dto.avatarUrl,
-      administrators: dto.administrators,
+      administratorsTg: dto.administratorsTg,
       members: [],
       settings: {
         iconUrl: dto.settings?.iconUrl,
@@ -97,7 +99,7 @@ export class CommunityService {
     if (dto.name !== undefined) updateData.name = dto.name;
     if (dto.description !== undefined) updateData.description = dto.description;
     if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
-    if (dto.administrators !== undefined) updateData.administrators = dto.administrators;
+    if (dto.administratorsTg !== undefined) updateData.administratorsTg = dto.administratorsTg;
     if (dto.hashtags !== undefined) updateData.hashtags = dto.hashtags;
     if (dto.hashtagDescriptions !== undefined) {
       updateData.hashtagDescriptions = dto.hashtagDescriptions;
@@ -184,9 +186,13 @@ export class CommunityService {
   }
 
   async isUserAdmin(communityId: string, userId: string): Promise<boolean> {
+    // Lookup user's telegramId
+    const user = await this.userModel.findOne({ id: userId }, { telegramId: 1 }).lean();
+    const telegramId = user?.telegramId;
+    if (!telegramId) return false;
     const community = await this.communityModel.findOne({ 
       id: communityId,
-      administrators: userId 
+      administratorsTg: telegramId,
     }).lean();
     return community !== null;
   }
@@ -216,8 +222,10 @@ export class CommunityService {
   }
 
   async getUserManagedCommunities(userId: string): Promise<Community[]> {
+    const user = await this.userModel.findOne({ id: userId }, { telegramId: 1 }).lean();
+    const telegramId = user?.telegramId || '___none___';
     return this.communityModel
-      .find({ administrators: userId })
+      .find({ administratorsTg: telegramId })
       .sort({ createdAt: -1 })
       .lean() as any as Community[];
   }

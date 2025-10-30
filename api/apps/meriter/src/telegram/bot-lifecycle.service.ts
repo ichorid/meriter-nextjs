@@ -63,6 +63,7 @@ export class TelegramBotLifecycleService {
           genitive: 'merits',
         },
         dailyEmission: 100,
+        language: 'en',
       },
       hashtags: [],
       isAdmin: false,

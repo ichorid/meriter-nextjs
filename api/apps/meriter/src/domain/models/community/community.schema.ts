@@ -31,8 +31,9 @@ export class Community {
   @Prop()
   avatarUrl?: string;
 
+  // Telegram user IDs of administrators
   @Prop({ type: [String], default: [] })
-  administrators: string[];
+  administratorsTg: string[];
 
   @Prop({ type: [String], default: [] })
   members: string[];
@@ -46,6 +47,7 @@ export class Community {
         genitive: { type: String, default: 'merits' },
       },
       dailyEmission: { type: Number, default: 10 },
+      language: { type: String, enum: ['en', 'ru'], default: 'en' },
     },
     default: {},
   })
@@ -57,6 +59,7 @@ export class Community {
       genitive: string;
     };
     dailyEmission: number;
+    language?: 'en' | 'ru';
   };
 
   @Prop({ type: [String], default: [] })
@@ -83,5 +86,5 @@ export const CommunitySchema = SchemaFactory.createForClass(Community);
 // Add indexes for common queries
 CommunitySchema.index({ telegramChatId: 1 }, { unique: true });
 CommunitySchema.index({ id: 1 }, { unique: true });
-CommunitySchema.index({ administrators: 1 });
+CommunitySchema.index({ administratorsTg: 1 });
 CommunitySchema.index({ isActive: 1 });

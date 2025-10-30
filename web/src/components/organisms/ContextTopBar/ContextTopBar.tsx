@@ -156,9 +156,10 @@ const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
 
   return (
     <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="px-4 h-full flex items-center gap-2">
-        <h1 className="text-xl font-semibold mr-4">Home</h1>
-        <div className="flex gap-1 bg-base-200 rounded-lg p-1">
+      <div className="px-4 h-full flex items-center gap-2 justify-start md:justify-between">
+        <h1 className="text-xl font-semibold mr-4 hidden md:block">Home</h1>
+        {/* Tabs: buttons on md+, dropdown on mobile */}
+        <div className="hidden md:flex gap-1 bg-base-200 rounded-lg p-1">
           <button
             onClick={() => handleTabClick('publications')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -200,8 +201,21 @@ const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
             {t('tabs.updates')}
           </button>
         </div>
+        <div className="md:hidden">
+          <select
+            aria-label="Select tab"
+            className="select select-sm w-36"
+            value={activeTab}
+            onChange={(e) => handleTabClick(e.target.value as any)}
+          >
+            <option value="publications">{t('tabs.publications')}</option>
+            <option value="comments">{t('tabs.comments')}</option>
+            <option value="polls">{t('tabs.polls')}</option>
+            <option value="updates">{t('tabs.updates')}</option>
+          </select>
+        </div>
         {/* Sort Toggle - contextual to active tab */}
-        <div className="ml-auto join shadow-sm">
+        <div className="join shadow-sm">
           <button 
             onClick={() => handleSortClick('recent')}
             className={`join-item btn btn-sm font-medium transition-all duration-200 ${
@@ -233,6 +247,7 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
   const searchParams = useSearchParams();
   const t = useTranslations('pages.communities');
   const [showTagDropdown, setShowTagDropdown] = React.useState(false);
+  const [showSnack, setShowSnack] = React.useState(false);
 
   // Get wallet balance for this community
   const wallet = wallets.find((w: any) => w.communityId === communityId);
@@ -272,18 +287,36 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
     router.push(`?${params.toString()}`);
   };
 
+  // Show mobile snack bar with community title when arriving/switching
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+    if (!isMobile) return;
+    setShowSnack(true);
+    const timeout = setTimeout(() => setShowSnack(false), 2000);
+    return () => clearTimeout(timeout);
+  }, [communityId]);
+
   if (!community) {
     return null;
   }
 
   const hashtags = community.hashtags || [];
+  // Determine admin rights: prefer backend-computed flag, fallback to telegram-based list
+  const isAdmin = Boolean(
+    community.isAdmin ?? (
+      Array.isArray((community as any).administratorsTg) && user?.telegramId
+        ? (community as any).administratorsTg.includes(user.telegramId)
+        : false
+    )
+  );
 
   return (
     <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="px-4 h-full flex items-center justify-between">
+      <div className="px-4 h-full flex items-center gap-2">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold">{community.name}</h1>
-          {community.isAdmin && (
+          <h1 className="text-xl font-semibold hidden md:block">{community.name}</h1>
+          {isAdmin && (
             <button
               onClick={() => router.push(`/meriter/communities/${communityId}/settings`)}
               className="btn btn-ghost btn-sm btn-circle"
@@ -314,11 +347,12 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
               <button
                 onClick={() => setShowTagDropdown(!showTagDropdown)}
                 className="btn btn-sm btn-ghost flex items-center gap-1"
+                title={selectedTag ? `#${selectedTag}` : t('filterByTags')}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                 </svg>
-                <span>{selectedTag ? `#${selectedTag}` : t('filterByTags')}</span>
+                {selectedTag && <span>#{selectedTag}</span>}
               </button>
               
               {showTagDropdown && (
@@ -366,25 +400,16 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
               {t('byRating')}
             </button>
           </div>
-
-          {/* Balance and Quota */}
-          <div className="flex items-center gap-2 text-sm">
-            {community.settings?.iconUrl && (
-              <img src={community.settings.iconUrl} alt="Currency" className="w-5 h-5" />
-            )}
-            <span className="font-semibold">{balance}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="opacity-60">Quota:</span>
-            <span className="font-semibold">
-              {quotaError 
-                ? '-' 
-                : (quota && typeof quota.remainingToday === 'number' ? quota.remainingToday : 0)
-              }
-            </span>
-          </div>
         </div>
       </div>
+      {/* Mobile snackbar with community title on navigation */}
+      {showSnack && (
+        <div className="md:hidden fixed bottom-4 left-0 right-0 z-50 flex justify-center">
+          <div className="px-3 py-2 rounded-full shadow-md bg-base-200 text-sm text-base-content border border-base-300 max-w-[80%] truncate">
+            {community.name}
+          </div>
+        </div>
+      )}
     </header>
   );
 };

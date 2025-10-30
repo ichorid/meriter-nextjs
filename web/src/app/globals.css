@@ -68,6 +68,17 @@
     border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
+  /* Ensure media inside cards is responsive and prevent overflow */
+  .card img,
+  .card video {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+  .card {
+    overflow: hidden;
+  }
+
   /* Withdraw slider integration styles */
   .withdraw-slider-section {
     animation: slideDown 300ms ease-out;

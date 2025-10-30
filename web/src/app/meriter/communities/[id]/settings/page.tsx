@@ -40,7 +40,8 @@ const CommunitySettingsPage = () => {
         currencyNames: { 1: '', 2: '', 5: '' },
         icon: '',
         hashtagEdits: [] as any[],
-        dailyQuota: ''
+        dailyQuota: '',
+        language: 'en' as 'en' | 'ru',
     });
     const [isDirty, setIsDirty] = useState(false);
     const [touched, setTouched] = useState(false);
@@ -120,7 +121,8 @@ const CommunitySettingsPage = () => {
                 currencyNames: formCurrencyNames,
                 icon: communityResponse.settings?.iconUrl || communityResponse.avatarUrl || '',
                 hashtagEdits: hashtagEdits,
-                dailyQuota: communityResponse.settings?.dailyEmission?.toString() || '10'
+                dailyQuota: communityResponse.settings?.dailyEmission?.toString() || '10',
+                language: (communityResponse.settings as any)?.language || 'en',
             });
             setCommunityError('');
         }
@@ -214,6 +216,7 @@ const CommunitySettingsPage = () => {
                 iconUrl: formData.icon,
                 currencyNames: currencyNames,
                 dailyEmission: parseInt(formData.dailyQuota, 10) || 10,
+                language: formData.language,
             },
             hashtags: validHashtags.map((d: any) => d.tag),
             hashtagDescriptions: hashtagDescriptions,
@@ -443,6 +446,31 @@ const CommunitySettingsPage = () => {
                         {touched && currentErrors.icon && (
                             <div className="text-error text-sm mt-2">{currentErrors.icon}</div>
                         )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Telegram Language Section */}
+            <div className="card bg-base-100 shadow-xl mb-6">
+                <div className="card-body">
+                    <h2 className="card-title">{t('communitySettings.language')}</h2>
+                    <div>
+                        <label className="label">
+                            <span className="label-text">{t('communitySettings.languageDescription')}</span>
+                        </label>
+                        <select
+                            className="select select-bordered w-full"
+                            value={formData.language}
+                            onChange={(e) => {
+                                const value = e.target.value as 'en' | 'ru';
+                                setFormData(prev => ({ ...prev, language: value }));
+                                setIsDirty(true);
+                            }}
+                            onBlur={() => setTouched(true)}
+                        >
+                            <option value="en">{t('communitySettings.languageOption.en')}</option>
+                            <option value="ru">{t('communitySettings.languageOption.ru')}</option>
+                        </select>
                     </div>
                 </div>
             </div>

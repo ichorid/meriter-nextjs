@@ -14,6 +14,7 @@ import {
   LEADER_MESSAGE_AFTER_ADDED,
   WELCOME_LEADER_MESSAGE,
   WELCOME_USER_MESSAGE,
+  URL as WEB_BASE_URL,
 } from "../config";
 import * as TelegramTypes from "@common/extapis/telegram/telegram.types";
 import Axios from "axios";
@@ -27,7 +28,8 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import * as stream from "stream";
 
-import { encodeTelegramDeepLink } from '../common/helpers/telegram';
+import { encodeTelegramDeepLink, formatDualLinksFromEncoded, formatDualLinks, escapeMarkdownV2 } from '../common/helpers/telegram';
+import { t } from '../i18n';
 
 @Injectable()
 export class TgBotsService {
@@ -48,6 +50,10 @@ export class TgBotsService {
       region: process.env.S3_REGION || "ru-msk",
     });
     this.telegramApiUrl = process.env.TELEGRAM_API_URL || "https://api.telegram.org";
+  }
+  private async getCommunityLanguageByChatId(chatId: string): Promise<'en' | 'ru'> {
+    const community = await this.communityModel.findOne({ telegramChatId: String(chatId) }).lean();
+    return ((community?.settings as any)?.language as 'en' | 'ru') || 'en';
   }
   async processHookBody(body: TelegramTypes.Update, botUsername: string) {
     // Log all incoming updates for debugging
@@ -180,14 +186,14 @@ export class TgBotsService {
       }
       
       const p = [];
+      const lang = await this.getCommunityLanguageByChatId(chatId);
       admins
         .map((a) => String(a.id))
         .map((admin, i) => {
           this.logger.log(`✉️  Sending setup message to admin ${admin}`);
-          p[i] = this.tgSend({
-            tgChatId: admin,
-            text: LEADER_MESSAGE_AFTER_ADDED.replace("{username}", title),
-          });
+          const links = `[Web](${WEB_BASE_URL}/meriter/setup-community) [App](https://t.me/${BOT_USERNAME}?startapp=setup)`;
+          const text = `${escapeMarkdownV2(t('setup.admin.hi', lang, { community: title }))} ${links}`;
+          p[i] = this.tgSend({ tgChatId: admin, text });
         });
       try {
         await Promise.all(p);
@@ -213,6 +219,7 @@ export class TgBotsService {
             genitive: 'merits',
           },
           dailyEmission: 10,
+          language: 'en',
         },
         hashtags: existingCommunity?.hashtags || [],
         isActive: true,
@@ -370,7 +377,9 @@ export class TgBotsService {
       return { 
         beneficiary: null, 
         cleanedText,
-        error: `⚠️ Пользователь @${beneficiaryIdentifier} не найден в Meriter.\n\nПолучатель баллов должен сначала войти на сайт https://meriter.pro через Telegram.`
+        error: `⚠️ Пользователь @${beneficiaryIdentifier} не найден в Meriter\.
+
+Получатель баллов должен сначала войти: [Web](${WEB_BASE_URL}/meriter/login) [App](https://t.me/${BOT_USERNAME}?startapp=login)`
       };
     }
 
@@ -381,7 +390,7 @@ export class TgBotsService {
       return { 
         beneficiary: null, 
         cleanedText,
-        error: `⚠️ Ошибка при обработке пользователя @${beneficiaryIdentifier}.`
+        error: `⚠️ Ошибка при обработке пользователя @${beneficiaryIdentifier}\\.`
       };
     }
 
@@ -392,7 +401,7 @@ export class TgBotsService {
       return { 
         beneficiary: null, 
         cleanedText,
-        error: `⚠️ Пользователь @${beneficiaryIdentifier} не является участником этого сообщества.`
+        error: `⚠️ Пользователь @${beneficiaryIdentifier} не является участником этого сообщества\\.`
       };
     }
 
@@ -527,19 +536,23 @@ export class TgBotsService {
       entities,
       beneficiary,
     });
-    const [publication, updUserdata] = await Promise.all([
+    const [result, updUserdata] = await Promise.all([
       promisePublication,
       promiseUpdUserdata,
     ]);
 
+    const { publication, communityId } = result;
     const slug = publication.id; // Use publication ID as slug
-    const link = `communities/${tgChatId}/posts/${slug}`;
+    const link = `communities/${communityId}/posts/${slug}`;
     
-    this.logger.log(`✅ Publication created: slug=${slug}`);
+    this.logger.log(`✅ Publication created: slug=${slug}, communityId=${communityId}, tgChatId=${tgChatId}`);
+    this.logger.log(`🔗 Generated link: ${link} (using internal community ID, not Telegram chat ID)`);
 
     const encodedLink = encodeTelegramDeepLink('publication', link);
-    const text = ADDED_PUBLICATION_REPLY.replace("{encodedLink}", encodedLink);
-    this.logger.log(`💬 Sending reply to group ${tgChatId} with encoded link: ${encodedLink}`);
+    const dualLinks = formatDualLinksFromEncoded(encodedLink, `/meriter/${link}`, BOT_USERNAME, WEB_BASE_URL);
+    const lang = await this.getCommunityLanguageByChatId(tgChatId);
+    const text = `${escapeMarkdownV2(t('updates.publication.saved', lang))} \: ${dualLinks}`;
+    this.logger.log(`💬 Sending reply to group ${tgChatId} with text: ${text}`);
 
     await this.tgReplyMessage({
       reply_to_message_id: messageId,
@@ -603,7 +616,7 @@ export class TgBotsService {
         reply_to_message_id,
         chat_id,
         text,
-        parse_mode: "HTML",
+        parse_mode: "MarkdownV2",
       };
 
       return await Promise.all([
@@ -703,7 +716,7 @@ export class TgBotsService {
   async tgSend({ tgChatId, text }) {
     //console.log(tgChatId, text )
     if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
-    const params = { chat_id: tgChatId, text, parse_mode: "HTML" };
+    const params = { chat_id: tgChatId, text, parse_mode: "MarkdownV2" };
     try {
       await Promise.all([
         ,
@@ -964,7 +977,7 @@ export class TgBotsService {
   }
 
   async telegramReplyMessage(token, reply_to_message_id, chat_id, text) {
-    const params = { reply_to_message_id, chat_id, text, parse_mode: "HTML" };
+    const params = { reply_to_message_id, chat_id, text, parse_mode: "MarkdownV2" };
     return await Promise.all([
       Axios.get(`${this.telegramApiUrl}/bot${token}/sendMessage`, {
         params,
@@ -972,7 +985,7 @@ export class TgBotsService {
     ]);
   }
   async telegramSendMessage(token, chat_id, text) {
-    const params = { chat_id, text, parse_mode: "HTML" };
+    const params = { chat_id, text, parse_mode: "MarkdownV2" };
     try {
       const r = await Promise.all([
         Axios.get(`${this.telegramApiUrl}/bot${token}/sendMessage`, {
@@ -1071,9 +1084,9 @@ export class TgBotsService {
     
     const publication = await this.publicationModel.create(publicationData);
     
-    this.logger.log(`✅ Publication created with id: ${publication.id}, beneficiaryId: ${publication.beneficiaryId}`);
+    this.logger.log(`✅ Publication created with id: ${publication.id}, beneficiaryId: ${publication.beneficiaryId}, communityId: ${community.id}`);
 
-    return publication;
+    return { publication, communityId: community.id };
   }
 
   awsUploadStream = ({ Bucket, Key }) => {
@@ -1108,11 +1121,17 @@ export class TgBotsService {
       })
       .join("\n");
 
-    const encodedCommunityLink = encodeTelegramDeepLink('community', `${aboutChatId}`);
-    const text = config.WELCOME_COMMUNITY_TEXT.replace(
-      "{hashtags}",
-      hashtagsList
-    ).replace("{encodedCommunityLink}", encodedCommunityLink);
+    // Look up community by Telegram chat ID to get internal ID
+    const community = await this.communityModel.findOne({ telegramChatId: String(aboutChatId) }).lean();
+    if (!community) {
+      this.logger.error(`Community not found for Telegram chat ID ${aboutChatId}`);
+      return;
+    }
+
+    const encodedCommunityLink = encodeTelegramDeepLink('community', `${community.id}`);
+    const dualLinksCommunity = formatDualLinksFromEncoded(encodedCommunityLink, `/meriter/communities/${community.id}`, BOT_USERNAME, WEB_BASE_URL);
+    const lang = await this.getCommunityLanguageByChatId(aboutChatId);
+    const text = t('community.welcome', lang, { hashtags: escapeMarkdownV2(hashtagsList), dualLinksCommunity });
 
     await this.tgSend({ tgChatId: toTgChatId, text });
   }

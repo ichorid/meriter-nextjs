@@ -50,7 +50,7 @@ export default function PageHome() {
   // Show loading state during auth check
   if (userLoading || !isAuthenticated) {
     return (
-      <AdaptiveLayout className="balance">
+      <AdaptiveLayout className="feed">
         <div className="flex justify-center items-center h-64">
           <span className="loading loading-spinner loading-lg"></span>
         </div>
@@ -109,7 +109,7 @@ export default function PageHome() {
 
   return (
     <AdaptiveLayout
-      className="balance"
+      className="feed"
       activeCommentHook={activeCommentHook}
       activeSlider={activeSlider}
       setActiveSlider={setActiveSlider}
@@ -118,7 +118,7 @@ export default function PageHome() {
       wallets={wallets}
       myId={user?.id}
     >
-      <div className="balance-inpublications">{renderTabContent()}</div>
+      <div className="space-y-4">{renderTabContent()}</div>
 
       {showPollCreate && (
         <PollCreateModal

@@ -8,7 +8,8 @@ import { Model } from 'mongoose';
 import { fillDefined } from '@common/lambdas/pure/objects';
 import { TgBotsService } from '../tg-bots/tg-bots.service';
 import { Cron, SchedulerRegistry } from '@nestjs/schedule';
-import { URL } from '../config';
+import { URL as WEB_BASE_URL, BOT_USERNAME } from '../config';
+import { formatDualLinks } from '../common/helpers/telegram';
 
 export class PushUpdateDto {
   actorUri: string;
@@ -107,10 +108,11 @@ export class UpdatesConductorsService {
             const publicationsN = upd.publicationUids.filter(Boolean).length;
             const transactionsN = upd.commentsUids.filter(Boolean).length;
             const actorsN = upd.votersActorUris.filter(Boolean).length;
-            const text = `Для Вас есть обновления!
+            const dualLinks = formatDualLinks('updates', {}, BOT_USERNAME, WEB_BASE_URL);
+            const text = `Для Вас есть обновления\!
 Активность ${publicationsN} постов и ${transactionsN} комментариев:
-Пришла обратная связь от  ${actorsN} пользователей, из них плюсов ${upd.counterPlus} и ${upd.counterMinus} минусов
-Посмотреть подробнее https://t.me/meriter_pro_bot?startapp=updates`;
+Пришла обратная связь от ${actorsN} пользователей, из них плюсов ${upd.counterPlus} и ${upd.counterMinus} минусов
+Посмотреть подробнее ${dualLinks}`;
             const tgPromise = this.tgBotsService.tgSend({
               tgChatId: tgUserId,
 

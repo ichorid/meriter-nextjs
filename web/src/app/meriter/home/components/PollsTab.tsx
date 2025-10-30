@@ -40,20 +40,19 @@ export function PollsTab({
   }
 
   return (
-    <div className="balance-inpublications-list">
-      <div className="balance-inpublications-publications">
-        {sortItems(polls, sortOrder).map((poll: any, index: number) => {
-          const key = generateKey(poll?.id, index, 'poll');
-          return (
-            <PublicationCard
-              key={key}
-              publication={poll}
-              wallets={wallets}
-              showCommunityAvatar={true}
-            />
-          );
-        })}
-      </div>
+    <div className="space-y-4">
+      {sortItems(polls, sortOrder).map((poll: any, index: number) => {
+        const key = generateKey(poll?.id, index, 'poll');
+        return (
+          <PublicationCard
+            key={key}
+            publication={poll}
+            wallets={wallets}
+            showCommunityAvatar={true}
+            className="w-full"
+          />
+        );
+      })}
     </div>
   );
 }

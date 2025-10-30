@@ -58,9 +58,8 @@ export function CommentsTab({
   }
 
   return (
-    <div className="balance-inpublications-list">
-      <div className="balance-inpublications-publications">
-        {sortItems(comments, sortOrder).map((comment: any, index: number) => {
+    <div className="space-y-4">
+      {sortItems(comments, sortOrder).map((comment: any, index: number) => {
           const key = generateKey(comment?.id, index, 'comment');
           
           // Get balance for this comment's community
@@ -97,10 +96,9 @@ export function CommentsTab({
               amountTotal={comment.amountTotal}
               sum={comment.sum}
               directionPlus={comment.directionPlus}
-            />
+              />
           );
-        })}
-      </div>
+      })}
     </div>
   );
 }

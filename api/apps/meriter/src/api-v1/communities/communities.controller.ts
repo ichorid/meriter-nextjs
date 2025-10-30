@@ -89,12 +89,21 @@ export class CommunitiesController {
     
     return {
       ...community,
+      // Normalize administratorsTg from legacy field if necessary
+      administratorsTg: (community as any).administratorsTg || (community as any).administrators || [],
+      // Ensure settings.language is provided to match type expectations
+      settings: {
+        currencyNames: community.settings?.currencyNames,
+        dailyEmission: community.settings?.dailyEmission as number,
+        iconUrl: community.settings?.iconUrl,
+        language: (community.settings as any)?.language ?? 'en',
+      },
       hashtagDescriptions: this.convertHashtagDescriptions(community.hashtagDescriptions),
       isAdmin: await this.communityService.isUserAdmin(id, req.user.id),
       needsSetup,
       createdAt: community.createdAt.toISOString(),
       updatedAt: community.updatedAt.toISOString(),
-    };
+    } as any;
   }
 
   @Post()
@@ -115,12 +124,19 @@ export class CommunitiesController {
     
     return {
       ...community,
+      administratorsTg: (community as any).administratorsTg || (community as any).administrators || [],
+      settings: {
+        currencyNames: community.settings?.currencyNames,
+        dailyEmission: community.settings?.dailyEmission as number,
+        iconUrl: community.settings?.iconUrl,
+        language: (community.settings as any)?.language ?? 'en',
+      },
       hashtagDescriptions: this.convertHashtagDescriptions(community.hashtagDescriptions),
       isAdmin: true, // Creator is admin
       needsSetup,
       createdAt: community.createdAt.toISOString(),
       updatedAt: community.updatedAt.toISOString(),
-    };
+    } as any;
   }
 
   @Put(':id')
@@ -163,12 +179,19 @@ export class CommunitiesController {
     
     return {
       ...community,
+      administratorsTg: (community as any).administratorsTg || (community as any).administrators || [],
+      settings: {
+        currencyNames: community.settings?.currencyNames,
+        dailyEmission: community.settings?.dailyEmission as number,
+        iconUrl: community.settings?.iconUrl,
+        language: (community.settings as any)?.language ?? 'en',
+      },
       hashtagDescriptions: this.convertHashtagDescriptions(community.hashtagDescriptions),
       isAdmin: await this.communityService.isUserAdmin(id, req.user.id),
       needsSetup,
       createdAt: community.createdAt.toISOString(),
       updatedAt: community.updatedAt.toISOString(),
-    };
+    } as any;
   }
 
   @Delete(':id')
