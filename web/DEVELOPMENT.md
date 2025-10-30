@@ -2,6 +2,8 @@
 
 This guide provides detailed information for developers working on the Meriter web frontend.
 
+Note: This document complements the root `DEVELOPMENT.md`. Prefer following the root guide for end-to-end setup (Caddy + API + Web). This file focuses on frontend specifics.
+
 ## 🏗️ Architecture Overview
 
 ### Design Patterns

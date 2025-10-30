@@ -16,44 +16,9 @@ All data is stored in an external MongoDB instance - no persistent volumes requi
 
 ## CI/CD Pipeline
 
-### Automated Image Building
+### CI/CD
 
-When code is pushed to the `main` branch, GitHub Actions automatically:
-
-1. Extracts version from `web/package.json` and `api/package.json`
-2. Builds Docker images for both services
-3. Tags images with semantic version (e.g., `v0.1.0`) and `latest`
-4. Pushes images to GitHub Container Registry (ghcr.io)
-
-### Manual Trigger
-
-You can manually trigger the build and push workflow from the GitHub UI:
-
-1. Go to your repository on GitHub
-2. Click on the **Actions** tab
-3. Select **Build and Push Docker Images** workflow
-4. Click **Run workflow** button
-5. Choose options:
-   - **Build web image**: Check to build web service (default: true)
-   - **Build api image**: Check to build api service (default: true)
-6. Click **Run workflow**
-
-This allows you to rebuild and push images without pushing to main, useful for:
-- Testing the build process
-- Rebuilding images after manual package.json version updates
-- Rebuilding only specific services (web or api)
-
-### Image Naming Convention
-
-Images follow semantic versioning from package.json:
-
-```
-ghcr.io/[owner]/meriter-nextjs-web:v0.1.0
-ghcr.io/[owner]/meriter-nextjs-web:latest
-
-ghcr.io/[owner]/meriter-nextjs-api:v0.1.0
-ghcr.io/[owner]/meriter-nextjs-api:latest
-```
+If GitHub Actions workflows are configured in your fork, you may build and push container images automatically on pushes to `main`. If not, use the manual Docker Compose instructions below. Refer to your repository's Actions tab if present.
 
 ## Configuration
 
@@ -66,31 +31,31 @@ ghcr.io/[owner]/meriter-nextjs-api:latest
 
 2. Edit `.env` and configure the following critical variables:
 
-   **Database:**
+   **Database (API):**
    ```env
    MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/meriter
    ```
 
-   **Security (Change these!):**
+   **Security (API - change these!):**
    ```env
    JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
    SESSION_SECRET=your-session-secret-change-this-in-production
    COOKIE_SECRET=your-cookie-secret-change-this-in-production
    ```
 
-   **Domain:**
+   **Domain (Caddy):**
    ```env
    DOMAIN=yourdomain.com
    ```
 
-   **Telegram Bot (Required):**
+   **Telegram Bot (API - required):**
    ```env
    TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
    BOT_USERNAME=your_bot_username
    APP_URL=https://yourdomain.com
    ```
 
-   **S3 Storage (Optional):**
+   **S3 Storage (API - optional):**
    ```env
    AWS_ACCESS_KEY_ID=your-key
    AWS_SECRET_ACCESS_KEY=your-secret
@@ -98,9 +63,15 @@ ghcr.io/[owner]/meriter-nextjs-api:latest
    AWS_S3_BUCKET=your-bucket
    ```
 
+   **Frontend API URL (Web):**
+   ```env
+   NEXT_PUBLIC_API_URL=https://yourdomain.com
+   NEXT_PUBLIC_BOT_USERNAME=your_bot_username
+   ```
+
 ### Caddy Configuration
 
-The `Caddyfile` configures:
+The `Caddyfile` (root of repo) configures:
 
 - Automatic HTTPS with Let's Encrypt
 - Reverse proxy to Next.js on port 8001
@@ -185,7 +156,7 @@ See `api/scripts/README.md` for detailed documentation on the CORS configuration
 
 **Note**: This only needs to be done once per environment/domain. The configuration persists on the S3 bucket.
 
-### Updating to Latest Images
+### Updating to Latest Images (if using a registry)
 
 When new images are built and pushed by GitHub Actions:
 

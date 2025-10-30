@@ -27,13 +27,8 @@ This setup mirrors production and avoids CORS issues.
 #### 1.1. Install Dependencies
 
 ```bash
-# Install backend dependencies
-cd api
-npm install
-
-# Install frontend dependencies
-cd ../web
-npm install
+# Install all workspace dependencies
+pnpm install
 
 # Install Caddy
 sudo apt install caddy  # Debian/Ubuntu
@@ -62,10 +57,8 @@ BOT_USERNAME=your_bot_username
 
 **`web/.env`:**
 ```bash
-MONGO_URL=mongodb://127.0.0.1:27017/meriter
-BOT_TOKEN=your_telegram_bot_token_from_botfather
+NEXT_PUBLIC_API_URL=http://localhost:8080
 NEXT_PUBLIC_BOT_USERNAME=your_bot_username
-JWT_SECRET=your-secure-jwt-secret
 ```
 
 #### 1.3. Start Services
@@ -74,21 +67,19 @@ Open **three** terminal windows:
 
 **Terminal 1 - Backend (NestJS):**
 ```bash
-cd api
-npm run dev
+pnpm --filter @meriter/api dev
 ```
 - Runs on `http://localhost:8002`
 
 **Terminal 2 - Frontend (Next.js):**
 ```bash
-cd web
-npm run dev
+pnpm --filter @meriter/web dev
 ```
 - Runs on `http://localhost:8001`
 
 **Terminal 3 - Caddy:**
 ```bash
-caddy run --config Caddyfile.local
+DOMAIN=localhost caddy run --config Caddyfile
 ```
 - Runs on `http://localhost:8080`
 - Routes `/api/*` to backend (8002)
@@ -112,13 +103,8 @@ This is simpler but has known issues with relative API URLs.
 #### 2.1. Install Dependencies
 
 ```bash
-# Install backend dependencies
-cd api
-npm install
-
-# Install frontend dependencies
-cd ../web
-npm install
+# Install all workspace dependencies
+pnpm install
 ```
 
 #### 2.2. Configure Environment Variables
@@ -142,10 +128,8 @@ BOT_USERNAME=your_bot_username
 
 **`web/.env`:**
 ```bash
-MONGO_URL=mongodb://127.0.0.1:27017/meriter
-BOT_TOKEN=your_telegram_bot_token_from_botfather
+NEXT_PUBLIC_API_URL=http://localhost:8002
 NEXT_PUBLIC_BOT_USERNAME=your_bot_username
-JWT_SECRET=your-secure-jwt-secret
 ```
 
 #### 2.3. Start Services
@@ -154,15 +138,13 @@ Open two terminal windows:
 
 **Terminal 1 - Backend (NestJS):**
 ```bash
-cd api
-npm run dev
+pnpm --filter @meriter/api dev
 ```
 - Runs on `http://localhost:8002`
 
 **Terminal 2 - Frontend (Next.js):**
 ```bash
-cd web
-npm run dev
+pnpm --filter @meriter/web dev
 ```
 - Runs on `http://localhost:8001`
 

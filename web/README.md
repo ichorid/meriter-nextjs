@@ -6,7 +6,7 @@ A modern, type-safe React/Next.js frontend for the Meriter platform, built with 
 
 - **TypeScript First**: Full type safety with strict mode enabled
 - **Modern React**: Built with React 18 and Next.js 15
-- **State Management**: React Query (TanStack Query) for server state
+- **State Management**: TanStack Query for server state
 - **Authentication**: Centralized auth system with Telegram integration
 - **UI Components**: DaisyUI + Telegram UI for consistent design
 - **Internationalization**: Multi-language support with next-intl
@@ -73,8 +73,8 @@ pnpm install
 
 3. Set up environment variables:
 ```bash
-cp env.example .env.local
-# Edit .env.local with your configuration
+cp env.example .env
+# Edit .env with your configuration
 ```
 
 4. Start the development server:
@@ -88,15 +88,10 @@ The application will be available at `http://localhost:8001`.
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `NEXT_PUBLIC_API_URL` | Backend API URL | Yes |
+| `NEXT_PUBLIC_API_URL` | Backend API base URL (e.g., http://localhost:8080 or https://meriter.pro) | Yes |
 | `NEXT_PUBLIC_BOT_USERNAME` | Telegram bot username | Yes |
-| `NEXT_PUBLIC_BOT_TOKEN` | Telegram bot token | Yes |
-| `NEXT_PUBLIC_BOT_URL` | Telegram bot URL | Yes |
-| `NEXT_PUBLIC_APP_URL` | Application URL | Yes |
-| `NEXT_PUBLIC_S3_BUCKET` | S3 bucket name | Yes |
-| `NEXT_PUBLIC_S3_REGION` | S3 region | Yes |
-| `NEXT_PUBLIC_S3_ACCESS_KEY_ID` | S3 access key | Yes |
-| `NEXT_PUBLIC_S3_SECRET_ACCESS_KEY` | S3 secret key | Yes |
+| `APP_URL` | Application URL (used server-side) | Optional |
+| `NEXT_PUBLIC_ENABLE_DEBUG` | Enable client debug logs | Optional |
 
 ## 🧪 Testing
 
@@ -196,21 +191,21 @@ The project uses strict TypeScript configuration with:
 
 ## 📖 API Documentation
 
-### Authentication Endpoints
+### Authentication Endpoints (v1)
 
-- `POST /api/rest/telegram-auth` - Telegram widget authentication
-- `POST /api/rest/telegram-auth/webapp` - Telegram Web App authentication
-- `POST /api/rest/logout` - User logout
-- `GET /api/rest/getme` - Get current user
+- `POST /api/v1/auth/telegram/widget` - Telegram widget authentication
+- `POST /api/v1/auth/telegram/webapp` - Telegram Web App authentication
+- `POST /api/v1/auth/logout` - User logout
+- `GET /api/v1/auth/me` - Get current user
 
-### Data Endpoints
+### Data Endpoints (v1)
 
-- `GET /api/rest/publications` - Get publications
-- `POST /api/rest/publications` - Create publication
-- `GET /api/rest/comments` - Get comments
-- `POST /api/rest/comments` - Create comment
-- `GET /api/rest/communities` - Get communities
-- `GET /api/rest/wallets` - Get wallets
+- `GET /api/v1/publications` - Get publications
+- `POST /api/v1/publications` - Create publication
+- `GET /api/v1/comments` - Get comments
+- `POST /api/v1/comments` - Create comment
+- `GET /api/v1/communities` - Get communities
+- `GET /api/v1/users/me/wallets` - Get wallets
 
 ## 🐛 Troubleshooting
 

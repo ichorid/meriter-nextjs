@@ -25,34 +25,37 @@ A merit-based community platform that integrates with Telegram to create engagin
 
 ### Local Development
 
-1. **Clone and install dependencies**:
+1. **Clone and install dependencies (pnpm workspaces)**:
    ```bash
    git clone https://github.com/your-username/meriter-nextjs.git
    cd meriter-nextjs
-   
-   # Install backend dependencies
-   cd api && npm install && cd ..
-   
-   # Install frontend dependencies  
-   cd web && npm install && cd ..
+
+   # Install all workspace dependencies
+   pnpm install
    ```
 
 2. **Configure environment**:
    ```bash
    cp env.example .env
-   # Edit .env with your MongoDB URI and Telegram bot token
+   # Edit .env with your values (DOMAIN, APP_URL, etc.)
+
+   # Backend env
+   cp api/env.example api/.env
+
+   # Frontend env
+   cp web/env.example web/.env
    ```
 
 3. **Start services**:
    ```bash
    # Terminal 1: Backend (NestJS)
-   cd api && npm run dev
+   pnpm --filter @meriter/api dev
    
    # Terminal 2: Frontend (Next.js)
-   cd web && npm run dev
+   pnpm --filter @meriter/web dev
    
    # Terminal 3: Caddy (reverse proxy)
-   caddy run --config Caddyfile.local
+   DOMAIN=localhost caddy run --config Caddyfile
    ```
 
 4. **Access the application**:
@@ -83,12 +86,12 @@ See [README.deployment.md](README.deployment.md) for detailed Docker deployment 
 
 ## 📚 Documentation
 
-- **[Features](FEATURES.md)** - Detailed feature documentation
 - **[Development Guide](DEVELOPMENT.md)** - Local development setup
 - **[Deployment Guide](README.deployment.md)** - Production deployment
 - **[Telegram Integration](web/TELEGRAM_WEBAPP.md)** - Telegram Web App setup
 - **[API Scripts](api/scripts/README.md)** - Utility scripts
-- **[Testing Guide](api/apps/meriter/test/TESTING_GUIDE.md)** - Backend testing
+  
+> Note: See `api/apps/meriter/test/` for backend tests and docs.
 
 ## 🛠️ Tech Stack
 
@@ -97,7 +100,7 @@ See [README.deployment.md](README.deployment.md) for detailed Docker deployment 
 - **TypeScript** - Type safety
 - **Tailwind CSS + DaisyUI** - Styling
 - **react-i18next** - Internationalization
-- **SWR** - Data fetching
+- **TanStack Query (React Query)** - Data fetching and caching
 
 ### Backend
 - **NestJS** - Node.js framework
@@ -108,7 +111,6 @@ See [README.deployment.md](README.deployment.md) for detailed Docker deployment 
 ### Infrastructure
 - **Docker** - Containerization
 - **Caddy** - Reverse proxy with automatic HTTPS
-- **GitHub Actions** - CI/CD
 
 ## 🌐 Internationalization
 
