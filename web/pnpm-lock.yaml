@@ -18,8 +18,8 @@ importers:
         specifier: ^0.36.4
         version: 0.36.4
       '@meriter/shared-types':
-        specifier: file:../libs/shared-types
-        version: file:../libs/shared-types
+        specifier: link:../libs/shared-types
+        version: link:../libs/shared-types
       '@tanstack/react-query':
         specifier: ^5.90.5
         version: 5.90.5(react@18.3.1)
@@ -1425,9 +1425,6 @@ packages:
 
   '@material-symbols/font-400@0.36.4':
     resolution: {integrity: sha512-LwAcIPPn99ET2R4WPYu3VtbNd/vxZYV9iIE96oHkSUhkqdJVATWqj7UwGnmHQ6z1FkisvixGz5MMx9OBIv60Hg==}
-
-  '@meriter/shared-types@file:../libs/shared-types':
-    resolution: {directory: ../libs/shared-types, type: directory}
 
   '@mongodb-js/saslprep@1.3.2':
     resolution: {integrity: sha512-QgA5AySqB27cGTXBFmnpifAi7HxoGUeezwo6p9dI03MuDB6Pp33zgclqVb6oVK3j6I9Vesg0+oojW2XxB59SGg==}
@@ -6361,10 +6358,6 @@ snapshots:
   '@lukeed/csprng@1.1.0': {}
 
   '@material-symbols/font-400@0.36.4': {}
-
-  '@meriter/shared-types@file:../libs/shared-types':
-    dependencies:
-      zod: 4.1.12
 
   '@mongodb-js/saslprep@1.3.2':
     dependencies:
