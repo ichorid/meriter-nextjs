@@ -5,7 +5,7 @@
     "license": "SEE LICENSE IN LICENSE",
     "scripts": {
         "dev": "next dev -p 8001",
-        "prebuild": "pnpm --dir ../libs/shared-types build",
+        "prebuild": "pnpm --dir ../libs/shared-types build || pnpm --dir ./libs/shared-types build",
         "build": "next build",
         "start": "next start -p 8001",
         "test": "jest",
