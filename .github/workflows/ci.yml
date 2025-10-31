@@ -8,9 +8,6 @@ on:
 jobs:
   web:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
@@ -20,21 +17,13 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - name: Build shared-types
-        run: |
-          cd ../libs/shared-types
-          pnpm install
-          pnpm build
-      - run: pnpm build
-      - run: pnpm test -- --ci
+      - run: pnpm build:web
+      - run: pnpm test:web -- --ci
 
   api:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
@@ -44,14 +33,9 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: api/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - name: Build shared-types
-        run: |
-          cd ../libs/shared-types
-          pnpm install
-          pnpm build
-      - run: pnpm build
-      - run: pnpm test -- --ci
+      - run: pnpm build:api
+      - run: pnpm test:api -- --ci
 
 
