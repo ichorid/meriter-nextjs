@@ -20,7 +20,7 @@ const nextConfig = {
     webpack: (config) => {
         config.resolve.alias = {
             ...config.resolve.alias,
-            '@meriter/shared-types': path.resolve(__dirname, '../libs/shared-types/dist'),
+            '@meriter/shared-types': path.resolve(__dirname, '../libs/shared-types/dist/index'),
         };
         return config;
     },
