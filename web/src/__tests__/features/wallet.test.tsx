@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { WidgetAvatarBalance } from '@shared/components/widget-avatar-balance';
+import { AvatarBalanceWidget } from '@/components/organisms/AvatarBalanceWidget/AvatarBalanceWidget';
 
 describe('Wallet Feature', () => {
     const mockBalance = {
@@ -9,11 +9,11 @@ describe('Wallet Feature', () => {
         amount: 100
     };
 
-    it('should render WidgetAvatarBalance component', () => {
+    it('should render AvatarBalanceWidget component', () => {
         const { container } = render(
-            <WidgetAvatarBalance
+            <AvatarBalanceWidget
                 balance1={mockBalance}
-                balance2={null}
+                balance2={undefined}
                 avatarUrl="/test-avatar.png"
                 onAvatarUrlNotFound={jest.fn()}
                 onClick={jest.fn()}
@@ -26,9 +26,9 @@ describe('Wallet Feature', () => {
 
     it('should display balance amount', () => {
         render(
-            <WidgetAvatarBalance
+            <AvatarBalanceWidget
                 balance1={mockBalance}
-                balance2={null}
+                balance2={undefined}
                 avatarUrl="/test-avatar.png"
                 onAvatarUrlNotFound={jest.fn()}
                 onClick={jest.fn()}
@@ -39,9 +39,9 @@ describe('Wallet Feature', () => {
 
     it('should render without balance2 when not provided', () => {
         const { container } = render(
-            <WidgetAvatarBalance
+            <AvatarBalanceWidget
                 balance1={mockBalance}
-                balance2={null}
+                balance2={undefined}
                 avatarUrl="/test-avatar.png"
                 onAvatarUrlNotFound={jest.fn()}
                 onClick={jest.fn()}

@@ -18,16 +18,11 @@ const nextConfig = {
     // Fix monorepo/workspace output tracing root
     outputFileTracingRoot: path.join(__dirname, '..'),
     webpack: (config) => {
-        // Alias the package to the dist directory so relative imports resolve correctly
-        const sharedTypesDist = path.resolve(__dirname, '../libs/shared-types/dist');
+        // Resolve @meriter/shared-types to the dist directory for CommonJS relative imports
         config.resolve.alias = {
             ...config.resolve.alias,
-            '@meriter/shared-types': sharedTypesDist,
+            '@meriter/shared-types': path.resolve(__dirname, '../libs/shared-types/dist'),
         };
-        // Add the dist directory to modules resolution so webpack can resolve relative CommonJS imports
-        config.resolve.modules = [...(config.resolve.modules || []), sharedTypesDist];
-        // Ensure .js extensions are resolved for CommonJS
-        config.resolve.extensions = [...(config.resolve.extensions || []), '.js'];
         return config;
     },
 };
