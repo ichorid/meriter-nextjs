@@ -1,5 +1,6 @@
 import type { Config } from 'tailwindcss';
 import daisyui from 'daisyui';
+import typography from '@tailwindcss/typography';
 
 const config: Config = {
   content: [
@@ -9,6 +10,7 @@ const config: Config = {
     './src/features/**/*.{js,ts,jsx,tsx,mdx}',
     './src/shared/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  darkMode: ["class", '[data-theme="dark"]'],
   theme: {
     extend: {
       fontFamily: {
@@ -16,58 +18,9 @@ const config: Config = {
       },
     },
   },
-  plugins: [daisyui],
+  plugins: [typography, daisyui],
   daisyui: {
-    themes: [
-      {
-        light: {
-          'primary': '#6200EE',
-          'primary-content': '#FFFFFF',
-          'secondary': '#03DAC6',
-          'secondary-content': '#000000',
-          'accent': '#FF4081',
-          'accent-content': '#FFFFFF',
-          'neutral': '#212121',
-          'neutral-content': '#FFFFFF',
-          'base-100': '#FFFFFF',
-          'base-200': '#F5F5F5',
-          'base-300': '#E0E0E0',
-          'base-content': '#212121',
-          'info': '#2196F3',
-          'info-content': '#FFFFFF',
-          'success': '#4CAF50',
-          'success-content': '#FFFFFF',
-          'warning': '#FF9800',
-          'warning-content': '#000000',
-          'error': '#F44336',
-          'error-content': '#FFFFFF',
-        },
-      },
-      {
-        dark: {
-          'primary': '#6200EE',
-          'primary-content': '#FFFFFF',
-          'secondary': '#03DAC6',
-          'secondary-content': '#000000',
-          'accent': '#FF4081',
-          'accent-content': '#FFFFFF',
-          'neutral': '#212121',
-          'neutral-content': '#FFFFFF',
-          'base-100': '#1F1F1F',
-          'base-200': '#2A2A2A',
-          'base-300': '#3A3A3A',
-          'base-content': '#FFFFFF',
-          'info': '#2196F3',
-          'info-content': '#FFFFFF',
-          'success': '#4CAF50',
-          'success-content': '#FFFFFF',
-          'warning': '#FF9800',
-          'warning-content': '#000000',
-          'error': '#F44336',
-          'error-content': '#FFFFFF',
-        },
-      },
-    ],
+    themes: ["light", "dark"],
   },
 };
 

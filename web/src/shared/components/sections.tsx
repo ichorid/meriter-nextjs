@@ -14,7 +14,7 @@ export const SectionToggle = ({ children, title, className, isOpened }: SectionT
     return (
         <section className={className}>
             <div
-                className="title clickable"
+                className="title cursor-pointer"
                 onClick={() => {
                     setOpened(true)
                 }}>

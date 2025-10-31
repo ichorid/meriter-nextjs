@@ -1,9 +1,10 @@
-@import 'rc-slider/assets/index.css';
-@import '@telegram-apps/telegram-ui/dist/styles.css';
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Keep essential third-party imports */
+@import 'rc-slider/assets/index.css';
+@import '@telegram-apps/telegram-ui/dist/styles.css';
 
 @layer base {
   body {
@@ -12,36 +13,11 @@
 }
 
 @layer components {
-  .page {
-    @apply w-full min-h-screen bg-base-200;
-  }
-
-  .page-inner {
-    @apply max-w-2xl mx-auto;
+  /* Dark mode shadows - use lighter shadows for better visibility */
+  [data-theme="dark"] .shadow-sm {
+    box-shadow: 0 1px 2px 0 rgba(255, 255, 255, 0.05);
   }
   
-  /* Navbar spacing adjustment */
-  .page-with-navbar {
-    @apply pt-20;
-  }
-
-  .clickable {
-    @apply cursor-pointer;
-  }
-
-  .currency-icon {
-    @apply w-8 h-8 object-contain;
-  }
-
-  /* Invert black icons in dark mode */
-  [data-theme="dark"] img[src*="/meriter/home.svg"],
-  [data-theme="dark"] img[src*="/meriter/comment.svg"],
-  [data-theme="dark"] img[src*="/meriter/send.svg"],
-  [data-theme="dark"] img[src*="/meriter/1468522.svg"] {
-    filter: invert(1) brightness(0.9);
-  }
-
-  /* Dark mode card shadows - Material Design elevation */
   [data-theme="dark"] .shadow-md {
     box-shadow: 0 4px 6px -1px rgba(255, 255, 255, 0.1), 0 2px 4px -1px rgba(255, 255, 255, 0.06);
   }
@@ -63,150 +39,50 @@
     box-shadow: 0 20px 25px -5px rgba(255, 255, 255, 0.15), 0 10px 10px -5px rgba(255, 255, 255, 0.1);
   }
 
-  /* Enhanced dark mode card styling */
+  /* Enhanced dark mode card styling with subtle border */
   [data-theme="dark"] .card {
     border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  /* Ensure media inside cards is responsive and prevent overflow */
-  .card img,
-  .card video {
-    max-width: 100%;
-    height: auto;
-    display: block;
-  }
-  .card {
-    overflow: hidden;
-  }
-
-  /* Withdraw slider integration styles */
-  .withdraw-slider-section {
-    animation: slideDown 300ms ease-out;
-    background: transparent;
-  }
-
-  @keyframes slideDown {
-    from {
-      opacity: 0;
-      max-height: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      max-height: 500px;
-      transform: translateY(0);
-    }
-  }
-
-  /* Divider styling for withdraw slider */
-  .card .divider {
-    @apply border-base-300;
-  }
-
-  [data-theme="dark"] .card .divider {
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-
-  /* Vertical Slider Styles for Voting */
-  .rc-slider-vertical {
-    display: inline-block;
-    width: 36px;
-    height: 100%;
-    padding: 0;
-    margin: 0 20px;
-    touch-action: pan-y;
-  }
-
-  .rc-slider-vertical .rc-slider-rail {
-    width: 8px;
-    height: 100%;
-    /* For vertical slider: 0% = top, 100% = bottom
-       Green at top (positive), red at bottom (negative) */
-    background: linear-gradient(to bottom, 
-      theme('colors.success') 0%,
-      theme('colors.success') 35%,
-      theme('colors.base-300') 35%,
-      theme('colors.base-300') 65%,
-      theme('colors.error') 65%,
-      theme('colors.error') 100%
-    );
-    border-radius: 6px;
-  }
-
-  [data-theme="dark"] .rc-slider-vertical .rc-slider-rail {
-    background: linear-gradient(to bottom, 
-      rgba(74, 222, 128, 0.5) 0%,
-      rgba(74, 222, 128, 0.5) 35%,
-      rgba(107, 114, 128, 0.3) 35%,
-      rgba(107, 114, 128, 0.3) 65%,
-      rgba(248, 113, 113, 0.5) 65%,
-      rgba(248, 113, 113, 0.5) 100%
-    );
-  }
-
-  .rc-slider-vertical .rc-slider-track {
-    width: 8px;
-    /* Track color is set via inline styles in component */
-    border-radius: 6px;
-  }
-
-  .rc-slider-vertical .rc-slider-handle {
-    width: 32px;
-    height: 32px;
-    margin-left: -12px;
-    margin-top: -16px;
-    background-color: theme('colors.primary');
-    border: 3px solid theme('colors.base-100');
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    cursor: grab;
-    touch-action: none;
-    will-change: transform;
-    transform: translateZ(0);
-    transition: transform 0.15s ease-out;
-  }
-
-  .rc-slider-vertical .rc-slider-handle:hover,
-  .rc-slider-vertical .rc-slider-handle:focus {
-    border-color: theme('colors.base-100');
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    cursor: grabbing;
-  }
-
-  .rc-slider-vertical .rc-slider-handle:active {
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
-    cursor: grabbing;
-  }
-
-  [data-theme="dark"] .rc-slider-vertical .rc-slider-handle {
-    box-shadow: 0 2px 6px rgba(255, 255, 255, 0.1);
-  }
-
-  [data-theme="dark"] .rc-slider-vertical .rc-slider-handle:hover,
-  [data-theme="dark"] .rc-slider-vertical .rc-slider-handle:focus {
-    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
-  }
-
-  [data-theme="dark"] .rc-slider-vertical .rc-slider-handle:active {
-    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.3);
-  }
-
-  /* Vertical slider for withdraw mode (only positive) */
-  .rc-slider-vertical[data-withdraw-mode="true"] .rc-slider-rail {
-    background: linear-gradient(to bottom,
-      theme('colors.success') 0%,
-      theme('colors.success') 100%
-    );
-  }
-
-  [data-theme="dark"] .rc-slider-vertical[data-withdraw-mode="true"] .rc-slider-rail {
-    background: linear-gradient(to bottom,
-      rgba(74, 222, 128, 0.5) 0%,
-      rgba(74, 222, 128, 0.5) 100%
-    );
-  }
-
-  .rc-slider-vertical[data-withdraw-mode="true"] .rc-slider-track {
-    background: theme('colors.success');
+  /* Cards with shadow classes get additional subtle border in dark mode */
+  [data-theme="dark"] .card.shadow-sm,
+  [data-theme="dark"] .card.shadow-md,
+  [data-theme="dark"] .card.shadow-lg,
+  [data-theme="dark"] .card.shadow-xl {
+    border-color: rgba(255, 255, 255, 0.08);
   }
 }
 
+.loading-indicator:before {
+    content: '';
+    background: #00000080;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+  }
+  
+  .loading-indicator:after {
+    content: ' ';
+    position: fixed;
+    top: 40%;
+    left: 45%;
+    z-index: 10010;
+    color:white;
+    text-align:center;
+    font-weight:bold;
+    font-size:1.2rem;        
+    border: 16px solid #f3f3f3; /* Light grey */
+    border-top: 16px solid #0474bf; /* Blue */
+    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

@@ -41,9 +41,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (!isTelegramMiniApp) {
             const stored = localStorage.getItem('theme') as Theme | null;
-            if (stored && ['light', 'dark', 'auto'].includes(stored)) {
+            if (stored && (stored === 'light' || stored === 'dark' || stored === 'auto')) {
                 console.log('🎨 Using stored theme:', stored);
                 setThemeState(stored);
+            } else {
+                // Default to auto (follow system preference)
+                setThemeState('auto');
             }
         }
     }, [isTelegramMiniApp]);
@@ -72,7 +75,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
         updateResolvedTheme();
 
-        // Listen for system preference changes
+        // Listen for system preference changes when theme is auto
         const handler = () => {
             if (theme === 'auto') {
                 updateResolvedTheme();
@@ -90,10 +93,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     const setTheme = (newTheme: Theme) => {
         console.log('🎨 Setting theme:', newTheme);
-        setThemeState(newTheme);
-        localStorage.setItem('theme', newTheme);
-        
-        if (isTelegramMiniApp) {
+        if (!isTelegramMiniApp) {
+            setThemeState(newTheme);
+            localStorage.setItem('theme', newTheme);
+            // resolvedTheme will be updated by the useEffect above
+        } else {
             console.log('🎨 In Telegram Web App - theme follows Telegram settings');
         }
     };

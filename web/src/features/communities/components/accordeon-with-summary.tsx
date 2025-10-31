@@ -13,7 +13,7 @@ export const AccordeonWithSummary: React.FC<AccordeonWithSummaryProps> = ({ chil
     return (
         <div className="accordeon-with-summary">
             <div
-                className="title clickable"
+                className="title cursor-pointer"
                 onClick={() => {
                     setOpened(!opened)
                 }}>
@@ -21,7 +21,7 @@ export const AccordeonWithSummary: React.FC<AccordeonWithSummaryProps> = ({ chil
             </div>
             {!opened && (
                 <div
-                    className="summary clickable"
+                    className="summary cursor-pointer"
                     onClick={() => {
                         setOpened(!opened)
                     }}>

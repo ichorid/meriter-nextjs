@@ -41,8 +41,7 @@ export const CardCommentVote = ({
         // Don't trigger if clicking on buttons or interactive elements
         const target = e.target as HTMLElement;
         const isClickable = target.closest('button') || 
-                           target.closest('.clickable') ||
-                           (target.closest('.cursor-pointer') && target.closest('.cursor-pointer') !== e.currentTarget);
+                           target.closest('.cursor-pointer') && target.closest('.cursor-pointer') !== e.currentTarget;
         
         if (isClickable) {
             return; // Let the button handle its own click

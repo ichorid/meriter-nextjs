@@ -21,12 +21,14 @@ export const SimplePage = ({ children, coverImageUrl, blur, className }: SimpleP
     }, [])
 
     return (
-        <div className={classList(className || '', 'simple-page')}>
-            <div
-                className="simple-page-cover"
-                style={{ backgroundImage: `url(${coverImageUrl})`, filter: `blur(${blur ?? 20}px)brightness(50%)` }}></div>
-            <div className="simple-page-overlay"></div>
-            <div className="simple-page-inner">{children}</div>
+        <div className={classList(className || '', 'w-full min-h-screen bg-base-200')}>
+            {coverImageUrl && (
+                <div
+                    className="simple-page-cover absolute inset-0"
+                    style={{ backgroundImage: `url(${coverImageUrl})`, filter: `blur(${blur ?? 20}px)brightness(50%)` }}></div>
+            )}
+            <div className="simple-page-overlay absolute inset-0 bg-base-200/50"></div>
+            <div className="max-w-2xl mx-auto relative">{children}</div>
         </div>
     )
 }
