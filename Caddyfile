@@ -1,37 +1,37 @@
 # Caddyfile for Meriter application
 # Replace {$DOMAIN} with your actual domain or use environment variable
 
+{
+    # Global options
+    auto_https disable_redirects
+    email {$CADDY_EMAIL:admin@{$DOMAIN}}
+}
+
 {$DOMAIN:localhost} {
     # Enable access logs
     log {
         output file /var/log/caddy/access.log
         format console
+        level INFO
     }
 
-    # Route /api/* directly to NestJS backend
-    handle /api/* {
-        reverse_proxy api:8002 {
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
+    # Specific API routes handled by NestJS backend
+    handle /api/geticonslogojoy* {
+        reverse_proxy meriter-api:8002
     }
 
-    # Everything else goes to Next.js web application
+    handle /api/d* {
+        reverse_proxy meriter-api:8002
+    }
+
+    # All other API requests go to NestJS backend
+    handle /api* {
+        reverse_proxy meriter-api:8002
+    }
+
+    # Everything else goes to Next.js frontend
     handle {
-        reverse_proxy web:8001 {
-            # Health check
-            health_uri /
-            health_interval 30s
-            health_timeout 10s
-            
-            # Headers
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
-        }
+        reverse_proxy meriter-web:8001
     }
 
     # Enable compression
@@ -42,7 +42,4 @@
         respond "{err.status_code} {err.status_text}"
     }
 }
-
-# Automatic HTTPS will be enabled when using a real domain
-# For local development, HTTP will be used
 
