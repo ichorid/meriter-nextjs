@@ -5,7 +5,7 @@ RUN pnpm config set store-dir /pnpm-store
 COPY web/package.json web/pnpm-lock.yaml ./web/
 COPY libs/shared-types ./libs/shared-types
 WORKDIR /app/web
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 FROM node:22-alpine AS builder
 WORKDIR /app

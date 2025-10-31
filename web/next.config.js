@@ -13,10 +13,17 @@ const nextConfig = {
             bodySizeLimit: '2mb',
         },
     },
-    transpilePackages: ['@telegram-apps/sdk-react', '@telegram-apps/telegram-ui'],
+    transpilePackages: ['@telegram-apps/sdk-react', '@telegram-apps/telegram-ui', '@meriter/shared-types'],
     output: 'standalone',
     // Fix monorepo/workspace output tracing root
     outputFileTracingRoot: path.join(__dirname, '..'),
+    webpack: (config) => {
+        config.resolve.alias = {
+            ...config.resolve.alias,
+            '@meriter/shared-types': path.resolve(__dirname, '../libs/shared-types/dist'),
+        };
+        return config;
+    },
 };
 
 module.exports = withNextIntl(nextConfig);
