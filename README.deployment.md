@@ -14,6 +14,16 @@ The application consists of three main services:
 
 All data is stored in an external MongoDB instance - no persistent volumes required for application data.
 
+## Docker Image Optimization
+
+The Docker images are optimized for production using multi-stage builds:
+
+- **API Image**: ~404MB (reduced from ~900MB) using webpack bundling with external dependencies
+- **Web Image**: ~246MB using Next.js standalone output
+- Both images use Alpine Linux for minimal footprint
+- Native dependencies are pre-approved to avoid build script warnings
+- Shared pnpm store is reused across build stages for efficiency
+
 ## CI/CD Pipeline
 
 ### CI/CD
