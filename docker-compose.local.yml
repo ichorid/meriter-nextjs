@@ -1,6 +1,8 @@
 services:
   web:
-    image: ghcr.io/ichorid/meriter-nextjs-web:${VERSION_WEB:-latest}
+    build:
+      context: .
+      dockerfile: web/Dockerfile
     container_name: meriter-web
     restart: unless-stopped
     env_file:
@@ -20,7 +22,9 @@ services:
       start_period: 40s
 
   api:
-    image: ghcr.io/ichorid/meriter-nextjs-api:${VERSION_API:-latest}
+    build:
+      context: .
+      dockerfile: api/Dockerfile
     container_name: meriter-api
     restart: unless-stopped
     env_file:
@@ -71,3 +75,4 @@ volumes:
     driver: local
   caddy_config:
     driver: local
+

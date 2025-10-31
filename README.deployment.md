@@ -33,14 +33,12 @@ If GitHub Actions workflows are configured in your fork, you may build and push 
 
    **Database (API):**
    ```env
-   MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/meriter
+   MONGO_URL=mongodb+srv://user:password@cluster.mongodb.net/meriter
    ```
 
    **Security (API - change these!):**
    ```env
    JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-   SESSION_SECRET=your-session-secret-change-this-in-production
-   COOKIE_SECRET=your-cookie-secret-change-this-in-production
    ```
 
    **Domain (Caddy):**
@@ -48,19 +46,19 @@ If GitHub Actions workflows are configured in your fork, you may build and push 
    DOMAIN=yourdomain.com
    ```
 
-   **Telegram Bot (API - required):**
+   **Telegram Bot (required):**
    ```env
-   TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
+   BOT_TOKEN=your_bot_token_from_botfather
    BOT_USERNAME=your_bot_username
    APP_URL=https://yourdomain.com
    ```
 
-   **S3 Storage (API - optional):**
+   **S3 Storage (optional):**
    ```env
-   AWS_ACCESS_KEY_ID=your-key
-   AWS_SECRET_ACCESS_KEY=your-secret
-   AWS_REGION=us-east-1
-   AWS_S3_BUCKET=your-bucket
+   S3_ACCESS_KEY_ID=your-access-key
+   S3_SECRET_ACCESS_KEY=your-secret-key
+   S3_ENDPOINT=https://hb.bizmrg.com
+   S3_REGION=ru-msk
    ```
 
    **Frontend API URL (Web):**
@@ -113,8 +111,16 @@ DOMAIN=localhost
    nano .env  # Edit with your values
    ```
 
-4. **Build and start services**
+4. **Pull images and start services**
    ```bash
+   # Set version environment variables (get from CI/CD build outputs)
+   export VERSION_WEB=v0.7.0  # or whatever version was built
+   export VERSION_API=v0.7.0  # or whatever version was built
+   
+   # Pull latest images
+   docker-compose pull
+   
+   # Start services
    docker-compose up -d
    ```
 
@@ -156,50 +162,65 @@ See `api/scripts/README.md` for detailed documentation on the CORS configuration
 
 **Note**: This only needs to be done once per environment/domain. The configuration persists on the S3 bucket.
 
-### Updating to Latest Images (if using a registry)
+### Docker Compose Files
+
+The repository includes two docker-compose files:
+
+- **`docker-compose.yml`**: Production deployment (uses pre-built images from GitHub Container Registry)
+- **`docker-compose.local.yml`**: Local development (builds images from source)
+
+For production deployment, use `docker-compose.yml` which pulls images from `ghcr.io/ichorid/meriter-nextjs-web` and `ghcr.io/ichorid/meriter-nextjs-api`.
+
+### Updating to New Versions
 
 When new images are built and pushed by GitHub Actions:
 
-1. **Pull latest images**
+1. **Check the versions** that were built (from GitHub Actions logs or check package.json files):
    ```bash
-   docker pull ghcr.io/[owner]/meriter-nextjs-web:latest
-   docker pull ghcr.io/[owner]/meriter-nextjs-api:latest
+   cat web/package.json | grep version
+   cat api/package.json | grep version
    ```
 
-2. **Update docker-compose to use registry images**
-   
-   Edit `docker-compose.yml` to replace `build:` sections with `image:`:
-
-   ```yaml
-   web:
-     image: ghcr.io/[owner]/meriter-nextjs-web:latest
-     # Remove the 'build:' section
-     container_name: meriter-web
-     # ... rest of config
-   
-   api:
-     image: ghcr.io/[owner]/meriter-nextjs-api:latest
-     # Remove the 'build:' section
-     container_name: meriter-api
-     # ... rest of config
-   ```
-
-3. **Restart services**
+2. **Pull and deploy the new versions**:
    ```bash
+   # Set version environment variables
+   export VERSION_WEB=v0.8.0  # replace with actual version
+   export VERSION_API=v0.8.0  # replace with actual version
+   
+   # Pull new images
+   docker-compose pull
+   
+   # Restart services
    docker-compose down
    docker-compose up -d
    ```
 
-### Deploying Specific Version
+3. **Or deploy latest versions**:
+   ```bash
+   # Use 'latest' tag
+   export VERSION_WEB=latest
+   export VERSION_API=latest
+   
+   docker-compose pull
+   docker-compose down
+   docker-compose up -d
+   ```
 
-To deploy a specific version instead of latest:
+### Using .env File for Versions
 
-```bash
-docker pull ghcr.io/[owner]/meriter-nextjs-web:v0.1.0
-docker pull ghcr.io/[owner]/meriter-nextjs-api:v0.1.0
+You can also store versions in your `.env` file instead of using environment variables:
+
+```env
+VERSION_WEB=v0.7.0
+VERSION_API=v0.7.0
 ```
 
-Update `docker-compose.yml` with the specific version tags.
+Then simply run:
+```bash
+docker-compose pull
+docker-compose down
+docker-compose up -d
+```
 
 ### Authentication for Private Registry
 
@@ -291,7 +312,7 @@ docker inspect meriter-caddy
 3. Check MongoDB connectivity:
    ```bash
    docker-compose exec api sh
-   wget -O- $MONGODB_URI
+   wget -O- $MONGO_URL
    ```
 
 ### Images fail to pull
@@ -303,7 +324,7 @@ docker inspect meriter-caddy
 
 2. Check image exists:
    ```bash
-   docker manifest inspect ghcr.io/[owner]/meriter-nextjs-web:latest
+   docker manifest inspect ghcr.io/ichorid/meriter-nextjs-web:latest
    ```
 
 ### HTTPS not working
@@ -338,16 +359,12 @@ To rollback to a previous version:
    git log --oneline web/package.json
    ```
 
-2. **Pull the specific version**
+2. **Rollback to specific version**
    ```bash
-   docker pull ghcr.io/[owner]/meriter-nextjs-web:v0.1.0
-   docker pull ghcr.io/[owner]/meriter-nextjs-api:v0.1.0
-   ```
-
-3. **Update docker-compose.yml** with version tags
-
-4. **Restart services**
-   ```bash
+   export VERSION_WEB=v0.1.0
+   export VERSION_API=v0.1.0
+   
+   docker-compose pull
    docker-compose down
    docker-compose up -d
    ```
@@ -355,7 +372,7 @@ To rollback to a previous version:
 ## Security Considerations
 
 - **Environment Variables**: Never commit `.env` file to git
-- **Secrets**: Rotate JWT_SECRET, SESSION_SECRET regularly
+- **Secrets**: Rotate JWT_SECRET regularly
 - **MongoDB**: Use strong passwords and network security
 - **Updates**: Keep base images updated (rebuild periodically)
 - **Firewall**: Only expose ports 80 and 443 publicly

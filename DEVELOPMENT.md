@@ -441,8 +441,11 @@ caddy run --config Caddyfile.local
 
 ### With Docker Compose (Production-like)
 ```bash
-docker-compose up
+# For local development using Docker Compose with image builds
+docker-compose -f docker-compose.local.yml up
 
 # Access: http://localhost
 ```
+
+**Note**: Use `docker-compose.local.yml` for local development (builds images from source). The default `docker-compose.yml` is for production deployment (pulls pre-built images from GitHub Container Registry).
 
