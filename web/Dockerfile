@@ -25,10 +25,12 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 ENV NODE_ENV=production
 ENV PORT=8001
-COPY --from=builder /app/web/.next/standalone ./
+ENV HOSTNAME=0.0.0.0
+COPY --from=builder /app/web/.next/standalone ./web
 COPY --from=builder /app/web/.next/static ./web/.next/static
 COPY --from=builder /app/web/public ./web/public
 EXPOSE 8001
 USER nextjs
+WORKDIR /app/web/web
 CMD ["node", "server.js"]
 
