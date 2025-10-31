@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { WidgetAvatarBalance } from '@features/wallet/components/widget-avatar-balance';
+import { AvatarBalanceWidget } from '@/components/organisms/AvatarBalanceWidget/AvatarBalanceWidget';
 
 describe('Wallet Feature', () => {
     const mockBalance = {
@@ -9,24 +9,26 @@ describe('Wallet Feature', () => {
         amount: 100
     };
 
-    it('should render WidgetAvatarBalance component', () => {
+    it('should render AvatarBalanceWidget component', () => {
         const { container } = render(
-            <WidgetAvatarBalance
+            <AvatarBalanceWidget
                 balance1={mockBalance}
-                balance2={null}
+                balance2={undefined}
                 avatarUrl="/test-avatar.png"
                 onAvatarUrlNotFound={jest.fn()}
                 onClick={jest.fn()}
             />
         );
-        expect(container.querySelector('.widget-avatar-balance')).toBeInTheDocument();
+        // Check for the actual CSS classes used in the component
+        expect(container.querySelector('.bg-base-100')).toBeInTheDocument();
+        expect(container.querySelector('.shadow-md')).toBeInTheDocument();
     });
 
     it('should display balance amount', () => {
         render(
-            <WidgetAvatarBalance
+            <AvatarBalanceWidget
                 balance1={mockBalance}
-                balance2={null}
+                balance2={undefined}
                 avatarUrl="/test-avatar.png"
                 onAvatarUrlNotFound={jest.fn()}
                 onClick={jest.fn()}
@@ -37,16 +39,18 @@ describe('Wallet Feature', () => {
 
     it('should render without balance2 when not provided', () => {
         const { container } = render(
-            <WidgetAvatarBalance
+            <AvatarBalanceWidget
                 balance1={mockBalance}
-                balance2={null}
+                balance2={undefined}
                 avatarUrl="/test-avatar.png"
                 onAvatarUrlNotFound={jest.fn()}
                 onClick={jest.fn()}
             />
         );
-        const balances = container.querySelectorAll('.balance');
-        expect(balances.length).toBe(1);
+        // Check that balance1 amount is rendered (span with font-medium class)
+        const balanceSpans = container.querySelectorAll('span.font-medium');
+        expect(balanceSpans.length).toBe(1);
+        expect(balanceSpans[0]).toHaveTextContent('100');
     });
 });
 

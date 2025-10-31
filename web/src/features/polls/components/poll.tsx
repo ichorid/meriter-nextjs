@@ -2,7 +2,7 @@
 
 import { A } from '@shared/components/simple/simple-elements';
 import { useState } from "react";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 interface IPollProps {
     tagRoot?: string;
@@ -23,17 +23,26 @@ interface IPollResults {
     [tagName: string]: any;
 }
 
-const Checkbox = ({ tagName, h, d, selectItem }) => {
+interface CheckboxProps {
+    tagName: string;
+    h: any;
+    d: any;
+    selectItem: (tagName: string, checked: boolean) => void;
+}
+
+const Checkbox: React.FC<CheckboxProps> = ({ tagName, h, d, selectItem }) => {
     return (
-        <div className="checkbox-wrapper">
-            <label>
+        <div className="form-control">
+            <label className="label cursor-pointer justify-start gap-2">
                 <input
                     type="checkbox"
+                    className="checkbox checkbox-primary"
                     onChange={(e) => selectItem(tagName, e.target.checked)}
                 />
-                <span className="checkmark"></span>
-                {h && <span className="heading">{h}</span>}
-                {d && <span className="description">{d}</span>}
+                <div className="flex flex-col">
+                    {h && <span className="label-text font-medium">{h}</span>}
+                    {d && <span className="label-text-alt opacity-70">{d}</span>}
+                </div>
             </label>
         </div>
     );
@@ -48,8 +57,8 @@ export const Poll = ({
     folded,
     onSubmit,
 }: IPollProps) => {
-    const { t } = useTranslation('polls');
-    const [expanded, setExpanded] = useState({});
+    const t = useTranslations('polls');
+    const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
     const [results, setResults] =
         resultsInit !== undefined && setResultsInit
@@ -94,7 +103,7 @@ export const Poll = ({
             })}
             {!folded && Object.keys(results).length > 0 && (
                 <div className="submit">
-                    <A center button onClick={() => onSubmit(results)}>
+                    <A center button onClick={() => onSubmit?.(results)}>
                         {t('confirm')}
                     </A>
                 </div>

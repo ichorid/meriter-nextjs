@@ -1,0 +1,4 @@
+---
+alwaysApply: true
+---
+frontend uses tanstack. All queries and mutations from/to API should be done through TanStack properly. Direct queries are forbidden

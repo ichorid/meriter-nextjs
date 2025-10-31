@@ -3,8 +3,8 @@ version: '3.8'
 services:
   web:
     build:
-      context: ./web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: web/Dockerfile
     container_name: meriter-web
     restart: unless-stopped
     env_file:
@@ -25,8 +25,8 @@ services:
 
   api:
     build:
-      context: ./api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: api/Dockerfile
     container_name: meriter-api
     restart: unless-stopped
     env_file:

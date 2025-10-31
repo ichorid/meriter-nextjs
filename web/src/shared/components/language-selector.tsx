@@ -1,10 +1,11 @@
 'use client';
 
-import { useTranslation } from 'react-i18next';
+import { useTranslations, useLocale } from 'next-intl';
 import { useEffect, useState } from 'react';
 
 export function LanguageSelector() {
-    const { i18n, t } = useTranslation('settings');
+    const t = useTranslations('settings');
+    const locale = useLocale();
     const [selectedValue, setSelectedValue] = useState('auto');
 
     useEffect(() => {
@@ -18,37 +19,13 @@ export function LanguageSelector() {
         localStorage.setItem('language', value);
         
         try {
-            // Set cookie via API
-            await fetch('/api/set-locale', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ locale: value }),
-            });
-            
-            // Change language immediately for instant feedback
-            if (value === 'auto') {
-                // Detect browser language
-                const browserLang = navigator.language.split('-')[0];
-                const detectedLang = browserLang === 'ru' ? 'ru' : 'en';
-                i18n.changeLanguage(detectedLang);
-            } else {
-                i18n.changeLanguage(value);
-            }
+            // Set cookie directly
+            document.cookie = `NEXT_LOCALE=${value}; max-age=${365 * 24 * 60 * 60}; path=/; samesite=lax`;
             
             // Reload page to get server-side rendering with new language
             window.location.reload();
         } catch (error) {
             console.error('Failed to set locale:', error);
-            // Fallback to client-side only change
-            if (value === 'auto') {
-                const browserLang = navigator.language.split('-')[0];
-                const detectedLang = browserLang === 'ru' ? 'ru' : 'en';
-                i18n.changeLanguage(detectedLang);
-            } else {
-                i18n.changeLanguage(value);
-            }
         }
     };
 

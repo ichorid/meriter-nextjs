@@ -1,38 +1,48 @@
 'use client';
 
-import { swr } from '@lib/swr';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
 import { useEffect, useState } from "react";
-import Axios from "axios";
+import { useAuth } from '@/contexts/AuthContext';
+import { useCommunity, useUpdateCommunity } from '@/hooks/api';
+import { useSendCommunityMemo } from '@/hooks/api/useCommunities';
+import { communitiesApiV1 } from '@/lib/api/v1';
+import type { Community } from '@meriter/shared-types';
 import { etv } from '@shared/lib/input-utils';
 import { nanoid } from "nanoid";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
+import { initDataRaw, useSignal, backButton } from '@telegram-apps/sdk-react';
 
 import { DivFade } from '@shared/components/transitions';
-import Page from '@shared/components/page';
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { useWallets } from '@/hooks/api';
 import { Spinner } from '@shared/components/misc';
 import { IconPicker } from '@shared/components/iconpicker';
-import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
-import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
 import { CardWithAvatar } from '@shared/components/card-with-avatar';
 import { CommunityAvatar } from '@shared/components/community-avatar';
 import {
     telegramGetAvatarLink,
-    telegramGetAvatarLinkUpd,
-} from '@lib/telegram';
+} from '@/lib/utils/telegram';
 
 const CommunitySettingsPage = () => {
     const router = useRouter();
     const params = useParams();
-    const chatId = params.id as string;
-    const { t } = useTranslation('pages');
+    const chatId = (params as any)?.id as string;
+    const t = useTranslations('pages');
+    
+    // Telegram SDK integration
+    const rawData = useSignal(initDataRaw);
+    const isInTelegram = !!rawData;
 
     // Form state
     const [formData, setFormData] = useState({
         currencyNames: { 1: '', 2: '', 5: '' },
         icon: '',
-        spaces: []
+        hashtagEdits: [] as any[],
+        dailyQuota: '',
+        language: 'en' as 'en' | 'ru',
     });
     const [isDirty, setIsDirty] = useState(false);
     const [touched, setTouched] = useState(false);
@@ -40,48 +50,92 @@ const CommunitySettingsPage = () => {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
+    const { data: wallets = [] } = useWallets();
+    const activeCommentHook = useState<string | null>(null);
+    const [activeSlider, setActiveSlider] = useState<string | null>(null);
+    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
     const [saveSuccess, setSaveSuccess] = useState('');
+    
+    // Reset quota state
+    const [resettingQuota, setResettingQuota] = useState(false);
+    const [resetQuotaError, setResetQuotaError] = useState('');
+    const [resetQuotaSuccess, setResetQuotaSuccess] = useState('');
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
+    const [sendMemoSuccess, setSendMemoSuccess] = useState('');
+    const [sendMemoError, setSendMemoError] = useState('');
+    const [sendingMemo, setSendingMemo] = useState(false);
 
-    // Load user and community data
-    const [user] = swr("/api/rest/getme", { init: true });
-    const [communityData, setCommunityData] = useState(null);
+    // Load user data using v1 API
+    const { user } = useAuth();
+    const [communityData, setCommunityData] = useState<Community | null>(null);
     const [communityLoading, setCommunityLoading] = useState(true);
     const [communityError, setCommunityError] = useState('');
 
     // Redirect if not authenticated
     useEffect(() => {
-        if (!user.tgUserId && !user.init) {
-            router.push("/meriter/login?returnTo=/meriter/manage");
+        if (user === null) {
+            router.push(`/meriter/login?returnTo=/meriter/communities/${chatId}/settings`);
         }
-    }, [user, router]);
+    }, [user, router, chatId]);
 
-    // Load community data
+    // Telegram BackButton integration
     useEffect(() => {
-        if (!chatId || !user.tgUserId) return;
+        if (isInTelegram) {
+            const handleBack = () => {
+                router.push(`/meriter/communities/${chatId}`);
+            };
+            
+            backButton.show();
+            const cleanup = backButton.onClick(handleBack);
+            
+            return () => {
+                backButton.hide();
+                cleanup();
+            };
+        }
+        return undefined;
+    }, [isInTelegram, router, chatId]);
 
-        setCommunityLoading(true);
-        Axios.get(`/api/rest/communityinfo?chatId=${chatId}`)
-            .then((response) => {
-                const data = response.data;
-                setCommunityData(data);
-                
-                // Populate form with existing data
-                setFormData({
-                    currencyNames: data.currencyNames || { 1: '', 2: '', 5: '' },
-                    icon: data.icon || '',
-                    spaces: data.spaces || []
-                });
-                
-                setCommunityError('');
-            })
-            .catch((error) => {
-                console.error('Failed to load community data:', error);
-                setCommunityError(error.response?.status === 404 ? t('communitySettings.communityNotFound') : t('communitySettings.failedToLoad'));
-            })
-            .finally(() => {
-                setCommunityLoading(false);
+    // Load community data using v1 API
+    const { data: communityResponse, isLoading: communityIsLoading, error: communityErr } = useCommunity(chatId);
+    const sendMemoMutation = useSendCommunityMemo();
+    
+    useEffect(() => {
+        if (communityResponse) {
+            setCommunityData(communityResponse);
+            
+            // Map API format to form format
+            // API has: settings.currencyNames { singular, plural, genitive }
+            // Form uses: { 1: 'singular', 2: 'dual/genitive', 5: 'plural' }
+            const currencyNames = communityResponse.settings?.currencyNames || {} as any;
+            const formCurrencyNames = {
+                1: currencyNames.singular || '',
+                2: currencyNames.genitive || currencyNames.plural || '',
+                5: currencyNames.plural || '',
+            };
+            
+            // Map hashtags to hashtagEdits format with descriptions
+            const hashtagDescriptions = communityResponse.hashtagDescriptions || {};
+            const hashtagEdits = (communityResponse.hashtags || []).map((tag: string) => ({
+                slug: nanoid(8),
+                tag: tag,
+                description: hashtagDescriptions[tag] || ''
+            }));
+            
+            setFormData({
+                currencyNames: formCurrencyNames,
+                icon: communityResponse.settings?.iconUrl || communityResponse.avatarUrl || '',
+                hashtagEdits: hashtagEdits,
+                dailyQuota: communityResponse.settings?.dailyEmission?.toString() || '10',
+                language: (communityResponse.settings as any)?.language || 'en',
             });
-    }, [chatId, user.tgUserId]);
+            setCommunityError('');
+        }
+        if (communityErr) {
+            setCommunityError(t('communitySettings.failedToLoad'));
+        }
+        setCommunityLoading(false);
+    }, [communityResponse, communityErr, t]);
 
     // Validation logic
     const validateForm = (): Record<string, string> => {
@@ -92,7 +146,7 @@ const CommunitySettingsPage = () => {
         if (!formData.icon) {
             errors.icon = t('communitySettings.validation.iconRequired');
         }
-        const validHashtags = formData.spaces.filter(s => s.tagRus?.trim() && !s.deleted);
+        const validHashtags = formData.hashtagEdits.filter((s: any) => s.tag?.trim() && !s.deleted);
         if (validHashtags.length === 0) {
             errors.hashtags = t('communitySettings.validation.hashtagsRequired');
         }
@@ -116,53 +170,129 @@ const CommunitySettingsPage = () => {
     };
 
     const setVal = (idx: number, key: string) => (val: any) => {
-        let spacesNew = [...formData.spaces];
-        spacesNew[idx] = { ...spacesNew[idx], [key]: val };
-        setFormData(prev => ({ ...prev, spaces: spacesNew }));
+        let hashtagEdits = [...formData.hashtagEdits] as any[];
+        hashtagEdits[idx] = { ...hashtagEdits[idx], [key]: val };
+        setFormData(prev => ({ ...prev, hashtagEdits: hashtagEdits }));
         setIsDirty(true);
     };
 
     const addHashtag = () => {
-        const newSpace = { slug: nanoid(8), tagRus: '', description: '' };
-        setFormData(prev => ({ ...prev, spaces: [...prev.spaces, newSpace] }));
+        const newHashtag = { slug: nanoid(8), tag: '', description: '' };
+        setFormData(prev => ({ ...prev, hashtagEdits: [...prev.hashtagEdits, newHashtag] }));
         setIsDirty(true);
     };
 
     const deleteHashtag = (idx: number) => {
-        let spacesNew = [...formData.spaces];
-        spacesNew[idx].deleted = true;
-        setFormData(prev => ({ ...prev, spaces: spacesNew }));
+        let hashtagEdits = [...formData.hashtagEdits];
+        hashtagEdits[idx].deleted = true;
+        setFormData(prev => ({ ...prev, hashtagEdits: hashtagEdits }));
         setIsDirty(true);
     };
 
-    // Save handler
+    // Save handler using v1 API
+    const updateCommunityMutation = useUpdateCommunity();
+    
     const handleSave = async () => {
         setTouched(true);
         if (!isValid) return;
 
+        // Map currency names from form format to API format
+        // Form uses: { 1: 'singular', 2: 'dual', 5: 'plural' }
+        // API expects: { singular: 'text', plural: 'text', genitive: 'text' }
+        const currencyNames = {
+            singular: formData.currencyNames[1] || '',
+            plural: formData.currencyNames[5] || '',
+            genitive: formData.currencyNames[2] || formData.currencyNames[5] || '', // Use plural as fallback for genitive
+        };
+
+        // Extract hashtags and descriptions
+        const validHashtags = formData.hashtagEdits.filter((d: any) => d.tag && !d.deleted);
+        const hashtagDescriptions: Record<string, string> = {};
+        validHashtags.forEach((hashtagEdit: any) => {
+            if (hashtagEdit.description) {
+                hashtagDescriptions[hashtagEdit.tag] = hashtagEdit.description;
+            }
+        });
+
         const saveData = {
-            spaces: formData.spaces.filter((d) => d.tagRus && !d.deleted),
-            icon: formData.icon,
-            currencyNames: formData.currencyNames,
+            name: communityResponse?.name,
+            description: communityResponse?.description,
+            settings: {
+                iconUrl: formData.icon,
+                currencyNames: currencyNames,
+                dailyEmission: parseInt(formData.dailyQuota, 10) || 10,
+                language: formData.language,
+            },
+            hashtags: validHashtags.map((d: any) => d.tag),
+            hashtagDescriptions: hashtagDescriptions,
         };
 
         setSaving(true);
         setSaveError('');
 
         try {
-            await Axios.post(`/api/rest/communityinfo?chatId=${chatId}`, saveData);
+            await updateCommunityMutation.mutateAsync({ id: chatId, data: saveData });
 
             setIsDirty(false);
             setSaveSuccess(t('communitySettings.settingsSaved'));
             setTimeout(() => {
                 setSaveSuccess('');
-                router.push('/meriter/manage?success=saved');
+                router.push(`/meriter/communities/${chatId}?saved=1`);
             }, 1500);
-        } catch (error) {
-            console.error('Save failed:', error);
-            setSaveError(error.response?.data?.message || 'Failed to save settings');
+        } catch (error: unknown) {
+            // Log error details properly
+            if (error instanceof Error) {
+                console.error('Save failed:', error.message, error);
+            } else if (error && typeof error === 'object') {
+                const errorDetails = {
+                    message: (error as any).message || 'Unknown error',
+                    code: (error as any).code,
+                    details: (error as any).details
+                };
+                console.error('Save failed:', JSON.stringify(errorDetails, null, 2));
+                const message = (error as any).message || 'Failed to save settings';
+                setSaveError(message);
+            } else {
+                console.error('Save failed:', String(error));
+                setSaveError('Failed to save settings');
+            }
         } finally {
             setSaving(false);
+        }
+    };
+
+    // Reset quota handler
+    const handleResetQuota = async () => {
+        setResettingQuota(true);
+        setResetQuotaError('');
+        setResetQuotaSuccess('');
+
+        try {
+            const result = await communitiesApiV1.resetDailyQuota(chatId);
+            setResetQuotaSuccess(t('communitySettings.resetQuotaSuccess'));
+            setShowResetConfirm(false);
+            setTimeout(() => setResetQuotaSuccess(''), 3000);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : t('communitySettings.resetQuotaError');
+            setResetQuotaError(message);
+        } finally {
+            setResettingQuota(false);
+        }
+    };
+
+    const handleSendMemo = async () => {
+        setSendMemoSuccess('');
+        setSendMemoError('');
+        setSendingMemo(true);
+        try {
+            await sendMemoMutation.mutateAsync(chatId);
+            setSendMemoSuccess(t('communitySettings.sendMemoSuccess'));
+            setTimeout(() => setSendMemoSuccess(''), 3000);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : t('communitySettings.sendMemoError');
+            setSendMemoError(message);
+        } finally {
+            setSendingMemo(false);
         }
     };
 
@@ -184,81 +314,86 @@ const CommunitySettingsPage = () => {
     // Loading state
     if (communityLoading) {
         return (
-            <Page>
+            <AdaptiveLayout 
+                communityId={chatId}
+                activeCommentHook={activeCommentHook}
+                activeSlider={activeSlider}
+                setActiveSlider={setActiveSlider}
+                activeWithdrawPost={activeWithdrawPost}
+                setActiveWithdrawPost={setActiveWithdrawPost}
+                wallets={Array.isArray(wallets) ? wallets : []}
+                myId={user?.id}
+            >
                 <div className="flex justify-center items-center min-h-[400px]">
                     <Spinner />
                 </div>
-            </Page>
+            </AdaptiveLayout>
         );
     }
 
     // Error state
     if (communityError) {
         return (
-            <Page>
+            <AdaptiveLayout 
+                communityId={chatId}
+                activeCommentHook={activeCommentHook}
+                activeSlider={activeSlider}
+                setActiveSlider={setActiveSlider}
+                activeWithdrawPost={activeWithdrawPost}
+                setActiveWithdrawPost={setActiveWithdrawPost}
+                wallets={Array.isArray(wallets) ? wallets : []}
+                myId={user?.id}
+            >
                 <div className="text-center py-8">
                     <h2 className="text-xl font-semibold mb-4">{t('communitySettings.error')}</h2>
                     <p className="text-base-content/70 mb-4">{communityError}</p>
-                    <Link href="/meriter/manage" className="btn btn-primary">
+                    <Link href="/meriter/home" className="btn btn-primary">
                         {t('communitySettings.backToCommunities')}
                     </Link>
                 </div>
-            </Page>
+            </AdaptiveLayout>
         );
     }
 
     // Not authenticated
-    if (!user.tgUserId) {
+    if (!user?.id) {
         return null;
     }
 
     const currentErrors = validateForm();
 
     return (
-        <Page>
-            <HeaderAvatarBalance
-                balance1={undefined}
-                balance2={undefined}
-                avatarUrl={telegramGetAvatarLink(user?.tgUserId)}
-                onAvatarUrlNotFound={() =>
-                    telegramGetAvatarLinkUpd(user?.tgUserId)
-                }
-                onClick={() => {
-                    router.push("/meriter/home");
-                }}
-                userName={user?.name || 'User'}
-            >
-                <MenuBreadcrumbs>
-                    <div>
-                        <div className="breadcrumbs text-sm">
-                            <ul>
-                                <li><Link href="/meriter/manage">Communities</Link></li>
-                                <li><Link href={`/meriter/communities/${chatId}/settings`}>{communityData?.chat?.title || 'Community'}</Link></li>
-                                <li>{t('communitySettings.breadcrumb')}</li>
-                            </ul>
-                        </div>
-                    </div>
-                </MenuBreadcrumbs>
-                <div>
-                    {t('communitySettings.subtitle', { communityName: communityData?.chat?.title || 'this community' })}
+        <AdaptiveLayout 
+            communityId={chatId}
+            activeCommentHook={activeCommentHook}
+            activeSlider={activeSlider}
+            setActiveSlider={setActiveSlider}
+            activeWithdrawPost={activeWithdrawPost}
+            setActiveWithdrawPost={setActiveWithdrawPost}
+            wallets={Array.isArray(wallets) ? wallets : []}
+            myId={user?.id}
+        >
+            <div className="mb-6">
+                <div className="tip mt-2">
+                    {t('communitySettings.subtitle', { communityName: communityData?.name || 'this community' })}
                 </div>
-            </HeaderAvatarBalance>
+            </div>
 
             {/* Community Profile Section */}
-            {communityData?.chat && (
+            {communityData && (
                 <div className="card bg-base-100 shadow-xl mb-6">
                     <div className="card-body">
                         <h2 className="card-title">{t('communitySettings.communityProfile')}</h2>
                         <div className="flex items-center gap-4">
                             <CommunityAvatar
-                                avatarUrl={communityData.chat.photo}
-                                communityName={communityData.chat.title || 'Community'}
+                                avatarUrl={communityData?.avatarUrl}
+                                communityName={communityData?.name || 'Community'}
                                 size={80}
                             />
                             <div>
-                                <div className="text-xl font-semibold">{communityData.chat.title}</div>
+                                <div className="text-xl font-semibold">{communityData?.name}</div>
                                 <div className="text-sm opacity-60">
-                                    {communityData.chat.description || t('communitySettings.noDescription')}
+                                    {communityData?.description || t('communitySettings.noDescription')}
                                 </div>
                                 <div className="text-xs opacity-50 mt-1">
                                     {t('communitySettings.avatarUpdateNote')}
@@ -336,13 +471,62 @@ const CommunitySettingsPage = () => {
                 </div>
             </div>
 
+            {/* Telegram Language Section */}
+            <div className="card bg-base-100 shadow-xl mb-6">
+                <div className="card-body">
+                    <h2 className="card-title">{t('communitySettings.language')}</h2>
+                    <div>
+                        <label className="label">
+                            <span className="label-text">{t('communitySettings.languageDescription')}</span>
+                        </label>
+                        <select
+                            className="select select-bordered w-full"
+                            value={formData.language}
+                            onChange={(e) => {
+                                const value = e.target.value as 'en' | 'ru';
+                                setFormData(prev => ({ ...prev, language: value }));
+                                setIsDirty(true);
+                            }}
+                            onBlur={() => setTouched(true)}
+                        >
+                            <option value="en">{t('communitySettings.languageOption.en')}</option>
+                            <option value="ru">{t('communitySettings.languageOption.ru')}</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {/* Daily Quota Section */}
+            <div className="card bg-base-100 shadow-xl mb-6">
+                <div className="card-body">
+                    <h2 className="card-title">{t('communitySettings.dailyQuota')}</h2>
+                    <div>
+                        <label className="label">
+                            <span className="label-text">{t('communitySettings.dailyQuotaDescription')}</span>
+                        </label>
+                        <input
+                            className="input input-bordered w-full"
+                            type="number"
+                            min="1"
+                            placeholder={t('communitySettings.dailyQuotaPlaceholder')}
+                            value={formData.dailyQuota}
+                            onChange={(e) => {
+                                setFormData(prev => ({ ...prev, dailyQuota: e.target.value }));
+                                setIsDirty(true);
+                            }}
+                            onBlur={() => setTouched(true)}
+                        />
+                    </div>
+                </div>
+            </div>
+
             {/* Community Values Section */}
             <div className="card bg-base-100 shadow-xl mb-6">
                 <div className="card-body">
                     <h2 className="card-title">{t('communitySettings.communityValues')}</h2>
                     <div className="space-y-4">
-                        {formData.spaces.map((space, i) => {
-                            if (space.deleted) return null;
+                        {formData.hashtagEdits.map((hashtagEdit, i) => {
+                            if (hashtagEdit.deleted) return null;
                             
                             return (
                                 <div key={i} className="border border-base-300 rounded-lg p-4 bg-base-100 space-y-3">
@@ -355,8 +539,8 @@ const CommunitySettingsPage = () => {
                                             <input
                                                 className="input input-bordered flex-1"
                                                 placeholder={t('communitySettings.hashtagPlaceholder')}
-                                                value={space.tagRus || ''}
-                                                onChange={(e) => setVal(i, 'tagRus')(e.target.value)}
+                                                value={hashtagEdit.tag || ''}
+                                                onChange={(e) => setVal(i, 'tag')(e.target.value)}
                                                 onBlur={() => setTouched(true)}
                                             />
                                         </div>
@@ -369,7 +553,7 @@ const CommunitySettingsPage = () => {
                                             className="textarea textarea-bordered w-full"
                                             placeholder={t('communitySettings.descriptionPlaceholder')}
                                             rows={3}
-                                            value={space.description || ''}
+                                            value={hashtagEdit.description || ''}
                                             onChange={(e) => setVal(i, 'description')(e.target.value)}
                                             onBlur={() => setTouched(true)}
                                         />
@@ -398,6 +582,96 @@ const CommunitySettingsPage = () => {
                 </div>
             </div>
 
+            {/* Admin Actions Section - Reset Quota */}
+            {communityData?.isAdmin && (
+                <div className="card bg-base-100 shadow-xl mb-6">
+                    <div className="card-body">
+                        <h2 className="card-title">{t('communitySettings.adminActions')}</h2>
+                        {sendMemoSuccess && (
+                            <div className="alert alert-success mb-4">{sendMemoSuccess}</div>
+                        )}
+                        {sendMemoError && (
+                            <div className="alert alert-error mb-4">{sendMemoError}</div>
+                        )}
+                        <div className="form-control mb-6">
+                            <label className="label">
+                                <span className="label-text">{t('communitySettings.sendMemoDescription')}</span>
+                            </label>
+                            <button
+                                className="btn btn-primary"
+                                disabled={sendingMemo}
+                                onClick={handleSendMemo}
+                            >
+                                {sendingMemo ? (
+                                    <>
+                                        <span className="loading loading-spinner loading-sm"></span>
+                                        &nbsp;{t('communitySettings.sendingMemo')}
+                                    </>
+                                ) : (
+                                    t('communitySettings.sendMemo')
+                                )}
+                            </button>
+                        </div>
+                        
+                        {resetQuotaSuccess && (
+                            <div className="alert alert-success mb-4">
+                                {resetQuotaSuccess}
+                            </div>
+                        )}
+                        
+                        {resetQuotaError && (
+                            <div className="alert alert-error mb-4">
+                                {resetQuotaError}
+                            </div>
+                        )}
+                        
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">{t('communitySettings.resetQuotaDescription')}</span>
+                            </label>
+                            <button
+                                className="btn btn-warning"
+                                disabled={resettingQuota}
+                                onClick={() => setShowResetConfirm(true)}
+                            >
+                                {resettingQuota ? (
+                                    <>
+                                        <span className="loading loading-spinner loading-sm"></span>
+                                        Resetting...
+                                    </>
+                                ) : (
+                                    t('communitySettings.resetQuota')
+                                )}
+                            </button>
+                        </div>
+                        
+                        {showResetConfirm && (
+                            <div className="modal modal-open">
+                                <div className="modal-box">
+                                    <h3 className="font-bold text-lg">{t('communitySettings.resetQuota')}</h3>
+                                    <p className="py-4">{t('communitySettings.resetQuotaConfirm')}</p>
+                                    <div className="modal-action">
+                                        <button
+                                            className="btn btn-ghost"
+                                            onClick={() => setShowResetConfirm(false)}
+                                        >
+                                            {t('communitySettings.cancel')}
+                                        </button>
+                                        <button
+                                            className="btn btn-warning"
+                                            onClick={handleResetQuota}
+                                            disabled={resettingQuota}
+                                        >
+                                            {t('communitySettings.resetQuota')}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Save Section */}
             <div className="card bg-base-100 shadow-xl">
                 <div className="card-body">
@@ -424,9 +698,11 @@ const CommunitySettingsPage = () => {
                     )}
                     
                     <div className="flex gap-4">
-                        <Link href="/meriter/manage" className="btn btn-ghost">
-                            {t('communitySettings.cancel')}
-                        </Link>
+                        {!isInTelegram && (
+                            <Link href={`/meriter/communities/${chatId}`} className="btn btn-ghost">
+                                {t('communitySettings.cancel')}
+                            </Link>
+                        )}
                         <button
                             className="btn btn-primary flex-1"
                             disabled={!isValid || saving}
@@ -445,7 +721,7 @@ const CommunitySettingsPage = () => {
                     </div>
                 </div>
             </div>
-        </Page>
+        </AdaptiveLayout>
     );
 };
 

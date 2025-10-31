@@ -1,57 +1,74 @@
 'use client';
 
-import { swr } from "@lib/swr";
-import axios from "axios";
-import { ChangeEvent } from "react";
-import { useTranslation } from 'react-i18next';
+import { ChangeEvent, useState } from "react";
+import { useTranslations } from 'next-intl';
+import { useUpdatesFrequency, useSetUpdatesFrequency } from '@/hooks/api/useUsers';
 
 export const UpdatesFrequency = () => {
-    const { t } = useTranslation('pages');
-    const endpoint = "/api/rest/freq";
-    const [frequency, mutateFrequency] = swr(endpoint, 0);
+    const t = useTranslations('pages');
+    const [isUpdating, setIsUpdating] = useState(false);
+    
+    const { data: frequencyData } = useUpdatesFrequency();
+    const setFrequencyMutation = useSetUpdatesFrequency();
 
-    const setFrequency = (freq) => {
-        axios.post(endpoint, { updateFrequencyMs: freq });
-        mutateFrequency(freq);
+    const frequency = frequencyData?.frequency || 'daily';
+
+    const setFrequency = async (freq: string) => {
+        setIsUpdating(true);
+        try {
+            await setFrequencyMutation.mutateAsync(freq);
+        } finally {
+            setIsUpdating(false);
+        }
     };
 
     const options = [
         {
-            updateFrequencyMs: 1000 * 60,
+            frequency: 'immediate',
             label: t('updateFrequency.immediately'),
         },
         {
-            updateFrequencyMs: 1000 * 60 * 60,
+            frequency: 'hourly',
             label: t('updateFrequency.oncePerHour'),
             default: true,
         },
         {
-            updateFrequencyMs: 1000 * 60 * 60 * 24,
+            frequency: 'daily',
             label: t('updateFrequency.oncePerDay'),
+        },
+        {
+            frequency: 'never',
+            label: t('updateFrequency.never'),
         },
     ];
 
     return (
-        <div id={"updates-frequency"}>
-            {t('updateFrequency.selectFrequency')}{" "}
+        <div id={"updates-frequency"} className="form-control w-full">
+            <label className="label">
+                <span className="label-text">{t('updateFrequency.telegramBotFrequency')}</span>
+            </label>
             <select
-                value={
-                    frequency ||
-                    options.find((o) => o.default)?.updateFrequencyMs
-                }
+                className="select select-bordered w-full max-w-xs"
+                value={frequency || options.find((o) => o.default)?.frequency}
                 onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                     setFrequency(e.target.value);
                 }}
+                disabled={isUpdating}
             >
                 {options.map((o, i) => (
                     <option
                         key={i}
-                        value={o.updateFrequencyMs}
+                        value={o.frequency}
                     >
                         {o.label}
                     </option>
                 ))}
             </select>
+            {isUpdating && (
+                <label className="label">
+                    <span className="label-text-alt text-base-content/70">Updating...</span>
+                </label>
+            )}
         </div>
     );
 };

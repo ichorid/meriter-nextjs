@@ -17,7 +17,7 @@ export const CardWithAvatar = ({
     iconOnClick?: () => any;
     children: React.ReactNode;
     onClick?: () => any;
-    avatarUrlUpd?: (any) => any;
+    avatarUrlUpd?: (userId: string) => any;
     userName?: string;
 }) => {
     const [retryCount, setRetryCount] = useState(0);
@@ -65,7 +65,7 @@ export const CardWithAvatar = ({
                     size={48}
                     onError={() => {
                         if (retryCount < 1 && avatarUrlUpd) {
-                            avatarUrlUpd({});
+                            avatarUrlUpd(userName || '');
                             setRetryCount(retryCount + 1);
                         }
                     }}

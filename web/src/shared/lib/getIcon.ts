@@ -26,7 +26,7 @@ const POPULAR_EMOJIS = [
 
 // Removed dead getIconsLogojoyProxy function - endpoint /api/geticonslogojoy doesn't exist
 
-export const getIconsLogojoy = (term, page) => {
+export const getIconsLogojoy = (term: string, page: number) => {
     // Filter emojis based on search term
     const searchTerm = (term || '').toLowerCase();
     

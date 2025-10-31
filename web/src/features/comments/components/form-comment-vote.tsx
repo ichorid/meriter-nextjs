@@ -4,18 +4,18 @@ import { useState } from "react";
 import { etv } from '@shared/lib/input-utils';
 import Slider from "rc-slider";
 import { classList } from '@lib/classList';
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
 
 interface iFormCommentVoteProps {
     comment: string;
-    setComment: Function;
+    setComment: (value: string) => void;
     freePlus: number;
     freeMinus: number;
     amount: number;
-    setAmount: (number) => void;
+    setAmount: (amount: number) => void;
     maxPlus: number;
     maxMinus: number;
-    commentAdd: (any) => void;
+    commentAdd: (data: any) => void;
     error: string;
     reason?: string;
 }
@@ -33,7 +33,7 @@ export const FormCommentVote = ({
     error,
     reason,
 }: iFormCommentVoteProps) => {
-    const { t } = useTranslation('comments');
+    const t = useTranslations('comments');
     const [selected, setSelected] = useState(false);
     const overflow = amount >= 0 ? amount > freePlus : amount < -freeMinus;
     const directionPlus = amount > 0 ? true : false;
@@ -79,7 +79,7 @@ export const FormCommentVote = ({
                     min={-maxMinus}
                     max={maxPlus}
                     value={amount}
-                    onChange={setAmount}
+                    onChange={(value) => setAmount(typeof value === 'number' ? value : value[0] || 0)}
                 />
             </div>
             <div className="relative">

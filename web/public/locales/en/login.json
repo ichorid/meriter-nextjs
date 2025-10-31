@@ -1,9 +1,0 @@
-{
-  "welcomeTitle": "Welcome to Meriter",
-  "redirecting": "Redirecting to home...",
-  "authenticating": "Authenticating...",
-  "discoveringCommunities": "Discovering your communities...",
-  "authError": "Authentication error",
-  "connectionError": "Server connection error: {{message}}"
-}
-

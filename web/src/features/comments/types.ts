@@ -1,11 +1,15 @@
 // Comments feature types
+// DEPRECATED: Comment and Vote types should be imported from @meriter/shared-types
+// These legacy types are kept temporarily for backwards compatibility but should be removed
+// Use: import type { Comment, Vote } from '@meriter/shared-types';
 
+// Legacy Comment type - DO NOT USE, use @meriter/shared-types instead
 export interface Comment {
     _id: string;
     transactionId: string;
     publicationSlug: string;
     text: string;
-    tgUserId: string;
+    userId: string;
     tgUsername?: string;
     authorPhotoUrl?: string;
     plus: number;
@@ -17,6 +21,7 @@ export interface Comment {
     inMerits?: number;
 }
 
+// Legacy Vote type - DO NOT USE, use @meriter/shared-types instead
 export interface Vote {
     commentId: string;
     userId: string;

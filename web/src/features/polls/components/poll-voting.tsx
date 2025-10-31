@@ -1,38 +1,39 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { IPollData, IPollVote, IPollUserVoteSummary } from "../types";
-import { apiPOST } from "@shared/lib/fetch";
-import { useTranslation } from 'react-i18next';
+import { IPollData, IPollCast, IPollUserCastSummary } from "../types";
+import { useTranslations } from 'next-intl';
+import { pollsApiV1 } from '@/lib/api/v1';
+import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 
-interface IPollVotingProps {
+interface IPollCastingProps {
     pollData: IPollData;
     pollId: string;
-    userVote?: IPollVote;
-    userVoteSummary?: IPollUserVoteSummary;
+    userCast?: IPollCast;
+    userCastSummary?: IPollUserCastSummary;
     balance: number;
-    onVoteSuccess?: () => void;
+    onCastSuccess?: () => void;
     updateWalletBalance?: (currencyOfCommunityTgChatId: string, amountChange: number) => void;
     communityId?: string;
     initiallyExpanded?: boolean;
 }
 
-export const PollVoting = ({
+export const PollCasting = ({
     pollData,
     pollId,
-    userVote,
-    userVoteSummary,
+    userCast,
+    userCastSummary,
     balance,
-    onVoteSuccess,
+    onCastSuccess,
     updateWalletBalance,
     communityId,
     initiallyExpanded = false,
-}: IPollVotingProps) => {
-    const { t } = useTranslation('polls');
+}: IPollCastingProps) => {
+    const t = useTranslations('polls');
     const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
     const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
-    const [voteAmount, setVoteAmount] = useState<number>(1);
-    const [isVoting, setIsVoting] = useState(false);
+    const [castAmount, setCastAmount] = useState<number>(1);
+    const [isCasting, setIsCasting] = useState(false);
     const [error, setError] = useState<string>("");
 
     const now = new Date();
@@ -53,61 +54,53 @@ export const PollVoting = ({
         return `${minutes} ${t('minutes')}`;
     };
 
-    const handleVote = async () => {
+    const handleCastPoll = async () => {
         if (!selectedOptionId) {
             setError(t('selectOption'));
             return;
         }
 
-        if (voteAmount <= 0) {
+        if (castAmount <= 0) {
             setError(t('specifyAmount'));
             return;
         }
 
-        if (voteAmount > balance) {
+        if (castAmount > balance) {
             setError(t('insufficientPoints'));
             return;
         }
 
-        setIsVoting(true);
+        setIsCasting(true);
         setError("");
 
-        // Optimistically update the wallet balance (voting decreases balance)
+        // Optimistically update the wallet balance (casting decreases balance)
         if (updateWalletBalance && communityId) {
-            updateWalletBalance(communityId, -voteAmount);
+            updateWalletBalance(communityId, -castAmount);
         }
 
         try {
-            const response = await apiPOST("/api/rest/poll/vote", {
-                pollId,
+            await pollsApiV1.castPoll(pollId, {
                 optionId: selectedOptionId,
-                amount: voteAmount,
+                amount: castAmount,
+                sourceType: 'personal', // Default to personal quota
             });
 
-            if (response.error) {
-                setError(response.error);
-                // Revert optimistic update on error
-                if (updateWalletBalance && communityId) {
-                    updateWalletBalance(communityId, voteAmount);
-                }
-            } else {
-                onVoteSuccess && onVoteSuccess();
-            }
-        } catch (err: any) {
-            const errorMessage = err?.response?.data?.message || err?.message || t('voteError');
+            onCastSuccess && onCastSuccess();
+        } catch (err: unknown) {
+            const errorMessage = extractErrorMessage(err, t('castError'));
             setError(errorMessage);
             // Revert optimistic update on error
             if (updateWalletBalance && communityId) {
-                updateWalletBalance(communityId, voteAmount);
+                updateWalletBalance(communityId, castAmount);
             }
         } finally {
-            setIsVoting(false);
+            setIsCasting(false);
         }
     };
 
     const getOptionPercentage = (votes: number) => {
-        if (pollData.totalVotes === 0) return 0;
-        return (votes / pollData.totalVotes) * 100;
+        if (pollData.totalCasts === 0) return 0;
+        return (votes / pollData.totalCasts) * 100;
     };
 
     // Collapsed view
@@ -136,11 +129,11 @@ export const PollVoting = ({
                         {isExpired ? t('pollFinished') : `${t('timeRemaining')} ${getTimeRemaining()}`}
                     </span>
                     <span className="badge badge-sm badge-ghost">
-                        🗳 {pollData.totalVotes} {t('votes')}
+                        🗳 {pollData.totalCasts} {t('casts')}
                     </span>
-                    {userVoteSummary && userVoteSummary.voteCount > 0 && (
+                    {userCastSummary && userCastSummary.castCount > 0 && (
                         <span className="badge badge-sm badge-primary">
-                            {t('youVoted')}
+                            {t('youCast')}
                         </span>
                     )}
                 </div>
@@ -182,7 +175,7 @@ export const PollVoting = ({
                         {isExpired ? t('pollFinished') : `${t('timeRemaining')}: ${getTimeRemaining()}`}
                     </span>
                     <span className="badge badge-ghost">
-                        {t('totalVotes')}: {pollData.totalVotes}
+                        {t('totalCasts')}: {pollData.totalCasts}
                     </span>
                 </div>
             </div>
@@ -191,14 +184,14 @@ export const PollVoting = ({
                 {pollData.options.map((option) => {
                     const percentage = getOptionPercentage(option.votes);
                     const isSelected = selectedOptionId === option.id;
-                    const userVotedAmount = userVoteSummary?.byOption?.[option.id] || 0;
+                    const userCastAmount = userCastSummary?.byOption?.[option.id] || 0;
 
                     return (
                         <div
                             key={`poll-option-${option.id}`}
                             className={`card bg-base-200 shadow-md p-4 ${
                                 isSelected ? "ring-2 ring-primary" : ""
-                            } ${userVotedAmount > 0 ? "bg-primary/10" : ""} ${
+                            } ${userCastAmount > 0 ? "bg-primary/10" : ""} ${
                                 isExpired ? "opacity-70" : "hover:shadow-lg transition-shadow"
                             }`}
                         >
@@ -220,9 +213,9 @@ export const PollVoting = ({
                                     />
                                     <span className="font-medium">{option.text}</span>
                                 </label>
-                                {userVotedAmount > 0 && (
+                                {userCastAmount > 0 && (
                                     <span className="badge badge-primary badge-sm">
-                                        {t('you')}: {userVotedAmount}
+                                        {t('you')}: {userCastAmount}
                                     </span>
                                 )}
                             </div>
@@ -234,7 +227,7 @@ export const PollVoting = ({
                                     />
                                 </div>
                                 <span className="text-xs opacity-60">
-                                    {option.votes} {t('points')} ({percentage.toFixed(1)}%) / {option.voterCount} {t('voters')}
+                                    {option.votes} {t('points')} ({percentage.toFixed(1)}%) / {option.casterCount} {t('casters')}
                                 </span>
                             </div>
                         </div>
@@ -245,35 +238,35 @@ export const PollVoting = ({
             {!isExpired && (
                 <div className="card bg-base-200 shadow-md p-4">
                     <div className="form-control mb-3">
-                        <label className="label" htmlFor="vote-amount">
+                        <label className="label" htmlFor="cast-amount">
                             <span className="label-text">{t('amountLabel')}</span>
                             <span className="label-text-alt">{t('available')}: {balance}</span>
                         </label>
                         <input
-                            id="vote-amount"
+                            id="cast-amount"
                             type="number"
                             min="1"
                             max={balance}
-                            value={voteAmount}
+                            value={castAmount}
                             className="input input-bordered w-full"
-                            onChange={(e) => setVoteAmount(parseInt(e.target.value) || 0)}
-                            disabled={isVoting}
+                            onChange={(e) => setCastAmount(parseInt(e.target.value) || 0)}
+                            disabled={isCasting}
                         />
                     </div>
                     {error && <div className="alert alert-error mb-3 py-2">{error}</div>}
                     <button
                         className="btn btn-primary w-full"
-                        onClick={handleVote}
-                        disabled={isVoting || !selectedOptionId}
+                        onClick={handleCastPoll}
+                        disabled={isCasting || !selectedOptionId}
                     >
-                        {isVoting ? t('voting') : t('vote')}
+                        {isCasting ? t('casting') : t('castPoll')}
                     </button>
                 </div>
             )}
 
-            {userVoteSummary && userVoteSummary.voteCount > 0 && (
+            {userCastSummary && userCastSummary.castCount > 0 && (
                 <div className="alert alert-info">
-                    <span>{t('youVotedSummary', { count: userVoteSummary.voteCount, amount: userVoteSummary.totalAmount })}</span>
+                    <span>{t('youCastSummary', { count: userCastSummary.castCount, amount: userCastSummary.totalAmount })}</span>
                 </div>
             )}
 

@@ -1,153 +1,152 @@
 'use client';
 
 import { use, useEffect, useState } from "react";
-import { swr } from '@lib/swr';
-import Page from '@shared/components/page';
+import { useSearchParams } from "next/navigation";
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useRouter } from "next/navigation";
-import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
-import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
-import {
-    telegramGetAvatarLink,
-    telegramGetAvatarLinkUpd,
-} from '@lib/telegram';
 import { Publication } from "@features/feed";
-import { useTranslation } from 'react-i18next';
-import { ellipsize } from "@shared/lib/text";
+import { useAuth } from '@/contexts/AuthContext';
+import { usePublication, useCommunity, useWallets } from '@/hooks/api';
+import { useWalletBalance } from '@/hooks/api/useWallet';
 
 const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> }) => {
     const router = useRouter();
-    const { t } = useTranslation('pages');
+    const searchParams = useSearchParams();
     const resolvedParams = use(params);
     const chatId = resolvedParams.id;
     const slug = resolvedParams.slug;
+    
+    // Get highlight parameter from URL for comment highlighting
+    const highlightCommentId = searchParams?.get('highlight');
 
-    const [user] = swr("/api/rest/getme", { init: true });
+    // Use v1 API hooks
+    const { user } = useAuth();
+    const { data: publication, isLoading: publicationLoading, error: publicationError } = usePublication(slug);
+    const { data: comms } = useCommunity(chatId);
+    
+    const { data: balance = 0 } = useWalletBalance(chatId);
 
-    const [publication] = swr(
-        () => user?.token ? `/api/rest/publications/${slug}` : null,
-        {}
-    );
+    const { data: wallets = [] } = useWallets();
 
-    const [chat] = swr(
-        () => user?.token ? `/api/rest/getchat?chatId=${chatId}` : null,
-        {},
-        { key: "chat" }
-    );
-
-    const [comms] = swr(
-        () => user?.token ? `/api/rest/communityinfo?chatId=${chatId}` : null,
-        {},
-        { key: "comms" }
-    );
-
-    const [balance, updBalance] = swr(
-        () => user?.token ? `/api/rest/wallet?tgChatId=${chatId}` : null,
-        0,
-        { key: "balance" }
-    );
-
-    const [userdata] = swr(
-        () => user?.tgUserId ? `/api/rest/users/telegram/${user.tgUserId}/profile` : null,
-        0,
-        { key: "userdata" }
-    );
-
-    const [wallets, updateWallets] = swr(
-        () => user?.token ? "/api/rest/wallet" : null,
-        [],
-        { key: "wallets" }
-    );
-
-    const updateWalletBalance = (currencyOfCommunityTgChatId: string, amountChange: number) => {
-        // Optimistically update wallet balance without reloading
-        if (!Array.isArray(wallets)) return;
-        
-        const updatedWallets = wallets.map((wallet) => {
-            if (wallet.currencyOfCommunityTgChatId === currencyOfCommunityTgChatId) {
-                return {
-                    ...wallet,
-                    amount: wallet.amount + amountChange,
-                };
-            }
-            return wallet;
-        });
-        updateWallets(updatedWallets, false); // Update without revalidation
-    };
-
-    const updateAll = async () => {
-        // Close the active withdraw slider after successful update
-        setActiveWithdrawPost(null);
-    };
-
-    const chatNameVerb = String(chat?.title ?? "");
-    const activeCommentHook = useState(null);
+    const activeCommentHook = useState<string | null>(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!user?.tgUserId && !user.init) {
+        if (!user?.id) {
             router.push("/meriter/login?returnTo=" + encodeURIComponent(window.location.pathname));
         }
-    }, [user, user?.init, router]);
+    }, [user, router]);
 
-    if (!user.token) return null;
+    // Auto-scroll to highlighted comment when page loads
+    useEffect(() => {
+        if (highlightCommentId && publication) {
+            // Wait for comments to render, then scroll to highlighted comment
+            const timer = setTimeout(() => {
+                const highlightedElement = document.querySelector(`[data-comment-id="${highlightCommentId}"]`);
+                if (highlightedElement) {
+                    highlightedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Add a temporary highlight effect
+                    highlightedElement.classList.add('highlight');
+                    setTimeout(() => {
+                        highlightedElement.classList.remove('highlight');
+                    }, 3000);
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+        return undefined;
+    }, [highlightCommentId, publication]);
 
-    const tgAuthorId = user?.tgUserId;
-    
-    // Clean post text for breadcrumb: remove hashtags and /ben: commands
-    const getCleanPostText = (text: string) => {
-        if (!text) return '';
-        return text
-            .replace(/#\w+/g, '') // Remove hashtags
-            .replace(/\/ben:@?\w+/g, '') // Remove /ben: commands
-            .trim();
-    };
+    // if (!user?.token) return null;
+
+    const tgAuthorId = user?.id;
+
+    // Show loading state
+    if (publicationLoading) {
+        return (
+            <AdaptiveLayout 
+                className="feed"
+                communityId={chatId}
+                balance={balance}
+                wallets={wallets}
+                myId={user?.id}
+                activeCommentHook={activeCommentHook}
+                activeSlider={activeSlider}
+                setActiveSlider={setActiveSlider}
+                activeWithdrawPost={activeWithdrawPost}
+                setActiveWithdrawPost={setActiveWithdrawPost}
+            >
+                <div className="flex justify-center items-center h-64">
+                    <span className="loading loading-spinner loading-lg"></span>
+                </div>
+            </AdaptiveLayout>
+        );
+    }
+
+    // Show error state
+    if (publicationError || !publication) {
+        return (
+            <AdaptiveLayout 
+                className="feed"
+                communityId={chatId}
+                balance={balance}
+                wallets={wallets}
+                myId={user?.id}
+                activeCommentHook={activeCommentHook}
+                activeSlider={activeSlider}
+                setActiveSlider={setActiveSlider}
+                activeWithdrawPost={activeWithdrawPost}
+                setActiveWithdrawPost={setActiveWithdrawPost}
+            >
+                <div className="flex flex-col items-center justify-center h-64">
+                    <p className="text-error">Publication not found</p>
+                    <button 
+                        className="btn btn-primary mt-4"
+                        onClick={() => router.push(`/meriter/communities/${chatId}`)}
+                    >
+                        Back to Community
+                    </button>
+                </div>
+            </AdaptiveLayout>
+        );
+    }
 
     return (
-        <Page className="feed">
-            <HeaderAvatarBalance
-                balance1={{ icon: chat?.icon, amount: balance }}
-                balance2={undefined}
-                avatarUrl={telegramGetAvatarLink(tgAuthorId)}
-                onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
-                onClick={() => {
-                    router.push("/meriter/home");
-                }}
-                userName={user?.name || 'User'}
-            >
-                <MenuBreadcrumbs
-                    chatId={chatId}
-                    chatNameVerb={chatNameVerb}
-                    chatIcon={comms?.icon}
-                    postText={publication?.messageText ? ellipsize(getCleanPostText(publication.messageText), 60) : ''}
-                />
-            </HeaderAvatarBalance>
-
+        <AdaptiveLayout 
+            className="feed"
+            communityId={chatId}
+            balance={balance}
+            wallets={wallets}
+            myId={user?.id}
+            activeCommentHook={activeCommentHook}
+            activeSlider={activeSlider}
+            setActiveSlider={setActiveSlider}
+            activeWithdrawPost={activeWithdrawPost}
+            setActiveWithdrawPost={setActiveWithdrawPost}
+        >
             <div className="space-y-4">
-                {publication && publication.messageText && (
+                {publication && (
                     <Publication
-                        key={publication._id}
+                        key={publication.id}
                         {...publication}
                         balance={balance}
-                        updBalance={updBalance}
                         activeCommentHook={activeCommentHook}
                         activeSlider={activeSlider}
                         setActiveSlider={setActiveSlider}
                         activeWithdrawPost={activeWithdrawPost}
                         setActiveWithdrawPost={setActiveWithdrawPost}
                         wallets={wallets}
-                        updateWalletBalance={updateWalletBalance}
-                        updateAll={updateAll}
                         dimensionConfig={undefined}
-                        myId={user?.tgUserId}
+                        myId={user?.id}
                         onlyPublication={true}
-                        highlightTransactionId={undefined}
+                        highlightTransactionId={highlightCommentId || undefined}
                         isDetailPage={true}
                         showCommunityAvatar={false}
                     />
                 )}
             </div>
-        </Page>
+        </AdaptiveLayout>
     );
 };
 

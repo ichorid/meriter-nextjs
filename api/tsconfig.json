@@ -13,6 +13,9 @@
     "incremental": true,
     "skipLibCheck": true,
     "paths": {
+      "@meriter/shared-types": [
+        "../../libs/shared-types/src"
+      ],
       "@common/abstracts": [
         "libs/abstracts/src"
       ],

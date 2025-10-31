@@ -5,7 +5,8 @@ import { MeriterModule } from './meriter.module';
 import * as cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
-// import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { ApiExceptionFilter } from './common/filters/api-exception.filter';
+import { ApiResponseInterceptor } from './common/interceptors/api-response.interceptor';
 declare const module: any;
 
 async function bootstrap() {
@@ -18,25 +19,18 @@ async function bootstrap() {
   
   // CORS not needed - Caddy handles routing for both local dev and production
   
-  // Add raw body logging middleware
-  app.use((req: any, res: any, next: any) => {
-    if (req.method === 'POST' && req.path.includes('/api/rest/transaction')) {
-      logger.log(`📥 Middleware - Method: ${req.method}, Path: ${req.path}`);
-      logger.log(`📥 Content-Type: ${req.headers['content-type']}`);
-      logger.log(`📥 Content-Length: ${req.headers['content-length']}`);
-      logger.log(`📥 req.body:`, req.body);
-      logger.log(`📥 req.body type:`, typeof req.body);
-      logger.log(`📥 req.body keys:`, Object.keys(req.body || {}));
-    }
-    next();
-  });
-  
   const configService = app.get(ConfigService);
 
-  // Global exception filter
-  app.useGlobalFilters(new AllExceptionsFilter());
+  // Global exception filter - using standardized API exception filter for all endpoints
+  app.useGlobalFilters(new ApiExceptionFilter());
+
+  // Global API response interceptor for standardized responses
+  app.useGlobalInterceptors(new ApiResponseInterceptor());
 
   // Global validation pipe
+  // Note: ZodValidationPipe applied via @ZodValidation decorator takes precedence
+  // for specific routes. The global ValidationPipe remains for backward compatibility
+  // and routes without explicit Zod validation.
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -47,10 +41,6 @@ async function bootstrap() {
       },
     }),
   );
-
-  // Note: TransformInterceptor is available but not enabled by default
-  // to avoid breaking existing API contracts. Enable if needed:
-  // app.useGlobalInterceptors(new TransformInterceptor());
 
   app.use(cookieParser());
   

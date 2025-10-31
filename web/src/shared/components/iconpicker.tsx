@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import type { EmojiClickData } from 'emoji-picker-react'
-import { useTranslation } from 'react-i18next'
+import { useTranslations } from 'next-intl'
 
 // Dynamically import EmojiPicker to avoid SSR issues
 const EmojiPicker = dynamic(
@@ -11,8 +11,14 @@ const EmojiPicker = dynamic(
     { ssr: false }
 )
 
-export const IconPicker = ({ icon, cta, setIcon }) => {
-    const { t } = useTranslation('pages');
+interface IconPickerProps {
+    icon: string;
+    cta: string;
+    setIcon: (icon: string) => void;
+}
+
+export const IconPicker: React.FC<IconPickerProps> = ({ icon, cta, setIcon }) => {
+    const t = useTranslations('pages');
     const [opened, setOpened] = useState(false)
 
     const onEmojiClick = (emojiData: EmojiClickData) => {

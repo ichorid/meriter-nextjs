@@ -9,4 +9,9 @@ export class MeriterController {
   getHello(): string {
     return this.meriterService.getHello();
   }
+
+  @Get('health')
+  health(): string {
+    return 'ok';
+  }
 }

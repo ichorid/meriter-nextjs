@@ -32,8 +32,32 @@ export class TelegramHookController {
     if (update?.message) {
       const msgType = update.message.text ? 'text' : 
                       update.message.new_chat_members ? 'new_members' : 
+                      update.message.left_chat_member ? 'left_member' :
                       update.message.photo ? 'photo' : 'other';
       this.logger.log(`📬 Message type: ${msgType}, from: ${update.message.from?.id}, chat: ${update.message.chat?.id}`);
+      
+      // Enhanced logging for left_chat_member events
+      if (update.message.left_chat_member) {
+        this.logger.log(`🚪 LEFT_CHAT_MEMBER event detected:`, {
+          chatId: update.message.chat?.id,
+          leftMemberId: update.message.left_chat_member.id,
+          leftMemberUsername: update.message.left_chat_member.username,
+          leftMemberFirstName: update.message.left_chat_member.first_name,
+          isBot: update.message.left_chat_member.is_bot,
+          botUsername: botUsername
+        });
+      }
+    }
+    
+    // Log my_chat_member events (bot membership changes)
+    if (update?.my_chat_member) {
+      this.logger.log(`🤖 MY_CHAT_MEMBER event detected:`, {
+        chatId: update.my_chat_member.chat?.id,
+        chatTitle: update.my_chat_member.chat?.title,
+        oldStatus: update.my_chat_member.old_chat_member?.status,
+        newStatus: update.my_chat_member.new_chat_member?.status,
+        botUsername: botUsername
+      });
     }
     
     return this.tgBotsService.processHookBody(update, botUsername);

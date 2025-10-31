@@ -1,9 +1,14 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { ThemeProvider } from '@shared/lib/theme-provider';
-import { I18nProvider } from '@/providers/i18n-provider';
-import { getServerTranslations } from '@/lib/i18n-server';
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages } from 'next-intl/server';
 import { headers } from 'next/headers';
+import { detectBrowserLanguage, SUPPORTED_LOCALES, DEFAULT_LOCALE } from '@/i18n/request';
+import { cookies } from 'next/headers';
+import { Root } from '@/components/Root';
+import { QueryProvider } from '@/providers/QueryProvider';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { AppModeProvider } from '@/contexts/AppModeContext';
 
 export const metadata: Metadata = {
     title: 'Meriter',
@@ -15,50 +20,28 @@ export default async function RootLayout({
 }: {
     children: React.ReactNode;
 }) {
-    // Get server-side translations
+    // Get server-side locale and messages
     const headersList = await headers();
     const acceptLanguage = headersList.get('accept-language');
-    const { locale, translations } = await getServerTranslations(acceptLanguage || undefined);
+    
+    // Get locale from cookie with fallback to browser detection
+    const cookieStore = await cookies();
+    const localePreference = cookieStore.get('NEXT_LOCALE')?.value;
+    
+    let locale = DEFAULT_LOCALE;
+    if (localePreference === 'auto') {
+        locale = detectBrowserLanguage(acceptLanguage || undefined);
+    } else if (localePreference && SUPPORTED_LOCALES.includes(localePreference as any)) {
+        locale = localePreference as any;
+    } else {
+        locale = detectBrowserLanguage(acceptLanguage || undefined);
+    }
+    
+    const messages = await getMessages({ locale });
     
     return (
         <html lang={locale} suppressHydrationWarning>
             <head>
-                <script src="https://telegram.org/js/telegram-web-app.js"></script>
-                <script
-                    dangerouslySetInnerHTML={{
-                        __html: `
-                            (function() {
-                                try {
-                                    // Check if we're in Telegram Web App
-                                    const tg = window.Telegram?.WebApp;
-                                    let resolvedTheme = 'light';
-                                    
-                                    if (tg && (tg.platform || tg.version || tg.colorScheme !== undefined)) {
-                                        // We're in Telegram Web App
-                                        console.log('🎨 Server-side: Telegram Web App detected');
-                                        if (tg.colorScheme) {
-                                            resolvedTheme = tg.colorScheme === 'dark' ? 'dark' : 'light';
-                                            console.log('🎨 Server-side: Using Telegram theme:', resolvedTheme);
-                                        }
-                                    } else {
-                                        // Not in Telegram, use localStorage or system preference
-                                        const theme = localStorage.getItem('theme') || 'auto';
-                                        if (theme === 'auto') {
-                                            resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-                                        } else {
-                                            resolvedTheme = theme;
-                                        }
-                                        console.log('🎨 Server-side: Using stored/system theme:', resolvedTheme);
-                                    }
-                                    
-                                    document.documentElement.setAttribute('data-theme', resolvedTheme);
-                                } catch (e) {
-                                    console.error('🎨 Server-side theme initialization error:', e);
-                                }
-                            })();
-                        `,
-                    }}
-                />
                 <link
                     href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap"
                     rel="stylesheet"
@@ -69,11 +52,16 @@ export default async function RootLayout({
                 />
             </head>
             <body suppressHydrationWarning>
-                <I18nProvider locale={locale} initialTranslations={translations}>
-                    <ThemeProvider>{children}</ThemeProvider>
-                </I18nProvider>
+                <AppModeProvider>
+                    <QueryProvider>
+                        <AuthProvider>
+                            <NextIntlClientProvider messages={messages}>
+                                <Root>{children}</Root>
+                            </NextIntlClientProvider>
+                        </AuthProvider>
+                    </QueryProvider>
+                </AppModeProvider>
             </body>
         </html>
     );
 }
-

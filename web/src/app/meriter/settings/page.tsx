@@ -1,100 +1,84 @@
 'use client';
 
-import Page from '@shared/components/page';
-import { swr } from '@lib/swr';
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { useWallets } from '@/hooks/api';
 import { useEffect, useState } from 'react';
-import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
 import { useRouter } from 'next/navigation';
-import {
-    telegramGetAvatarLink,
-    telegramGetAvatarLinkUpd,
-} from '@lib/telegram';
 import Link from 'next/link';
 import { UpdatesFrequency } from '@shared/components/updates-frequency';
 import { ThemeToggle } from '@shared/components/theme-toggle';
-import { LogoutButton } from '@shared/components/logout-button';
+import { LogoutButton } from '@/components/LogoutButton';
 import { LanguageSelector } from '@shared/components/language-selector';
-import { useTranslation } from 'react-i18next';
+import { useTranslations } from 'next-intl';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSyncCommunities } from '@/hooks/api/useCommunities';
 
 const SettingsPage = () => {
     const router = useRouter();
-    const { t } = useTranslation('settings');
-    const [user] = swr('/api/rest/getme', {});
-    const [isSyncing, setIsSyncing] = useState(false);
+    const t = useTranslations('settings');
+    const tCommon = useTranslations('common');
+    
+    // Use centralized auth context
+    const { user, isLoading, isAuthenticated } = useAuth();
+    const { data: wallets = [] } = useWallets();
+    const syncCommunitiesMutation = useSyncCommunities();
     const [syncMessage, setSyncMessage] = useState('');
+    const activeCommentHook = useState<string | null>(null);
+    const [activeSlider, setActiveSlider] = useState<string | null>(null);
+    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
+    // Redirect if not authenticated
     useEffect(() => {
-        if (!user?.tgUserId && !user.init) {
+        if (!isLoading && !isAuthenticated) {
             router.push('/meriter/login?returnTo=' + encodeURIComponent(window.location.pathname));
         }
-    }, [user, user?.init, router]);
+    }, [isAuthenticated, isLoading, router]);
 
     const handleSyncCommunities = async () => {
-        setIsSyncing(true);
         setSyncMessage('');
         
         try {
-            const response = await fetch('/api/rest/sync-communities', {
-                method: 'POST',
-                credentials: 'include',
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                setSyncMessage(t('syncSuccess', { count: data.count }));
-                setTimeout(() => setSyncMessage(''), 3000);
-            }
+            const result = await syncCommunitiesMutation.mutateAsync();
+            setSyncMessage(t('syncSuccess', { count: result.syncedCount }));
+            setTimeout(() => setSyncMessage(''), 3000);
         } catch (error) {
+            console.error('Sync communities error:', error);
             setSyncMessage(t('syncError'));
-        } finally {
-            setIsSyncing(false);
         }
     };
 
-    if (!user.token) {
-        return null; // Loading or not authenticated
+    // Show loading state while checking authentication
+    if (isLoading) {
+        return (
+            <AdaptiveLayout className="settings">
+                <div className="flex justify-center items-center min-h-[400px]">
+                    <div className="loading loading-spinner loading-lg"></div>
+                </div>
+            </AdaptiveLayout>
+        );
     }
 
-    const tgAuthorId = user?.tgUserId;
+    // Don't render if not authenticated (will redirect)
+    if (!isAuthenticated || !user) {
+        return null;
+    }
 
     return (
-        <Page className="settings">
-            <HeaderAvatarBalance
-                balance1={undefined}
-                balance2={undefined}
-                avatarUrl={
-                    user?.avatarUrl ?? telegramGetAvatarLink(tgAuthorId)
-                }
-                onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
-                onClick={() => {
-                    router.push('/meriter/home');
-                }}
-                userName={user?.name || 'User'}
-            >
-                <div>
-                    <div className="breadcrumbs text-sm mb-2 sm:mb-4">
-                        <ul>
-                            <li className="flex items-center gap-1">
-                                <Link href="/meriter/home" className="link link-hover flex items-center gap-1">
-                                    <img
-                                        className="w-5 h-5"
-                                        src={"/meriter/home.svg"}
-                                        alt="Home"
-                                    />
-                                    <span>{t('breadcrumb', { ns: 'home' })}</span>
-                                </Link>
-                            </li>
-                            <li>{t('breadcrumb')}</li>
-                        </ul>
-                    </div>
+        <AdaptiveLayout 
+            className="settings"
+            activeCommentHook={activeCommentHook}
+            activeSlider={activeSlider}
+            setActiveSlider={setActiveSlider}
+            activeWithdrawPost={activeWithdrawPost}
+            setActiveWithdrawPost={setActiveWithdrawPost}
+            wallets={Array.isArray(wallets) ? wallets : []}
+            myId={user?.id}
+        >
+            <div className="mb-6">
+                <div className="tip">
+                    {t('subtitle')}
                 </div>
-                <div>
-                    <div className="tip">
-                        {t('subtitle')}
-                    </div>
-                </div>
-            </HeaderAvatarBalance>
+            </div>
 
             {/* Language Section */}
             <div className="card bg-base-100 shadow-xl mb-6">
@@ -136,11 +120,11 @@ const SettingsPage = () => {
                     </p>
                     <div className="py-2">
                         <button 
-                            className={`btn btn-primary ${isSyncing ? 'loading' : ''}`}
+                            className={`btn btn-primary ${syncCommunitiesMutation.isPending ? 'loading' : ''}`}
                             onClick={handleSyncCommunities}
-                            disabled={isSyncing}
+                            disabled={syncCommunitiesMutation.isPending}
                         >
-                            {isSyncing ? t('syncing') : t('syncCommunities')}
+                            {syncCommunitiesMutation.isPending ? t('syncing') : t('syncCommunities')}
                         </button>
                         {syncMessage && (
                             <div className={`mt-2 text-sm ${syncMessage.includes(t('syncError')) ? 'text-error' : 'text-success'}`}>
@@ -151,32 +135,17 @@ const SettingsPage = () => {
                 </div>
             </div>
 
-            {/* Help Section */}
-            <div className="card bg-base-100 shadow-xl mb-6">
-                <div className="card-body">
-                    <details className="collapse collapse-arrow bg-base-100">
-                        <summary className="collapse-title text-xl font-medium cursor-pointer px-0">
-                            {t('helpSection')}
-                        </summary>
-                        <div className="collapse-content px-0">
-                            <p className="text-sm mt-2">
-                                {t('helpContent')}
-                            </p>
-                        </div>
-                    </details>
-                </div>
-            </div>
 
             {/* Account Section */}
             <div className="card bg-base-100 shadow-xl mb-6">
                 <div className="card-body">
                     <h2 className="card-title">{t('account')}</h2>
                     <div className="py-2">
-                        <LogoutButton className="btn btn-error" />
+                        <LogoutButton />
                     </div>
                 </div>
             </div>
-        </Page>
+        </AdaptiveLayout>
     );
 };
 

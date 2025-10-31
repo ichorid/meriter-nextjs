@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+.nuxt/
+.cache/
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+*.log
+
+# IDE and Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+
+# Temporary
+*.tmp
+*.temp
+*.bak
+*.cache
+.cache/
+tmp/
+temp/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Misc
+.eslintcache
+.prettiercache
+.storybook-static
+

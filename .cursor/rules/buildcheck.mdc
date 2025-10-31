@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+when you finish todos for a plan, run build to check for errros. If there are errors, iterate until you fix them

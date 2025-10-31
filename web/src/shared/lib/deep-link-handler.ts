@@ -1,4 +1,5 @@
 import { useRouter, useSearchParams } from 'next/navigation';
+import { decodeTelegramDeepLink, looksLikeBase64url } from './base64url';
 
 export interface DeepLinkParams {
   startapp?: string | null;
@@ -7,7 +8,7 @@ export interface DeepLinkParams {
 }
 
 export interface DeepLinkHandler {
-  handleDeepLink: (hasPendingCommunities?: boolean) => void;
+  handleDeepLink: () => void;
 }
 
 /**
@@ -16,11 +17,41 @@ export interface DeepLinkHandler {
  * @param searchParams - URL search parameters
  * @returns Deep link handler functions
  */
-export function useDeepLinkHandler(router: any, searchParams: any): DeepLinkHandler {
-  const handleDeepLink = (hasPendingCommunities?: boolean) => {
-    const startapp = searchParams.get('startapp');
-    const id = searchParams.get('id');
+export function useDeepLinkHandler(
+  router: any, 
+  searchParams: any,
+  telegramStartParam?: string
+): DeepLinkHandler {
+  const handleDeepLink = () => {
+    let startapp = searchParams.get('startapp');
+    let id = searchParams.get('id');
     const returnTo = searchParams.get('returnTo');
+    
+    // Parse Telegram start_param (could be base64url encoded or plain string)
+    if (telegramStartParam) {
+      console.log('🔗 Parsing Telegram start_param:', telegramStartParam);
+      console.log('🔗 Start param type:', typeof telegramStartParam);
+      console.log('🔗 Start param length:', telegramStartParam?.length);
+      
+      // Check if it looks like base64url encoded data
+      if (looksLikeBase64url(telegramStartParam)) {
+        console.log('🔗 Attempting to decode as base64url...');
+        try {
+          const decoded = decodeTelegramDeepLink(telegramStartParam);
+          startapp = decoded.action;
+          id = decoded.id;
+          console.log('🔗 Decoded startapp:', startapp, 'id:', id);
+        } catch (error) {
+          console.error('🔗 Failed to decode Telegram start_param:', error);
+          console.error('🔗 Start param value:', telegramStartParam);
+          // Fallback to treating as simple action
+          startapp = telegramStartParam;
+        }
+      } else {
+        console.log('🔗 Treating as plain action parameter');
+        startapp = telegramStartParam;
+      }
+    }
     
     let redirectPath = '/meriter/home'; // default
     
@@ -35,7 +66,8 @@ export function useDeepLinkHandler(router: any, searchParams: any): DeepLinkHand
           const chatId = pathParts[1];
           const slug = pathParts[3];
           console.log('🔗 Deep link: Parsed community publication path:', { chatId, slug });
-          redirectPath = `/meriter/communities/${chatId}?post=${slug}`;
+          // Redirect to dedicated post page instead of community page with highlighting
+          redirectPath = `/meriter/communities/${chatId}/posts/${slug}`;
         } else {
           console.log('🔗 Deep link: Invalid publication path format, using default');
           redirectPath = `/meriter/publications/${id}`;
@@ -47,21 +79,14 @@ export function useDeepLinkHandler(router: any, searchParams: any): DeepLinkHand
     } else if (startapp === 'community' && id) {
       console.log('🔗 Deep link: Redirecting to community:', id);
       redirectPath = `/meriter/communities/${id}`;
-    } else if (startapp === 'global-feed') {
-      console.log('🔗 Deep link: Redirecting to global feed');
-      redirectPath = '/meriter/merit';
-    } else if (startapp === 'setup') {
-      console.log('🔗 Deep link: Redirecting to community setup');
-      redirectPath = '/meriter/setup-community';
     } else if (startapp === 'poll' && id) {
-      console.log('🔗 Deep link: Redirecting to poll:', id);
+      console.log('🔗 Deep link: Poll detected, will fetch poll data and redirect to community');
+      // For polls, we need to fetch the poll data to get the community ID
+      // This will be handled by a special poll redirect page
       redirectPath = `/meriter/polls/${id}`;
     } else if (startapp === 'updates') {
       console.log('🔗 Deep link: Redirecting to updates');
       redirectPath = '/meriter/home?updates=true';
-    } else if (hasPendingCommunities) {
-      console.log('🔗 Deep link: User has pending communities, redirecting to manage');
-      redirectPath = '/meriter/manage';
     } else if (returnTo) {
       console.log('🔗 Deep link: Using returnTo parameter:', returnTo);
       redirectPath = returnTo;

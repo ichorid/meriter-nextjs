@@ -10,14 +10,20 @@ const defaultStyle = {
     opacity: 0,
 }
 
-const transitionStyles = {
+const transitionStyles: Record<string, { opacity: number }> = {
     entering: { opacity: 1 },
     entered: { opacity: 1 },
     exiting: { opacity: 0 },
     exited: { opacity: 0 },
+    unmounted: { opacity: 0 },
 }
 
-export const DivFade = ({ text, className }) => {
+interface DivFadeProps {
+    text: React.ReactNode;
+    className?: string;
+}
+
+export const DivFade: React.FC<DivFadeProps> = ({ text, className }) => {
     const nodeRef = useRef(null)
     
     return (

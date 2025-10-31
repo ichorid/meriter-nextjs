@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getInitials, getColorFromString } from '@shared/lib/avatar';
+import { getInitials, getColorFromString } from '@/lib/utils/avatar';
 
 interface AvatarWithPlaceholderProps {
   avatarUrl?: string;

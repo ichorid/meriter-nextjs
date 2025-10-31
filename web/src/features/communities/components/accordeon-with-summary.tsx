@@ -2,7 +2,13 @@
 
 import { useState } from 'react'
 
-export const AccordeonWithSummary = ({ children, title, summary }) => {
+interface AccordeonWithSummaryProps {
+    children: React.ReactNode;
+    title: string;
+    summary: string[];
+}
+
+export const AccordeonWithSummary: React.FC<AccordeonWithSummaryProps> = ({ children, title, summary }) => {
     const [opened, setOpened] = useState(false)
     return (
         <div className="accordeon-with-summary">

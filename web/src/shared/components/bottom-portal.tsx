@@ -3,13 +3,26 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-export const BottomPortal = ({ children }) => {
-    const [el, setEl] = useState(null);
+interface BottomPortalProps {
+    children: React.ReactNode;
+}
+
+export const BottomPortal: React.FC<BottomPortalProps> = ({ children }) => {
+    const [el, setEl] = useState<Element | null>(null);
     useEffect(() => {
-        let el = document.querySelector(".bottom-widget-area");
-        //el.innerHTML = "";
-        setEl(el);
+        const findElement = () => {
+            const found = document.querySelector(".bottom-widget-area");
+            if (found) {
+                setEl(found);
+            } else {
+                // Retry after a short delay if element not found immediately
+                setTimeout(findElement, 100);
+            }
+        };
+        findElement();
     }, []);
-    if (!el) return null;
+    if (!el) {
+        return null;
+    }
     return createPortal(children, el);
 };

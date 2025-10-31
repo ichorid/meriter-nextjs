@@ -8,9 +8,15 @@
     ],
     "allowJs": true,
     "skipLibCheck": true,
-    "strict": false,
-    "noImplicitAny": false,
-    "strictNullChecks": false,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "esModuleInterop": true,
@@ -34,8 +40,14 @@
       "@shared/*": [
         "shared/*"
       ],
+      "@types/*": [
+        "types/*"
+      ],
       "@lib/*": [
         "shared/lib/*"
+      ],
+      "@meriter/shared-types": [
+        "../../libs/shared-types/dist/index.d.ts"
       ],
       "@config/*": [
         "../config/*"
@@ -54,7 +66,8 @@
     "**/*.ts",
     "**/*.tsx",
     "next-env.d.ts",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

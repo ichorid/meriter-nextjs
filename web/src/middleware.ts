@@ -4,6 +4,32 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     
+    // Log the full URL that was passed to the server
+    console.log('🌐 Full URL:', request.url);
+    console.log('📍 Pathname:', pathname);
+    console.log('🔍 Search params:', request.nextUrl.searchParams.toString());
+    console.log('🌍 Host:', request.nextUrl.host);
+    console.log('📋 Headers:', Object.fromEntries(request.headers.entries()));
+    console.log('---');
+    
+    // Handle Telegram Web App deep links at root
+    if (pathname === '/') {
+        const tgWebAppStartParam = request.nextUrl.searchParams.get('tgWebAppStartParam');
+        
+        if (tgWebAppStartParam) {
+            console.log('🔗 Telegram Web App deep link detected, redirecting to login');
+            // Redirect to login, preserving the tgWebAppStartParam
+            // The login page will extract start_param from Telegram.WebApp.initDataUnsafe
+            const loginUrl = new URL('/meriter/login', request.url);
+            loginUrl.searchParams.set('tgWebAppStartParam', tgWebAppStartParam);
+            return NextResponse.redirect(loginUrl);
+        }
+        
+        // Regular non-Telegram users go to home
+        const homeUrl = new URL('/meriter/home', request.url);
+        return NextResponse.redirect(homeUrl);
+    }
+    
     // Handle locale cookie setting
     const localeCookie = request.cookies.get('NEXT_LOCALE');
     if (!localeCookie) {
@@ -39,9 +65,6 @@ export function middleware(request: NextRequest) {
     const knownStaticRoutes = [
         '/meriter/login',
         '/meriter/home',
-        '/meriter/manage',
-        '/meriter/commbalance',
-        '/meriter/setup-community',
         '/meriter/communities',
         '/meriter/spaces',
         '/meriter/settings',
@@ -74,7 +97,7 @@ export function middleware(request: NextRequest) {
     }
     
     // Let all other requests through - authentication is handled client-side
-    // The pages themselves use SWR to check /api/rest/getme and redirect if needed
+    // The pages themselves use React Query to check /api/v1/auth/me and redirect if needed
     return NextResponse.next();
 }
 

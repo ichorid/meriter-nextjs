@@ -1,137 +1,184 @@
 'use client';
 
-import { useEffect, useRef, useState, use } from "react";
-import { swr, swrInfinite } from '@lib/swr';
-import Page from '@shared/components/page';
+import { useEffect, useRef, useState, use, useMemo } from "react";
+import { useQueryClient } from '@tanstack/react-query';
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useRouter, useSearchParams } from "next/navigation";
-import { HeaderAvatarBalance } from '@shared/components/header-avatar-balance';
-import { MenuBreadcrumbs } from '@shared/components/menu-breadcrumbs';
-import { CardWithAvatar } from '@shared/components/card-with-avatar';
-import {
-    telegramGetAvatarLink,
-    telegramGetAvatarLinkUpd,
-} from '@lib/telegram';
-import { Publication } from "@features/feed";
-import type { Publication as IPublication } from "@features/feed/types";
+import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
 import { FormPollCreate } from "@features/polls";
 import { BottomPortal } from "@shared/components/bottom-portal";
-import { useTranslation } from 'react-i18next';
-import { CommunityAvatar } from "@shared/components/community-avatar";
-import { classList } from "@lib/classList";
+import { useTranslations } from 'next-intl';
+import { useWallets, useCommunity } from '@/hooks/api';
+import { useCommunityFeed } from '@/hooks/api/useCommunityFeed';
+import { useWalletBalance } from '@/hooks/api/useWallet';
+import { useAuth } from '@/contexts/AuthContext';
+import { routes } from '@/lib/constants/routes';
+import { queryKeys } from '@/lib/constants/queryKeys';
+import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
+
+// Publication type imported from shared-types (single source of truth)
+
 
 const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { t } = useTranslation('pages');
+    const t = useTranslations('pages');
+    const tCommunities = useTranslations('communities');
     const resolvedParams = use(params);
     const chatId = resolvedParams.id;
     const pathname = `/meriter/communities/${chatId}`;
     
     // Get the post parameter from URL for deep linking
-    const targetPostSlug = searchParams.get('post');
+    const targetPostSlug = searchParams?.get('post');
+    const targetPollId = searchParams?.get('poll');
+    
+    // Get sort and modal state from URL params
+    const sortBy = searchParams?.get('sort') || 'recent';
+    const selectedTag = searchParams?.get('tag');
+    const showPollCreate = searchParams?.get('modal') === 'createPoll';
 
     const [paginationEnd, setPaginationEnd] = useState(false);
-    const [showPollCreate, setShowPollCreate] = useState(false);
-    const [sortBy, setSortBy] = useState<"recent" | "voted">("recent");
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
-
-    const getKeyPublications = (chatId) => (pageIndex, previousPageData) => {
-        if (previousPageData && !previousPageData?.publications.length) {
-            setPaginationEnd(true);
-            return null;
-        }
-        return `/api/rest/publications/communities/${chatId}?skip=${
-            5 * pageIndex
-        }&limit=5`;
+    
+    // Handle poll modal close
+    const handlePollClose = () => {
+        const params = new URLSearchParams(searchParams?.toString() ?? '');
+        params.delete('modal');
+        router.push(`?${params.toString()}`);
     };
 
-    const [comms] = swr(
-        () => `/api/rest/communityinfo?chatId=${chatId}`,
-        {}
-    );
+    // Use v1 API hook
+    const { data: comms } = useCommunity(chatId);
 
-    const [content, size, setSize, err]: any = swrInfinite(
-        getKeyPublications(chatId),
-        []
-    );
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        error: err
+    } = useCommunityFeed(chatId, {
+        pageSize: 5,
+        sort: sortBy === 'recent' ? 'recent' : 'score',
+        tag: selectedTag || undefined,
+    });
 
-    const publications = ((content as IPublication[] | any)??[])
-        .map((c) => (c as any).publications)
-        .flat()
-        .filter((p, index, self) => 
-            index === self.findIndex((t) => t?._id === p?._id)
-        );
-
-    const setJwt = (content as any ??[])?.[0]?.setJwt;
+    // Derive paginationEnd from hasNextPage instead of setting it in getNextPageParam
     useEffect(() => {
-        if (setJwt) {
-            document.location.href = "/auth/" + setJwt;
+        if (!hasNextPage) {
+            setPaginationEnd(true);
         }
-    }, [setJwt]);
+    }, [hasNextPage]);
 
-    // Handle deep linking to specific post
+    // Memoize feed items array (can contain both publications and polls)
+    const publications = useMemo(() => {
+        return (data?.pages ?? [])
+            .flatMap((page: any) => {
+                // The API returns PaginatedResponse which has a 'data' property with the array
+                if (page?.data && Array.isArray(page.data)) {
+                    return page.data;
+                }
+                // Fallback: empty array
+                return [];
+            })
+            .map((p: any) => ({
+                ...p,
+                slug: p.slug || p.id, // Ensure slug is set (use id as fallback)
+                beneficiaryId: p.beneficiaryId || p.meta?.beneficiary?.username,
+                beneficiaryName: p.meta?.beneficiary?.name,
+                beneficiaryPhotoUrl: p.meta?.beneficiary?.photoUrl,
+                beneficiaryUsername: p.meta?.beneficiary?.username,
+                // Ensure type is set
+                type: p.type || (p.content ? 'publication' : 'poll'),
+            }))
+            .filter((p: FeedItem, index: number, self: FeedItem[]) => 
+                index === self.findIndex((t: FeedItem) => t?.id === p?.id)
+            );
+    }, [data?.pages]); // Only recalculate when data.pages changes
+
+    // Debug logging
     useEffect(() => {
-        if (targetPostSlug && publications.length > 0) {
-            const targetPost = publications.find(p => p.uid === targetPostSlug);
+        if (data) {
+            console.log('📊 Publications data:', {
+                pagesCount: data.pages?.length,
+                firstPage: data.pages?.[0],
+                publicationsCount: publications.length
+            });
+        }
+    }, [data, publications.length]);
+
+    // Handle deep linking to specific post or poll
+    useEffect(() => {
+        if ((targetPostSlug || targetPollId) && publications.length > 0) {
+            let targetPost: FeedItem | undefined;
+            
+            if (targetPollId) {
+                console.log('🔍 Looking for poll with id:', targetPollId);
+                console.log('🔍 Available publications:', publications.map((p: FeedItem) => ({ slug: p.slug, id: p.id, type: p.type })));
+                
+                targetPost = publications.find((p: FeedItem) => p.id === targetPollId && p.type === 'poll');
+                if (targetPost) {
+                    console.log('🎯 Found target poll for deep link:', targetPollId);
+                } else {
+                    console.log('❌ Target poll not found with id:', targetPollId);
+                }
+            } else if (targetPostSlug) {
+                console.log('🔍 Looking for post with slug:', targetPostSlug);
+                console.log('🔍 Available publications:', publications.map((p: FeedItem) => ({ slug: p.slug, id: p.id, type: p.type })));
+                
+                targetPost = publications.find((p: FeedItem) => p.slug === targetPostSlug);
+                if (targetPost) {
+                    console.log('🎯 Found target post for deep link:', targetPostSlug, 'with id:', targetPost.id);
+                } else {
+                    console.log('❌ Target post not found with slug:', targetPostSlug);
+                }
+            }
+            
             if (targetPost) {
-                console.log('🎯 Found target post for deep link:', targetPostSlug);
-                setHighlightedPostId(targetPost._id);
+                setHighlightedPostId(targetPost.id);
                 
                 // Scroll to the post after a short delay to ensure it's rendered
                 setTimeout(() => {
-                    const postElement = document.getElementById(`post-${targetPost._id}`);
+                    const postElement = document.getElementById(`post-${targetPost.id}`);
                     if (postElement) {
+                        console.log('🎯 Scrolling to post element:', postElement);
                         postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         // Remove highlight after 3 seconds
                         setTimeout(() => setHighlightedPostId(null), 3000);
+                    } else {
+                        console.log('❌ Post element not found with id:', `post-${targetPost.id}`);
                     }
                 }, 500);
             }
         }
-    }, [targetPostSlug, publications]);
+    }, [targetPostSlug, targetPollId, publications]);
 
     const error =
-        (content??[])?.[0]?.error || err
+        (publications??[])?.[0]?.error || err
             ? true
-            : content.length > 0
+            : publications.length > 0
             ? false
             : undefined;
 
-    const [balance, updBalance] = swr(
-        () => `/api/rest/wallet?tgChatId=${chatId}`,
-        0,
-        { key: "balance" }
-    );
-    const [user] = swr("/api/rest/getme", { init: true });
-
-    const [wallets, updateWallets] = swr(
-        () => user.token ? "/api/rest/wallet" : null,
-        [],
-        { key: "wallets" }
-    );
+    const { user, isLoading: userLoading, isAuthenticated } = useAuth();
+    const { data: wallets = [], isLoading: walletsLoading } = useWallets();
+    
+    // Get wallet balance using standardized hook
+    const { data: balance = 0 } = useWalletBalance(chatId);
 
     useEffect(() => {
-        if (!user?.tgUserId && !user.init)
+        if (!userLoading && !isAuthenticated) {
             router.push("/meriter/login?returnTo=" + encodeURIComponent(document.location.pathname));
-    }, [user, user?.init]);
+        }
+    }, [isAuthenticated, userLoading, router]);
 
-    const [userdata] = swr(
-        () =>
-            user?.tgUserId
-                ? `/api/rest/users/telegram/${user.tgUserId}/profile`
-                : null,
-        0,
-        { key: "userdata" }
-    );
 
-    const [findTransaction, setFindTransaction] = useState(undefined);
+    const [findTransaction, setFindTransaction] = useState<string | undefined>(undefined);
     useEffect(() => {
         if (document.location.search)
             setFindTransaction(document.location.search?.replace("#", ""));
     }, []);
 
     const cooldown = useRef(false);
-    const sizeRef = useRef(size);
     useEffect(() => {
         const fn = () => {
             if (
@@ -139,8 +186,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 document.body.offsetHeight
             ) {
                 if (!paginationEnd && !cooldown.current) {
-                    setSize(sizeRef.current + 1);
-                    sizeRef.current++;
+                    fetchNextPage();
 
                     cooldown.current = true;
                     setTimeout(() => {
@@ -153,280 +199,195 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         return () => window.removeEventListener("scroll", fn);
     }, []);
 
-    const [chat] = swr(
-        `/api/rest/getchat?chatId=${chatId}`,
-        {},
-        { key: "chat" }
-    );
-    const chatName = chat?.username;
-    const chatUrl = chat?.url;
-    const chatNameVerb = String(chat?.title ?? "");
-    const activeCommentHook = useState(null);
+    // Use community data for chat info (same as comms)
+    const chatName = comms?.name;
+    const chatUrl = comms?.description;
+    const chatNameVerb = String(comms?.name ?? "");
     
-    // State for withdrawal functionality
-    const [activeWithdrawPost, setActiveWithdrawPost] = useState(null);
+    const queryClient = useQueryClient();
+    
+    // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+    // Declare all state hooks unconditionally at the top level
+    const activeCommentHook = useState<string | null>(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
-    
-    // Wallet update function for optimistic updates
-    const updateWalletBalance = (currencyId: string, change: number) => {
-        // Optimistically update wallet balance in SWR cache
-        if (!Array.isArray(wallets)) return;
-        
-        const updatedWallets = wallets.map((wallet: any) => {
-            if (wallet.currencyOfCommunityTgChatId === currencyId) {
-                return {
-                    ...wallet,
-                    amount: wallet.amount + change,
-                };
-            }
-            return wallet;
-        });
-        updateWallets(updatedWallets, false); // Update SWR cache without revalidation
-    };
-    
-    const updateAll = async () => {
-        // Trigger SWR revalidation
-        await updateWallets();
-        await updBalance();
-    };
+    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
-    if (!user.token) return null;
+    // Early return AFTER all hooks have been called
+    if (!isAuthenticated) return null;
 
-    const tgAuthorId = user?.tgUserId;
+    const tgAuthorId = user?.id;
 
     const onlyPublication =
-        publications.filter((p) => p?.messageText)?.length == 1;
-
-    const sortItems = (items: any[]) => {
+        publications.filter((p: FeedItem) => (p.type === 'publication' ? p.content : true) || p.type === 'poll')?.length == 1;
+    
+    const sortItems = (items: FeedItem[]): FeedItem[] => {
         if (!items) return [];
         return [...items].sort((a, b) => {
             if (sortBy === "recent") {
-                return new Date(b.ts).getTime() - new Date(a.ts).getTime();
+                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
             } else {
-                return (b.sum || 0) - (a.sum || 0);
+                // Handle score sorting - publications have score, polls have totalAmount
+                const aScore = a.type === 'publication' 
+                    ? (a.metrics?.score || 0)
+                    : (a.metrics?.totalAmount || 0);
+                const bScore = b.type === 'publication'
+                    ? (b.metrics?.score || 0)
+                    : (b.metrics?.totalAmount || 0);
+                return bScore - aScore;
             }
         });
     };
 
-    return (
-        <Page className="feed">
-            <HeaderAvatarBalance
-                balance1={undefined}
-                balance2={undefined}
-                avatarUrl={telegramGetAvatarLink(tgAuthorId)}
-                onAvatarUrlNotFound={() => telegramGetAvatarLinkUpd(tgAuthorId)}
-                onClick={() => {
-                    router.push("/meriter/home");
-                }}
-                userName={user?.name || 'User'}
-            >
-                <MenuBreadcrumbs
-                    chatId={chatId}
-                    chatNameVerb={chatNameVerb}
-                    chatIcon={comms?.icon}
-                />
-                
-                {/* Community Header */}
-                {chat?.title && (
-                    <div className="py-3 border-b border-base-300 mb-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-3">
-                                <CommunityAvatar
-                                    avatarUrl={chat?.photo}
-                                    communityName={chat?.title}
-                                    size={48}
-                                />
-                                <h1 className="text-xl font-semibold">{chat?.title}</h1>
-                            </div>
-                            {/* Settings cog icon - visible only to admins */}
-                            {comms?.chat?.administratorsIds?.includes(user?.tgUserId) && (
-                                <button
-                                    onClick={() => router.push(`/meriter/communities/${chatId}/settings`)}
-                                    className="btn btn-ghost btn-sm btn-circle"
-                                    title="Community Settings"
-                                >
-                                    <svg 
-                                        className="w-5 h-5" 
-                                        fill="none" 
-                                        stroke="currentColor" 
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path 
-                                            strokeLinecap="round" 
-                                            strokeLinejoin="round" 
-                                            strokeWidth={2} 
-                                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" 
-                                        />
-                                        <path 
-                                            strokeLinecap="round" 
-                                            strokeLinejoin="round" 
-                                            strokeWidth={2} 
-                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
-                                        />
-                                    </svg>
-                                </button>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                            {comms?.icon && (
-                                <div className="flex items-center gap-2">
-                                    <img className="w-5 h-5" src={comms.icon} alt="Currency" />
-                                    <span className="text-lg font-semibold">{balance}</span>
-                                </div>
-                            )}
-                            {comms?.chat?.tags && comms.chat.tags.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                    {comms.chat.tags.map((tag: string, i: number) => (
-                                        <span key={i} className="badge badge-primary badge-sm">#{tag}</span>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
+    // Filter publications by tag if selected
+    const filteredPublications = selectedTag
+        ? publications.filter((p: FeedItem) => {
+            if (p.type === 'publication') {
+                const tags = p.hashtags as string[] | undefined;
+                return tags && Array.isArray(tags) && tags.includes(selectedTag);
+            } else {
+                // Polls don't have hashtags in the schema, skip filtering
+                return true;
+            }
+        })
+        : publications;
 
-                {error === false && (
-                    <>
-                        <div>
-                            {chatUrl && (
-                                <div className="tip">
-                                    {t('communities.toAddPublication')}{" "}
-                                    <a href={chatUrl}>
-                                        {" "}
-                                        {t('communities.writeMessageInChat')}
-                                    </a>{" "}
-                                    <br />
-                                    <br />
-                                </div>
-                            )}
-                            {comms.spaces && (
-                                <div
-                                    style={{
-                                        paddingBottom: "15px",
-                                        opacity: ".5",
-                                    }}
-                                >
-                                    {t('communities.filterByValues')}
-                                </div>
-                            )}
-                            {comms.spaces &&
-                                comms.spaces.map((space) => (
-                                    <CardWithAvatar
-                                        key={space.slug}
-                                        avatarUrl=""
-                                        userName={space.tagRus || 'Space'}
-                                        onClick={() =>
-                                            router.push("/meriter/spaces/" + space.slug)
-                                        }
-                                    >
-                                        <div className="heading">
-                                            #{space.tagRus}
-                                        </div>
-                                        <div className="description">
-                                            {space.description}
-                                        </div>
-                                    </CardWithAvatar>
-                                ))}
-                        </div>
-                    </>
-                )}
-            </HeaderAvatarBalance>
+    const handlePostSelect = (postSlug: string) => {
+        const params = new URLSearchParams(searchParams?.toString() ?? '');
+        params.set('post', postSlug);
+        router.push(`?${params.toString()}`);
+    };
+
+    return (
+        <AdaptiveLayout
+            className="feed"
+            communityId={chatId}
+            balance={balance}
+            wallets={Array.isArray(wallets) ? wallets : []}
+            myId={user?.id}
+            activeCommentHook={activeCommentHook}
+            activeSlider={activeSlider}
+            setActiveSlider={setActiveSlider}
+            activeWithdrawPost={activeWithdrawPost}
+            setActiveWithdrawPost={setActiveWithdrawPost}
+        >
+            {error === false && (
+                <>
+                    <div>
+                        {chatUrl && (
+                            <div className="tip">
+                                {t('communities.toAddPublication')}{" "}
+                                <a href={chatUrl}>
+                                    {" "}
+                                    {t('communities.writeMessageInChat')}
+                                </a>{" "}
+                                <br />
+                                <br />
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
             {error === true && <div>{t('communities.noAccess')}</div>}
 
-            <button
-                className="create-poll-button"
-                onClick={() => setShowPollCreate(true)}
-                style={{
-                    padding: "10px 20px",
-                    background: "#4CAF50",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontWeight: "600",
-                    marginBottom: "15px",
-                    width: "100%"
-                }}
-            >
-                {t('communities.createPoll')}
-            </button>
-
-            <div className="flex justify-end mb-4">
-                <div className="join shadow-sm">
-                    <button 
-                        className={classList(
-                            "join-item btn btn-sm font-medium transition-all duration-200",
-                            sortBy === "recent" && "btn-active btn-primary"
-                        )}
-                        onClick={() => setSortBy("recent")}
-                    >
-                        {t('communities.byDate')}
-                    </button>
-                    <button 
-                        className={classList(
-                            "join-item btn btn-sm font-medium transition-all duration-200",
-                            sortBy === "voted" && "btn-active btn-primary"
-                        )}
-                        onClick={() => setSortBy("voted")}
-                    >
-                        {t('communities.byRating')}
-                    </button>
+            {/* Setup banner */}
+            {comms?.needsSetup && (
+                <div 
+                    className={comms?.isAdmin ? "alert alert-warning cursor-pointer" : "alert alert-info"}
+                    onClick={comms?.isAdmin ? () => router.push(routes.communitySettings(chatId)) : undefined}
+                    role={comms?.isAdmin ? "button" : undefined}
+                    tabIndex={comms?.isAdmin ? 0 : undefined}
+                    onKeyDown={comms?.isAdmin ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            router.push(routes.communitySettings(chatId));
+                        }
+                    } : undefined}
+                >
+                    <span>
+                        {comms?.isAdmin 
+                            ? tCommunities('unconfigured.banner.admin')
+                            : tCommunities('unconfigured.banner.user')
+                        }
+                    </span>
                 </div>
-            </div>
+            )}
 
             <div className="space-y-4">
-                {user.token &&
-                    sortItems(publications)
-                        .filter((p) => p?.messageText || p?.type === 'poll')
-                        .map((p) => (
-                            <div
-                                key={p._id}
-                                id={`post-${p._id}`}
-                                className={highlightedPostId === p._id ? 'ring-2 ring-primary ring-opacity-50 rounded-lg p-2 bg-primary bg-opacity-10' : ''}
-                            >
-                                <Publication
-                                    {...p}
-                                    tgChatId={chatId}
-                                    balance={balance}
-                                    updBalance={updBalance}
-                                    activeCommentHook={activeCommentHook}
-                                    activeSlider={activeSlider}
-                                    setActiveSlider={setActiveSlider}
-                                    dimensionConfig={undefined}
-                                    myId={user?.tgUserId}
-                                    onlyPublication={onlyPublication}
-                                    highlightTransactionId={findTransaction}
-                                    isDetailPage={false}
-                                    showCommunityAvatar={false}
-                                    wallets={wallets}
-                                    updateWalletBalance={updateWalletBalance}
-                                    activeWithdrawPost={activeWithdrawPost}
-                                setActiveWithdrawPost={setActiveWithdrawPost}
-                                updateAll={updateAll}
-                            />
-                            </div>
-                        ))}
-                {!paginationEnd && publications.length > 1 && (
-                    <button onClick={() => setSize(size + 1)} className="btn btn-primary btn-wide mx-auto block">
+                {isAuthenticated &&
+                    filteredPublications
+                        .filter((p: FeedItem) => {
+                            if (p.type === 'publication') {
+                                return !!p.content;
+                            } else {
+                                return p.type === 'poll';
+                            }
+                        })
+                        .map((p) => {
+                            // Console logging for debugging
+                            console.log('📄 Rendering publication card:', {
+                                id: p.id,
+                                type: 'PublicationCardComponent',
+                                hasBeneficiary: !!p.meta?.beneficiary,
+                                beneficiary: p.meta?.beneficiary,
+                                meta: p.meta,
+                                fullPublication: p
+                            });
+                            
+                            // Check if this post is selected (for comments or polls)
+                            const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug)) 
+                                || !!(targetPollId && p.id === targetPollId);
+                            
+                            return (
+                                <div
+                                    key={p.id}
+                                    id={`post-${p.id}`}
+                                    className={
+                                        highlightedPostId === p.id 
+                                            ? 'ring-2 ring-primary ring-opacity-50 rounded-lg p-2 bg-primary bg-opacity-10' 
+                                            : isSelected
+                                            ? 'ring-2 ring-secondary ring-opacity-70 rounded-lg p-2 bg-secondary bg-opacity-10 transition-all duration-300'
+                                            : ''
+                                    }
+                                >
+                                    <PublicationCard
+                                        publication={p}
+                                        wallets={Array.isArray(wallets) ? wallets : []}
+                                        showCommunityAvatar={false}
+                                        isSelected={isSelected}
+                                    />
+                                </div>
+                            );
+                        })}
+                {!paginationEnd && filteredPublications.length > 1 && (
+                    <button onClick={() => fetchNextPage()} className="btn btn-primary btn-wide mx-auto block">
                         {t('communities.loadMore')}
                     </button>
                 )}
             </div>
             {showPollCreate && (
                 <BottomPortal>
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-5 overflow-y-auto">
-                        <FormPollCreate
-                            communityId={chatId}
-                            onSuccess={(pollId) => {
-                                setShowPollCreate(false);
-                                window.location.reload();
-                            }}
-                            onCancel={() => setShowPollCreate(false)}
-                        />
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-5 overflow-y-auto pointer-events-auto">
+                        <div className="pointer-events-auto">
+                            <FormPollCreate
+                                communityId={chatId}
+                                onSuccess={(pollId) => {
+                                    handlePollClose();
+                                    // Invalidate feed query to refresh data
+                                    queryClient.invalidateQueries({ 
+                                        queryKey: queryKeys.communities.feed(chatId, {
+                                            pageSize: 5,
+                                            sort: sortBy === 'recent' ? 'recent' : 'score',
+                                            tag: selectedTag || undefined,
+                                        })
+                                    });
+                                }}
+                                onCancel={handlePollClose}
+                            />
+                        </div>
                     </div>
                 </BottomPortal>
             )}
-        </Page>
+        </AdaptiveLayout>
     );
 };
 

@@ -1,22 +1,15 @@
 // Community feature types
+// DEPRECATED: Community type should be imported from @meriter/shared-types
+// Use: import type { Community } from '@meriter/shared-types';
 
+// Legacy Community type - DO NOT USE, use @meriter/shared-types instead
 export interface Community {
     chatId: string;
     title: string;
     description?: string;
     icon?: string;
     tags?: string[];
-    spaces: Space[];
     currencyNames?: Record<string, string>;
-}
-
-export interface Space {
-    slug: string;
-    name?: string;
-    description?: string;
-    icon?: string;
-    deleted?: boolean;
-    dimensions?: Dimension[];
 }
 
 export interface Dimension {

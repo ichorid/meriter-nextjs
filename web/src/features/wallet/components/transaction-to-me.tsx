@@ -1,33 +1,34 @@
 'use client';
 
-import { CardCommentVote } from "@features/comments/components/card-comment-vote";
-import { telegramGetAvatarLink } from "@lib/telegram";
-import { useTranslation } from 'react-i18next';
-import { swr } from "@lib/swr";
+import { CardCommentVote } from "@shared/components/card-comment-vote";
+import { telegramGetAvatarLink } from "@/lib/utils/telegram";
+import { useTranslations } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
+import { useCommunity } from '@/hooks/api';
 
 class RestTransactionObject {
-    amount: number; //0
-    amountFree: number; //3
-    amountTotal: number; //3
-    comment: string; //"Три голоса плюс"
-    currencyOfCommunityTgChatId: string; //"-123123"
-    directionPlus: boolean; //true
-    forPublicationSlug: string; //"abc123"
-    fromUserTgId: string; //"123123"
-    fromUserTgName: string; //"Some Name"
-    inPublicationSlug: string; //"123asdf"
-    inSpaceSlug: string; //"asdf"
-    minus: number; //0
-    plus: number; //0
-    publicationClassTags: [];
-    reason: string; //"forPublication"
-    sum: number; //0
-    toUserTgId: string; //"123123"
-    ts: string; //"2021-01-08T09:40:11.179Z",
-    parentText: string;
-    forTransactionId: string;
-
-    _id: string; //"123123"
+    amount: number = 0; //0
+    amountFree: number = 0; //3
+    amountTotal: number = 0; //3
+    comment: string = ""; //"Три голоса плюс"
+    currencyOfCommunityTgChatId: string = ""; //"-123123"
+    directionPlus: boolean = true; //true
+    forPublicationSlug: string = ""; //"abc123"
+    fromUserTgId: string = ""; //"123123"
+    fromUserTgName: string = ""; //"Some Name"
+    inPublicationSlug: string = ""; //"123asdf"
+    inSpaceSlug: string = ""; //"asdf"
+    minus: number = 0; //0
+    plus: number = 0; //0
+    publicationClassTags: any[] = [];
+    reason: string = ""; //"forPublication"
+    sum: number = 0; //0
+    toUserTgId: string = ""; //"123123"
+    toUserTgName: string = ""; //"Some Name"
+    ts: string = ""; //"2021-01-08T09:40:11.179Z"
+    parentText: string = "";
+    forTransactionId: string = "";
+    _id: string = ""; //"123123"
 }
 
 export const TransactionToMe = ({
@@ -35,16 +36,10 @@ export const TransactionToMe = ({
 }: {
     transaction: RestTransactionObject;
 }) => {
-    const { t } = useTranslation('shared');
+    const t = useTranslations('shared');
     
-    // Fetch community info to get currency icon
-    const [communityInfo] = swr(
-        transaction.currencyOfCommunityTgChatId 
-            ? `/api/rest/communityinfo?chatId=${transaction.currencyOfCommunityTgChatId}`
-            : null,
-        {},
-        { revalidateOnFocus: false }
-    );
+    // Fetch community info to get currency icon using v1 API
+    const { data: communityInfo } = useCommunity(transaction.currencyOfCommunityTgChatId || '');
     
     // Format the rate with currency icon
     const formatRate = () => {
@@ -73,7 +68,7 @@ export const TransactionToMe = ({
     const voteType = determineVoteType();
     
     // Get currency icon for separate rendering
-    const currencyIcon = communityInfo?.icon;
+    const currencyIcon = communityInfo?.settings?.iconUrl;
     
     return (
         <div>
@@ -100,14 +95,31 @@ export const TransactionToMe = ({
                     }
                 }}
                 showCommunityAvatar={true}
-                communityAvatarUrl={communityInfo?.chat?.photo}
-                communityName={communityInfo?.chat?.title}
-                communityIconUrl={communityInfo?.icon}
+                communityAvatarUrl={communityInfo?.avatarUrl}
+                communityName={communityInfo?.name}
+                communityIconUrl={communityInfo?.settings?.iconUrl}
                 onCommunityClick={() => {
-                    if (transaction.currencyOfCommunityTgChatId) {
+                    if (!transaction.currencyOfCommunityTgChatId) return;
+                    
+                    if (communityInfo?.needsSetup) {
+                        if (communityInfo?.isAdmin) {
+                            // Admin: redirect to settings
+                            window.location.href = `/meriter/communities/${transaction.currencyOfCommunityTgChatId}/settings`;
+                        } else {
+                            // Non-admin: show toast
+                            const { useToastStore } = require('@/shared/stores/toast.store');
+                            useToastStore.getState().addToast(
+                                'Community setup pending, your admin will set it up soon',
+                                'info'
+                            );
+                        }
+                    } else {
+                        // Normal navigation
                         window.location.href = `/meriter/communities/${transaction.currencyOfCommunityTgChatId}`;
                     }
                 }}
+                communityNeedsSetup={communityInfo?.needsSetup}
+                communityIsAdmin={communityInfo?.isAdmin}
                 bottom={null}
             />
         </div>

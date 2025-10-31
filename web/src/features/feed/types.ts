@@ -1,25 +1,16 @@
 // Feed feature types
-// Migrated from content/publications/publication.type.ts
+// DEPRECATED: Publication type should be imported from @meriter/shared-types
+// Use: import type { Publication } from '@meriter/shared-types';
 
-export interface IPublicationElement {
-    _id?: string;
-    type?: string;
-    uri: string;
-    url?: string;
-    proto?: string;
-    meta?: object;
-    content?: any;
-    tags?: string[];
-    ts?: number;
-}
-
+// Legacy types kept for backwards compatibility
 export interface PublicationAuthor {
+    id: string;
     name: string;
     photoUrl?: string;
-    telegramId: string;
     username?: string;
 }
 
+// Legacy Publication type - DO NOT USE, use @meriter/shared-types instead
 export interface Publication {
     _id: string;
     slug: string;
@@ -41,7 +32,6 @@ export interface Publication {
     currency?: string;
     inMerits?: number;
     ts: Date;
-    elements?: IPublicationElement[];
 }
 
 export interface Feed {

@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { apiPOST } from "@shared/lib/fetch";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { A } from "@shared/components/simple/simple-elements";
-import { useTranslation } from 'react-i18next';
-import { useTelegramWebApp } from '@shared/hooks/useTelegramWebApp';
+import { useTranslations } from 'next-intl';
+import { initDataRaw, useSignal, mainButton, backButton } from '@telegram-apps/sdk-react';
+import { pollsApiV1 } from '@/lib/api/v1';
+import { safeHapticFeedback } from '@/shared/lib/utils/haptic-utils';
+import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 
 interface IPollOption {
     id: string;
@@ -24,8 +26,11 @@ export const FormPollCreate = ({
     onSuccess,
     onCancel,
 }: IFormPollCreateProps) => {
-    const { t } = useTranslation('polls');
-    const { isInTelegram, webApp, hapticFeedback } = useTelegramWebApp();
+    const t = useTranslations('polls');
+    const rawData = useSignal(initDataRaw);
+    const isInTelegram = !!rawData;
+    const isMountedRef = useRef(true);
+    
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [options, setOptions] = useState<IPollOption[]>([
@@ -37,6 +42,14 @@ export const FormPollCreate = ({
     const [selectedWallet, setSelectedWallet] = useState(communityId || "");
     const [isCreating, setIsCreating] = useState(false);
     const [error, setError] = useState("");
+
+    // Track component mount status
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     const addOption = () => {
         if (options.length >= 10) {
@@ -88,15 +101,20 @@ export const FormPollCreate = ({
 
     const handleCreate = useCallback(async () => {
         if (!validate()) {
-            hapticFeedback?.notification('error');
+            safeHapticFeedback('error', isInTelegram);
             return;
         }
 
         setIsCreating(true);
         setError("");
         
-        if (isInTelegram && webApp) {
-            webApp.MainButton.showProgress();
+        if (isInTelegram && isMountedRef.current) {
+            try {
+                mainButton.setParams({ isLoaderVisible: true });
+            } catch (error: unknown) {
+                const message = error instanceof Error ? error.message : 'Unknown error';
+                console.warn('MainButton already unmounted:', message);
+            }
         }
 
         try {
@@ -121,12 +139,10 @@ export const FormPollCreate = ({
                 .map((opt) => ({
                     id: opt.id,
                     text: opt.text.trim(),
-                    votes: 0,
-                    voterCount: 0,
                 }));
 
             const payload = {
-                title: title.trim(),
+                question: title.trim(),
                 description: description.trim() || undefined,
                 options: filledOptions,
                 expiresAt: expiresAt.toISOString(),
@@ -135,54 +151,124 @@ export const FormPollCreate = ({
 
             console.log('📊 Creating poll with payload:', payload);
 
-            const response = await apiPOST("/api/rest/poll/create", payload);
+            const poll = await pollsApiV1.createPoll(payload);
 
-            console.log('📊 Poll creation response:', response);
+            console.log('📊 Poll creation response:', poll);
 
-            if (response.error) {
-                setError(response.error);
-                hapticFeedback?.notification('error');
-            } else if (response._id) {
-                hapticFeedback?.notification('success');
-                onSuccess && onSuccess(response._id);
-            }
-        } catch (err) {
+            safeHapticFeedback('success', isInTelegram);
+            onSuccess && onSuccess(poll.id);
+        } catch (err: unknown) {
             console.error('📊 Poll creation error:', err);
-            const errorMessage = err.response?.data?.message || err.message || t('errorCreating');
+            const errorMessage = extractErrorMessage(err, t('errorCreating'));
             setError(errorMessage);
-            hapticFeedback?.notification('error');
+            safeHapticFeedback('error', isInTelegram);
         } finally {
             setIsCreating(false);
-            if (isInTelegram && webApp) {
-                webApp.MainButton.hideProgress();
+            if (isInTelegram && isMountedRef.current) {
+                try {
+                    mainButton.setParams({ isLoaderVisible: false });
+                } catch (error: unknown) {
+                    const message = error instanceof Error ? error.message : 'Unknown error';
+                    console.warn('MainButton already unmounted:', message);
+                }
             }
         }
-    }, [title, description, options, timeValue, timeUnit, selectedWallet, isInTelegram, webApp, hapticFeedback, t, onSuccess]);
+    }, [title, description, options, timeValue, timeUnit, selectedWallet, isInTelegram, t, onSuccess]);
 
     // Telegram MainButton integration
     useEffect(() => {
-        if (isInTelegram && webApp) {
-            webApp.MainButton.setText(t('createPoll'));
-            webApp.MainButton.show();
-            webApp.MainButton.enable();
-            webApp.MainButton.onClick(handleCreate);
+        if (isInTelegram && isMountedRef.current) {
+            let cleanup: (() => void) | undefined;
             
-            // Setup back button if cancel is available
-            if (onCancel) {
-                webApp.BackButton.show();
-                webApp.BackButton.onClick(onCancel);
-            }
-            
-            return () => {
-                webApp.MainButton.hide();
-                webApp.MainButton.offClick(handleCreate);
-                if (onCancel) {
-                    webApp.BackButton.hide();
-                    webApp.BackButton.offClick(onCancel);
+            const initializeMainButton = () => {
+                if (!isMountedRef.current) return;
+                
+                try {
+                    // Try to mount the mainButton first
+                    mainButton.mount();
+                } catch (error: unknown) {
+                    // MainButton might already be mounted, that's okay
+                    const message = error instanceof Error ? error.message : 'Unknown error';
+                    console.warn('MainButton mount warning (expected if already mounted):', message);
+                }
+                
+                try {
+                    // Set the mainButton parameters
+                    mainButton.setParams({ 
+                        text: t('createPoll'),
+                        isVisible: true, 
+                        isEnabled: true 
+                    });
+                    
+                    // Set up click handler
+                    cleanup = mainButton.onClick(handleCreate);
+                    
+                    // Setup back button if cancel is available
+                    if (onCancel) {
+                        try {
+                            backButton.show();
+                            const backCleanup = backButton.onClick(onCancel);
+                            
+                            return () => {
+                                if (isMountedRef.current) {
+                                    try {
+                                        mainButton.setParams({ isVisible: false });
+                                    } catch (error: unknown) {
+                                        const message = error instanceof Error ? error.message : 'Unknown error';
+                                        console.warn('MainButton cleanup warning:', message);
+                                    }
+                                }
+                                if (cleanup) cleanup();
+                                backButton.hide();
+                                backCleanup();
+                            };
+                        } catch (error: unknown) {
+                            const message = error instanceof Error ? error.message : 'Unknown error';
+                            console.error('Failed to setup back button:', message);
+                        }
+                    }
+                    
+                    return () => {
+                        if (isMountedRef.current) {
+                            try {
+                                mainButton.setParams({ isVisible: false });
+                            } catch (error: unknown) {
+                                const message = error instanceof Error ? error.message : 'Unknown error';
+                                console.warn('MainButton cleanup warning:', message);
+                            }
+                        }
+                        if (cleanup) cleanup();
+                    };
+                    
+                } catch (error: unknown) {
+                    const message = error instanceof Error ? error.message : 'Unknown error';
+                    console.error('Failed to initialize mainButton:', message);
+                    // If mainButton fails, we'll just return a no-op cleanup
+                    return () => {};
                 }
             };
+            
+            // Try to initialize immediately, but if it fails, retry after a short delay
+            let cleanupFn = initializeMainButton();
+            
+            if (!cleanupFn) {
+                // If initialization failed, try again after a short delay
+                const timeoutId = setTimeout(() => {
+                    if (isMountedRef.current) {
+                        cleanupFn = initializeMainButton();
+                    }
+                }, 200);
+                
+                return () => {
+                    clearTimeout(timeoutId);
+                    if (cleanupFn) cleanupFn();
+                };
+            }
+            
+            return cleanupFn;
         }
-    }, [isInTelegram, webApp, handleCreate, onCancel, t]);
+        return undefined;
+    }, [isInTelegram, handleCreate, onCancel, t]);
 
     return (
         <div className="card bg-base-100 shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">

@@ -1,6 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
+import { initDataRaw, miniApp, useSignal } from '@telegram-apps/sdk-react';
+import { useAppMode } from '@/contexts/AppModeContext';
 
 type Theme = 'light' | 'dark' | 'auto';
 
@@ -13,85 +15,50 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+    const { isTelegramMiniApp } = useAppMode();
     const [theme, setThemeState] = useState<Theme>('auto');
     const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
-    const [isInTelegram, setIsInTelegram] = useState(false);
+    
+    // Use SDK signals only in mini app mode
+    let rawData;
+    let isDark;
+    
+    if (isTelegramMiniApp) {
+        try {
+            rawData = useSignal(initDataRaw);
+            isDark = useSignal(miniApp.isDark);
+        } catch (error: unknown) {
+            console.warn('⚠️ Telegram SDK signals not available');
+            rawData = { value: null };
+            isDark = { value: false };
+        }
+    } else {
+        rawData = { value: null };
+        isDark = { value: false };
+    }
 
-    // Initialize theme from localStorage or Telegram
+    // Initialize theme from localStorage
     useEffect(() => {
-        // Check if in Telegram Web App - use a more robust detection
-        const checkTelegram = () => {
-            const tg = (window as any).Telegram?.WebApp;
-            if (tg) {
-                // Check if we're in Telegram environment (even if initData isn't ready yet)
-                if (tg.platform || tg.version || tg.colorScheme !== undefined) {
-                    setIsInTelegram(true);
-                    console.log('🎨 Telegram Web App detected, using Telegram theme');
-                    
-                    // Use Telegram's theme if available
-                    if (tg.colorScheme) {
-                        const telegramTheme = tg.colorScheme === 'dark' ? 'dark' : 'light';
-                        console.log('🎨 Setting Telegram theme:', telegramTheme);
-                        setResolvedTheme(telegramTheme);
-                        return;
-                    }
-                }
-            }
-            
-            // Otherwise use localStorage
+        if (!isTelegramMiniApp) {
             const stored = localStorage.getItem('theme') as Theme | null;
             if (stored && ['light', 'dark', 'auto'].includes(stored)) {
                 console.log('🎨 Using stored theme:', stored);
                 setThemeState(stored);
             }
-        };
-
-        // Check immediately
-        checkTelegram();
-        
-        // Also check after a short delay in case Telegram Web App loads asynchronously
-        const timeoutId = setTimeout(checkTelegram, 100);
-        
-        return () => clearTimeout(timeoutId);
-    }, []);
-
-    // Listen for Telegram theme changes
-    useEffect(() => {
-        if (!isInTelegram) return;
-        
-        const tg = (window as any).Telegram?.WebApp;
-        if (tg) {
-            const handleThemeChange = () => {
-                console.log('🎨 Telegram theme changed');
-                if (tg.colorScheme) {
-                    const telegramTheme = tg.colorScheme === 'dark' ? 'dark' : 'light';
-                    console.log('🎨 New Telegram theme:', telegramTheme);
-                    setResolvedTheme(telegramTheme);
-                }
-            };
-            
-            // Listen for theme changes
-            tg.onEvent('themeChanged', handleThemeChange);
-            
-            // Also check periodically in case the event doesn't fire
-            const intervalId = setInterval(() => {
-                if (tg.colorScheme) {
-                    const telegramTheme = tg.colorScheme === 'dark' ? 'dark' : 'light';
-                    setResolvedTheme(telegramTheme);
-                }
-            }, 1000);
-            
-            return () => {
-                tg.offEvent('themeChanged', handleThemeChange);
-                clearInterval(intervalId);
-            };
         }
-    }, [isInTelegram]);
+    }, [isTelegramMiniApp]);
 
-    // Update resolved theme based on theme setting and system preference
+    // Use Telegram theme when in Telegram
     useEffect(() => {
-        // Skip if using Telegram theme
-        if (isInTelegram) return;
+        if (isTelegramMiniApp) {
+            console.log('🎨 Using Telegram theme:', isDark ? 'dark' : 'light');
+            setResolvedTheme(isDark ? 'dark' : 'light');
+        }
+    }, [isTelegramMiniApp, isDark]);
+
+    // Update resolved theme based on theme setting and system preference (non-Telegram)
+    useEffect(() => {
+        if (isTelegramMiniApp) return; // Skip if using Telegram theme
         
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         
@@ -114,7 +81,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
         mediaQuery.addEventListener('change', handler);
         return () => mediaQuery.removeEventListener('change', handler);
-    }, [theme, isInTelegram]);
+    }, [theme, isTelegramMiniApp]);
 
     // Apply theme to document
     useEffect(() => {
@@ -126,10 +93,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setThemeState(newTheme);
         localStorage.setItem('theme', newTheme);
         
-        // If we're in Telegram, we should respect the Telegram theme
-        // But allow manual override for testing purposes
-        if (isInTelegram) {
-            console.log('🎨 In Telegram Web App - theme override applied');
+        if (isTelegramMiniApp) {
+            console.log('🎨 In Telegram Web App - theme follows Telegram settings');
         }
     };
 
