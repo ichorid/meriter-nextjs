@@ -1,4 +1,21 @@
 services:
+  mongodb:
+    image: mongo:8
+    container_name: meriter-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - meriter-network
+    healthcheck:
+      test: mongosh --quiet --eval "db.adminCommand('ping')"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   web:
     image: ghcr.io/ichorid/meriter-nextjs-web:${VERSION_WEB:-latest}
     container_name: meriter-web
@@ -32,6 +49,9 @@ services:
       - "8002:8002"
     networks:
       - meriter-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:8002/health || exit 1"]
       interval: 30s
@@ -67,6 +87,8 @@ networks:
     driver: bridge
 
 volumes:
+  mongodb_data:
+    driver: local
   caddy_data:
     driver: local
   caddy_config:
