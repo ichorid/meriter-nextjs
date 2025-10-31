@@ -19,49 +19,37 @@ A merit-based community platform that integrates with Telegram to create engagin
 
 ### Prerequisites
 
-- Node.js 18+
-- MongoDB (local or Atlas)
+- Docker and Docker Compose (for easiest setup) **OR** Node.js 18+ with MongoDB
 - Telegram Bot Token from [@BotFather](https://t.me/botfather)
 
 ### Local Development
 
-1. **Clone and install dependencies (pnpm workspaces)**:
+**Quickest way (Docker Compose - Recommended):**
+
+1. **Clone the repository**:
    ```bash
    git clone https://github.com/your-username/meriter-nextjs.git
    cd meriter-nextjs
-
-   # Install all workspace dependencies
-   pnpm install
    ```
 
-2. **Configure environment**:
+2. **Configure and start**:
    ```bash
+   # Create .env from template
    cp env.example .env
-   # Edit .env with your values (DOMAIN, APP_URL, etc.)
+   # Edit .env and add your BOT_TOKEN and BOT_USERNAME
 
-   # Backend env
-   cp api/env.example api/.env
-
-   # Frontend env
-   cp web/env.example web/.env
+   # Start all services with Docker Compose
+   docker compose -f docker-compose.local.yml up -d --build
    ```
 
-3. **Start services**:
-   ```bash
-   # Terminal 1: Backend (NestJS)
-   pnpm --filter @meriter/api dev
-   
-   # Terminal 2: Frontend (Next.js)
-   pnpm --filter @meriter/web dev
-   
-   # Terminal 3: Caddy (reverse proxy)
-   DOMAIN=localhost caddy run --config Caddyfile
-   ```
-
-4. **Access the application**:
-   - Open http://localhost:8080
+3. **Access the application**:
+   - Open http://localhost:8001
    - Login with Telegram
    - Start creating communities and posts!
+
+**Alternative: Manual setup with pnpm:**
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed instructions on running services manually.
 
 ### Production Deployment
 

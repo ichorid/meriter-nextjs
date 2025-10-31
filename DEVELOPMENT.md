@@ -439,13 +439,36 @@ caddy run --config Caddyfile.local
 # Access: http://localhost:8080
 ```
 
-### With Docker Compose (Production-like)
-```bash
-# For local development using Docker Compose with image builds
-docker-compose -f docker-compose.local.yml up
+### With Docker Compose (Production-like) ⭐ EASIEST SETUP
 
-# Access: http://localhost
+This setup runs **everything** in Docker containers including MongoDB - no local dependencies needed!
+
+```bash
+# Create .env file from template
+cp env.example .env
+# Edit .env and set BOT_TOKEN and BOT_USERNAME (required)
+
+# Build and start all services
+docker compose -f docker-compose.local.yml up -d --build
+
+# View logs
+docker compose -f docker-compose.local.yml logs -f
+
+# Access the application
+# Web: http://localhost:8001
+# Caddy: http://localhost (redirects to https)
+
+# Stop all services
+docker compose -f docker-compose.local.yml down
 ```
+
+**What's included:**
+- ✅ MongoDB container (no local MongoDB needed)
+- ✅ Web container (Next.js)
+- ✅ API container (NestJS)
+- ✅ Caddy reverse proxy
+- ✅ Automatic health checks
+- ✅ Persistent MongoDB data
 
 **Note**: Use `docker-compose.local.yml` for local development (builds images from source). The default `docker-compose.yml` is for production deployment (pulls pre-built images from GitHub Container Registry).
 
