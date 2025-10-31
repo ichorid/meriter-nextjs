@@ -15,27 +15,17 @@
         level INFO
     }
 
-    # Specific API routes handled by NestJS backend
-    handle /api/geticonslogojoy* {
-        reverse_proxy meriter-api:8002
-    }
-
-    handle /api/d* {
-        reverse_proxy meriter-api:8002
-    }
-
-    # All other API requests go to NestJS backend
+    # All API requests go to NestJS backend
     handle /api* {
-        reverse_proxy meriter-api:8002
+        reverse_proxy api:8002
+        encode gzip
     }
 
     # Everything else goes to Next.js frontend
     handle {
-        reverse_proxy meriter-web:8001
+        reverse_proxy web:8001
+        encode gzip
     }
-
-    # Enable compression
-    encode gzip
 
     # Error handling
     handle_errors {
