@@ -159,44 +159,28 @@ const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
       <div className="px-4 h-full flex items-center gap-2 justify-start md:justify-between">
         <h1 className="text-xl font-semibold mr-4 hidden md:block">Home</h1>
         {/* Tabs: buttons on md+, dropdown on mobile */}
-        <div className="hidden md:flex gap-1 bg-base-200 rounded-lg p-1">
+        <div className="tabs tabs-boxed hidden md:flex">
           <button
             onClick={() => handleTabClick('publications')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'publications'
-                ? 'bg-primary text-primary-content'
-                : 'hover:bg-base-300 text-base-content'
-            }`}
+            className={`tab ${activeTab === 'publications' ? 'tab-active' : ''}`}
           >
             {t('tabs.publications')}
           </button>
           <button
             onClick={() => handleTabClick('comments')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'comments'
-                ? 'bg-primary text-primary-content'
-                : 'hover:bg-base-300 text-base-content'
-            }`}
+            className={`tab ${activeTab === 'comments' ? 'tab-active' : ''}`}
           >
             {t('tabs.comments')}
           </button>
           <button
             onClick={() => handleTabClick('polls')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'polls'
-                ? 'bg-primary text-primary-content'
-                : 'hover:bg-base-300 text-base-content'
-            }`}
+            className={`tab ${activeTab === 'polls' ? 'tab-active' : ''}`}
           >
             {t('tabs.polls')}
           </button>
           <button
             onClick={() => handleTabClick('updates')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'updates'
-                ? 'bg-primary text-primary-content'
-                : 'hover:bg-base-300 text-base-content'
-            }`}
+            className={`tab ${activeTab === 'updates' ? 'tab-active' : ''}`}
           >
             {t('tabs.updates')}
           </button>

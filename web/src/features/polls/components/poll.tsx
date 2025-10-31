@@ -32,15 +32,17 @@ interface CheckboxProps {
 
 const Checkbox: React.FC<CheckboxProps> = ({ tagName, h, d, selectItem }) => {
     return (
-        <div className="checkbox-wrapper">
-            <label>
+        <div className="form-control">
+            <label className="label cursor-pointer justify-start gap-2">
                 <input
                     type="checkbox"
+                    className="checkbox checkbox-primary"
                     onChange={(e) => selectItem(tagName, e.target.checked)}
                 />
-                <span className="checkmark"></span>
-                {h && <span className="heading">{h}</span>}
-                {d && <span className="description">{d}</span>}
+                <div className="flex flex-col">
+                    {h && <span className="label-text font-medium">{h}</span>}
+                    {d && <span className="label-text-alt opacity-70">{d}</span>}
+                </div>
             </label>
         </div>
     );

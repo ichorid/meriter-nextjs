@@ -70,10 +70,10 @@ export const PollCard: React.FC<PollCardProps> = ({
                       {option.votes} votes ({option.percentage}%)
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-base-300 rounded-full h-2">
                     <div 
                       className={`h-2 rounded-full transition-all duration-300 ${
-                        selectedOption === option.id ? 'bg-blue-600' : 'bg-gray-400'
+                        selectedOption === option.id ? 'bg-primary' : 'bg-base-content/20'
                       }`}
                       style={{ width: `${option.percentage}%` }}
                     ></div>

@@ -182,7 +182,7 @@ export const A: React.FC<any> = (props) => {
             <a
                 href={props.href}
                 className={classList(
-                    { button },
+                    button && 'btn btn-link',
                     { regular },
                     { little },
                     { thin },
@@ -203,7 +203,7 @@ export const A: React.FC<any> = (props) => {
             <a
                 href={props.href}
                 className={classList(
-                    { button },
+                    button && 'btn btn-link',
                     { regular },
                     { little },
                     { underline }

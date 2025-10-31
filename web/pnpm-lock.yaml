@@ -18,8 +18,8 @@ importers:
         specifier: ^0.36.4
         version: 0.36.4
       '@meriter/shared-types':
-        specifier: link:../libs/shared-types
-        version: link:../libs/shared-types
+        specifier: file:../libs/shared-types
+        version: file:../libs/shared-types
       '@tanstack/react-query':
         specifier: ^5.90.5
         version: 5.90.5(react@18.3.1)
@@ -47,12 +47,6 @@ importers:
       eruda:
         specifier: ^3.4.3
         version: 3.4.3
-      evernote:
-        specifier: ^2.0.5
-        version: 2.0.5
-      js-file-download:
-        specifier: ^0.4.12
-        version: 0.4.12
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2
@@ -86,18 +80,12 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
-      react-insta-stories:
-        specifier: ^2.8.0
-        version: 2.8.0(react@18.3.1)
       react-linkify:
         specifier: 1.0.0-alpha
         version: 1.0.0-alpha
       react-markdown:
         specifier: ^9.1.0
         version: 9.1.0(@types/react@18.3.26)(react@18.3.1)
-      react-phone-input-2:
-        specifier: ^2.15.1
-        version: 2.15.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-transition-group:
         specifier: ^4.4.5
         version: 4.4.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1426,6 +1414,9 @@ packages:
   '@material-symbols/font-400@0.36.4':
     resolution: {integrity: sha512-LwAcIPPn99ET2R4WPYu3VtbNd/vxZYV9iIE96oHkSUhkqdJVATWqj7UwGnmHQ6z1FkisvixGz5MMx9OBIv60Hg==}
 
+  '@meriter/shared-types@file:../libs/shared-types':
+    resolution: {directory: ../libs/shared-types, type: directory}
+
   '@mongodb-js/saslprep@1.3.2':
     resolution: {integrity: sha512-QgA5AySqB27cGTXBFmnpifAi7HxoGUeezwo6p9dI03MuDB6Pp33zgclqVb6oVK3j6I9Vesg0+oojW2XxB59SGg==}
 
@@ -2739,9 +2730,6 @@ packages:
     resolution: {integrity: sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==}
     engines: {node: '>=0.8.x'}
 
-  evernote@2.0.5:
-    resolution: {integrity: sha512-DuOk3t9HKwkxZBaZU1Mz8vmZSEM2LVI3eLdML90Is3+8WlPwpYcLeo4z+eklT8NUGD3GA6oOnlP+6e0z0rDX1Q==}
-
   execa@5.1.1:
     resolution: {integrity: sha512-8uSpZZocAZRBAPIEINJj3Lo9HyGitllczc27Eh5YYojjMFMn8yHMDMaUHE2Jqfq05D/wucwI4JGURyXt1vchyg==}
     engines: {node: '>=10'}
@@ -3232,9 +3220,6 @@ packages:
     resolution: {integrity: sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==}
     hasBin: true
 
-  js-file-download@0.4.12:
-    resolution: {integrity: sha512-rML+NkoD08p5Dllpjo0ffy4jRHeY6Zsapvr/W86N7E0yuzAO6qa5X9+xog6zQNlH102J7IXljNY2FtS6Lj3ucg==}
-
   js-levenshtein@1.1.6:
     resolution: {integrity: sha512-X2BB11YZtrRqY4EnQcLX5Rh373zbK4alC1FW7D7MBhL2gtcC17cTnr6DmfHZeS0s2rTHjUTMMHfG7gO8SSdw+g==}
     engines: {node: '>=0.10.0'}
@@ -3336,12 +3321,6 @@ packages:
 
   lodash.once@4.1.1:
     resolution: {integrity: sha512-Sb487aTOCr9drQVL8pIxOzVhafOjZN9UU54hiN8PU3uAiSV7lx1yYNpbNmex2PK6dSJoNTSJUUswT651yww3Mg==}
-
-  lodash.reduce@4.6.0:
-    resolution: {integrity: sha512-6raRe2vxCYBhpBu+B+TtNGUzah+hQjVdu3E17wfusjyrXBka2nBS8OH/gjVZ5PvHOhWmIZTYri09Z6n/QfnNMw==}
-
-  lodash.startswith@4.2.1:
-    resolution: {integrity: sha512-XClYR1h4/fJ7H+mmCKppbiBmljN/nGs73iq2SjCT9SF4CBPoUHzLvWmH1GtZMhMBZSiRkHXfeA2RY1eIlJ75ww==}
 
   longest-streak@3.1.0:
     resolution: {integrity: sha512-9Ri+o0JYgehTaVBBDoMqIl8GXtbWg711O3srftcHhZ0dqnETqLaoIK0x17fUw9rFSlK/0NlsKe0Ahhyl5pXE2g==}
@@ -3639,9 +3618,6 @@ packages:
   nwsapi@2.2.22:
     resolution: {integrity: sha512-ujSMe1OWVn55euT1ihwCI1ZcAaAU3nxUiDwfDQldc51ZXaB9m2AyOn6/jh1BLe2t/G8xd6uKG1UBF2aZJeg2SQ==}
 
-  oauth@0.9.15:
-    resolution: {integrity: sha512-a5ERWK1kh38ExDEfoO6qUHJb32rd7aYmPHuyCu3Fta/cnICvYmgd2uhuKXvPD+PXB+gCEYYEaQdIRAjCOwAKNA==}
-
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
     engines: {node: '>=0.10.0'}
@@ -3867,11 +3843,6 @@ packages:
     peerDependencies:
       react: ^18.3.1
 
-  react-insta-stories@2.8.0:
-    resolution: {integrity: sha512-GkzJGEomtWLf27zsZQ31Tgd+uWLLarVZr/XY8PVEZp89711gsAc3lW+rTzoHU+tlLbhhrSeQTttPA68ViXI+ag==}
-    peerDependencies:
-      react: '>=16.8.2'
-
   react-intersection-observer@9.16.0:
     resolution: {integrity: sha512-w9nJSEp+DrW9KmQmeWHQyfaP6b03v+TdXynaoA964Wxt7mdR3An11z4NNCQgL4gKSK7y1ver2Fq+JKH6CWEzUA==}
     peerDependencies:
@@ -3898,12 +3869,6 @@ packages:
     peerDependencies:
       '@types/react': '>=18'
       react: '>=18'
-
-  react-phone-input-2@2.15.1:
-    resolution: {integrity: sha512-W03abwhXcwUoq+vUFvC6ch2+LJYMN8qSOiO889UH6S7SyMCQvox/LF3QWt+cZagZrRdi5z2ON3omnjoCUmlaYw==}
-    peerDependencies:
-      react: ^16.12.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^20.0.0 || ^21.0.0
-      react-dom: ^16.12.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^20.0.0 || ^21.0.0
 
   react-remove-scroll-bar@2.3.8:
     resolution: {integrity: sha512-9r+yi9+mgU33AKcj6IbT9oRCO78WriSj6t/cF8DWBZJ9aOGPOTEDvdUDz1FwKim7QXWwmHqtdHnRJfhAxEG46Q==}
@@ -6359,6 +6324,11 @@ snapshots:
 
   '@material-symbols/font-400@0.36.4': {}
 
+  '@meriter/shared-types@file:../libs/shared-types':
+    dependencies:
+      typescript: 5.9.3
+      zod: 4.1.12
+
   '@mongodb-js/saslprep@1.3.2':
     dependencies:
       sparse-bitfield: 3.0.3
@@ -7736,10 +7706,6 @@ snapshots:
 
   events@3.3.0: {}
 
-  evernote@2.0.5:
-    dependencies:
-      oauth: 0.9.15
-
   execa@5.1.1:
     dependencies:
       cross-spawn: 7.0.6
@@ -8460,8 +8426,6 @@ snapshots:
 
   jiti@1.21.7: {}
 
-  js-file-download@0.4.12: {}
-
   js-levenshtein@1.1.6: {}
 
   js-tokens@4.0.0: {}
@@ -8573,10 +8537,6 @@ snapshots:
   lodash.memoize@4.1.2: {}
 
   lodash.once@4.1.1: {}
-
-  lodash.reduce@4.6.0: {}
-
-  lodash.startswith@4.2.1: {}
 
   longest-streak@3.1.0: {}
 
@@ -9000,8 +8960,6 @@ snapshots:
 
   nwsapi@2.2.22: {}
 
-  oauth@0.9.15: {}
-
   object-assign@4.1.1: {}
 
   object-hash@3.0.0: {}
@@ -9224,10 +9182,6 @@ snapshots:
       react: 18.3.1
       scheduler: 0.23.2
 
-  react-insta-stories@2.8.0(react@18.3.1):
-    dependencies:
-      react: 18.3.1
-
   react-intersection-observer@9.16.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       react: 18.3.1
@@ -9262,17 +9216,6 @@ snapshots:
       vfile: 6.0.3
     transitivePeerDependencies:
       - supports-color
-
-  react-phone-input-2@2.15.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      classnames: 2.5.1
-      lodash.debounce: 4.0.8
-      lodash.memoize: 4.1.2
-      lodash.reduce: 4.6.0
-      lodash.startswith: 4.2.1
-      prop-types: 15.8.1
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
 
   react-remove-scroll-bar@2.3.8(@types/react@18.3.26)(react@18.3.1):
     dependencies:
