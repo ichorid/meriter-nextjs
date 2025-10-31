@@ -73,7 +73,7 @@ export class User {
 export const UserSchema = SchemaFactory.createForClass(User);
 
 // Add indexes for common queries
-UserSchema.index({ telegramId: 1 }, { unique: true });
+// Note: telegramId index is already created by @Prop({ unique: true }) decorator
 UserSchema.index({ username: 1 });
 UserSchema.index({ communityTags: 1 });
 

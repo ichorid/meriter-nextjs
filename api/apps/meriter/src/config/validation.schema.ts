@@ -10,7 +10,7 @@ export const validationSchema = Joi.object({
 
   // Bot
   BOT_USERNAME: Joi.string().default('meriterbot'),
-  BOT_TOKEN: Joi.string().default(''),
+  BOT_TOKEN: Joi.string().allow('').empty('').default(''),
 
   // Database
   MONGO_URL: Joi.string().default('mongodb://127.0.0.1:27017/meriter'),

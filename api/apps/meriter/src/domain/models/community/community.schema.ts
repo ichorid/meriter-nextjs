@@ -84,7 +84,7 @@ export class Community {
 export const CommunitySchema = SchemaFactory.createForClass(Community);
 
 // Add indexes for common queries
+// Note: id index is already created by @Prop({ unique: true }) decorator
 CommunitySchema.index({ telegramChatId: 1 }, { unique: true });
-CommunitySchema.index({ id: 1 }, { unique: true });
 CommunitySchema.index({ adminsTG: 1 });
 CommunitySchema.index({ isActive: 1 });
