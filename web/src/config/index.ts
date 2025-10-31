@@ -14,8 +14,8 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   APP_URL: z.string().default('https://meriter.pro'),
   
-  // API Configuration
-  NEXT_PUBLIC_API_URL: z.string().default('http://localhost:8002'),
+  // API Configuration - optional, defaults to relative URLs in production
+  NEXT_PUBLIC_API_URL: z.string().optional(),
   
   // Telegram Configuration
   NEXT_PUBLIC_BOT_USERNAME: z.string().default('meriterbot'),
@@ -77,7 +77,10 @@ export const config = {
   
   // API
   api: {
-    baseUrl: env.NEXT_PUBLIC_API_URL,
+    // In production with Caddy, use relative URLs (empty string) when not explicitly set
+    // In development, default to localhost
+    // When explicitly set, always use the provided value
+    baseUrl: env.NEXT_PUBLIC_API_URL ?? (env.NODE_ENV === 'production' ? '' : 'http://localhost:8002'),
     endpoints: {
       auth: '/api/v1/auth',
       publications: '/api/v1/publications',
