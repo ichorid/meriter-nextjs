@@ -48,6 +48,13 @@
         "message": "Нет доступных обновлений."
       }
     },
+    "emptyCommunities": {
+      "banner": {
+        "title": "Нет сообществ",
+        "message": "Чтобы продолжить, добавьте бота Meriter @{botUsername} в вашу Telegram группу",
+        "action": "Узнать больше"
+      }
+    },
     "updates": {
       "voteUp": "проголосовал за ваш {targetType}",
       "voteDown": "проголосовал против вашего {targetType}",

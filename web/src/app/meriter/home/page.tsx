@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { EmptyCommunitiesBanner } from '@/components/organisms';
 import { useHomeTabState, useHomeData, useHomeAuth } from './hooks';
 import {
   PublicationsTab,
@@ -118,6 +119,7 @@ export default function PageHome() {
       wallets={wallets}
       myId={user?.id}
     >
+      <EmptyCommunitiesBanner />
       <div className="space-y-4">{renderTabContent()}</div>
 
       {showPollCreate && (

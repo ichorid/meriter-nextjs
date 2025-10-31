@@ -47,6 +47,13 @@
         "message": "No updates available."
       }
     },
+    "emptyCommunities": {
+      "banner": {
+        "title": "No Communities",
+        "message": "To proceed, add Meriter bot @{botUsername} to your Telegram group",
+        "action": "Learn More"
+      }
+    },
     "updates": {
       "voteUp": "upvoted your {targetType}",
       "voteDown": "downvoted your {targetType}",

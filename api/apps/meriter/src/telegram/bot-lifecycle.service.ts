@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { uid } from 'uid';
 import { Community, CommunityDocument } from '../domain/models/community/community.schema';
 import { User, UserDocument } from '../domain/models/user/user.schema';
 
@@ -113,13 +114,26 @@ export class TelegramBotLifecycleService {
     // Find or create user
     let user = await this.userModel.findOne({ telegramId: userInfo.userId }).lean();
     if (!user) {
-      user = await this.userModel.create({
+      const newUser = await this.userModel.create({
+        id: uid(),
         telegramId: userInfo.userId,
         displayName: userInfo.displayName,
         username: userInfo.username,
+        firstName: userInfo.firstName,
+        lastName: userInfo.lastName,
+        profile: {
+          bio: undefined,
+          location: undefined,
+          website: undefined,
+          isVerified: false,
+        },
+        communityTags: [],
+        communityMemberships: [],
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+      // Convert to plain object to match lean() format
+      user = newUser.toObject();
     }
 
     // Add community tag to user

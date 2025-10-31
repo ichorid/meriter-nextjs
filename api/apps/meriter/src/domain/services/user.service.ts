@@ -58,28 +58,34 @@ export class UserService {
     
     if (user) {
       // Update existing user
-      const updateData = {
+      // Note: $set preserves fields not in updateData (e.g., communityTags, communityMemberships)
+      const updateData: any = {
         username: dto.username,
         firstName: dto.firstName,
         lastName: dto.lastName,
         displayName: dto.displayName || `${dto.firstName || ''} ${dto.lastName || ''}`.trim(),
         avatarUrl: dto.avatarUrl,
-        bio: dto.bio,
-        location: dto.location,
-        website: dto.website,
-        isVerified: dto.isVerified,
         updatedAt: new Date(),
       };
 
       if (token) {
-        updateData['token'] = token;
+        updateData.token = token;
+      }
+
+      // Update profile fields if provided (using dot notation for nested fields)
+      if (dto.bio !== undefined || dto.location !== undefined || dto.website !== undefined || dto.isVerified !== undefined) {
+        if (dto.bio !== undefined) updateData['profile.bio'] = dto.bio;
+        if (dto.location !== undefined) updateData['profile.location'] = dto.location;
+        if (dto.website !== undefined) updateData['profile.website'] = dto.website;
+        if (dto.isVerified !== undefined) updateData['profile.isVerified'] = dto.isVerified;
       }
 
       await this.userModel.updateOne(
         { telegramId: dto.telegramId },
         { $set: updateData }
       );
-      user = { ...user, ...updateData };
+      // Re-fetch user to get updated data including preserved communityTags and communityMemberships
+      user = await this.userModel.findOne({ telegramId: dto.telegramId }).lean();
     } else {
       // Create new user
       const newUser = {
