@@ -27,8 +27,8 @@ ENV NODE_ENV=production
 ENV PORT=8001
 ENV HOSTNAME=0.0.0.0
 COPY --from=builder --chown=nextjs:nodejs /app/web/.next/standalone ./web
-COPY --from=builder --chown=nextjs:nodejs /app/web/.next/static ./web/.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/web/public ./web/public
+COPY --from=builder --chown=nextjs:nodejs /app/web/.next/static ./web/web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/web/public ./web/web/public
 # Copy package files for traceability
 COPY --chown=nextjs:nodejs web/package.json ./web/web/package.json
 COPY --chown=nextjs:nodejs web/pnpm-lock.yaml ./web/web/pnpm-lock.yaml
