@@ -66,9 +66,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   const hasPoints = freePlusAmount > 0 || walletBalance > 0;
   const maxPlus = freePlusAmount + (walletBalance || 0);
-  const calculatedMaxMinus = freePlusAmount > 0
-    ? Math.min(freePlusAmount, Math.max(walletBalance || 0, 1))
-    : Math.max(walletBalance || 0, 1);
+  // maxMinus should use wallet balance for negative votes (downvotes use wallet only)
+  // When walletBalance is 0, maxMinus should be 0 to prevent negative slider positions
+  const calculatedMaxMinus = walletBalance || 0;
 
   // Initialize form data if not present
   useEffect(() => {
