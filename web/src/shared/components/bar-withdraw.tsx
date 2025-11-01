@@ -30,30 +30,13 @@ export const BarWithdraw: React.FC<BarWithdrawProps> = ({
     // Handle NaN, null, and undefined values
     const displayBalance = (typeof balance === 'number' && !isNaN(balance)) ? balance : 0;
     
-    console.log('[BarWithdraw] Component Logic:', {
-      displayBalance,
-      showDisabled,
-      isLoading,
-      willShow: showDisabled || (displayBalance > 0),
-      isDisabled: displayBalance <= 0,
-      commentCount,
-    });
-    
     // If showDisabled is true, always show the button (even if disabled)
     // Otherwise, only show if there's something to withdraw
     if (!showDisabled && (!displayBalance || displayBalance <= 0)) {
-        console.log('[BarWithdraw] Returning null - balance <= 0 and showDisabled is false');
         return null;
     }
     
     const isDisabled = displayBalance <= 0 || isLoading;
-    
-    console.log('[BarWithdraw] Rendering button:', {
-      isDisabled,
-      displayBalance,
-      showDisabled,
-      isLoading,
-    });
 
     const handleCommentClick = (e: React.MouseEvent) => {
         e.stopPropagation();

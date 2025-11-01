@@ -18,6 +18,7 @@ import { LoadingState } from '@/components/atoms/LoadingState';
 import { ErrorDisplay } from '@/components/atoms/ErrorDisplay';
 import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
 import { handleAuthRedirect } from '@/lib/utils/auth';
+import { getErrorMessage } from '@/lib/api/errors';
 import type { TelegramUser } from '@/types/telegram';
 
 interface LoginFormProps {
@@ -59,7 +60,7 @@ export function LoginForm({ className = '' }: LoginFormProps) {
           console.log('✅ Authentication successful, redirecting...');
           handleAuthRedirect(returnTo);
         } catch (error: unknown) {
-          const message = error instanceof Error ? error.message : 'Authentication failed';
+          const message = getErrorMessage(error);
           console.error('❌ Telegram Web App authentication failed:', error);
           setAuthError(message);
         }
@@ -78,7 +79,7 @@ export function LoginForm({ className = '' }: LoginFormProps) {
       console.log('✅ Authentication successful, redirecting...');
       handleAuthRedirect(returnTo);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Authentication failed';
+      const message = getErrorMessage(error);
       console.error('❌ Telegram widget authentication failed:', error);
       setAuthError(message);
     }

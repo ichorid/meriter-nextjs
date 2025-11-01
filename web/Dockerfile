@@ -4,6 +4,10 @@ WORKDIR /repo
 RUN corepack enable && corepack prepare pnpm@10.18.2 --activate
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Accept build arguments for Next.js public environment variables
+ARG NEXT_PUBLIC_DOMAIN
+ENV NEXT_PUBLIC_DOMAIN=${NEXT_PUBLIC_DOMAIN}
+
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY libs/shared-types ./libs/shared-types
 COPY web/package.json ./web/

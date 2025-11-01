@@ -4,10 +4,10 @@
 {
     # Global options
     auto_https disable_redirects
-    email {$CADDY_EMAIL:admin@{$DOMAIN}}
 }
 
-{$DOMAIN:localhost} {
+# Support both HTTP and HTTPS for localhost development
+:80, :443 {
     # Enable access logs
     log {
         output file /var/log/caddy/access.log
