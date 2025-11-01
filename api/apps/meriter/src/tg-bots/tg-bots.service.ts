@@ -176,18 +176,6 @@ export class TgBotsService {
 
     this.logger.log(`📝 Message details: from=${user_id} (${username || first_name}), chat=${chat_id}, text="${text || caption}"`);
 
-    //BOT REMOVED FROM CHAT
-    if (left_chat_member?.username == BOT_USERNAME) {
-      this.logger.log(`🚪 Bot removed from chat: ${chat_id} (${chat_username || chat.title})`);
-      await this.processRemovedFromChat({ chatId: chat_id, chat_username });
-    }
-
-    //ADDED TO NEW CHAT
-    if (new_chat_members?.[0]?.username == BOT_USERNAME) {
-      this.logger.log(`🤖 Bot added to chat: ${chat_id} (${chat_username || chat.title})`);
-      await this.processAddedToChat({ chatId: chat_id, chat_username });
-    }
-
     //MESSAGE TO CHAT
     if ((text || caption) && user_id && chat_id && chat_id !== user_id) {
       this.logger.log(`💬 Group message: chat=${chat_id}, user=${user_id}, text="${text || caption}"`);
