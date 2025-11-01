@@ -6,6 +6,10 @@
  * and provides sensible defaults for development.
  */
 
+// Note: In production/Docker, environment variables should be passed via docker-compose
+// or container environment, not from .env file (which may not exist in standalone builds)
+// Next.js loads .env automatically in development, but in production we rely on env vars
+
 import { z } from 'zod';
 
 // Environment variable validation schema
@@ -116,11 +120,23 @@ export const config = {
   
   // Messages and Templates
   // Note: These templates use BOT_USERNAME from process.env directly (server-side only)
-  // They will throw error if BOT_USERNAME is missing
-  messages: (() => {
+  // IMPORTANT: This getter is lazy - it only validates when actually accessed
+  // Since messages are not currently used in the web codebase (API has its own config),
+  // this getter should not be accessed during module initialization
+  // If it is accessed, it will fail fast if BOT_USERNAME is missing
+  get messages() {
+    // In Docker/standalone builds, BOT_USERNAME comes from container environment
+    // In development, it comes from .env file (loaded by Next.js)
+    // docker-compose.yml explicitly passes BOT_USERNAME=${BOT_USERNAME} from .env
     const botUsername = process.env.BOT_USERNAME;
+    
+    // Fail fast - but only when actually accessed (not during TypeScript type checking)
     if (!botUsername || botUsername.trim() === '') {
-      throw new Error('BOT_USERNAME environment variable is required for message templates');
+      const nodeEnv = process.env.NODE_ENV || 'development';
+      const errorMsg = nodeEnv === 'production'
+        ? 'BOT_USERNAME environment variable is required. Ensure it is set in docker-compose.yml environment section (BOT_USERNAME=${BOT_USERNAME}) and that BOT_USERNAME exists in your .env file.'
+        : 'BOT_USERNAME environment variable is required. Set it in .env file or environment.';
+      throw new Error(errorMsg);
     }
     
     return {
@@ -136,8 +152,10 @@ export const config = {
       
       approvedPendingWords: ['одобрить'],
     };
-  })(),
-} as const;
+  },
+};
+
+// Note: Cannot use 'as const' with getter, so we type it explicitly
 
 // Type exports for better TypeScript support
 export type Config = typeof config;
