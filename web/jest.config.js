@@ -4,7 +4,7 @@ module.exports = {
         "<rootDir>/.next/",
         "<rootDir>/node_modules/",
         // Fast-green: ignore legacy/non-core suites temporarily
-        "<rootDir>/src/__tests__/integration/",
+        // Note: login-page.integration.test.tsx is enabled and should run
         "<rootDir>/src/__tests__/lib/",
         "<rootDir>/src/__tests__/utils/telegram-test-utils.util.ts",
         "<rootDir>/src/__tests__/components/LogoutButton.test.tsx",
