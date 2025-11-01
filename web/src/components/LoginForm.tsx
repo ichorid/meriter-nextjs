@@ -93,9 +93,11 @@ export function LoginForm({ className = '' }: LoginFormProps) {
           await authenticateWithTelegramWebApp(rawData);
           
           // Redirect after successful authentication
+          // Use hard redirect to ensure cookies are properly set before next requests
           const redirectUrl = returnTo || '/meriter/home';
           console.log('✅ Authentication successful, redirecting to:', redirectUrl);
-          router.push(redirectUrl);
+          // Use window.location for hard redirect to ensure cookies are processed
+          window.location.href = redirectUrl;
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : 'Authentication failed';
           console.error('❌ Telegram Web App authentication failed:', error);
@@ -114,9 +116,11 @@ export function LoginForm({ className = '' }: LoginFormProps) {
       await authenticateWithTelegram(telegramUser as TelegramUser);
       
       // Redirect after successful authentication
+      // Use hard redirect to ensure cookies are properly set before next requests
       const redirectUrl = returnTo || '/meriter/home';
       console.log('✅ Authentication successful, redirecting to:', redirectUrl);
-      router.push(redirectUrl);
+      // Use window.location for hard redirect to ensure cookies are processed
+      window.location.href = redirectUrl;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Authentication failed';
       console.error('❌ Telegram widget authentication failed:', error);

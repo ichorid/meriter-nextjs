@@ -26,7 +26,10 @@ export const useTelegramAuth = () => {
   return useMutation({
     mutationFn: (telegramUser: TelegramUser) => authApiV1.authenticateWithTelegramWidget(telegramUser),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all });
+      // Invalidate queries but don't refetch immediately
+      // Let the redirect and page reload handle the refetch
+      // This ensures cookies are properly set before refetching
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all, refetchType: 'none' });
     },
   });
 };
@@ -37,7 +40,10 @@ export const useTelegramWebAppAuth = () => {
   return useMutation({
     mutationFn: (initData: string) => authApiV1.authenticateWithTelegramWebApp(initData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all });
+      // Invalidate queries but don't refetch immediately
+      // Let the redirect and page reload handle the refetch
+      // This ensures cookies are properly set before refetching
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all, refetchType: 'none' });
     },
   });
 };

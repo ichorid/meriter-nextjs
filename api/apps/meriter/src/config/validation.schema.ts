@@ -1,28 +1,58 @@
-import * as Joi from 'joi';
+import { z } from 'zod';
 
-export const validationSchema = Joi.object({
-  // Application
-  APP_URL: Joi.string().default('https://meriter.pro'),
-  PORT: Joi.number().default(8002),
+// Custom Joi-style wrapper for NestJS ConfigModule compatibility
+// ConfigModule expects a validationSchema with both validate and validateSync methods
+const validateSync = (config: Record<string, unknown>) => {
+  const nodeEnv = config.NODE_ENV || 'development';
+  
+  // Apply defaults manually before validation
+  const configWithDefaults = {
+    APP_URL: (config.APP_URL as string) || 'https://meriter.pro',
+    PORT: config.PORT ? Number(config.PORT) : 8002,
+    JWT_SECRET: (config.JWT_SECRET as string) || '',
+    BOT_USERNAME: (config.BOT_USERNAME as string) || '',
+    BOT_TOKEN: (config.BOT_TOKEN as string) || '',
+    MONGO_URL: (config.MONGO_URL as string) || 'mongodb://127.0.0.1:27017/meriter',
+    MONGO_URL_SECONDARY: (config.MONGO_URL_SECONDARY as string) || 'mongodb://127.0.0.1:27017/meriter_test',
+    NODE_ENV: (config.NODE_ENV as string) || 'development',
+  };
 
-  // JWT
-  JWT_SECRET: Joi.string().required(),
+  // Conditional validation: BOT_USERNAME required in production
+  if (nodeEnv === 'production' && (!configWithDefaults.BOT_USERNAME || configWithDefaults.BOT_USERNAME.trim() === '')) {
+    throw new Error('BOT_USERNAME is required in production');
+  }
 
-  // Bot
-  BOT_USERNAME: Joi.string().when('NODE_ENV', {
-    is: 'production',
-    then: Joi.string().required(),
-    otherwise: Joi.string().default('meriterbot'),
-  }),
-  BOT_TOKEN: Joi.string().allow('').empty('').default(''),
+  const envSchema = z.object({
+    APP_URL: z.string(),
+    PORT: z.number(),
+    JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
+    BOT_USERNAME: z.string(),
+    BOT_TOKEN: z.string(),
+    MONGO_URL: z.string(),
+    MONGO_URL_SECONDARY: z.string(),
+    NODE_ENV: z.enum(['development', 'production', 'test']),
+  });
 
-  // Database
-  MONGO_URL: Joi.string().default('mongodb://127.0.0.1:27017/meriter'),
-  MONGO_URL_SECONDARY: Joi.string().default('mongodb://127.0.0.1:27017/meriter_test'),
+  // Parse the config and throw if invalid
+  const result = envSchema.safeParse(configWithDefaults);
+  
+  if (!result.success) {
+    const errors = result.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+    throw new Error(`Configuration validation error: ${errors}`);
+  }
 
-  // Other environment variables that might exist
-  NODE_ENV: Joi.string()
-    .valid('development', 'production', 'test')
-    .default('development'),
-});
+  return result.data;
+};
+
+export const validationSchema = {
+  validate: (config: Record<string, unknown>) => {
+    try {
+      const value = validateSync(config);
+      return { error: null, value };
+    } catch (error) {
+      return { error, value: undefined };
+    }
+  },
+  validateSync,
+};
 

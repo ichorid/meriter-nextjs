@@ -44,20 +44,6 @@ export function useCommunityQuotas(communityIds: string[]) {
   const quotasMap = new Map<string, CommunityQuota>();
   queries.forEach((query, index) => {
     const communityId = communityIds[index];
-    console.log(`[useCommunityQuotas] Query ${index} for community ${communityId}:`, {
-      hasData: !!query.data,
-      data: query.data,
-      dataType: typeof query.data,
-      remainingToday: query.data?.remainingToday,
-      remainingTodayType: typeof query.data?.remainingToday,
-      dailyQuota: query.data?.dailyQuota,
-      usedToday: query.data?.usedToday,
-      error: query.error,
-      isLoading: query.isLoading,
-      isError: query.isError,
-      isSuccess: query.isSuccess,
-      status: query.status,
-    });
     
     // Only add to map if query has successful data (not error, not loading)
     if (query.data && !query.error && communityId) {
@@ -71,26 +57,10 @@ export function useCommunityQuotas(communityIds: string[]) {
           remainingToday: query.data.remainingToday, // Keep original value, even if 0
           resetAt: query.data.resetAt ?? '',
         };
-        console.log(`[useCommunityQuotas] ✅ Adding quota to map for ${communityId}:`, quotaEntry);
         quotasMap.set(communityId, quotaEntry);
-      } else {
-        console.warn(`[useCommunityQuotas] ❌ Invalid remainingToday for ${communityId}:`, {
-          value: query.data.remainingToday,
-          type: typeof query.data.remainingToday,
-          fullData: query.data,
-        });
       }
-    } else {
-      console.warn(`[useCommunityQuotas] ⚠️ Skipping ${communityId} - no valid data:`, {
-        hasData: !!query.data,
-        hasError: !!query.error,
-        isLoading: query.isLoading,
-        error: query.error,
-      });
     }
   });
-  
-  console.log('[useCommunityQuotas] 📋 Final quotasMap:', Array.from(quotasMap.entries()));
 
   return {
     queries,

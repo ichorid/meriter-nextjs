@@ -153,6 +153,84 @@ global.ResizeObserver = jest.fn(() => ({
   disconnect: jest.fn(),
 }));
 
+// Mock window.location.href to prevent navigation errors in tests
+// Override the href setter to prevent navigation
+const originalLocation = window.location;
+let mockHref = originalLocation.href || 'http://localhost/';
+
+// Store original descriptor if it exists
+const locationDescriptor = Object.getOwnPropertyDescriptor(window, 'location');
+const locationHrefDescriptor = Object.getOwnPropertyDescriptor(window.location, 'href');
+
+// Try to make location configurable by deleting and redefining
+try {
+  // Delete location property if it's configurable
+  if (locationDescriptor?.configurable) {
+    delete (window as any).location;
+  }
+} catch (e) {
+  // If deletion fails, location is not configurable - we'll work around it
+}
+
+// Override href getter/setter on the location object itself
+try {
+  Object.defineProperty(window.location, 'href', {
+    get: () => mockHref,
+    set: (value: string) => {
+      // Silently capture href changes instead of triggering navigation
+      mockHref = value;
+    },
+    configurable: true,
+    enumerable: true,
+  });
+} catch (e) {
+  // If we can't override href, location might not be configurable
+  // Create a new location-like object
+  const locationProxy = new Proxy(window.location, {
+    set(target, prop, value) {
+      if (prop === 'href') {
+        mockHref = value;
+        return true;
+      }
+      return Reflect.set(target, prop, value);
+    },
+    get(target, prop) {
+      if (prop === 'href') {
+        return mockHref;
+      }
+      return Reflect.get(target, prop);
+    },
+  });
+  
+  if (locationDescriptor?.configurable || !locationDescriptor) {
+    Object.defineProperty(window, 'location', {
+      value: locationProxy,
+      writable: true,
+      configurable: true,
+    });
+  }
+}
+
+// Suppress console errors and logs during tests (but allow them to be called)
+// This prevents test noise while still allowing error tracking
+// Run immediately, not in beforeAll, to catch early logs
+const originalError = console.error;
+const originalLog = console.log;
+
+if (process.env.NODE_ENV === 'test') {
+  console.error = jest.fn((...args) => {
+    // Allow some console errors to pass through (like React warnings)
+    const message = args[0]?.toString() || '';
+    // Don't suppress React warnings
+    if (message.includes('Warning:') || message.includes('React')) {
+      originalError(...args);
+    }
+  });
+  
+  // Suppress console.log during tests
+  console.log = jest.fn();
+}
+
 // Increase default test timeout for async-heavy flows
 jest.setTimeout(30000);
 

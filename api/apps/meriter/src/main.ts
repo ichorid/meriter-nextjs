@@ -1,4 +1,3 @@
-require('dotenv').config();
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { MeriterModule } from './meriter.module';
