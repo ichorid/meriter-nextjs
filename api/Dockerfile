@@ -27,8 +27,17 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
 ENV NODE_ENV=production
-# Copy production dependencies only
-COPY --from=deps --chown=nestjs:nodejs /app/api/node_modules ./node_modules
+RUN corepack enable && corepack prepare pnpm@10.18.2 --activate
+# Deploy production dependencies with flattened structure
+COPY --from=deps --chown=nestjs:nodejs /app ./
+WORKDIR /app/api
+RUN pnpm deploy --filter=@meriter/api --prod --legacy ./deploy
+# Copy from deployment and remove temporary files
+RUN mkdir /app/final && \
+    mv /app/api/deploy/node_modules /app/final/node_modules && \
+    mv /app/api/deploy/* /app/final/ 2>/dev/null || true && \
+    rm -rf /app/api /app/libs /app/web /app/node_modules /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml
+WORKDIR /app/final
 COPY --from=builder --chown=nestjs:nodejs /app/api/dist ./dist
 # Copy package files for traceability
 COPY --chown=nestjs:nodejs api/package.json ./package.json

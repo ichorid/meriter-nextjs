@@ -38,5 +38,5 @@ COPY --chown=nextjs:nodejs web/package.json ./web/web/package.json
 COPY --chown=nextjs:nodejs pnpm-lock.yaml ./web/web/pnpm-lock.yaml
 EXPOSE 8001
 USER nextjs
-WORKDIR /app/web/web
-CMD ["node", "server.js"]
+WORKDIR /app
+CMD ["node", "web/server.js"]
