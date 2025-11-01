@@ -9,8 +9,9 @@
  */
 /**
  * Clears JWT cookie specifically with proper attributes
+ * Exported so it can be called before authentication to ensure clean state
  */
-function clearJwtCookie(): void {
+export function clearJwtCookie(): void {
   if (typeof document === 'undefined') return;
   
   const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;

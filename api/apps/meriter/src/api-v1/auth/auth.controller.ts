@@ -52,6 +52,17 @@ export class AuthController {
       const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
       const isProduction = process.env.NODE_ENV === 'production';
       
+      // Clear any existing JWT cookie first to ensure clean state
+      // This prevents issues with multiple cookies with different attributes
+      res.clearCookie('jwt', {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        path: '/',
+        domain: cookieDomain,
+      });
+      
+      // Set new JWT cookie
       res.cookie('jwt', result.jwt, {
         httpOnly: true,
         secure: isProduction,
@@ -91,6 +102,17 @@ export class AuthController {
       const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
       const isProduction = process.env.NODE_ENV === 'production';
       
+      // Clear any existing JWT cookie first to ensure clean state
+      // This prevents issues with multiple cookies with different attributes
+      res.clearCookie('jwt', {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        path: '/',
+        domain: cookieDomain,
+      });
+      
+      // Set new JWT cookie
       res.cookie('jwt', result.jwt, {
         httpOnly: true,
         secure: isProduction,

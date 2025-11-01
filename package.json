@@ -1,8 +1,8 @@
 {
   "name": "meriter-nextjs",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "private": true,
-  "packageManager": "pnpm@10.18.2",
+  "packageManager": "pnpm@10.20.0",
   "scripts": {
     "dev:api": "pnpm --filter @meriter/api dev",
     "dev:web": "pnpm --filter @meriter/web dev",

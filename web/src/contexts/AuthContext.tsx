@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMe, useTelegramAuth, useTelegramWebAppAuth, useLogout } from '@/hooks/api/useAuth';
 import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
-import { clearAuthStorage, redirectToLogin } from '@/lib/utils/auth';
+import { clearAuthStorage, redirectToLogin, clearJwtCookie } from '@/lib/utils/auth';
 import type { TelegramUser } from '@/types/telegram';
 import type { User } from '@/types/api-v1';
 import type { Router } from 'next/router';
@@ -65,6 +65,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setIsAuthenticating(true);
       setAuthError(null);
+      // Clear any existing JWT cookies before authentication to ensure clean state
+      clearJwtCookie();
       await telegramAuthMutation.mutateAsync(telegramUser);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Authentication failed';
@@ -79,6 +81,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setIsAuthenticating(true);
       setAuthError(null);
+      // Clear any existing JWT cookies before authentication to ensure clean state
+      clearJwtCookie();
       await telegramWebAppAuthMutation.mutateAsync(initData);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Authentication failed';

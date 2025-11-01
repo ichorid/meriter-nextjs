@@ -1,7 +1,11 @@
 # Caddyfile for local development
 # Routes API requests to localhost:8002 and everything else to localhost:8001
 
-localhost {
+{
+    auto_https off
+}
+
+:8080 {
     # Enable access logs
     log {
         output stdout
