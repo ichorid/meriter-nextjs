@@ -13,7 +13,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTelegramConfig } from '@/hooks/useConfig';
+import { useBotConfig } from '@/contexts/BotConfigContext';
 import { useAppMode } from '@/contexts/AppModeContext';
 import type { TelegramUser } from '@/types/telegram';
 
@@ -25,7 +25,7 @@ export function LoginForm({ className = '' }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('login');
-  const { botUsername } = useTelegramConfig();
+  const { botUsername } = useBotConfig();
   const { isTelegramMiniApp } = useAppMode();
   
   const { 

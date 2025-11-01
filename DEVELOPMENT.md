@@ -58,7 +58,7 @@ BOT_USERNAME=your_bot_username
 **`web/.env`:**
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8080/api
-NEXT_PUBLIC_BOT_USERNAME=your_bot_username
+BOT_USERNAME=your_bot_username
 ```
 
 #### 1.3. Start Services
@@ -129,7 +129,7 @@ BOT_USERNAME=your_bot_username
 **`web/.env`:**
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8002
-NEXT_PUBLIC_BOT_USERNAME=your_bot_username
+BOT_USERNAME=your_bot_username
 ```
 
 #### 2.3. Start Services
@@ -390,7 +390,7 @@ Access via: `http://localhost` (Caddy on port 80)
 ### Frontend (`web/.env`)
 - `MONGO_URL` - MongoDB connection string (for SSR)
 - `BOT_TOKEN` - Telegram bot token (server-side only)
-- `NEXT_PUBLIC_BOT_USERNAME` - Bot username (client-accessible)
+- `BOT_USERNAME` - Bot username (required, read at runtime from API)
 - `JWT_SECRET` - Secret for JWT tokens
 - `APP_URL` - Application URL
 

@@ -12,6 +12,26 @@ declare const module: any;
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   
+  // Fail fast - validate required environment variables in production
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const isProduction = nodeEnv === 'production';
+  
+  if (isProduction) {
+    const botUsername = process.env.BOT_USERNAME;
+    if (!botUsername || botUsername.trim() === '') {
+      logger.error('❌ BOT_USERNAME environment variable is required but not set');
+      logger.error('Application cannot start without BOT_USERNAME in production');
+      process.exit(1);
+    }
+    
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret || jwtSecret.trim() === '') {
+      logger.error('❌ JWT_SECRET environment variable is required but not set');
+      logger.error('Application cannot start without JWT_SECRET in production');
+      process.exit(1);
+    }
+  }
+  
   const app = await NestFactory.create(MeriterModule, {
     bodyParser: true,
     rawBody: true,

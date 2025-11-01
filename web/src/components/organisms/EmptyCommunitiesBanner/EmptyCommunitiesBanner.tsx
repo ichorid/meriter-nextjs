@@ -4,7 +4,7 @@ import React from 'react';
 import { useTranslations } from 'next-intl';
 import { useWallets } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { config } from '@/config';
+import { useBotConfig } from '@/contexts/BotConfigContext';
 
 export interface EmptyCommunitiesBannerProps {
   className?: string;
@@ -16,13 +16,12 @@ export const EmptyCommunitiesBanner: React.FC<EmptyCommunitiesBannerProps> = ({
   const t = useTranslations('home.emptyCommunities.banner');
   const { isAuthenticated } = useAuth();
   const { data: wallets = [], isLoading } = useWallets();
+  const { botUsername } = useBotConfig();
   
   // Don't show banner if not authenticated, loading, or if user has communities
   if (!isAuthenticated || isLoading || (wallets && wallets.length > 0)) {
     return null;
   }
-
-  const botUsername = config.telegram.botUsername;
 
   return (
     <div className={`mb-4 ${className}`}>

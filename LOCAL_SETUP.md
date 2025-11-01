@@ -69,7 +69,7 @@ BOT_USERNAME=your_bot_username
 **`web/.env`:**
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8080/api
-NEXT_PUBLIC_BOT_USERNAME=your_bot_username
+BOT_USERNAME=your_bot_username
 ```
 
 #### 3. Install Caddy (Recommended)
@@ -202,7 +202,7 @@ For local development, using Caddy ensures:
 - `BOT_USERNAME` (REQUIRED): Telegram bot username without @
 - `MONGO_URL`: MongoDB connection string
 - `NEXT_PUBLIC_API_URL`: API URL for frontend (use `http://localhost:8080/api` with Caddy)
-- `NEXT_PUBLIC_BOT_USERNAME`: Bot username for frontend
+- `BOT_USERNAME`: Bot username (required, read at runtime from API)
 - `JWT_SECRET`: Secret for JWT tokens (API only, optional for dev)
 
 ---

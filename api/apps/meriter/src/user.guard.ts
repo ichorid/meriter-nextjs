@@ -30,6 +30,12 @@ export class UserGuard implements CanActivate {
 
     try {
       const jwtSecret = this.configService.get<string>('jwt.secret');
+      
+      if (!jwtSecret) {
+        this.logger.error('JWT_SECRET is not configured. Please set JWT_SECRET environment variable.');
+        throw new UnauthorizedException('JWT secret not configured');
+      }
+
       const data: any = verify(jwt, jwtSecret);
 
       const uid = data.uid;
@@ -53,10 +59,22 @@ export class UserGuard implements CanActivate {
       };
       return true;
     } catch (e) {
-      this.logger.error('Error verifying JWT', e.stack);
       if (e instanceof UnauthorizedException) {
         throw e;
       }
+      
+      // Log detailed error for debugging
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      this.logger.error(`Error verifying JWT: ${errorMessage}`, e instanceof Error ? e.stack : undefined);
+      
+      // Check for specific JWT errors
+      if (errorMessage.includes('invalid signature')) {
+        this.logger.error('JWT signature verification failed. This may indicate:');
+        this.logger.error('1. JWT_SECRET environment variable is missing or incorrect');
+        this.logger.error('2. JWT_SECRET was changed after tokens were issued');
+        this.logger.error('3. Tokens were signed with a different secret');
+      }
+      
       throw new UnauthorizedException('Invalid JWT token');
     }
   }

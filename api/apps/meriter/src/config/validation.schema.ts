@@ -9,7 +9,11 @@ export const validationSchema = Joi.object({
   JWT_SECRET: Joi.string().required(),
 
   // Bot
-  BOT_USERNAME: Joi.string().default('meriterbot'),
+  BOT_USERNAME: Joi.string().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().required(),
+    otherwise: Joi.string().default('meriterbot'),
+  }),
   BOT_TOKEN: Joi.string().allow('').empty('').default(''),
 
   // Database

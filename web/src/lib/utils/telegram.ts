@@ -6,20 +6,43 @@
 import { config } from '@/config';
 
 // Deep link utilities
-export function createTelegramDeepLink(path: string, params: Record<string, string> = {}): string {
-  const botUsername = process.env.NEXT_PUBLIC_BOT_USERNAME || 'meriterbot';
+/**
+ * Creates a Telegram deep link URL
+ * @param botUsername - Bot username (required, no fallback)
+ * @param path - Deep link path
+ * @param params - Optional query parameters
+ * @returns Telegram deep link URL
+ */
+export function createTelegramDeepLink(botUsername: string, path: string, params: Record<string, string> = {}): string {
+  // Fail fast - no fallbacks
+  if (!botUsername || botUsername.trim() === '') {
+    throw new Error('botUsername is required for createTelegramDeepLink');
+  }
+
   const queryString = new URLSearchParams(params).toString();
   const fullPath = queryString ? `${path}?${queryString}` : path;
   
   return `https://t.me/${botUsername}?startapp=${encodeURIComponent(fullPath)}`;
 }
 
-export function createPublicationDeepLink(publicationId: string): string {
-  return createTelegramDeepLink(`publication&id=${publicationId}`);
+/**
+ * Creates a Telegram deep link for a publication
+ * @param botUsername - Bot username (required, no fallback)
+ * @param publicationId - Publication ID
+ * @returns Telegram deep link URL
+ */
+export function createPublicationDeepLink(botUsername: string, publicationId: string): string {
+  return createTelegramDeepLink(botUsername, `publication&id=${publicationId}`);
 }
 
-export function createCommunityDeepLink(communityId: string): string {
-  return createTelegramDeepLink(`community&id=${communityId}`);
+/**
+ * Creates a Telegram deep link for a community
+ * @param botUsername - Bot username (required, no fallback)
+ * @param communityId - Community ID
+ * @returns Telegram deep link URL
+ */
+export function createCommunityDeepLink(botUsername: string, communityId: string): string {
+  return createTelegramDeepLink(botUsername, `community&id=${communityId}`);
 }
 
 export function isTelegramWebApp(): boolean {

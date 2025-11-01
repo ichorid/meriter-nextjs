@@ -92,7 +92,7 @@ function ApiComponent() {
 ### Required Variables
 
 - `NEXT_PUBLIC_API_URL` - Backend API URL
-- `NEXT_PUBLIC_BOT_USERNAME` - Telegram bot username
+- `BOT_USERNAME` - Telegram bot username (required, read at runtime from API)
 
 ### Optional Variables
 

@@ -18,7 +18,6 @@ const envSchema = z.object({
   NEXT_PUBLIC_API_URL: z.string().optional(),
   
   // Telegram Configuration
-  NEXT_PUBLIC_BOT_USERNAME: z.string().default('meriterbot'),
   BOT_TOKEN: z.string().optional(),
   NEXT_PUBLIC_TELEGRAM_API_URL: z.string().default('https://api.telegram.org'),
   
@@ -40,7 +39,6 @@ const env = envSchema.parse({
   NODE_ENV: process.env.NODE_ENV,
   APP_URL: process.env.APP_URL,
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-  NEXT_PUBLIC_BOT_USERNAME: process.env.NEXT_PUBLIC_BOT_USERNAME,
   BOT_TOKEN: process.env.BOT_TOKEN,
   NEXT_PUBLIC_TELEGRAM_API_URL: process.env.NEXT_PUBLIC_TELEGRAM_API_URL,
   NEXT_PUBLIC_S3_ENABLED: process.env.NEXT_PUBLIC_S3_ENABLED,
@@ -59,7 +57,6 @@ console.log('  NODE_ENV:', process.env.NODE_ENV);
 console.log('  NEXT_PUBLIC_API_URL (raw):', process.env.NEXT_PUBLIC_API_URL);
 console.log('  NEXT_PUBLIC_API_URL (parsed):', env.NEXT_PUBLIC_API_URL);
 console.log('  APP_URL:', env.APP_URL);
-console.log('  NEXT_PUBLIC_BOT_USERNAME:', env.NEXT_PUBLIC_BOT_USERNAME);
 console.log('  BOT_TOKEN:', env.BOT_TOKEN ? '[SET]' : '[NOT SET]');
 console.log('  S3_ACCESS_KEY_ID:', env.S3_ACCESS_KEY_ID ? '[SET]' : '[NOT SET]');
 console.log('  S3_SECRET_ACCESS_KEY:', env.S3_SECRET_ACCESS_KEY ? '[SET]' : '[NOT SET]');
@@ -96,7 +93,6 @@ export const config = {
   
   // Telegram
   telegram: {
-    botUsername: env.NEXT_PUBLIC_BOT_USERNAME,
     botToken: env.BOT_TOKEN,
     apiUrl: env.NEXT_PUBLIC_TELEGRAM_API_URL,
     botUrl: env.BOT_TOKEN ? `${env.NEXT_PUBLIC_TELEGRAM_API_URL}/bot${env.BOT_TOKEN}` : '',
@@ -119,19 +115,28 @@ export const config = {
   },
   
   // Messages and Templates
-  messages: {
-    welcomeLeader: `Добро пожаловать в Меритер!
+  // Note: These templates use BOT_USERNAME from process.env directly (server-side only)
+  // They will throw error if BOT_USERNAME is missing
+  messages: (() => {
+    const botUsername = process.env.BOT_USERNAME;
+    if (!botUsername || botUsername.trim() === '') {
+      throw new Error('BOT_USERNAME environment variable is required for message templates');
+    }
+    
+    return {
+      welcomeLeader: `Добро пожаловать в Меритер!
 
-Добавьте этого бота (@${env.NEXT_PUBLIC_BOT_USERNAME}) в один из чатов, в котором являетесь администратором. Для этого кликните на заголовок <b>этого</b> чата, далее на кнопку "еще"/"more", а затем на "добавить в группу"/"add to group" и выберите сообщество, в которое будет добавлен бот.`,
-    
-    welcomeUser: `Добро пожаловать в Меритер! Войдите через приложение: https://t.me/${env.NEXT_PUBLIC_BOT_USERNAME}?startapp=login`,
-    
-    authUser: `Войдите через приложение: https://t.me/${env.NEXT_PUBLIC_BOT_USERNAME}?startapp=login`,
-    
-    addedPublicationReply: `Сообщение добавлено в приложение https://t.me/${env.NEXT_PUBLIC_BOT_USERNAME}?startapp=publication&id={link}. Перейдите, чтобы оставить своё мнение и узнать, что думают другие`,
-    
-    approvedPendingWords: ['одобрить'],
-  },
+Добавьте этого бота (@${botUsername}) в один из чатов, в котором являетесь администратором. Для этого кликните на заголовок <b>этого</b> чата, далее на кнопку "еще"/"more", а затем на "добавить в группу"/"add to group" и выберите сообщество, в которое будет добавлен бот.`,
+      
+      welcomeUser: `Добро пожаловать в Меритер! Войдите через приложение: https://t.me/${botUsername}?startapp=login`,
+      
+      authUser: `Войдите через приложение: https://t.me/${botUsername}?startapp=login`,
+      
+      addedPublicationReply: `Сообщение добавлено в приложение https://t.me/${botUsername}?startapp=publication&id={link}. Перейдите, чтобы оставить своё мнение и узнать, что думают другие`,
+      
+      approvedPendingWords: ['одобрить'],
+    };
+  })(),
 } as const;
 
 // Type exports for better TypeScript support
@@ -149,7 +154,7 @@ export const isProduction = () => config.app.isProduction;
 export const isTest = () => config.app.isTest;
 
 // Legacy exports for backward compatibility
-export const BOT_USERNAME = config.telegram.botUsername;
+// Note: BOT_USERNAME is no longer available from config - use BotConfigContext instead
 export const BOT_TOKEN = config.telegram.botToken;
 export const BOT_URL = config.telegram.botUrl;
 export const URL = config.app.url;

@@ -13,13 +13,13 @@ import React from 'react';
 import { renderWithProviders, testUtils, mockUser } from '../utils/test-utils';
 import { LoginForm } from '@/components/LoginForm';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTelegramConfig } from '@/hooks/useConfig';
+import { useBotConfig } from '@/contexts/BotConfigContext';
 
 // Mock the auth context
 jest.mock('@/contexts/AuthContext');
 
-// Mock the config hook
-jest.mock('@/hooks/useConfig');
+// Mock the bot config context
+jest.mock('@/contexts/BotConfigContext');
 
 // Mock Telegram SDK
 jest.mock('@telegram-apps/sdk-react', () => ({
@@ -30,7 +30,7 @@ jest.mock('@telegram-apps/sdk-react', () => ({
 }));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
-const mockUseTelegramConfig = useTelegramConfig as jest.MockedFunction<typeof useTelegramConfig>;
+const mockUseBotConfig = useBotConfig as jest.MockedFunction<typeof useBotConfig>;
 
 // Mock Next.js navigation
 const mockPush = jest.fn();
@@ -65,10 +65,8 @@ describe('LoginForm', () => {
       setAuthError: jest.fn(),
     });
 
-    mockUseTelegramConfig.mockReturnValue({
+    mockUseBotConfig.mockReturnValue({
       botUsername: 'test_bot',
-      apiUrl: 'https://api.example.com',
-      isDevelopment: true,
     });
   });
 

@@ -39,7 +39,22 @@ Web App
 https://meriter.pro/meriter/login
 ```
 
-#### 2. Environment Variables
+#### 2. Configure Bot Domain (Important!)
+
+**If you see "bot domain invalid" error**, you need to configure the bot's domain in @BotFather:
+
+```
+/setdomain
+<select your bot>
+meriter.pro
+```
+
+**Important**: The domain must match exactly the domain you're using (without `https://` prefix). 
+- ✅ Correct: `meriter.pro`
+- ❌ Wrong: `https://meriter.pro`
+- ❌ Wrong: `www.meriter.pro` (if you're using the non-www version)
+
+#### 3. Environment Variables
 
 Ensure these are set in your `.env`:
 
@@ -222,6 +237,12 @@ Both modes:
 - Check TELEGRAM_BOT_TOKEN is correctly set
 - Verify initData hasn't expired (24h limit)
 - Ensure bot token matches the bot opening the app
+
+### "Bot domain invalid" Error
+- This error appears when the bot's domain is not configured correctly in @BotFather
+- **Solution**: Run `/setdomain` command in @BotFather with your exact domain (e.g., `meriter.pro`)
+- The domain must match exactly - no `https://`, no `www` if your site doesn't use it
+- After setting the domain, restart the Telegram app or wait a few minutes for changes to propagate
 
 ### Theme Not Syncing
 - Check Telegram Web App script is loaded

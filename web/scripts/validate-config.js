@@ -25,7 +25,7 @@ const config = {
     baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002',
   },
   telegram: {
-    botUsername: process.env.NEXT_PUBLIC_BOT_USERNAME || 'meriterbot',
+    botUsername: process.env.BOT_USERNAME || '',
     botToken: process.env.BOT_TOKEN || '',
   },
   s3: {
@@ -53,8 +53,9 @@ if (!config.api.baseUrl) {
 }
 
 // Check Telegram configuration
-if (!config.telegram.botUsername) {
-  errors.push('Bot username is not configured');
+// BOT_USERNAME is required - no fallback
+if (!config.telegram.botUsername || config.telegram.botUsername.trim() === '') {
+  errors.push('BOT_USERNAME is required but not configured');
 }
 
 if (!config.telegram.botToken) {

@@ -9,6 +9,7 @@ import { Root } from '@/components/Root';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AppModeProvider } from '@/contexts/AppModeContext';
+import { BotConfigProvider } from '@/contexts/BotConfigContext';
 
 export const metadata: Metadata = {
     title: 'Meriter',
@@ -52,15 +53,17 @@ export default async function RootLayout({
                 />
             </head>
             <body suppressHydrationWarning>
-                <AppModeProvider>
-                    <QueryProvider>
-                        <AuthProvider>
-                            <NextIntlClientProvider messages={messages}>
-                                <Root>{children}</Root>
-                            </NextIntlClientProvider>
-                        </AuthProvider>
-                    </QueryProvider>
-                </AppModeProvider>
+                <BotConfigProvider>
+                    <AppModeProvider>
+                        <QueryProvider>
+                            <AuthProvider>
+                                <NextIntlClientProvider messages={messages}>
+                                    <Root>{children}</Root>
+                                </NextIntlClientProvider>
+                            </AuthProvider>
+                        </QueryProvider>
+                    </AppModeProvider>
+                </BotConfigProvider>
             </body>
         </html>
     );

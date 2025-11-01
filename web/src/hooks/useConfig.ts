@@ -16,7 +16,7 @@ import { config } from '@/config';
  * 
  * // Use in component
  * const apiUrl = api.baseUrl;
- * const botUsername = telegram.botUsername;
+ * // Note: botUsername is no longer in telegram config - use BotConfigContext instead
  * const isDebug = features.debug;
  * ```
  */

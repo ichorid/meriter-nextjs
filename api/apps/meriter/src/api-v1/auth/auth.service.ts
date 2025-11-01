@@ -105,7 +105,12 @@ export class AuthService {
     });
 
     // Generate JWT
-    const jwtSecret = this.configService.get<string>('jwt.secret') || '';
+    const jwtSecret = this.configService.get<string>('jwt.secret');
+    if (!jwtSecret) {
+      this.logger.error('JWT_SECRET is not configured. Cannot generate JWT token.');
+      throw new Error('JWT secret not configured');
+    }
+    
     const jwtToken = signJWT(
       {
         uid: user.id,
@@ -189,7 +194,12 @@ export class AuthService {
     });
 
     // Generate JWT
-    const jwtSecret = this.configService.get<string>('jwt.secret') || '';
+    const jwtSecret = this.configService.get<string>('jwt.secret');
+    if (!jwtSecret) {
+      this.logger.error('JWT_SECRET is not configured. Cannot generate JWT token.');
+      throw new Error('JWT secret not configured');
+    }
+    
     const jwtToken = signJWT(
       {
         uid: user.id,

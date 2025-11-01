@@ -74,7 +74,7 @@ If GitHub Actions workflows are configured in your fork, you may build and push 
    **Frontend API URL (Web):**
    ```env
    NEXT_PUBLIC_API_URL=https://yourdomain.com
-   NEXT_PUBLIC_BOT_USERNAME=your_bot_username
+   BOT_USERNAME=your_bot_username
    ```
 
 ### Caddy Configuration
