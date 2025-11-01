@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useWallets } from '@/hooks/api';
 import { Avatar } from '@/components/atoms';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
+import { VersionDisplay } from '@/components/organisms/VersionDisplay';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { routes } from '@/lib/constants/routes';
 
@@ -126,6 +127,13 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
             )}
           </button>
         </Link>
+        
+        {/* Version Display - only show when expanded */}
+        {isExpanded && (
+          <div className="mt-2 pt-2 border-t border-base-300">
+            <VersionDisplay compact />
+          </div>
+        )}
       </div>
     </aside>
   );

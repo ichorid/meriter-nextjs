@@ -83,4 +83,7 @@ export const queryKeys = {
     all: ['settings'] as const,
     updatesFrequency: () => [...queryKeys.settings.all, 'updates-frequency'] as const,
   },
+
+  // Version
+  version: () => ['version'] as const,
 };

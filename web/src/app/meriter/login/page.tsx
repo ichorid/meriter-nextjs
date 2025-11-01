@@ -2,6 +2,7 @@
 
 import { LoginForm } from '@/components/LoginForm';
 import { useTranslations } from 'next-intl';
+import { VersionDisplay } from '@/components/organisms';
 
 const PageMeriterLogin = () => {
     const t = useTranslations('login');
@@ -19,6 +20,10 @@ const PageMeriterLogin = () => {
                 </div>
                 
                 <LoginForm />
+                
+                <div className="mt-8 flex justify-center">
+                    <VersionDisplay />
+                </div>
             </div>
         </div>
     );

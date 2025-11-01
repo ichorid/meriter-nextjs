@@ -7,36 +7,48 @@
  * Clears all cookies, localStorage, and sessionStorage
  * Used during logout to ensure complete cleanup
  */
-export function clearAuthStorage(): void {
-  // Clear all cookies
-  if (typeof document !== 'undefined') {
-    const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || window.location.hostname;
-    
-    document.cookie.split(";").forEach((c) => {
-      const eqPos = c.indexOf("=");
-      const name = eqPos > -1 ? c.substr(0, eqPos).trim() : c.trim();
-      
-      // Clear cookie with multiple domain/path combinations to ensure it's removed
-      const expiry = 'Thu, 01 Jan 1970 00:00:00 GMT';
-      
-      // Clear with root path
-      document.cookie = `${name}=;expires=${expiry};path=/`;
-      
-      // Clear with current domain
-      document.cookie = `${name}=;expires=${expiry};path=/;domain=${window.location.hostname}`;
-      
-      // Clear with cookie domain if set
-      if (cookieDomain && cookieDomain !== window.location.hostname) {
-        document.cookie = `${name}=;expires=${expiry};path=/;domain=${cookieDomain}`;
-      }
-      
-      // Clear with domain starting with dot (for subdomains)
-      if (window.location.hostname.includes('.')) {
-        const parentDomain = '.' + window.location.hostname.split('.').slice(-2).join('.');
-        document.cookie = `${name}=;expires=${expiry};path=/;domain=${parentDomain}`;
-      }
-    });
+/**
+ * Clears JWT cookie specifically with proper attributes
+ */
+function clearJwtCookie(): void {
+  if (typeof document === 'undefined') return;
+  
+  const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
+  const isProduction = process.env.NODE_ENV === 'production';
+  const expiry = 'Thu, 01 Jan 1970 00:00:00 GMT';
+  
+  // Clear JWT cookie with same attributes used when setting it
+  const clearCookie = (domain?: string) => {
+    let cookieStr = `jwt=;expires=${expiry};path=/`;
+    if (domain) {
+      cookieStr += `;domain=${domain}`;
+    }
+    if (isProduction) {
+      cookieStr += `;secure;sameSite=none`;
+    } else {
+      cookieStr += `;sameSite=lax`;
+    }
+    document.cookie = cookieStr;
+  };
+  
+  // Try clearing with different domain combinations
+  clearCookie(); // No domain
+  clearCookie(window.location.hostname); // Current domain
+  
+  if (cookieDomain && cookieDomain !== window.location.hostname) {
+    clearCookie(cookieDomain); // Cookie domain if set
   }
+  
+  // Try parent domain for subdomains
+  if (window.location.hostname.includes('.')) {
+    const parentDomain = '.' + window.location.hostname.split('.').slice(-2).join('.');
+    clearCookie(parentDomain);
+  }
+}
+
+export function clearAuthStorage(): void {
+  // Clear JWT cookie specifically
+  clearJwtCookie();
 
   // Clear localStorage and sessionStorage
   if (typeof localStorage !== 'undefined') {

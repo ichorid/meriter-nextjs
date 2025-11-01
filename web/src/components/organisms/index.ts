@@ -12,3 +12,4 @@ export * from './WithdrawPopup/WithdrawPopup';
 export * from './VotingPopup/VotingPopup';
 export * from './UpdateCard';
 export * from './EmptyCommunitiesBanner';
+export * from './VersionDisplay';
