@@ -113,8 +113,11 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
             needsSetup={community.needsSetup}
           />
         </div>
-        <div className="mt-1 text-[10px] leading-none text-base-content/60 text-center truncate max-w-[48px]">
-          {balance}+{remainingQuota}
+        <div className="mt-1 text-[10px] leading-none text-base-content/60 text-center truncate max-w-[48px] flex items-center justify-center gap-0.5">
+          {currencyIconUrl && (
+            <img src={currencyIconUrl} alt="Currency" className="w-2.5 h-2.5 inline-block" />
+          )}
+          <span>{balance}+{remainingQuota}</span>
         </div>
       </div>
     </Link>
