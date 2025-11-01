@@ -57,7 +57,7 @@ BOT_USERNAME=your_bot_username
 
 **`web/.env`:**
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:8080
+NEXT_PUBLIC_API_URL=http://localhost:8080/api
 NEXT_PUBLIC_BOT_USERNAME=your_bot_username
 ```
 
@@ -79,7 +79,7 @@ pnpm --filter @meriter/web dev
 
 **Terminal 3 - Caddy:**
 ```bash
-DOMAIN=localhost caddy run --config Caddyfile
+caddy run --config Caddyfile.local
 ```
 - Runs on `http://localhost:8080`
 - Routes `/api/*` to backend (8002)

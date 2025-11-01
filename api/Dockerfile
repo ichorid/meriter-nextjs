@@ -1,47 +1,41 @@
-FROM node:22-alpine AS deps
-WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@10.18.2 --activate
-RUN pnpm config set store-dir /pnpm-store
-# Copy workspace configuration
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-# Copy all workspace package.json files
-COPY api/package.json ./api/
-COPY libs/shared-types/package.json ./libs/shared-types/
-# Copy entire libs/shared-types directory
-COPY libs/shared-types ./libs/shared-types
-# Install all dependencies
-RUN pnpm install --frozen-lockfile
-
+# --- build ---
 FROM node:22-alpine AS builder
-WORKDIR /app
+WORKDIR /repo
 RUN corepack enable && corepack prepare pnpm@10.18.2 --activate
-# Copy everything from deps including node_modules
-COPY --from=deps /app ./
-# Copy api source code (overwrites everything we need to rebuild)
-COPY api ./api
-WORKDIR /app/api
-RUN pnpm approve-builds @nestjs/core bcrypt sharp mongodb-memory-server && \
-    pnpm build
 
+# Workspace manifest + only what this package needs to resolve deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY libs/shared-types ./libs/shared-types
+COPY api/package.json ./api/
+
+# Install all dependencies first
+RUN pnpm --filter @meriter/shared-types... install --frozen-lockfile && \
+    pnpm --filter @meriter/api... install --frozen-lockfile
+
+# Build shared-types first
+RUN pnpm --filter @meriter/shared-types build
+
+# Add sources and build API (skip prebuild since shared-types already built)
+COPY api ./api
+RUN pnpm --filter @meriter/api exec nest build
+
+# Deploy production dependencies with flattened structure
+ENV CI=true
+RUN mkdir -p /out && \
+    pnpm -C api deploy --filter=@meriter/api --prod --legacy ./deploy && \
+    mv api/deploy/node_modules /out/node_modules && \
+    mv api/deploy/* /out/ 2>/dev/null || true && \
+    cp -R api/dist /out/dist && \
+    cp api/package.json /out/package.json && \
+    cp pnpm-lock.yaml /out/pnpm-lock.yaml && \
+    rm -rf api/deploy
+
+# --- run ---
 FROM node:22-alpine AS runner
 WORKDIR /app
-RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
+RUN addgroup -S nodejs && adduser -S -G nodejs nestjs
 ENV NODE_ENV=production
-RUN corepack enable && corepack prepare pnpm@10.18.2 --activate
-# Deploy production dependencies with flattened structure
-COPY --from=deps --chown=nestjs:nodejs /app ./
-WORKDIR /app/api
-RUN pnpm deploy --filter=@meriter/api --prod --legacy ./deploy
-# Copy from deployment and remove temporary files
-RUN mkdir /app/final && \
-    mv /app/api/deploy/node_modules /app/final/node_modules && \
-    mv /app/api/deploy/* /app/final/ 2>/dev/null || true && \
-    rm -rf /app/api /app/libs /app/web /app/node_modules /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml
-WORKDIR /app/final
-COPY --from=builder --chown=nestjs:nodejs /app/api/dist ./dist
-# Copy package files for traceability
-COPY --chown=nestjs:nodejs api/package.json ./package.json
-COPY --chown=nestjs:nodejs pnpm-lock.yaml ./pnpm-lock.yaml
-EXPOSE 8002
+COPY --from=builder --chown=nestjs:nodejs /out ./
 USER nestjs
+EXPOSE 8002
 CMD ["node", "dist/apps/meriter/main"]

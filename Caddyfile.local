@@ -1,0 +1,29 @@
+# Caddyfile for local development
+# Routes API requests to localhost:8002 and everything else to localhost:8001
+
+localhost {
+    # Enable access logs
+    log {
+        output stdout
+        format console
+        level INFO
+    }
+
+    # All API requests go to NestJS backend
+    handle /api* {
+        reverse_proxy localhost:8002
+        encode gzip
+    }
+
+    # Everything else goes to Next.js frontend
+    handle {
+        reverse_proxy localhost:8001
+        encode gzip
+    }
+
+    # Error handling
+    handle_errors {
+        respond "{err.status_code} {err.status_text}"
+    }
+}
+

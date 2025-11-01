@@ -30,7 +30,9 @@ export const PollCasting = ({
     const t = useTranslations('polls');
     const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
     const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+    const [amountInputValue, setAmountInputValue] = useState<string>("1");
     const [castAmount, setCastAmount] = useState<number>(1);
+    const [amountValidationError, setAmountValidationError] = useState<string | null>(null);
     const [error, setError] = useState<string>("");
 
     const castPollMutation = useCastPoll();
@@ -54,36 +56,85 @@ export const PollCasting = ({
         return `${minutes} ${t('minutes')}`;
     };
 
+    // Validate amount input explicitly
+    const validateAmount = (value: string): { isValid: boolean; error: string | null; numValue: number | null } => {
+        const trimmed = value.trim();
+        
+        // Empty string
+        if (trimmed === '') {
+            return { isValid: false, error: t('amountRequired'), numValue: null };
+        }
+
+        // Check if string contains only digits (and optional leading minus, but we don't allow negative)
+        // Allow digits only, no decimal points, no letters, no special chars
+        if (!/^\d+$/.test(trimmed)) {
+            return { isValid: false, error: t('amountMustBeNumber'), numValue: null };
+        }
+
+        // Parse explicitly with base 10
+        const parsedValue = parseInt(trimmed, 10);
+        
+        // Check if parse was successful (NaN check)
+        if (isNaN(parsedValue)) {
+            return { isValid: false, error: t('amountMustBeNumber'), numValue: null };
+        }
+
+        // Check if it's actually an integer (no decimals)
+        // Since we validated with regex, this should be true, but double-check
+        if (parseFloat(trimmed) !== parsedValue) {
+            return { isValid: false, error: t('amountMustBeInteger'), numValue: null };
+        }
+
+        // Check minimum value
+        if (parsedValue < 1) {
+            return { isValid: false, error: t('amountMinValue'), numValue: null };
+        }
+
+        // Check balance
+        if (parsedValue > balance) {
+            return { isValid: false, error: t('amountInsufficient', { balance }), numValue: null };
+        }
+
+        // Valid
+        return { isValid: true, error: null, numValue: parsedValue };
+    };
+
     const handleCastPoll = async () => {
         if (!selectedOptionId) {
             setError(t('selectOption'));
             return;
         }
 
-        if (castAmount <= 0) {
-            setError(t('specifyAmount'));
+        // Validate amount explicitly one more time before submission (double-check)
+        const validation = validateAmount(amountInputValue);
+        if (!validation.isValid || validation.numValue === null) {
+            setAmountValidationError(validation.error);
             return;
         }
 
-        if (castAmount > balance) {
-            setError(t('insufficientPoints'));
+        // Double-check balance (UX validation should prevent this, but safety check)
+        if (validation.numValue > balance) {
+            setAmountValidationError(t('amountInsufficient', { balance }));
             return;
         }
 
+        // Clear any previous errors
         setError("");
+        setAmountValidationError(null);
 
         try {
             await castPollMutation.mutateAsync({
                 id: pollId,
                 data: {
                     optionId: selectedOptionId,
-                    amount: castAmount,
+                    amount: validation.numValue,
                 },
                 communityId,
             });
 
-            // Reset form
+            // Reset form explicitly
             setCastAmount(1);
+            setAmountInputValue("1");
             setSelectedOptionId(null);
             
             onCastSuccess && onCastSuccess();
@@ -239,20 +290,61 @@ export const PollCasting = ({
                         </label>
                         <input
                             id="cast-amount"
-                            type="number"
-                            min="1"
-                            max={balance}
-                            value={castAmount}
-                            className="input input-bordered w-full"
-                            onChange={(e) => setCastAmount(parseInt(e.target.value) || 0)}
+                            type="text"
+                            inputMode="numeric"
+                            value={amountInputValue}
+                            className={`input input-bordered w-full ${amountValidationError ? 'input-error' : ''}`}
+                            onChange={(e) => {
+                                const inputValue = e.target.value;
+                                // Always update input value for user to see what they type
+                                setAmountInputValue(inputValue);
+                                
+                                // Validate explicitly
+                                const validation = validateAmount(inputValue);
+                                
+                                if (validation.isValid && validation.numValue !== null) {
+                                    // Valid - update both input and numeric value
+                                    setAmountValidationError(null);
+                                    setCastAmount(validation.numValue);
+                                } else {
+                                    // Invalid - show error but don't update castAmount yet
+                                    setAmountValidationError(validation.error);
+                                }
+                            }}
+                            onBlur={(e) => {
+                                // Re-validate on blur explicitly
+                                const inputValue = e.target.value;
+                                const validation = validateAmount(inputValue);
+                                
+                                if (validation.isValid && validation.numValue !== null) {
+                                    // Valid - clear error and ensure castAmount is set
+                                    setAmountValidationError(null);
+                                    setCastAmount(validation.numValue);
+                                    // Ensure input value matches the validated value
+                                    setAmountInputValue(validation.numValue.toString());
+                                } else {
+                                    // Invalid - show error
+                                    setAmountValidationError(validation.error);
+                                    // Don't update castAmount - keep previous valid value or 1
+                                    if (castAmount < 1) {
+                                        setCastAmount(1);
+                                        setAmountInputValue("1");
+                                    }
+                                }
+                            }}
                             disabled={isCasting}
                         />
+                        {amountValidationError && (
+                            <label className="label">
+                                <span className="label-text-alt text-error">{amountValidationError}</span>
+                            </label>
+                        )}
                     </div>
                     {error && <div className="alert alert-error mb-3 py-2">{error}</div>}
                     <button
                         className="btn btn-primary w-full"
                         onClick={handleCastPoll}
-                        disabled={isCasting || !selectedOptionId}
+                        disabled={isCasting || !selectedOptionId || amountValidationError !== null}
                     >
                         {isCasting ? t('casting') : t('castPoll')}
                     </button>

@@ -202,7 +202,12 @@
     "specifyAmount": "Specify amount of points",
     "insufficientPoints": "Insufficient points",
     "castError": "Casting error",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "amountRequired": "Please enter an amount",
+    "amountMustBeNumber": "Amount must be a number",
+    "amountMustBeInteger": "Amount must be a whole number",
+    "amountMinValue": "Amount must be at least 1",
+    "amountInsufficient": "Insufficient balance: you have {balance} available"
   },
   "feed": {
     "saving": "Saving...",
