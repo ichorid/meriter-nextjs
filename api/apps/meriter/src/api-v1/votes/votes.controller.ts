@@ -489,48 +489,49 @@ export class VotesController {
     let commentId: string | undefined;
     let comment = null;
     
-    // Always create a comment for votes, even if comment text is empty
-    // This ensures votes appear in the comments list
-    try {
-      const commentContent = (body.comment && body.comment.trim()) ? body.comment.trim() : '';
-      const createdComment = await this.commentService.createComment(req.user.id, {
-        targetType: 'publication',
-        targetId: id,
-        content: commentContent,
-      });
-      commentId = createdComment.getId;
-      
-      // Fetch comment with full metadata for response
-      const commentSnapshot = createdComment.toSnapshot();
-      const authorId = createdComment.getAuthorId.getValue();
-      let author = null;
+    // Only create a comment if content is provided and non-empty
+    const commentContent = body.comment?.trim();
+    if (commentContent) {
       try {
-        author = await this.userService.getUser(authorId);
-      } catch (error) {
-        this.logger.warn(`Failed to fetch author ${authorId}:`, error.message);
-      }
-      
-      comment = {
-        ...commentSnapshot,
-        createdAt: commentSnapshot.createdAt.toISOString(),
-        updatedAt: commentSnapshot.updatedAt.toISOString(),
-        meta: {
-          author: author ? {
-            id: author.id,
-            name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
-            username: author.username,
-            photoUrl: author.avatarUrl,
-          } : {
-            id: undefined,
-            name: 'Unknown',
-            username: undefined,
-            photoUrl: undefined,
+        const createdComment = await this.commentService.createComment(req.user.id, {
+          targetType: 'publication',
+          targetId: id,
+          content: commentContent,
+        });
+        commentId = createdComment.getId;
+        
+        // Fetch comment with full metadata for response
+        const commentSnapshot = createdComment.toSnapshot();
+        const authorId = createdComment.getAuthorId.getValue();
+        let author = null;
+        try {
+          author = await this.userService.getUser(authorId);
+        } catch (error) {
+          this.logger.warn(`Failed to fetch author ${authorId}:`, error.message);
+        }
+        
+        comment = {
+          ...commentSnapshot,
+          createdAt: commentSnapshot.createdAt.toISOString(),
+          updatedAt: commentSnapshot.updatedAt.toISOString(),
+          meta: {
+            author: author ? {
+              id: author.id,
+              name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
+              username: author.username,
+              photoUrl: author.avatarUrl,
+            } : {
+              id: undefined,
+              name: 'Unknown',
+              username: undefined,
+              photoUrl: undefined,
+            },
           },
-        },
-      };
-    } catch (error) {
-      this.logger.error('Failed to create comment:', error);
-      throw new ValidationError('Failed to create comment: ' + error.message);
+        };
+      } catch (error) {
+        this.logger.error('Failed to create comment:', error);
+        throw new ValidationError('Failed to create comment: ' + error.message);
+      }
     }
     
     // Create vote with attached comment ID

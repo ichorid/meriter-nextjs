@@ -96,6 +96,11 @@ export function usePublication({
   const handleComment = useCallback(async (comment: string, amount: number, directionPlus: boolean) => {
     if (!publication.id) return;
 
+    // Check if comment is required and provided
+    if (!comment?.trim()) {
+      throw new Error('A reason for your vote is required');
+    }
+
     try {
       const absoluteAmount = Math.abs(amount);
       const isUpvote = directionPlus;

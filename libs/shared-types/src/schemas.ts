@@ -97,7 +97,7 @@ export const CommentSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   targetType: z.enum(['publication', 'comment']),
   targetId: z.string(),
   authorId: z.string(),
-  content: z.string().min(1).max(5000),
+  content: z.string().max(5000),
   metrics: CommentMetricsSchema,
   parentCommentId: z.string().optional(),
   meta: z.object({
@@ -166,7 +166,7 @@ export const CreatePublicationDtoSchema = z.object({
 });
 
 export const CreateCommentDtoSchema = PolymorphicReferenceSchema.extend({
-  content: z.string().min(1).max(5000),
+  content: z.string().max(5000),
   parentCommentId: z.string().optional(),
 });
 

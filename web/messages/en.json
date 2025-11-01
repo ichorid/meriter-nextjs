@@ -238,6 +238,7 @@
     "downvoteBalance": "Vote negatively for {amount} from Balance",
     "sliderHint": "Move the slider to select the number of points",
     "commentHint": "Tell us why you gave this rating. We value your opinion",
+    "reasonRequired": "A reason for your vote is required",
     "close": "close[x]",
     "downvoteRequiresBalance": "Negative voting is only possible from Balance. ",
     "withdrawToBalance": "Withdraw points from publications to your Balance",

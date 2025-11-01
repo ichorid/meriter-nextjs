@@ -109,6 +109,8 @@
       "<rootDir>/libs/"
     ],
     "moduleNameMapper": {
+      "@meriter/shared-types": "<rootDir>/../libs/shared-types/src",
+      "@meriter/shared-types/(.*)": "<rootDir>/../libs/shared-types/src/$1",
       "@common/abstracts/(.*)": "<rootDir>/libs/abstracts/src/$1",
       "@common/abstracts": "<rootDir>/libs/abstracts/src",
       "@common/extapis/(.*)": "<rootDir>/libs/extapis/src/$1",

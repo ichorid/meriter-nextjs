@@ -20,6 +20,7 @@ import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { Wallet, Transaction, WithdrawDto, TransferDto, WithdrawDtoSchema, TransferDtoSchema } from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import { Community, CommunityDocument } from '../../domain/models/community/community.schema';
+import { User, UserDocument } from '../../domain/models/user/user.schema';
 
 @Controller('api/v1')
 @UseGuards(UserGuard)
@@ -30,6 +31,7 @@ export class WalletsController {
     private readonly walletsService: WalletService,
     private readonly communityService: CommunityService,
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectConnection() private mongoose: Connection,
   ) {}
 
@@ -43,12 +45,25 @@ export class WalletsController {
       throw new NotFoundError('User', userId);
     }
     
-    // Get all active communities the user is a member of
-    const allCommunities = await this.communityModel.find({ isActive: true }).lean();
-    this.logger.log(`Found ${allCommunities.length} active communities for user ${actualUserId}`);
+    // Get user's community tags (Telegram chat IDs where user is a member)
+    const user = await this.userModel.findOne({ id: actualUserId }).lean();
+    if (!user) {
+      throw new NotFoundError('User', userId);
+    }
+    
+    const userCommunityTags = user.communityTags || [];
+    this.logger.log(`User ${actualUserId} has ${userCommunityTags.length} community tags`);
+    
+    // Get only active communities where user is a member
+    const userCommunities = await this.communityModel.find({ 
+      isActive: true,
+      telegramChatId: { $in: userCommunityTags }
+    }).lean();
+    
+    this.logger.log(`Found ${userCommunities.length} active communities for user ${actualUserId}`);
     
     // Create wallets for communities where user doesn't have one yet
-    const walletPromises = allCommunities.map(async (community) => {
+    const walletPromises = userCommunities.map(async (community) => {
       let wallet = await this.walletsService.getWallet(actualUserId, community.id);
       
       if (!wallet) {
