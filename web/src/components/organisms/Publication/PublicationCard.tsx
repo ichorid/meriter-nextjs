@@ -9,6 +9,8 @@ import { PublicationActions } from './PublicationActions';
 import { PollCasting } from '@features/polls/components/poll-casting';
 import { usePollCardData } from '@/hooks/usePollCardData';
 import { useWalletBalance } from '@/hooks/api/useWallet';
+import { getWalletBalance } from '@/lib/utils/wallet';
+import { getPublicationIdentifier, isInteractiveElement } from '@/lib/utils/publication';
 
 import type { FeedItem, PublicationFeedItem, PollFeedItem, Wallet } from '@/types/api-v1';
 
@@ -58,7 +60,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
     console.warn('Comment not implemented in PublicationCard');
   };
   
-  const currentBalance = wallets.find(w => w.communityId === publication.communityId)?.balance || 0;
+  const currentBalance = getWalletBalance(wallets, publication.communityId);
   const isVoting = false;
   const isCommenting = false;
 
@@ -67,19 +69,12 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
     // Note: PublicationActions already uses stopPropagation on its buttons,
     // but we check here as an additional safeguard
     const target = e.target as HTMLElement;
-    if (
-      target.closest('button') ||
-      target.closest('a') ||
-      target.closest('[class*="clickable"]') ||
-      target.closest('[class*="btn"]')
-    ) {
+    if (isInteractiveElement(target)) {
       return;
     }
 
     // Only navigate if we have a slug or id
-    const postSlug = publication.type === 'publication' 
-      ? (publication as PublicationFeedItem).slug || publication.id
-      : publication.id;
+    const postSlug = getPublicationIdentifier(publication);
     if (postSlug) {
       const params = new URLSearchParams(searchParams?.toString() ?? '');
       params.set('post', postSlug);

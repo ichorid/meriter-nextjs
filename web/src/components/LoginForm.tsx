@@ -14,7 +14,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBotConfig } from '@/contexts/BotConfigContext';
-import { useAppMode } from '@/contexts/AppModeContext';
+import { LoadingState } from '@/components/atoms/LoadingState';
+import { ErrorDisplay } from '@/components/atoms/ErrorDisplay';
+import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
+import { handleAuthRedirect } from '@/lib/utils/auth';
 import type { TelegramUser } from '@/types/telegram';
 
 interface LoginFormProps {
@@ -26,7 +29,7 @@ export function LoginForm({ className = '' }: LoginFormProps) {
   const searchParams = useSearchParams();
   const t = useTranslations('login');
   const { botUsername } = useBotConfig();
-  const { isTelegramMiniApp } = useAppMode();
+  const { initData, isInTelegram } = useTelegramWebApp();
   
   const { 
     authenticateWithTelegram, 
@@ -37,67 +40,24 @@ export function LoginForm({ className = '' }: LoginFormProps) {
     handleDeepLink 
   } = useAuth();
   
-  // Telegram Web App state
-  const [launchParams, setLaunchParams] = useState<any>(null);
-  const [rawData, setRawData] = useState<string | null>(null);
-  const [startParam, setStartParam] = useState<string | null>(null);
   const [webAppAuthAttempted, setWebAppAuthAttempted] = useState(false);
-  
   const telegramWidgetRef = useRef<HTMLDivElement>(null);
   
   // Get return URL
   const returnTo = searchParams?.get('returnTo');
   
-  // Initialize Telegram Web App state
-  useEffect(() => {
-    if (isTelegramMiniApp && typeof window !== 'undefined') {
-      try {
-        const tgWebApp = (window as any).Telegram?.WebApp;
-        if (tgWebApp) {
-          const initDataUnsafe = tgWebApp.initDataUnsafe || {};
-          const startParam = initDataUnsafe.start_param || '';
-          
-          if (initDataUnsafe) {
-            setLaunchParams({ tgWebAppStartParam: startParam });
-            setRawData(tgWebApp.initData || null);
-            setStartParam(startParam);
-            
-            console.log('📱 Telegram Web App state initialized:', {
-              hasInitData: !!initDataUnsafe,
-              startParam
-            });
-          }
-        }
-      } catch (error) {
-        console.debug('Failed to access Telegram WebApp:', error);
-      }
-    }
-  }, [isTelegramMiniApp]);
-  
-  // Handle deep links
-  useEffect(() => {
-    if (startParam && isTelegramMiniApp) {
-      // TODO: Fix router type compatibility
-      // handleDeepLink(router, searchParams, startParam);
-    }
-  }, [startParam, isTelegramMiniApp, handleDeepLink, router, searchParams]);
-  
   // Auto-authenticate with Telegram Web App
   useEffect(() => {
-    if (isTelegramMiniApp && rawData && !webAppAuthAttempted) {
+    if (isInTelegram && initData && !webAppAuthAttempted) {
       setWebAppAuthAttempted(true);
       
       const performWebAppAuth = async () => {
         try {
           console.log('🚀 Attempting Telegram Web App authentication...');
-          await authenticateWithTelegramWebApp(rawData);
+          await authenticateWithTelegramWebApp(initData);
           
-          // Redirect after successful authentication
-          // Use hard redirect to ensure cookies are properly set before next requests
-          const redirectUrl = returnTo || '/meriter/home';
-          console.log('✅ Authentication successful, redirecting to:', redirectUrl);
-          // Use window.location for hard redirect to ensure cookies are processed
-          window.location.href = redirectUrl;
+          console.log('✅ Authentication successful, redirecting...');
+          handleAuthRedirect(returnTo);
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : 'Authentication failed';
           console.error('❌ Telegram Web App authentication failed:', error);
@@ -107,7 +67,7 @@ export function LoginForm({ className = '' }: LoginFormProps) {
       
       performWebAppAuth();
     }
-  }, [isTelegramMiniApp, rawData, webAppAuthAttempted, authenticateWithTelegramWebApp, returnTo, router, setAuthError]);
+  }, [isInTelegram, initData, webAppAuthAttempted, authenticateWithTelegramWebApp, returnTo, setAuthError]);
   
   // Handle Telegram widget authentication
   const handleTelegramAuth = async (telegramUser: unknown) => {
@@ -115,12 +75,8 @@ export function LoginForm({ className = '' }: LoginFormProps) {
       console.log('🚀 Attempting Telegram widget authentication...');
       await authenticateWithTelegram(telegramUser as TelegramUser);
       
-      // Redirect after successful authentication
-      // Use hard redirect to ensure cookies are properly set before next requests
-      const redirectUrl = returnTo || '/meriter/home';
-      console.log('✅ Authentication successful, redirecting to:', redirectUrl);
-      // Use window.location for hard redirect to ensure cookies are processed
-      window.location.href = redirectUrl;
+      console.log('✅ Authentication successful, redirecting...');
+      handleAuthRedirect(returnTo);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Authentication failed';
       console.error('❌ Telegram widget authentication failed:', error);
@@ -159,29 +115,26 @@ export function LoginForm({ className = '' }: LoginFormProps) {
           </h2>
           
           {authError && (
-            <div className="alert alert-error mb-4">
-              <div className="flex flex-col">
-                <h3 className="font-bold">Authentication Error</h3>
-                <p className="text-sm">{authError}</p>
-              </div>
-            </div>
+            <ErrorDisplay
+              title="Authentication Error"
+              message={authError}
+              variant="alert"
+              className="mb-4"
+            />
           )}
           
           {isLoading && (
-            <div className="flex justify-center items-center py-8">
-              <div className="loading loading-spinner loading-lg"></div>
-              <span className="ml-2">Authenticating...</span>
-            </div>
+            <LoadingState text="Authenticating..." className="py-8" />
           )}
           
           {!isLoading && (
             <div className="space-y-4">
-              {isTelegramMiniApp ? (
+              {isInTelegram ? (
                 <div className="text-center">
                   <p className="text-sm text-base-content/70 mb-4">
                     {t('telegramWebApp.detected')}
                   </p>
-                  <div className="loading loading-spinner loading-md"></div>
+                  <LoadingState size="md" />
                 </div>
               ) : (
                 <div className="text-center">

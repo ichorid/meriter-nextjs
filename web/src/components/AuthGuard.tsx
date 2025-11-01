@@ -13,6 +13,8 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { LoadingState } from '@/components/atoms/LoadingState';
+import { ErrorDisplay } from '@/components/atoms/ErrorDisplay';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -49,30 +51,26 @@ export function AuthGuard({
   
   // Show loading state
   if (isLoading || !hasChecked) {
-    return fallback || (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="loading loading-spinner loading-lg"></div>
-      </div>
-    );
+    return fallback || <LoadingState fullScreen />;
   }
   
   // Show error state
   if (authError) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen p-4">
-        <div className="alert alert-error max-w-md">
-          <div className="flex flex-col">
-            <h3 className="font-bold">Authentication Error</h3>
-            <p className="text-sm">{authError}</p>
-          </div>
-        </div>
-        <button 
-          className="btn btn-primary mt-4"
-          onClick={() => router.push('/meriter/login')}
-        >
-          Go to Login
-        </button>
-      </div>
+      <ErrorDisplay
+        title="Authentication Error"
+        message={authError}
+        variant="alert"
+        fullScreen
+        actions={
+          <button 
+            className="btn btn-primary mt-4"
+            onClick={() => router.push('/meriter/login')}
+          >
+            Go to Login
+          </button>
+        }
+      />
     );
   }
   

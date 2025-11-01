@@ -108,3 +108,14 @@ export function redirectToLogin(returnTo?: string): void {
   window.location.href = `/meriter/login${returnParam}`;
 }
 
+/**
+ * Handles authentication redirect after successful login
+ * Uses hard redirect to ensure cookies are properly set before next requests
+ */
+export function handleAuthRedirect(returnTo?: string | null, fallbackUrl: string = '/meriter/home'): void {
+  if (typeof window === 'undefined') return;
+  
+  const redirectUrl = returnTo || fallbackUrl;
+  window.location.href = redirectUrl;
+}
+

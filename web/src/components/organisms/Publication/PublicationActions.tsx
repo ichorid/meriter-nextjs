@@ -7,6 +7,8 @@ import { BarWithdraw } from '@shared/components/bar-withdraw';
 import { useUIStore } from '@/stores/ui.store';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
+import { getWalletBalance } from '@/lib/utils/wallet';
+import { getPublicationIdentifier } from '@/lib/utils/publication';
 
 // Local Publication type definition
 interface Publication {
@@ -102,38 +104,17 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   
   // Get current wallet balance for topup
   const communityId = publication.communityId;
-  const currentBalance = communityId
-    ? (wallets.find(w => w.communityId === communityId)?.balance || 0)
-    : 0;
+  const currentBalance = getWalletBalance(wallets, communityId);
   const maxTopUpAmount = Math.floor(10 * currentBalance) / 10;
-  
-  // Debug logging
-  console.log('[PublicationActions] Mutual Exclusivity Debug:', {
-    publicationId: publication.id,
-    myId,
-    authorId,
-    beneficiaryId,
-    hasBeneficiary,
-    isAuthor,
-    isBeneficiary,
-    currentScore,
-    publicationMeta: publication.meta,
-  });
   
   // Mutual exclusivity logic
   const showWithdraw = (isAuthor && !hasBeneficiary) || isBeneficiary;
   const showVote = !isAuthor && !isBeneficiary;
   const showVoteForAuthor = isAuthor && hasBeneficiary;
   
-  console.log('[PublicationActions] Button Visibility Logic:', {
-    showWithdraw,
-    showVote,
-    showVoteForAuthor,
-    finalChoice: showWithdraw ? 'WITHDRAW' : (showVote || showVoteForAuthor ? 'VOTE' : 'NONE'),
-  });
+  const publicationId = getPublicationIdentifier(publication);
   
   const handleVoteClick = () => {
-    const publicationId = String(publication.id || publication.slug || '');
     useUIStore.getState().openVotingPopup(publicationId, 'publication');
   };
   
@@ -142,13 +123,11 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     // but voting uses the store
     const activeComment = activeCommentHook[0];
     const setActiveComment = activeCommentHook[1];
-    const publicationId = String(publication.id || publication.slug || '');
     setActiveComment(activeComment === publicationId ? null : publicationId);
   };
   
   // Handle withdraw button click - opens popup
   const handleWithdrawClick = () => {
-    const publicationId = String(publication.id || publication.slug || '');
     useUIStore.getState().openWithdrawPopup(
       publicationId,
       'publication-withdraw',
@@ -159,7 +138,6 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   
   // Handle topup button click - opens popup for adding votes
   const handleTopupClick = () => {
-    const publicationId = String(publication.id || publication.slug || '');
     useUIStore.getState().openWithdrawPopup(
       publicationId,
       'publication-topup',

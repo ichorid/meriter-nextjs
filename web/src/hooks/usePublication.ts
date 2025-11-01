@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useVoteOnPublication, useVoteOnComment, useVoteOnPublicationWithComment } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserQuota } from '@/hooks/api/useQuota';
+import { getWalletBalance } from '@/lib/utils/wallet';
 
 // Local type definitions
 interface Publication {
@@ -61,9 +62,7 @@ export function usePublication({
   
   // Get wallet balance for the publication's community
   const walletBalance = useMemo(() => {
-    if (!publication.communityId || !Array.isArray(wallets)) return 0;
-    const wallet = wallets.find((w: Wallet) => w.communityId === publication.communityId);
-    return wallet?.balance || 0;
+    return getWalletBalance(wallets, publication.communityId);
   }, [publication.communityId, wallets]);
 
   const handleVote = useCallback(async (direction: 'plus' | 'minus', amount: number = 1) => {

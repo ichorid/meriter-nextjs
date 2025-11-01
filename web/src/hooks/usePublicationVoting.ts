@@ -1,5 +1,6 @@
 // Publication voting and withdrawal logic
 import { useState, useEffect } from 'react';
+import { getWalletBalance } from '@/lib/utils/wallet';
 
 interface Wallet {
   id: string;
@@ -47,8 +48,7 @@ export function usePublicationVoting({
   }, [sum]);
   
   // Calculate current balance
-  const currentBalance = (Array.isArray(wallets) &&
-    wallets.find((w) => w.communityId === communityId)?.balance) || 0;
+  const currentBalance = getWalletBalance(wallets, communityId);
   
   const calculatedSum = optimisticSum ?? sum;
   
