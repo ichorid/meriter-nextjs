@@ -264,6 +264,14 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
     setShowTagDropdown(false);
   };
 
+  // Handle clear tag filter (show all)
+  const handleShowAll = () => {
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    params.delete('tag');
+    router.push(`?${params.toString()}`);
+    setShowTagDropdown(false);
+  };
+
   // Handle create poll - set modal state via URL param
   const handleCreatePoll = () => {
     const params = new URLSearchParams(searchParams?.toString() ?? '');
@@ -347,6 +355,14 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
                   />
                   <div className="absolute right-0 top-full mt-2 w-64 max-h-96 overflow-y-auto bg-base-100 shadow-lg rounded-lg border border-base-300 p-3 z-20">
                     <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={handleShowAll}
+                        className={`btn btn-xs ${
+                          !selectedTag ? 'btn-primary' : 'btn-ghost'
+                        }`}
+                      >
+                        {t('showAll')}
+                      </button>
                       {hashtags.map((tag: string) => (
                         <button
                           key={tag}

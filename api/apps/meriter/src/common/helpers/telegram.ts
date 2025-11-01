@@ -80,20 +80,31 @@ export function buildDesktopUrl(action: string, params: Record<string, string | 
 }
 
 /**
+ * Escape URL for MarkdownV2 link syntax
+ * URLs in [text](url) need special characters escaped
+ * According to Telegram MarkdownV2: must escape: . ( ) [ ] ~ ` > # + - = | { } ! _
+ */
+function escapeUrlForMarkdownV2(url: string): string {
+  // In MarkdownV2, URLs in parentheses need special characters escaped
+  // Escape characters that are reserved in MarkdownV2, but preserve URL structure
+  return url.replace(/[\\_.()\[\]~`>#+\-=|{}!]/g, (m) => `\\${m}`);
+}
+
+/**
  * Produce compact dual links in MarkdownV2: [Web](...) [App](...)
  */
 export function formatDualLinksFromEncoded(startappEncoded: string, desktopPath: string, botUsername: string, baseUrl: string): string {
   const webUrl = `${baseUrl}${desktopPath.startsWith('/') ? desktopPath : `/${desktopPath}`}`;
   const appUrl = buildMiniAppUrlFromStartApp(startappEncoded, botUsername);
-  const web = `[Web](${webUrl})`;
-  const app = `[App](${appUrl})`;
+  const web = `[Web](${escapeUrlForMarkdownV2(webUrl)})`;
+  const app = `[App](${escapeUrlForMarkdownV2(appUrl)})`;
   return `${web} ${app}`;
 }
 
 export function formatDualLinks(action: string, params: Record<string, string | number> = {}, botUsername: string, baseUrl: string): string {
   const webUrl = buildDesktopUrl(action, params, baseUrl);
   const appUrl = buildMiniAppUrl(action, params, botUsername);
-  const web = `[Web](${webUrl})`;
-  const app = `[App](${appUrl})`;
+  const web = `[Web](${escapeUrlForMarkdownV2(webUrl)})`;
+  const app = `[App](${escapeUrlForMarkdownV2(appUrl)})`;
   return `${web} ${app}`;
 }

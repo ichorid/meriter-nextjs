@@ -338,6 +338,7 @@
       "writeMessageInChat": "write a message in the corporate chat",
       "filterByValues": "Filter publications by values:",
       "filterByTags": "Filter by tags:",
+      "showAll": "Show All",
       "noAccess": "No access",
       "createPoll": "📊 Create Poll",
       "byDate": "By Date",

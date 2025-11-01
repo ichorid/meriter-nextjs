@@ -123,7 +123,7 @@ export class TgBotsService {
     };
     await this.sendUserUpdates(userId, [event], locale);
   }
-  private async getCommunityLanguageByChatId(chatId: string): Promise<'en' | 'ru'> {
+  async getCommunityLanguageByChatId(chatId: string): Promise<'en' | 'ru'> {
     const community = await this.communityModel.findOne({ telegramChatId: String(chatId) }).lean();
     return ((community?.settings as any)?.language as 'en' | 'ru') || 'en';
   }
@@ -263,7 +263,7 @@ export class TgBotsService {
         .map((a) => String(a.id))
         .map((admin, i) => {
           this.logger.log(`✉️  Sending setup message to admin ${admin}`);
-          const links = `[Web](${WEB_BASE_URL}) [App](https://t.me/${BOT_USERNAME}?startapp=setup)`;
+          const links = formatDualLinks('setup', {}, BOT_USERNAME, WEB_BASE_URL);
           const text = `${escapeMarkdownV2(t('setup.admin.hi', lang, { community: title }))} ${links}`;
           p[i] = this.tgSend({ tgChatId: admin, text });
         });
@@ -446,12 +446,12 @@ export class TgBotsService {
 
     if (!beneficiaryUser) {
       this.logger.warn(`⚠️ Beneficiary user not found: ${beneficiaryIdentifier}`);
+      const dualLinks = formatDualLinks('login', {}, BOT_USERNAME, WEB_BASE_URL);
+      const escapedUsername = escapeMarkdownV2(beneficiaryIdentifier);
       return { 
         beneficiary: null, 
         cleanedText,
-        error: `⚠️ Пользователь @${beneficiaryIdentifier} не найден в Meriter\.
-
-Получатель баллов должен сначала войти: [Web](${WEB_BASE_URL}/meriter/login) [App](https://t.me/${BOT_USERNAME}?startapp=login)`
+        error: `⚠️ Пользователь @${escapedUsername} не найден в Meriter\\.\n\nПолучатель баллов должен сначала войти: ${dualLinks}`
       };
     }
 

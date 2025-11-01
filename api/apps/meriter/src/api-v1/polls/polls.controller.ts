@@ -214,7 +214,7 @@ export class PollsController {
       const community = await this.communityService.getCommunity(snapshot.communityId);
       if (community && (community as any).telegramChatId) {
         const tgChatId = String((community as any).telegramChatId);
-        const lang = ((community.settings as any)?.language as 'en' | 'ru') || 'en';
+        const lang = await this.tgBotsService.getCommunityLanguageByChatId(tgChatId);
         
         const dualLinks = formatDualLinks('poll', { id: snapshot.id, communityId: snapshot.communityId }, BOT_USERNAME, WEB_BASE_URL);
         const escapedQuestion = escapeMarkdownV2(snapshot.question);
