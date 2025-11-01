@@ -38,17 +38,6 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   // Format balance and quota display
   const balance = wallet?.balance || 0;
   const remainingQuota = quota?.remainingToday || 0;
-  
-  // Debug log quota prop - MUST be called before any early returns (Rules of Hooks)
-  React.useEffect(() => {
-    if (community) {
-      console.log(`[CommunityCard] ${communityId} quota prop:`, {
-        quota,
-        remainingToday: quota?.remainingToday,
-        finalDisplayValue: remainingQuota,
-      });
-    }
-  }, [communityId, quota, remainingQuota, community]);
 
   // Show a placeholder while loading or if community fetch fails
   if (!community) {

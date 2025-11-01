@@ -1,4 +1,27 @@
-export const URL = process.env.APP_URL || 'https://meriter.pro';
+/**
+ * Derive application URL from DOMAIN
+ * Protocol: http:// for localhost, https:// for production
+ * Falls back to APP_URL for backward compatibility if DOMAIN is not set
+ */
+function deriveAppUrl(): string {
+  const domain = process.env.DOMAIN;
+  
+  if (domain) {
+    // Use http:// for localhost, https:// for production
+    const protocol = domain === 'localhost' ? 'http://' : 'https://';
+    return `${protocol}${domain}`;
+  }
+  
+  // Backward compatibility: if APP_URL exists but DOMAIN doesn't, use APP_URL
+  if (process.env.APP_URL) {
+    return process.env.APP_URL;
+  }
+  
+  // Default fallback
+  return 'https://meriter.pro';
+}
+
+export const URL = deriveAppUrl();
 
 export const BOT_USERNAME = process.env.BOT_USERNAME || 'meriterbot';
 

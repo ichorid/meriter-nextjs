@@ -18,26 +18,20 @@ export const VersionDisplay: React.FC<VersionDisplayProps> = ({
 }) => {
     const { data: versionData, isLoading, isError } = useVersion();
     const frontendVersion = getFrontendVersion();
-    const backendVersion = versionData?.version || 'unknown';
-
-    // Don't render if we can't get either version
-    if (isError && !versionData) {
-        return null;
-    }
+    const backendVersion = versionData?.version || (isLoading ? '...' : 'unknown');
 
     const textSize = compact ? 'text-xs' : 'text-sm';
     const spacing = compact ? 'gap-1' : 'gap-2';
 
+    // Always show frontend version, show backend version if available
     return (
-        <div className={`flex items-center ${spacing} ${textSize} text-base-content/60 ${className}`}>
-            {isLoading ? (
-                <span className="loading loading-spinner loading-xs"></span>
+        <div className={`flex items-center ${spacing} ${textSize} text-base-content/70 ${className}`}>
+            <span className="whitespace-nowrap">Frontend: v{frontendVersion}</span>
+            <span className="text-base-content/40">|</span>
+            {isLoading && !versionData ? (
+                <span className="whitespace-nowrap">Backend: <span className="loading loading-spinner loading-xs inline-block"></span></span>
             ) : (
-                <>
-                    <span>Frontend: v{frontendVersion}</span>
-                    <span className="text-base-content/40">|</span>
-                    <span>Backend: v{backendVersion}</span>
-                </>
+                <span className="whitespace-nowrap">Backend: v{backendVersion}</span>
             )}
         </div>
     );

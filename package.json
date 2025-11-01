@@ -1,6 +1,6 @@
 {
   "name": "meriter-nextjs",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "private": true,
   "packageManager": "pnpm@10.20.0",
   "scripts": {

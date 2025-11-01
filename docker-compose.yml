@@ -25,9 +25,10 @@ services:
     environment:
       - PORT=8001
       - NODE_ENV=production
+      # Pass DOMAIN as NEXT_PUBLIC_DOMAIN for client-side usage
+      - NEXT_PUBLIC_DOMAIN=${DOMAIN}
       # BOT_USERNAME must be set - passed from .env file or explicitly here
       # If not set, container will fail health checks
-      - BOT_USERNAME=${BOT_USERNAME}
     ports:
       - "8001:8001"
     networks:

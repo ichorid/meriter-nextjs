@@ -11,10 +11,40 @@
  * Clears JWT cookie specifically with proper attributes
  * Exported so it can be called before authentication to ensure clean state
  */
+/**
+ * Get cookie domain from DOMAIN environment variable
+ * Returns undefined for localhost (no domain restriction needed)
+ * Falls back to APP_URL extraction for backward compatibility if DOMAIN is not set
+ */
+function getCookieDomain(): string | undefined {
+  // Try NEXT_PUBLIC_DOMAIN first (set from root DOMAIN env var)
+  const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
+  
+  if (domain) {
+    // localhost doesn't need domain restriction
+    return domain === 'localhost' ? undefined : domain;
+  }
+  
+  // Backward compatibility: if APP_URL exists but DOMAIN doesn't, extract domain from APP_URL
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+  if (appUrl) {
+    try {
+      const url = new URL(appUrl);
+      const hostname = url.hostname.split(':')[0]; // Remove port if present
+      return hostname === 'localhost' ? undefined : hostname;
+    } catch (error) {
+      // If APP_URL is not a valid URL, return undefined
+      return undefined;
+    }
+  }
+  
+  return undefined;
+}
+
 export function clearJwtCookie(): void {
   if (typeof document === 'undefined') return;
   
-  const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
+  const cookieDomain = getCookieDomain();
   const isProduction = process.env.NODE_ENV === 'production';
   const expiry = 'Thu, 01 Jan 1970 00:00:00 GMT';
   
@@ -38,6 +68,14 @@ export function clearJwtCookie(): void {
   
   if (cookieDomain && cookieDomain !== window.location.hostname) {
     clearCookie(cookieDomain); // Cookie domain if set
+    
+    // Try variants with/without leading dot
+    if (!cookieDomain.startsWith('.')) {
+      clearCookie(`.${cookieDomain}`);
+    }
+    if (cookieDomain.startsWith('.')) {
+      clearCookie(cookieDomain.substring(1));
+    }
   }
   
   // Try parent domain for subdomains

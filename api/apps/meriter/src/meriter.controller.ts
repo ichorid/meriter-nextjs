@@ -49,4 +49,10 @@ export class MeriterController {
       return { version: 'unknown' };
     }
   }
+
+  // Support /api/version path (when routed through Caddy)
+  @Get('api/version')
+  getVersionApi(): { version: string } {
+    return this.getVersion();
+  }
 }

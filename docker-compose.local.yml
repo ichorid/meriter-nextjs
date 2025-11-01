@@ -27,6 +27,8 @@ services:
     environment:
       - PORT=8001
       - NODE_ENV=production
+      # Pass DOMAIN as NEXT_PUBLIC_DOMAIN for client-side usage
+      - NEXT_PUBLIC_DOMAIN=${DOMAIN}
     ports:
       - "8001:8001"
     networks:

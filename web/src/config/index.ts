@@ -12,11 +12,33 @@
 
 import { z } from 'zod';
 
+/**
+ * Derive application URL from DOMAIN
+ * Protocol: http:// for localhost, https:// for production
+ * Falls back to APP_URL for backward compatibility if DOMAIN is not set
+ */
+function deriveAppUrl(): string {
+  const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
+  
+  if (domain) {
+    // Use http:// for localhost, https:// for production
+    const protocol = domain === 'localhost' ? 'http://' : 'https://';
+    return `${protocol}${domain}`;
+  }
+  
+  // Backward compatibility: if APP_URL exists but DOMAIN doesn't, use APP_URL
+  if (process.env.APP_URL) {
+    return process.env.APP_URL;
+  }
+  
+  // Default fallback
+  return 'https://meriter.pro';
+}
+
 // Environment variable validation schema
 const envSchema = z.object({
   // Application
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  APP_URL: z.string().default('https://meriter.pro'),
   
   // API Configuration - optional, defaults to relative URLs in production
   NEXT_PUBLIC_API_URL: z.string().optional(),
@@ -41,7 +63,6 @@ const envSchema = z.object({
 // Validate and parse environment variables
 const env = envSchema.parse({
   NODE_ENV: process.env.NODE_ENV,
-  APP_URL: process.env.APP_URL,
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   BOT_TOKEN: process.env.BOT_TOKEN,
   NEXT_PUBLIC_TELEGRAM_API_URL: process.env.NEXT_PUBLIC_TELEGRAM_API_URL,
@@ -55,12 +76,16 @@ const env = envSchema.parse({
   NEXT_PUBLIC_ENABLE_DEBUG: process.env.NEXT_PUBLIC_ENABLE_DEBUG,
 });
 
+// Derive app URL from DOMAIN
+const appUrl = deriveAppUrl();
+
 // Debug logging for environment variables
 console.log('🔧 Environment Variables Debug:');
 console.log('  NODE_ENV:', process.env.NODE_ENV);
 console.log('  NEXT_PUBLIC_API_URL (raw):', process.env.NEXT_PUBLIC_API_URL);
 console.log('  NEXT_PUBLIC_API_URL (parsed):', env.NEXT_PUBLIC_API_URL);
-console.log('  APP_URL:', env.APP_URL);
+console.log('  NEXT_PUBLIC_DOMAIN:', process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN || '[NOT SET]');
+console.log('  APP_URL (derived):', appUrl);
 console.log('  BOT_TOKEN:', env.BOT_TOKEN ? '[SET]' : '[NOT SET]');
 console.log('  S3_ACCESS_KEY_ID:', env.S3_ACCESS_KEY_ID ? '[SET]' : '[NOT SET]');
 console.log('  S3_SECRET_ACCESS_KEY:', env.S3_SECRET_ACCESS_KEY ? '[SET]' : '[NOT SET]');
@@ -73,7 +98,8 @@ export const config = {
     isDevelopment: env.NODE_ENV === 'development',
     isProduction: env.NODE_ENV === 'production',
     isTest: env.NODE_ENV === 'test',
-    url: env.APP_URL,
+    url: appUrl,
+    domain: process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN || undefined,
   },
   
   // API

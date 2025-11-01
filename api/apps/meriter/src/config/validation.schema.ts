@@ -7,7 +7,9 @@ const validateSync = (config: Record<string, unknown>) => {
   
   // Apply defaults manually before validation
   const configWithDefaults = {
-    APP_URL: (config.APP_URL as string) || 'https://meriter.pro',
+    // DOMAIN is optional, defaults to meriter.pro
+    // For backward compatibility, derive from APP_URL if DOMAIN is not set
+    DOMAIN: (config.DOMAIN as string) || (config.APP_URL ? new URL(config.APP_URL as string).hostname : 'meriter.pro'),
     PORT: config.PORT ? Number(config.PORT) : 8002,
     JWT_SECRET: (config.JWT_SECRET as string) || '',
     BOT_USERNAME: (config.BOT_USERNAME as string) || '',
@@ -23,7 +25,7 @@ const validateSync = (config: Record<string, unknown>) => {
   }
 
   const envSchema = z.object({
-    APP_URL: z.string(),
+    DOMAIN: z.string(),
     PORT: z.number(),
     JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
     BOT_USERNAME: z.string(),
