@@ -98,6 +98,37 @@ export function BotConfigProvider({ children }: BotConfigProviderProps) {
     error,
   };
 
+  // Show loading state while fetching
+  if (isLoading) {
+    return (
+      <BotConfigContext.Provider value={value}>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="loading loading-spinner loading-lg mb-4"></div>
+            <p className="text-base-content/70">Loading bot configuration...</p>
+          </div>
+        </div>
+      </BotConfigContext.Provider>
+    );
+  }
+
+  // Show error state if fetch failed
+  if (error) {
+    return (
+      <BotConfigContext.Provider value={value}>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="alert alert-error max-w-md">
+            <div className="flex flex-col">
+              <h3 className="font-bold">Configuration Error</h3>
+              <p className="text-sm mt-2">{error.message}</p>
+            </div>
+          </div>
+        </div>
+      </BotConfigContext.Provider>
+    );
+  }
+
+  // Only render children once config is loaded successfully
   return (
     <BotConfigContext.Provider value={value}>
       {children}
