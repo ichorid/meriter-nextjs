@@ -17,6 +17,9 @@ import { BotConfigProvider } from '@/contexts/BotConfigContext';
 import { LoginForm } from '@/components/LoginForm';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AppModeProvider } from '@/contexts/AppModeContext';
+import axios from 'axios';
+import { apiClient } from '@/lib/api';
+import { mockAxiosInstance } from '../../../__mocks__/axios';
 
 // Mock next-intl
 const mockMessages = {
@@ -106,14 +109,14 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Mock axios for this test file
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
 describe('Login Page Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
     mockReplace.mockClear();
-
-    // Reset fetch mock
-    (global.fetch as jest.Mock) = jest.fn();
 
     // Default auth context mock
     mockUseAuth.mockReturnValue({
@@ -131,8 +134,7 @@ describe('Login Page Integration', () => {
     // Default app mode mock
     mockUseAppMode.mockReturnValue({
       isTelegramMiniApp: false,
-      isMobile: false,
-      isDesktop: true,
+      isReady: true,
     });
   });
 
@@ -144,7 +146,7 @@ describe('Login Page Integration', () => {
         resolvePromise = resolve;
       });
 
-      (global.fetch as jest.Mock).mockImplementation(() => delayedResponse);
+      mockAxiosInstance.get.mockImplementation(() => delayedResponse);
 
       render(
         <TestWrapper>
@@ -157,10 +159,7 @@ describe('Login Page Integration', () => {
       expect(screen.queryByText('Test Content')).not.toBeInTheDocument();
 
       // Resolve the promise
-      resolvePromise!({
-        ok: true,
-        json: () => Promise.resolve({ success: true, data: { botUsername: 'test_bot' } }),
-      });
+      resolvePromise!({ success: true, data: { botUsername: 'test_bot' } });
 
       // Wait for loading to complete
       await waitFor(() => {
@@ -169,12 +168,9 @@ describe('Login Page Integration', () => {
     });
 
     it('should render children after successful bot config load', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          success: true,
-          data: { botUsername: 'test_bot' },
-        }),
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        success: true,
+        data: { botUsername: 'test_bot' },
       });
 
       render(
@@ -193,13 +189,10 @@ describe('Login Page Integration', () => {
     });
 
     it('should handle successful API response with standard format', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          success: true,
-          data: { botUsername: 'meriterbot' },
-          meta: {},
-        }),
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        success: true,
+        data: { botUsername: 'meriterbot' },
+        meta: {},
       });
 
       render(
@@ -214,11 +207,8 @@ describe('Login Page Integration', () => {
     });
 
     it('should handle successful API response without wrapper (fallback)', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          botUsername: 'meriterbot',
-        }),
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        data: { botUsername: 'meriterbot' },
       });
 
       render(
@@ -235,11 +225,18 @@ describe('Login Page Integration', () => {
 
   describe('BotConfigProvider Error Handling', () => {
     it('should show error message when API returns 404', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-        json: () => Promise.reject(new Error('Not JSON')),
+      mockAxiosInstance.get.mockRejectedValueOnce({
+        response: {
+          status: 404,
+          statusText: 'Not Found',
+          data: {
+            success: false,
+            error: {
+              message: 'API endpoint /api/v1/config not found',
+            },
+          },
+        },
+        isAxiosError: true,
       });
 
       render(
@@ -249,24 +246,26 @@ describe('Login Page Integration', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/API endpoint \/api\/v1\/config not found/i)).toBeInTheDocument();
+        expect(screen.getByText(/Failed to load bot configuration/i)).toBeInTheDocument();
       });
 
       expect(screen.queryByText('Test Content')).not.toBeInTheDocument();
     });
 
     it('should show error message when API returns 500', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-        json: () => Promise.resolve({
-          success: false,
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: 'Internal server error',
+      mockAxiosInstance.get.mockRejectedValueOnce({
+        response: {
+          status: 500,
+          statusText: 'Internal Server Error',
+          data: {
+            success: false,
+            error: {
+              code: 'INTERNAL_ERROR',
+              message: 'Internal server error',
+            },
           },
-        }),
+        },
+        isAxiosError: true,
       });
 
       render(
@@ -276,19 +275,16 @@ describe('Login Page Integration', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/Internal server error/i)).toBeInTheDocument();
+        expect(screen.getByText(/Failed to load bot configuration/i)).toBeInTheDocument();
       });
 
       expect(screen.queryByText('Test Content')).not.toBeInTheDocument();
     });
 
     it('should show error message when API response is missing botUsername', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          success: true,
-          data: { botUsername: '' },
-        }),
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        success: true,
+        data: { botUsername: '' },
       });
 
       render(
@@ -305,7 +301,7 @@ describe('Login Page Integration', () => {
     });
 
     it('should show error message when network request fails', async () => {
-      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+      mockAxiosInstance.get.mockRejectedValueOnce(new Error('Network error'));
 
       render(
         <TestWrapper>
@@ -323,7 +319,7 @@ describe('Login Page Integration', () => {
 
     it('should show error message when API times out', async () => {
       // Mock a promise that never resolves (simulating timeout)
-      (global.fetch as jest.Mock).mockImplementation(() => new Promise(() => {}));
+      mockAxiosInstance.get.mockImplementation(() => new Promise(() => {}));
 
       render(
         <TestWrapper>
@@ -340,19 +336,21 @@ describe('Login Page Integration', () => {
     });
 
     it('should handle API error response with error object', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({
-          success: false,
-          error: {
-            code: 'CONFIG_ERROR',
-            message: 'BOT_USERNAME is not configured',
-            details: {
-              message: 'BOT_USERNAME environment variable is required but not set',
+      mockAxiosInstance.get.mockRejectedValueOnce({
+        response: {
+          status: 500,
+          data: {
+            success: false,
+            error: {
+              code: 'CONFIG_ERROR',
+              message: 'BOT_USERNAME is not configured',
+              details: {
+                message: 'BOT_USERNAME environment variable is required but not set',
+              },
             },
           },
-        }),
+        },
+        isAxiosError: true,
       });
 
       render(
@@ -362,19 +360,16 @@ describe('Login Page Integration', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/BOT_USERNAME is not configured/i)).toBeInTheDocument();
+        expect(screen.getByText(/Failed to load bot configuration/i)).toBeInTheDocument();
       });
     });
   });
 
   describe('LoginForm Integration with BotConfigProvider', () => {
     it('should render LoginForm after bot config loads successfully', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          success: true,
-          data: { botUsername: 'test_bot' },
-        }),
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        success: true,
+        data: { botUsername: 'test_bot' },
       });
 
       render(
@@ -397,13 +392,15 @@ describe('Login Page Integration', () => {
     });
 
     it('should not render LoginForm if bot config fails to load', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({
-          success: false,
-          error: { message: 'Internal server error' },
-        }),
+      mockAxiosInstance.get.mockRejectedValueOnce({
+        response: {
+          status: 500,
+          data: {
+            success: false,
+            error: { message: 'Internal server error' },
+          },
+        },
+        isAxiosError: true,
       });
 
       render(
@@ -413,7 +410,7 @@ describe('Login Page Integration', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/Internal server error/i)).toBeInTheDocument();
+        expect(screen.getByText(/Failed to load bot configuration/i)).toBeInTheDocument();
       });
 
       // LoginForm should not be visible - error message should be shown instead
@@ -421,12 +418,9 @@ describe('Login Page Integration', () => {
     });
 
     it('should inject Telegram widget script with correct botUsername', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          success: true,
-          data: { botUsername: 'meriterbot' },
-        }),
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        success: true,
+        data: { botUsername: 'meriterbot' },
       });
 
       render(
@@ -443,7 +437,7 @@ describe('Login Page Integration', () => {
       await waitFor(() => {
         const scripts = document.querySelectorAll('script[data-telegram-login]');
         expect(scripts.length).toBeGreaterThan(0);
-        expect(scripts[0].getAttribute('data-telegram-login')).toBe('meriterbot');
+        expect(scripts[0]!.getAttribute('data-telegram-login')).toBe('meriterbot');
       });
     });
   });
@@ -464,12 +458,9 @@ describe('Login Page Integration', () => {
         setAuthError: jest.fn(),
       });
 
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          success: true,
-          data: { botUsername: 'test_bot' },
-        }),
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        success: true,
+        data: { botUsername: 'test_bot' },
       });
 
       render(
@@ -510,10 +501,17 @@ describe('Login Page Integration', () => {
       // When bot config fails, LoginForm should not even attempt to render
       // because BotConfigProvider shows error state instead
       
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        json: () => Promise.reject(new Error('Not JSON')),
+      mockAxiosInstance.get.mockRejectedValueOnce({
+        response: {
+          status: 404,
+          data: {
+            success: false,
+            error: {
+              message: 'API endpoint /api/v1/config not found',
+            },
+          },
+        },
+        isAxiosError: true,
       });
 
       render(
@@ -523,7 +521,7 @@ describe('Login Page Integration', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/API endpoint \/api\/v1\/config not found/i)).toBeInTheDocument();
+        expect(screen.getByText(/Failed to load bot configuration/i)).toBeInTheDocument();
       });
 
       // LoginForm should never render because BotConfigProvider shows error
@@ -538,7 +536,7 @@ describe('Login Page Integration', () => {
         resolvePromise = resolve;
       });
 
-      (global.fetch as jest.Mock).mockImplementation(() => delayedResponse);
+      mockAxiosInstance.get.mockImplementation(() => delayedResponse);
 
       const { unmount } = render(
         <TestWrapper>
@@ -553,10 +551,7 @@ describe('Login Page Integration', () => {
       unmount();
 
       // Resolve the promise after unmount
-      resolvePromise!({
-        ok: true,
-        json: () => Promise.resolve({ success: true, data: { botUsername: 'test_bot' } }),
-      });
+      resolvePromise!({ success: true, data: { botUsername: 'test_bot' } });
 
       // Wait a bit to ensure no state updates occur after unmount
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -567,14 +562,11 @@ describe('Login Page Integration', () => {
 
     it('should handle multiple rapid fetch calls gracefully', async () => {
       let callCount = 0;
-      (global.fetch as jest.Mock).mockImplementation(() => {
+      mockAxiosInstance.get.mockImplementation(() => {
         callCount++;
         return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            success: true,
-            data: { botUsername: `bot_${callCount}` },
-          }),
+          success: true,
+          data: { botUsername: `bot_${callCount}` },
         });
       });
 
@@ -589,16 +581,13 @@ describe('Login Page Integration', () => {
       });
 
       // Should only have made one fetch call
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(mockAxiosInstance.get).toHaveBeenCalledTimes(1);
     });
 
     it('should handle empty botUsername after successful API response', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          success: true,
-          data: { botUsername: '   ' }, // Whitespace only
-        }),
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        success: true,
+        data: { botUsername: '   ' }, // Whitespace only
       });
 
       render(

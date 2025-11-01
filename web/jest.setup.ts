@@ -1,6 +1,9 @@
 import React from 'react';
 import '@testing-library/jest-dom';
 
+// Mock axios globally before anything else
+jest.mock('axios');
+
 // Mock next-intl
 jest.mock('next-intl', () => ({
     useTranslations: jest.fn((namespace: string) => (key: string) => `${namespace}.${key}`),

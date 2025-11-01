@@ -23,9 +23,37 @@ env:
   IMAGE_NAME_API: ${{ github.repository }}-api
 
 jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.20.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
   build-web:
     name: Build and Push Web Image
     runs-on: ubuntu-latest
+    needs: test
     if: github.event.inputs.build_web == 'true'
     permissions:
       contents: read
@@ -85,6 +113,7 @@ jobs:
   build-api:
     name: Build and Push API Image
     runs-on: ubuntu-latest
+    needs: test
     if: github.event.inputs.build_api == 'true'
     permissions:
       contents: read
