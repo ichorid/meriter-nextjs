@@ -22,8 +22,8 @@ ENV HOSTNAME=0.0.0.0
 
 # Next.js standalone expects these exact locations:
 COPY --from=builder --chown=nextjs:nodejs /repo/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /repo/web/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /repo/web/public ./public
+COPY --from=builder --chown=nextjs:nodejs /repo/web/.next/static ./web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /repo/web/public ./web/public
 
 USER nextjs
 EXPOSE 8001
