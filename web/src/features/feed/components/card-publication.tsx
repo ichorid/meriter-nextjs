@@ -1,7 +1,7 @@
 'use client';
 
 import { classList } from '@lib/classList';
-import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
+import { Avatar } from '@/components/atoms';
 import { CommunityAvatar } from '@shared/components/community-avatar';
 
 interface CardPublicationProps {
@@ -21,6 +21,9 @@ interface CardPublicationProps {
     onCommunityClick?: any;
     communityNeedsSetup?: any;
     communityIsAdmin?: any;
+    beneficiaryName?: any;
+    beneficiaryAvatarUrl?: any;
+    beneficiarySubtitle?: any;
 }
 
 export const CardPublication = ({
@@ -40,6 +43,9 @@ export const CardPublication = ({
     onCommunityClick,
     communityNeedsSetup,
     communityIsAdmin,
+    beneficiaryName,
+    beneficiaryAvatarUrl,
+    beneficiarySubtitle,
 }: CardPublicationProps) => {
     const clickableClass = onClick ? " cursor-pointer hover:shadow-xl" : "";
     
@@ -49,38 +55,30 @@ export const CardPublication = ({
         onClick={onClick}
     >
         <div className="card-body p-0">
-            <div className="grid grid-cols-2 px-5 pt-5">
-                <div className="flex gap-2.5">
-                    <AvatarWithPlaceholder
-                        avatarUrl={avatarUrl}
-                        name={title}
-                        size={32}
-                        onError={onAvatarUrlNotFound}
-                    />
-                    <div className="info">
-                        <div className="text-xs font-medium">{title}</div>
+            <div className="flex flex-col px-5 pt-5 gap-3">
+                {/* Top row: Community avatar + time + description */}
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                        {showCommunityAvatar && communityName && (
+                            <div 
+                                className="cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onCommunityClick) onCommunityClick();
+                                }}
+                            >
+                                <CommunityAvatar
+                                    avatarUrl={communityAvatarUrl}
+                                    communityName={communityName}
+                                    size={24}
+                                    needsSetup={communityNeedsSetup}
+                                />
+                            </div>
+                        )}
                         <div className="text-[10px] opacity-60">{subtitle}</div>
                     </div>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                    {showCommunityAvatar && communityName && (
-                        <div 
-                            className="cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (onCommunityClick) onCommunityClick();
-                            }}
-                        >
-                            <CommunityAvatar
-                                avatarUrl={communityAvatarUrl}
-                                communityName={communityName}
-                                size={32}
-                                needsSetup={communityNeedsSetup}
-                            />
-                        </div>
-                    )}
                     <div
-                        className="description text-right opacity-30 cursor-pointer hover:opacity-50"
+                        className="description text-right opacity-30 cursor-pointer hover:opacity-50 text-xs"
                         onClick={(e) => {
                             e.stopPropagation();
                             if (onDescriptionClick) onDescriptionClick();
@@ -88,6 +86,38 @@ export const CardPublication = ({
                     >
                         {description}
                     </div>
+                </div>
+                {/* Second row: Author + Beneficiary */}
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex gap-2.5">
+                        <Avatar
+                            src={avatarUrl}
+                            alt={title}
+                            name={title}
+                            size={32}
+                            onError={onAvatarUrlNotFound}
+                        />
+                        <div className="info">
+                            <div className="text-xs font-medium">{title}</div>
+                        </div>
+                    </div>
+                    {beneficiaryName && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs opacity-70">to:</span>
+                            <Avatar
+                                src={beneficiaryAvatarUrl}
+                                alt={beneficiaryName}
+                                name={beneficiaryName}
+                                size={32}
+                            />
+                            <div className="info">
+                                <div className="text-xs font-medium">{beneficiaryName}</div>
+                                {beneficiarySubtitle && (
+                                    <div className="text-[10px] opacity-60">{beneficiarySubtitle}</div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
             <div className="content px-5 py-5 overflow-hidden">

@@ -3,7 +3,7 @@
 import React from 'react';
 import { BottomPortal } from '@/shared/components/bottom-portal';
 import { useTranslations } from 'next-intl';
-import { AvatarWithPlaceholder } from './avatar-with-placeholder';
+import { Avatar } from '@/components/atoms';
 import { CommunityAvatar } from './community-avatar';
 import { formatDate } from '@/shared/lib/date';
 
@@ -99,8 +99,9 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                         {authorName && (
                             <div className="mb-4">
                                 <div className="flex items-center gap-3">
-                                    <AvatarWithPlaceholder
-                                        avatarUrl={authorAvatar}
+                                    <Avatar
+                                        src={authorAvatar}
+                                        alt={authorName}
                                         name={authorName}
                                         size={40}
                                     />
@@ -138,8 +139,9 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                             <div className="mb-4">
                                 <div className="text-xs opacity-70 mb-2">{t('beneficiary') || 'Beneficiary'}</div>
                                 <div className="flex items-center gap-3">
-                                    <AvatarWithPlaceholder
-                                        avatarUrl={beneficiaryAvatar}
+                                    <Avatar
+                                        src={beneficiaryAvatar}
+                                        alt={beneficiaryName}
                                         name={beneficiaryName}
                                         size={32}
                                     />

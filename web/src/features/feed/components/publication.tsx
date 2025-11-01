@@ -245,6 +245,9 @@ export const Publication = ({
                 onDescriptionClick={
                     myId == authorId ? () => setShowDimensionsEditor(true) : undefined
                 }
+                beneficiaryName={hasBeneficiary ? beneficiaryName : undefined}
+                beneficiaryAvatarUrl={hasBeneficiary ? beneficiaryPhotoUrl : undefined}
+                beneficiarySubtitle={hasBeneficiary ? beneficiaryUsername : undefined}
                 bottom={
                     (() => {
                         console.log('[Publication Feed] Rendering bottom component:', {

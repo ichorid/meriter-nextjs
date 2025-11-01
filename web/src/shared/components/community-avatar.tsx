@@ -1,6 +1,6 @@
 'use client';
 
-import { AvatarWithPlaceholder } from './avatar-with-placeholder';
+import { Avatar } from '@/components/atoms';
 
 interface CommunityAvatarProps {
   avatarUrl?: string;
@@ -26,8 +26,9 @@ export const CommunityAvatar = ({
 }: CommunityAvatarProps) => {
   return (
     <div className="relative inline-block">
-      <AvatarWithPlaceholder
-        avatarUrl={avatarUrl}
+      <Avatar
+        src={avatarUrl}
+        alt={communityName}
         name={communityName}
         size={size}
         className={className}

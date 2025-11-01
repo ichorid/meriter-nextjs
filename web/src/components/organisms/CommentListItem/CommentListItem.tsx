@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { AvatarWithPlaceholder } from '@/shared/components/avatar-with-placeholder';
+import { Avatar } from '@/components/atoms';
 import { formatDate } from '@/shared/lib/date';
 
 export interface CommentListItemProps {
@@ -90,8 +90,9 @@ export const CommentListItem: React.FC<CommentListItemProps> = ({
               {/* Author info */}
               <div className="flex gap-2 mb-2 items-start">
                 <div className="flex gap-2 flex-1">
-                  <AvatarWithPlaceholder
-                    avatarUrl={authorAvatarUrl}
+                  <Avatar
+                    src={authorAvatarUrl}
+                    alt={authorName || 'Unknown'}
                     name={authorName || 'Unknown'}
                     size={32}
                   />

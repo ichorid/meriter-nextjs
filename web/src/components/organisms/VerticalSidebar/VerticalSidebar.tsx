@@ -67,7 +67,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 
       <div className={`flex-1 overflow-y-auto w-full ${paddingClass} py-2`}>
         {/* Community Cards or Avatars */}
-        <div className="space-y-2">
+        <div className={isExpanded ? 'space-y-2' : 'space-y-[12.8px]'}>
           {isAuthenticated && !walletsLoading && communityIds.length === 0 && wallets.length > 0 && (
             <div className="text-xs text-base-content/50 px-2">
               No communities found in wallets

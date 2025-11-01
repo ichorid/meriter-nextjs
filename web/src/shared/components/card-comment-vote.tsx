@@ -1,7 +1,7 @@
 'use client';
 
 import { classList } from '@lib/classList';
-import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
+import { Avatar } from '@/components/atoms';
 import { CommunityAvatar } from '@shared/components/community-avatar';
 import { useTranslations } from 'next-intl';
 
@@ -90,8 +90,9 @@ export const CardCommentVote = ({
                     <div className="p-4">
                         <div className="flex gap-2 mb-2 items-start">
                             <div className="flex gap-2 flex-1">
-                                <AvatarWithPlaceholder
-                                    avatarUrl={avatarUrl}
+                                <Avatar
+                                    src={avatarUrl}
+                                    alt={title}
                                     name={title}
                                     size={32}
                                     onError={onAvatarUrlNotFound}
@@ -123,8 +124,9 @@ export const CardCommentVote = ({
                         {beneficiaryName && (
                             <div className="flex items-center gap-2 mb-2 text-xs opacity-70">
                                 <span>to:</span>
-                                <AvatarWithPlaceholder
-                                    avatarUrl={beneficiaryAvatarUrl}
+                                <Avatar
+                                    src={beneficiaryAvatarUrl}
+                                    alt={beneficiaryName}
                                     name={beneficiaryName}
                                     size={16}
                                 />

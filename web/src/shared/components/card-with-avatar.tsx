@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { AvatarWithPlaceholder } from '@shared/components/avatar-with-placeholder';
+import { Avatar } from '@/components/atoms';
 
 export const CardWithAvatar = ({
     avatarUrl,
@@ -59,8 +59,9 @@ export const CardWithAvatar = ({
             onClick={onClick}
         >
             <div className="flex items-start gap-4">
-                <AvatarWithPlaceholder
-                    avatarUrl={avatarUrl}
+                <Avatar
+                    src={avatarUrl}
+                    alt={userName || 'User'}
                     name={userName || 'User'}
                     size={48}
                     onError={() => {
