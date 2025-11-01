@@ -5,7 +5,7 @@
     auto_https off
 }
 
-:8080 {
+:80 {
     # Enable access logs
     log {
         output stdout
@@ -15,13 +15,13 @@
 
     # All API requests go to NestJS backend
     handle /api* {
-        reverse_proxy localhost:8002
+        reverse_proxy api:8002
         encode gzip
     }
 
     # Everything else goes to Next.js frontend
     handle {
-        reverse_proxy localhost:8001
+        reverse_proxy web:8001
         encode gzip
     }
 

@@ -7,6 +7,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Accept build arguments for Next.js public environment variables
 ARG NEXT_PUBLIC_DOMAIN
 ENV NEXT_PUBLIC_DOMAIN=${NEXT_PUBLIC_DOMAIN}
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY libs/shared-types ./libs/shared-types

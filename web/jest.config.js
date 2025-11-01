@@ -41,6 +41,8 @@ module.exports = {
       "^@/shared/(.*)$": "<rootDir>/src/shared/$1",
       "^@/config/(.*)$": "<rootDir>/src/config/$1",
       "^@/config$": "<rootDir>/src/config/index.ts",
+      "^@/stores$": "<rootDir>/src/stores/index.ts",
+      "^@/stores/(.*)$": "<rootDir>/src/stores/$1",
       "\\.(css|scss)$": "identity-obj-proxy"
     },
     testTimeout: 20000,
