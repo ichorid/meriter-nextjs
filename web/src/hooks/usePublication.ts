@@ -112,6 +112,11 @@ export function usePublication({
       } else {
         // Downvotes use wallet only
         walletAmount = absoluteAmount;
+        
+        // Validate wallet balance for negative votes
+        if (walletAmount > walletBalance) {
+          throw new Error('Insufficient balance');
+        }
       }
 
       // Use the combined endpoint that creates comment and vote atomically
@@ -174,7 +179,7 @@ export function usePublication({
       // Re-throw to allow component to display error
       throw error;
     }
-  }, [publication, voteOnPublicationWithCommentMutation, quotaRemaining, updateAll]);
+  }, [publication, voteOnPublicationWithCommentMutation, quotaRemaining, walletBalance, updateAll]);
 
   const handleSliderToggle = useCallback((sliderId: string | null) => {
     setActiveSlider(sliderId);
