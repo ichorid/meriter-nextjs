@@ -2,4 +2,4 @@
 alwaysApply: true
 ---
 
-when you finish todos for a plan, run build to check for errros. If there are errors, iterate until you fix them
+when you finish todos for a plan, run tests and then build to check for errors. If there are errors, iterate until you fix them

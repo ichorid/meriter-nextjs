@@ -17,14 +17,31 @@ export function useVoteOnPublication() {
       votesApiV1.voteOnPublication(publicationId, data),
     onMutate: async (variables) => {
       const { data, communityId } = variables || {};
-      const shouldOptimistic = !!user?.id && !!communityId && !!data?.sourceType;
+      const shouldOptimistic = !!user?.id && !!communityId;
       if (!shouldOptimistic) return {} as OptimisticUpdateContext;
       
       const context: OptimisticUpdateContext = {};
       
+      // Calculate quota and wallet amounts from data
+      let quotaAmount = 0;
+      let walletAmount = 0;
+      
+      if ((data as any).quotaAmount !== undefined || (data as any).walletAmount !== undefined) {
+        // New format: use quotaAmount and walletAmount
+        quotaAmount = (data as any).quotaAmount ?? 0;
+        walletAmount = (data as any).walletAmount ?? 0;
+      } else if (data.amount !== undefined && data.sourceType) {
+        // Old format: use amount and sourceType
+        if (data.sourceType === 'quota') {
+          quotaAmount = Math.abs(data.amount);
+        } else {
+          walletAmount = Math.abs(data.amount);
+        }
+      }
+      
       // Handle quota optimistic update
-      if (data.sourceType === 'quota' && user?.id && communityId) {
-        const quotaUpdate = await updateQuotaOptimistically(queryClient, user.id, communityId, data.amount || 0);
+      if (quotaAmount > 0 && user?.id && communityId) {
+        const quotaUpdate = await updateQuotaOptimistically(queryClient, user.id, communityId, quotaAmount);
         if (quotaUpdate) {
           context.quotaKey = quotaUpdate.quotaKey;
           context.previousQuota = quotaUpdate.previousQuota;
@@ -32,8 +49,8 @@ export function useVoteOnPublication() {
       }
       
       // Handle wallet optimistic update
-      if (data.sourceType === 'personal' && communityId) {
-        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, data.amount || 0, queryKeys.wallet);
+      if (walletAmount > 0 && communityId) {
+        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, walletAmount, queryKeys.wallet);
         if (walletUpdate) {
           context.walletsKey = walletUpdate.walletsKey;
           context.balanceKey = walletUpdate.balanceKey;
@@ -104,14 +121,31 @@ export function useVoteOnComment() {
       votesApiV1.voteOnComment(commentId, data),
     onMutate: async (variables) => {
       const { data, communityId } = variables || {};
-      const shouldOptimistic = !!user?.id && !!communityId && !!data?.sourceType;
+      const shouldOptimistic = !!user?.id && !!communityId;
       if (!shouldOptimistic) return {} as OptimisticUpdateContext;
       
       const context: OptimisticUpdateContext = {};
       
+      // Calculate quota and wallet amounts from data
+      let quotaAmount = 0;
+      let walletAmount = 0;
+      
+      if ((data as any).quotaAmount !== undefined || (data as any).walletAmount !== undefined) {
+        // New format: use quotaAmount and walletAmount
+        quotaAmount = (data as any).quotaAmount ?? 0;
+        walletAmount = (data as any).walletAmount ?? 0;
+      } else if (data.amount !== undefined && data.sourceType) {
+        // Old format: use amount and sourceType
+        if (data.sourceType === 'quota') {
+          quotaAmount = Math.abs(data.amount);
+        } else {
+          walletAmount = Math.abs(data.amount);
+        }
+      }
+      
       // Handle quota optimistic update
-      if (data.sourceType === 'quota' && user?.id && communityId) {
-        const quotaUpdate = await updateQuotaOptimistically(queryClient, user.id, communityId, data.amount || 0);
+      if (quotaAmount > 0 && user?.id && communityId) {
+        const quotaUpdate = await updateQuotaOptimistically(queryClient, user.id, communityId, quotaAmount);
         if (quotaUpdate) {
           context.quotaKey = quotaUpdate.quotaKey;
           context.previousQuota = quotaUpdate.previousQuota;
@@ -119,8 +153,8 @@ export function useVoteOnComment() {
       }
       
       // Handle wallet optimistic update
-      if (data.sourceType === 'personal' && communityId) {
-        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, data.amount || 0, queryKeys.wallet);
+      if (walletAmount > 0 && communityId) {
+        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, walletAmount, queryKeys.wallet);
         if (walletUpdate) {
           context.walletsKey = walletUpdate.walletsKey;
           context.balanceKey = walletUpdate.balanceKey;
@@ -216,22 +250,41 @@ export function useVoteOnPublicationWithComment() {
     }: { 
       publicationId: string; 
       data: { 
-        amount: number; 
+        amount?: number; 
         sourceType?: 'personal' | 'quota'; 
+        quotaAmount?: number;
+        walletAmount?: number;
         comment?: string; 
       }; 
       communityId?: string; 
     }) => votesApiV1.voteOnPublicationWithComment(publicationId, data),
     onMutate: async (variables) => {
       const { data, communityId } = variables || {};
-      const shouldOptimistic = !!user?.id && !!communityId && !!data?.sourceType;
+      const shouldOptimistic = !!user?.id && !!communityId;
       if (!shouldOptimistic) return {} as OptimisticUpdateContext;
       
       const context: OptimisticUpdateContext = {};
       
+      // Calculate quota and wallet amounts from data
+      let quotaAmount = 0;
+      let walletAmount = 0;
+      
+      if (data.quotaAmount !== undefined || data.walletAmount !== undefined) {
+        // New format: use quotaAmount and walletAmount
+        quotaAmount = data.quotaAmount ?? 0;
+        walletAmount = data.walletAmount ?? 0;
+      } else if (data.amount !== undefined && data.sourceType) {
+        // Old format: use amount and sourceType
+        if (data.sourceType === 'quota') {
+          quotaAmount = Math.abs(data.amount);
+        } else {
+          walletAmount = Math.abs(data.amount);
+        }
+      }
+      
       // Handle quota optimistic update
-      if (data.sourceType === 'quota' && user?.id && communityId) {
-        const quotaUpdate = await updateQuotaOptimistically(queryClient, user.id, communityId, data.amount || 0);
+      if (quotaAmount > 0 && user?.id && communityId) {
+        const quotaUpdate = await updateQuotaOptimistically(queryClient, user.id, communityId, quotaAmount);
         if (quotaUpdate) {
           context.quotaKey = quotaUpdate.quotaKey;
           context.previousQuota = quotaUpdate.previousQuota;
@@ -239,8 +292,8 @@ export function useVoteOnPublicationWithComment() {
       }
       
       // Handle wallet optimistic update
-      if (data.sourceType === 'personal' && communityId) {
-        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, data.amount || 0, queryKeys.wallet);
+      if (walletAmount > 0 && communityId) {
+        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, walletAmount, queryKeys.wallet);
         if (walletUpdate) {
           context.walletsKey = walletUpdate.walletsKey;
           context.balanceKey = walletUpdate.balanceKey;

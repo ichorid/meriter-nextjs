@@ -65,7 +65,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   // Note: Quota and wallet optimistic updates are handled by mutation hooks
 
   const hasPoints = freePlusAmount > 0 || walletBalance > 0;
-  const maxPlus = Math.max(freePlusAmount, walletBalance || 0);
+  const maxPlus = freePlusAmount + (walletBalance || 0);
   const calculatedMaxMinus = freePlusAmount > 0
     ? Math.min(freePlusAmount, Math.max(walletBalance || 0, 1))
     : Math.max(walletBalance || 0, 1);

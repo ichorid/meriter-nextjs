@@ -258,6 +258,8 @@ describe('usePublication Hook', () => {
           amount: -1,
           sourceType: 'personal',
           comment: 'Bad post!',
+          quotaAmount: undefined,
+          walletAmount: 1,
         },
         communityId: 'community-123',
       });
@@ -324,6 +326,8 @@ describe('usePublication Hook', () => {
           amount: 1,
           sourceType: 'quota',
           comment: 'Great post!',
+          quotaAmount: 1,
+          walletAmount: undefined,
         },
         communityId: 'community-123',
       });

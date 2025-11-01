@@ -140,24 +140,53 @@ export const useComments = (
         amount: Math.abs(delta),
         setAmount: setDelta,
         free: freePlus,
-        // maxPlus should consider both quota and wallet balance
-        maxPlus: Math.max(freePlus, walletBalance || 0),
-        maxMinus: freeMinus,
+        // maxPlus should be the sum of quota and wallet balance (allows voting over quota using wallet)
+        maxPlus: freePlus + (walletBalance || 0),
+        // maxMinus should use wallet balance for negative votes (downvotes use wallet only)
+        maxMinus: walletBalance || 0,
         commentAdd: async (directionPlus: boolean) => {
             try {
                 // Use mutation hooks based on whether it's a comment or vote
                 if (forTransaction) {
                     // This is a vote for a comment
+                    const absoluteAmount = Math.abs(delta);
+                    const isUpvote = directionPlus;
+                    
+                    // Calculate vote breakdown: quota vs wallet
+                    // For upvotes: use quota first, then wallet
+                    // For downvotes: use wallet only (quota cannot be used for downvotes)
+                    let quotaAmount = 0;
+                    let walletAmount = 0;
+                    
+                    if (isUpvote) {
+                        quotaAmount = Math.min(absoluteAmount, freePlus);
+                        walletAmount = Math.max(0, absoluteAmount - freePlus);
+                    } else {
+                        // Downvotes use wallet only
+                        walletAmount = absoluteAmount;
+                    }
+                    
+                    // Send single API call with both quotaAmount and walletAmount
                     await voteOnCommentMutation.mutateAsync({
                         commentId: transactionId,
                         data: {
                             targetType: 'comment',
                             targetId: transactionId,
-                            amount: directionPlus ? Math.abs(delta) : -Math.abs(delta),
-                            sourceType: 'quota',
+                            quotaAmount: quotaAmount > 0 ? quotaAmount : undefined,
+                            walletAmount: walletAmount > 0 ? walletAmount : undefined,
+                            // For backward compatibility, also send amount if only one source is used
+                            ...(quotaAmount > 0 && walletAmount === 0 ? {
+                                amount: isUpvote ? quotaAmount : -quotaAmount,
+                                sourceType: 'quota' as const,
+                            } : {}),
+                            ...(walletAmount > 0 && quotaAmount === 0 ? {
+                                amount: isUpvote ? walletAmount : -walletAmount,
+                                sourceType: 'personal' as const,
+                            } : {}),
                         },
                         communityId,
                     });
+                    
                     // Create comment separately if there's comment text
                     if (comment.trim()) {
                         await createCommentMutation.mutateAsync({

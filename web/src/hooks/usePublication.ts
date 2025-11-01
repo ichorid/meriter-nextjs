@@ -125,52 +125,25 @@ export function usePublication({
       }
 
       // Use the combined endpoint that creates comment and vote atomically
-      // If we need both quota and wallet votes, make two calls
-      // but only create the comment with the first one
-      if (quotaAmount > 0 && walletAmount > 0) {
-        // First vote: quota + comment (if provided)
-        await voteOnPublicationWithCommentMutation.mutateAsync({
-          publicationId: publication.id,
-          data: {
+      // Send single API call with both quotaAmount and walletAmount
+      await voteOnPublicationWithCommentMutation.mutateAsync({
+        publicationId: publication.id,
+        data: {
+          quotaAmount: quotaAmount > 0 ? quotaAmount : undefined,
+          walletAmount: walletAmount > 0 ? walletAmount : undefined,
+          comment: comment.trim() || undefined,
+          // For backward compatibility, also send amount if only one source is used
+          ...(quotaAmount > 0 && walletAmount === 0 ? {
             amount: isUpvote ? quotaAmount : -quotaAmount,
-            sourceType: 'quota',
-            comment: comment.trim() || undefined,
-          },
-          communityId: publication.communityId,
-        });
-        
-        // Second vote: wallet only (comment already created)
-        await voteOnPublicationWithCommentMutation.mutateAsync({
-          publicationId: publication.id,
-          data: {
+            sourceType: 'quota' as const,
+          } : {}),
+          ...(walletAmount > 0 && quotaAmount === 0 ? {
             amount: isUpvote ? walletAmount : -walletAmount,
-            sourceType: 'personal',
-          },
-          communityId: publication.communityId,
-        });
-      } else if (quotaAmount > 0) {
-        // Vote with quota only, include comment
-        await voteOnPublicationWithCommentMutation.mutateAsync({
-          publicationId: publication.id,
-          data: {
-            amount: isUpvote ? quotaAmount : -quotaAmount,
-            sourceType: 'quota',
-            comment: comment.trim() || undefined,
-          },
-          communityId: publication.communityId,
-        });
-      } else if (walletAmount > 0) {
-        // Vote with wallet only, include comment
-        await voteOnPublicationWithCommentMutation.mutateAsync({
-          publicationId: publication.id,
-          data: {
-            amount: isUpvote ? walletAmount : -walletAmount,
-            sourceType: 'personal',
-            comment: comment.trim() || undefined,
-          },
-          communityId: publication.communityId,
-        });
-      }
+            sourceType: 'personal' as const,
+          } : {}),
+        },
+        communityId: publication.communityId,
+      });
 
       // Refresh data immediately to update UI (this will also refresh quota/wallet from server)
       if (updateAll) {

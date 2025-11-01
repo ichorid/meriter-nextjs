@@ -71,6 +71,8 @@ Meriter is a merit-based social platform that operates through Telegram communit
 - **Amount**: Users specify how many merits or daily quota to allocate
 - **Direction**: Positive (plus) or negative (minus) votes. Minus only possible with merits, not daily quota
 - **Balance Check**: Must have sufficient merits or quota to vote
+- **Voting Over Quota**: Users can exceed their daily quota by spending available wallet balance. The voting slider represents the full range (quota + wallet). When voting exceeds quota, it automatically uses wallet balance.
+- **Combined Voting**: The API supports sending both quotaAmount and walletAmount in a single request, avoiding double API calls. The system automatically splits votes when both amounts are provided.
 
 #### Voting Rules
 - **Mutual Exclusivity**: Vote and Withdraw are MUTUALLY EXCLUSIVE. A user can NEVER have both abilities on the same object.
@@ -82,13 +84,32 @@ Meriter is a merit-based social platform that operates through Telegram communit
 - **Recipient Credit**: Merits credited to the effective beneficiary's wallet (beneficiaryId if set, otherwise authorId)
 - **Free Quota**: Users get free quota daily for voting
 - **Quota Amount**: Each community has different quota settings. Default is 10 quota/day.
+- **Voting Over Quota**: Users can vote beyond their daily quota by using wallet balance. The maximum vote amount is quota + wallet balance combined.
+- **Quota vs Wallet Logic**: For upvotes, quota is used first, then wallet. For downvotes, only wallet can be used (quota cannot be used for negative votes).
+- **API Validation**: The API validates that:
+  - Votes cannot be double-zero (both quotaAmount and walletAmount cannot be zero)
+  - quotaAmount cannot exceed available quota
+  - walletAmount cannot exceed available wallet balance
+  - Total vote amount (quotaAmount + walletAmount) cannot exceed quota + wallet combined
+  - quotaAmount cannot be used for downvotes
 
 #### Vote Processing
 1. **Validation**: Check user balance and voting rules
-2. **Amount Split**: Split between free and personal merits
-3. **Wallet Update**: Deduct from voter, credit to recipient
-4. **Metrics Update**: Update publication/comment vote counts
-5. **Transaction Record**: Create transaction record for audit
+   - Reject double-zero votes (quotaAmount = 0 and walletAmount = 0)
+   - Reject if quotaAmount > available quota
+   - Reject if walletAmount > available wallet balance
+   - Reject if total amount (quotaAmount + walletAmount) > quota + wallet combined
+   - Reject if quotaAmount > 0 for downvotes
+2. **Amount Calculation**: Calculate quotaAmount and walletAmount
+   - For upvotes: quotaAmount = min(requestedAmount, availableQuota), walletAmount = max(0, requestedAmount - availableQuota)
+   - For downvotes: quotaAmount = 0, walletAmount = requestedAmount
+3. **Vote Creation**: Create vote documents atomically
+   - If both quotaAmount and walletAmount > 0: Create two vote documents (one quota, one wallet)
+   - If only quotaAmount > 0: Create single quota vote
+   - If only walletAmount > 0: Create single wallet vote
+4. **Balance Deduction**: Deduct from quota (if used) and wallet (if used)
+5. **Metrics Update**: Update publication/comment vote counts
+6. **Transaction Record**: Create transaction record for audit
 
 ### 5. Comments System
 
@@ -225,6 +246,15 @@ Meriter is a merit-based social platform that operates through Telegram communit
    - Users cannot vote if they are the effective beneficiary
    - Users cannot withdraw if they are not the effective beneficiary
    - Withdraw is only available when the object has a positive balance (sum > 0)
+6. **Voting Over Quota**: Users can vote beyond daily quota by spending wallet balance. The maximum vote range is quota + wallet combined.
+7. **Quota vs Wallet Usage**:
+   - For upvotes: Quota is used first, then wallet if amount exceeds quota
+   - For downvotes: Only wallet can be used (quota cannot be used for negative votes)
+8. **Vote Amount Validation**:
+   - Cannot vote with both quotaAmount = 0 and walletAmount = 0 (double-zero rejection)
+   - quotaAmount cannot exceed remaining daily quota
+   - walletAmount cannot exceed wallet balance
+   - Total vote amount cannot exceed quota + wallet combined
 
 ### Content Rules
 1. **Hashtag Validation**: Must contain valid community hashtags

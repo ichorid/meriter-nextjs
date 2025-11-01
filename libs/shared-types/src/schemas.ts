@@ -173,10 +173,26 @@ export const CreateCommentDtoSchema = PolymorphicReferenceSchema.extend({
 export const UpdateCommentDtoSchema = CreateCommentDtoSchema.partial();
 
 export const CreateVoteDtoSchema = PolymorphicReferenceSchema.extend({
-  amount: z.number().int(),
-  sourceType: z.enum(['personal', 'quota']),
+  amount: z.number().int().optional(),
+  sourceType: z.enum(['personal', 'quota']).optional(),
+  quotaAmount: z.number().int().min(0).optional(),
+  walletAmount: z.number().int().min(0).optional(),
   attachedCommentId: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    // Backward compatibility: if amount is provided, use it
+    if (data.amount !== undefined) {
+      return true;
+    }
+    // New format: at least one of quotaAmount or walletAmount must be provided and non-zero
+    const quota = data.quotaAmount ?? 0;
+    const wallet = data.walletAmount ?? 0;
+    return quota > 0 || wallet > 0;
+  },
+  {
+    message: 'Either amount must be provided, or at least one of quotaAmount/walletAmount must be non-zero',
+  }
+);
 
 // Target-less vote DTO for routes where target is implied by the URL (e.g., comments/:id/votes)
 export const CreateTargetlessVoteDtoSchema = z.object({
@@ -260,10 +276,26 @@ export const WithdrawAmountDtoSchema = z.object({
 });
 
 export const VoteWithCommentDtoSchema = z.object({
-  amount: z.number().int(),
+  amount: z.number().int().optional(),
   sourceType: z.enum(['personal', 'quota']).optional(),
+  quotaAmount: z.number().int().min(0).optional(),
+  walletAmount: z.number().int().min(0).optional(),
   comment: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    // Backward compatibility: if amount is provided, use it
+    if (data.amount !== undefined) {
+      return true;
+    }
+    // New format: at least one of quotaAmount or walletAmount must be provided and non-zero
+    const quota = data.quotaAmount ?? 0;
+    const wallet = data.walletAmount ?? 0;
+    return quota > 0 || wallet > 0;
+  },
+  {
+    message: 'Either amount must be provided, or at least one of quotaAmount/walletAmount must be non-zero',
+  }
+);
 
 // API Response schemas
 export const ApiResponseSchema = z.object({

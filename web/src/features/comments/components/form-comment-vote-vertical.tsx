@@ -52,14 +52,16 @@ export const FormCommentVoteVertical = memo(({
 
     // For symmetric range around 0 (to center the slider), use the max of both directions
     // This ensures amount=0 is always at 50% (center)
+    // When maxMinus is 0 (no wallet balance for negative votes), prevent negative slider positions
     const maxRange = Math.max(maxPlus, maxMinus);
-    const sliderMin = isWithdrawMode ? 0 : -maxRange;
+    const sliderMin = isWithdrawMode ? 0 : (maxMinus === 0 ? 0 : -maxRange);
     const sliderMax = isWithdrawMode ? maxPlus : maxRange;
 
     // Memoize onChange handler to prevent unnecessary re-renders
     const handleSliderChange = useCallback((value: number | number[]) => {
         const newAmount = typeof value === 'number' ? value : value[0] || 0;
         // Clamp to actual limits even though slider range is symmetric
+        // When maxMinus === 0 (no wallet balance), Math.max(-maxMinus, ...) = Math.max(0, ...) prevents negatives
         const clampedAmount = isWithdrawMode 
             ? Math.max(0, Math.min(newAmount, maxPlus))
             : Math.max(-maxMinus, Math.min(newAmount, maxPlus));

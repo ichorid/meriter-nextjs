@@ -585,7 +585,13 @@ export const votesApiV1 = {
 
   async voteOnPublicationWithComment(
     publicationId: string,
-    data: { amount: number; sourceType?: 'personal' | 'quota'; comment?: string }
+    data: { 
+      amount?: number; 
+      sourceType?: 'personal' | 'quota'; 
+      quotaAmount?: number;
+      walletAmount?: number;
+      comment?: string;
+    }
   ): Promise<{ vote: Vote; comment?: Comment }> {
     const response = await apiClient.post<{ success: true; data: { vote: Vote; comment?: Comment } }>(`/api/v1/publications/${publicationId}/vote-with-comment`, data);
     return response.data;

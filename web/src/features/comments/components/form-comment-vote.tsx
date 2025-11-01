@@ -76,10 +76,16 @@ export const FormCommentVote = ({
 
             <div className="mb-4 px-2">
                 <Slider
-                    min={-maxMinus}
+                    min={maxMinus === 0 ? 0 : -maxMinus}
                     max={maxPlus}
                     value={amount}
-                    onChange={(value) => setAmount(typeof value === 'number' ? value : value[0] || 0)}
+                    onChange={(value) => {
+                        const newAmount = typeof value === 'number' ? value : value[0] || 0;
+                        // Clamp to actual limits: when maxMinus === 0, prevent negative values
+                        // Math.max(-maxMinus, ...) becomes Math.max(0, ...) when maxMinus === 0
+                        const clampedAmount = Math.max(-maxMinus, Math.min(newAmount, maxPlus));
+                        setAmount(clampedAmount);
+                    }}
                 />
             </div>
             <div className="relative">
