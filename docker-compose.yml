@@ -40,7 +40,9 @@ services:
       start_period: 40s
 
   api:
-    image: ghcr.io/ichorid/meriter-nextjs-api:${VERSION_API:-latest}
+    build:
+      context: .
+      dockerfile: api/Dockerfile
     container_name: meriter-api
     restart: unless-stopped
     env_file:

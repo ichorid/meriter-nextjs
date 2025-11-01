@@ -21,7 +21,7 @@ interface BotConfigProviderProps {
 /**
  * Bot Config Provider
  * 
- * Fetches bot username from /api/config route once on mount and caches it.
+ * Fetches bot username from /api/v1/config backend API endpoint once on mount and caches it.
  * Fails immediately if botUsername is missing - no fallbacks.
  */
 export function BotConfigProvider({ children }: BotConfigProviderProps) {
@@ -34,14 +34,34 @@ export function BotConfigProvider({ children }: BotConfigProviderProps) {
 
     async function fetchBotConfig() {
       try {
-        const response = await fetch('/api/config');
+        const response = await fetch('/api/v1/config');
         
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-          throw new Error(errorData.error || `Failed to fetch bot config: ${response.status}`);
+          let errorMessage = `Failed to fetch bot config: HTTP ${response.status}`;
+          try {
+            const errorData = await response.json();
+            // Handle API error format: { success: false, error: { code, message, details } }
+            if (errorData.error) {
+              errorMessage = errorData.error.message || errorData.error;
+            } else if (errorData.message) {
+              errorMessage = errorData.message;
+            }
+          } catch (e) {
+            // If response is not JSON, use status text
+            if (response.status === 404) {
+              errorMessage = 'API endpoint /api/v1/config not found. Check that the backend API is properly deployed.';
+            } else {
+              errorMessage = response.statusText || `HTTP ${response.status}`;
+            }
+          }
+          throw new Error(errorMessage);
         }
 
-        const data: BotConfig = await response.json();
+        // Parse API response format: { success: true, data: { botUsername }, meta: {...} }
+        const apiResponse = await response.json();
+        const data: BotConfig = apiResponse.success && apiResponse.data 
+          ? apiResponse.data 
+          : apiResponse; // Fallback for non-standard responses
         
         // Fail fast - no fallbacks
         if (!data.botUsername || data.botUsername.trim() === '') {

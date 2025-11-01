@@ -6,6 +6,7 @@ import { VotesModule } from './votes/votes.module';
 import { PollsModule } from './polls/polls.module';
 import { WalletsModule } from './wallets/wallets.module';
 import { UsersModule } from './users/users.module';
+import { ApiV1ConfigModule } from './config/config.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { UsersModule } from './users/users.module';
     PollsModule,
     WalletsModule,
     UsersModule,
+    ApiV1ConfigModule,
   ],
 })
 export class ApiV1Module {}
