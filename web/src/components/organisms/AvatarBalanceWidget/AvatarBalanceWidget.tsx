@@ -68,7 +68,6 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
               src={avatarUrl}
               alt={userName || 'User'}
               size={40}
-              className="w-10 h-10 sm:w-12 sm:h-12"
               onError={onAvatarUrlNotFound}
             />
             <Button
