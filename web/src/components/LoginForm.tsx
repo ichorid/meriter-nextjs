@@ -19,6 +19,7 @@ import { ErrorDisplay } from '@/components/atoms/ErrorDisplay';
 import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
 import { handleAuthRedirect } from '@/lib/utils/auth';
 import { getErrorMessage } from '@/lib/api/errors';
+import { authApiV1 } from '@/lib/api/v1';
 import type { TelegramUser } from '@/types/telegram';
 
 interface LoginFormProps {
@@ -42,10 +43,24 @@ export function LoginForm({ className = '' }: LoginFormProps) {
   } = useAuth();
   
   const [webAppAuthAttempted, setWebAppAuthAttempted] = useState(false);
+  const [cookiesCleared, setCookiesCleared] = useState(false);
   const telegramWidgetRef = useRef<HTMLDivElement>(null);
   
   // Get return URL
   const returnTo = searchParams?.get('returnTo');
+  
+  // Clear old cookies on page load for external browsers (not in Telegram)
+  // This handles stale cookies with mismatched attributes from previous sessions
+  useEffect(() => {
+    if (!isInTelegram && !cookiesCleared) {
+      setCookiesCleared(true);
+      authApiV1.clearCookies().catch((error) => {
+        // Silently fail - cookies may not exist or clearing may fail
+        // This is not critical for the login flow
+        console.debug('Cookie clearing failed (non-critical):', error);
+      });
+    }
+  }, [isInTelegram, cookiesCleared]);
   
   // Auto-authenticate with Telegram Web App
   useEffect(() => {

@@ -82,6 +82,10 @@ export const authApiV1 = {
   async logout(): Promise<void> {
     await apiClient.post('/api/v1/auth/logout');
   },
+
+  async clearCookies(): Promise<void> {
+    await apiClient.post('/api/v1/auth/clear-cookies');
+  },
 };
 
 // Users API

@@ -259,6 +259,24 @@ export class AuthController {
     });
   }
 
+  @Post('clear-cookies')
+  async clearCookies(@Res() res: any) {
+    this.logger.debug('Cookie clearing request received');
+    
+    // Clear all possible JWT cookie variants
+    // This is useful for clearing old cookies with mismatched attributes
+    // before authentication attempts
+    const cookieDomain = this.getCookieDomain();
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    this.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+    
+    return res.json({
+      success: true,
+      data: { message: 'Cookies cleared successfully' },
+    });
+  }
+
   @Get('me')
   @UseGuards(UserGuard)
   async getCurrentUser(@Res() res: any, @Req() req: any) {

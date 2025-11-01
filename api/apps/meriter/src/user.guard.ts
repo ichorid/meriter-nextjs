@@ -121,6 +121,11 @@ export class UserGuard implements CanActivate {
     const jwt = request.cookies?.jwt;
 
     if (!jwt) {
+      // No cookie detected - proactively clear all possible cookie variants
+      // This handles cases where old cookies exist but aren't being read due to
+      // attribute mismatches (domain, path, secure, sameSite)
+      this.logger.debug('No JWT cookie detected, clearing all possible cookie variants');
+      this.clearJwtCookie(response);
       throw new UnauthorizedException('No JWT token provided');
     }
 
