@@ -5,6 +5,8 @@ import { config } from '@/config';
 import { transformAxiosError } from './errors';
 import { ValidationError as ZodValidationError } from './validation';
 import { formatValidationError, logValidationError } from './validation-error-handler';
+import { clearAuthStorage } from '@/lib/utils/auth';
+import { invalidateAuthQueries } from '@/lib/utils/query-client-cache';
 
 interface RequestConfig {
   timeout?: number;
@@ -48,6 +50,16 @@ export class ApiClient {
         return response;
       },
       (error: AxiosError) => {
+        // Handle 401 Unauthorized errors - clear auth storage and allow re-login
+        if (error.response?.status === 401) {
+          // Clear JWT cookie and local storage using the centralized utility
+          if (typeof document !== 'undefined') {
+            clearAuthStorage();
+          }
+          // Invalidate React Query cache to remove stale auth data
+          invalidateAuthQueries();
+        }
+        
         const apiError = transformAxiosError(error);
         return Promise.reject(apiError);
       }

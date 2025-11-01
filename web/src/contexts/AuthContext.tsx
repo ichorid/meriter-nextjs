@@ -46,6 +46,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
   
   const { data: user, isLoading: userLoading, error: userError } = useMe();
   const telegramAuthMutation = useTelegramAuth();
@@ -55,7 +56,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { handleDeepLink } = useDeepLinkHandler(router as unknown as Router, null, undefined);
   
   const isLoading = userLoading || isAuthenticating;
-  const isAuthenticated = !!user && !userError;
+  // Don't treat 401 errors as preventing authentication - allow re-login
+  const isAuthError = userError && 
+    !((userError as any)?.details?.status === 401 || (userError as any)?.code === 'HTTP_401');
+  const isAuthenticated = !!user && !isAuthError;
   
   const authenticateWithTelegram = async (telegramUser: TelegramUser) => {
     try {
@@ -106,9 +110,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
   
   useEffect(() => {
+    let timer: NodeJS.Timeout | undefined;
+    
     if (userError) {
-      setAuthError(userError.message || 'Authentication error');
+      // Check if it's a 401 error - invalid/expired JWT
+      const errorStatus = (userError as any)?.details?.status || (userError as any)?.code;
+      if (errorStatus === 401 || errorStatus === 'HTTP_401') {
+        // Clear auth storage on 401 errors to allow re-login
+        clearAuthStorage();
+        setAuthError(null); // Clear error to allow login
+        setSessionExpired(true); // Show notification to user
+        
+        // Auto-dismiss notification after 5 seconds
+        timer = setTimeout(() => {
+          setSessionExpired(false);
+        }, 5000);
+      } else {
+        setAuthError(userError.message || 'Authentication error');
+        setSessionExpired(false);
+      }
+    } else {
+      setSessionExpired(false);
     }
+    
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, [userError]);
   
   const contextValue: AuthContextType = {
@@ -125,6 +154,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
   
   return (
     <AuthContext.Provider value={contextValue}>
+      {sessionExpired && (
+        <div className="fixed top-4 right-4 z-50 max-w-md animate-fade-in">
+          <div className="alert alert-warning shadow-lg">
+            <div className="flex-1">
+              <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <h3 className="font-bold">Session Expired</h3>
+                <div className="text-sm">Your session has expired. Please log in again.</div>
+              </div>
+            </div>
+            <button 
+              className="btn btn-sm btn-ghost" 
+              onClick={() => setSessionExpired(false)}
+              aria-label="Dismiss notification"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       {children}
     </AuthContext.Provider>
   );

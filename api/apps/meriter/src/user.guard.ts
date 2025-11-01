@@ -19,6 +19,21 @@ export class UserGuard implements CanActivate {
     private configService: ConfigService,
   ) {}
 
+  private clearJwtCookie(response: any): void {
+    const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    // Clear cookie with same attributes used when setting it
+    // This ensures the cookie is properly cleared in all browsers
+    response.clearCookie('jwt', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      path: '/',
+      domain: cookieDomain,
+    });
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const response = context.switchToHttp().getResponse();
@@ -49,7 +64,7 @@ export class UserGuard implements CanActivate {
           'This may indicate a deleted user, invalid token, or database issue',
         );
         // Clear the stale JWT cookie
-        response.clearCookie('jwt', { path: '/' });
+        this.clearJwtCookie(response);
         throw new UnauthorizedException('User not found');
       }
 
@@ -73,6 +88,14 @@ export class UserGuard implements CanActivate {
         this.logger.error('1. JWT_SECRET environment variable is missing or incorrect');
         this.logger.error('2. JWT_SECRET was changed after tokens were issued');
         this.logger.error('3. Tokens were signed with a different secret');
+        // Clear the invalid JWT cookie so the user can login again
+        this.clearJwtCookie(response);
+      } else if (errorMessage.includes('expired') || errorMessage.includes('jwt expired')) {
+        // Clear expired JWT cookie
+        this.clearJwtCookie(response);
+      } else {
+        // For any other JWT error, also clear the cookie
+        this.clearJwtCookie(response);
       }
       
       throw new UnauthorizedException('Invalid JWT token');

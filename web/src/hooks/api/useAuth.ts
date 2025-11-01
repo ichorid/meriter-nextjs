@@ -9,6 +9,14 @@ export const useMe = () => {
   return useQuery({
     queryKey: queryKeys.auth.me(),
     queryFn: () => authApiV1.getMe(),
+    // Don't refetch on reconnect if query failed with 401
+    refetchOnReconnect: (query) => {
+      const lastError = query.state.error as any;
+      if (lastError?.details?.status === 401 || lastError?.code === 'HTTP_401') {
+        return false;
+      }
+      return true;
+    },
   });
 };
 
