@@ -264,6 +264,7 @@ export class CommunitiesController {
   @Post('sync')
   async syncCommunities(@Req() req: any) {
     const userId = req.user.id;
+    const telegramId = req.user.telegramId;
     this.logger.log(`Syncing communities for user: ${userId}`);
     
     try {
@@ -285,7 +286,7 @@ export class CommunitiesController {
         try {
           const isMember = await this.tgBotsService.tgGetChatMember(
             community.telegramChatId,
-            userId
+            telegramId
           );
           
           if (isMember) {

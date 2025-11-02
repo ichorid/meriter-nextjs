@@ -132,10 +132,15 @@ export class UserGuard implements CanActivate {
     try {
       const jwtSecret = this.configService.get<string>('jwt.secret');
       
-      if (!jwtSecret) {
-        this.logger.error('JWT_SECRET is not configured. Please set JWT_SECRET environment variable.');
+      // Validate JWT secret is configured and not empty
+      if (!jwtSecret || jwtSecret.trim() === '') {
+        this.logger.error('JWT_SECRET is not configured or is empty. Please set JWT_SECRET environment variable.');
+        this.logger.debug(`JWT_SECRET check: exists=${!!jwtSecret}, length=${jwtSecret?.length || 0}, trimmed=${jwtSecret?.trim() || ''}`);
         throw new UnauthorizedException('JWT secret not configured');
       }
+
+      // Log secret status for debugging (without exposing the actual value)
+      this.logger.debug(`JWT secret configured: length=${jwtSecret.length}, firstChar=${jwtSecret[0]}, lastChar=${jwtSecret[jwtSecret.length - 1]}`);
 
       const data: any = verify(jwt, jwtSecret);
 
@@ -174,13 +179,22 @@ export class UserGuard implements CanActivate {
         this.logger.error('1. JWT_SECRET environment variable is missing or incorrect');
         this.logger.error('2. JWT_SECRET was changed after tokens were issued');
         this.logger.error('3. Tokens were signed with a different secret');
+        // Log diagnostic info (without exposing secret)
+        const jwtSecret = this.configService.get<string>('jwt.secret');
+        if (jwtSecret) {
+          this.logger.debug(`Current JWT_SECRET status: configured=true, length=${jwtSecret.length}`);
+        } else {
+          this.logger.error('JWT_SECRET is not configured in ConfigService');
+        }
         // Clear the invalid JWT cookie so the user can login again
         this.clearJwtCookie(response);
       } else if (errorMessage.includes('expired') || errorMessage.includes('jwt expired')) {
+        this.logger.debug('JWT token has expired');
         // Clear expired JWT cookie
         this.clearJwtCookie(response);
       } else {
         // For any other JWT error, also clear the cookie
+        this.logger.debug(`Other JWT verification error: ${errorMessage}`);
         this.clearJwtCookie(response);
       }
       

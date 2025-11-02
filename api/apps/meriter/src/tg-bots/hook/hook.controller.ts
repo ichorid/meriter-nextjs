@@ -31,6 +31,7 @@ export class TelegramHookController {
     // Log basic message info
     if (update?.message) {
       const msgType = update.message.text ? 'text' : 
+                      update.message.connected_website ? 'connected_website' :
                       update.message.new_chat_members ? 'new_members' : 
                       update.message.left_chat_member ? 'left_member' :
                       update.message.photo ? 'photo' : 'other';
@@ -44,6 +45,17 @@ export class TelegramHookController {
           leftMemberUsername: update.message.left_chat_member.username,
           leftMemberFirstName: update.message.left_chat_member.first_name,
           isBot: update.message.left_chat_member.is_bot,
+          botUsername: botUsername
+        });
+      }
+      
+      // Log connected_website events (Telegram authentication notifications)
+      if (update.message.connected_website) {
+        this.logger.log(`🌐 CONNECTED_WEBSITE event detected:`, {
+          chatId: update.message.chat?.id,
+          userId: update.message.from?.id,
+          username: update.message.from?.username,
+          website: update.message.connected_website,
           botUsername: botUsername
         });
       }

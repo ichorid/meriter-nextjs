@@ -170,11 +170,22 @@ export class TgBotsService {
       text,
       caption,
       entities,
+      connected_website,
     } = message;
     const { id: user_id, username, first_name, last_name } = from;
     const { id: chat_id, username: chat_username } = chat;
 
-    this.logger.log(`📝 Message details: from=${user_id} (${username || first_name}), chat=${chat_id}, text="${text || caption}"`);
+    // Handle connected_website messages (Telegram authentication notifications)
+    // These are notifications sent when a user connects to a website via Telegram Login Widget
+    // They don't contain text and should be ignored
+    if (connected_website) {
+      this.logger.log(`🌐 Connected website notification: from=${user_id} (${username || first_name}), chat=${chat_id}, website="${connected_website}"`);
+      return; // Skip processing - these are just notifications
+    }
+
+    // Log message details with proper handling for messages without text
+    const messageText = text || caption || '(no text)';
+    this.logger.log(`📝 Message details: from=${user_id} (${username || first_name}), chat=${chat_id}, text="${messageText}"`);
 
     //MESSAGE TO CHAT
     if ((text || caption) && user_id && chat_id && chat_id !== user_id) {
