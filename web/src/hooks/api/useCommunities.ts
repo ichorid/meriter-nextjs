@@ -52,9 +52,12 @@ export const useSyncCommunities = () => {
   return useMutation({
     mutationFn: () => communitiesApiV1Enhanced.syncCommunities(),
     onSuccess: () => {
-      // Invalidate user communities and user queries to refresh the home page
+      // Invalidate wallets query since wallets are used to display communities on home page
+      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
+      // Invalidate user communities query if any hook uses it
       queryClient.invalidateQueries({ queryKey: ['user-communities'] });
-      queryClient.invalidateQueries({ queryKey: ['user'] });
+      // Invalidate user query to refresh user data
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() });
     },
     onError: (error) => {
       console.error('Sync communities error:', error);

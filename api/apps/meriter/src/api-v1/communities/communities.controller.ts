@@ -274,6 +274,7 @@ export class CommunitiesController {
 
       const communityChatIds: string[] = [];
       let syncedCount = 0;
+      let membershipsAdded = 0;
 
       // Check membership for each community (only active communities)
       for (const community of allCommunities) {
@@ -293,6 +294,29 @@ export class CommunitiesController {
             communityChatIds.push(community.telegramChatId);
             syncedCount++;
             this.logger.log(`User ${userId} is a member of community ${community.name}`);
+            
+            // Update communityTags (used by wallets to find communities)
+            try {
+              await this.tgBotsService.updateUserChatMembership(community.telegramChatId, telegramId);
+            } catch (tagError) {
+              this.logger.warn(
+                `Error updating community tag for community ${community.telegramChatId} to user ${userId}:`,
+                tagError.message
+              );
+            }
+            
+            // Add community membership to user's communityMemberships array (used by getUserCommunities)
+            try {
+              await this.userService.addCommunityMembership(telegramId, community.id);
+              membershipsAdded++;
+              this.logger.log(`Added community ${community.id} to user ${userId} memberships`);
+            } catch (membershipError) {
+              // Log but continue - membership might already exist or there might be a transient error
+              this.logger.warn(
+                `Error adding membership for community ${community.id} to user ${userId}:`,
+                membershipError.message
+              );
+            }
           }
         } catch (error) {
           this.logger.warn(`Error checking membership for community ${community.telegramChatId}:`, error.message);
@@ -300,13 +324,13 @@ export class CommunitiesController {
         }
       }
 
-      this.logger.log(`Synced ${syncedCount} communities for user ${userId}`);
+      this.logger.log(`Synced ${syncedCount} communities for user ${userId}, added ${membershipsAdded} memberships`);
       return {
         success: true,
         data: {
           message: 'Communities synced successfully',
           syncedCount: syncedCount,
-          membershipsUpdated: syncedCount,
+          membershipsUpdated: membershipsAdded,
         },
       };
     } catch (error) {
