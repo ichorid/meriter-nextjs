@@ -198,7 +198,7 @@ export class Poll {
     const updatedOption = PollOption.create(
       option.getId,
       option.getText,
-      currentVotes + 1,
+      currentVotes + amount,
       currentAmount + amount,
       currentCasterCount + (isNewCaster ? 1 : 0)
     );

@@ -145,8 +145,9 @@ export const PollCasting = ({
     };
 
     const getOptionPercentage = (votes: number) => {
-        if (pollData.totalCasts === 0) return 0;
-        return (votes / pollData.totalCasts) * 100;
+        const totalVotes = pollData.options.reduce((sum, opt) => sum + (opt.votes || 0), 0);
+        if (totalVotes === 0) return 0;
+        return (votes / totalVotes) * 100;
     };
 
     // Collapsed view
