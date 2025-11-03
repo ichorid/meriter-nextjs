@@ -58,6 +58,9 @@ const envSchema = z.object({
   // Feature Flags
   NEXT_PUBLIC_ENABLE_ANALYTICS: z.string().optional(),
   NEXT_PUBLIC_ENABLE_DEBUG: z.string().optional(),
+  
+  // Development Mode
+  NEXT_PUBLIC_FAKE_DATA_MODE: z.string().optional(),
 });
 
 // Validate and parse environment variables
@@ -74,6 +77,7 @@ const env = envSchema.parse({
   S3_REGION: process.env.S3_REGION,
   NEXT_PUBLIC_ENABLE_ANALYTICS: process.env.NEXT_PUBLIC_ENABLE_ANALYTICS,
   NEXT_PUBLIC_ENABLE_DEBUG: process.env.NEXT_PUBLIC_ENABLE_DEBUG,
+  NEXT_PUBLIC_FAKE_DATA_MODE: process.env.NEXT_PUBLIC_FAKE_DATA_MODE,
 });
 
 // Derive app URL from DOMAIN
@@ -144,6 +148,11 @@ export const config = {
     debug: env.NEXT_PUBLIC_ENABLE_DEBUG === 'true' || env.NODE_ENV === 'development',
   },
   
+  // Development Mode
+  development: {
+    fakeDataMode: env.NEXT_PUBLIC_FAKE_DATA_MODE === 'true',
+  },
+  
   // Messages and Templates
   // Note: These templates use BOT_USERNAME from process.env directly (server-side only)
   // IMPORTANT: This getter is lazy - it only validates when actually accessed
@@ -196,6 +205,7 @@ export type MessagesConfig = typeof config.messages;
 export const isDevelopment = () => config.app.isDevelopment;
 export const isProduction = () => config.app.isProduction;
 export const isTest = () => config.app.isTest;
+export const isFakeDataMode = () => config.development.fakeDataMode;
 
 // Legacy exports for backward compatibility
 // Note: BOT_USERNAME is no longer available from config - use BotConfigContext instead

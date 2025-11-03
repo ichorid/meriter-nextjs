@@ -7,6 +7,7 @@ import {
   Req,
   UseGuards,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserGuard } from '../../user.guard';
@@ -275,6 +276,53 @@ export class AuthController {
       success: true,
       data: { message: 'Cookies cleared successfully' },
     });
+  }
+
+  @Post('fake')
+  async authenticateFake(@Res() res: any) {
+    try {
+      // Check if fake data mode is enabled
+      if (process.env.FAKE_DATA_MODE !== 'true') {
+        throw new ForbiddenException('Fake data mode is not enabled');
+      }
+
+      this.logger.log('Fake authentication request received');
+
+      const result = await this.authService.authenticateFakeUser();
+      
+      // Set JWT cookie with proper domain for Caddy reverse proxy
+      const cookieDomain = this.getCookieDomain();
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      // Clear any existing JWT cookie first to ensure clean state
+      this.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      
+      // Set new JWT cookie
+      res.cookie('jwt', result.jwt, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
+        path: '/',
+        domain: cookieDomain,
+      });
+
+      this.logger.log('Fake authentication successful, sending response');
+
+      return res.json({
+        success: true,
+        data: {
+          user: result.user,
+          hasPendingCommunities: result.hasPendingCommunities,
+        },
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      this.logger.error('Fake authentication error', error.stack);
+      throw new UnauthorizedError('Fake authentication failed');
+    }
   }
 
   @Get('me')

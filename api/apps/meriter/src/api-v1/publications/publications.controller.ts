@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, ForbiddenException, Logger } from '@nestjs/common';
 import { NotFoundException } from '@nestjs/common';
 import { PublicationService } from '../../domain/services/publication.service';
 import { UserService } from '../../domain/services/user.service';
@@ -17,6 +17,8 @@ import { ZodValidation } from '../../common/decorators/zod-validation.decorator'
 @Controller('api/v1/publications')
 @UseGuards(UserGuard)
 export class PublicationsController {
+  private readonly logger = new Logger(PublicationsController.name);
+
   constructor(
     private publicationService: PublicationService,
     private userService: UserService,
@@ -255,5 +257,111 @@ export class PublicationsController {
     @Body() dto: any,
   ) {
     return this.publicationService.voteOnPublication(id, user.id, dto.amount, dto.direction);
+  }
+
+  @Post('fake-data')
+  async generateFakeData(
+    @User() user: AuthenticatedUser,
+    @Body() body: { type: 'user' | 'beneficiary' },
+  ) {
+    // Check if fake data mode is enabled
+    if (process.env.FAKE_DATA_MODE !== 'true') {
+      throw new ForbiddenException('Fake data mode is not enabled');
+    }
+
+    this.logger.log(`Generating fake data: type=${body.type}, userId=${user.id}`);
+
+    // Get or create a test community
+    let communities = await this.communityService.getAllCommunities(1, 0);
+    let communityId: string;
+
+    if (communities.length === 0) {
+      // Create a test community if none exists
+      const testCommunity = await this.communityService.createCommunity({
+        name: 'Test Community',
+        description: 'Test community for fake data',
+        telegramChatId: '-1',
+        hashtags: ['#test'],
+      });
+      communityId = testCommunity.id;
+      this.logger.log(`Created test community: ${communityId}`);
+    } else {
+      communityId = communities[0].id;
+    }
+
+    const createdPublications: any[] = [];
+
+    if (body.type === 'user') {
+      // Create 1-2 user posts (by the authenticated fake user)
+      const contents = [
+        'Test post #1 from fake user',
+        'Test post #2 from fake user',
+      ];
+      
+      for (let i = 0; i < Math.min(2, contents.length); i++) {
+        const publication = await this.publicationService.createPublication(user.id, {
+          communityId,
+          content: contents[i],
+          type: 'text',
+          hashtags: ['#test'],
+        });
+        createdPublications.push(publication);
+      }
+    } else if (body.type === 'beneficiary') {
+      // Get a random user (excluding the fake user)
+      const allUsers = await this.userService.getAllUsers(100, 0);
+      const otherUsers = allUsers.filter(u => u.telegramId !== 'fake_user_dev' && u.id !== user.id);
+      
+      let beneficiaryId: string;
+      
+      if (otherUsers.length === 0) {
+        // Create a test beneficiary user if none exists
+        const testBeneficiary = await this.userService.createOrUpdateUser({
+          telegramId: `fake_beneficiary_${Date.now()}`,
+          username: 'fakebeneficiary',
+          firstName: 'Fake',
+          lastName: 'Beneficiary',
+          displayName: 'Fake Beneficiary User',
+        });
+        beneficiaryId = testBeneficiary.id;
+        this.logger.log(`Created test beneficiary user: ${beneficiaryId}`);
+      } else {
+        // Pick a random user
+        const randomIndex = Math.floor(Math.random() * otherUsers.length);
+        beneficiaryId = otherUsers[randomIndex].id;
+        this.logger.log(`Using random beneficiary: ${beneficiaryId}`);
+      }
+
+      // Create 1-2 posts with random beneficiary
+      const contents = [
+        'Test post #1 with beneficiary',
+        'Test post #2 with beneficiary',
+      ];
+      
+      for (let i = 0; i < Math.min(2, contents.length); i++) {
+        try {
+          const publication = await this.publicationService.createPublication(user.id, {
+            communityId,
+            content: contents[i],
+            type: 'text',
+            hashtags: ['#test'],
+            beneficiaryId,
+          });
+          createdPublications.push(publication);
+        } catch (error) {
+          this.logger.error(`Failed to create publication ${i + 1}:`, error);
+        }
+      }
+    }
+
+    this.logger.log(`Created ${createdPublications.length} fake publications`);
+
+    return {
+      success: true,
+      data: {
+        publications: createdPublications,
+        count: createdPublications.length,
+      },
+    };
   }
 }

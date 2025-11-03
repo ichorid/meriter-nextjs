@@ -20,6 +20,7 @@ import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
 import { handleAuthRedirect } from '@/lib/utils/auth';
 import { getErrorMessage } from '@/lib/api/errors';
 import { authApiV1 } from '@/lib/api/v1';
+import { isFakeDataMode } from '@/config';
 import type { TelegramUser } from '@/types/telegram';
 
 interface LoginFormProps {
@@ -32,10 +33,12 @@ export function LoginForm({ className = '' }: LoginFormProps) {
   const t = useTranslations('login');
   const { botUsername } = useBotConfig();
   const { initData, isInTelegram } = useTelegramWebApp();
+  const fakeDataMode = isFakeDataMode();
   
   const { 
     authenticateWithTelegram, 
-    authenticateWithTelegramWebApp, 
+    authenticateWithTelegramWebApp,
+    authenticateFakeUser,
     isLoading, 
     authError, 
     setAuthError,
@@ -52,7 +55,7 @@ export function LoginForm({ className = '' }: LoginFormProps) {
   // Clear old cookies on page load for external browsers (not in Telegram)
   // This handles stale cookies with mismatched attributes from previous sessions
   useEffect(() => {
-    if (!isInTelegram && !cookiesCleared) {
+    if (!isInTelegram && !cookiesCleared && !fakeDataMode) {
       setCookiesCleared(true);
       authApiV1.clearCookies().catch((error) => {
         // Silently fail - cookies may not exist or clearing may fail
@@ -60,11 +63,11 @@ export function LoginForm({ className = '' }: LoginFormProps) {
         console.debug('Cookie clearing failed (non-critical):', error);
       });
     }
-  }, [isInTelegram, cookiesCleared]);
+  }, [isInTelegram, cookiesCleared, fakeDataMode]);
   
-  // Auto-authenticate with Telegram Web App
+  // Auto-authenticate with Telegram Web App (only if not in fake mode)
   useEffect(() => {
-    if (isInTelegram && initData && !webAppAuthAttempted) {
+    if (!fakeDataMode && isInTelegram && initData && !webAppAuthAttempted) {
       setWebAppAuthAttempted(true);
       
       const performWebAppAuth = async () => {
@@ -83,7 +86,7 @@ export function LoginForm({ className = '' }: LoginFormProps) {
       
       performWebAppAuth();
     }
-  }, [isInTelegram, initData, webAppAuthAttempted, authenticateWithTelegramWebApp, returnTo, setAuthError]);
+  }, [fakeDataMode, isInTelegram, initData, webAppAuthAttempted, authenticateWithTelegramWebApp, returnTo, setAuthError]);
   
   // Handle Telegram widget authentication
   const handleTelegramAuth = async (telegramUser: unknown) => {
@@ -99,10 +102,25 @@ export function LoginForm({ className = '' }: LoginFormProps) {
       setAuthError(message);
     }
   };
+
+  // Handle fake authentication
+  const handleFakeAuth = async () => {
+    try {
+      console.log('🚀 Attempting fake authentication...');
+      await authenticateFakeUser();
+      
+      console.log('✅ Fake authentication successful, redirecting...');
+      handleAuthRedirect(returnTo);
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      console.error('❌ Fake authentication failed:', error);
+      setAuthError(message);
+    }
+  };
   
-  // Set up Telegram widget
+  // Set up Telegram widget (only if not in fake mode)
   useEffect(() => {
-    if (telegramWidgetRef.current && botUsername) {
+    if (!fakeDataMode && telegramWidgetRef.current && botUsername) {
       // Clear existing widget
       telegramWidgetRef.current.innerHTML = '';
       
@@ -120,7 +138,7 @@ export function LoginForm({ className = '' }: LoginFormProps) {
       // Set up global callback
       (window as any).onTelegramAuth = handleTelegramAuth;
     }
-  }, [botUsername, handleTelegramAuth]);
+  }, [fakeDataMode, botUsername, handleTelegramAuth]);
   
   return (
     <div className={`login-form ${className}`}>
@@ -145,7 +163,20 @@ export function LoginForm({ className = '' }: LoginFormProps) {
           
           {!isLoading && (
             <div className="space-y-4">
-              {isInTelegram ? (
+              {fakeDataMode ? (
+                <div className="text-center">
+                  <p className="text-sm text-base-content/70 mb-4">
+                    Fake Data Mode Enabled
+                  </p>
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleFakeAuth}
+                    disabled={isLoading}
+                  >
+                    Fake Login
+                  </button>
+                </div>
+              ) : isInTelegram ? (
                 <div className="text-center">
                   <p className="text-sm text-base-content/70 mb-4">
                     {t('telegramWebApp.detected')}

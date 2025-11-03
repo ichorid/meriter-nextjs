@@ -86,6 +86,24 @@ export const authApiV1 = {
   async clearCookies(): Promise<void> {
     await apiClient.post('/api/v1/auth/clear-cookies');
   },
+
+  async authenticateFakeUser(): Promise<AuthResult> {
+    const response = await apiClient.postRaw<{ success: boolean; data: AuthResult; error?: string }>('/api/v1/auth/fake', {});
+    
+    if (!response.data) {
+      throw new Error('No response data received from server');
+    }
+    
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Authentication failed');
+    }
+    
+    if (!response.data.data) {
+      throw new Error('No data received from server');
+    }
+    
+    return response.data.data;
+  },
 };
 
 // Users API
@@ -403,6 +421,24 @@ export const publicationsApiV1 = {
 
   async deletePublication(id: string): Promise<{ success: boolean }> {
     return apiClient.delete(`/api/v1/publications/${id}`);
+  },
+
+  async generateFakeData(type: 'user' | 'beneficiary'): Promise<{ publications: Publication[]; count: number }> {
+    const response = await apiClient.post<{ success: boolean; data: { publications: Publication[]; count: number }; error?: string }>('/api/v1/publications/fake-data', { type });
+    
+    if (!response.data) {
+      throw new Error('No response data received from server');
+    }
+    
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to generate fake data');
+    }
+    
+    if (!response.data.data) {
+      throw new Error('No data received from server');
+    }
+    
+    return response.data.data;
   },
 };
 

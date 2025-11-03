@@ -48,6 +48,20 @@ export const useTelegramWebAppAuth = () => {
   });
 };
 
+export const useFakeAuth = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: () => authApiV1.authenticateFakeUser(),
+    onSuccess: () => {
+      // Invalidate queries but don't refetch immediately
+      // Let the redirect and page reload handle the refetch
+      // This ensures cookies are properly set before refetching
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all, refetchType: 'none' });
+    },
+  });
+};
+
 export const useLogout = () => {
   const queryClient = useQueryClient();
   

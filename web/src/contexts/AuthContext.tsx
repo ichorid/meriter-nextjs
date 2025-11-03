@@ -14,7 +14,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMe, useTelegramAuth, useTelegramWebAppAuth, useLogout } from '@/hooks/api/useAuth';
+import { useMe, useTelegramAuth, useTelegramWebAppAuth, useFakeAuth, useLogout } from '@/hooks/api/useAuth';
 import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
 import { clearAuthStorage, redirectToLogin, clearJwtCookie } from '@/lib/utils/auth';
 import type { TelegramUser } from '@/types/telegram';
@@ -28,6 +28,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   authenticateWithTelegram: (user: TelegramUser) => Promise<void>;
   authenticateWithTelegramWebApp: (initData: string) => Promise<void>;
+  authenticateFakeUser: () => Promise<void>;
   logout: () => Promise<void>;
   handleDeepLink: (router: Router, searchParams: ParsedUrlQuery, startParam?: string) => void;
   authError: string | null;
@@ -51,6 +52,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { data: user, isLoading: userLoading, error: userError } = useMe();
   const telegramAuthMutation = useTelegramAuth();
   const telegramWebAppAuthMutation = useTelegramWebAppAuth();
+  const fakeAuthMutation = useFakeAuth();
   const logoutMutation = useLogout();
   
   const { handleDeepLink } = useDeepLinkHandler(router as unknown as Router, null, undefined);
@@ -84,6 +86,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Clear any existing JWT cookies before authentication to ensure clean state
       clearJwtCookie();
       await telegramWebAppAuthMutation.mutateAsync(initData);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Authentication failed';
+      setAuthError(message);
+      throw error;
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const authenticateFakeUser = async () => {
+    try {
+      setIsAuthenticating(true);
+      setAuthError(null);
+      // Clear any existing JWT cookies before authentication to ensure clean state
+      clearJwtCookie();
+      await fakeAuthMutation.mutateAsync();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Authentication failed';
       setAuthError(message);
@@ -150,6 +168,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isAuthenticated,
     authenticateWithTelegram,
     authenticateWithTelegramWebApp,
+    authenticateFakeUser,
     logout,
     handleDeepLink,
     authError,

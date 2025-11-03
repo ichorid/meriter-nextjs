@@ -32,6 +32,10 @@ export class AuthService {
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
   ) {}
 
+  private isFakeDataMode(): boolean {
+    return process.env.FAKE_DATA_MODE === 'true';
+  }
+
   async authenticateTelegramWidget(authData: TelegramAuthData): Promise<{
     user: User;
     hasPendingCommunities: boolean;
@@ -209,6 +213,60 @@ export class AuthService {
       jwtSecret,
       '365d',
     );
+
+    return {
+      user: this.mapUserToV1Format(user),
+      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
+      jwt: jwtToken,
+    };
+  }
+
+  async authenticateFakeUser(): Promise<{
+    user: User;
+    hasPendingCommunities: boolean;
+    jwt: string;
+  }> {
+    if (!this.isFakeDataMode()) {
+      throw new Error('Fake data mode is not enabled');
+    }
+
+    const telegramId = 'fake_user_dev';
+    
+    this.logger.log(`Creating or updating fake user ${telegramId}...`);
+
+    const user = await this.userService.createOrUpdateUser({
+      telegramId,
+      username: 'fakedev',
+      firstName: 'Fake',
+      lastName: 'Dev',
+      displayName: 'Fake Dev User',
+      avatarUrl: undefined,
+    });
+
+    if (!user) {
+      throw new Error('Failed to create fake user');
+    }
+
+    this.logger.log(`Fake user ${telegramId} created/updated successfully`);
+
+    // Generate JWT
+    const jwtSecret = this.configService.get<string>('jwt.secret');
+    if (!jwtSecret) {
+      this.logger.error('JWT_SECRET is not configured. Cannot generate JWT token.');
+      throw new Error('JWT secret not configured');
+    }
+    
+    const jwtToken = signJWT(
+      {
+        uid: user.id,
+        telegramId,
+        communityTags: user.communityTags || [],
+      },
+      jwtSecret,
+      '365d',
+    );
+
+    this.logger.log(`JWT generated for fake user ${telegramId}`);
 
     return {
       user: this.mapUserToV1Format(user),
