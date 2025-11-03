@@ -26,6 +26,7 @@
         "cookie": "^0.7.2",
         "emoji-picker-react": "^4.15.0",
         "eruda": "^3.4.3",
+        "framer-motion": "^11.11.17",
         "jsonwebtoken": "^9.0.2",
         "nanoid": "^5.1.6",
         "next": "^15.5.6",

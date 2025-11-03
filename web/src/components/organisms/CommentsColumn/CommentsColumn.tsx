@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Comment } from '@/features/comments/components/comment';
 import { useComments } from '@/shared/hooks/use-comments';
 import { Button } from '@/components/atoms';
 import { useTranslations } from 'next-intl';
+import { CommentsList } from '@/lib/comments/components/CommentsList';
+import { buildTree } from '@/lib/comments/tree';
+import { transformComments } from '@/lib/comments/utils/transform';
 
 export interface CommentsColumnProps {
   publicationSlug: string;
@@ -78,6 +80,17 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
     }
   };
 
+  // Transform Meriter comments to template format and build tree
+  const commentTree = useMemo(() => {
+    if (!comments || comments.length === 0) {
+      return [];
+    }
+    // Transform comments from Meriter format to template format
+    const transformedComments = transformComments(comments as any);
+    // Build tree structure from flat list
+    return buildTree(transformedComments);
+  }, [comments]);
+
   return (
     <div className="h-full flex flex-col bg-base-100 border-l border-base-300">
       {/* Header with close/back button and sort toggle */}
@@ -135,35 +148,10 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
         </div>
       </div>
 
-      {/* Comments list */}
+      {/* Comments list with tree navigation */}
       <div className="flex-1 overflow-y-auto p-4">
-        {comments && comments.length > 0 ? (
-          <div className="space-y-4">
-            {comments.map((c: any) => {
-              const commentKey = c.id || c._id;
-              return (
-                <Comment
-                  key={commentKey}
-                  _id={commentKey}
-                  myId={myId}
-                  balance={balance}
-                  spaceSlug=""
-                  inPublicationSlug={publicationSlug}
-                  activeCommentHook={activeCommentHook}
-                  activeSlider={activeSlider}
-                  setActiveSlider={setActiveSlider}
-                  highlightTransactionId={highlightTransactionId}
-                  wallets={wallets}
-                  activeWithdrawPost={activeWithdrawPost}
-                  setActiveWithdrawPost={setActiveWithdrawPost}
-                  communityId={communityId}
-                  showCommunityAvatar={false}
-                  isDetailPage={false}
-                  {...c}
-                />
-              );
-            })}
-          </div>
+        {commentTree.length > 0 ? (
+          <CommentsList roots={commentTree} />
         ) : (
           <div className="flex items-center justify-center h-full text-base-content/60">
             <p>No comments yet</p>
