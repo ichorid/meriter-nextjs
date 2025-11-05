@@ -12,15 +12,18 @@ import { CommentDetailsPopup } from '@/shared/components/comment-details-popup';
 import { useCommentDetails } from '@/hooks/api/useComments';
 import { classList } from '@/shared/lib/classList';
 import { Button } from '@/components/atoms';
-import type { TreeNode } from '../types';
+import type { TreeNode, FlatItem } from '../types';
 import { getSubtreeSize } from '../tree';
 import { getAvatarUrl } from '../utils/avatar';
+import { calculatePadding } from '../utils/connections';
 
 interface CommentCardProps {
   node: TreeNode;
   depth: number;
   onNavigate: () => void;
   isChainMode?: boolean;
+  connectionMetadata: FlatItem;
+  maxSiblingGroups: Map<number, number>;
   // Props from CommentsColumn
   myId?: string;
   balance?: any;
@@ -48,6 +51,8 @@ export function CommentCard({
   depth,
   onNavigate,
   isChainMode = false,
+  connectionMetadata,
+  maxSiblingGroups,
   myId,
   balance,
   wallets = [],
@@ -196,26 +201,86 @@ export function CommentCard({
   const commentUnderReply = activeCommentHook?.[0] === node.id;
   const avatarUrl = authorMeta?.photoUrl || '';
   
+  // Connection line metadata
+  const paddingLeft = calculatePadding(depth, maxSiblingGroups);
+  const {
+    parentId,
+    hasSiblings,
+    isFirstSibling,
+    isLastSibling,
+    hasChildren,
+  } = connectionMetadata;
+
+  // Determine which lines to draw
+  const needsParentChildLine = parentId !== null;
+  const needsSiblingVerticalLine = hasSiblings;
+  const needsHorizontalFork = hasSiblings;
+  const needsVerticalLineDown = hasChildren || !isLastSibling;
+  
   return (
-    <div
-      className={classList(
-        "comment-vote-wrapper transition-all duration-300 mb-4 relative",
-        { 'ring-2 ring-warning': isChainMode },
-        commentUnderReply ? "scale-100 opacity-100" : 
-        activeSlider && activeSlider !== node.id ? "scale-95 opacity-60" : "scale-100 opacity-100",
-        highlightTransactionId === node.id ? "highlight" : ""
-      )}
-      style={{ marginLeft: `${depth * 16}px` }}
-      data-comment-id={node.id}
-      onClick={(e) => {
-        if (
-          activeSlider === node.id &&
-          !(e.target as any)?.className?.match("clickable")
-        ) {
-          setActiveSlider && setActiveSlider(null);
-        }
-      }}
+    <div 
+      className="relative"
+      style={{ paddingLeft: `${paddingLeft}px` }}
     >
+      {/* Connection lines */}
+      {needsHorizontalFork && (
+        <div
+          className="absolute left-0 top-1/2 w-[20px] h-[1px] -translate-y-1/2 bg-base-300 dark:bg-base-700"
+          style={{ left: `${paddingLeft - 20}px` }}
+        />
+      )}
+      
+      {needsSiblingVerticalLine && (
+        <div
+          className={classList(
+            "absolute left-0 w-[1px] bg-base-300 dark:bg-base-700",
+            isFirstSibling ? "top-1/2" : "-top-[12px]",
+            isLastSibling ? "bottom-1/2" : "-bottom-[12px]"
+          )}
+          style={{ 
+            left: `${paddingLeft - 20}px`,
+          }}
+        />
+      )}
+
+      {needsParentChildLine && !hasSiblings && (
+        <div
+          className="absolute left-0 -top-[12px] w-[1px] bg-base-300 dark:bg-base-700"
+          style={{ 
+            left: `${paddingLeft - 20}px`,
+            height: 'calc(50% + 12px)',
+          }}
+        />
+      )}
+
+      {needsVerticalLineDown && (
+        <div
+          className={classList(
+            "absolute left-0 w-[1px] bg-base-300 dark:bg-base-700",
+            hasSiblings ? "top-1/2 -bottom-[12px]" : "top-1/2 -bottom-[12px]"
+          )}
+          style={{ left: `${paddingLeft - 20}px` }}
+        />
+      )}
+
+      <div
+        className={classList(
+          "comment-vote-wrapper transition-all duration-300 mb-4 relative z-10",
+          { 'ring-2 ring-warning': isChainMode },
+          commentUnderReply ? "scale-100 opacity-100" : 
+          activeSlider && activeSlider !== node.id ? "scale-95 opacity-60" : "scale-100 opacity-100",
+          highlightTransactionId === node.id ? "highlight" : ""
+        )}
+        data-comment-id={node.id}
+        onClick={(e) => {
+          if (
+            activeSlider === node.id &&
+            !(e.target as any)?.className?.match("clickable")
+          ) {
+            setActiveSlider && setActiveSlider(null);
+          }
+        }}
+      >
       {/* Details button - positioned in top right */}
       <Button
         variant="ghost"
@@ -248,14 +313,6 @@ export function CommentCard({
         upvotes={commentUpvotes}
         downvotes={commentDownvotes}
         onClick={() => {
-          console.log('[CommentCard] CardCommentVote onClick called:', {
-            commentId: node.id,
-            depth,
-            nodeChildrenCount: node.children.length,
-            nodeReplyCount: originalComment.metrics?.replyCount ?? 0,
-            metrics: originalComment.metrics,
-            timestamp: new Date().toISOString(),
-          });
           onNavigate();
         }}
         onAvatarUrlNotFound={() => {
@@ -355,6 +412,7 @@ export function CommentCard({
         communityNeedsSetup={communityInfo?.needsSetup}
         communityIsAdmin={communityInfo?.isAdmin}
       />
+      </div>
       <CommentDetailsPopup
         isOpen={showDetailsPopup}
         onClose={() => setShowDetailsPopup(false)}

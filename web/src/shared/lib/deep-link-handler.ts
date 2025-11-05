@@ -29,18 +29,12 @@ export function useDeepLinkHandler(
     
     // Parse Telegram start_param (could be base64url encoded or plain string)
     if (telegramStartParam) {
-      console.log('🔗 Parsing Telegram start_param:', telegramStartParam);
-      console.log('🔗 Start param type:', typeof telegramStartParam);
-      console.log('🔗 Start param length:', telegramStartParam?.length);
-      
       // Check if it looks like base64url encoded data
       if (looksLikeBase64url(telegramStartParam)) {
-        console.log('🔗 Attempting to decode as base64url...');
         try {
           const decoded = decodeTelegramDeepLink(telegramStartParam);
           startapp = decoded.action;
           id = decoded.id;
-          console.log('🔗 Decoded startapp:', startapp, 'id:', id);
         } catch (error) {
           console.error('🔗 Failed to decode Telegram start_param:', error);
           console.error('🔗 Start param value:', telegramStartParam);
@@ -48,7 +42,6 @@ export function useDeepLinkHandler(
           startapp = telegramStartParam;
         }
       } else {
-        console.log('🔗 Treating as plain action parameter');
         startapp = telegramStartParam;
       }
     }
@@ -57,19 +50,15 @@ export function useDeepLinkHandler(
     
     // Handle deep link navigation based on startapp parameter
     if (startapp === 'publication' && id) {
-      console.log('🔗 Deep link: Redirecting to publication:', id);
-      
       // Check if id contains a path like "communities/chatId/posts/slug"
       if (id.includes('communities/') && id.includes('/posts/')) {
         const pathParts = id.split('/');
         if (pathParts.length >= 4) {
           const chatId = pathParts[1];
           const slug = pathParts[3];
-          console.log('🔗 Deep link: Parsed community publication path:', { chatId, slug });
           // Redirect to dedicated post page instead of community page with highlighting
           redirectPath = `/meriter/communities/${chatId}/posts/${slug}`;
         } else {
-          console.log('🔗 Deep link: Invalid publication path format, using default');
           redirectPath = `/meriter/publications/${id}`;
         }
       } else {
@@ -77,22 +66,17 @@ export function useDeepLinkHandler(
         redirectPath = `/meriter/publications/${id}`;
       }
     } else if (startapp === 'community' && id) {
-      console.log('🔗 Deep link: Redirecting to community:', id);
       redirectPath = `/meriter/communities/${id}`;
     } else if (startapp === 'poll' && id) {
-      console.log('🔗 Deep link: Poll detected, will fetch poll data and redirect to community');
       // For polls, we need to fetch the poll data to get the community ID
       // This will be handled by a special poll redirect page
       redirectPath = `/meriter/polls/${id}`;
     } else if (startapp === 'updates') {
-      console.log('🔗 Deep link: Redirecting to updates');
       redirectPath = '/meriter/home?updates=true';
     } else if (returnTo) {
-      console.log('🔗 Deep link: Using returnTo parameter:', returnTo);
       redirectPath = returnTo;
     }
     
-    console.log('🔗 Deep link: Final redirect path:', redirectPath);
     router.push(redirectPath);
   };
 

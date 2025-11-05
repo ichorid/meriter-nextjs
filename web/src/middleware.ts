@@ -4,20 +4,11 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     
-    // Log the full URL that was passed to the server
-    console.log('🌐 Full URL:', request.url);
-    console.log('📍 Pathname:', pathname);
-    console.log('🔍 Search params:', request.nextUrl.searchParams.toString());
-    console.log('🌍 Host:', request.nextUrl.host);
-    console.log('📋 Headers:', Object.fromEntries(request.headers.entries()));
-    console.log('---');
-    
     // Handle Telegram Web App deep links at root
     if (pathname === '/') {
         const tgWebAppStartParam = request.nextUrl.searchParams.get('tgWebAppStartParam');
         
         if (tgWebAppStartParam) {
-            console.log('🔗 Telegram Web App deep link detected, redirecting to login');
             // Redirect to login, preserving the tgWebAppStartParam
             // The login page will extract start_param from Telegram.WebApp.initDataUnsafe
             const loginUrl = new URL('/meriter/login', request.url);

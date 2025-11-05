@@ -39,5 +39,14 @@ export type FlatItem = {
   depth: number;
   node: TreeNode;
   isChain: boolean;
+  // Connection metadata for tree line rendering
+  parentId: string | null;
+  siblingGroupId: string | null; // ID of parent node for grouping siblings
+  siblingIndex: number; // Index within sibling group (0-based)
+  siblingCount: number; // Total number of siblings in the group
+  hasSiblings: boolean; // Whether this node has siblings
+  isFirstSibling: boolean; // Whether this is the first sibling
+  isLastSibling: boolean; // Whether this is the last sibling
+  hasChildren: boolean; // Whether this node has children
 };
 

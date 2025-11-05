@@ -83,17 +83,6 @@ const env = envSchema.parse({
 // Derive app URL from DOMAIN
 const appUrl = deriveAppUrl();
 
-// Debug logging for environment variables
-console.log('🔧 Environment Variables Debug:');
-console.log('  NODE_ENV:', process.env.NODE_ENV);
-console.log('  NEXT_PUBLIC_API_URL (raw):', process.env.NEXT_PUBLIC_API_URL);
-console.log('  NEXT_PUBLIC_API_URL (parsed):', env.NEXT_PUBLIC_API_URL);
-console.log('  NEXT_PUBLIC_DOMAIN:', process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN || '[NOT SET]');
-console.log('  APP_URL (derived):', appUrl);
-console.log('  BOT_TOKEN:', env.BOT_TOKEN ? '[SET]' : '[NOT SET]');
-console.log('  S3_ACCESS_KEY_ID:', env.S3_ACCESS_KEY_ID ? '[SET]' : '[NOT SET]');
-console.log('  S3_SECRET_ACCESS_KEY:', env.S3_SECRET_ACCESS_KEY ? '[SET]' : '[NOT SET]');
-
 // Configuration object with computed values
 export const config = {
   // Application

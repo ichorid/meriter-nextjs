@@ -28,11 +28,8 @@ export async function init(options: {
   const detection = detectTelegramEnvironment();
   
   if (!detection.isTelegramMiniApp) {
-    console.log('🌐 Running in desktop browser mode - skipping all Telegram SDK initialization');
     return;
   }
-
-  console.log('📱 Running in Telegram Mini App mode - initializing SDK');
 
   // Set @telegram-apps/sdk-react debug mode and initialize it.
   setDebug(options.debug);

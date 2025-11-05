@@ -120,29 +120,6 @@ export const Publication = ({
     const showVoteForAuthor = isAuthor && hasBeneficiary; // Author can vote when there's a beneficiary
     const currentScore = currentPlus - currentMinus;
     
-    // Debug logging
-    console.log('[Publication Feed] Mutual Exclusivity Debug:', {
-      slug: postId,
-      myId,
-      authorId,
-      beneficiaryId,
-      hasBeneficiary,
-      isAuthor,
-      isBeneficiary,
-      currentScore,
-      currentPlus,
-      currentMinus,
-    });
-    
-    console.log('[Publication Feed] Button Visibility Logic:', {
-      showWithdraw,
-      showVote,
-      showVoteForAuthor,
-      willShowWithdraw: showWithdraw,
-      willShowVote: showVote || showVoteForAuthor,
-      finalChoice: showWithdraw ? 'WITHDRAW' : (showVote || showVoteForAuthor ? 'VOTE' : 'NONE'),
-    });
-    
     // Withdrawal state management (for author's own posts)
     const [optimisticSum, setOptimisticSum] = useState(sum);
     
@@ -250,17 +227,7 @@ export const Publication = ({
                 beneficiarySubtitle={hasBeneficiary ? beneficiaryUsername : undefined}
                 bottom={
                     (() => {
-                        console.log('[Publication Feed] Rendering bottom component:', {
-                            showWithdraw,
-                            showVote,
-                            showVoteForAuthor,
-                            isBeneficiary,
-                            isAuthor,
-                            hasBeneficiary,
-                        });
-                        
                         if (showWithdraw) {
-                            console.log('[Publication Feed] Rendering BarWithdraw');
                             return (
                                 <BarWithdraw
                                     balance={maxWithdrawAmount}
@@ -291,13 +258,6 @@ export const Publication = ({
                                 />
                             );
                         } else if (showVote || showVoteForAuthor) {
-                            console.log('[Publication Feed] Rendering BarVoteUnified', {
-                                showVote,
-                                showVoteForAuthor,
-                                isBeneficiary,
-                                isAuthor,
-                                hasBeneficiary,
-                            });
                             return (
                                 <BarVoteUnified
                                     score={currentScore}
@@ -317,7 +277,6 @@ export const Publication = ({
                                 />
                             );
                         } else {
-                            console.log('[Publication Feed] Rendering null (no buttons)');
                             return null;
                         }
                     })()

@@ -17,8 +17,6 @@ export class ApiClient {
   private client: AxiosInstance;
 
   constructor(baseURL = '', apiConfig: RequestConfig = {}) {
-    console.log('🌐 API Client initialized with baseURL:', baseURL);
-    
     this.client = axios.create({
       baseURL,
       timeout: apiConfig.timeout || 30000, // Increased timeout for v2

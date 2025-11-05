@@ -72,10 +72,8 @@ export function LoginForm({ className = '' }: LoginFormProps) {
       
       const performWebAppAuth = async () => {
         try {
-          console.log('🚀 Attempting Telegram Web App authentication...');
           await authenticateWithTelegramWebApp(initData);
           
-          console.log('✅ Authentication successful, redirecting...');
           handleAuthRedirect(returnTo);
         } catch (error: unknown) {
           const message = getErrorMessage(error);
@@ -91,10 +89,8 @@ export function LoginForm({ className = '' }: LoginFormProps) {
   // Handle Telegram widget authentication
   const handleTelegramAuth = async (telegramUser: unknown) => {
     try {
-      console.log('🚀 Attempting Telegram widget authentication...');
       await authenticateWithTelegram(telegramUser as TelegramUser);
       
-      console.log('✅ Authentication successful, redirecting...');
       handleAuthRedirect(returnTo);
     } catch (error: unknown) {
       const message = getErrorMessage(error);
@@ -106,10 +102,8 @@ export function LoginForm({ className = '' }: LoginFormProps) {
   // Handle fake authentication
   const handleFakeAuth = async () => {
     try {
-      console.log('🚀 Attempting fake authentication...');
       await authenticateFakeUser();
       
-      console.log('✅ Fake authentication successful, redirecting...');
       handleAuthRedirect(returnTo);
     } catch (error: unknown) {
       const message = getErrorMessage(error);

@@ -38,39 +38,22 @@ export const CardCommentVote = ({
     
     // Handle card click - open details popup if onDetailsClick provided, otherwise use onClick
     const handleCardClick = (e: React.MouseEvent) => {
-        console.log('[CardCommentVote] handleCardClick called:', {
-            hasOnDetailsClick: !!onDetailsClick,
-            hasOnClick: !!onClick,
-            target: (e.target as HTMLElement)?.tagName,
-            targetClassName: (e.target as HTMLElement)?.className,
-            currentTarget: (e.currentTarget as HTMLElement)?.tagName,
-            timestamp: new Date().toISOString(),
-        });
-        
         // Don't trigger if clicking on buttons or interactive elements
         const target = e.target as HTMLElement;
         const isClickable = target.closest('button') || 
                            target.closest('.cursor-pointer') && target.closest('.cursor-pointer') !== e.currentTarget;
         
         if (isClickable) {
-            console.log('[CardCommentVote] Click blocked - clicked on interactive element:', {
-                isButton: !!target.closest('button'),
-                isCursorPointer: !!target.closest('.cursor-pointer'),
-            });
             return; // Let the button handle its own click
         }
         
         // Prioritize onDetailsClick if provided (opens popup)
         // Otherwise fall back to onClick (navigation)
         if (onDetailsClick) {
-            console.log('[CardCommentVote] Calling onDetailsClick');
             e.stopPropagation();
             onDetailsClick();
         } else if (onClick) {
-            console.log('[CardCommentVote] Calling onClick (navigation)');
             onClick();
-        } else {
-            console.log('[CardCommentVote] No click handler provided');
         }
     };
     

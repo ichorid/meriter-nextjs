@@ -13,7 +13,6 @@ mockEnv().then(async () => {
     const detection = detectTelegramEnvironment();
     
     if (!detection.isTelegramMiniApp) {
-      console.log('🌐 Desktop browser mode detected - skipping Telegram-specific initialization');
       // Just initialize with defaults for desktop mode
       const debug = config.app.isDevelopment;
       init({
@@ -23,9 +22,6 @@ mockEnv().then(async () => {
       });
       return;
     }
-
-    // We're in Telegram Mini App mode, proceed with full initialization
-    console.log('📱 Telegram Mini App mode detected');
 
     let launchParams;
     try {

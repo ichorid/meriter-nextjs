@@ -183,16 +183,6 @@ export const usersApiV1 = {
   async getUserQuota(userId: string, communityId?: string): Promise<{ dailyQuota: number; usedToday: number; remainingToday: number; resetAt: string }> {
     const params = communityId ? { communityId } : {};
     const response = await apiClient.get<{ success: boolean; data: { dailyQuota: number; usedToday: number; remainingToday: number; resetAt: string }; meta?: any }>(`/api/v1/users/${userId}/quota`, { params });
-    console.log('[usersApiV1.getUserQuota] Raw API response:', {
-      userId,
-      communityId,
-      params,
-      response,
-      responseData: response?.data,
-      remainingToday: response?.data?.remainingToday,
-      dailyQuota: response?.data?.dailyQuota,
-      usedToday: response?.data?.usedToday,
-    });
     // Extract data from wrapped response
     return response?.data || response;
   },
@@ -224,25 +214,9 @@ export const communitiesApiV1 = {
     // Backend may return either a wrapped { success, data } or a direct object.
     const response = await apiClient.get<any>(`/api/v1/communities/${id}`);
     if (response && typeof response === 'object' && 'data' in response && response.data) {
-      const community = response.data as Community;
-      try {
-        // Log when isAdmin is present from the API response (wrapped)
-        if (Object.prototype.hasOwnProperty.call(community, 'isAdmin')) {
-          // eslint-disable-next-line no-console
-          console.log('[API v1] getCommunity:', { id, isAdmin: (community as any).isAdmin });
-        }
-      } catch {}
-      return community;
+      return response.data as Community;
     }
-    const community = response as Community;
-    try {
-      // Log when isAdmin is present from the API response (direct)
-      if (community && Object.prototype.hasOwnProperty.call(community as any, 'isAdmin')) {
-        // eslint-disable-next-line no-console
-        console.log('[API v1] getCommunity:', { id, isAdmin: (community as any).isAdmin });
-      }
-    } catch {}
-    return community;
+    return response as Community;
   },
 
   async createCommunity(data: { name: string; description?: string; [key: string]: unknown }): Promise<Community> {
@@ -653,9 +627,7 @@ export const votesApiV1 = {
     data: { amount?: number }
   ): Promise<{ success: boolean; data: { amount: number; balance: number; message: string } }> {
     try {
-      console.log('[API] Calling withdrawFromPublication:', { publicationId, data });
       const response = await apiClient.post<{ success: boolean; data: { amount: number; balance: number; message: string }; meta: any }>(`/api/v1/publications/${publicationId}/withdraw`, data);
-      console.log('[API] withdrawFromPublication response:', response);
       return response;
     } catch (error: any) {
       console.error('[API] withdrawFromPublication error:', {
