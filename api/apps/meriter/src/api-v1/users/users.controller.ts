@@ -13,7 +13,7 @@ import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { UserService } from '../../domain/services/user.service';
 import { PublicationService } from '../../domain/services/publication.service';
-import { CommentService } from '../../domain/services/comment.service';
+import { VoteService } from '../../domain/services/vote.service';
 import { UserGuard } from '../../user.guard';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { User, UpdatesFrequencySchema } from '../../../../../../libs/shared-types/dist/index';
@@ -29,7 +29,7 @@ export class UsersController {
   constructor(
     private readonly userService: UserService,
     private readonly publicationService: PublicationService,
-    private readonly commentService: CommentService,
+    private readonly voteService: VoteService,
     @InjectConnection() private mongoose: Connection,
     private readonly userSettingsService: UserSettingsService,
   ) {}
@@ -173,14 +173,14 @@ export class UsersController {
       ? userPublications.map(p => p.getId.getValue())
       : [];
 
-    // Get user's comment IDs (where user is author)
-    const userComments = await this.commentService.getCommentsByAuthor(
+    // Get user's vote IDs (votes where user is the author)
+    const userVotes = await this.voteService.getUserVotes(
       actualUserId,
       1000, // Get all for filtering
       0
     );
-    const userCommentIds = userComments.length > 0
-      ? userComments.map(c => c.getId)
+    const userVoteIds = userVotes.length > 0
+      ? userVotes.map(v => v.id)
       : [];
 
     // Get publications where user is beneficiary
@@ -192,21 +192,21 @@ export class UsersController {
       .project({ id: 1, authorId: 1, communityId: 1, createdAt: 1 })
       .toArray();
 
-    // Query votes on user's publications and comments
-    const voteUpdatesRaw = userPublicationIds.length > 0 || userCommentIds.length > 0
+    // Query votes on user's publications and votes
+    const voteUpdatesRaw = userPublicationIds.length > 0 || userVoteIds.length > 0
       ? await this.mongoose.db
           .collection('votes')
           .find({
             $or: [
               ...(userPublicationIds.length > 0 ? [{ targetType: 'publication', targetId: { $in: userPublicationIds } }] : []),
-              ...(userCommentIds.length > 0 ? [{ targetType: 'comment', targetId: { $in: userCommentIds } }] : []),
+              ...(userVoteIds.length > 0 ? [{ targetType: 'vote', targetId: { $in: userVoteIds } }] : []),
             ],
             userId: { $ne: actualUserId }, // Exclude user's own votes
           })
           .toArray()
       : [];
 
-    // Enrich votes with publication/comment info
+    // Enrich votes with publication/vote info
     const voteUpdates = await Promise.all(
       voteUpdatesRaw.map(async (vote: any) => {
         let publicationId = vote.targetId;
@@ -219,12 +219,19 @@ export class UsersController {
             communityId = pub.getCommunityId.getValue();
           }
         } else {
-          // For comment votes, get publicationId and communityId from comment
-          const comment = await this.commentService.getComment(vote.targetId);
-          if (comment) {
-            publicationId = comment.getTargetId;
-            // Get communityId from the publication
-            if (comment.getTargetType === 'publication') {
+          // For vote-on-vote, traverse up to find publication
+          const targetVote = await this.voteService.getVoteById(vote.targetId);
+          if (targetVote) {
+            // Traverse vote chain to find root publication
+            let currentVote = targetVote;
+            let depth = 0;
+            while (currentVote.targetType === 'vote' && depth < 20) {
+              currentVote = await this.voteService.getVoteById(currentVote.targetId);
+              if (!currentVote) break;
+              depth++;
+            }
+            if (currentVote && currentVote.targetType === 'publication') {
+              publicationId = currentVote.targetId;
               const pub = await this.publicationService.getPublication(publicationId);
               if (pub) {
                 communityId = pub.getCommunityId.getValue();

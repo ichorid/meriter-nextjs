@@ -17,7 +17,6 @@ import type {
   Wallet,
   CreatePublicationDto,
   CreateCommentDto,
-  CreateVoteDto,
   CreatePollDto,
   CreatePollCastDto
 } from '@meriter/shared-types';
@@ -89,7 +88,8 @@ export interface GetPollsResponse extends PaginatedResponse<Poll> {}
 // These are type aliases for convenience - actual types come from shared-types
 export type CreatePublicationRequest = CreatePublicationDto;
 export type CreateCommentRequest = CreateCommentDto;
-export type CreateVoteRequest = CreateVoteDto;
+import { VoteWithCommentDto } from '@meriter/shared-types';
+export type CreateVoteRequest = VoteWithCommentDto;
 export type CreatePollRequest = CreatePollDto;
 export type CreatePollCastRequest = CreatePollCastDto;
 

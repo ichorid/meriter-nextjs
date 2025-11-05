@@ -1,7 +1,7 @@
 // Publication business logic hook
 import { useState, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useVoteOnPublication, useVoteOnComment, useVoteOnPublicationWithComment } from '@/hooks/api';
+import { useVoteOnPublication, useVoteOnVote, useVoteOnPublicationWithComment } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { getWalletBalance } from '@/lib/utils/wallet';
@@ -53,7 +53,7 @@ export function usePublication({
   const [activeSlider, setActiveSlider] = useState<string | null>(null);
 
   const voteOnPublicationMutation = useVoteOnPublication();
-  const voteOnCommentMutation = useVoteOnComment();
+  const voteOnVoteMutation = useVoteOnVote();
   const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
   
   // Get quota for the publication's community
@@ -69,17 +69,18 @@ export function usePublication({
     if (!publication.id) return;
 
     try {
-      const sourceType: 'personal' | 'quota' = 'quota'; // Use quota first for voting
+      // Use quota first for voting
+      // Calculate vote breakdown: quota vs wallet
+      const quotaAmount = amount; // Use quota for voting
+      const walletAmount = 0;
       
-      // Quota and wallet updates are now handled optimistically in the mutation hooks
-
       await voteOnPublicationMutation.mutateAsync({
         publicationId: publication.id,
         data: {
           targetType: 'publication',
           targetId: publication.id,
-          amount,
-          sourceType,
+          quotaAmount,
+          walletAmount,
         },
         communityId: publication.communityId,
       });

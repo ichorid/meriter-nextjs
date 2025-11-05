@@ -18,14 +18,13 @@ import { UserSettingsService } from '../../domain/services/user-settings.service
 import { UserUpdatesService } from '../../domain/services/user-updates.service';
 import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { PublicationService } from '../../domain/services/publication.service';
-import { CommentService } from '../../domain/services/comment.service';
 import { UserService } from '../../domain/services/user.service';
 import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ValidationError } from '../../common/exceptions/api.exceptions';
-import { Vote, CreateVoteDto, CreateVoteDtoSchema, CreateTargetlessVoteDtoSchema, WithdrawAmountDtoSchema, VoteWithCommentDtoSchema } from '../../../../../../libs/shared-types/dist/index';
+import { Vote, VoteWithCommentDto, VoteWithCommentDtoSchema, WithdrawAmountDtoSchema } from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 
 @Controller('api/v1')
@@ -36,7 +35,6 @@ export class VotesController {
   constructor(
     private readonly voteService: VoteService,
     private readonly publicationService: PublicationService,
-    private readonly commentService: CommentService,
     private readonly userService: UserService,
     private readonly walletService: WalletService,
     private readonly communityService: CommunityService,
@@ -67,20 +65,14 @@ export class VotesController {
         {
           $match: {
             userId,
-            communityId: community.id,
-            sourceType: 'quota',
+            communityId,
             createdAt: { $gte: quotaStartTime }
-          }
-        },
-        {
-          $project: {
-            absAmount: { $abs: '$amount' }
           }
         },
         {
           $group: {
             _id: null,
-            total: { $sum: '$absAmount' }
+            total: { $sum: '$amountQuota' }
           }
         }
       ])
@@ -99,53 +91,87 @@ export class VotesController {
   }
 
   /**
+   * Create vote with quota and/or wallet amounts
+   * Creates a single vote document with both amounts
+   */
+  private async createVoteWithQuotaAndWallet(
+    userId: string,
+    targetType: 'publication' | 'vote',
+    targetId: string,
+    quotaAmount: number,
+    walletAmount: number,
+    isDownvote: boolean,
+    communityId: string,
+    community: any,
+    comment: string
+  ): Promise<any> {
+    // Validate that quota is not used for downvotes
+    if (isDownvote && quotaAmount > 0) {
+      throw new BadRequestException('Quota cannot be used for downvotes');
+    }
+
+    // Create single vote with both amounts
+    const vote = await this.voteService.createVote(
+      userId,
+      targetType,
+      targetId,
+      quotaAmount,
+      walletAmount,
+      comment,
+      communityId
+    );
+    
+    // Deduct from wallet if wallet amount is used
+    if (walletAmount > 0) {
+      const transactionType = targetType === 'publication' ? 'publication_vote' : 'vote_vote';
+      await this.walletService.addTransaction(
+        userId,
+        communityId,
+        'debit',
+        walletAmount,
+        'personal',
+        transactionType,
+        targetId,
+        community.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        `Vote on ${targetType} ${targetId}`
+      );
+    }
+    
+    return vote;
+  }
+
+
+  /**
    * Validate and process quotaAmount and walletAmount
    * Returns { quotaAmount, walletAmount, totalAmount, isDownvote }
+   * Note: Downvotes are determined by having quotaAmount === 0 and walletAmount > 0
    */
   private async validateAndProcessVoteAmounts(
     userId: string,
     communityId: string,
     community: any,
-    createDto: CreateVoteDto | any,
+    createDto: VoteWithCommentDto | any,
   ): Promise<{ quotaAmount: number; walletAmount: number; totalAmount: number; isDownvote: boolean }> {
-    let quotaAmount = 0;
-    let walletAmount = 0;
-    let totalAmount = 0;
-    let isDownvote = false;
-
-    // Handle backward compatibility: if amount is provided, use it
-    if (createDto.amount !== undefined) {
-      totalAmount = createDto.amount;
-      isDownvote = totalAmount < 0;
-      
-      // For backward compatibility, use sourceType to determine quota vs wallet
-      const sourceType = createDto.sourceType || 'quota';
-      if (sourceType === 'quota') {
-        quotaAmount = Math.abs(totalAmount);
-      } else {
-        walletAmount = Math.abs(totalAmount);
-      }
-    } else {
-      // New format: use quotaAmount and walletAmount
-      quotaAmount = createDto.quotaAmount ?? 0;
-      walletAmount = createDto.walletAmount ?? 0;
-      totalAmount = quotaAmount + walletAmount;
-      
-      // In new format, downvotes are indicated by negative totalAmount if provided in amount field
-      // OR if we have a direction hint. For now, we'll assume positive amounts are upvotes.
-      // Downvotes must have quotaAmount === 0 and walletAmount > 0
-      // We can't reliably infer direction from amounts alone, so for now we'll handle it
-      // in the validation below: if quotaAmount === 0 and only walletAmount is provided,
-      // it might be a downvote, but we'll need explicit direction indication
-      // For now, assume positive = upvote, and we'll handle direction separately if needed
-    }
+    const quotaAmount = createDto.quotaAmount ?? 0;
+    const walletAmount = createDto.walletAmount ?? 0;
+    const totalAmount = quotaAmount + walletAmount;
+    
+    // Downvotes are indicated by quotaAmount === 0 and walletAmount > 0
+    // This is inferred from the fact that quota cannot be used for downvotes
+    const isDownvote = quotaAmount === 0 && walletAmount > 0;
 
     // Validation: reject double-zero votes
     if (quotaAmount === 0 && walletAmount === 0) {
       throw new BadRequestException('Cannot vote with zero quota and zero wallet amount');
     }
 
-    // Validation: reject quota for downvotes
+    // Validation: reject quota for downvotes (only check if explicitly downvote)
+    // Note: We determine downvote by quotaAmount === 0, so this check is redundant
+    // but kept for clarity
     if (isDownvote && quotaAmount > 0) {
       throw new BadRequestException('Quota cannot be used for downvotes (negative votes)');
     }
@@ -169,19 +195,14 @@ export class VotesController {
       throw new BadRequestException(`Insufficient total balance. Available: ${remainingQuota + walletBalance}, Requested: ${totalAmount}`);
     }
 
-    // Make totalAmount negative if it's a downvote
-    if (isDownvote) {
-      totalAmount = -totalAmount;
-    }
-
     return { quotaAmount, walletAmount, totalAmount, isDownvote };
   }
 
   @Post('publications/:id/votes')
-  @ZodValidation(CreateVoteDtoSchema)
+  @ZodValidation(VoteWithCommentDtoSchema)
   async votePublication(
     @Param('id') id: string,
-    @Body() createDto: CreateVoteDto,
+    @Body() createDto: VoteWithCommentDto,
     @Req() req: any,
   ) {
     // Get the publication to find the communityId
@@ -198,6 +219,12 @@ export class VotesController {
       throw new NotFoundError('Community', communityId);
     }
     
+    // Validate comment is provided
+    const comment = (createDto as any).comment?.trim() || '';
+    if (!comment) {
+      throw new BadRequestException('Comment is required');
+    }
+    
     // Validate and process vote amounts (quotaAmount + walletAmount)
     const { quotaAmount, walletAmount, totalAmount, isDownvote } = 
       await this.validateAndProcessVoteAmounts(req.user.id, communityId, community, createDto);
@@ -207,95 +234,20 @@ export class VotesController {
     const absoluteAmount = Math.abs(totalAmount);
     
     // Create votes atomically: quota vote first, then wallet vote if needed
-    let vote: any;
-    
-    if (quotaAmount > 0 && walletAmount > 0) {
-      // Create both votes atomically
-      const quotaVote = await this.voteService.createVote(
-        req.user.id,
-        'publication',
-        id,
-        isDownvote ? -quotaAmount : quotaAmount,
-        'quota',
-        communityId,
-        createDto.attachedCommentId
-      );
-      
-      const walletVote = await this.voteService.createVote(
-        req.user.id,
-        'publication',
-        id,
-        isDownvote ? -walletAmount : walletAmount,
-        'personal',
-        communityId,
-        createDto.attachedCommentId
-      );
-      
-      // Deduct from wallet
-      await this.walletService.addTransaction(
-        req.user.id,
-        communityId,
-        'debit',
-        walletAmount,
-        'personal',
-        'publication_vote',
-        id,
-        community.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        `Vote on publication ${id}`
-      );
-      
-      // Use the first vote (quota vote) as the main vote for response
-      vote = quotaVote;
-    } else if (quotaAmount > 0) {
-      // Quota vote only
-      vote = await this.voteService.createVote(
-        req.user.id,
-        'publication',
-        id,
-        isDownvote ? -quotaAmount : quotaAmount,
-        'quota',
-        communityId,
-        createDto.attachedCommentId
-      );
-    } else {
-      // Wallet vote only
-      vote = await this.voteService.createVote(
-        req.user.id,
-        'publication',
-        id,
-        isDownvote ? -walletAmount : walletAmount,
-        'personal',
-        communityId,
-        createDto.attachedCommentId
-      );
-      
-      // Deduct from wallet
-      await this.walletService.addTransaction(
-        req.user.id,
-        communityId,
-        'debit',
-        walletAmount,
-        'personal',
-        'publication_vote',
-        id,
-        community.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        `Vote on publication ${id}`
-      );
-    }
+    const vote = await this.createVoteWithQuotaAndWallet(
+      req.user.id,
+      'publication',
+      id,
+      quotaAmount,
+      walletAmount,
+      isDownvote,
+      communityId,
+      community,
+      comment
+    );
     
     // Update publication metrics to reflect the vote immediately
     await this.publicationService.voteOnPublication(id, req.user.id, absoluteAmount, direction);
-    
-    // Note: If there's an attached comment, the comment count was already incremented
-    // in CommentService.createComment when the comment was created
     
     // Immediate notification if enabled for beneficiary
     try {
@@ -356,47 +308,32 @@ export class VotesController {
     return { success: true, data: { message: 'Vote removed successfully' } };
   }
 
-  @Post('comments/:id/votes')
-  @ZodValidation(CreateTargetlessVoteDtoSchema)
-  async voteComment(
+  @Post('votes/:id/votes')
+  @ZodValidation(VoteWithCommentDtoSchema)
+  async voteVote(
     @Param('id') id: string,
-    @Body() createDto: CreateVoteDto,
+    @Body() createDto: VoteWithCommentDto,
     @Req() req: any,
   ) {
-    // Get the comment to find the target
-    const comment = await this.commentService.getComment(id);
-    if (!comment) {
-      throw new NotFoundError('Comment', id);
+    // Validate that target vote exists
+    const targetVote = await this.voteService.getVoteById(id);
+    if (!targetVote) {
+      throw new NotFoundError('Vote', id);
     }
     
-    // Comments don't have direct communityId - need to trace to the publication
-    let communityId: string;
-    
-    if (comment.getTargetType === 'publication') {
-      // Comment is on a publication - get the publication's communityId
-      const publication = await this.publicationService.getPublication(comment.getTargetId);
-      if (!publication) {
-        throw new NotFoundError('Publication', comment.getTargetId);
-      }
-      communityId = publication.getCommunityId.getValue();
-    } else {
-      // Comment is on a comment - need to recursively find the publication
-      // For now, we'll get the parent comment's target
-      const parentComment = await this.commentService.getComment(comment.getTargetId);
-      if (!parentComment || parentComment.getTargetType !== 'publication') {
-        throw new NotFoundError('Root publication not found for comment', id);
-      }
-      const publication = await this.publicationService.getPublication(parentComment.getTargetId);
-      if (!publication) {
-        throw new NotFoundError('Publication', parentComment.getTargetId);
-      }
-      communityId = publication.getCommunityId.getValue();
-    }
+    // Get community ID from target vote
+    const communityId = targetVote.communityId;
     
     // Get community to get currency info (needed for wallet operations)
     const community = await this.communityService.getCommunity(communityId);
     if (!community) {
       throw new NotFoundError('Community', communityId);
+    }
+    
+    // Validate comment is provided
+    const comment = (createDto as any).comment?.trim() || '';
+    if (!comment) {
+      throw new BadRequestException('Comment is required when voting on a vote');
     }
     
     // Validate and process vote amounts (quotaAmount + walletAmount)
@@ -408,88 +345,18 @@ export class VotesController {
     const absoluteAmount = Math.abs(totalAmount);
     
     // Create votes atomically: quota vote first, then wallet vote if needed
-    let vote: any;
-    
-    if (quotaAmount > 0 && walletAmount > 0) {
-      // Create both votes atomically
-      const quotaVote = await this.voteService.createVote(
-        req.user.id,
-        'comment',
-        id,
-        isDownvote ? -quotaAmount : quotaAmount,
-        'quota',
-        communityId,
-      );
-      
-      const walletVote = await this.voteService.createVote(
-        req.user.id,
-        'comment',
-        id,
-        isDownvote ? -walletAmount : walletAmount,
-        'personal',
-        communityId,
-      );
-      
-      // Deduct from wallet
-      await this.walletService.addTransaction(
-        req.user.id,
-        communityId,
-        'debit',
-        walletAmount,
-        'personal',
-        'comment_vote',
-        id,
-        community.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        `Vote on comment ${id}`
-      );
-      
-      // Use the first vote (quota vote) as the main vote for response
-      vote = quotaVote;
-    } else if (quotaAmount > 0) {
-      // Quota vote only
-      vote = await this.voteService.createVote(
-        req.user.id,
-        'comment',
-        id,
-        isDownvote ? -quotaAmount : quotaAmount,
-        'quota',
-        communityId,
-      );
-    } else {
-      // Wallet vote only
-      vote = await this.voteService.createVote(
-        req.user.id,
-        'comment',
-        id,
-        isDownvote ? -walletAmount : walletAmount,
-        'personal',
-        communityId,
-      );
-      
-      // Deduct from wallet
-      await this.walletService.addTransaction(
-        req.user.id,
-        communityId,
-        'debit',
-        walletAmount,
-        'personal',
-        'comment_vote',
-        id,
-        community.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        `Vote on comment ${id}`
-      );
-    }
-    
-    // Update comment metrics to reflect the vote immediately
-    await this.commentService.voteOnComment(id, req.user.id, absoluteAmount, direction);
+    // Vote on the target vote (the beneficiary is the target vote's author)
+    const vote = await this.createVoteWithQuotaAndWallet(
+      req.user.id,
+      'vote',
+      id,
+      quotaAmount,
+      walletAmount,
+      isDownvote,
+      communityId,
+      community,
+      comment
+    );
     
     return {
       data: {
@@ -502,23 +369,52 @@ export class VotesController {
     };
   }
 
-  @Get('comments/:id/votes')
-  async getCommentVotes(
+  @Get('votes/:id/replies')
+  async getVoteReplies(
     @Param('id') id: string,
     @Query() query: any,
     @Req() req: any,
   ) {
+    // Validate that vote exists
+    const vote = await this.voteService.getVoteById(id);
+    if (!vote) {
+      throw new NotFoundError('Vote', id);
+    }
+    
     const pagination = PaginationHelper.parseOptions(query);
-    const result = await this.voteService.getTargetVotes('comment', id);
-    return PaginationHelper.createResult(result, result.length, pagination);
+    const skip = PaginationHelper.getSkip(pagination);
+    const limit = pagination.limit;
+    
+    // Get votes on this vote
+    const votes = await this.voteService.getVotesOnVote(id);
+    
+    // Sort votes
+    const sortField = query.sort || 'createdAt';
+    const sortOrder = (query.order || 'desc') === 'asc' ? 1 : -1;
+    votes.sort((a, b) => {
+      if (sortField === 'createdAt') {
+        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * sortOrder;
+      } else if (sortField === 'score') {
+        // Calculate score as sum of quota and wallet amounts
+        const scoreA = (a.amountQuota || 0) + (a.amountWallet || 0);
+        const scoreB = (b.amountQuota || 0) + (b.amountWallet || 0);
+        return (scoreA - scoreB) * sortOrder;
+      }
+      return 0;
+    });
+    
+    // Apply pagination
+    const paginatedVotes = votes.slice(skip, skip + limit);
+    
+    return PaginationHelper.createResult(paginatedVotes, votes.length, pagination);
   }
 
-  @Delete('comments/:id/votes')
-  async removeCommentVote(
+  @Delete('votes/:id/votes')
+  async removeVoteVote(
     @Param('id') id: string,
     @Req() req: any,
   ) {
-    await this.voteService.removeVote(req.user.id, 'comment', id);
+    await this.voteService.removeVote(req.user.id, 'vote', id);
     return { success: true, data: { message: 'Vote removed successfully' } };
   }
 
@@ -615,54 +511,36 @@ export class VotesController {
     };
   }
 
-  @Post('comments/:id/withdraw')
+  @Post('votes/:id/withdraw')
   @ZodValidation(WithdrawAmountDtoSchema)
-  async withdrawFromComment(
+  async withdrawFromVote(
     @Param('id') id: string,
     @Body() body: any,
     @Req() req: any,
   ) {
-    // Get the comment
-    const comment = await this.commentService.getComment(id);
-    if (!comment) {
-      throw new NotFoundError('Comment', id);
+    // Get the vote
+    const vote = await this.voteService.getVoteById(id);
+    if (!vote) {
+      throw new NotFoundError('Vote', id);
     }
     
-    // Check if user can withdraw
-    const canWithdraw = await this.voteService.canUserWithdraw(req.user.id, 'comment', id);
+    // Check if user can withdraw (must be the vote author)
+    const canWithdraw = await this.voteService.canUserWithdraw(req.user.id, 'vote', id);
     if (!canWithdraw) {
-      throw new BadRequestException('You are not authorized to withdraw from this comment');
+      throw new BadRequestException('You are not authorized to withdraw from this vote');
     }
     
-    // Check balance
-    const balance = comment.getScore;
+    // Get votes on this vote to calculate balance
+    const votesOnVote = await this.voteService.getVotesOnVote(id);
+    const balance = votesOnVote.reduce((sum, v) => sum + ((v.amountQuota || 0) + (v.amountWallet || 0)), 0);
+    
     if (balance <= 0) {
       throw new BadRequestException('No balance available to withdraw');
     }
     
-    // Get beneficiary (always author for comments)
-    const beneficiaryId = comment.getAuthorId.getValue();
-    
-    // Get community - need to trace to publication
-    let communityId: string;
-    if (comment.getTargetType === 'publication') {
-      const publication = await this.publicationService.getPublication(comment.getTargetId);
-      if (!publication) {
-        throw new NotFoundError('Publication', comment.getTargetId);
-      }
-      communityId = publication.getCommunityId.getValue();
-    } else {
-      // Comment on comment - find root publication
-      const parentComment = await this.commentService.getComment(comment.getTargetId);
-      if (!parentComment || parentComment.getTargetType !== 'publication') {
-        throw new NotFoundError('Root publication not found for comment', id);
-      }
-      const publication = await this.publicationService.getPublication(parentComment.getTargetId);
-      if (!publication) {
-        throw new NotFoundError('Publication', parentComment.getTargetId);
-      }
-      communityId = publication.getCommunityId.getValue();
-    }
+    // Get beneficiary (vote author)
+    const beneficiaryId = vote.userId;
+    const communityId = vote.communityId;
     
     // Get community to get currency info
     const community = await this.communityService.getCommunity(communityId);
@@ -684,25 +562,22 @@ export class VotesController {
       'credit',
       withdrawAmount,
       'personal',
-      'comment_withdrawal',
+      'vote_withdrawal',
       id,
       community.settings?.currencyNames || {
         singular: 'merit',
         plural: 'merits',
         genitive: 'merits',
       },
-      `Withdrawal from comment ${id}`
+      `Withdrawal from vote ${id}`
     );
-    
-    // Update comment metrics
-    await this.commentService.voteOnComment(id, req.user.id, withdrawAmount, 'down');
     
     return {
       success: true,
       data: {
         amount: withdrawAmount,
         balance: balance - withdrawAmount,
-        message: `Successfully withdrew ${withdrawAmount} from comment`,
+        message: `Successfully withdrew ${withdrawAmount} from vote`,
       },
       meta: {
         timestamp: new Date().toISOString(),
@@ -718,202 +593,8 @@ export class VotesController {
     @Body() body: any,
     @Req() req: any,
   ) {
-    // Get the publication to find the communityId
-    const publication = await this.publicationService.getPublication(id);
-    if (!publication) {
-      throw new NotFoundError('Publication', id);
-    }
-    
-    const communityId = publication.getCommunityId.getValue();
-    
-    // Get community to get currency info (needed for wallet operations)
-    const community = await this.communityService.getCommunity(communityId);
-    if (!community) {
-      throw new NotFoundError('Community', communityId);
-    }
-    
-    let commentId: string | undefined;
-    let comment = null;
-    
-    // Only create a comment if content is provided and non-empty
-    const commentContent = body.comment?.trim();
-    if (commentContent) {
-      try {
-        const createdComment = await this.commentService.createComment(req.user.id, {
-          targetType: 'publication',
-          targetId: id,
-          content: commentContent,
-        });
-        commentId = createdComment.getId;
-        
-        // Fetch comment with full metadata for response
-        const commentSnapshot = createdComment.toSnapshot();
-        const authorId = createdComment.getAuthorId.getValue();
-        let author = null;
-        try {
-          author = await this.userService.getUser(authorId);
-        } catch (error) {
-          this.logger.warn(`Failed to fetch author ${authorId}:`, error.message);
-        }
-        
-        comment = {
-          ...commentSnapshot,
-          createdAt: commentSnapshot.createdAt.toISOString(),
-          updatedAt: commentSnapshot.updatedAt.toISOString(),
-          meta: {
-            author: author ? {
-              id: author.id,
-              name: author.displayName || `${author.firstName || ''} ${author.lastName || ''}`.trim() || author.username || 'Unknown',
-              username: author.username,
-              photoUrl: author.avatarUrl,
-            } : {
-              id: undefined,
-              name: 'Unknown',
-              username: undefined,
-              photoUrl: undefined,
-            },
-          },
-        };
-      } catch (error) {
-        this.logger.error('Failed to create comment:', error);
-        throw new ValidationError('Failed to create comment: ' + error.message);
-      }
-    }
-    
-    // Validate and process vote amounts (quotaAmount + walletAmount)
-    const { quotaAmount, walletAmount, totalAmount, isDownvote } = 
-      await this.validateAndProcessVoteAmounts(req.user.id, communityId, community, body);
-    
-    // Determine vote direction
-    const direction: 'up' | 'down' = isDownvote ? 'down' : 'up';
-    const absoluteAmount = Math.abs(totalAmount);
-    
-    // Create votes atomically: quota vote first, then wallet vote if needed
-    // Attach comment only to the first vote
-    let vote: any;
-    
-    if (quotaAmount > 0 && walletAmount > 0) {
-      // Create both votes atomically, attach comment only to the first vote
-      const quotaVote = await this.voteService.createVote(
-        req.user.id,
-        'publication',
-        id,
-        isDownvote ? -quotaAmount : quotaAmount,
-        'quota',
-        communityId,
-        commentId // Attach comment to first vote only
-      );
-      
-      const walletVote = await this.voteService.createVote(
-        req.user.id,
-        'publication',
-        id,
-        isDownvote ? -walletAmount : walletAmount,
-        'personal',
-        communityId,
-        // Don't attach comment to second vote
-      );
-      
-      // Deduct from wallet
-      await this.walletService.addTransaction(
-        req.user.id,
-        communityId,
-        'debit',
-        walletAmount,
-        'personal',
-        'publication_vote',
-        id,
-        community.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        `Vote on publication ${id}`
-      );
-      
-      // Use the first vote (quota vote) as the main vote for response
-      vote = quotaVote;
-    } else if (quotaAmount > 0) {
-      // Quota vote only
-      vote = await this.voteService.createVote(
-        req.user.id,
-        'publication',
-        id,
-        isDownvote ? -quotaAmount : quotaAmount,
-        'quota',
-        communityId,
-        commentId // Attach comment to vote
-      );
-    } else {
-      // Wallet vote only
-      vote = await this.voteService.createVote(
-        req.user.id,
-        'publication',
-        id,
-        isDownvote ? -walletAmount : walletAmount,
-        'personal',
-        communityId,
-        commentId // Attach comment to vote
-      );
-      
-      // Deduct from wallet
-      await this.walletService.addTransaction(
-        req.user.id,
-        communityId,
-        'debit',
-        walletAmount,
-        'personal',
-        'publication_vote',
-        id,
-        community.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        `Vote on publication ${id}`
-      );
-    }
-    
-    // Update publication metrics to reflect the vote immediately
-    await this.publicationService.voteOnPublication(id, req.user.id, absoluteAmount, direction);
-    
-    // Immediate notification if enabled for beneficiary
-    try {
-      const beneficiaryId = publication.getEffectiveBeneficiary()?.getValue();
-      if (beneficiaryId) {
-        const settings = await this.userSettingsService.getOrCreate(beneficiaryId);
-        if (settings.updatesFrequency === 'immediate') {
-          this.logger.log(`Immediate updates enabled; sending Telegram notification to beneficiary=${beneficiaryId} for publication=${id}`);
-          const voterDisplayName = req.user.displayName || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'Unknown';
-          await this.tgBotsService.sendImmediateVoteNotification(
-            beneficiaryId,
-            {
-              actorId: req.user.id,
-              actorName: voterDisplayName,
-              actorUsername: req.user.username,
-              targetType: 'publication',
-              targetId: id,
-              publicationId: id,
-              communityId: communityId,
-              amount: absoluteAmount,
-              direction: direction,
-              createdAt: new Date(),
-            },
-            'en'
-          );
-        }
-      }
-    } catch {}
-    
-    return {
-      data: {
-        vote,
-        comment: comment || undefined,
-      },
-      meta: {
-        timestamp: new Date().toISOString(),
-        requestId: req.headers['x-request-id'] || 'unknown',
-      },
-    };
+    // This endpoint is now redundant since votePublication requires comment
+    // But keeping for backward compatibility - redirect to votePublication logic
+    return this.votePublication(id, body, req);
   }
 }

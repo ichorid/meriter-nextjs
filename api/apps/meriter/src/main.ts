@@ -36,7 +36,17 @@ async function bootstrap() {
     rawBody: true,
   });
   
-  // CORS not needed - Caddy handles routing for both local dev and production
+  // Enable CORS for development (when not using Caddy)
+  // In production, Caddy handles routing and CORS is not needed
+  if (!isProduction) {
+    app.enableCors({
+      origin: ['http://localhost:8001', 'http://localhost:3000', 'http://localhost:8080'],
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+    });
+    logger.log('CORS enabled for development');
+  }
   
   const configService = app.get(ConfigService);
 

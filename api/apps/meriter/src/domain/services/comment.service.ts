@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, forwardRef, Inject } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { Comment } from '../aggregates/comment/comment.entity';
@@ -8,6 +8,7 @@ import { UserId } from '../value-objects';
 import { CommentAddedEvent, CommentVotedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { CommentDocument as ICommentDocument } from '../../common/interfaces/comment-document.interface';
+import { PublicationService } from './publication.service';
 
 export interface CreateCommentDto {
   targetType: 'publication' | 'comment';
@@ -25,6 +26,7 @@ export class CommentService {
     @InjectModel(PublicationSchema.name) private publicationModel: Model<PublicationDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
+    @Inject(forwardRef(() => PublicationService)) private publicationService: PublicationService,
   ) {}
 
   async createComment(userId: string, dto: CreateCommentDto): Promise<Comment> {
@@ -39,17 +41,29 @@ export class CommentService {
         throw new NotFoundException('Publication not found');
       }
     } else {
+      // targetId should always be a real comment ID, not a vote-comment ID
+      if (dto.targetId.startsWith('vote_')) {
+        throw new NotFoundException(`Invalid targetId: cannot use vote-comment ID '${dto.targetId}' as targetId. Vote-comment IDs can only be used as parentCommentId.`);
+      }
       const parentComment = await this.commentModel.findOne({ id: dto.targetId }).lean();
       if (!parentComment) {
-        throw new NotFoundException('Parent comment not found');
+        throw new NotFoundException(`Comment with id '${dto.targetId}' not found`);
       }
     }
 
     // Validate parent comment if replying to comment
+    // Allow vote-comment IDs (starting with 'vote_') as parentCommentId
     if (dto.parentCommentId) {
-      const parent = await this.commentModel.findOne({ id: dto.parentCommentId }).lean();
-      if (!parent) {
-        throw new NotFoundException('Parent comment not found');
+      if (dto.parentCommentId.startsWith('vote_')) {
+        // This is a vote-comment - validate that the vote exists
+        // We'll allow it since vote-comments are valid parents
+        // (they're synthetic but represent valid hierarchy)
+      } else {
+        // Regular comment parent - validate it exists
+        const parent = await this.commentModel.findOne({ id: dto.parentCommentId }).lean();
+        if (!parent) {
+          throw new NotFoundException('Parent comment not found');
+        }
       }
     }
 
@@ -141,8 +155,16 @@ export class CommentService {
     const sortValue = sortOrder === 'asc' ? 1 : -1;
     const sort: Record<string, 1 | -1> = { [dbSortField]: sortValue };
     
+    // Query for both:
+    // 1. Comments that are direct replies (parentCommentId matches)
+    // 2. Comments that are votes on this comment (targetType: 'comment' and targetId matches)
     const docs = await this.commentModel
-      .find({ parentCommentId: commentId })
+      .find({
+        $or: [
+          { parentCommentId: commentId },
+          { targetType: 'comment', targetId: commentId }
+        ]
+      })
       .limit(limit)
       .skip(skip)
       .sort(sort as any)
@@ -226,5 +248,50 @@ export class CommentService {
 
     await this.commentModel.deleteOne({ id: commentId });
     return true;
+  }
+
+  /**
+   * Resolve comment to its community ID by traversing up to the publication.
+   * Comments don't have direct communityId - need to trace to the publication.
+   */
+  async resolveCommentCommunityId(commentId: string): Promise<string> {
+    const comment = await this.getComment(commentId);
+    if (!comment) {
+      throw new NotFoundException(`Comment not found: ${commentId}`);
+    }
+
+    // If comment is on a publication, get the publication's communityId
+    if (comment.getTargetType === 'publication') {
+      const publication = await this.publicationService.getPublication(comment.getTargetId);
+      if (!publication) {
+        throw new NotFoundException(`Publication not found: ${comment.getTargetId}`);
+      }
+      return publication.getCommunityId.getValue();
+    }
+
+    // Comment is on another comment - recursively find the publication
+    let currentComment = comment;
+    let depth = 0;
+    const maxDepth = 20; // Prevent infinite loops
+
+    while (currentComment.getTargetType === 'comment' && depth < maxDepth) {
+      const parentComment = await this.getComment(currentComment.getTargetId);
+      if (!parentComment) {
+        throw new NotFoundException(`Parent comment not found: ${currentComment.getTargetId}`);
+      }
+
+      if (parentComment.getTargetType === 'publication') {
+        const publication = await this.publicationService.getPublication(parentComment.getTargetId);
+        if (!publication) {
+          throw new NotFoundException(`Publication not found: ${parentComment.getTargetId}`);
+        }
+        return publication.getCommunityId.getValue();
+      }
+
+      currentComment = parentComment;
+      depth++;
+    }
+
+    throw new NotFoundException(`Could not find root publication for comment (max depth reached): ${commentId}`);
   }
 }

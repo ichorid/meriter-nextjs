@@ -29,10 +29,10 @@ export const VotableMetricsSchema = z.object({
 
 /**
  * Schema for polymorphic references
- * Used for comments and votes that can target either publications or comments
+ * Used for votes that can target either publications or other votes
  */
 export const PolymorphicReferenceSchema = z.object({
-  targetType: z.enum(['publication', 'comment']),
+  targetType: z.enum(['publication', 'vote']),
   targetId: z.string().min(1),
 });
 

@@ -2,13 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { PublicationService } from './publication.service';
-import { CommentService } from './comment.service';
+import { VoteService } from './vote.service';
 
 export interface UpdateEventItem {
   id: string;
   eventType: 'vote' | 'beneficiary';
   actor: { id: string; name: string; username?: string; avatarUrl?: string };
-  targetType: 'publication' | 'comment';
+  targetType: 'publication' | 'vote';
   targetId: string;
   publicationId: string;
   communityId?: string;
@@ -24,7 +24,7 @@ export class UserUpdatesService {
   constructor(
     @InjectConnection() private readonly mongoose: Connection,
     private readonly publicationService: PublicationService,
-    private readonly commentService: CommentService,
+    private readonly voteService: VoteService,
   ) {}
 
   async getUserUpdateEvents(userId: string, from: Date, to: Date): Promise<UpdateEventItem[]> {
@@ -32,17 +32,17 @@ export class UserUpdatesService {
     const userPublications = await this.publicationService.getPublicationsByAuthor(userId, 1000, 0);
     const userPublicationIds = userPublications.map(p => p.getId.getValue());
 
-    // Get user's comments
-    const userComments = await this.commentService.getCommentsByAuthor(userId, 1000, 0);
-    const userCommentIds = userComments.map(c => c.getId);
+    // Get user's votes (votes where user is the author)
+    const userVotes = await this.voteService.getUserVotes(userId, 1000, 0);
+    const userVoteIds = userVotes.map(v => v.id);
 
-    // Votes on user's publications/comments within window
-    const voteUpdatesRaw = (userPublicationIds.length > 0 || userCommentIds.length > 0)
+    // Votes on user's publications/votes within window
+    const voteUpdatesRaw = (userPublicationIds.length > 0 || userVoteIds.length > 0)
       ? await this.mongoose.db.collection('votes')
           .find({
             $or: [
               ...(userPublicationIds.length > 0 ? [{ targetType: 'publication', targetId: { $in: userPublicationIds } }] : []),
-              ...(userCommentIds.length > 0 ? [{ targetType: 'comment', targetId: { $in: userCommentIds } }] : []),
+              ...(userVoteIds.length > 0 ? [{ targetType: 'vote', targetId: { $in: userVoteIds } }] : []),
             ],
             userId: { $ne: userId },
             createdAt: { $gte: from, $lt: to },
@@ -65,10 +65,19 @@ export class UserUpdatesService {
           const pub = await this.publicationService.getPublication(vote.targetId);
           if (pub) communityId = pub.getCommunityId.getValue();
         } else {
-          const comment = await this.commentService.getComment(vote.targetId);
-          if (comment) {
-            publicationId = comment.getTargetId;
-            if (comment.getTargetType === 'publication') {
+          // Vote on vote - need to traverse up to find publication
+          const targetVote = await this.voteService.getVoteById(vote.targetId);
+          if (targetVote) {
+            // Traverse vote chain to find root publication
+            let currentVote = targetVote;
+            let depth = 0;
+            while (currentVote.targetType === 'vote' && depth < 20) {
+              currentVote = await this.voteService.getVoteById(currentVote.targetId);
+              if (!currentVote) break;
+              depth++;
+            }
+            if (currentVote && currentVote.targetType === 'publication') {
+              publicationId = currentVote.targetId;
               const pub = await this.publicationService.getPublication(publicationId);
               if (pub) communityId = pub.getCommunityId.getValue();
             }

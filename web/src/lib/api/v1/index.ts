@@ -35,6 +35,7 @@ import type {
 import type { PaginatedResponse } from '@/types/api-v1';
 import type { TelegramUser, AuthResult, CommunityMember, LeaderboardEntry, PollCastResult } from '@/types/api-responses';
 import type { UpdateEvent } from '@/types/updates';
+import { VoteWithCommentDto, VoteWithCommentDtoSchema, WithdrawAmountDtoSchema } from '@meriter/shared-types';
 
 // Auth API with enhanced response handling
 export const authApiV1 = {
@@ -249,6 +250,22 @@ export const communitiesApiV1 = {
     return response.data;
   },
 
+  async createFakeCommunity(): Promise<Community> {
+    const response = await apiClient.post<{ success: boolean; data: Community; error?: string }>('/api/v1/communities/fake-community', {});
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to create fake community');
+    }
+    return response.data;
+  },
+
+  async addUserToAllCommunities(): Promise<{ added: number; skipped: number; total: number; errors?: string[] }> {
+    const response = await apiClient.post<{ success: boolean; data: { added: number; skipped: number; total: number; errors?: string[] }; error?: string }>('/api/v1/communities/add-user-to-all', {});
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to add user to all communities');
+    }
+    return response.data;
+  },
+
   async updateCommunity(id: string, data: UpdateCommunityDto): Promise<Community> {
     const response = await apiClient.put<{ success: true; data: Community }>(`/api/v1/communities/${id}`, data);
     return response.data;
@@ -423,22 +440,22 @@ export const publicationsApiV1 = {
     return apiClient.delete(`/api/v1/publications/${id}`);
   },
 
-  async generateFakeData(type: 'user' | 'beneficiary'): Promise<{ publications: Publication[]; count: number }> {
-    const response = await apiClient.post<{ success: boolean; data: { publications: Publication[]; count: number }; error?: string }>('/api/v1/publications/fake-data', { type });
+  async generateFakeData(type: 'user' | 'beneficiary', communityId?: string): Promise<{ publications: Publication[]; count: number }> {
+    const response = await apiClient.post<{ success: boolean; data: { publications: Publication[]; count: number }; error?: string }>('/api/v1/publications/fake-data', { type, communityId });
     
-    if (!response.data) {
+    if (!response) {
       throw new Error('No response data received from server');
     }
     
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Failed to generate fake data');
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to generate fake data');
     }
     
-    if (!response.data.data) {
+    if (!response.data) {
       throw new Error('No data received from server');
     }
     
-    return response.data.data;
+    return response.data;
   },
 };
 
@@ -576,17 +593,17 @@ export const commentsApiV1 = {
 export const votesApiV1 = {
   async voteOnPublication(
     publicationId: string,
-    data: CreateVoteDto
+    data: VoteWithCommentDto
   ): Promise<{ vote: Vote; comment?: Comment; wallet: Wallet }> {
     const response = await apiClient.post<{ success: true; data: { vote: Vote; comment?: Comment; wallet: Wallet } }>(`/api/v1/publications/${publicationId}/votes`, data);
     return response.data;
   },
 
-  async voteOnComment(
-    commentId: string,
-    data: CreateVoteDto
+  async voteOnVote(
+    voteId: string,
+    data: VoteWithCommentDto
   ): Promise<{ vote: Vote; comment?: Comment; wallet: Wallet }> {
-    const response = await apiClient.post<{ success: true; data: { vote: Vote; comment?: Comment; wallet: Wallet } }>(`/api/v1/comments/${commentId}/votes`, data);
+    const response = await apiClient.post<{ success: true; data: { vote: Vote; comment?: Comment; wallet: Wallet } }>(`/api/v1/votes/${voteId}/votes`, data);
     return response.data;
   },
 
@@ -622,8 +639,6 @@ export const votesApiV1 = {
   async voteOnPublicationWithComment(
     publicationId: string,
     data: { 
-      amount?: number; 
-      sourceType?: 'personal' | 'quota'; 
       quotaAmount?: number;
       walletAmount?: number;
       comment?: string;
@@ -656,11 +671,11 @@ export const votesApiV1 = {
     }
   },
 
-  async withdrawFromComment(
-    commentId: string,
+  async withdrawFromVote(
+    voteId: string,
     data: { amount?: number }
   ): Promise<{ success: boolean; data: { amount: number; balance: number; message: string } }> {
-    const response = await apiClient.post<{ success: boolean; data: { amount: number; balance: number; message: string }; meta: any }>(`/api/v1/comments/${commentId}/withdraw`, data);
+    const response = await apiClient.post<{ success: boolean; data: { amount: number; balance: number; message: string }; meta: any }>(`/api/v1/votes/${voteId}/withdraw`, data);
     return response;
   },
 };

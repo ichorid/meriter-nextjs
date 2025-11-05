@@ -262,7 +262,7 @@ export class PublicationsController {
   @Post('fake-data')
   async generateFakeData(
     @User() user: AuthenticatedUser,
-    @Body() body: { type: 'user' | 'beneficiary' },
+    @Body() body: { type: 'user' | 'beneficiary'; communityId?: string },
   ) {
     // Check if fake data mode is enabled
     if (process.env.FAKE_DATA_MODE !== 'true') {
@@ -271,22 +271,46 @@ export class PublicationsController {
 
     this.logger.log(`Generating fake data: type=${body.type}, userId=${user.id}`);
 
-    // Get or create a test community
-    let communities = await this.communityService.getAllCommunities(1, 0);
+    // Get or use the specified community, or create/get a test community
     let communityId: string;
+    let community: any;
 
-    if (communities.length === 0) {
-      // Create a test community if none exists
-      const testCommunity = await this.communityService.createCommunity({
-        name: 'Test Community',
-        description: 'Test community for fake data',
-        telegramChatId: '-1',
-        hashtags: ['#test'],
-      });
-      communityId = testCommunity.id;
-      this.logger.log(`Created test community: ${communityId}`);
+    if (body.communityId) {
+      // Use the specified community
+      communityId = body.communityId;
+      community = await this.communityService.getCommunity(communityId);
+      if (!community) {
+        throw new NotFoundException(`Community ${communityId} not found`);
+      }
+      this.logger.log(`Using specified community: ${communityId}`);
     } else {
-      communityId = communities[0].id;
+      // Get or create a test community
+      let communities = await this.communityService.getAllCommunities(1, 0);
+      if (communities.length === 0) {
+        // Create a test community if none exists
+        const testCommunity = await this.communityService.createCommunity({
+          name: 'Test Community',
+          description: 'Test community for fake data',
+          telegramChatId: '-1',
+          adminsTG: [],
+        });
+        communityId = testCommunity.id;
+        community = testCommunity;
+        this.logger.log(`Created test community: ${communityId}`);
+      } else {
+        communityId = communities[0].id;
+        community = await this.communityService.getCommunity(communityId);
+      }
+    }
+
+    // Ensure the community has the 'test' hashtag for fake data generation
+    const hashtags = community?.hashtags || [];
+    if (!hashtags.includes('test')) {
+      const updatedHashtags = [...hashtags, 'test'];
+      await this.communityService.updateCommunity(communityId, {
+        hashtags: updatedHashtags,
+      });
+      this.logger.log(`Added 'test' hashtag to community ${communityId}`);
     }
 
     const createdPublications: any[] = [];
@@ -308,9 +332,11 @@ export class PublicationsController {
         createdPublications.push(publication);
       }
     } else if (body.type === 'beneficiary') {
-      // Get a random user (excluding the fake user)
+      // Get a random user (excluding fake users)
       const allUsers = await this.userService.getAllUsers(100, 0);
-      const otherUsers = allUsers.filter(u => u.telegramId !== 'fake_user_dev' && u.id !== user.id);
+      const otherUsers = allUsers.filter(u => 
+        !u.telegramId?.startsWith('fake_user_') && u.id !== user.id
+      );
       
       let beneficiaryId: string;
       

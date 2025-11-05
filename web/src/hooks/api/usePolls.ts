@@ -50,8 +50,8 @@ interface PollCast {
 
 interface CastPollRequest {
   optionId: string;
-  amount: number;
-  sourceType?: 'personal' | 'quota'; // Optional, defaults to 'personal' in schema
+  quotaAmount?: number;
+  walletAmount?: number;
 }
 
 // Query keys
@@ -120,8 +120,10 @@ export function useCastPoll() {
   return useMutation({
     mutationFn: ({ id, data, communityId }: { id: string; data: CastPollRequest; communityId?: string }) => 
       pollsApiV1.castPoll(id, {
-        ...data,
-        sourceType: data.sourceType || 'personal', // Ensure sourceType is provided
+        optionId: data.optionId,
+        // Poll casts only use wallet, quotaAmount should be 0
+        quotaAmount: data.quotaAmount ?? 0,
+        walletAmount: data.walletAmount ?? 0,
       }),
     onMutate: async (variables) => {
       const { data, communityId } = variables || {};
@@ -132,10 +134,11 @@ export function useCastPoll() {
       
       // Handle wallet optimistic update (poll casts always use personal wallet)
       if (communityId) {
+        const walletAmount = data.walletAmount || 0;
         const walletUpdate = await updateWalletOptimistically(
           queryClient,
           communityId,
-          Math.abs(data.amount || 0), // Pass positive amount - helper will convert to negative delta for spending
+          Math.abs(walletAmount), // Pass positive amount - helper will convert to negative delta for spending
           queryKeys.wallet
         );
         if (walletUpdate) {

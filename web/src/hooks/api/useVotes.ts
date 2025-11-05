@@ -23,21 +23,8 @@ export function useVoteOnPublication() {
       const context: OptimisticUpdateContext = {};
       
       // Calculate quota and wallet amounts from data
-      let quotaAmount = 0;
-      let walletAmount = 0;
-      
-      if ((data as any).quotaAmount !== undefined || (data as any).walletAmount !== undefined) {
-        // New format: use quotaAmount and walletAmount
-        quotaAmount = (data as any).quotaAmount ?? 0;
-        walletAmount = (data as any).walletAmount ?? 0;
-      } else if (data.amount !== undefined && data.sourceType) {
-        // Old format: use amount and sourceType
-        if (data.sourceType === 'quota') {
-          quotaAmount = Math.abs(data.amount);
-        } else {
-          walletAmount = Math.abs(data.amount);
-        }
-      }
+      const quotaAmount = (data as any).quotaAmount ?? 0;
+      const walletAmount = (data as any).walletAmount ?? 0;
       
       // Handle quota optimistic update
       if (quotaAmount > 0 && user?.id && communityId) {
@@ -111,14 +98,14 @@ export function useVoteOnPublication() {
   });
 }
 
-// Vote on comment
-export function useVoteOnComment() {
+// Vote on vote
+export function useVoteOnVote() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   
   return useMutation({
-    mutationFn: ({ commentId, data, communityId }: { commentId: string; data: CreateVoteRequest; communityId?: string }) => 
-      votesApiV1.voteOnComment(commentId, data),
+    mutationFn: ({ voteId, data, communityId }: { voteId: string; data: CreateVoteRequest; communityId?: string }) => 
+      votesApiV1.voteOnVote(voteId, data),
     onMutate: async (variables) => {
       const { data, communityId } = variables || {};
       const shouldOptimistic = !!user?.id && !!communityId;
@@ -127,21 +114,8 @@ export function useVoteOnComment() {
       const context: OptimisticUpdateContext = {};
       
       // Calculate quota and wallet amounts from data
-      let quotaAmount = 0;
-      let walletAmount = 0;
-      
-      if ((data as any).quotaAmount !== undefined || (data as any).walletAmount !== undefined) {
-        // New format: use quotaAmount and walletAmount
-        quotaAmount = (data as any).quotaAmount ?? 0;
-        walletAmount = (data as any).walletAmount ?? 0;
-      } else if (data.amount !== undefined && data.sourceType) {
-        // Old format: use amount and sourceType
-        if (data.sourceType === 'quota') {
-          quotaAmount = Math.abs(data.amount);
-        } else {
-          walletAmount = Math.abs(data.amount);
-        }
-      }
+      const quotaAmount = (data as any).quotaAmount ?? 0;
+      const walletAmount = (data as any).walletAmount ?? 0;
       
       // Handle quota optimistic update
       if (quotaAmount > 0 && user?.id && communityId) {
@@ -165,9 +139,16 @@ export function useVoteOnComment() {
       
       return context;
     },
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       // Invalidate all comments queries to update vote counts
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
+      
+      // Invalidate specific vote's replies if we have the voteId
+      if (variables?.voteId) {
+        queryClient.invalidateQueries({ queryKey: commentsKeys.byComment(variables.voteId) });
+        // Invalidate all comment queries to refresh vote replies
+        queryClient.invalidateQueries({ queryKey: commentsKeys.all, exact: false });
+      }
       
       // Invalidate wallet queries to update balance
       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
@@ -177,7 +158,7 @@ export function useVoteOnComment() {
       queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
     },
     onError: (error, _vars, ctx) => {
-      console.error('Vote on comment error:', error);
+      console.error('Vote on vote error:', error);
       rollbackOptimisticUpdates(queryClient, ctx);
     },
     onSettled: (_data, _err, vars, ctx) => {
@@ -250,8 +231,6 @@ export function useVoteOnPublicationWithComment() {
     }: { 
       publicationId: string; 
       data: { 
-        amount?: number; 
-        sourceType?: 'personal' | 'quota'; 
         quotaAmount?: number;
         walletAmount?: number;
         comment?: string; 
@@ -266,21 +245,8 @@ export function useVoteOnPublicationWithComment() {
       const context: OptimisticUpdateContext = {};
       
       // Calculate quota and wallet amounts from data
-      let quotaAmount = 0;
-      let walletAmount = 0;
-      
-      if (data.quotaAmount !== undefined || data.walletAmount !== undefined) {
-        // New format: use quotaAmount and walletAmount
-        quotaAmount = data.quotaAmount ?? 0;
-        walletAmount = data.walletAmount ?? 0;
-      } else if (data.amount !== undefined && data.sourceType) {
-        // Old format: use amount and sourceType
-        if (data.sourceType === 'quota') {
-          quotaAmount = Math.abs(data.amount);
-        } else {
-          walletAmount = Math.abs(data.amount);
-        }
-      }
+      const quotaAmount = data.quotaAmount ?? 0;
+      const walletAmount = data.walletAmount ?? 0;
       
       // Handle quota optimistic update
       if (quotaAmount > 0 && user?.id && communityId) {
@@ -403,14 +369,14 @@ export function useWithdrawFromPublication() {
   });
 }
 
-// Withdraw from comment
-export function useWithdrawFromComment() {
+// Withdraw from vote
+export function useWithdrawFromVote() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   
   return useMutation({
-    mutationFn: ({ commentId, amount }: { commentId: string; amount?: number }) => 
-      votesApiV1.withdrawFromComment(commentId, { amount }),
+    mutationFn: ({ voteId, amount }: { voteId: string; amount?: number }) => 
+      votesApiV1.withdrawFromVote(voteId, { amount }),
     onSuccess: (result) => {
       // Invalidate comments to update vote counts/balance
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
@@ -458,7 +424,7 @@ export function useWithdrawFromComment() {
         errorDetails = error.details;
       }
       
-      console.error('Withdraw from comment error:', {
+      console.error('Withdraw from vote error:', {
         message: errorMessage,
         code: errorCode,
         details: errorDetails,

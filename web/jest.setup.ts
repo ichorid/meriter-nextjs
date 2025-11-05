@@ -105,7 +105,14 @@ jest.mock('./src/config/index.ts', () => ({
       botToken: 'test_token',
       botUrl: 'https://t.me/test_bot',
     },
+    development: {
+      fakeDataMode: false,
+    },
   },
+  isFakeDataMode: jest.fn(() => false),
+  isDevelopment: jest.fn(() => true),
+  isProduction: jest.fn(() => false),
+  isTest: jest.fn(() => true),
 }));
 
 

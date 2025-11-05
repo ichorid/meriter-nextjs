@@ -74,6 +74,20 @@ jest.mock('@/contexts/AppModeContext', () => ({
   useAppMode: jest.fn(),
 }));
 
+// Mock useTelegramWebApp
+jest.mock('@/hooks/useTelegramWebApp', () => ({
+  useTelegramWebApp: jest.fn(() => ({
+    isInTelegram: false,
+    initData: null,
+    user: null,
+    colorScheme: 'light',
+    themeParams: {},
+    version: '1.0',
+    platform: 'web',
+    ready: true,
+  })),
+}));
+
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppMode } from '@/contexts/AppModeContext';
 
@@ -125,6 +139,7 @@ describe('Login Page Integration', () => {
       isAuthenticated: false,
       authenticateWithTelegram: jest.fn().mockResolvedValue({}),
       authenticateWithTelegramWebApp: jest.fn().mockResolvedValue({}),
+      authenticateFakeUser: jest.fn().mockResolvedValue({}),
       logout: jest.fn(),
       handleDeepLink: jest.fn(),
       authError: null,
@@ -452,6 +467,7 @@ describe('Login Page Integration', () => {
         isAuthenticated: false,
         authenticateWithTelegram: mockAuthenticateWithTelegram,
         authenticateWithTelegramWebApp: jest.fn(),
+        authenticateFakeUser: jest.fn().mockResolvedValue({}),
         logout: jest.fn(),
         handleDeepLink: jest.fn(),
         authError: null,

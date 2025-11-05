@@ -81,8 +81,8 @@ export const PollCasting = ({
         try {
             await pollsApiV1.castPoll(pollId, {
                 optionId: selectedOptionId,
-                amount: castAmount,
-                sourceType: 'personal', // Default to personal quota
+                quotaAmount: 0, // Poll casts only use wallet
+                walletAmount: castAmount,
             });
 
             onCastSuccess && onCastSuccess();

@@ -10,13 +10,17 @@ import {
   Req,
   UseGuards,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { CommunityService } from '../../domain/services/community.service';
 import { PublicationService } from '../../domain/services/publication.service';
 import { UserService } from '../../domain/services/user.service';
 import { CommunityFeedService } from '../../domain/services/community-feed.service';
+import { WalletService } from '../../domain/services/wallet.service';
 import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { UserGuard } from '../../user.guard';
+import { User } from '../../decorators/user.decorator';
+import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
 import { Community, UpdateCommunityDto, UpdateCommunityDtoSchema, CreateCommunityDtoSchema } from '../../../../../../libs/shared-types/dist/index';
@@ -35,6 +39,7 @@ export class CommunitiesController {
     private readonly publicationService: PublicationService,
     private readonly userService: UserService,
     private readonly communityFeedService: CommunityFeedService,
+    private readonly walletService: WalletService,
     private readonly tgBotsService: TgBotsService,
   ) {}
 
@@ -260,6 +265,166 @@ export class CommunitiesController {
   //   const result = await this.communityService.getCommunityMembers(id, pagination);
   //   return result;
   // }
+
+  @Post('fake-community')
+  async createFakeCommunity(@User() user: AuthenticatedUser) {
+    // Check if fake data mode is enabled
+    if (process.env.FAKE_DATA_MODE !== 'true') {
+      throw new ForbiddenException('Fake data mode is not enabled');
+    }
+
+    this.logger.log(`Creating fake community for user: ${user.id}`);
+
+    // Create a test community
+    const testCommunity = await this.communityService.createCommunity({
+      name: `Test Community ${Date.now()}`,
+      description: 'Test community for fake data',
+      telegramChatId: `-${Date.now()}`,
+      adminsTG: [user.telegramId || `fake_user_${Date.now()}`],
+    });
+
+    this.logger.log(`Created fake community: ${testCommunity.id}`);
+
+    // Add user to the community
+    // 1. Add user to community's members list
+    await this.communityService.addMember(testCommunity.id, user.id);
+    
+    // 2. Add community to user's memberships
+    if (!user.telegramId) {
+      throw new Error('User telegramId is required');
+    }
+    await this.userService.addCommunityMembership(user.telegramId, testCommunity.id);
+    
+    // 3. Add community's telegramChatId to user's communityTags
+    // This is required for the community to show up in the user's communities list
+    const userDoc = await this.userService.getUserByTelegramId(user.telegramId);
+    if (userDoc) {
+      const currentTags = userDoc.communityTags || [];
+      if (!currentTags.includes(testCommunity.telegramChatId)) {
+        // Use UserService's internal model to update communityTags
+        // We need to access the model through the service's private property
+        const UserModel = (this.userService as any).userModel;
+        if (UserModel) {
+          await UserModel.updateOne(
+            { telegramId: user.telegramId },
+            { 
+              $addToSet: { communityTags: testCommunity.telegramChatId },
+              $set: { updatedAt: new Date() }
+            }
+          );
+          this.logger.log(`Added community ${testCommunity.telegramChatId} to user's communityTags`);
+        }
+      }
+    }
+
+    this.logger.log(`Added user ${user.id} to fake community ${testCommunity.id}`);
+
+    // 4. Create wallet for the user in this community
+    // This ensures the wallet is immediately available and prevents 404 errors
+    const currency = testCommunity.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+    await this.walletService.createOrGetWallet(user.id, testCommunity.id, currency);
+    this.logger.log(`Created wallet for user ${user.id} in fake community ${testCommunity.id}`);
+
+    return {
+      success: true,
+      data: {
+        ...testCommunity,
+        adminsTG: (testCommunity as any).adminsTG || [],
+        isAdmin: true,
+      },
+    };
+  }
+
+  @Post('add-user-to-all')
+  async addUserToAllCommunities(@User() user: AuthenticatedUser) {
+    // Check if fake data mode is enabled
+    if (process.env.FAKE_DATA_MODE !== 'true') {
+      throw new ForbiddenException('Fake data mode is not enabled');
+    }
+
+    if (!user.telegramId) {
+      throw new Error('User telegramId is required');
+    }
+
+    this.logger.log(`Adding user ${user.id} to all communities`);
+
+    // Get all communities
+    const allCommunities = await this.communityService.getAllCommunities(1000, 0);
+    this.logger.log(`Found ${allCommunities.length} communities to add user to`);
+
+    let addedCount = 0;
+    let skippedCount = 0;
+    const errors: string[] = [];
+
+    for (const community of allCommunities) {
+      try {
+        // Check if user is already a member
+        const userDoc = await this.userService.getUserByTelegramId(user.telegramId);
+        if (userDoc) {
+          const currentTags = userDoc.communityTags || [];
+          const currentMemberships = userDoc.communityMemberships || [];
+
+          // Check if already a member
+          const isAlreadyMember = currentTags.includes(community.telegramChatId) || 
+                                  currentMemberships.includes(community.id);
+
+          if (isAlreadyMember) {
+            skippedCount++;
+            continue;
+          }
+
+          // 1. Add user to community's members list
+          await this.communityService.addMember(community.id, user.id);
+
+          // 2. Add community to user's memberships
+          await this.userService.addCommunityMembership(user.telegramId, community.id);
+
+          // 3. Add community's telegramChatId to user's communityTags
+          const UserModel = (this.userService as any).userModel;
+          if (UserModel) {
+            await UserModel.updateOne(
+              { telegramId: user.telegramId },
+              { 
+                $addToSet: { communityTags: community.telegramChatId },
+                $set: { updatedAt: new Date() }
+              }
+            );
+          }
+
+          // 4. Create wallet for the user in this community
+          const currency = community.settings?.currencyNames || {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          };
+          await this.walletService.createOrGetWallet(user.id, community.id, currency);
+
+          addedCount++;
+          this.logger.log(`Added user ${user.id} to community ${community.name} (${community.id})`);
+        }
+      } catch (error) {
+        const errorMsg = `Failed to add user to community ${community.name}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        this.logger.error(errorMsg);
+        errors.push(errorMsg);
+      }
+    }
+
+    this.logger.log(`Added user to ${addedCount} communities, skipped ${skippedCount}, errors: ${errors.length}`);
+
+    return {
+      success: true,
+      data: {
+        added: addedCount,
+        skipped: skippedCount,
+        total: allCommunities.length,
+        errors: errors.length > 0 ? errors : undefined,
+      },
+    };
+  }
 
   @Post('sync')
   async syncCommunities(@Req() req: any) {

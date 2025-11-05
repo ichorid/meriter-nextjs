@@ -1,91 +1,389 @@
 'use client';
 
-import { Card, CardBody, Avatar, Badge } from '@/components/atoms';
-import { formatDate } from '@/shared/lib/date';
+import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
+import { useCommunity } from '@/hooks/api';
+import { useComments } from '@/shared/hooks/use-comments';
+import { useUIStore } from '@/stores/ui.store';
+import { CardCommentVote } from '@/shared/components/card-comment-vote';
+import { BarVoteUnified } from '@/shared/components/bar-vote-unified';
+import { BarWithdraw } from '@/shared/components/bar-withdraw';
+import { CommentDetailsPopup } from '@/shared/components/comment-details-popup';
+import { useCommentDetails } from '@/hooks/api/useComments';
+import { classList } from '@/shared/lib/classList';
+import { Button } from '@/components/atoms';
 import type { TreeNode } from '../types';
 import { getSubtreeSize } from '../tree';
 import { getAvatarUrl } from '../utils/avatar';
-import { classList } from '@/shared/lib/classList';
+
+interface CommentCardProps {
+  node: TreeNode;
+  depth: number;
+  onNavigate: () => void;
+  isChainMode?: boolean;
+  // Props from CommentsColumn
+  myId?: string;
+  balance?: any;
+  wallets?: any[];
+  communityId?: string;
+  publicationSlug?: string;
+  activeCommentHook?: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
+  activeSlider?: string | null;
+  setActiveSlider?: (id: string | null) => void;
+  activeWithdrawPost?: string | null;
+  setActiveWithdrawPost?: (id: string | null) => void;
+  highlightTransactionId?: string;
+  showCommunityAvatar?: boolean;
+  isDetailPage?: boolean;
+}
 
 /**
  * CommentCard - The card component displayed for each item in the tree
  * 
- * Customized to match Meriter's design system using DaisyUI components.
- * 
- * Props:
- * - node: The tree node containing the data to display
- * - depth: The depth level in the tree (for indentation)
- * - onNavigate: Callback when the card is clicked
- * - isChainMode: Whether this card is part of the depth-first chain
+ * Uses CardCommentVote with all interactive features (vote, withdraw, etc.)
+ * while preserving tree navigation functionality.
  */
 export function CommentCard({
   node,
   depth,
   onNavigate,
   isChainMode = false,
-}: {
-  node: TreeNode;
-  depth: number;
-  onNavigate: () => void;
-  isChainMode?: boolean;
-}) {
-  const subtreeSize = getSubtreeSize(node);
+  myId,
+  balance,
+  wallets = [],
+  communityId,
+  publicationSlug,
+  activeCommentHook,
+  activeSlider,
+  setActiveSlider,
+  activeWithdrawPost,
+  setActiveWithdrawPost,
+  highlightTransactionId,
+  showCommunityAvatar = false,
+  isDetailPage = false,
+}: CommentCardProps) {
+  const t = useTranslations('comments');
   const originalComment = node.originalComment;
   const authorMeta = originalComment.meta?.author;
-  const avatarUrl = authorMeta?.photoUrl || getAvatarUrl(node.author, authorMeta?.photoUrl);
+  const authorName = authorMeta?.name || 'Unknown';
+  const commentAuthorId = originalComment.authorId || authorMeta?.id || '';
+  const commentText = node.content || '';
+  const commentTimestamp = node.createdAt || '';
+  
+  // API provides vote transaction fields when comment represents a vote
+  const hasVoteTransactionData = (originalComment as any).plus !== undefined || 
+                                 (originalComment as any).minus !== undefined || 
+                                 (originalComment as any).amountTotal !== undefined;
+  const plus = (originalComment as any).plus;
+  const minus = (originalComment as any).minus;
+  const amountTotal = (originalComment as any).amountTotal;
+  const directionPlus = (originalComment as any).directionPlus;
+  const sum = (originalComment as any).sum;
+  
+  // For UI display of comment stats, always use metrics (accumulated votes on the comment)
+  const commentUpvotes = originalComment.metrics?.upvotes ?? 0;
+  const commentDownvotes = originalComment.metrics?.downvotes ?? 0;
+  const commentScore = originalComment.metrics?.score ?? 0;
+  const displaySum = sum ?? commentScore;
+  
+  // Check if current user is the author
+  const isAuthor = myId === commentAuthorId;
+  
+  // Check if there's a beneficiary and it's different from the author
+  const beneficiaryMeta = (originalComment.meta as any)?.beneficiary;
+  const hasBeneficiary = beneficiaryMeta && beneficiaryMeta.id !== commentAuthorId;
+  
+  // Withdrawal state management
+  const withdrawableBalance = originalComment.metrics?.score ?? 0;
+  const [optimisticSum, setOptimisticSum] = useState(withdrawableBalance);
+  
+  useEffect(() => {
+    const currentSum = originalComment.metrics?.score ?? 0;
+    setOptimisticSum(currentSum);
+  }, [originalComment.metrics?.score]);
+  
+  // Fetch community info
+  const { data: communityInfo } = useCommunity(communityId || '');
+  
+  const currentBalance =
+    (Array.isArray(wallets) &&
+      wallets.find((w) => w.communityId === communityId)?.balance) ||
+    0;
+  
+  // State for comment details popup
+  const [showDetailsPopup, setShowDetailsPopup] = useState(false);
+  
+  // Calculate direction
+  const calculatedDirectionPlus = directionPlus ?? 
+    (amountTotal !== undefined ? (amountTotal > 0 || commentUpvotes > 0) : 
+     ((commentUpvotes > commentDownvotes) || (displaySum > 0)));
+  
+  // Format the rate
+  const formatRate = () => {
+    if (!hasVoteTransactionData || amountTotal === undefined) {
+      const score = displaySum;
+      if (score === 0) return "0";
+      const sign = score > 0 ? "+" : "-";
+      return `${sign} ${Math.abs(score)}`;
+    }
+    const amount = Math.abs(amountTotal);
+    const sign = calculatedDirectionPlus ? "+" : "-";
+    return `${sign} ${amount}`;
+  };
+  
+  // Determine vote type
+  const determineVoteType = () => {
+    const withdrawableAmount = optimisticSum ?? withdrawableBalance;
+    const amountFree = Math.abs(amountTotal || 0) - Math.abs(withdrawableAmount || 0);
+    const amountWallet = Math.abs(withdrawableAmount || 0);
+    
+    const isQuota = amountFree > 0;
+    const isWallet = amountWallet > 0;
+    
+    if (calculatedDirectionPlus) {
+      if (isQuota && isWallet) return 'upvote-mixed';
+      return isQuota ? 'upvote-quota' : 'upvote-wallet';
+    } else {
+      if (isQuota && isWallet) return 'downvote-mixed';
+      return isQuota ? 'downvote-quota' : 'downvote-wallet';
+    }
+  };
+  
+  const voteType = determineVoteType();
+  const currencyIcon = communityInfo?.settings?.iconUrl;
+  
+  // Calculate withdrawal amounts
+  const maxWithdrawAmount = isAuthor
+    ? Math.floor(10 * withdrawableBalance) / 10
+    : 0;
+  
+  const maxTopUpAmount = isAuthor
+    ? Math.floor(10 * currentBalance) / 10
+    : 0;
+  
+  // Fetch comment details when popup is open
+  const { data: commentDetails } = useCommentDetails(showDetailsPopup ? node.id : '');
+  
+  // Determine recipient
+  let recipientName: string | undefined;
+  let recipientAvatar: string | undefined;
+  
+  if (commentDetails?.beneficiary) {
+    recipientName = commentDetails.beneficiary.name;
+    recipientAvatar = commentDetails.beneficiary.photoUrl;
+  } else if (beneficiaryMeta) {
+    recipientName = beneficiaryMeta.name;
+    recipientAvatar = beneficiaryMeta.photoUrl;
+  }
+  
+  // Get replies count
+  const {
+    comments: replyComments,
+  } = useComments(
+    true,
+    publicationSlug || '',
+    node.id,
+    balance,
+    async () => {},
+    commentUpvotes,
+    commentDownvotes,
+    activeCommentHook || [null, () => {}],
+    false,
+    communityId,
+    wallets
+  );
+  
+  const commentUnderReply = activeCommentHook?.[0] === node.id;
+  const avatarUrl = authorMeta?.photoUrl || '';
   
   return (
-    <Card
-      compact
+    <div
       className={classList(
-        'cursor-pointer transition-all hover:shadow-md',
-        { 'ring-2 ring-warning': isChainMode }
+        "comment-vote-wrapper transition-all duration-300 mb-4 relative",
+        { 'ring-2 ring-warning': isChainMode },
+        commentUnderReply ? "scale-100 opacity-100" : 
+        activeSlider && activeSlider !== node.id ? "scale-95 opacity-60" : "scale-100 opacity-100",
+        highlightTransactionId === node.id ? "highlight" : ""
       )}
       style={{ marginLeft: `${depth * 16}px` }}
-      onClick={onNavigate}
+      data-comment-id={node.id}
+      onClick={(e) => {
+        if (
+          activeSlider === node.id &&
+          !(e.target as any)?.className?.match("clickable")
+        ) {
+          setActiveSlider && setActiveSlider(null);
+        }
+      }}
     >
-      <CardBody className="p-3">
-        <div className="flex gap-2 mb-2">
-          <Avatar 
-            src={avatarUrl || undefined}
-            alt={node.author}
-            size="sm"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="font-medium text-sm">{node.author}</span>
-              <Badge variant="secondary" size="xs">
-                {formatDate(node.createdAt, 'relative')}
-              </Badge>
-              {node.score !== 0 && (
-                <Badge 
-                  variant={node.score > 0 ? 'success' : 'error'} 
-                  size="xs"
-                >
-                  {node.score > 0 ? '+' : ''}{node.score}
-                </Badge>
-              )}
-            </div>
-            <p className="text-sm text-base-content/80 break-words">{node.content}</p>
-          </div>
-        </div>
-        
-        {(node.children.length > 0 || subtreeSize > 1) && (
-          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-base-300">
-            {node.children.length > 0 && (
-              <Badge variant="info" size="xs">
-                {node.children.length} {node.children.length === 1 ? 'reply' : 'replies'}
-              </Badge>
-            )}
-            {subtreeSize > 1 && (
-              <span className="text-xs text-base-content/60">
-                {subtreeSize - 1} {subtreeSize - 1 === 1 ? 'reply' : 'replies'} in thread
-              </span>
-            )}
-          </div>
-        )}
-      </CardBody>
-    </Card>
+      {/* Details button - positioned in top right */}
+      <Button
+        variant="ghost"
+        size="xs"
+        className="absolute top-2 right-2 z-10 btn-sm opacity-60 hover:opacity-100"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowDetailsPopup(true);
+        }}
+        title="View details"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </Button>
+      <CardCommentVote
+        title={authorName}
+        subtitle={new Date(commentTimestamp || '').toLocaleString()}
+        content={commentText}
+        rate={formatRate()}
+        currencyIcon={currencyIcon}
+        avatarUrl={avatarUrl}
+        voteType={voteType}
+        amountFree={hasVoteTransactionData && amountTotal !== undefined 
+          ? Math.abs(amountTotal) - Math.abs((optimisticSum ?? withdrawableBalance) || 0) 
+          : 0}
+        amountWallet={Math.abs((optimisticSum ?? withdrawableBalance) || 0)}
+        beneficiaryName={recipientName}
+        beneficiaryAvatarUrl={recipientAvatar}
+        upvotes={commentUpvotes}
+        downvotes={commentDownvotes}
+        onClick={() => {
+          console.log('[CommentCard] CardCommentVote onClick called:', {
+            commentId: node.id,
+            depth,
+            nodeChildrenCount: node.children.length,
+            nodeReplyCount: originalComment.metrics?.replyCount ?? 0,
+            metrics: originalComment.metrics,
+            timestamp: new Date().toISOString(),
+          });
+          onNavigate();
+        }}
+        onAvatarUrlNotFound={() => {
+          const fallbackUrl = authorMeta?.photoUrl;
+          if (fallbackUrl && fallbackUrl !== avatarUrl) {
+            const imgElement = document.querySelector(`img[src="${avatarUrl}"]`) as HTMLImageElement;
+            if (imgElement) imgElement.src = fallbackUrl;
+          }
+        }}
+        bottom={
+          isAuthor ? (
+            <BarWithdraw
+              balance={maxWithdrawAmount}
+              onWithdraw={() => {
+                // Vote-comments can't be withdrawn from (they're synthetic)
+                // Only allow withdrawal from actual comments
+                if (node.id.startsWith('vote_')) {
+                  const { useToastStore } = require('@/shared/stores/toast.store');
+                  useToastStore.getState().addToast(
+                    'Cannot withdraw from votes',
+                    'error'
+                  );
+                  return;
+                }
+                useUIStore.getState().openWithdrawPopup(
+                  node.id,
+                  'comment-withdraw',
+                  maxWithdrawAmount,
+                  maxTopUpAmount
+                );
+              }}
+              onTopup={() => {
+                // Vote-comments can't be topped up (they're synthetic)
+                // Only allow topup on actual comments
+                if (node.id.startsWith('vote_')) {
+                  const { useToastStore } = require('@/shared/stores/toast.store');
+                  useToastStore.getState().addToast(
+                    'Cannot top up votes',
+                    'error'
+                  );
+                  return;
+                }
+                useUIStore.getState().openWithdrawPopup(
+                  node.id,
+                  'comment-topup',
+                  maxWithdrawAmount,
+                  maxTopUpAmount
+                );
+              }}
+              commentCount={replyComments?.length || 0}
+              onCommentClick={() => {
+                // For tree navigation, clicking comment count navigates to show replies
+                onNavigate();
+              }}
+            />
+          ) : (
+            <BarVoteUnified
+              score={commentScore}
+              onVoteClick={() => {
+                // If this is a vote-comment (ID starts with 'vote_'), pass the vote-comment ID
+                // The backend will handle creating the proper hierarchy
+                const commentIdToVoteOn = node.id; // Use the node ID directly (includes vote_ prefix if applicable)
+                useUIStore.getState().openVotingPopup(commentIdToVoteOn, 'comment');
+              }}
+              isAuthor={isAuthor}
+              isBeneficiary={false}
+              hasBeneficiary={false}
+              commentCount={node.children.length || replyComments?.length || 0}
+              onCommentClick={() => {
+                // For tree navigation, clicking comment count navigates to show replies
+                onNavigate();
+              }}
+            />
+          )
+        }
+        showCommunityAvatar={showCommunityAvatar}
+        communityAvatarUrl={communityInfo?.avatarUrl}
+        communityName={communityInfo?.name}
+        communityIconUrl={communityInfo?.settings?.iconUrl}
+        onCommunityClick={() => {
+          if (!communityId) return;
+          
+          if (communityInfo?.needsSetup) {
+            if (communityInfo?.isAdmin) {
+              window.location.href = `/meriter/communities/${communityId}/settings`;
+            } else {
+              const { useToastStore } = require('@/shared/stores/toast.store');
+              useToastStore.getState().addToast(
+                'Community setup pending, your admin will set it up soon',
+                'info'
+              );
+            }
+          } else {
+            window.location.href = `/meriter/communities/${communityId}`;
+          }
+        }}
+        communityNeedsSetup={communityInfo?.needsSetup}
+        communityIsAdmin={communityInfo?.isAdmin}
+      />
+      <CommentDetailsPopup
+        isOpen={showDetailsPopup}
+        onClose={() => setShowDetailsPopup(false)}
+        rate={commentDetails?.voteTransaction ? formatRate() : formatRate()}
+        currencyIcon={commentDetails?.community?.iconUrl || currencyIcon}
+        amountWallet={commentDetails?.voteTransaction 
+          ? Math.abs(commentDetails.voteTransaction.sum) 
+          : Math.abs((optimisticSum ?? withdrawableBalance) || 0)}
+        amountFree={commentDetails?.voteTransaction && commentDetails.voteTransaction.amountTotal !== undefined
+          ? Math.abs(commentDetails.voteTransaction.amountTotal) - Math.abs(commentDetails.voteTransaction.sum)
+          : (hasVoteTransactionData && amountTotal !== undefined 
+            ? Math.abs(amountTotal) - Math.abs((optimisticSum ?? withdrawableBalance) || 0) 
+            : 0)}
+        upvotes={commentDetails?.metrics?.upvotes ?? commentUpvotes}
+        downvotes={commentDetails?.metrics?.downvotes ?? commentDownvotes}
+        isUpvote={commentDetails?.voteTransaction?.directionPlus ?? calculatedDirectionPlus}
+        authorName={commentDetails?.author?.name ?? authorName}
+        authorAvatar={commentDetails?.author?.photoUrl ?? avatarUrl}
+        commentContent={commentDetails?.comment?.content ?? commentText}
+        timestamp={commentDetails?.comment?.createdAt ?? commentTimestamp}
+        communityName={commentDetails?.community?.name ?? communityInfo?.name}
+        communityAvatar={commentDetails?.community?.avatarUrl ?? communityInfo?.avatarUrl}
+        beneficiaryName={commentDetails?.beneficiary?.name ?? recipientName}
+        beneficiaryAvatar={commentDetails?.beneficiary?.photoUrl ?? recipientAvatar}
+        isVoteTransaction={!!commentDetails?.voteTransaction || hasVoteTransactionData}
+        totalScore={commentDetails?.metrics?.score ?? displaySum}
+        totalReceived={commentDetails?.metrics?.totalReceived}
+        totalWithdrawn={commentDetails?.withdrawals?.totalWithdrawn}
+      />
+    </div>
   );
 }
-

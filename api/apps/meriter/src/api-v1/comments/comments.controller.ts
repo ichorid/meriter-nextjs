@@ -45,13 +45,33 @@ export class CommentsController {
 
   @Get(':id/details')
   async getCommentDetails(@Param('id') id: string, @Req() req: any) {
-    const comment = await this.commentsService.getComment(id);
-    if (!comment) {
-      throw new NotFoundError('Comment', id);
-    }
+    // Check if this is a vote ID (votes now contain comments directly)
+    let vote = await this.voteService.getVoteById(id);
+    let snapshot: any = null;
+    let authorId: string | undefined = undefined;
+    
+    if (vote) {
+      // This is a vote - votes now contain comments directly
+      authorId = vote.userId;
+      snapshot = {
+        id: vote.id,
+        targetType: vote.targetType,
+        targetId: vote.targetId,
+        authorId: vote.userId,
+        content: vote.comment || '',
+        createdAt: vote.createdAt,
+        updatedAt: vote.createdAt,
+      };
+    } else {
+      // Regular comment (legacy)
+      const comment = await this.commentsService.getComment(id);
+      if (!comment) {
+        throw new NotFoundError('Comment', id);
+      }
 
-    const snapshot = comment.toSnapshot();
-    const authorId = comment.getAuthorId.getValue();
+      snapshot = comment.toSnapshot();
+      authorId = comment.getAuthorId.getValue();
+    }
     
     // Fetch author data
     let author = null;
@@ -63,20 +83,15 @@ export class CommentsController {
       }
     }
 
-    // Fetch associated vote if this comment represents a vote transaction
-    let vote = null;
+    // vote is already set above if this is a vote ID
     let voteTransactionData = null;
     let beneficiary = null;
     let community = null;
 
     try {
-      const votes = await this.voteService.getVotesByAttachedComment(id);
-      if (votes && votes.length > 0) {
-        // Prefer vote by comment author
-        const authorVote = votes.find((v: any) => v.userId === authorId);
-        vote = authorVote || votes[0];
-
-        // If vote is on a publication, fetch publication and beneficiary
+      // If vote exists, fetch target and beneficiary
+      if (vote) {
+        // If vote is on a publication or vote, fetch target and beneficiary
         if (vote.targetType === 'publication') {
           const publication = await this.publicationService.getPublication(vote.targetId);
           if (publication) {
@@ -118,51 +133,113 @@ export class CommentsController {
               }
             }
           }
+        } else if (vote.targetType === 'vote') {
+            // Vote is on another vote - fetch the target vote's author as beneficiary
+            const targetVote = await this.voteService.getVoteById(vote.targetId);
+            if (targetVote) {
+              const targetAuthorId = targetVote.userId;
+              if (targetAuthorId && targetAuthorId !== vote.userId) {
+                try {
+                  const beneficiaryUser = await this.userService.getUser(targetAuthorId);
+                  if (beneficiaryUser) {
+                    beneficiary = {
+                      id: beneficiaryUser.id,
+                      name: beneficiaryUser.displayName || `${beneficiaryUser.firstName || ''} ${beneficiaryUser.lastName || ''}`.trim() || beneficiaryUser.username || 'Unknown',
+                      username: beneficiaryUser.username,
+                      photoUrl: beneficiaryUser.avatarUrl,
+                    };
+                  }
+                } catch (error) {
+                  this.logger.warn(`Failed to fetch beneficiary ${targetAuthorId}:`, error.message);
+                }
+              }
+              
+              // Get community from the target vote
+              const communityId = targetVote.communityId;
+              if (communityId) {
+                try {
+                  const communityData = await this.communityService.getCommunity(communityId);
+                  if (communityData) {
+                    community = {
+                      id: communityData.id,
+                      name: communityData.name,
+                      avatarUrl: communityData.avatarUrl,
+                      iconUrl: communityData.settings?.iconUrl,
+                    };
+                  }
+                } catch (error) {
+                  this.logger.warn(`Failed to fetch community ${communityId}:`, error.message);
+                }
+              }
+            }
+          }
 
-          // Prepare vote transaction data
-          const voteAmount = Math.abs(vote.amount);
-          const isUpvote = vote.amount > 0;
+          // Prepare vote transaction data (for any vote)
+          const voteAmountQuota = vote.amountQuota || 0;
+          const voteAmountWallet = vote.amountWallet || 0;
+          const voteAmount = voteAmountQuota + voteAmountWallet;
+          // If quotaAmount > 0, it's an upvote (quota can only be used for upvotes)
+          // If quotaAmount === 0, it could be a downvote (downvotes can only use wallet)
+          const isUpvote = voteAmountQuota > 0;
           voteTransactionData = {
             amountTotal: voteAmount,
             plus: isUpvote ? voteAmount : 0,
             minus: isUpvote ? 0 : voteAmount,
             directionPlus: isUpvote,
-            sum: vote.amount, // Can be negative for downvotes
+            sum: isUpvote ? voteAmount : -voteAmount, // Negative for downvotes
           };
         }
-      }
     } catch (error) {
       this.logger.warn(`Failed to fetch vote for comment ${id}:`, error.message);
     }
 
-    // Fetch votes on the comment itself (for metrics)
+    // Fetch votes on the vote/comment itself (for metrics)
     let commentVotes = [];
     try {
-      commentVotes = await this.voteService.getTargetVotes('comment', id);
+      if (vote) {
+        // If this is a vote, get votes on this vote
+        commentVotes = await this.voteService.getVotesOnVote(id);
+      } else {
+        // For regular comments (legacy), try to get votes (though this might not work anymore)
+        commentVotes = await this.voteService.getTargetVotes('comment', id);
+      }
     } catch (error) {
       this.logger.warn(`Failed to fetch votes on comment ${id}:`, error.message);
     }
 
     // Calculate comment metrics from votes
-    const upvotes = commentVotes.filter(v => v.amount > 0).length;
-    const downvotes = commentVotes.filter(v => v.amount < 0).length;
-    const score = commentVotes.reduce((sum, v) => sum + v.amount, 0);
+    // Upvotes: quotaAmount > 0 (quota can only be used for upvotes)
+    // Downvotes: quotaAmount === 0 and amountWallet > 0 (downvotes can only use wallet)
+    const upvotes = commentVotes.filter(v => (v.amountQuota || 0) > 0).length;
+    const downvotes = commentVotes.filter(v => (v.amountQuota || 0) === 0 && (v.amountWallet || 0) > 0).length;
+    // Score: sum of upvote amounts minus sum of downvote amounts
+    const score = commentVotes.reduce((sum, v) => {
+      const quota = v.amountQuota || 0;
+      const wallet = v.amountWallet || 0;
+      const total = quota + wallet;
+      // If quota > 0, it's an upvote (add to score)
+      // If quota === 0, it's a downvote (subtract from score)
+      return sum + (quota > 0 ? total : -total);
+    }, 0);
 
     // Aggregated totals (avoid loading extra docs unnecessarily)
     let totalReceived = 0;
     let totalWithdrawn = 0;
     try {
-      totalReceived = await this.voteService.getPositiveSumForComment(id);
+      if (vote) {
+        totalReceived = await this.voteService.getPositiveSumForVote(id);
+      }
     } catch (err) {
-      this.logger.warn(`Failed to aggregate positive votes for comment ${id}:`, err?.message || err);
+      this.logger.warn(`Failed to aggregate positive votes for ${id}:`, err?.message || err);
     }
     try {
-      // Sum of all withdrawals referencing this comment
+      // Sum of all withdrawals referencing this vote/comment
+      const withdrawalType = vote ? 'vote_withdrawal' : 'comment_withdrawal';
       totalWithdrawn = await (this as any).walletService?.getTotalWithdrawnByReference
-        ? await (this as any).walletService.getTotalWithdrawnByReference('comment_withdrawal', id)
+        ? await (this as any).walletService.getTotalWithdrawnByReference(withdrawalType, id)
         : 0;
     } catch (err) {
-      this.logger.warn(`Failed to aggregate withdrawals for comment ${id}:`, err?.message || err);
+      this.logger.warn(`Failed to aggregate withdrawals for ${id}:`, err?.message || err);
     }
 
     const response = {
@@ -201,13 +278,35 @@ export class CommentsController {
 
   @Get(':id')
   async getComment(@Param('id') id: string, @Req() req: any) {
-    const comment = await this.commentsService.getComment(id);
-    if (!comment) {
-      throw new NotFoundError('Comment', id);
+    // Check if this is a vote ID first (votes now contain comments directly)
+    let vote = await this.voteService.getVoteById(id);
+    let snapshot: any = null;
+    let authorId: string | undefined = undefined;
+    
+    if (vote) {
+      // This is a vote - votes now contain comments directly
+      authorId = vote.userId;
+      snapshot = {
+        id: vote.id,
+        targetType: vote.targetType,
+        targetId: vote.targetId,
+        authorId: vote.userId,
+        content: vote.comment || '',
+        createdAt: vote.createdAt,
+        updatedAt: vote.createdAt,
+      };
+    } else {
+      // Regular comment (legacy)
+      const comment = await this.commentsService.getComment(id);
+      if (!comment) {
+        throw new NotFoundError('Comment', id);
+      }
+      
+      snapshot = comment.toSnapshot();
+      authorId = comment.getAuthorId.getValue();
     }
     
     // Fetch author data
-    const authorId = comment.getAuthorId.getValue();
     let author = null;
     if (authorId) {
       try {
@@ -216,26 +315,13 @@ export class CommentsController {
         this.logger.warn(`Failed to fetch author ${authorId}:`, error.message);
       }
     }
-
-    // Fetch associated vote if this comment represents a vote transaction
-    let vote = null;
-    try {
-      const votes = await this.voteService.getVotesByAttachedComment(id);
-      if (votes && votes.length > 0) {
-        // Prefer vote by comment author
-        const authorVote = votes.find((v: any) => v.userId === authorId);
-        vote = authorVote || votes[0];
-      }
-    } catch (error) {
-      this.logger.warn(`Failed to fetch vote for comment ${id}:`, error.message);
-    }
-
-    const snapshot = comment.toSnapshot();
     
     // Calculate vote-related fields from associated vote
-    const voteAmount = vote ? Math.abs(vote.amount) : 0;
-    const isUpvote = vote && vote.amount > 0;
-    const isDownvote = vote && vote.amount < 0;
+    const voteAmountQuota = vote ? (vote.amountQuota || 0) : 0;
+    const voteAmountWallet = vote ? (vote.amountWallet || 0) : 0;
+    const voteAmount = voteAmountQuota + voteAmountWallet;
+    const isUpvote = vote && voteAmountQuota > 0;
+    const isDownvote = vote && voteAmountQuota === 0 && voteAmountWallet > 0;
 
     const commentData = {
       ...snapshot,
@@ -258,7 +344,7 @@ export class CommentsController {
         plus: isUpvote ? voteAmount : 0,
         minus: isDownvote ? voteAmount : 0,
         directionPlus: isUpvote,
-        sum: vote.amount, // Can be negative for downvotes
+        sum: isUpvote ? voteAmount : -voteAmount, // Negative for downvotes
       }),
     };
 
@@ -340,8 +426,9 @@ export class CommentsController {
     const skip = PaginationHelper.getSkip(pagination);
     const sortField = query.sort || 'createdAt';
     const sortOrder = (query.order || 'desc') === 'asc' ? 'asc' : 'desc';
-    const comments = await this.commentsService.getCommentsByTarget(
-      'publication',
+    
+    // Get votes on this publication (votes now contain comments)
+    const votes = await this.voteService.getPublicationVotes(
       publicationId,
       pagination.limit,
       skip,
@@ -349,83 +436,72 @@ export class CommentsController {
       sortOrder
     );
 
-    // Extract unique author IDs
-    const authorIds = new Set<string>();
-    comments.forEach(comment => {
-      const authorId = comment.getAuthorId.getValue();
-      if (authorId) {
-        authorIds.add(authorId);
+    // Extract unique user IDs (vote authors)
+    const userIds = new Set<string>();
+    votes.forEach(vote => {
+      if (vote.userId) {
+        userIds.add(vote.userId);
       }
     });
 
-    // Batch fetch all authors
+    // Batch fetch all users
     const usersMap = new Map<string, any>();
     await Promise.all(
-      Array.from(authorIds).map(async (userId) => {
+      Array.from(userIds).map(async (userId) => {
         try {
           const user = await this.userService.getUser(userId);
           if (user) {
             usersMap.set(userId, user);
           }
         } catch (error) {
-          this.logger.warn(`Failed to fetch author ${userId}:`, error.message);
+          this.logger.warn(`Failed to fetch user ${userId}:`, error.message);
         }
       })
     );
 
-    // Batch fetch all votes attached to these comments (comments representing vote transactions)
-    // This avoids N+1 queries by fetching all votes in one query
-    const commentIds = comments.map(c => c.getId);
-    let votesMap = new Map<string, any[]>();
-    
-    try {
-      // Fetch all votes that have these comments as attachedCommentId in a single query
-      votesMap = await this.voteService.getVotesByAttachedComments(commentIds);
-      
-      // Also fetch votes on this publication that have attached comments, as a fallback
-      const publicationVotes = await this.voteService.getVotesOnPublicationWithAttachedComments(publicationId);
-      publicationVotes.forEach(vote => {
-        if (vote.attachedCommentId && commentIds.includes(vote.attachedCommentId)) {
-          const existing = votesMap.get(vote.attachedCommentId) || [];
-          if (!existing.some(v => v.id === vote.id)) {
-            existing.push(vote);
-            votesMap.set(vote.attachedCommentId, existing);
-          }
-        }
-      });
-    } catch (error) {
-      this.logger.warn(`Failed to batch fetch votes for comments:`, error.message);
-    }
-    
-    // Create a map of commentId -> vote (prefer vote by comment author, otherwise first vote)
-    const commentVoteMap = new Map<string, any>();
-    commentIds.forEach((commentId, index) => {
-      const votes = votesMap.get(commentId) || [];
-      if (votes.length > 0) {
-        const comment = comments[index];
-        const authorId = comment.getAuthorId.getValue();
-        // Prefer vote created by the comment author
-        const authorVote = votes.find((v: any) => v.userId === authorId);
-        commentVoteMap.set(commentId, authorVote || votes[0]);
-      }
-    });
+    // Get publication to get slug and communityId
+    const publication = await this.publicationService.getPublication(publicationId);
+    const publicationSlug = publication?.getId.getValue();
+    const communityId = publication?.getCommunityId.getValue();
 
-    // Enrich comments with author metadata and vote data
-    const enrichedComments = comments.map(comment => {
-      const snapshot = comment.toSnapshot();
-      const authorId = comment.getAuthorId.getValue();
-      const author = usersMap.get(authorId);
-      const vote = commentVoteMap.get(comment.getId);
+    // Batch fetch votes on votes (for nested replies)
+    const voteIds = votes.map(v => v.id);
+    const votesOnVotesMap = await this.voteService.getVotesOnVotes(voteIds);
+
+    // Convert votes to comment-like objects
+    const enrichedComments = votes.map(vote => {
+      const author = usersMap.get(vote.userId);
+      const voteAmountQuota = vote.amountQuota || 0;
+      const voteAmountWallet = vote.amountWallet || 0;
+      const voteAmount = voteAmountQuota + voteAmountWallet;
+      const isUpvote = voteAmountQuota > 0;
+      const isDownvote = voteAmountQuota === 0 && voteAmountWallet > 0;
       
-      // Calculate vote-related fields from associated vote
-      const voteAmount = vote ? Math.abs(vote.amount) : 0;
-      const isUpvote = vote && vote.amount > 0;
-      const isDownvote = vote && vote.amount < 0;
+      // Get votes on this vote (replies)
+      const replies = votesOnVotesMap.get(vote.id) || [];
+      const replyCount = replies.length;
+      
+      // Calculate score from replies (sum of reply vote amounts)
+      const score = replies.reduce((sum, r) => {
+        const quota = r.amountQuota || 0;
+        const wallet = r.amountWallet || 0;
+        const total = quota + wallet;
+        return sum + (quota > 0 ? total : -total);
+      }, 0);
+      const upvotes = replies.filter(r => (r.amountQuota || 0) > 0).length;
+      const downvotes = replies.filter(r => (r.amountQuota || 0) === 0 && (r.amountWallet || 0) > 0).length;
 
       return {
-        ...snapshot,
-        createdAt: snapshot.createdAt.toISOString(),
-        updatedAt: snapshot.updatedAt.toISOString(),
+        id: vote.id,
+        _id: vote.id,
+        targetType: 'publication',
+        targetId: publicationId,
+        authorId: vote.userId,
+        content: vote.comment || '',
+        createdAt: vote.createdAt?.toISOString() || new Date().toISOString(),
+        updatedAt: vote.createdAt?.toISOString() || new Date().toISOString(),
+        publicationSlug,
+        communityId,
         meta: {
           author: author ? {
             id: author.id,
@@ -439,18 +515,27 @@ export class CommentsController {
             photoUrl: undefined,
           },
         },
-        // Add vote transaction fields if comment is associated with a vote
-        ...(vote && {
-          amountTotal: voteAmount,
-          plus: isUpvote ? voteAmount : 0,
-          minus: isDownvote ? voteAmount : 0,
-          directionPlus: isUpvote,
-          sum: vote.amount, // Can be negative for downvotes
-        }),
+        // Vote transaction fields (the vote itself)
+        amountTotal: voteAmount,
+        plus: isUpvote ? voteAmount : 0,
+        minus: isDownvote ? voteAmount : 0,
+        directionPlus: isUpvote,
+        sum: isUpvote ? voteAmount : -voteAmount,
+        // Metrics from votes on this vote (replies)
+        metrics: {
+          upvotes,
+          downvotes,
+          score,
+          replyCount,
+        },
       };
     });
 
-    return { data: enrichedComments, total: enrichedComments.length, skip, limit: pagination.limit };
+    // Get total count for pagination
+    const totalVotes = await this.voteService.getVotesOnPublication(publicationId);
+    const total = totalVotes.length;
+
+    return { data: enrichedComments, total, skip, limit: pagination.limit };
   }
 
   @Get(':id/replies')
@@ -463,95 +548,87 @@ export class CommentsController {
     const skip = PaginationHelper.getSkip(pagination);
     const sortField = query.sort || 'createdAt';
     const sortOrder = (query.order || 'desc') === 'asc' ? 'asc' : 'desc';
-    const comments = await this.commentsService.getCommentReplies(
-      id,
-      pagination.limit,
-      skip,
-      sortField,
-      sortOrder
-    );
+    
+    // Get votes on this vote (id is a vote ID)
+    const votes = await this.voteService.getVotesOnVote(id);
+    
+    // Sort votes
+    votes.sort((a, b) => {
+      if (sortField === 'createdAt') {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+      } else if (sortField === 'score') {
+        // Calculate score as sum of quota and wallet amounts
+        const scoreA = (a.amountQuota || 0) + (a.amountWallet || 0);
+        const scoreB = (b.amountQuota || 0) + (b.amountWallet || 0);
+        return sortOrder === 'asc' ? scoreA - scoreB : scoreB - scoreA;
+      }
+      return 0;
+    });
+    
+    // Apply pagination
+    const paginatedVotes = votes.slice(skip, skip + pagination.limit);
 
-    // Extract unique author IDs
-    const authorIds = new Set<string>();
-    comments.forEach(comment => {
-      const authorId = comment.getAuthorId.getValue();
-      if (authorId) {
-        authorIds.add(authorId);
+    // Extract unique user IDs (vote authors)
+    const userIds = new Set<string>();
+    paginatedVotes.forEach(vote => {
+      if (vote.userId) {
+        userIds.add(vote.userId);
       }
     });
 
-    // Batch fetch all authors
+    // Batch fetch all users
     const usersMap = new Map<string, any>();
     await Promise.all(
-      Array.from(authorIds).map(async (userId) => {
+      Array.from(userIds).map(async (userId) => {
         try {
           const user = await this.userService.getUser(userId);
           if (user) {
             usersMap.set(userId, user);
           }
         } catch (error) {
-          this.logger.warn(`Failed to fetch author ${userId}:`, error.message);
+          this.logger.warn(`Failed to fetch user ${userId}:`, error.message);
         }
       })
     );
 
-    // Batch fetch all votes attached to these reply comments
-    // This avoids N+1 queries by fetching all votes in one query
-    const commentIds = comments.map(c => c.getId);
-    let votesMap = new Map<string, any[]>();
-    
-    try {
-      // Fetch all votes that have these comments as attachedCommentId in a single query
-      votesMap = await this.voteService.getVotesByAttachedComments(commentIds);
-      
-      // Also check votes on the parent comment that might have these replies attached
-      try {
-        const parentVotes = await this.voteService.getTargetVotes('comment', id);
-        parentVotes.forEach(vote => {
-          if (vote.attachedCommentId && commentIds.includes(vote.attachedCommentId)) {
-            const existing = votesMap.get(vote.attachedCommentId) || [];
-            if (!existing.some(v => v.id === vote.id)) {
-              existing.push(vote);
-              votesMap.set(vote.attachedCommentId, existing);
-            }
-          }
-        });
-      } catch (err) {
-        this.logger.warn(`Failed to fetch parent comment votes:`, err);
-      }
-    } catch (error) {
-      this.logger.warn(`Failed to batch fetch votes for comment replies:`, error.message);
-    }
-    
-    // Create a map of commentId -> vote (prefer vote by comment author, otherwise first vote)
-    const commentVoteMap = new Map<string, any>();
-    commentIds.forEach((commentId, index) => {
-      const votes = votesMap.get(commentId) || [];
-      if (votes.length > 0) {
-        const comment = comments[index];
-        const authorId = comment.getAuthorId.getValue();
-        // Prefer vote created by the comment author
-        const authorVote = votes.find((v: any) => v.userId === authorId);
-        commentVoteMap.set(commentId, authorVote || votes[0]);
-      }
-    });
+    // Batch fetch votes on votes (for nested replies)
+    const voteIds = paginatedVotes.map(v => v.id);
+    const votesOnVotesMap = await this.voteService.getVotesOnVotes(voteIds);
 
-    // Enrich comments with author metadata and vote data
-    const enrichedComments = comments.map(comment => {
-      const snapshot = comment.toSnapshot();
-      const authorId = comment.getAuthorId.getValue();
-      const author = usersMap.get(authorId);
-      const vote = commentVoteMap.get(comment.getId);
+    // Convert votes to comment-like objects
+    const enrichedReplies = paginatedVotes.map(vote => {
+      const author = usersMap.get(vote.userId);
+      const voteAmountQuota = vote.amountQuota || 0;
+      const voteAmountWallet = vote.amountWallet || 0;
+      const voteAmount = voteAmountQuota + voteAmountWallet;
+      const isUpvote = voteAmountQuota > 0;
+      const isDownvote = voteAmountQuota === 0 && voteAmountWallet > 0;
       
-      // Calculate vote-related fields from associated vote
-      const voteAmount = vote ? Math.abs(vote.amount) : 0;
-      const isUpvote = vote && vote.amount > 0;
-      const isDownvote = vote && vote.amount < 0;
+      // Get votes on this vote (replies)
+      const replies = votesOnVotesMap.get(vote.id) || [];
+      const replyCount = replies.length;
+      
+      // Calculate score from replies (sum of reply vote amounts)
+      const score = replies.reduce((sum, r) => {
+        const quota = r.amountQuota || 0;
+        const wallet = r.amountWallet || 0;
+        const total = quota + wallet;
+        return sum + (quota > 0 ? total : -total);
+      }, 0);
+      const upvotes = replies.filter(r => (r.amountQuota || 0) > 0).length;
+      const downvotes = replies.filter(r => (r.amountQuota || 0) === 0 && (r.amountWallet || 0) > 0).length;
 
       return {
-        ...snapshot,
-        createdAt: snapshot.createdAt.toISOString(),
-        updatedAt: snapshot.updatedAt.toISOString(),
+        id: vote.id,
+        _id: vote.id,
+        targetType: 'vote',
+        targetId: id, // The parent vote ID
+        authorId: vote.userId,
+        content: vote.comment || '',
+        createdAt: vote.createdAt?.toISOString() || new Date().toISOString(),
+        updatedAt: vote.createdAt?.toISOString() || new Date().toISOString(),
         meta: {
           author: author ? {
             id: author.id,
@@ -565,18 +642,23 @@ export class CommentsController {
             photoUrl: undefined,
           },
         },
-        // Add vote transaction fields if comment is associated with a vote
-        ...(vote && {
-          amountTotal: voteAmount,
-          plus: isUpvote ? voteAmount : 0,
-          minus: isDownvote ? voteAmount : 0,
-          directionPlus: isUpvote,
-          sum: vote.amount, // Can be negative for downvotes
-        }),
+        // Vote transaction fields (the vote itself)
+        amountTotal: voteAmount,
+        plus: isUpvote ? voteAmount : 0,
+        minus: isDownvote ? voteAmount : 0,
+        directionPlus: isUpvote,
+        sum: isUpvote ? voteAmount : -voteAmount,
+        // Metrics from votes on this vote (replies)
+        metrics: {
+          upvotes,
+          downvotes,
+          score,
+          replyCount,
+        },
       };
     });
 
-    return { data: enrichedComments, total: enrichedComments.length, skip, limit: pagination.limit };
+    return { data: enrichedReplies, total: votes.length, skip, limit: pagination.limit };
   }
 
   @Get('users/:userId')
@@ -644,36 +726,12 @@ export class CommentsController {
       })
     );
 
-    // Batch fetch all votes attached to these comments (comments representing vote transactions)
-    const commentIds = comments.map(c => c.getId);
-    let votesMap = new Map<string, any[]>();
-    
-    try {
-      // Fetch all votes that have these comments as attachedCommentId in a single query
-      votesMap = await this.voteService.getVotesByAttachedComments(commentIds);
-    } catch (error) {
-      this.logger.warn(`Failed to batch fetch votes for comments:`, error.message);
-    }
-    
-    // Create a map of commentId -> vote (prefer vote by comment author, otherwise first vote)
-    const commentVoteMap = new Map<string, any>();
-    commentIds.forEach((commentId, index) => {
-      const votes = votesMap.get(commentId) || [];
-      if (votes.length > 0) {
-        const comment = comments[index];
-        const authorId = comment.getAuthorId.getValue();
-        // Prefer vote created by the comment author
-        const authorVote = votes.find((v: any) => v.userId === authorId);
-        commentVoteMap.set(commentId, authorVote || votes[0]);
-      }
-    });
-
-    // Enrich comments with author metadata, publication data, and vote data
+    // Enrich comments with author metadata and publication data
+    // Note: Legacy comments don't have votes attached anymore, votes are separate
     const enrichedComments = comments.map(comment => {
       const snapshot = comment.toSnapshot();
       const authorId = comment.getAuthorId.getValue();
       const author = usersMap.get(authorId);
-      const vote = commentVoteMap.get(comment.getId);
       
       // Get publication data if comment targets a publication
       let publicationSlug: string | undefined;
@@ -687,11 +745,6 @@ export class CommentsController {
         }
       }
       
-      // Calculate vote-related fields from associated vote
-      const voteAmount = vote ? Math.abs(vote.amount) : 0;
-      const isUpvote = vote && vote.amount > 0;
-      const isDownvote = vote && vote.amount < 0;
-
       return {
         ...snapshot,
         createdAt: snapshot.createdAt.toISOString(),
@@ -711,14 +764,6 @@ export class CommentsController {
             photoUrl: undefined,
           },
         },
-        // Add vote transaction fields if comment is associated with a vote
-        ...(vote && {
-          amountTotal: voteAmount,
-          plus: isUpvote ? voteAmount : 0,
-          minus: isDownvote ? voteAmount : 0,
-          directionPlus: isUpvote,
-          sum: vote.amount, // Can be negative for downvotes
-        }),
       };
     });
 

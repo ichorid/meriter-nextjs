@@ -108,13 +108,18 @@ export const CommentSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
 export const VoteSchema = PolymorphicReferenceSchema.extend({
   id: z.string(),
   userId: z.string(),
-  amount: z.number().int(), // Positive for upvote, negative for downvote
-  sourceType: z.enum(['personal', 'quota']),
+  amountQuota: z.number().int().min(0).default(0),
+  amountWallet: z.number().int().min(0).default(0),
   communityId: z.string(),
-  attachedCommentId: z.string().optional(), // Optional comment attached to vote
+  comment: z.string().max(5000), // Required comment text attached to vote
   createdAt: z.string().datetime(),
   updatedAt: z.string().optional(), // Optional for votes
-});
+}).refine(
+  (data) => data.amountQuota > 0 || data.amountWallet > 0,
+  {
+    message: 'At least one of amountQuota or amountWallet must be greater than zero',
+  }
+);
 
 export const PollSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   communityId: z.string(),
@@ -131,10 +136,15 @@ export const PollCastSchema = IdentifiableSchema.merge(TimestampsSchema).extend(
   pollId: z.string(),
   optionId: z.string(), // Changed from optionIndex to optionId
   userId: z.string(),
-  amount: z.number().int().min(1),
-  sourceType: z.enum(['personal', 'quota']), // Added missing field
+  amountQuota: z.number().int().min(0).default(0),
+  amountWallet: z.number().int().min(0).default(0),
   communityId: z.string(), // Added for consistency
-});
+}).refine(
+  (data) => data.amountQuota > 0 || data.amountWallet > 0,
+  {
+    message: 'At least one of amountQuota or amountWallet must be greater than zero',
+  }
+);
 
 export const WalletSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   userId: z.string(),
@@ -165,7 +175,9 @@ export const CreatePublicationDtoSchema = z.object({
   videoUrl: z.string().url().optional(),
 });
 
-export const CreateCommentDtoSchema = PolymorphicReferenceSchema.extend({
+export const CreateCommentDtoSchema = z.object({
+  targetType: z.enum(['publication', 'comment']),
+  targetId: z.string().min(1),
   content: z.string().max(5000),
   parentCommentId: z.string().optional(),
 });
@@ -173,33 +185,35 @@ export const CreateCommentDtoSchema = PolymorphicReferenceSchema.extend({
 export const UpdateCommentDtoSchema = CreateCommentDtoSchema.partial();
 
 export const CreateVoteDtoSchema = PolymorphicReferenceSchema.extend({
-  amount: z.number().int().optional(),
-  sourceType: z.enum(['personal', 'quota']).optional(),
   quotaAmount: z.number().int().min(0).optional(),
   walletAmount: z.number().int().min(0).optional(),
   attachedCommentId: z.string().optional(),
 }).refine(
   (data) => {
-    // Backward compatibility: if amount is provided, use it
-    if (data.amount !== undefined) {
-      return true;
-    }
-    // New format: at least one of quotaAmount or walletAmount must be provided and non-zero
     const quota = data.quotaAmount ?? 0;
     const wallet = data.walletAmount ?? 0;
     return quota > 0 || wallet > 0;
   },
   {
-    message: 'Either amount must be provided, or at least one of quotaAmount/walletAmount must be non-zero',
+    message: 'At least one of quotaAmount or walletAmount must be non-zero',
   }
 );
 
 // Target-less vote DTO for routes where target is implied by the URL (e.g., comments/:id/votes)
 export const CreateTargetlessVoteDtoSchema = z.object({
-  amount: z.number().int(),
-  sourceType: z.enum(['personal', 'quota']).optional().default('quota'),
+  quotaAmount: z.number().int().min(0).optional(),
+  walletAmount: z.number().int().min(0).optional(),
   attachedCommentId: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    const quota = data.quotaAmount ?? 0;
+    const wallet = data.walletAmount ?? 0;
+    return quota > 0 || wallet > 0;
+  },
+  {
+    message: 'At least one of quotaAmount or walletAmount must be non-zero',
+  }
+);
 
 export const CreatePollDtoSchema = z.object({
   communityId: z.string(),
@@ -213,9 +227,18 @@ export const UpdatePollDtoSchema = CreatePollDtoSchema.partial();
 
 export const CreatePollCastDtoSchema = z.object({
   optionId: z.string(), // Changed from optionIndex to optionId
-  amount: z.number().int().min(1),
-  sourceType: z.enum(['personal', 'quota']).default('personal'),
-});
+  quotaAmount: z.number().int().min(0).optional(),
+  walletAmount: z.number().int().min(0).optional(),
+}).refine(
+  (data) => {
+    const quota = data.quotaAmount ?? 0;
+    const wallet = data.walletAmount ?? 0;
+    return quota > 0 || wallet > 0;
+  },
+  {
+    message: 'At least one of quotaAmount or walletAmount must be non-zero',
+  }
+);
 
 export const TransferDtoSchema = z.object({
   toUserId: z.string(),
@@ -275,25 +298,18 @@ export const WithdrawAmountDtoSchema = z.object({
   amount: z.number().int().min(1).optional(),
 });
 
-export const VoteWithCommentDtoSchema = z.object({
-  amount: z.number().int().optional(),
-  sourceType: z.enum(['personal', 'quota']).optional(),
+export const VoteWithCommentDtoSchema = PolymorphicReferenceSchema.partial().extend({
   quotaAmount: z.number().int().min(0).optional(),
   walletAmount: z.number().int().min(0).optional(),
   comment: z.string().optional(),
 }).refine(
   (data) => {
-    // Backward compatibility: if amount is provided, use it
-    if (data.amount !== undefined) {
-      return true;
-    }
-    // New format: at least one of quotaAmount or walletAmount must be provided and non-zero
     const quota = data.quotaAmount ?? 0;
     const wallet = data.walletAmount ?? 0;
     return quota > 0 || wallet > 0;
   },
   {
-    message: 'Either amount must be provided, or at least one of quotaAmount/walletAmount must be non-zero',
+    message: 'At least one of quotaAmount or walletAmount must be non-zero',
   }
 );
 
@@ -453,7 +469,6 @@ export type Transaction = z.infer<typeof TransactionSchema>;
 export type CreatePublicationDto = z.infer<typeof CreatePublicationDtoSchema>;
 export type CreateCommentDto = z.infer<typeof CreateCommentDtoSchema>;
 export type UpdateCommentDto = z.infer<typeof UpdateCommentDtoSchema>;
-export type CreateVoteDto = z.infer<typeof CreateVoteDtoSchema>;
 export type CreateTargetlessVoteDto = z.infer<typeof CreateTargetlessVoteDtoSchema>;
 export type CreatePollDto = z.infer<typeof CreatePollDtoSchema>;
 export type UpdatePollDto = z.infer<typeof UpdatePollDtoSchema>;

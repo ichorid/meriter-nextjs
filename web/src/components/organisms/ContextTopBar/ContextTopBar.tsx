@@ -7,6 +7,8 @@ import { useCommunity, useWallets } from '@/hooks/api';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { isFakeDataMode } from '@/config';
+import { publicationsApiV1 } from '@/lib/api/v1';
 
 export interface ContextTopBarProps {
   className?: string;
@@ -232,6 +234,12 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
   const t = useTranslations('pages.communities');
   const [showTagDropdown, setShowTagDropdown] = React.useState(false);
   const [showSnack, setShowSnack] = React.useState(false);
+  
+  // Fake data generation state
+  const fakeDataMode = isFakeDataMode();
+  const [generatingUserPosts, setGeneratingUserPosts] = React.useState(false);
+  const [generatingBeneficiaryPosts, setGeneratingBeneficiaryPosts] = React.useState(false);
+  const [fakeDataMessage, setFakeDataMessage] = React.useState('');
 
   // Get wallet balance for this community
   const wallet = wallets.find((w: any) => w.communityId === communityId);
@@ -277,6 +285,45 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
     const params = new URLSearchParams(searchParams?.toString() ?? '');
     params.set('modal', 'createPoll');
     router.push(`?${params.toString()}`);
+  };
+
+  // Handle fake data generation
+  const handleGenerateUserPosts = async () => {
+    setGeneratingUserPosts(true);
+    setFakeDataMessage('');
+    
+    try {
+      const result = await publicationsApiV1.generateFakeData('user', communityId);
+      setFakeDataMessage(`Created ${result.count} user post(s)`);
+      setTimeout(() => setFakeDataMessage(''), 3000);
+      // Refresh the page to show new posts
+      router.refresh();
+    } catch (error) {
+      console.error('Generate user posts error:', error);
+      setFakeDataMessage('Failed to generate user posts');
+      setTimeout(() => setFakeDataMessage(''), 3000);
+    } finally {
+      setGeneratingUserPosts(false);
+    }
+  };
+
+  const handleGenerateBeneficiaryPosts = async () => {
+    setGeneratingBeneficiaryPosts(true);
+    setFakeDataMessage('');
+    
+    try {
+      const result = await publicationsApiV1.generateFakeData('beneficiary', communityId);
+      setFakeDataMessage(`Created ${result.count} post(s) with beneficiary`);
+      setTimeout(() => setFakeDataMessage(''), 3000);
+      // Refresh the page to show new posts
+      router.refresh();
+    } catch (error) {
+      console.error('Generate beneficiary posts error:', error);
+      setFakeDataMessage('Failed to generate posts with beneficiary');
+      setTimeout(() => setFakeDataMessage(''), 3000);
+    } finally {
+      setGeneratingBeneficiaryPosts(false);
+    }
   };
 
   // Show mobile snack bar with community title when arriving/switching
@@ -333,6 +380,45 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Fake Data Generation Buttons - Only shown in fake mode */}
+          {fakeDataMode && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleGenerateUserPosts}
+                disabled={generatingUserPosts || generatingBeneficiaryPosts}
+                className="btn btn-sm btn-ghost"
+                title="Generate User Posts"
+              >
+                {generatingUserPosts ? (
+                  <span className="loading loading-spinner loading-xs"></span>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={handleGenerateBeneficiaryPosts}
+                disabled={generatingUserPosts || generatingBeneficiaryPosts}
+                className="btn btn-sm btn-ghost"
+                title="Generate Posts with Beneficiary"
+              >
+                {generatingBeneficiaryPosts ? (
+                  <span className="loading loading-spinner loading-xs"></span>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                )}
+              </button>
+              {fakeDataMessage && (
+                <div className={`text-xs ${fakeDataMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>
+                  {fakeDataMessage}
+                </div>
+              )}
+            </div>
+          )}
+          
           {/* Tag Filter Dropdown */}
           {hashtags.length > 0 && (
             <div className="relative">

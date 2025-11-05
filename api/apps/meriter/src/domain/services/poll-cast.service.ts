@@ -22,11 +22,12 @@ export class PollCastService {
     pollId: string,
     userId: string,
     optionId: string,
-    amount: number,
-    sourceType: 'personal' | 'quota',
+    quotaAmount: number,
+    walletAmount: number,
     communityId: string
   ): Promise<PollCast> {
-    this.logger.log(`Creating poll cast: poll=${pollId}, user=${userId}, option=${optionId}, amount=${amount}`);
+    const totalAmount = quotaAmount + walletAmount;
+    this.logger.log(`Creating poll cast: poll=${pollId}, user=${userId}, option=${optionId}, quota=${quotaAmount}, wallet=${walletAmount}, total=${totalAmount}`);
 
     // Validate poll exists and is active
     const poll = await this.pollModel.findOne({ id: pollId }).lean();
@@ -48,8 +49,14 @@ export class PollCastService {
       throw new BadRequestException('Invalid option ID');
     }
 
-    // Validate amount
-    if (amount <= 0) {
+    // Validate amounts - poll casts only use wallet
+    if (quotaAmount > 0) {
+      throw new BadRequestException('Poll casts cannot use quota, only wallet');
+    }
+    if (walletAmount <= 0) {
+      throw new BadRequestException('Cast amount must be positive');
+    }
+    if (totalAmount <= 0) {
       throw new BadRequestException('Cast amount must be positive');
     }
 
@@ -58,15 +65,15 @@ export class PollCastService {
       pollId,
       userId,
       optionId,
-      amount,
-      sourceType,
+      amountQuota: quotaAmount,
+      amountWallet: walletAmount,
       communityId,
       createdAt: new Date(),
     });
 
-    // Publish event
+    // Publish event - use wallet amount as the amount for the event
     await this.eventBus.publish(
-      new PollCastedEvent(pollId, userId, optionId, amount)
+      new PollCastedEvent(pollId, userId, optionId, walletAmount)
     );
 
     this.logger.log(`Poll cast created successfully: ${cast.id}`);
@@ -86,6 +93,7 @@ export class PollCastService {
   }
 
   async castPoll(pollId: string, userId: string, optionId: string, amount: number, communityId: string): Promise<PollCast> {
-    return this.createCast(pollId, userId, optionId, amount, 'personal', communityId);
+    // Poll casts only use wallet, quotaAmount is always 0
+    return this.createCast(pollId, userId, optionId, 0, amount, communityId);
   }
 }

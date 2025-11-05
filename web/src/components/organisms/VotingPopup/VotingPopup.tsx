@@ -9,7 +9,7 @@ import { useWallets, useCommunity } from '@/hooks/api';
 import { useFreeBalance } from '@/hooks/api/useWallet';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { useTranslations } from 'next-intl';
-import { useVoteOnPublicationWithComment, useVoteOnComment } from '@/hooks/api/useVotes';
+import { useVoteOnPublicationWithComment, useVoteOnVote } from '@/hooks/api/useVotes';
 
 interface VotingPopupProps {
   communityId?: string;
@@ -30,7 +30,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   // Use mutation hooks for voting and commenting
   const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
-  const voteOnCommentMutation = useVoteOnComment();
+  const voteOnVoteMutation = useVoteOnVote();
 
   const isOpen = !!activeVotingTarget && !!votingTargetType;
 
@@ -155,80 +155,28 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
       // For publications, use the combined endpoint that creates comment and vote atomically
       if (votingTargetType === 'publication') {
-        // If we need both quota and wallet votes, make two calls
-        // The combined endpoint only supports one vote at a time, so we'll make two calls
-        // but only create the comment with the first one
-        if (quotaAmount > 0 && walletAmount > 0) {
-          // First vote: quota + comment (if provided)
-          await voteOnPublicationWithCommentMutation.mutateAsync({
-            publicationId: targetId,
-            data: {
-              amount: isUpvote ? quotaAmount : -quotaAmount,
-              sourceType: 'quota',
-              comment: formData.comment.trim() || undefined,
-            },
-            communityId: targetCommunityId,
-          });
-          
-          // Second vote: wallet only (comment already created)
-          await voteOnPublicationWithCommentMutation.mutateAsync({
-            publicationId: targetId,
-            data: {
-              amount: isUpvote ? walletAmount : -walletAmount,
-              sourceType: 'personal',
-            },
-            communityId: targetCommunityId,
-          });
-        } else if (quotaAmount > 0) {
-          // Vote with quota only, include comment
-          await voteOnPublicationWithCommentMutation.mutateAsync({
-            publicationId: targetId,
-            data: {
-              amount: isUpvote ? quotaAmount : -quotaAmount,
-              sourceType: 'quota',
-              comment: formData.comment.trim() || undefined,
-            },
-            communityId: targetCommunityId,
-          });
-        } else if (walletAmount > 0) {
-          // Vote with wallet only, include comment
-          await voteOnPublicationWithCommentMutation.mutateAsync({
-            publicationId: targetId,
-            data: {
-              amount: isUpvote ? walletAmount : -walletAmount,
-              sourceType: 'personal',
-              comment: formData.comment.trim() || undefined,
-            },
-            communityId: targetCommunityId,
-          });
-        }
+        // Single vote with both quota and wallet amounts
+        await voteOnPublicationWithCommentMutation.mutateAsync({
+          publicationId: targetId,
+          data: {
+            quotaAmount,
+            walletAmount,
+            comment: formData.comment.trim() || undefined,
+          },
+          communityId: targetCommunityId,
+        });
       } else {
-        // For comments, use the regular vote endpoint (no combined endpoint for comment votes yet)
-        if (quotaAmount > 0) {
-          await voteOnCommentMutation.mutateAsync({
-            commentId: targetId,
-            data: {
-              targetType: 'comment',
-              targetId: targetId,
-              amount: isUpvote ? quotaAmount : -quotaAmount,
-              sourceType: 'quota',
-            },
-            communityId: targetCommunityId,
-          });
-        }
-
-        if (walletAmount > 0) {
-          await voteOnCommentMutation.mutateAsync({
-            commentId: targetId,
-            data: {
-              targetType: 'comment',
-              targetId: targetId,
-              amount: isUpvote ? walletAmount : -walletAmount,
-              sourceType: 'personal',
-            },
-            communityId: targetCommunityId,
-          });
-        }
+        // For votes, use the vote-on-vote endpoint
+        // Include comment field for vote-comments (L2, L3, etc.)
+        await voteOnVoteMutation.mutateAsync({
+          voteId: targetId,
+          data: {
+            quotaAmount,
+            walletAmount,
+            comment: formData.comment.trim() || undefined,
+          },
+          communityId: targetCommunityId,
+        });
       }
 
       // Close popup and reset form

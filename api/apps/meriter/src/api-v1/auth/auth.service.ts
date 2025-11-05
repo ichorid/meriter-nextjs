@@ -221,7 +221,7 @@ export class AuthService {
     };
   }
 
-  async authenticateFakeUser(): Promise<{
+  async authenticateFakeUser(fakeUserId?: string): Promise<{
     user: User;
     hasPendingCommunities: boolean;
     jwt: string;
@@ -230,16 +230,22 @@ export class AuthService {
       throw new Error('Fake data mode is not enabled');
     }
 
-    const telegramId = 'fake_user_dev';
+    // Use provided fakeUserId or generate a default one (for backward compatibility)
+    const telegramId = fakeUserId || `fake_user_dev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
     this.logger.log(`Creating or updating fake user ${telegramId}...`);
 
+    // Generate username and display name from the fake user ID
+    const sessionNumber = fakeUserId ? fakeUserId.split('_').pop()?.substring(0, 6) || 'dev' : 'dev';
+    const username = `fakedev_${sessionNumber}`;
+    const displayName = `Fake Dev User ${sessionNumber}`;
+
     const user = await this.userService.createOrUpdateUser({
       telegramId,
-      username: 'fakedev',
+      username,
       firstName: 'Fake',
       lastName: 'Dev',
-      displayName: 'Fake Dev User',
+      displayName,
       avatarUrl: undefined,
     });
 

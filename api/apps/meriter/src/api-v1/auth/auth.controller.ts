@@ -279,7 +279,7 @@ export class AuthController {
   }
 
   @Post('fake')
-  async authenticateFake(@Res() res: any) {
+  async authenticateFake(@Req() req: any, @Res() res: any) {
     try {
       // Check if fake data mode is enabled
       if (process.env.FAKE_DATA_MODE !== 'true') {
@@ -288,7 +288,22 @@ export class AuthController {
 
       this.logger.log('Fake authentication request received');
 
-      const result = await this.authService.authenticateFakeUser();
+      // Get or generate a session-specific fake user ID
+      // Check for existing fake_user_id cookie (session-specific)
+      let fakeUserId = req.cookies?.fake_user_id;
+      
+      // If no cookie exists, generate a new unique fake user ID
+      if (!fakeUserId) {
+        // Generate a unique ID: fake_user_<timestamp>_<random>
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(2, 9);
+        fakeUserId = `fake_user_${timestamp}_${random}`;
+        this.logger.log(`Generated new fake user ID: ${fakeUserId}`);
+      } else {
+        this.logger.log(`Reusing existing fake user ID: ${fakeUserId}`);
+      }
+
+      const result = await this.authService.authenticateFakeUser(fakeUserId);
       
       // Set JWT cookie with proper domain for Caddy reverse proxy
       const cookieDomain = this.getCookieDomain();
@@ -303,6 +318,16 @@ export class AuthController {
         secure: isProduction,
         sameSite: isProduction ? 'none' : 'lax',
         maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
+        path: '/',
+        domain: cookieDomain,
+      });
+
+      // Set fake_user_id cookie (session cookie - expires when browser closes)
+      res.cookie('fake_user_id', fakeUserId, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        // No maxAge - this makes it a session cookie that expires when browser closes
         path: '/',
         domain: cookieDomain,
       });

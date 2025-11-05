@@ -87,8 +87,10 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
     }
     // Transform comments from Meriter format to template format
     const transformedComments = transformComments(comments as any);
+    
     // Build tree structure from flat list
-    return buildTree(transformedComments);
+    const tree = buildTree(transformedComments);
+    return tree;
   }, [comments]);
 
   return (
@@ -151,7 +153,22 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
       {/* Comments list with tree navigation */}
       <div className="flex-1 overflow-y-auto p-4">
         {commentTree.length > 0 ? (
-          <CommentsList roots={commentTree} />
+          <CommentsList 
+            roots={commentTree}
+            myId={myId}
+            balance={balance}
+            wallets={wallets}
+            communityId={communityId}
+            publicationSlug={publicationSlug}
+            activeCommentHook={activeCommentHook}
+            activeSlider={activeSlider}
+            setActiveSlider={setActiveSlider}
+            activeWithdrawPost={activeWithdrawPost}
+            setActiveWithdrawPost={setActiveWithdrawPost}
+            highlightTransactionId={highlightTransactionId}
+            showCommunityAvatar={false}
+            isDetailPage={false}
+          />
         ) : (
           <div className="flex items-center justify-center h-full text-base-content/60">
             <p>No comments yet</p>

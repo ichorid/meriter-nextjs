@@ -12,7 +12,7 @@ import { act } from '@testing-library/react';
 import { renderWithProviders } from '../utils/test-utils';
 import { usePublication } from '@/hooks/usePublication';
 import { useAuth } from '@/contexts/AuthContext';
-import { useVoteOnPublication, useVoteOnComment, useVoteOnPublicationWithComment } from '@/hooks/api';
+import { useVoteOnPublication, useVoteOnVote, useVoteOnPublicationWithComment } from '@/hooks/api';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { getWalletBalance } from '@/lib/utils/wallet';
 
@@ -36,7 +36,7 @@ jest.mock('@tanstack/react-query', () => {
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseVoteOnPublication = useVoteOnPublication as jest.MockedFunction<typeof useVoteOnPublication>;
-const mockUseVoteOnComment = useVoteOnComment as jest.MockedFunction<typeof useVoteOnComment>;
+const mockUseVoteOnVote = useVoteOnVote as jest.MockedFunction<typeof useVoteOnVote>;
 const mockUseVoteOnPublicationWithComment = useVoteOnPublicationWithComment as jest.MockedFunction<typeof useVoteOnPublicationWithComment>;
 const mockUseUserQuota = useUserQuota as jest.MockedFunction<typeof useUserQuota>;
 const mockGetWalletBalance = getWalletBalance as jest.MockedFunction<typeof getWalletBalance>;
@@ -146,7 +146,7 @@ describe('usePublication Hook', () => {
       isPending: false,
     } as any);
 
-    mockUseVoteOnComment.mockReturnValue({
+    mockUseVoteOnVote.mockReturnValue({
       mutateAsync: mockMutateAsync,
       isPending: false,
     } as any);

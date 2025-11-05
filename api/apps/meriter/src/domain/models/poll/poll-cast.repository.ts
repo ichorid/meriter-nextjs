@@ -34,9 +34,15 @@ export class PollCastRepository {
     return this.model.aggregate([
       { $match: { pollId } },
       {
+        $project: {
+          optionId: 1,
+          totalAmount: { $add: ['$amountQuota', '$amountWallet'] }
+        }
+      },
+      {
         $group: {
           _id: '$optionId',
-          totalAmount: { $sum: '$amount' },
+          totalAmount: { $sum: '$totalAmount' },
           castCount: { $sum: 1 }
         }
       },

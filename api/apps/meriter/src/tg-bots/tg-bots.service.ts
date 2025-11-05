@@ -96,7 +96,7 @@ export class TgBotsService {
     actorId: string;
     actorName: string;
     actorUsername?: string;
-    targetType: 'publication' | 'comment';
+    targetType: 'publication' | 'vote';
     targetId: string;
     publicationId: string;
     communityId?: string;

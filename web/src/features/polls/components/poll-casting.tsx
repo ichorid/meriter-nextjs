@@ -127,7 +127,8 @@ export const PollCasting = ({
                 id: pollId,
                 data: {
                     optionId: selectedOptionId,
-                    amount: validation.numValue,
+                    quotaAmount: 0, // Poll casts only use wallet
+                    walletAmount: validation.numValue,
                 },
                 communityId,
             });

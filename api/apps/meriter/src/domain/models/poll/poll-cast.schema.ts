@@ -28,11 +28,11 @@ export class PollCast {
   @Prop({ required: true })
   optionId: string; // Changed from optionIndex to optionId
 
-  @Prop({ required: true })
-  amount: number;
+  @Prop({ required: true, default: 0, min: 0 })
+  amountQuota: number;
 
-  @Prop({ required: true, enum: ['personal', 'quota'] })
-  sourceType: string;
+  @Prop({ required: true, default: 0, min: 0 })
+  amountWallet: number;
 
   @Prop({ required: true })
   communityId: string; // Added for consistency

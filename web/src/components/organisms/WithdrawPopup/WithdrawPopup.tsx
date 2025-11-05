@@ -7,8 +7,8 @@ import { FormWithdrawVertical } from '@/shared/components/form-withdraw-vertical
 import { useAuth } from '@/contexts/AuthContext';
 import { useWallets, useCommunity } from '@/hooks/api';
 import { useTranslations } from 'next-intl';
-import { useWithdrawFromPublication, useWithdrawFromComment } from '@/hooks/api/useVotes';
-import { useVoteOnPublicationWithComment, useVoteOnComment } from '@/hooks/api/useVotes';
+import { useWithdrawFromPublication, useWithdrawFromVote } from '@/hooks/api/useVotes';
+import { useVoteOnPublicationWithComment, useVoteOnVote } from '@/hooks/api/useVotes';
 
 interface WithdrawPopupProps {
   communityId?: string;
@@ -29,9 +29,9 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
 
   // Use mutation hooks
   const withdrawFromPublicationMutation = useWithdrawFromPublication();
-  const withdrawFromCommentMutation = useWithdrawFromComment();
+  const withdrawFromVoteMutation = useWithdrawFromVote();
   const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
-  const voteOnCommentMutation = useVoteOnComment();
+  const voteOnVoteMutation = useVoteOnVote();
 
   const isOpen = !!activeWithdrawTarget && !!withdrawTargetType;
 
@@ -98,31 +98,32 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
             amount: amount,
           });
         } else if (withdrawTargetType === 'comment-withdraw') {
-          await withdrawFromCommentMutation.mutateAsync({
-            commentId: targetId,
+          await withdrawFromVoteMutation.mutateAsync({
+            voteId: targetId,
             amount: amount,
           });
         }
       } else if (isTopUp) {
         // Handle top-up (adding votes) - use vote mutation
+        // Top-ups use wallet only (quotaAmount = 0)
         if (withdrawTargetType === 'publication-topup') {
           await voteOnPublicationWithCommentMutation.mutateAsync({
             publicationId: targetId,
             data: {
-              amount: amount,
-              sourceType: 'personal',
+              quotaAmount: 0,
+              walletAmount: amount,
               comment: formData.comment.trim() || undefined,
             },
             communityId: targetCommunityId || '',
           });
         } else if (withdrawTargetType === 'comment-topup') {
-          await voteOnCommentMutation.mutateAsync({
-            commentId: targetId,
+          await voteOnVoteMutation.mutateAsync({
+            voteId: targetId,
             data: {
-              targetType: 'comment',
+              targetType: 'vote',
               targetId: targetId,
-              amount: amount,
-              sourceType: 'personal',
+              quotaAmount: 0,
+              walletAmount: amount,
             },
             communityId: targetCommunityId || '',
           });
@@ -168,7 +169,7 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
             onSubmit={handleSubmit}
             onClose={handleClose}
             isWithdrawal={isWithdrawal}
-            isLoading={withdrawFromPublicationMutation.isPending || withdrawFromCommentMutation.isPending || voteOnPublicationWithCommentMutation.isPending || voteOnCommentMutation.isPending}
+            isLoading={withdrawFromPublicationMutation.isPending || withdrawFromVoteMutation.isPending || voteOnPublicationWithCommentMutation.isPending || voteOnVoteMutation.isPending}
             currencyIconUrl={currencyIconUrl}
           />
         </div>

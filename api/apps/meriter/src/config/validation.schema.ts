@@ -4,6 +4,7 @@ import { z } from 'zod';
 // ConfigModule expects a validationSchema with both validate and validateSync methods
 const validateSync = (config: Record<string, unknown>) => {
   const nodeEnv = config.NODE_ENV || 'development';
+  const fakeDataMode = config.FAKE_DATA_MODE === 'true';
   
   // Apply defaults manually before validation
   const configWithDefaults = {
@@ -11,12 +12,13 @@ const validateSync = (config: Record<string, unknown>) => {
     // For backward compatibility, derive from APP_URL if DOMAIN is not set
     DOMAIN: (config.DOMAIN as string) || (config.APP_URL ? new URL(config.APP_URL as string).hostname : 'meriter.pro'),
     PORT: config.PORT ? Number(config.PORT) : 8002,
-    JWT_SECRET: (config.JWT_SECRET as string) || '',
+    JWT_SECRET: (config.JWT_SECRET as string) || (fakeDataMode ? 'fake-dev-secret' : ''),
     BOT_USERNAME: (config.BOT_USERNAME as string) || '',
     BOT_TOKEN: (config.BOT_TOKEN as string) || '',
     MONGO_URL: (config.MONGO_URL as string) || 'mongodb://127.0.0.1:27017/meriter',
     MONGO_URL_SECONDARY: (config.MONGO_URL_SECONDARY as string) || 'mongodb://127.0.0.1:27017/meriter_test',
     NODE_ENV: (config.NODE_ENV as string) || 'development',
+    FAKE_DATA_MODE: config.FAKE_DATA_MODE || 'false',
   };
 
   // Conditional validation: BOT_USERNAME required in production
@@ -27,12 +29,15 @@ const validateSync = (config: Record<string, unknown>) => {
   const envSchema = z.object({
     DOMAIN: z.string(),
     PORT: z.number(),
-    JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
+    JWT_SECRET: fakeDataMode 
+      ? z.string().default('fake-dev-secret')
+      : z.string().min(1, 'JWT_SECRET is required'),
     BOT_USERNAME: z.string(),
     BOT_TOKEN: z.string(),
     MONGO_URL: z.string(),
     MONGO_URL_SECONDARY: z.string(),
     NODE_ENV: z.enum(['development', 'production', 'test']),
+    FAKE_DATA_MODE: z.string().optional(),
   });
 
   // Parse the config and throw if invalid

@@ -6,6 +6,26 @@ import { getNodeById } from '../tree';
 import type { TreeNode, FlatItem } from '../types';
 import { CommentCard } from './CommentCard';
 import { ANIMATION_TIMING } from '../animation-config';
+import { commentsApiV1 } from '@/lib/api/v1';
+import { transformComments } from '../utils/transform';
+import { buildTree } from '../tree';
+
+interface CommentsListProps {
+  roots: TreeNode[];
+  myId?: string;
+  balance?: any;
+  wallets?: any[];
+  communityId?: string;
+  publicationSlug?: string;
+  activeCommentHook?: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
+  activeSlider?: string | null;
+  setActiveSlider?: (id: string | null) => void;
+  activeWithdrawPost?: string | null;
+  setActiveWithdrawPost?: (id: string | null) => void;
+  highlightTransactionId?: string;
+  showCommunityAvatar?: boolean;
+  isDetailPage?: boolean;
+}
 
 /**
  * CommentsList - Tree-based navigation component with Framer Motion animations
@@ -19,17 +39,272 @@ import { ANIMATION_TIMING } from '../animation-config';
  * - Clicking a child item extends the chain to that node
  * - Automatically continues single-child chains depth-first
  */
-export function CommentsList({ roots }: { roots: TreeNode[] }) {
+export function CommentsList({ 
+  roots,
+  myId,
+  balance,
+  wallets,
+  communityId,
+  publicationSlug,
+  activeCommentHook,
+  activeSlider,
+  setActiveSlider,
+  activeWithdrawPost,
+  setActiveWithdrawPost,
+  highlightTransactionId,
+  showCommunityAvatar,
+  isDetailPage,
+}: CommentsListProps) {
   const [path, setPath] = useState<string[]>(() => []);
   const prevItemsRef = useRef<FlatItem[]>([]);
   const [clickedCardId, setClickedCardId] = useState<string | null>(null);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  
+  // Log path changes
+  useEffect(() => {
+    console.log('[CommentsList] Path state changed:', {
+      path,
+      pathLength: path.length,
+      timestamp: new Date().toISOString(),
+    });
+  }, [path]);
+  
+  // State to track the full tree with all loaded comments
+  const [fullTree, setFullTree] = useState<TreeNode[]>(roots);
+  const [loadedCommentIds, setLoadedCommentIds] = useState<Set<string>>(new Set());
+  const [loadingReplies, setLoadingReplies] = useState<Set<string>>(new Set());
+  
+  // Log fullTree changes
+  useEffect(() => {
+    console.log('[CommentsList] fullTree state changed:', {
+      fullTreeRootsCount: fullTree.length,
+      fullTreeRootIds: fullTree.map(r => r.id),
+      timestamp: new Date().toISOString(),
+    });
+  }, [fullTree]);
+
+  // Helper function to count all nodes in tree (including nested)
+  const countAllNodes = (nodes: TreeNode[]): number => {
+    let count = 0;
+    const traverse = (node: TreeNode) => {
+      count++;
+      node.children.forEach(traverse);
+    };
+    nodes.forEach(root => traverse(root));
+    return count;
+  };
+
+  // Update fullTree when roots change
+  useEffect(() => {
+    const totalNodes = countAllNodes(roots);
+    const rootNodesWithChildren = roots.filter(r => r.children.length > 0);
+    console.log('[CommentsList] Roots changed:', {
+      rootsCount: roots.length,
+      rootIds: roots.map(r => r.id),
+      totalNodesInTree: totalNodes,
+      rootNodesWithChildrenCount: rootNodesWithChildren.length,
+      rootNodesWithChildren: rootNodesWithChildren.map(r => ({
+        id: r.id,
+        childrenCount: r.children.length,
+        childrenIds: r.children.map(c => c.id),
+        // Log first child details to see structure
+        firstChild: r.children[0] ? {
+          id: r.children[0].id,
+          parentId: r.children[0].parentId,
+          targetType: r.children[0].originalComment?.targetType,
+          targetId: r.children[0].originalComment?.targetId,
+        } : null,
+      })),
+      // Log all root nodes to see their structure
+      allRoots: roots.map(r => ({
+        id: r.id,
+        parentId: r.parentId,
+        targetType: r.originalComment?.targetType,
+        targetId: r.originalComment?.targetId,
+        childrenCount: r.children.length,
+      })),
+      timestamp: new Date().toISOString(),
+    });
+    setFullTree(roots);
+    // Don't mark root comments as loaded - we'll load their replies when needed
+    // Only mark them as loaded after we've actually fetched their replies
+  }, [roots]);
+
+  // Function to add replies to a comment in the tree
+  const addRepliesToNode = useCallback((tree: TreeNode[], targetId: string, replies: TreeNode[]): TreeNode[] => {
+    console.log('[CommentsList] addRepliesToNode called:', {
+      targetId,
+      repliesCount: replies.length,
+      replyIds: replies.map(r => r.id),
+      timestamp: new Date().toISOString(),
+    });
+    const findAndUpdate = (nodes: TreeNode[]): TreeNode[] => {
+      return nodes.map(node => {
+        if (node.id === targetId) {
+          // Found the target node, add replies to its children
+          // Filter out replies that are already in children to avoid duplicates
+          const existingIds = new Set(node.children.map(c => c.id));
+          const newReplies = replies.filter(r => !existingIds.has(r.id));
+          console.log('[CommentsList] Adding replies to node:', {
+            nodeId: node.id,
+            existingChildrenCount: node.children.length,
+            newRepliesCount: newReplies.length,
+            newReplyIds: newReplies.map(r => r.id),
+            finalChildrenCount: node.children.length + newReplies.length,
+          });
+          return {
+            ...node,
+            children: [...node.children, ...newReplies],
+          };
+        }
+        // Recursively search in children
+        return {
+          ...node,
+          children: findAndUpdate(node.children),
+        };
+      });
+    };
+    const result = findAndUpdate(tree);
+    console.log('[CommentsList] addRepliesToNode completed:', {
+      targetId,
+      finalTreeRootsCount: result.length,
+    });
+    return result;
+  }, []);
+
+  // Function to load replies for a comment
+  const loadReplies = useCallback(async (commentId: string) => {
+    console.log('[CommentsList] loadReplies called:', {
+      commentId,
+      isLoading: loadingReplies.has(commentId),
+      isLoaded: loadedCommentIds.has(commentId),
+      timestamp: new Date().toISOString(),
+    });
+    
+    // Don't load if already loading or already loaded
+    if (loadingReplies.has(commentId) || loadedCommentIds.has(commentId)) {
+      console.log('[CommentsList] loadReplies skipped (already loading/loaded):', {
+        commentId,
+        isLoading: loadingReplies.has(commentId),
+        isLoaded: loadedCommentIds.has(commentId),
+      });
+      return;
+    }
+
+    console.log('[CommentsList] loadReplies starting fetch:', { commentId });
+    setLoadingReplies(prev => new Set(prev).add(commentId));
+
+    try {
+      console.log('[CommentsList] Calling getCommentReplies API:', {
+        commentId,
+        params: { sort: 'createdAt', order: 'desc' },
+      });
+      const result = await commentsApiV1.getCommentReplies(commentId, {
+        sort: 'createdAt',
+        order: 'desc',
+      });
+      
+      console.log('[CommentsList] getCommentReplies API response:', {
+        commentId,
+        result,
+        resultType: typeof result,
+        resultKeys: result ? Object.keys(result) : [],
+        resultValues: result ? Object.keys(result).map(key => ({ key, value: (result as any)[key], type: typeof (result as any)[key] })) : [],
+        data: result?.data,
+        dataType: typeof result?.data,
+        dataIsArray: Array.isArray(result?.data),
+        dataLength: Array.isArray(result?.data) ? result.data.length : 'not array',
+        repliesCount: result?.data?.length || 0,
+        replies: result?.data || [],
+        meta: result?.meta,
+        fullResponse: JSON.stringify(result, null, 2),
+      });
+      
+      const replies = result?.data || [];
+      if (replies.length > 0) {
+        console.log('[CommentsList] Processing replies:', {
+          commentId,
+          repliesCount: replies.length,
+          replyIds: replies.map(r => r.id),
+        });
+        
+        // Transform replies to Comment format
+        const transformedReplies = transformComments(replies);
+        console.log('[CommentsList] Transformed replies:', {
+          commentId,
+          transformedCount: transformedReplies.length,
+          transformedIds: transformedReplies.map(r => r.id),
+        });
+        
+        // Build tree from replies (they should be flat, but buildTree handles it)
+        const replyTree = buildTree(transformedReplies);
+        console.log('[CommentsList] Built reply tree:', {
+          commentId,
+          treeRootsCount: replyTree.length,
+          treeRootIds: replyTree.map(r => r.id),
+          totalNodesInTree: replyTree.reduce((sum, root) => {
+            const countChildren = (node: TreeNode): number => {
+              return 1 + node.children.reduce((acc, child) => acc + countChildren(child), 0);
+            };
+            return sum + countChildren(root);
+          }, 0),
+        });
+        
+        // Add replies to the full tree
+        console.log('[CommentsList] Adding replies to full tree:', { commentId });
+        setFullTree(prevTree => {
+          const newTree = addRepliesToNode(prevTree, commentId, replyTree);
+          console.log('[CommentsList] Full tree updated:', {
+            commentId,
+            prevTreeRootsCount: prevTree.length,
+            newTreeRootsCount: newTree.length,
+          });
+          return newTree;
+        });
+      } else {
+        console.log('[CommentsList] No replies found for comment:', {
+          commentId,
+          repliesCount: 0,
+        });
+      }
+      
+      // Mark this comment as having loaded its replies
+      console.log('[CommentsList] Marking comment as loaded:', { commentId });
+      setLoadedCommentIds(prev => new Set(prev).add(commentId));
+    } catch (error) {
+      console.error(`[CommentsList] Error loading replies for comment ${commentId}:`, error);
+    } finally {
+      setLoadingReplies(prev => {
+        const next = new Set(prev);
+        next.delete(commentId);
+        console.log('[CommentsList] loadReplies completed:', {
+          commentId,
+          stillLoading: next.has(commentId),
+        });
+        return next;
+      });
+    }
+  }, [loadingReplies, loadedCommentIds, addRepliesToNode]);
 
   // Build the items to display: depth-first chain + breadth-first children
   const items = useMemo(() => {
+    console.log('[CommentsList] items memoization running:', {
+      pathLength: path.length,
+      path,
+      fullTreeRootsCount: fullTree.length,
+      loadedCommentIds: Array.from(loadedCommentIds),
+      loadingReplies: Array.from(loadingReplies),
+      timestamp: new Date().toISOString(),
+    });
+    
     if (path.length === 0) {
       // No path: show all roots as breadth-first
-      return roots.map((node) => ({ id: node.id, depth: 0, node, isChain: false }));
+      const rootItems = fullTree.map((node) => ({ id: node.id, depth: 0, node, isChain: false }));
+      console.log('[CommentsList] No path - showing root items:', {
+        rootItemsCount: rootItems.length,
+        rootItemIds: rootItems.map(i => i.id),
+      });
+      return rootItems;
     }
 
     const items: FlatItem[] = [];
@@ -38,17 +313,67 @@ export function CommentsList({ roots }: { roots: TreeNode[] }) {
     let chainEnd: TreeNode | null = null;
     for (let i = 0; i < path.length; i++) {
       const nodeId = path[i];
-      if (!nodeId) break;
-      const node = getNodeById(roots, nodeId);
-      if (!node) break;
+      if (!nodeId) {
+        console.log('[CommentsList] Empty nodeId in path at index:', i);
+        break;
+      }
+      const node = getNodeById(fullTree, nodeId);
+      if (!node) {
+        console.log('[CommentsList] Node not found in tree:', {
+          nodeId,
+          fullTreeRootIds: fullTree.map(r => r.id),
+        });
+        break;
+      }
+      console.log('[CommentsList] Processing node in path:', {
+        index: i,
+        nodeId,
+        nodeChildrenCount: node.children.length,
+        nodeChildrenIds: node.children.map(c => c.id),
+        nodeReplyCount: node.originalComment?.metrics?.replyCount ?? 0,
+        metrics: node.originalComment?.metrics,
+        nodeHasChildren: node.children.length > 0,
+        nodeParentId: node.parentId,
+        nodeTargetType: node.originalComment?.targetType,
+        nodeTargetId: node.originalComment?.targetId,
+      });
       items.push({ id: node.id, depth: i, node, isChain: true });
       chainEnd = node;
+      
+      // Load replies if:
+      // 1. We don't already have children loaded (children.length === 0)
+      // 2. We haven't already loaded/checked for replies
+      // 3. We're not currently loading replies
+      // Note: We always try to load replies when navigating to a comment, even if replyCount is 0,
+      // because the API might not return accurate counts or the comment might have replies that weren't counted
+      const replyCount = node.originalComment?.metrics?.replyCount ?? 0;
+      const hasReplies = replyCount > 0;
+      const needsLoading = node.children.length === 0 && !loadedCommentIds.has(nodeId) && !loadingReplies.has(nodeId);
+      console.log('[CommentsList] Checking if replies need loading:', {
+        nodeId,
+        hasReplies,
+        replyCount,
+        childrenLength: node.children.length,
+        isLoaded: loadedCommentIds.has(nodeId),
+        isLoading: loadingReplies.has(nodeId),
+        needsLoading,
+        metrics: node.originalComment?.metrics,
+      });
+      if (needsLoading) {
+        // Load replies asynchronously
+        console.log('[CommentsList] Triggering loadReplies for node:', { nodeId, replyCount });
+        loadReplies(nodeId);
+      }
     }
 
     // Continue the chain depth-first automatically if there's exactly one child
     if (chainEnd && chainEnd.children.length === 1) {
       const singleChild = chainEnd.children[0];
       if (singleChild) {
+        console.log('[CommentsList] Adding single child to chain:', {
+          chainEndId: chainEnd.id,
+          singleChildId: singleChild.id,
+        });
         items.push({ id: singleChild.id, depth: path.length, node: singleChild, isChain: true });
         chainEnd = singleChild;
       }
@@ -57,15 +382,32 @@ export function CommentsList({ roots }: { roots: TreeNode[] }) {
     // Add breadth-first children of the chain end
     if (chainEnd) {
       const depth = items.length;
+      console.log('[CommentsList] Adding breadth-first children:', {
+        chainEndId: chainEnd.id,
+        childrenCount: chainEnd.children.length,
+        childrenIds: chainEnd.children.map(c => c.id),
+        depth,
+      });
       for (const child of chainEnd.children) {
         // Skip if already added as single child
-        if (items.some(item => item.id === child.id)) continue;
+        if (items.some(item => item.id === child.id)) {
+          console.log('[CommentsList] Skipping child (already in chain):', { childId: child.id });
+          continue;
+        }
         items.push({ id: child.id, depth, node: child, isChain: false });
       }
+    } else {
+      console.log('[CommentsList] No chainEnd - cannot add children');
     }
 
+    console.log('[CommentsList] Final items computed:', {
+      itemsCount: items.length,
+      itemIds: items.map(i => i.id),
+      itemDepths: items.map(i => i.depth),
+      itemIsChain: items.map(i => i.isChain),
+    });
     return items;
-  }, [roots, path]);
+  }, [fullTree, path, loadedCommentIds, loadingReplies, loadReplies]);
 
   // Track previous items for animation logic
   const wasInPrevious = useMemo(() => {
@@ -76,6 +418,18 @@ export function CommentsList({ roots }: { roots: TreeNode[] }) {
   }, [items]);
 
   const handleCardClick = useCallback((nodeId: string, event?: React.MouseEvent) => {
+    console.log('[CommentsList] handleCardClick called:', {
+      nodeId,
+      currentPath: path,
+      pathLength: path.length,
+      event: event ? {
+        type: event.type,
+        target: (event.target as HTMLElement)?.tagName,
+        currentTarget: (event.currentTarget as HTMLElement)?.tagName,
+      } : null,
+      timestamp: new Date().toISOString(),
+    });
+    
     // Prevent immediate browser scroll/focus behavior
     if (event) {
       event.preventDefault();
@@ -87,13 +441,31 @@ export function CommentsList({ roots }: { roots: TreeNode[] }) {
     }
     
     const clickedIndex = path.indexOf(nodeId);
+    console.log('[CommentsList] Clicked node index in path:', {
+      nodeId,
+      clickedIndex,
+      inPath: clickedIndex >= 0,
+    });
+    
     if (clickedIndex >= 0) {
       // Clicked a card in the chain - collapse to that point
-      setPath(path.slice(0, clickedIndex + 1));
+      const newPath = path.slice(0, clickedIndex + 1);
+      console.log('[CommentsList] Collapsing path to clicked node:', {
+        nodeId,
+        oldPath: path,
+        newPath,
+      });
+      setPath(newPath);
       setClickedCardId(nodeId);
     } else {
       // Clicked a child - extend the chain
-      setPath([...path, nodeId]);
+      const newPath = [...path, nodeId];
+      console.log('[CommentsList] Extending path with clicked node:', {
+        nodeId,
+        oldPath: path,
+        newPath,
+      });
+      setPath(newPath);
       setClickedCardId(nodeId);
     }
   }, [path]);
@@ -249,7 +621,31 @@ export function CommentsList({ roots }: { roots: TreeNode[] }) {
                   node={item.node}
                   depth={item.depth}
                   isChainMode={item.isChain}
-                  onNavigate={() => {}}
+                  onNavigate={() => {
+                    console.log('[CommentsList] CommentCard onNavigate called:', {
+                      itemId: item.id,
+                      itemDepth: item.depth,
+                      isChain: item.isChain,
+                      nodeChildrenCount: item.node.children.length,
+                      nodeReplyCount: item.node.originalComment?.metrics?.replyCount ?? 0,
+                      metrics: item.node.originalComment?.metrics,
+                      timestamp: new Date().toISOString(),
+                    });
+                    handleCardClick(item.id);
+                  }}
+                  myId={myId}
+                  balance={balance}
+                  wallets={wallets}
+                  communityId={communityId}
+                  publicationSlug={publicationSlug}
+                  activeCommentHook={activeCommentHook}
+                  activeSlider={activeSlider}
+                  setActiveSlider={setActiveSlider}
+                  activeWithdrawPost={activeWithdrawPost}
+                  setActiveWithdrawPost={setActiveWithdrawPost}
+                  highlightTransactionId={highlightTransactionId}
+                  showCommunityAvatar={showCommunityAvatar}
+                  isDetailPage={isDetailPage}
                 />
               </motion.div>
             ))}

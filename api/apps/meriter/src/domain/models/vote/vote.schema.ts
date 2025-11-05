@@ -19,7 +19,7 @@ export class Vote {
   @Prop({ required: true, unique: true })
   id: string;
 
-  @Prop({ required: true, enum: ['publication', 'comment'] })
+  @Prop({ required: true, enum: ['publication', 'vote'] })
   targetType: string;
 
   @Prop({ required: true })
@@ -28,14 +28,14 @@ export class Vote {
   @Prop({ required: true })
   userId: string;
 
-  @Prop({ required: true })
-  amount: number;
+  @Prop({ required: true, default: 0, min: 0 })
+  amountQuota: number;
 
-  @Prop({ required: true, enum: ['personal', 'quota'] })
-  sourceType: string;
+  @Prop({ required: true, default: 0, min: 0 })
+  amountWallet: number;
 
-  @Prop()
-  attachedCommentId?: string; // Renamed from commentId for clarity - optional comment attached to vote
+  @Prop({ required: true, maxlength: 5000 })
+  comment: string; // Required comment text attached to vote
 
   @Prop({ required: true })
   communityId: string; // Made required for consistency

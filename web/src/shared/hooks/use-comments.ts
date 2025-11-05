@@ -4,7 +4,7 @@ import { commentsApiV1 } from '@/lib/api/v1';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
 import type { Dispatch, SetStateAction } from 'react';
-import { useVoteOnComment } from '@/hooks/api/useVotes';
+import { useVoteOnVote } from '@/hooks/api/useVotes';
 import { useCreateComment, commentsKeys } from '@/hooks/api/useComments';
 import { useUserQuota } from '@/hooks/api/useQuota';
 
@@ -46,7 +46,7 @@ export const useComments = (
     const [error, setError] = useState("");
     
     // Mutation hooks
-    const voteOnCommentMutation = useVoteOnComment();
+    const voteOnVoteMutation = useVoteOnVote();
     const createCommentMutation = useCreateComment();
 
     // Map sort preference to API parameters
@@ -167,10 +167,10 @@ export const useComments = (
                     }
                     
                     // Send single API call with both quotaAmount and walletAmount
-                    await voteOnCommentMutation.mutateAsync({
-                        commentId: transactionId,
+                    await voteOnVoteMutation.mutateAsync({
+                        voteId: transactionId,
                         data: {
-                            targetType: 'comment',
+                            targetType: 'vote',
                             targetId: transactionId,
                             quotaAmount: quotaAmount > 0 ? quotaAmount : undefined,
                             walletAmount: walletAmount > 0 ? walletAmount : undefined,

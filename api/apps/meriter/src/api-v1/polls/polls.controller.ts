@@ -277,11 +277,21 @@ export class PollsController {
     }
     
     const snapshot = poll.toSnapshot();
-    const sourceType = (createDto as any).sourceType || 'personal';
     const communityId = snapshot.communityId;
     
-    // Validate amount
-    if (createDto.amount <= 0) {
+    // Poll casts only use wallet (quotaAmount should be 0)
+    const quotaAmount = createDto.quotaAmount ?? 0;
+    const walletAmount = createDto.walletAmount ?? 0;
+    const totalAmount = quotaAmount + walletAmount;
+    
+    // Validate amounts
+    if (quotaAmount > 0) {
+      throw new ValidationError('Poll casts cannot use quota, only wallet');
+    }
+    if (walletAmount <= 0) {
+      throw new ValidationError('Cast amount must be positive');
+    }
+    if (totalAmount <= 0) {
       throw new ValidationError('Cast amount must be positive');
     }
     
@@ -291,38 +301,35 @@ export class PollsController {
       throw new NotFoundError('Community', communityId);
     }
     
-    // If using personal wallet, validate and deduct balance BEFORE creating cast
+    // Validate and deduct balance BEFORE creating cast
     // This prevents race conditions by checking balance first
-    let updatedWallet: Wallet | null = null;
-    if (sourceType === 'personal') {
-      const wallet = await this.walletService.getWallet(req.user.id, communityId);
-      if (!wallet) {
-        throw new ValidationError('Wallet not found');
-      }
-      
-      // Check balance - throws error if insufficient
-      if (!wallet.canAfford(Math.abs(createDto.amount))) {
-        throw new ValidationError('Insufficient balance to cast this amount');
-      }
-      
-      // Deduct from wallet FIRST - this will throw if balance is insufficient
-      // By doing this before creating the cast, we prevent orphaned casts
-      updatedWallet = await this.walletService.addTransaction(
-        req.user.id,
-        communityId,
-        'debit',
-        Math.abs(createDto.amount),
-        'personal',
-        'poll_cast',
-        id,
-        community.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        `Cast on poll ${id}`
-      );
+    const wallet = await this.walletService.getWallet(req.user.id, communityId);
+    if (!wallet) {
+      throw new ValidationError('Wallet not found');
     }
+    
+    // Check balance - throws error if insufficient
+    if (!wallet.canAfford(walletAmount)) {
+      throw new ValidationError('Insufficient balance to cast this amount');
+    }
+    
+    // Deduct from wallet FIRST - this will throw if balance is insufficient
+    // By doing this before creating the cast, we prevent orphaned casts
+    const updatedWallet = await this.walletService.addTransaction(
+      req.user.id,
+      communityId,
+      'debit',
+      walletAmount,
+      'personal',
+      'poll_cast',
+      id,
+      community.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      },
+      `Cast on poll ${id}`
+    );
     
     // Check if this is a new caster
     const existingCasts = await this.pollsService.getUserCasts(id, req.user.id);
@@ -333,18 +340,15 @@ export class PollsController {
       id,
       req.user.id,
       createDto.optionId,
-      createDto.amount,
-      sourceType,
+      quotaAmount,
+      walletAmount,
       communityId
     );
     
     // Update poll aggregate to reflect the cast
-    await this.pollsService.updatePollForCast(id, createDto.optionId, createDto.amount, isNewCaster);
+    await this.pollsService.updatePollForCast(id, createDto.optionId, walletAmount, isNewCaster);
     
-    // Get final wallet balance to return
-    if (!updatedWallet && sourceType === 'personal') {
-      updatedWallet = await this.walletService.getWallet(req.user.id, communityId);
-    }
+    // Get final wallet balance to return (already set from transaction)
     
     return {
       success: true,

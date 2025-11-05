@@ -13,7 +13,7 @@ import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSyncCommunities } from '@/hooks/api/useCommunities';
 import { isFakeDataMode } from '@/config';
-import { publicationsApiV1 } from '@/lib/api/v1';
+import { communitiesApiV1 } from '@/lib/api/v1';
 
 const SettingsPage = () => {
     const router = useRouter();
@@ -29,11 +29,12 @@ const SettingsPage = () => {
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
     
-    // Fake data generation state
+    // Fake community creation state
     const fakeDataMode = isFakeDataMode();
-    const [generatingUserPosts, setGeneratingUserPosts] = useState(false);
-    const [generatingBeneficiaryPosts, setGeneratingBeneficiaryPosts] = useState(false);
-    const [fakeDataMessage, setFakeDataMessage] = useState('');
+    const [creatingFakeCommunity, setCreatingFakeCommunity] = useState(false);
+    const [fakeCommunityMessage, setFakeCommunityMessage] = useState('');
+    const [addingToAllCommunities, setAddingToAllCommunities] = useState(false);
+    const [addToAllMessage, setAddToAllMessage] = useState('');
 
     // Redirect if not authenticated
     useEffect(() => {
@@ -55,37 +56,48 @@ const SettingsPage = () => {
         }
     };
 
-    const handleGenerateUserPosts = async () => {
-        setGeneratingUserPosts(true);
-        setFakeDataMessage('');
+    const handleCreateFakeCommunity = async () => {
+        setCreatingFakeCommunity(true);
+        setFakeCommunityMessage('');
         
         try {
-            const result = await publicationsApiV1.generateFakeData('user');
-            setFakeDataMessage(`Successfully created ${result.count} user post(s)`);
-            setTimeout(() => setFakeDataMessage(''), 3000);
+            const community = await communitiesApiV1.createFakeCommunity();
+            setFakeCommunityMessage(`Successfully created community: ${community.name}`);
+            // Redirect to the new community
+            setTimeout(() => {
+                router.push(`/meriter/communities/${community.id}`);
+            }, 1000);
         } catch (error) {
-            console.error('Generate user posts error:', error);
-            setFakeDataMessage('Failed to generate user posts');
-            setTimeout(() => setFakeDataMessage(''), 3000);
+            console.error('Create fake community error:', error);
+            setFakeCommunityMessage('Failed to create fake community');
+            setTimeout(() => setFakeCommunityMessage(''), 3000);
         } finally {
-            setGeneratingUserPosts(false);
+            setCreatingFakeCommunity(false);
         }
     };
 
-    const handleGenerateBeneficiaryPosts = async () => {
-        setGeneratingBeneficiaryPosts(true);
-        setFakeDataMessage('');
+    const handleAddToAllCommunities = async () => {
+        setAddingToAllCommunities(true);
+        setAddToAllMessage('');
         
         try {
-            const result = await publicationsApiV1.generateFakeData('beneficiary');
-            setFakeDataMessage(`Successfully created ${result.count} post(s) with beneficiary`);
-            setTimeout(() => setFakeDataMessage(''), 3000);
+            const result = await communitiesApiV1.addUserToAllCommunities();
+            if (result.errors && result.errors.length > 0) {
+                setAddToAllMessage(`Added to ${result.added} communities, skipped ${result.skipped}. ${result.errors.length} errors occurred.`);
+            } else {
+                setAddToAllMessage(`Successfully added to ${result.added} communities (${result.skipped} already members)`);
+            }
+            setTimeout(() => setAddToAllMessage(''), 5000);
+            // Refresh the page to show updated communities
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
         } catch (error) {
-            console.error('Generate beneficiary posts error:', error);
-            setFakeDataMessage('Failed to generate posts with beneficiary');
-            setTimeout(() => setFakeDataMessage(''), 3000);
+            console.error('Add to all communities error:', error);
+            setAddToAllMessage('Failed to add user to all communities');
+            setTimeout(() => setAddToAllMessage(''), 3000);
         } finally {
-            setGeneratingBeneficiaryPosts(false);
+            setAddingToAllCommunities(false);
         }
     };
 
@@ -183,26 +195,31 @@ const SettingsPage = () => {
                     <div className="card-body">
                         <h2 className="card-title">Development</h2>
                         <p className="text-sm opacity-70 mb-2">
-                            Generate fake data for testing
+                            Create fake data for testing
                         </p>
                         <div className="py-2 space-y-2">
                             <button 
-                                className={`btn btn-primary w-full ${generatingUserPosts ? 'loading' : ''}`}
-                                onClick={handleGenerateUserPosts}
-                                disabled={generatingUserPosts || generatingBeneficiaryPosts}
+                                className={`btn btn-primary w-full ${creatingFakeCommunity ? 'loading' : ''}`}
+                                onClick={handleCreateFakeCommunity}
+                                disabled={creatingFakeCommunity || addingToAllCommunities}
                             >
-                                {generatingUserPosts ? 'Generating...' : 'Generate User Posts'}
+                                {creatingFakeCommunity ? 'Creating...' : 'Create Fake Community'}
                             </button>
                             <button 
-                                className={`btn btn-secondary w-full ${generatingBeneficiaryPosts ? 'loading' : ''}`}
-                                onClick={handleGenerateBeneficiaryPosts}
-                                disabled={generatingUserPosts || generatingBeneficiaryPosts}
+                                className={`btn btn-secondary w-full ${addingToAllCommunities ? 'loading' : ''}`}
+                                onClick={handleAddToAllCommunities}
+                                disabled={creatingFakeCommunity || addingToAllCommunities}
                             >
-                                {generatingBeneficiaryPosts ? 'Generating...' : 'Generate Posts with Beneficiary'}
+                                {addingToAllCommunities ? 'Adding...' : 'Add This User to All Communities'}
                             </button>
-                            {fakeDataMessage && (
-                                <div className={`mt-2 text-sm ${fakeDataMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>
-                                    {fakeDataMessage}
+                            {fakeCommunityMessage && (
+                                <div className={`mt-2 text-sm ${fakeCommunityMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>
+                                    {fakeCommunityMessage}
+                                </div>
+                            )}
+                            {addToAllMessage && (
+                                <div className={`mt-2 text-sm ${addToAllMessage.includes('Failed') || addToAllMessage.includes('errors') ? 'text-error' : 'text-success'}`}>
+                                    {addToAllMessage}
                                 </div>
                             )}
                         </div>
