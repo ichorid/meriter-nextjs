@@ -61,7 +61,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   return (
     <div className={`flex items-start justify-between ${className}`}>
       <div className="flex items-start gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-start sm:items-center gap-2 flex-col sm:flex-row">
           <Avatar src={author.photoUrl} alt={author.name} size="md" />
           <div className="flex flex-col">
             <span className="font-medium">{author.name}</span>

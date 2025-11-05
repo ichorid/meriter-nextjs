@@ -404,7 +404,6 @@ export const FormPollCreate = ({
                             <div className="flex gap-2">
                                 <input
                                     type="number"
-                                    min="1"
                                     className="input input-bordered w-24"
                                     value={timeValue}
                                     onChange={(e) => setTimeValue(parseInt(e.target.value) || 1)}

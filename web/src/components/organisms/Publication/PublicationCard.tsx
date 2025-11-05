@@ -136,7 +136,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   
   return (
     <article 
-      className={`card bg-base-100 shadow-md rounded-lg p-6 cursor-pointer hover:shadow-lg transition-shadow ${className}`}
+      className={`card bg-base-100 shadow-md rounded-lg p-6 cursor-pointer hover:shadow-lg transition-shadow overflow-hidden ${className}`}
       onClick={handleCardClick}
     >
       <PublicationHeader
