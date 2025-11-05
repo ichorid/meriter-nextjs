@@ -46,8 +46,14 @@ export function calculateConnectionMetadata(items: FlatItem[]): Map<string, Flat
     
     for (let i = 0; i < sortedSiblings.length; i++) {
       const item = sortedSiblings[i];
+      if (!item || !item.id || item.depth === undefined || !item.node) {
+        continue;
+      }
       const updatedItem: FlatItem = {
         ...item,
+        id: item.id,
+        depth: item.depth,
+        node: item.node,
         parentId: parentId || null,
         siblingGroupId: parentId || null,
         siblingIndex: i,

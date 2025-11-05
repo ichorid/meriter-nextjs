@@ -24,6 +24,13 @@ export interface TelegramDetectionResult {
 export function detectFromURL(url: string): { isTelegramMiniApp: boolean; confidence: 'high' | 'medium' | 'low' } {
   try {
     const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    
+    // /miniapplogin is always a Mini App route
+    if (pathname === '/miniapplogin') {
+      return { isTelegramMiniApp: true, confidence: 'high' };
+    }
+    
     const hasTgWebAppData = urlObj.searchParams.has('tgWebAppData');
     const hasTgWebAppStartParam = urlObj.searchParams.has('tgWebAppStartParam');
     
@@ -76,6 +83,22 @@ export function detectTelegramEnvironment(): TelegramDetectionResult {
       confidence: 'low',
       signals
     };
+  }
+
+  // Check if we're on the /miniapplogin route - always Mini App mode
+  try {
+    if (window.location.pathname === '/miniapplogin') {
+      return {
+        isTelegramMiniApp: true,
+        confidence: 'high',
+        signals: {
+          ...signals,
+          hasTelegramObject: true, // Assume it's available
+        }
+      };
+    }
+  } catch (e) {
+    // Ignore
   }
 
   // Check URL parameters

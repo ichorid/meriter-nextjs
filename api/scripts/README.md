@@ -267,7 +267,7 @@ Configure Telegram bot menu button to open the web app.
 
 This script manages the bot's menu button configuration:
 - **Check** current menu button settings
-- **Set** menu button URL to open your web app
+- **Set** menu button URL to open your web app (defaults to `/miniapplogin`)
 - **Remove** menu button (revert to default Telegram menu)
 
 ### When to Use
@@ -282,6 +282,7 @@ This script manages the bot's menu button configuration:
 1. Telegram bot token from @BotFather
 2. Publicly accessible HTTPS URL
 3. Web app deployed and running
+4. **Mini App URL configured in @BotFather** (see Configuration section below)
 
 ### Usage
 
@@ -295,7 +296,7 @@ export $(grep -E 'BOT_TOKEN|APP_URL' .env | xargs)
 # Check current menu button configuration
 node scripts/setup-bot-menu.js check
 
-# Set menu button to open login page
+# Set menu button to open Mini App login page (default: /miniapplogin)
 node scripts/setup-bot-menu.js set
 
 # Set menu button to custom path
@@ -323,6 +324,26 @@ node scripts/setup-bot-menu.js set
 ```bash
 node scripts/setup-bot-menu.js set /meriter/home
 ```
+
+### Configuration in @BotFather
+
+**IMPORTANT**: Before using the menu button, you must configure the Mini App URL in @BotFather:
+
+1. Open a chat with [@BotFather](https://t.me/BotFather) on Telegram
+2. Send `/myapps` command
+3. Select your bot or create a new Mini App
+4. Set the **Mini App URL** to: `https://meriter.pro/miniapplogin` (replace with your domain)
+5. Optionally set a short name (e.g., "meriter") for deep link support
+
+**Why this is needed:**
+- The menu button URL (`/miniapplogin`) must be configured as the bot's Mini App URL in @BotFather
+- This ensures Telegram opens the page in Mini App mode with proper WebApp context
+- Without this configuration, the page may open as a regular webpage without authentication
+
+**Verifying the configuration:**
+- After setting the menu button, click "Open" in your bot's menu
+- The app should open in Telegram Mini App mode with automatic authentication
+- If you see a web auth widget instead, the Mini App URL is not configured correctly in @BotFather
 
 **Remove menu button:**
 ```bash

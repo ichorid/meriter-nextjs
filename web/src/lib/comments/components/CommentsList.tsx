@@ -151,6 +151,7 @@ export function CommentsList({
   // Build the items to display: depth-first chain + breadth-first children
   const itemsWithMetadata = useMemo(() => {
     let items: FlatItem[] = [];
+    let chainEnd: TreeNode | null = null;
     
     if (path.length === 0) {
       // No path: show all roots as breadth-first
@@ -170,7 +171,6 @@ export function CommentsList({
       }));
     } else {
       // Build the depth-first chain from the path
-      let chainEnd: TreeNode | null = null;
       for (let i = 0; i < path.length; i++) {
         const nodeId = path[i];
         if (!nodeId) {
@@ -182,8 +182,9 @@ export function CommentsList({
         }
         
         // Determine parent for chain items
-        const parentId = i > 0 ? path[i - 1] : null;
-        const parentNode = i > 0 ? getNodeById(fullTree, path[i - 1]) : null;
+        const prevPathId = i > 0 ? path[i - 1] : undefined;
+        const parentId = prevPathId || null;
+        const parentNode = prevPathId ? getNodeById(fullTree, prevPathId) : null;
         const siblings = parentNode ? parentNode.children : fullTree;
         const siblingIndex = siblings.findIndex(n => n.id === node.id);
         
@@ -202,17 +203,18 @@ export function CommentsList({
           hasChildren: node.children.length > 0,
         });
         chainEnd = node;
-      
-      // Load replies if:
-      // 1. We don't already have children loaded (children.length === 0)
-      // 2. We haven't already loaded/checked for replies
-      // 3. We're not currently loading replies
-      // Note: We always try to load replies when navigating to a comment, even if replyCount is 0,
-      // because the API might not return accurate counts or the comment might have replies that weren't counted
-      const needsLoading = node.children.length === 0 && !loadedCommentIds.has(nodeId) && !loadingReplies.has(nodeId);
-      if (needsLoading) {
-        // Load replies asynchronously
-        loadReplies(nodeId);
+        
+        // Load replies if:
+        // 1. We don't already have children loaded (children.length === 0)
+        // 2. We haven't already loaded/checked for replies
+        // 3. We're not currently loading replies
+        // Note: We always try to load replies when navigating to a comment, even if replyCount is 0,
+        // because the API might not return accurate counts or the comment might have replies that weren't counted
+        const needsLoading = node.children.length === 0 && !loadedCommentIds.has(nodeId) && !loadingReplies.has(nodeId);
+        if (needsLoading) {
+          // Load replies asynchronously
+          loadReplies(nodeId);
+        }
       }
     }
 
@@ -244,6 +246,9 @@ export function CommentsList({
       const children = chainEnd.children;
       for (let i = 0; i < children.length; i++) {
         const child = children[i];
+        if (!child) {
+          continue;
+        }
         // Skip if already added as single child
         if (items.some(item => item.id === child.id)) {
           continue;

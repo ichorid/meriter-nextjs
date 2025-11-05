@@ -63,9 +63,8 @@ export function useVoteOnPublication() {
       queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
       
       // If a comment was attached to the vote, invalidate comments queries
-      // This handles both cases: when result.comment exists (combined endpoint) 
-      // and when attachedCommentId is provided (regular endpoint)
-      if (result.comment || variables?.data?.attachedCommentId) {
+      // This handles the case when result.comment exists (combined endpoint)
+      if (result.comment || variables?.data?.comment) {
         queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
         // Also invalidate the specific publication's comments query
         if (variables?.publicationId) {

@@ -39,6 +39,7 @@ export function useTelegramWebApp() {
   return {
     isInTelegram: store.isInTelegram,
     initData: store.initData,
+    initDataUnsafe: store.initDataUnsafe,
     user: store.user,
     colorScheme: store.colorScheme,
     themeParams: store.themeParams,

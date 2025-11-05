@@ -107,7 +107,7 @@ async function checkMenuButton(botToken) {
     }
 }
 
-async function setMenuButton(botToken, appUrl, path = '/meriter/login') {
+async function setMenuButton(botToken, appUrl, path = '/miniapplogin') {
     const menuButtonUrl = `${appUrl}${path}`;
     
     console.log('🔧 Setting menu button...');
@@ -230,7 +230,7 @@ async function main() {
             process.exit(1);
         }
         
-        const path = pathArg || '/meriter/login';
+        const path = pathArg || '/miniapplogin';
         await setMenuButton(botToken, appUrl, path);
     } else if (command === 'remove') {
         await removeMenuButton(botToken);

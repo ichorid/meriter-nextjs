@@ -27,7 +27,7 @@ import type {
   Transaction,
   CreatePublicationDto,
   CreateCommentDto,
-  CreateVoteDto,
+  CreateVoteRequest,
   CreatePollDto,
   CreatePollCastDto,
   UpdateCommunityDto,
