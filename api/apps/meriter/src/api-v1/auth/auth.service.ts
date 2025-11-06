@@ -8,6 +8,7 @@ import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { User } from '../../../../../../libs/shared-types/dist/index';
 import { signJWT } from '../../common/helpers/jwt';
 import { Community, CommunityDocument } from '../../domain/models/community/community.schema';
+import { JwtService } from '../common/utils/jwt-service.util';
 import * as crypto from 'crypto';
 
 interface TelegramAuthData {
@@ -109,26 +110,17 @@ export class AuthService {
     });
 
     // Generate JWT
-    const jwtSecret = this.configService.get<string>('jwt.secret');
-    if (!jwtSecret) {
-      this.logger.error('JWT_SECRET is not configured. Cannot generate JWT token.');
-      throw new Error('JWT secret not configured');
-    }
-    
-    const jwtToken = signJWT(
-      {
-        uid: user.id,
-        telegramId,
-        communityTags: user.communityTags || [],
-      },
-      jwtSecret,
-      '365d',
+    const jwtToken = JwtService.generateTokenFromConfig(
+      user.id,
+      telegramId,
+      user.communityTags || [],
+      this.configService
     );
 
     this.logger.log(`JWT generated for user ${telegramId}`);
 
     return {
-      user: this.mapUserToV1Format(user),
+      user: JwtService.mapUserToV1Format(user),
       hasPendingCommunities: (user.communityTags?.length || 0) > 0,
       jwt: jwtToken,
     };
@@ -215,7 +207,7 @@ export class AuthService {
     );
 
     return {
-      user: this.mapUserToV1Format(user),
+      user: JwtService.mapUserToV1Format(user),
       hasPendingCommunities: (user.communityTags?.length || 0) > 0,
       jwt: jwtToken,
     };
@@ -275,7 +267,7 @@ export class AuthService {
     this.logger.log(`JWT generated for fake user ${telegramId}`);
 
     return {
-      user: this.mapUserToV1Format(user),
+      user: JwtService.mapUserToV1Format(user),
       hasPendingCommunities: (user.communityTags?.length || 0) > 0,
       jwt: jwtToken,
     };
@@ -300,7 +292,7 @@ export class AuthService {
     }
 
     this.logger.log(`User found:`, user.id);
-    return this.mapUserToV1Format(user);
+    return JwtService.mapUserToV1Format(user);
   }
 
   private verifyTelegramAuth(data: TelegramAuthData, botToken: string): boolean {
@@ -395,27 +387,5 @@ export class AuthService {
     const updatedUser = await this.userService.getUser(telegramId);
 
     return updatedUser?.communityTags?.length || 0;
-  }
-
-  private mapUserToV1Format(user: any): User {
-    return {
-      id: user.id,
-      telegramId: user.telegramId,
-      username: user.username,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
-      profile: {
-        bio: user.profile?.bio,
-        location: user.profile?.location,
-        website: user.profile?.website,
-        isVerified: user.profile?.isVerified,
-      },
-      communityTags: user.communityTags || [],
-      communityMemberships: user.communityMemberships || [],
-      createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
-      updatedAt: user.updatedAt?.toISOString() || new Date().toISOString(),
-    };
   }
 }

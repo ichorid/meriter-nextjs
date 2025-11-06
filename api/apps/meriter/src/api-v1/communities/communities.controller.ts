@@ -23,6 +23,8 @@ import { User } from '../../decorators/user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
+import { CommunitySetupHelpers } from '../common/helpers/community-setup.helpers';
+import { ApiResponseHelper } from '../common/helpers/api-response.helper';
 import { Community, UpdateCommunityDto, UpdateCommunityDtoSchema, CreateCommunityDtoSchema } from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import { formatDualLinks, escapeMarkdownV2 } from '../../common/helpers/telegram';
@@ -56,6 +58,7 @@ export class CommunitiesController {
     return descriptions as Record<string, string>;
   }
 
+
   @Get()
   async getCommunities(@Query() query: any) {
     const pagination = PaginationHelper.parseOptions(query);
@@ -73,21 +76,10 @@ export class CommunitiesController {
     
     // A community needs setup if it's missing essential configurations
     // Note: Having default currency name "merit" is NOT considered needing setup
-    const hasNoHashtags = !community.hashtags || community.hashtags.length === 0;
-    const hasNoSingular = !community.settings?.currencyNames?.singular;
-    const hasNoPlural = !community.settings?.currencyNames?.plural;
-    const hasNoGenitive = !community.settings?.currencyNames?.genitive;
-    const hasNoDailyEmission = typeof community.settings?.dailyEmission !== 'number' || 
-                                community.settings?.dailyEmission == null;
-    
-    const needsSetup = hasNoHashtags || hasNoSingular || hasNoPlural || hasNoGenitive || hasNoDailyEmission;
+    const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
     
     this.logger.log(`Community ${id} setup check:`, {
-      hasNoHashtags,
-      hasNoSingular,
-      hasNoPlural,
-      hasNoGenitive,
-      hasNoDailyEmission,
+      ...CommunitySetupHelpers.calculateSetupStatusDetails(community),
       needsSetup,
       hashtags: community.hashtags,
       currencyNames: community.settings?.currencyNames,
@@ -121,14 +113,7 @@ export class CommunitiesController {
     
     // A community needs setup if it's missing essential configurations
     // Note: Having default currency name "merit" is NOT considered needing setup
-    const hasNoHashtags = !community.hashtags || community.hashtags.length === 0;
-    const hasNoSingular = !community.settings?.currencyNames?.singular;
-    const hasNoPlural = !community.settings?.currencyNames?.plural;
-    const hasNoGenitive = !community.settings?.currencyNames?.genitive;
-    const hasNoDailyEmission = typeof community.settings?.dailyEmission !== 'number' || 
-                                community.settings?.dailyEmission == null;
-    
-    const needsSetup = hasNoHashtags || hasNoSingular || hasNoPlural || hasNoGenitive || hasNoDailyEmission;
+    const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
     
     return {
       ...community,
@@ -163,21 +148,10 @@ export class CommunitiesController {
     
     // A community needs setup if it's missing essential configurations
     // Note: Having default currency name "merit" is NOT considered needing setup
-    const hasNoHashtags = !community.hashtags || community.hashtags.length === 0;
-    const hasNoSingular = !community.settings?.currencyNames?.singular;
-    const hasNoPlural = !community.settings?.currencyNames?.plural;
-    const hasNoGenitive = !community.settings?.currencyNames?.genitive;
-    const hasNoDailyEmission = typeof community.settings?.dailyEmission !== 'number' || 
-                                community.settings?.dailyEmission == null;
-    
-    const needsSetup = hasNoHashtags || hasNoSingular || hasNoPlural || hasNoGenitive || hasNoDailyEmission;
+    const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
     
     this.logger.log(`Community ${id} setup check after update:`, {
-      hasNoHashtags,
-      hasNoSingular,
-      hasNoPlural,
-      hasNoGenitive,
-      hasNoDailyEmission,
+      ...CommunitySetupHelpers.calculateSetupStatusDetails(community),
       needsSetup,
       hashtags: community.hashtags,
       currencyNames: community.settings?.currencyNames,
@@ -210,7 +184,7 @@ export class CommunitiesController {
     }
 
     await this.communityService.deleteCommunity(id);
-    return { success: true, data: { message: 'Community deleted successfully' } };
+    return ApiResponseHelper.successMessage('Community deleted successfully');
   }
 
   @Post(':id/reset-quota')
@@ -221,7 +195,7 @@ export class CommunitiesController {
     }
 
     const { resetAt } = await this.communityService.resetDailyQuota(id);
-    return { success: true, data: { resetAt: resetAt.toISOString() } };
+    return ApiResponseHelper.successResponse({ resetAt: resetAt.toISOString() });
   }
 
   @Post(':id/send-memo')
@@ -255,7 +229,7 @@ export class CommunitiesController {
 
     await this.tgBotsService.tgSend({ tgChatId, text });
 
-    return { success: true, data: { sent: true } };
+    return ApiResponseHelper.successResponse({ sent: true });
   }
 
   // TODO: Implement getCommunityMembers in CommunityService

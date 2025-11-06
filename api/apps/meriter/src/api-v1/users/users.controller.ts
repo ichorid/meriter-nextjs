@@ -17,6 +17,7 @@ import { VoteService } from '../../domain/services/vote.service';
 import { UserGuard } from '../../user.guard';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { User, UpdatesFrequencySchema } from '../../../../../../libs/shared-types/dist/index';
+import { JwtService } from '../common/utils/jwt-service.util';
 import { UserSettingsService } from '../../domain/services/user-settings.service';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
@@ -316,24 +317,6 @@ export class UsersController {
   }
 
   private mapUserToV1Format(user: any): User {
-    return {
-      id: user.id,
-      telegramId: user.telegramId,
-      username: user.username,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
-      profile: {
-        bio: user.profile?.bio,
-        location: user.profile?.location,
-        website: user.profile?.website,
-        isVerified: user.profile?.isVerified,
-      },
-      communityTags: user.communityTags || [],
-      communityMemberships: user.communityMemberships || [],
-      createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
-      updatedAt: user.updatedAt?.toISOString() || new Date().toISOString(),
-    };
+    return JwtService.mapUserToV1Format(user);
   }
 }

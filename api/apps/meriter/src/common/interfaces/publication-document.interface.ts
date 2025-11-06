@@ -1,3 +1,6 @@
+/**
+ * Base interface for publication data structures
+ */
 export interface PublicationDocument {
   id: string;
   communityId: string;
@@ -15,4 +18,14 @@ export interface PublicationDocument {
   videoUrl?: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * Publication snapshot with optional calculated score
+ * Extends PublicationDocument with score field in metrics
+ */
+export interface PublicationSnapshot extends PublicationDocument {
+  metrics: PublicationDocument['metrics'] & {
+    score?: number; // Optional since it can be calculated
+  };
 }

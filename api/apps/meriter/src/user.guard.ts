@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { verify } from 'jsonwebtoken';
 
 import { UserService } from './domain/services/user.service';
+import { CookieManager } from './api-v1/common/utils/cookie-manager.util';
 
 @Injectable()
 export class UserGuard implements CanActivate {
@@ -20,99 +21,9 @@ export class UserGuard implements CanActivate {
   ) {}
 
   private clearJwtCookie(response: any): void {
-    // Get cookie domain from DOMAIN environment variable
-    // Returns undefined for localhost (no domain restriction needed)
-    // Falls back to APP_URL extraction for backward compatibility if DOMAIN is not set
-    const domain = process.env.DOMAIN;
-    let cookieDomain: string | undefined;
-    
-    if (domain) {
-      // localhost doesn't need domain restriction
-      cookieDomain = domain === 'localhost' ? undefined : domain;
-    } else if (process.env.APP_URL) {
-      // Backward compatibility: if APP_URL exists but DOMAIN doesn't, extract domain from APP_URL
-      try {
-        const url = new URL(process.env.APP_URL);
-        const hostname = url.hostname.split(':')[0]; // Remove port if present
-        cookieDomain = hostname === 'localhost' ? undefined : hostname;
-      } catch (error) {
-        // If APP_URL is not a valid URL, ignore and use undefined
-        cookieDomain = undefined;
-      }
-    }
-    
+    const cookieDomain = CookieManager.getCookieDomain();
     const isProduction = process.env.NODE_ENV === 'production';
-    
-    // Clear cookie with multiple attribute combinations to ensure all variants are removed
-    // This is necessary because browsers may have cookies with different attributes
-    // (e.g., from different domains, paths, or attribute combinations)
-    
-    const baseOptions = {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? ('none' as const) : ('lax' as const),
-      path: '/',
-    };
-    
-    // Derive all possible domain variants from cookie domain
-    const domainsToTry: (string | undefined)[] = [undefined]; // Always try no domain
-    
-    if (cookieDomain && cookieDomain !== 'localhost') {
-      domainsToTry.push(cookieDomain);
-      
-      // Add variant with leading dot if it doesn't have one
-      if (!cookieDomain.startsWith('.')) {
-        domainsToTry.push(`.${cookieDomain}`);
-      }
-      
-      // Add variant without leading dot if it has one
-      if (cookieDomain.startsWith('.')) {
-        domainsToTry.push(cookieDomain.substring(1));
-      }
-    }
-    
-    // Remove duplicates while preserving undefined
-    const uniqueDomains = Array.from(new Set(domainsToTry.map(d => d ?? 'undefined'))).map(d => d === 'undefined' ? undefined : d);
-    
-    for (const domain of uniqueDomains) {
-      try {
-        // Method 1: clearCookie
-        response.clearCookie('jwt', {
-          ...baseOptions,
-          domain,
-        });
-        
-        // Method 2: Set cookie to empty with immediate expiry (more reliable)
-        response.cookie('jwt', '', {
-          ...baseOptions,
-          domain,
-          expires: new Date(0),
-          maxAge: 0,
-        });
-      } catch (error) {
-        // Ignore errors when clearing - some combinations may fail
-      }
-    }
-    
-    // Also try without httpOnly in case there's a non-httpOnly cookie (shouldn't happen, but be safe)
-    try {
-      response.clearCookie('jwt', {
-        secure: isProduction,
-        sameSite: isProduction ? ('none' as const) : ('lax' as const),
-        path: '/',
-        domain: cookieDomain,
-      });
-      response.cookie('jwt', '', {
-        secure: isProduction,
-        sameSite: isProduction ? ('none' as const) : ('lax' as const),
-        path: '/',
-        domain: cookieDomain,
-        expires: new Date(0),
-        maxAge: 0,
-      });
-    } catch (error) {
-      // Ignore errors
-    }
+    CookieManager.clearAllJwtCookieVariants(response, cookieDomain, isProduction);
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

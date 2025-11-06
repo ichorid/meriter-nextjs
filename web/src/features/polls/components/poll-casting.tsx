@@ -5,6 +5,8 @@ import { IPollData, IPollCast, IPollUserCastSummary } from "../types";
 import { useTranslations } from 'next-intl';
 import { useCastPoll } from '@/hooks/api/usePolls';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
+import { usePollTimeRemaining } from '../hooks/usePollTimeRemaining';
+import { usePollAmountValidation } from '../hooks/usePollAmountValidation';
 
 interface IPollCastingProps {
     pollData: IPollData;
@@ -42,62 +44,8 @@ export const PollCasting = ({
     const isExpired = now > expiresAt;
     const isCasting = castPollMutation.isPending;
 
-    // Calculate time remaining
-    const getTimeRemaining = () => {
-        const diff = expiresAt.getTime() - now.getTime();
-        if (diff <= 0) return t('finished');
-
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-        if (days > 0) return `${days} ${t('days')} ${hours} ${t('hours')}`;
-        if (hours > 0) return `${hours} ${t('hours')} ${minutes} ${t('minutes')}`;
-        return `${minutes} ${t('minutes')}`;
-    };
-
-    // Validate amount input explicitly
-    const validateAmount = (value: string): { isValid: boolean; error: string | null; numValue: number | null } => {
-        const trimmed = value.trim();
-        
-        // Empty string
-        if (trimmed === '') {
-            return { isValid: false, error: t('amountRequired'), numValue: null };
-        }
-
-        // Check if string contains only digits (and optional leading minus, but we don't allow negative)
-        // Allow digits only, no decimal points, no letters, no special chars
-        if (!/^\d+$/.test(trimmed)) {
-            return { isValid: false, error: t('amountMustBeNumber'), numValue: null };
-        }
-
-        // Parse explicitly with base 10
-        const parsedValue = parseInt(trimmed, 10);
-        
-        // Check if parse was successful (NaN check)
-        if (isNaN(parsedValue)) {
-            return { isValid: false, error: t('amountMustBeNumber'), numValue: null };
-        }
-
-        // Check if it's actually an integer (no decimals)
-        // Since we validated with regex, this should be true, but double-check
-        if (parseFloat(trimmed) !== parsedValue) {
-            return { isValid: false, error: t('amountMustBeInteger'), numValue: null };
-        }
-
-        // Check minimum value
-        if (parsedValue < 1) {
-            return { isValid: false, error: t('amountMinValue'), numValue: null };
-        }
-
-        // Check balance
-        if (parsedValue > balance) {
-            return { isValid: false, error: t('amountInsufficient', { balance }), numValue: null };
-        }
-
-        // Valid
-        return { isValid: true, error: null, numValue: parsedValue };
-    };
+    const timeRemaining = usePollTimeRemaining({ expiresAt: pollData.expiresAt });
+    const { validateAmount } = usePollAmountValidation({ balance });
 
     const handleCastPoll = async () => {
         if (!selectedOptionId) {
@@ -174,7 +122,7 @@ export const PollCasting = ({
                         {isExpired ? t('finished') : t('active')}
                     </span>
                     <span className="badge badge-sm badge-ghost">
-                        {isExpired ? t('pollFinished') : `${t('timeRemaining')} ${getTimeRemaining()}`}
+                        {isExpired ? t('pollFinished') : `${t('timeRemaining')} ${timeRemaining}`}
                     </span>
                     <span className="badge badge-sm badge-ghost">
                         🗳 {pollData.totalCasts} {t('casts')}
@@ -220,7 +168,7 @@ export const PollCasting = ({
                         {isExpired ? `🔴 ${t('finished')}` : `🟢 ${t('active')}`}
                     </span>
                     <span className="badge badge-ghost">
-                        {isExpired ? t('pollFinished') : `${t('timeRemaining')}: ${getTimeRemaining()}`}
+                        {isExpired ? t('pollFinished') : `${t('timeRemaining')}: ${timeRemaining}`}
                     </span>
                     <span className="badge badge-ghost">
                         {t('totalCasts')}: {pollData.totalCasts}

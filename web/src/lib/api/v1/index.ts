@@ -2,6 +2,7 @@
 import { apiClient } from '../client';
 import { buildQueryString, convertPaginationToSkipLimit, mergeQueryParams } from '@/lib/utils/query-params';
 import { validateApiResponse, validatePaginatedResponse } from '../validation';
+import { handleAuthResponse } from './endpoint-helpers';
 import { 
   UserSchema,
   CommunitySchema,
@@ -46,38 +47,12 @@ export const authApiV1 = {
 
   async authenticateWithTelegramWidget(user: TelegramUser): Promise<AuthResult> {
     const response = await apiClient.postRaw<{ success: boolean; data: AuthResult; error?: string }>('/api/v1/auth/telegram/widget', user);
-    
-    if (!response.data) {
-      throw new Error('No response data received from server');
-    }
-    
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Authentication failed');
-    }
-    
-    if (!response.data.data) {
-      throw new Error('No data received from server');
-    }
-    
-    return response.data.data;
+    return handleAuthResponse<AuthResult>(response);
   },
 
   async authenticateWithTelegramWebApp(initData: string): Promise<AuthResult> {
     const response = await apiClient.postRaw<{ success: boolean; data: AuthResult; error?: string }>('/api/v1/auth/telegram/webapp', { initData });
-    
-    if (!response.data) {
-      throw new Error('No response data received from server');
-    }
-    
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Authentication failed');
-    }
-    
-    if (!response.data.data) {
-      throw new Error('No data received from server');
-    }
-    
-    return response.data.data;
+    return handleAuthResponse<AuthResult>(response);
   },
 
   async logout(): Promise<void> {
@@ -90,20 +65,7 @@ export const authApiV1 = {
 
   async authenticateFakeUser(): Promise<AuthResult> {
     const response = await apiClient.postRaw<{ success: boolean; data: AuthResult; error?: string }>('/api/v1/auth/fake', {});
-    
-    if (!response.data) {
-      throw new Error('No response data received from server');
-    }
-    
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Authentication failed');
-    }
-    
-    if (!response.data.data) {
-      throw new Error('No data received from server');
-    }
-    
-    return response.data.data;
+    return handleAuthResponse<AuthResult>(response);
   },
 };
 
@@ -437,22 +399,6 @@ export const publicationsApiV1 = {
 export const commentsApiV1 = {
   async getComments(params: { skip?: number; limit?: number; publicationId?: string; userId?: string } = {}): Promise<PaginatedResponse<Comment>> {
     const response = await apiClient.get<{ success: true; data: PaginatedResponse<Comment> }>('/api/v1/comments', { params });
-    return response.data;
-  },
-
-  async getCommentsByPublication(
-    publicationId: string,
-    params: { page?: number; pageSize?: number; sort?: string; order?: string } = {}
-  ): Promise<PaginatedResponse<Comment>> {
-    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Comment> }>(`/api/v1/comments/publications/${publicationId}`, { params });
-    return response.data;
-  },
-
-  async getCommentsByComment(
-    commentId: string,
-    params: { page?: number; pageSize?: number; sort?: string; order?: string } = {}
-  ): Promise<PaginatedResponse<Comment>> {
-    const response = await apiClient.get<{ success: true; data: PaginatedResponse<Comment> }>(`/api/v1/comments/${commentId}/replies`, { params });
     return response.data;
   },
 

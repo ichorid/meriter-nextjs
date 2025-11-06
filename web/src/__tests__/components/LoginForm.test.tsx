@@ -10,7 +10,7 @@
  */
 
 import React from 'react';
-import { renderWithProviders, testUtils, mockUser } from '../utils/test-utils';
+import { renderWithProviders, testUtils, mockUser, mockNextRouter, mockNextSearchParams } from '../utils/test-utils';
 import { LoginForm } from '@/components/LoginForm';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBotConfig } from '@/contexts/BotConfigContext';
@@ -32,38 +32,16 @@ jest.mock('@telegram-apps/sdk-react', () => ({
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseBotConfig = useBotConfig as jest.MockedFunction<typeof useBotConfig>;
 
-// Mock Next.js navigation
-const mockPush = jest.fn();
-jest.mocked(require('next/navigation').useRouter).mockReturnValue({
-  push: mockPush,
-  replace: jest.fn(),
-  prefetch: jest.fn(),
-  back: jest.fn(),
-  forward: jest.fn(),
-  refresh: jest.fn(),
-});
-
-// Mock search params
-jest.mocked(require('next/navigation').useSearchParams).mockReturnValue(
-  new URLSearchParams('?returnTo=/meriter/home')
-);
+// Mock Next.js navigation and search params using consolidated utilities
+const { mockPush } = mockNextRouter();
+mockNextSearchParams({ returnTo: '/meriter/home' });
 
 describe('LoginForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
     
-    mockUseAuth.mockReturnValue({
-      user: null,
-      isLoading: false,
-      isAuthenticated: false,
-      authenticateWithTelegram: jest.fn(),
-      authenticateWithTelegramWebApp: jest.fn(),
-      logout: jest.fn(),
-      handleDeepLink: jest.fn(),
-      authError: null,
-      setAuthError: jest.fn(),
-    });
+    mockUseAuth.mockReturnValue(testUtils.createMockAuthContext());
 
     mockUseBotConfig.mockReturnValue({
       botUsername: 'test_bot',

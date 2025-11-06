@@ -23,6 +23,7 @@ import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { ApiResponseHelper } from '../common/helpers/api-response.helper';
 import { NotFoundError, ValidationError } from '../../common/exceptions/api.exceptions';
 import { Vote, VoteWithCommentDto, VoteWithCommentDtoSchema, WithdrawAmountDtoSchema } from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
@@ -198,20 +199,38 @@ export class VotesController {
     return { quotaAmount, walletAmount, totalAmount, isDownvote };
   }
 
-  @Post('publications/:id/votes')
-  @ZodValidation(VoteWithCommentDtoSchema)
-  async votePublication(
-    @Param('id') id: string,
-    @Body() createDto: VoteWithCommentDto,
-    @Req() req: any,
-  ) {
-    // Get the publication to find the communityId
-    const publication = await this.publicationService.getPublication(id);
-    if (!publication) {
-      throw new NotFoundError('Publication', id);
-    }
+  /**
+   * Handle vote creation for both publications and votes
+   * Extracts shared logic between votePublication and voteVote
+   */
+  private async handleVoteCreation(
+    targetType: 'publication' | 'vote',
+    targetId: string,
+    createDto: VoteWithCommentDto,
+    req: any,
+    options: {
+      sendNotification?: boolean;
+      updatePublicationMetrics?: boolean;
+    } = {}
+  ): Promise<{ vote: Vote; communityId: string; direction: 'up' | 'down'; absoluteAmount: number }> {
+    // Get community ID based on target type
+    let communityId: string;
+    let publication: any = null;
     
-    const communityId = publication.getCommunityId.getValue();
+    if (targetType === 'publication') {
+      publication = await this.publicationService.getPublication(targetId);
+      if (!publication) {
+        throw new NotFoundError('Publication', targetId);
+      }
+      communityId = publication.getCommunityId.getValue();
+    } else {
+      // targetType === 'vote'
+      const targetVote = await this.voteService.getVoteById(targetId);
+      if (!targetVote) {
+        throw new NotFoundError('Vote', targetId);
+      }
+      communityId = targetVote.communityId;
+    }
     
     // Get community to get currency info (needed for wallet operations)
     const community = await this.communityService.getCommunity(communityId);
@@ -221,8 +240,11 @@ export class VotesController {
     
     // Validate comment is provided
     const comment = (createDto as any).comment?.trim() || '';
+    const commentRequiredMessage = targetType === 'publication' 
+      ? 'Comment is required'
+      : 'Comment is required when voting on a vote';
     if (!comment) {
-      throw new BadRequestException('Comment is required');
+      throw new BadRequestException(commentRequiredMessage);
     }
     
     // Validate and process vote amounts (quotaAmount + walletAmount)
@@ -236,8 +258,8 @@ export class VotesController {
     // Create votes atomically: quota vote first, then wallet vote if needed
     const vote = await this.createVoteWithQuotaAndWallet(
       req.user.id,
-      'publication',
-      id,
+      targetType,
+      targetId,
       quotaAmount,
       walletAmount,
       isDownvote,
@@ -246,46 +268,67 @@ export class VotesController {
       comment
     );
     
+    return { vote, communityId, direction, absoluteAmount };
+  }
+
+  @Post('publications/:id/votes')
+  @ZodValidation(VoteWithCommentDtoSchema)
+  async votePublication(
+    @Param('id') id: string,
+    @Body() createDto: VoteWithCommentDto,
+    @Req() req: any,
+  ) {
+    const { vote, communityId, direction, absoluteAmount } = await this.handleVoteCreation(
+      'publication',
+      id,
+      createDto,
+      req,
+      { sendNotification: true, updatePublicationMetrics: true }
+    );
+    
+    // Get publication for notification
+    const publication = await this.publicationService.getPublication(id);
+    
     // Update publication metrics to reflect the vote immediately
     await this.publicationService.voteOnPublication(id, req.user.id, absoluteAmount, direction);
     
     // Immediate notification if enabled for beneficiary
-    try {
-      const beneficiaryId = publication.getEffectiveBeneficiary()?.getValue();
-      if (beneficiaryId) {
-        const settings = await this.userSettingsService.getOrCreate(beneficiaryId);
-        if (settings.updatesFrequency === 'immediate') {
-          this.logger.log(`Immediate updates enabled; sending Telegram notification to beneficiary=${beneficiaryId} for publication=${id}`);
-          const voterDisplayName = req.user.displayName || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'Unknown';
-          await this.tgBotsService.sendImmediateVoteNotification(
-            beneficiaryId,
-            {
-              actorId: req.user.id,
-              actorName: voterDisplayName,
-              actorUsername: req.user.username,
-              targetType: 'publication',
-              targetId: id,
-              publicationId: id,
-              communityId: communityId,
-              amount: absoluteAmount,
-              direction: direction,
-              createdAt: new Date(),
-            },
-            'en'
-          );
+    if (publication) {
+      try {
+        const beneficiaryId = publication.getEffectiveBeneficiary()?.getValue();
+        if (beneficiaryId) {
+          const settings = await this.userSettingsService.getOrCreate(beneficiaryId);
+          if (settings.updatesFrequency === 'immediate') {
+            this.logger.log(`Immediate updates enabled; sending Telegram notification to beneficiary=${beneficiaryId} for publication=${id}`);
+            const voterDisplayName = req.user.displayName || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'Unknown';
+            await this.tgBotsService.sendImmediateVoteNotification(
+              beneficiaryId,
+              {
+                actorId: req.user.id,
+                actorName: voterDisplayName,
+                actorUsername: req.user.username,
+                targetType: 'publication',
+                targetId: id,
+                publicationId: id,
+                communityId: communityId,
+                amount: absoluteAmount,
+                direction: direction,
+                createdAt: new Date(),
+              },
+              'en'
+            );
+          }
         }
-      }
-    } catch {}
+      } catch {}
+    }
     
-    return {
-      data: {
-        vote,
-      },
-      meta: {
+    return ApiResponseHelper.successResponse(
+      { vote },
+      {
         timestamp: new Date().toISOString(),
         requestId: req.headers['x-request-id'] || 'unknown',
-      },
-    };
+      }
+    );
   }
 
   @Get('publications/:id/votes')
@@ -305,7 +348,7 @@ export class VotesController {
     @Req() req: any,
   ) {
     await this.voteService.removeVote(req.user.id, 'publication', id);
-    return { success: true, data: { message: 'Vote removed successfully' } };
+    return ApiResponseHelper.successMessage('Vote removed successfully');
   }
 
   @Post('votes/:id/votes')
@@ -315,58 +358,15 @@ export class VotesController {
     @Body() createDto: VoteWithCommentDto,
     @Req() req: any,
   ) {
-    // Validate that target vote exists
-    const targetVote = await this.voteService.getVoteById(id);
-    if (!targetVote) {
-      throw new NotFoundError('Vote', id);
-    }
+    const { vote } = await this.handleVoteCreation('vote', id, createDto, req);
     
-    // Get community ID from target vote
-    const communityId = targetVote.communityId;
-    
-    // Get community to get currency info (needed for wallet operations)
-    const community = await this.communityService.getCommunity(communityId);
-    if (!community) {
-      throw new NotFoundError('Community', communityId);
-    }
-    
-    // Validate comment is provided
-    const comment = (createDto as any).comment?.trim() || '';
-    if (!comment) {
-      throw new BadRequestException('Comment is required when voting on a vote');
-    }
-    
-    // Validate and process vote amounts (quotaAmount + walletAmount)
-    const { quotaAmount, walletAmount, totalAmount, isDownvote } = 
-      await this.validateAndProcessVoteAmounts(req.user.id, communityId, community, createDto);
-    
-    // Determine vote direction
-    const direction: 'up' | 'down' = isDownvote ? 'down' : 'up';
-    const absoluteAmount = Math.abs(totalAmount);
-    
-    // Create votes atomically: quota vote first, then wallet vote if needed
-    // Vote on the target vote (the beneficiary is the target vote's author)
-    const vote = await this.createVoteWithQuotaAndWallet(
-      req.user.id,
-      'vote',
-      id,
-      quotaAmount,
-      walletAmount,
-      isDownvote,
-      communityId,
-      community,
-      comment
-    );
-    
-    return {
-      data: {
-        vote,
-      },
-      meta: {
+    return ApiResponseHelper.successResponse(
+      { vote },
+      {
         timestamp: new Date().toISOString(),
         requestId: req.headers['x-request-id'] || 'unknown',
-      },
-    };
+      }
+    );
   }
 
   @Get('votes/:id/replies')
@@ -415,7 +415,7 @@ export class VotesController {
     @Req() req: any,
   ) {
     await this.voteService.removeVote(req.user.id, 'vote', id);
-    return { success: true, data: { message: 'Vote removed successfully' } };
+    return ApiResponseHelper.successMessage('Vote removed successfully');
   }
 
   @Get('votes/:id/details')
@@ -424,15 +424,13 @@ export class VotesController {
     @Req() req: any,
   ) {
     // This would need to be implemented in VoteService
-    return {
-      data: {
-        vote: null,
-      },
-      meta: {
+    return ApiResponseHelper.successResponse(
+      { vote: null },
+      {
         timestamp: new Date().toISOString(),
         requestId: req.headers['x-request-id'] || 'unknown',
-      },
-    };
+      }
+    );
   }
 
   @Post('publications/:id/withdraw')
@@ -497,18 +495,17 @@ export class VotesController {
     // Update publication metrics
     await this.publicationService.voteOnPublication(id, req.user.id, withdrawAmount, 'down');
     
-    return {
-      success: true,
-      data: {
+    return ApiResponseHelper.successResponse(
+      {
         amount: withdrawAmount,
         balance: balance - withdrawAmount,
         message: `Successfully withdrew ${withdrawAmount} from publication`,
       },
-      meta: {
+      {
         timestamp: new Date().toISOString(),
         requestId: req.headers['x-request-id'] || 'unknown',
-      },
-    };
+      }
+    );
   }
 
   @Post('votes/:id/withdraw')
@@ -572,18 +569,17 @@ export class VotesController {
       `Withdrawal from vote ${id}`
     );
     
-    return {
-      success: true,
-      data: {
+    return ApiResponseHelper.successResponse(
+      {
         amount: withdrawAmount,
         balance: balance - withdrawAmount,
         message: `Successfully withdrew ${withdrawAmount} from vote`,
       },
-      meta: {
+      {
         timestamp: new Date().toISOString(),
         requestId: req.headers['x-request-id'] || 'unknown',
-      },
-    };
+      }
+    );
   }
 
   @Post('publications/:id/vote-with-comment')

@@ -9,6 +9,7 @@ import { CommentAddedEvent, CommentVotedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { CommentDocument as ICommentDocument } from '../../common/interfaces/comment-document.interface';
 import { PublicationService } from './publication.service';
+import { CommentSortingHelpers } from './comment-sorting.helpers';
 
 export interface CreateCommentDto {
   targetType: 'publication' | 'comment';
@@ -116,16 +117,7 @@ export class CommentService {
     sortField: string = 'metrics.score',
     sortOrder: 'asc' | 'desc' = 'desc'
   ): Promise<Comment[]> {
-    // Map sort field to actual database field
-    let dbSortField = sortField;
-    if (sortField === 'createdAt') {
-      dbSortField = 'createdAt';
-    } else if (sortField === 'score') {
-      dbSortField = 'metrics.score';
-    }
-    
-    const sortValue = sortOrder === 'asc' ? 1 : -1;
-    const sort: Record<string, 1 | -1> = { [dbSortField]: sortValue };
+    const sort = CommentSortingHelpers.buildSortQuery(sortField, sortOrder);
     
     const docs = await this.commentModel
       .find({ targetType, targetId })
@@ -144,16 +136,7 @@ export class CommentService {
     sortField: string = 'createdAt',
     sortOrder: 'asc' | 'desc' = 'desc'
   ): Promise<Comment[]> {
-    // Map sort field to actual database field
-    let dbSortField = sortField;
-    if (sortField === 'createdAt') {
-      dbSortField = 'createdAt';
-    } else if (sortField === 'score') {
-      dbSortField = 'metrics.score';
-    }
-    
-    const sortValue = sortOrder === 'asc' ? 1 : -1;
-    const sort: Record<string, 1 | -1> = { [dbSortField]: sortValue };
+    const sort = CommentSortingHelpers.buildSortQuery(sortField, sortOrder);
     
     // Query for both:
     // 1. Comments that are direct replies (parentCommentId matches)

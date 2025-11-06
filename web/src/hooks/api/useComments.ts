@@ -40,9 +40,18 @@ export function useCommentsByPublication(
   publicationId: string, 
   params: { page?: number; pageSize?: number; sort?: string; order?: string } = {}
 ) {
+  // Convert page/pageSize to skip/limit for API consistency
+  const queryParams: { skip?: number; limit?: number; sort?: string; order?: string } = {};
+  if (params.page !== undefined && params.pageSize !== undefined) {
+    queryParams.skip = (params.page - 1) * params.pageSize;
+    queryParams.limit = params.pageSize;
+  }
+  if (params.sort) queryParams.sort = params.sort;
+  if (params.order) queryParams.order = params.order;
+
   return useQuery({
     queryKey: [...commentsKeys.byPublication(publicationId), serializeQueryParams(params)],
-    queryFn: () => commentsApiV1.getCommentsByPublication(publicationId, params),
+    queryFn: () => commentsApiV1.getPublicationComments(publicationId, queryParams),
     staleTime: 2 * 60 * 1000, // 2 minutes
     enabled: !!publicationId,
   });
@@ -53,9 +62,18 @@ export function useCommentsByComment(
   commentId: string, 
   params: { page?: number; pageSize?: number; sort?: string; order?: string } = {}
 ) {
+  // Convert page/pageSize to skip/limit for API consistency
+  const queryParams: { skip?: number; limit?: number; sort?: string; order?: string } = {};
+  if (params.page !== undefined && params.pageSize !== undefined) {
+    queryParams.skip = (params.page - 1) * params.pageSize;
+    queryParams.limit = params.pageSize;
+  }
+  if (params.sort) queryParams.sort = params.sort;
+  if (params.order) queryParams.order = params.order;
+
   return useQuery({
     queryKey: [...commentsKeys.byComment(commentId), serializeQueryParams(params)],
-    queryFn: () => commentsApiV1.getCommentsByComment(commentId, params),
+    queryFn: () => commentsApiV1.getCommentReplies(commentId, queryParams),
     staleTime: 2 * 60 * 1000, // 2 minutes
     enabled: !!commentId,
   });

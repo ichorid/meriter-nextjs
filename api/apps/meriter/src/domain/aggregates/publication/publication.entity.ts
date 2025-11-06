@@ -1,61 +1,45 @@
 import { PublicationId, UserId, CommunityId, PublicationContent } from '../../value-objects';
+import { BaseMetrics } from '../../common/metrics/base-metrics';
+import { EditableEntity } from '../../common/interfaces/editable-entity.interface';
+import { AuthorizationHelper } from '../../common/mixins/authorizable-entity.mixin';
+import { PublicationSnapshot } from '../../../common/interfaces/publication-document.interface';
 
-export class Metrics {
+export class Metrics extends BaseMetrics {
   private constructor(
-    public readonly upvotes: number,
-    public readonly downvotes: number,
+    upvotes: number,
+    downvotes: number,
     public readonly commentCount: number,
-  ) {}
+  ) {
+    super(upvotes, downvotes);
+  }
 
   static zero(): Metrics {
     return new Metrics(0, 0, 0);
   }
 
-  static fromSnapshot(data: { upvotes: number; downvotes: number; commentCount: number }): Metrics {
+  static fromSnapshot(data: { upvotes: number; downvotes: number; commentCount: number; score?: number }): Metrics {
     return new Metrics(data.upvotes, data.downvotes, data.commentCount);
   }
 
-  applyVote(amount: number): Metrics {
-    if (amount > 0) {
-      return new Metrics(this.upvotes + amount, this.downvotes, this.commentCount);
-    } else {
-      return new Metrics(this.upvotes, this.downvotes + Math.abs(amount), this.commentCount);
-    }
+  protected createNew(upvotes: number, downvotes: number): this {
+    return new Metrics(upvotes, downvotes, this.commentCount) as this;
   }
 
   incrementComment(): Metrics {
     return new Metrics(this.upvotes, this.downvotes, this.commentCount + 1);
   }
 
-  get score(): number {
-    return this.upvotes - this.downvotes;
-  }
-
   toSnapshot() {
     return {
       upvotes: this.upvotes,
       downvotes: this.downvotes,
+      score: this.score,
       commentCount: this.commentCount,
     };
   }
 }
 
-export interface PublicationSnapshot {
-  id: string;
-  communityId: string;
-  authorId: string;
-  beneficiaryId?: string;
-  content: string;
-  type: 'text' | 'image' | 'video';
-  hashtags: string[];
-  metrics: ReturnType<Metrics['toSnapshot']>;
-  imageUrl?: string;
-  videoUrl?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export class Publication {
+export class Publication implements EditableEntity {
   private constructor(
     private readonly id: PublicationId,
     private readonly communityId: CommunityId,
@@ -130,11 +114,11 @@ export class Publication {
   }
 
   canBeEditedBy(userId: UserId): boolean {
-    return this.authorId.equals(userId);
+    return AuthorizationHelper.canBeEditedBy(this.authorId, userId);
   }
 
   canBeDeletedBy(userId: UserId): boolean {
-    return this.authorId.equals(userId);
+    return AuthorizationHelper.canBeDeletedBy(this.authorId, userId);
   }
 
   updateContent(content: string): void {

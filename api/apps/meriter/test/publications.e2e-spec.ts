@@ -1,42 +1,19 @@
 import request from 'supertest';
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { MeriterModule } from '../src/meriter.module';
-import { TestDatabaseHelper } from './test-db.helper';
+import { TestSetupHelper } from './helpers/test-setup.helper';
 import { createTestPublication } from './helpers/fixtures';
 
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    // Inject a fake authenticated user
-    req.user = { id: 'test-user-id' };
-    return true;
-  }
-}
-
 describe('Publications E2E (happy path)', () => {
-  let app: INestApplication;
-  let testDb: TestDatabaseHelper;
+  let app: any;
+  let testDb: any;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const uri = await testDb.start();
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MongooseModule.forRoot(uri), MeriterModule],
-    })
-      .overrideGuard((MeriterModule as any).prototype?.UserGuard || ({} as any))
-      .useClass(AllowAllGuard as any)
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
+    const context = await TestSetupHelper.createTestApp();
+    app = context.app;
+    testDb = context.testDb;
   });
 
   afterAll(async () => {
-    if (app) await app.close();
-    if (testDb) await testDb.stop();
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
   it('creates a publication and fetches it', async () => {

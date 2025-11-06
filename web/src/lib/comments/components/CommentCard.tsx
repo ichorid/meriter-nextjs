@@ -9,13 +9,15 @@ import { CardCommentVote } from '@/shared/components/card-comment-vote';
 import { BarVoteUnified } from '@/shared/components/bar-vote-unified';
 import { BarWithdraw } from '@/shared/components/bar-withdraw';
 import { CommentDetailsPopup } from '@/shared/components/comment-details-popup';
-import { useCommentDetails } from '@/hooks/api/useComments';
 import { classList } from '@/shared/lib/classList';
 import { Button } from '@/components/atoms';
 import type { TreeNode, FlatItem } from '../types';
 import { getSubtreeSize } from '../tree';
 import { getAvatarUrl } from '../utils/avatar';
 import { calculatePadding } from '../utils/connections';
+import { useCommentVoteDisplay } from '@/features/comments/hooks/useCommentVoteDisplay';
+import { useCommentRecipient } from '@/features/comments/hooks/useCommentRecipient';
+import { useCommentWithdrawal } from '@/features/comments/hooks/useCommentWithdrawal';
 
 interface CommentCardProps {
   node: TreeNode;
@@ -123,63 +125,32 @@ export function CommentCard({
     (amountTotal !== undefined ? (amountTotal > 0 || commentUpvotes > 0) : 
      ((commentUpvotes > commentDownvotes) || (displaySum > 0)));
   
-  // Format the rate
-  const formatRate = () => {
-    if (!hasVoteTransactionData || amountTotal === undefined) {
-      const score = displaySum;
-      if (score === 0) return "0";
-      const sign = score > 0 ? "+" : "-";
-      return `${sign} ${Math.abs(score)}`;
-    }
-    const amount = Math.abs(amountTotal);
-    const sign = calculatedDirectionPlus ? "+" : "-";
-    return `${sign} ${amount}`;
-  };
-  
-  // Determine vote type
-  const determineVoteType = () => {
-    const withdrawableAmount = optimisticSum ?? withdrawableBalance;
-    const amountFree = Math.abs(amountTotal || 0) - Math.abs(withdrawableAmount || 0);
-    const amountWallet = Math.abs(withdrawableAmount || 0);
-    
-    const isQuota = amountFree > 0;
-    const isWallet = amountWallet > 0;
-    
-    if (calculatedDirectionPlus) {
-      if (isQuota && isWallet) return 'upvote-mixed';
-      return isQuota ? 'upvote-quota' : 'upvote-wallet';
-    } else {
-      if (isQuota && isWallet) return 'downvote-mixed';
-      return isQuota ? 'downvote-quota' : 'downvote-wallet';
-    }
-  };
-  
-  const voteType = determineVoteType();
+  // Use extracted hooks for vote display, recipient, and withdrawal
+  const voteDisplay = useCommentVoteDisplay({
+    amountTotal,
+    hasVoteTransactionData,
+    displaySum,
+    commentUpvotes,
+    commentDownvotes,
+    directionPlus: calculatedDirectionPlus,
+    optimisticSum,
+    withdrawableBalance,
+  });
+
+  const { recipientName, recipientAvatar, commentDetails } = useCommentRecipient({
+    commentId: node.id,
+    showDetailsPopup,
+    beneficiaryMeta,
+  });
+
+  const { maxWithdrawAmount, maxTopUpAmount } = useCommentWithdrawal({
+    isAuthor,
+    withdrawableBalance,
+    currentBalance,
+  });
+
+  const voteType = voteDisplay.voteType;
   const currencyIcon = communityInfo?.settings?.iconUrl;
-  
-  // Calculate withdrawal amounts
-  const maxWithdrawAmount = isAuthor
-    ? Math.floor(10 * withdrawableBalance) / 10
-    : 0;
-  
-  const maxTopUpAmount = isAuthor
-    ? Math.floor(10 * currentBalance) / 10
-    : 0;
-  
-  // Fetch comment details when popup is open
-  const { data: commentDetails } = useCommentDetails(showDetailsPopup ? node.id : '');
-  
-  // Determine recipient
-  let recipientName: string | undefined;
-  let recipientAvatar: string | undefined;
-  
-  if (commentDetails?.beneficiary) {
-    recipientName = commentDetails.beneficiary.name;
-    recipientAvatar = commentDetails.beneficiary.photoUrl;
-  } else if (beneficiaryMeta) {
-    recipientName = beneficiaryMeta.name;
-    recipientAvatar = beneficiaryMeta.photoUrl;
-  }
   
   // Get replies count
   const {
@@ -300,18 +271,16 @@ export function CommentCard({
         title={authorName}
         subtitle={new Date(commentTimestamp || '').toLocaleString()}
         content={commentText}
-        rate={formatRate()}
+        rate={voteDisplay.rate}
         currencyIcon={currencyIcon}
         avatarUrl={avatarUrl}
         voteType={voteType}
-        amountFree={hasVoteTransactionData && amountTotal !== undefined 
-          ? Math.abs(amountTotal) - Math.abs((optimisticSum ?? withdrawableBalance) || 0) 
-          : 0}
-        amountWallet={Math.abs((optimisticSum ?? withdrawableBalance) || 0)}
+        amountFree={voteDisplay.amountFree}
+        amountWallet={voteDisplay.amountWallet}
         beneficiaryName={recipientName}
         beneficiaryAvatarUrl={recipientAvatar}
-        upvotes={commentUpvotes}
-        downvotes={commentDownvotes}
+        upvotes={voteDisplay.displayUpvotes}
+        downvotes={voteDisplay.displayDownvotes}
         onClick={() => {
           onNavigate();
         }}
@@ -416,7 +385,7 @@ export function CommentCard({
       <CommentDetailsPopup
         isOpen={showDetailsPopup}
         onClose={() => setShowDetailsPopup(false)}
-        rate={commentDetails?.voteTransaction ? formatRate() : formatRate()}
+        rate={commentDetails?.voteTransaction ? voteDisplay.rate : voteDisplay.rate}
         currencyIcon={commentDetails?.community?.iconUrl || currencyIcon}
         amountWallet={commentDetails?.voteTransaction 
           ? Math.abs(commentDetails.voteTransaction.sum) 

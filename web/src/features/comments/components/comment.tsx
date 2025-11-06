@@ -10,7 +10,9 @@ import { useState, useEffect } from "react";
 import { useTranslations } from 'next-intl';
 import { useCommunity } from '@/hooks/api';
 import { CommentDetailsPopup } from "@shared/components/comment-details-popup";
-import { useCommentDetails } from '@/hooks/api/useComments';
+import { useCommentVoteDisplay } from '../hooks/useCommentVoteDisplay';
+import { useCommentRecipient } from '../hooks/useCommentRecipient';
+import { useCommentWithdrawal } from '../hooks/useCommentWithdrawal';
 
 interface CommentProps {
     _id: string;
@@ -150,74 +152,32 @@ export const Comment: React.FC<CommentProps> = ({
       (amountTotal !== undefined ? (amountTotal > 0 || commentUpvotes > 0) : 
        ((commentUpvotes > commentDownvotes) || (displaySum > 0)));
     
-    // Always display comment's accumulated upvotes/downvotes
-    const displayUpvotes = commentUpvotes;
-    const displayDownvotes = commentDownvotes;
-    
-    // Format the rate with currency icon
-    const formatRate = () => {
-        // Only show vote amount if we have vote transaction data
-        if (!hasVoteTransactionData || amountTotal === undefined) {
-            // For regular comments without vote transaction, show score from metrics
-            const score = displaySum;
-            if (score === 0) return "0";
-            const sign = score > 0 ? "+" : "-";
-            return `${sign} ${Math.abs(score)}`;
-        }
-        const amount = Math.abs(amountTotal);
-        const sign = calculatedDirectionPlus ? "+" : "-";
-        return `${sign} ${amount}`;
-    };
-    
-    // Determine vote type based on payment source
-    const determineVoteType = () => {
-        const withdrawableAmount = optimisticSum ?? withdrawableBalance;
-        const amountFree = Math.abs(amountTotal || 0) - Math.abs(withdrawableAmount || 0); // Calculate free amount
-        const amountWallet = Math.abs(withdrawableAmount || 0); // Personal wallet amount
-        
-        const isQuota = amountFree > 0;
-        const isWallet = amountWallet > 0;
-        
-        if (calculatedDirectionPlus) {
-            if (isQuota && isWallet) return 'upvote-mixed';
-            return isQuota ? 'upvote-quota' : 'upvote-wallet';
-        } else {
-            if (isQuota && isWallet) return 'downvote-mixed';
-            return isQuota ? 'downvote-quota' : 'downvote-wallet';
-        }
-    };
-    
-    const voteType = determineVoteType();
+    // Use extracted hooks for vote display, recipient, and withdrawal
+    const voteDisplay = useCommentVoteDisplay({
+        amountTotal,
+        hasVoteTransactionData,
+        displaySum,
+        commentUpvotes,
+        commentDownvotes,
+        directionPlus: calculatedDirectionPlus,
+        optimisticSum,
+        withdrawableBalance,
+    });
+
+    const { recipientName, recipientAvatar, commentDetails } = useCommentRecipient({
+        commentId: _id,
+        showDetailsPopup,
+        beneficiaryMeta,
+    });
+
+    const { maxWithdrawAmount, maxTopUpAmount } = useCommentWithdrawal({
+        isAuthor,
+        withdrawableBalance,
+        currentBalance,
+    });
     
     // Get currency icon from community info
     const currencyIcon = communityInfo?.settings?.iconUrl;
-    
-    // Create a unique identifier for this comment
-    const postId = _id;
-    
-    // Calculate withdrawal amounts based on withdrawable balance (metrics.score only)
-    const maxWithdrawAmount = isAuthor
-        ? Math.floor(10 * withdrawableBalance) / 10
-        : 0;
-    
-    const maxTopUpAmount = isAuthor
-        ? Math.floor(10 * currentBalance) / 10
-        : 0;
-    
-    // Fetch comment details when popup is open (for popup display)
-    const { data: commentDetails } = useCommentDetails(showDetailsPopup ? _id : '');
-    
-    // Determine recipient from comment details if available
-    let recipientName: string | undefined;
-    let recipientAvatar: string | undefined;
-    
-    if (commentDetails?.beneficiary) {
-        recipientName = commentDetails.beneficiary.name;
-        recipientAvatar = commentDetails.beneficiary.photoUrl;
-    } else if (beneficiaryMeta) {
-        recipientName = beneficiaryMeta.name;
-        recipientAvatar = beneficiaryMeta.photoUrl;
-    }
     
     const {
         comments,
@@ -268,18 +228,16 @@ export const Comment: React.FC<CommentProps> = ({
                 title={authorName}
                 subtitle={new Date(commentTimestamp || '').toLocaleString()}
                 content={commentText}
-                rate={formatRate()}
+                rate={voteDisplay.rate}
                 currencyIcon={currencyIcon}
                 avatarUrl={avatarUrl}
-                voteType={voteType}
-                amountFree={hasVoteTransactionData && amountTotal !== undefined 
-                    ? Math.abs(amountTotal) - Math.abs((optimisticSum ?? withdrawableBalance) || 0) 
-                    : 0}
-                amountWallet={Math.abs((optimisticSum ?? withdrawableBalance) || 0)}
+                voteType={voteDisplay.voteType}
+                amountFree={voteDisplay.amountFree}
+                amountWallet={voteDisplay.amountWallet}
                 beneficiaryName={recipientName}
                 beneficiaryAvatarUrl={recipientAvatar}
-                upvotes={displayUpvotes}
-                downvotes={displayDownvotes}
+                upvotes={voteDisplay.displayUpvotes}
+                downvotes={voteDisplay.displayDownvotes}
                 onDetailsClick={() => setShowDetailsPopup(true)}
                 onClick={!isDetailPage ? () => {
                     // Navigate to the post page only when not on detail page
@@ -393,18 +351,16 @@ export const Comment: React.FC<CommentProps> = ({
             <CommentDetailsPopup
                 isOpen={showDetailsPopup}
                 onClose={() => setShowDetailsPopup(false)}
-                rate={commentDetails?.voteTransaction ? formatRate() : formatRate()}
+                rate={commentDetails?.voteTransaction ? voteDisplay.rate : voteDisplay.rate}
                 currencyIcon={commentDetails?.community?.iconUrl || currencyIcon}
                 amountWallet={commentDetails?.voteTransaction 
                     ? Math.abs(commentDetails.voteTransaction.sum) 
                     : Math.abs((optimisticSum ?? withdrawableBalance) || 0)}
                 amountFree={commentDetails?.voteTransaction && commentDetails.voteTransaction.amountTotal !== undefined
                     ? Math.abs(commentDetails.voteTransaction.amountTotal) - Math.abs(commentDetails.voteTransaction.sum)
-                    : (hasVoteTransactionData && amountTotal !== undefined 
-                        ? Math.abs(amountTotal) - Math.abs((optimisticSum ?? withdrawableBalance) || 0) 
-                        : 0)}
-                upvotes={commentDetails?.metrics?.upvotes ?? displayUpvotes}
-                downvotes={commentDetails?.metrics?.downvotes ?? displayDownvotes}
+                    : voteDisplay.amountFree}
+                upvotes={commentDetails?.metrics?.upvotes ?? voteDisplay.displayUpvotes}
+                downvotes={commentDetails?.metrics?.downvotes ?? voteDisplay.displayDownvotes}
                 isUpvote={commentDetails?.voteTransaction?.directionPlus ?? calculatedDirectionPlus}
                 authorName={commentDetails?.author?.name ?? authorName}
                 authorAvatar={commentDetails?.author?.photoUrl ?? avatarUrl}

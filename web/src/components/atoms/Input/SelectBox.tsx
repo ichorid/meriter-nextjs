@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
+import React from 'react';
+import { useControlledInput } from './useControlledInput';
+import { InputWrapper } from './InputWrapper';
 
 export interface SelectOption {
     name: string;
@@ -37,43 +38,23 @@ export function SelectBox({
     value: controlledValue,
     onChange: controlledOnChange,
 }: SelectBoxProps) {
-    const [internalValue, setInternalValue] = useState(defaultValue || '');
-    const isControlled = controlledValue !== undefined;
-    const value = isControlled ? controlledValue : internalValue;
-
-    const updateValue = (newValue: string) => {
-        if (!isControlled) {
-            setInternalValue(newValue);
-        }
-        if (controlledOnChange) {
-            controlledOnChange(newValue);
-        }
-        if (updateFormValue && updateType) {
-            updateFormValue({ updateType, value: newValue });
-        }
-    };
-
-    useEffect(() => {
-        if (defaultValue && !isControlled) {
-            setInternalValue(defaultValue);
-        }
-    }, [defaultValue, isControlled]);
+    const { value, updateValue } = useControlledInput({
+        value: controlledValue,
+        defaultValue,
+        onChange: controlledOnChange,
+        updateFormValue,
+        updateType,
+    });
 
     return (
-        <div className={`inline-block ${containerStyle} ${className}`}>
-            {labelTitle && (
-                <label className={`label ${labelStyle}`}>
-                    <div className="label-text">
-                        {labelTitle}
-                        {labelDescription && (
-                            <div className="tooltip tooltip-right" data-tip={labelDescription}>
-                                <InformationCircleIcon className="w-4 h-4" />
-                            </div>
-                        )}
-                    </div>
-                </label>
-            )}
-
+        <InputWrapper
+            labelTitle={labelTitle}
+            labelDescription={labelDescription}
+            labelStyle={labelStyle}
+            containerStyle={containerStyle}
+            className={className}
+            containerClassName={`inline-block ${containerStyle} ${className}`}
+        >
             <select
                 className="select select-bordered w-full"
                 value={value}
@@ -88,7 +69,7 @@ export function SelectBox({
                     </option>
                 ))}
             </select>
-        </div>
+        </InputWrapper>
     );
 }
 

@@ -11,6 +11,8 @@ import React, { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NextIntlClientProvider } from 'next-intl';
+import { AuthContext, AuthContextType } from '@/contexts/AuthContext';
+import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 
 // Mock messages for next-intl
 const mockMessages = {
@@ -47,37 +49,124 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   queryClient?: QueryClient;
   locale?: string;
   messages?: Record<string, any>;
+  authContextValue?: Partial<AuthContextType>;
+}
+
+/**
+ * Creates a default QueryClient for testing with retry disabled
+ */
+export function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  });
 }
 
 export function renderWithProviders(
   ui: ReactElement,
   {
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    }),
+    queryClient = createTestQueryClient(),
     locale = 'en',
     messages = mockMessages,
+    authContextValue,
     ...renderOptions
   }: CustomRenderOptions = {}
 ) {
   function Wrapper({ children }: { children: React.ReactNode }) {
+    const defaultAuthValue = testUtils.createMockAuthContext(authContextValue);
+
     return (
       <QueryClientProvider client={queryClient}>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          {children}
+          <AuthContext.Provider value={defaultAuthValue}>
+            {children}
+          </AuthContext.Provider>
         </NextIntlClientProvider>
       </QueryClientProvider>
     );
   }
 
   return render(ui, { wrapper: Wrapper, ...renderOptions });
+}
+
+// Create a test wrapper component factory for integration tests
+export function createTestWrapper(options: CustomRenderOptions = {}) {
+  return function TestWrapper({ children }: { children: React.ReactNode }) {
+    const {
+      queryClient = createTestQueryClient(),
+      locale = 'en',
+      messages = mockMessages,
+      authContextValue,
+    } = options;
+
+    const defaultAuthValue = testUtils.createMockAuthContext(authContextValue);
+
+    return (
+      <QueryClientProvider client={queryClient}>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <AuthContext.Provider value={defaultAuthValue}>
+            {children}
+          </AuthContext.Provider>
+        </NextIntlClientProvider>
+      </QueryClientProvider>
+    );
+  };
+}
+
+/**
+ * Mocks Next.js router with default functions
+ */
+export function mockNextRouter(overrides: Partial<AppRouterInstance> = {}) {
+  const mockPush = jest.fn();
+  const mockRouter = {
+    push: mockPush,
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+    ...overrides,
+  };
+  
+  jest.mocked(require('next/navigation').useRouter).mockReturnValue(mockRouter);
+  return { mockRouter, mockPush };
+}
+
+/**
+ * Mocks Next.js search params
+ */
+export function mockNextSearchParams(params: Record<string, string> = {}) {
+  const searchParams = new URLSearchParams(params);
+  jest.mocked(require('next/navigation').useSearchParams).mockReturnValue(searchParams);
+  return searchParams;
+}
+
+/**
+ * Mocks Telegram SDK
+ */
+export function mockTelegramSDK(overrides: Partial<{
+  tgWebAppStartParam: string | null;
+  initData: string | null;
+  isTMA: boolean;
+}> = {}) {
+  const defaults = {
+    tgWebAppStartParam: null,
+    initData: null,
+    isTMA: false,
+  };
+  
+  jest.mock('@telegram-apps/sdk-react', () => ({
+    useLaunchParams: jest.fn(() => ({ tgWebAppStartParam: overrides.tgWebAppStartParam ?? defaults.tgWebAppStartParam })),
+    useSignal: jest.fn(() => ({ value: null })),
+    initDataRaw: { value: overrides.initData ?? defaults.initData },
+    isTMA: jest.fn(() => Promise.resolve(overrides.isTMA ?? defaults.isTMA)),
+  }));
 }
 
 // Mock user data generator
@@ -188,30 +277,47 @@ export const testUtils = {
     return mockStorage;
   },
   
-  // Mock URL search params
-  mockSearchParams: (params: Record<string, string> = {}) => {
-    const searchParams = new URLSearchParams(params);
-    jest.mocked(require('next/navigation').useSearchParams).mockReturnValue(searchParams);
-    return searchParams;
+  
+  // Create mock auth context value (shared implementation)
+  createMockAuthContext: (overrides: Partial<AuthContextType> = {}): AuthContextType => ({
+    user: null,
+    isLoading: false,
+    isAuthenticated: false,
+    authenticateWithTelegram: jest.fn(),
+    authenticateWithTelegramWebApp: jest.fn(),
+    authenticateFakeUser: jest.fn(),
+    logout: jest.fn(),
+    handleDeepLink: jest.fn(),
+    authError: null,
+    setAuthError: jest.fn(),
+    ...overrides,
+  }),
+  
+  // Mock Next.js router (shared implementation)
+  mockRouter: mockNextRouter,
+  
+  // Mock Next.js search params (shared implementation)
+  mockSearchParams: mockNextSearchParams,
+  
+  // Wait for query to resolve
+  waitForQuery: async (queryClient: QueryClient, queryKey: readonly unknown[]) => {
+    await queryClient.ensureQueryData({ queryKey });
   },
   
-  // Mock router
-  mockRouter: (mockRouter = {}) => {
-    const defaultRouter = {
-      push: jest.fn(),
-      replace: jest.fn(),
-      prefetch: jest.fn(),
-      back: jest.fn(),
-      forward: jest.fn(),
-      refresh: jest.fn(),
-    };
-    
-    jest.mocked(require('next/navigation').useRouter).mockReturnValue({
-      ...defaultRouter,
-      ...mockRouter,
+  // Create mock query client with specific data
+  createMockQueryClient: (initialData: Array<{ queryKey: readonly unknown[]; data: any }> = []) => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
     });
     
-    return { ...defaultRouter, ...mockRouter };
+    initialData.forEach(({ queryKey, data }) => {
+      queryClient.setQueryData(queryKey, data);
+    });
+    
+    return queryClient;
   },
 };
 

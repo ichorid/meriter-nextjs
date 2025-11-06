@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useControlledInput } from './useControlledInput';
+import { InputWrapper } from './InputWrapper';
 
 export interface ToggleInputProps {
     labelTitle?: string;
@@ -25,43 +26,33 @@ export function ToggleInput({
     value: controlledValue,
     onChange: controlledOnChange,
 }: ToggleInputProps) {
-    const [internalValue, setInternalValue] = useState(defaultValue);
-    const isControlled = controlledValue !== undefined;
-    const value = isControlled ? controlledValue : internalValue;
+    const { value, updateValue } = useControlledInput({
+        value: controlledValue,
+        defaultValue,
+        onChange: controlledOnChange,
+        updateFormValue,
+        updateType,
+    });
 
     const updateToggleValue = () => {
-        const newValue = !value;
-        if (!isControlled) {
-            setInternalValue(newValue);
-        }
-        if (controlledOnChange) {
-            controlledOnChange(newValue);
-        }
-        if (updateFormValue && updateType) {
-            updateFormValue({ updateType, value: newValue });
-        }
+        updateValue(!value);
     };
 
-    useEffect(() => {
-        if (defaultValue !== undefined && !isControlled) {
-            setInternalValue(defaultValue);
-        }
-    }, [defaultValue, isControlled]);
-
     return (
-        <div className={`form-control w-full ${containerStyle} ${className}`}>
-            {labelTitle && (
-                <label className="label cursor-pointer">
-                    <span className={`label-text text-base-content ${labelStyle}`}>{labelTitle}</span>
-                    <input
-                        type="checkbox"
-                        className="toggle"
-                        checked={value}
-                        onChange={updateToggleValue}
-                    />
-                </label>
-            )}
-        </div>
+        <InputWrapper
+            labelTitle={labelTitle}
+            labelStyle={labelStyle}
+            containerStyle={containerStyle}
+            className={className}
+            renderLabelAsWrapper={true}
+        >
+            <input
+                type="checkbox"
+                className="toggle"
+                checked={value}
+                onChange={updateToggleValue}
+            />
+        </InputWrapper>
     );
 }
 

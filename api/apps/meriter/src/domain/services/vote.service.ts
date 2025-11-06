@@ -18,6 +18,29 @@ export class VoteService {
   ) {}
 
   /**
+   * Get the effective beneficiary for a target (publication or vote)
+   * - For publications: beneficiaryId if set, otherwise authorId
+   * - For votes: userId of the vote being voted on
+   */
+  private async getEffectiveBeneficiary(targetType: 'publication' | 'vote', targetId: string): Promise<string | null> {
+    if (targetType === 'publication') {
+      const publication = await this.publicationService.getPublication(targetId);
+      if (!publication) {
+        return null;
+      }
+      const effectiveBeneficiary = publication.getEffectiveBeneficiary();
+      return effectiveBeneficiary ? effectiveBeneficiary.getValue() : null;
+    } else {
+      // targetId is a vote ID
+      const vote = await this.getVoteById(targetId);
+      if (!vote) {
+        return null;
+      }
+      return vote.userId;
+    }
+  }
+
+  /**
    * Check if user can vote on a publication or vote.
    * Rules:
    * - Cannot vote if user is the effective beneficiary
@@ -25,28 +48,11 @@ export class VoteService {
    * - For votes: effective beneficiary = userId of the vote being voted on (cannot vote on your own vote)
    */
   async canUserVote(userId: string, targetType: 'publication' | 'vote', targetId: string): Promise<boolean> {
-    if (targetType === 'publication') {
-      const publication = await this.publicationService.getPublication(targetId);
-      if (!publication) {
-        return false;
-      }
-      
-      const effectiveBeneficiary = publication.getEffectiveBeneficiary();
-      if (!effectiveBeneficiary) {
-        return false;
-      }
-      
-      return effectiveBeneficiary.getValue() !== userId;
-    } else {
-      // targetId is a vote ID
-      const vote = await this.getVoteById(targetId);
-      if (!vote) {
-        return false;
-      }
-      
-      // Cannot vote on your own vote
-      return vote.userId !== userId;
+    const effectiveBeneficiary = await this.getEffectiveBeneficiary(targetType, targetId);
+    if (!effectiveBeneficiary) {
+      return false;
     }
+    return effectiveBeneficiary !== userId;
   }
 
   /**
@@ -57,28 +63,11 @@ export class VoteService {
    * - For votes: effective beneficiary = userId of the vote (can withdraw from your own vote)
    */
   async canUserWithdraw(userId: string, targetType: 'publication' | 'vote', targetId: string): Promise<boolean> {
-    if (targetType === 'publication') {
-      const publication = await this.publicationService.getPublication(targetId);
-      if (!publication) {
-        return false;
-      }
-      
-      const effectiveBeneficiary = publication.getEffectiveBeneficiary();
-      if (!effectiveBeneficiary) {
-        return false;
-      }
-      
-      // Can withdraw only if user is the effective beneficiary
-      return effectiveBeneficiary.getValue() === userId;
-    } else {
-      // Vote - can withdraw only if user is the vote author
-      const vote = await this.getVoteById(targetId);
-      if (!vote) {
-        return false;
-      }
-      
-      return vote.userId === userId;
+    const effectiveBeneficiary = await this.getEffectiveBeneficiary(targetType, targetId);
+    if (!effectiveBeneficiary) {
+      return false;
     }
+    return effectiveBeneficiary === userId;
   }
 
   async createVote(

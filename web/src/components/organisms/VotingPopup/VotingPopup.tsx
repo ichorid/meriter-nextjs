@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useUIStore } from '@/stores/ui.store';
-import { BottomPortal } from '@/shared/components/bottom-portal';
 import { FormComment } from '@/features/comments/components/form-comment';
 import { useAuth } from '@/contexts/AuthContext';
-import { useWallets, useCommunity } from '@/hooks/api';
 import { useFreeBalance } from '@/hooks/api/useWallet';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { useTranslations } from 'next-intl';
 import { useVoteOnPublicationWithComment, useVoteOnVote } from '@/hooks/api/useVotes';
+import { BasePopup } from '../BasePopup/BasePopup';
+import { usePopupCommunityData } from '@/hooks/usePopupCommunityData';
+import { usePopupFormData } from '@/hooks/usePopupFormData';
 
 interface VotingPopupProps {
   communityId?: string;
@@ -34,15 +35,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   const isOpen = !!activeVotingTarget && !!votingTargetType;
 
-  // Get wallets to find balance for the target community
-  const { data: wallets = [] } = useWallets();
-  
-  // Determine which community to use - prefer prop, otherwise try to derive from target
-  const targetCommunityId = communityId || (wallets[0]?.communityId);
-
-  // Get community data to access currency icon
-  const { data: communityData } = useCommunity(targetCommunityId || '');
-  const currencyIconUrl = communityData?.settings?.iconUrl;
+  // Use shared hook for community data
+  const { targetCommunityId, currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
 
   // Get quota for the community
   const { quotasMap } = useCommunityQuotas(targetCommunityId ? [targetCommunityId] : []);
@@ -50,13 +44,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   const quotaRemaining = quotaData?.remainingToday ?? 0;
   const freePlus = quotaRemaining;
   const freeMinus = 0; // Downvotes typically don't have free quota
-
-  // Get wallet balance for the community
-  const walletBalance = useMemo(() => {
-    if (!targetCommunityId || !Array.isArray(wallets)) return 0;
-    const wallet = wallets.find((w: any) => w.communityId === targetCommunityId);
-    return wallet?.balance || 0;
-  }, [targetCommunityId, wallets]);
 
   // Get free balance as fallback (different API endpoint)
   const { data: freeBalance } = useFreeBalance(targetCommunityId);
@@ -70,18 +57,13 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   // When walletBalance is 0, maxMinus should be 0 to prevent negative slider positions
   const calculatedMaxMinus = walletBalance || 0;
 
-  // Initialize form data if not present
-  useEffect(() => {
-    if (isOpen && !activeVotingFormData) {
-      updateVotingFormData({ comment: '', delta: 0, error: '' });
-    }
-  }, [isOpen, activeVotingFormData, updateVotingFormData]);
-
-  const formData = activeVotingFormData || { comment: '', delta: 0, error: '' };
-
-  const handleCommentChange = (comment: string) => {
-    updateVotingFormData({ comment, error: '' });
-  };
+  // Use shared hook for form data management
+  const { formData, handleCommentChange } = usePopupFormData({
+    isOpen,
+    formData: activeVotingFormData,
+    defaultFormData: { comment: '', delta: 0, error: '' },
+    updateFormData: updateVotingFormData,
+  });
 
   const handleAmountChange = (amount: number) => {
     // FormCommentVoteVertical passes signed values (can be negative)
@@ -193,36 +175,26 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   }
 
   return (
-    <BottomPortal>
-      <div className="fixed inset-0 z-50 flex items-end justify-center p-4 pointer-events-auto">
-        {/* Backdrop */}
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={handleClose}
-        />
-        {/* Form Container */}
-        <div className="relative z-10 w-full max-w-md bg-base-100 rounded-t-2xl shadow-2xl pointer-events-auto max-h-[90vh] overflow-y-auto">
-          <FormComment
-            uid={activeVotingTarget}
-            hasPoints={hasPoints}
-            comment={formData.comment}
-            setComment={handleCommentChange}
-            amount={formData.delta}
-            setAmount={handleAmountChange}
-            free={freePlusAmount}
-            maxPlus={maxPlus}
-            maxMinus={calculatedMaxMinus}
-            commentAdd={handleSubmit}
-            error={formData.error}
-            onClose={handleClose}
-            quotaAmount={voteBreakdown.quotaAmount}
-            walletAmount={voteBreakdown.walletAmount}
-            quotaRemaining={quotaRemaining}
-            currencyIconUrl={currencyIconUrl}
-          />
-        </div>
-      </div>
-    </BottomPortal>
+    <BasePopup isOpen={isOpen} onClose={handleClose}>
+      <FormComment
+        uid={activeVotingTarget}
+        hasPoints={hasPoints}
+        comment={formData.comment}
+        setComment={handleCommentChange}
+        amount={formData.delta}
+        setAmount={handleAmountChange}
+        free={freePlusAmount}
+        maxPlus={maxPlus}
+        maxMinus={calculatedMaxMinus}
+        commentAdd={handleSubmit}
+        error={formData.error}
+        onClose={handleClose}
+        quotaAmount={voteBreakdown.quotaAmount}
+        walletAmount={voteBreakdown.walletAmount}
+        quotaRemaining={quotaRemaining}
+        currencyIconUrl={currencyIconUrl}
+      />
+    </BasePopup>
   );
 };
 

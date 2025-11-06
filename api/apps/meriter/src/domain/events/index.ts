@@ -1,5 +1,40 @@
 import { DomainEvent } from './event-bus';
 
+/**
+ * Base class for vote-related events
+ */
+abstract class VotableEvent extends DomainEvent {
+  constructor(
+    protected readonly aggregateId: string,
+    protected readonly voterId: string,
+    protected readonly amount: number,
+    protected readonly direction: 'up' | 'down',
+    protected readonly timestamp: Date = new Date()
+  ) {
+    super();
+  }
+
+  getAggregateId(): string {
+    return this.aggregateId;
+  }
+
+  getTimestamp(): Date {
+    return this.timestamp;
+  }
+
+  getVoterId(): string {
+    return this.voterId;
+  }
+
+  getAmount(): number {
+    return this.amount;
+  }
+
+  getDirection(): 'up' | 'down' {
+    return this.direction;
+  }
+}
+
 export class PublicationCreatedEvent extends DomainEvent {
   constructor(
     private readonly publicationId: string,
@@ -31,39 +66,19 @@ export class PublicationCreatedEvent extends DomainEvent {
   }
 }
 
-export class PublicationVotedEvent extends DomainEvent {
+export class PublicationVotedEvent extends VotableEvent {
   constructor(
-    private readonly publicationId: string,
-    private readonly voterId: string,
-    private readonly amount: number,
-    private readonly direction: 'up' | 'down',
-    private readonly timestamp: Date = new Date()
+    publicationId: string,
+    voterId: string,
+    amount: number,
+    direction: 'up' | 'down',
+    timestamp: Date = new Date()
   ) {
-    super();
+    super(publicationId, voterId, amount, direction, timestamp);
   }
 
   getEventName(): string {
     return 'PublicationVoted';
-  }
-
-  getAggregateId(): string {
-    return this.publicationId;
-  }
-
-  getTimestamp(): Date {
-    return this.timestamp;
-  }
-
-  getVoterId(): string {
-    return this.voterId;
-  }
-
-  getAmount(): number {
-    return this.amount;
-  }
-
-  getDirection(): 'up' | 'down' {
-    return this.direction;
   }
 }
 
@@ -98,39 +113,19 @@ export class CommentAddedEvent extends DomainEvent {
   }
 }
 
-export class CommentVotedEvent extends DomainEvent {
+export class CommentVotedEvent extends VotableEvent {
   constructor(
-    private readonly commentId: string,
-    private readonly voterId: string,
-    private readonly amount: number,
-    private readonly direction: 'up' | 'down',
-    private readonly timestamp: Date = new Date()
+    commentId: string,
+    voterId: string,
+    amount: number,
+    direction: 'up' | 'down',
+    timestamp: Date = new Date()
   ) {
-    super();
+    super(commentId, voterId, amount, direction, timestamp);
   }
 
   getEventName(): string {
     return 'CommentVoted';
-  }
-
-  getAggregateId(): string {
-    return this.commentId;
-  }
-
-  getTimestamp(): Date {
-    return this.timestamp;
-  }
-
-  getVoterId(): string {
-    return this.voterId;
-  }
-
-  getAmount(): number {
-    return this.amount;
-  }
-
-  getDirection(): 'up' | 'down' {
-    return this.direction;
   }
 }
 

@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React from 'react';
 import { useUIStore } from '@/stores/ui.store';
-import { BottomPortal } from '@/shared/components/bottom-portal';
 import { FormWithdrawVertical } from '@/shared/components/form-withdraw-vertical';
 import { useAuth } from '@/contexts/AuthContext';
-import { useWallets, useCommunity } from '@/hooks/api';
 import { useTranslations } from 'next-intl';
 import { useWithdrawFromPublication, useWithdrawFromVote } from '@/hooks/api/useVotes';
 import { useVoteOnPublicationWithComment, useVoteOnVote } from '@/hooks/api/useVotes';
+import { BasePopup } from '../BasePopup/BasePopup';
+import { usePopupCommunityData } from '@/hooks/usePopupCommunityData';
+import { usePopupFormData } from '@/hooks/usePopupFormData';
 
 interface WithdrawPopupProps {
   communityId?: string;
@@ -35,35 +36,16 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
 
   const isOpen = !!activeWithdrawTarget && !!withdrawTargetType;
 
-  // Get wallets to find balance for the target community
-  const { data: wallets = [] } = useWallets();
-  
-  // Determine which community to use - prefer prop, otherwise try to derive from target
-  const targetCommunityId = communityId || (wallets[0]?.communityId);
+  // Use shared hook for community data
+  const { targetCommunityId, currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
 
-  // Get community data to access currency icon
-  const { data: communityData } = useCommunity(targetCommunityId || '');
-  const currencyIconUrl = communityData?.settings?.iconUrl;
-
-  // Get wallet balance for the community
-  const walletBalance = useMemo(() => {
-    if (!targetCommunityId || !Array.isArray(wallets)) return 0;
-    const wallet = wallets.find((w: any) => w.communityId === targetCommunityId);
-    return wallet?.balance || 0;
-  }, [targetCommunityId, wallets]);
-
-  // Initialize form data if not present
-  useEffect(() => {
-    if (isOpen && !activeWithdrawFormData) {
-      updateWithdrawFormData({ comment: '', amount: 0, error: '' });
-    }
-  }, [isOpen, activeWithdrawFormData, updateWithdrawFormData]);
-
-  const formData = activeWithdrawFormData || { comment: '', amount: 0, error: '' };
-
-  const handleCommentChange = (comment: string) => {
-    updateWithdrawFormData({ comment, error: '' });
-  };
+  // Use shared hook for form data management
+  const { formData, handleCommentChange } = usePopupFormData({
+    isOpen,
+    formData: activeWithdrawFormData,
+    defaultFormData: { comment: '', amount: 0, error: '' },
+    updateFormData: updateWithdrawFormData,
+  });
 
   const handleAmountChange = (amount: number) => {
     updateWithdrawFormData({ amount, error: '' });
@@ -150,31 +132,21 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
   const isWithdrawal = withdrawTargetType?.includes('withdraw') || false;
 
   return (
-    <BottomPortal>
-      <div className="fixed inset-0 z-50 flex items-end justify-center p-4 pointer-events-auto">
-        {/* Backdrop */}
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={handleClose}
-        />
-        {/* Form Container */}
-        <div className="relative z-10 w-full max-w-md bg-base-100 rounded-t-2xl shadow-2xl pointer-events-auto max-h-[90vh] overflow-y-auto">
-          <FormWithdrawVertical
-            comment={formData.comment}
-            setComment={handleCommentChange}
-            amount={formData.amount}
-            setAmount={handleAmountChange}
-            maxWithdrawAmount={maxWithdrawAmount}
-            maxTopUpAmount={maxTopUpAmount}
-            onSubmit={handleSubmit}
-            onClose={handleClose}
-            isWithdrawal={isWithdrawal}
-            isLoading={withdrawFromPublicationMutation.isPending || withdrawFromVoteMutation.isPending || voteOnPublicationWithCommentMutation.isPending || voteOnVoteMutation.isPending}
-            currencyIconUrl={currencyIconUrl}
-          />
-        </div>
-      </div>
-    </BottomPortal>
+    <BasePopup isOpen={isOpen} onClose={handleClose}>
+      <FormWithdrawVertical
+        comment={formData.comment}
+        setComment={handleCommentChange}
+        amount={formData.amount}
+        setAmount={handleAmountChange}
+        maxWithdrawAmount={maxWithdrawAmount}
+        maxTopUpAmount={maxTopUpAmount}
+        onSubmit={handleSubmit}
+        onClose={handleClose}
+        isWithdrawal={isWithdrawal}
+        isLoading={withdrawFromPublicationMutation.isPending || withdrawFromVoteMutation.isPending || voteOnPublicationWithCommentMutation.isPending || voteOnVoteMutation.isPending}
+        currencyIconUrl={currencyIconUrl}
+      />
+    </BasePopup>
   );
 };
 

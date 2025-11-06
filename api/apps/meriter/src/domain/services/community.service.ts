@@ -5,6 +5,7 @@ import { Community, CommunityDocument } from '../models/community/community.sche
 import { User, UserDocument } from '../models/user/user.schema';
 import { CommunityId, UserId } from '../value-objects';
 import { EventBus } from '../events/event-bus';
+import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
 import { uid } from 'uid';
 
 export interface CreateCommunityDto {
@@ -152,37 +153,23 @@ export class CommunityService {
   }
 
   async addMember(communityId: string, userId: string): Promise<Community> {
-    const updatedCommunity = await this.communityModel.findOneAndUpdate(
+    return MongoArrayUpdateHelper.addToArray<Community>(
+      this.communityModel,
       { id: communityId },
-      { 
-        $addToSet: { members: userId },
-        $set: { updatedAt: new Date() }
-      },
-      { new: true }
-    ).lean();
-
-    if (!updatedCommunity) {
-      throw new NotFoundException('Community not found');
-    }
-
-    return updatedCommunity as any as Community;
+      'members',
+      userId,
+      'Community'
+    );
   }
 
   async removeMember(communityId: string, userId: string): Promise<Community> {
-    const updatedCommunity = await this.communityModel.findOneAndUpdate(
+    return MongoArrayUpdateHelper.removeFromArray<Community>(
+      this.communityModel,
       { id: communityId },
-      { 
-        $pull: { members: userId },
-        $set: { updatedAt: new Date() }
-      },
-      { new: true }
-    ).lean();
-
-    if (!updatedCommunity) {
-      throw new NotFoundException('Community not found');
-    }
-
-    return updatedCommunity as any as Community;
+      'members',
+      userId,
+      'Community'
+    );
   }
 
   async isUserAdmin(communityId: string, userId: string): Promise<boolean> {
@@ -231,37 +218,23 @@ export class CommunityService {
   }
 
   async addHashtag(communityId: string, hashtag: string): Promise<Community> {
-    const updatedCommunity = await this.communityModel.findOneAndUpdate(
+    return MongoArrayUpdateHelper.addToArray<Community>(
+      this.communityModel,
       { id: communityId },
-      { 
-        $addToSet: { hashtags: hashtag },
-        $set: { updatedAt: new Date() }
-      },
-      { new: true }
-    ).lean();
-
-    if (!updatedCommunity) {
-      throw new NotFoundException('Community not found');
-    }
-
-    return updatedCommunity as any as Community;
+      'hashtags',
+      hashtag,
+      'Community'
+    );
   }
 
   async removeHashtag(communityId: string, hashtag: string): Promise<Community> {
-    const updatedCommunity = await this.communityModel.findOneAndUpdate(
+    return MongoArrayUpdateHelper.removeFromArray<Community>(
+      this.communityModel,
       { id: communityId },
-      { 
-        $pull: { hashtags: hashtag },
-        $set: { updatedAt: new Date() }
-      },
-      { new: true }
-    ).lean();
-
-    if (!updatedCommunity) {
-      throw new NotFoundException('Community not found');
-    }
-
-    return updatedCommunity as any as Community;
+      'hashtags',
+      hashtag,
+      'Community'
+    );
   }
 
   async updateUserChatMembership(chatId: string, userId: string): Promise<boolean> {

@@ -2,177 +2,39 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { votesApiV1 } from '@/lib/api/v1';
 import type { CreateVoteRequest } from '@/types/api-v1';
-import { useAuth } from '@/contexts/AuthContext';
-import { updateQuotaOptimistically, updateWalletOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';
+import { useVoteMutation } from './useVoteMutation';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import { commentsKeys } from './useComments';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Vote on publication
 export function useVoteOnPublication() {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-  
-  return useMutation({
+  return useVoteMutation({
     mutationFn: ({ publicationId, data, communityId }: { publicationId: string; data: CreateVoteRequest; communityId?: string }) => 
       votesApiV1.voteOnPublication(publicationId, data),
-    onMutate: async (variables) => {
-      const { data, communityId } = variables || {};
-      const shouldOptimistic = !!user?.id && !!communityId;
-      if (!shouldOptimistic) return {} as OptimisticUpdateContext;
-      
-      const context: OptimisticUpdateContext = {};
-      
-      // Calculate quota and wallet amounts from data
-      const quotaAmount = (data as any).quotaAmount ?? 0;
-      const walletAmount = (data as any).walletAmount ?? 0;
-      
-      // Handle quota optimistic update
-      if (quotaAmount > 0 && user?.id && communityId) {
-        const quotaUpdate = await updateQuotaOptimistically(queryClient, user.id, communityId, quotaAmount);
-        if (quotaUpdate) {
-          context.quotaKey = quotaUpdate.quotaKey;
-          context.previousQuota = quotaUpdate.previousQuota;
-        }
-      }
-      
-      // Handle wallet optimistic update
-      if (walletAmount > 0 && communityId) {
-        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, walletAmount, queryKeys.wallet);
-        if (walletUpdate) {
-          context.walletsKey = walletUpdate.walletsKey;
-          context.balanceKey = walletUpdate.balanceKey;
-          context.previousWallets = walletUpdate.previousWallets;
-          context.previousBalance = walletUpdate.previousBalance;
-        }
-      }
-      
-      return context;
+    onSuccessInvalidations: {
+      publications: true,
+      communities: true,
+      comments: true,
+      specificPublicationId: (variables) => variables?.publicationId,
+      shouldInvalidateComments: (result, variables) => !!(result.comment || variables?.data?.comment),
     },
-    onSuccess: (result, variables) => {
-      // Invalidate publications to update vote counts (all publication query patterns)
-      queryClient.invalidateQueries({ queryKey: queryKeys.publications.all, exact: false });
-      
-      // Invalidate community feeds to update vote counts on community pages
-      queryClient.invalidateQueries({ queryKey: queryKeys.communities.all, exact: false });
-      
-      // Invalidate wallet queries to update balance
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
-      
-      // Invalidate quota queries to update remaining quota (for quota votes)
-      queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
-      
-      // If a comment was attached to the vote, invalidate comments queries
-      // This handles the case when result.comment exists (combined endpoint)
-      if (result.comment || variables?.data?.comment) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
-        // Also invalidate the specific publication's comments query
-        if (variables?.publicationId) {
-          queryClient.invalidateQueries({ 
-            queryKey: commentsKeys.byPublication(variables.publicationId),
-            exact: false 
-          });
-        }
-      }
-    },
-    onError: (error: any, _vars, ctx) => {
-      console.error('Vote on publication error:', error);
-      rollbackOptimisticUpdates(queryClient, ctx);
-      // Re-throw to allow component to handle
-      throw error;
-    },
-    onSettled: (_data, _err, vars, ctx) => {
-      const communityId = vars?.communityId;
-      if (user?.id && communityId) {
-        queryClient.invalidateQueries({ queryKey: ['quota', user.id, communityId] });
-      }
-      if (ctx?.quotaKey) {
-        queryClient.invalidateQueries({ queryKey: ctx.quotaKey });
-      }
-      if (communityId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
-        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance(communityId) });
-      }
-    },
+    onErrorReThrow: true,
+    errorContext: 'Vote on publication error',
   });
 }
 
 // Vote on vote
 export function useVoteOnVote() {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-  
-  return useMutation({
+  return useVoteMutation({
     mutationFn: ({ voteId, data, communityId }: { voteId: string; data: CreateVoteRequest; communityId?: string }) => 
       votesApiV1.voteOnVote(voteId, data),
-    onMutate: async (variables) => {
-      const { data, communityId } = variables || {};
-      const shouldOptimistic = !!user?.id && !!communityId;
-      if (!shouldOptimistic) return {} as OptimisticUpdateContext;
-      
-      const context: OptimisticUpdateContext = {};
-      
-      // Calculate quota and wallet amounts from data
-      const quotaAmount = (data as any).quotaAmount ?? 0;
-      const walletAmount = (data as any).walletAmount ?? 0;
-      
-      // Handle quota optimistic update
-      if (quotaAmount > 0 && user?.id && communityId) {
-        const quotaUpdate = await updateQuotaOptimistically(queryClient, user.id, communityId, quotaAmount);
-        if (quotaUpdate) {
-          context.quotaKey = quotaUpdate.quotaKey;
-          context.previousQuota = quotaUpdate.previousQuota;
-        }
-      }
-      
-      // Handle wallet optimistic update
-      if (walletAmount > 0 && communityId) {
-        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, walletAmount, queryKeys.wallet);
-        if (walletUpdate) {
-          context.walletsKey = walletUpdate.walletsKey;
-          context.balanceKey = walletUpdate.balanceKey;
-          context.previousWallets = walletUpdate.previousWallets;
-          context.previousBalance = walletUpdate.previousBalance;
-        }
-      }
-      
-      return context;
+    onSuccessInvalidations: {
+      comments: true,
+      specificCommentId: (variables) => variables?.voteId,
     },
-    onSuccess: (result, variables) => {
-      // Invalidate all comments queries to update vote counts
-      queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
-      
-      // Invalidate specific vote's replies if we have the voteId
-      if (variables?.voteId) {
-        queryClient.invalidateQueries({ queryKey: commentsKeys.byComment(variables.voteId) });
-        // Invalidate all comment queries to refresh vote replies
-        queryClient.invalidateQueries({ queryKey: commentsKeys.all, exact: false });
-      }
-      
-      // Invalidate wallet queries to update balance
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
-      
-      // Invalidate quota queries to update remaining quota (for quota votes)
-      queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
-    },
-    onError: (error, _vars, ctx) => {
-      console.error('Vote on vote error:', error);
-      rollbackOptimisticUpdates(queryClient, ctx);
-    },
-    onSettled: (_data, _err, vars, ctx) => {
-      const communityId = vars?.communityId;
-      if (user?.id && communityId) {
-        queryClient.invalidateQueries({ queryKey: ['quota', user.id, communityId] });
-      }
-      if (ctx?.quotaKey) {
-        queryClient.invalidateQueries({ queryKey: ctx.quotaKey });
-      }
-      if (communityId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
-        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance(communityId) });
-      }
-    },
+    onErrorReThrow: false,
+    errorContext: 'Vote on vote error',
   });
 }
 
@@ -219,10 +81,7 @@ export function useRemoveCommentVote() {
 
 // Vote on publication with optional comment (combined endpoint)
 export function useVoteOnPublicationWithComment() {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-  
-  return useMutation({
+  return useVoteMutation({
     mutationFn: ({ 
       publicationId, 
       data, 
@@ -236,61 +95,15 @@ export function useVoteOnPublicationWithComment() {
       }; 
       communityId?: string; 
     }) => votesApiV1.voteOnPublicationWithComment(publicationId, data),
-    onMutate: async (variables) => {
-      const { data, communityId } = variables || {};
-      const shouldOptimistic = !!user?.id && !!communityId;
-      if (!shouldOptimistic) return {} as OptimisticUpdateContext;
-      
-      const context: OptimisticUpdateContext = {};
-      
-      // Calculate quota and wallet amounts from data
-      const quotaAmount = data.quotaAmount ?? 0;
-      const walletAmount = data.walletAmount ?? 0;
-      
-      // Handle quota optimistic update
-      if (quotaAmount > 0 && user?.id && communityId) {
-        const quotaUpdate = await updateQuotaOptimistically(queryClient, user.id, communityId, quotaAmount);
-        if (quotaUpdate) {
-          context.quotaKey = quotaUpdate.quotaKey;
-          context.previousQuota = quotaUpdate.previousQuota;
-        }
-      }
-      
-      // Handle wallet optimistic update
-      if (walletAmount > 0 && communityId) {
-        const walletUpdate = await updateWalletOptimistically(queryClient, communityId, walletAmount, queryKeys.wallet);
-        if (walletUpdate) {
-          context.walletsKey = walletUpdate.walletsKey;
-          context.balanceKey = walletUpdate.balanceKey;
-          context.previousWallets = walletUpdate.previousWallets;
-          context.previousBalance = walletUpdate.previousBalance;
-        }
-      }
-      
-      return context;
+    onSuccessInvalidations: {
+      publications: true,
+      communities: true,
+      comments: true,
+      specificPublicationId: (variables) => variables?.publicationId,
+      shouldInvalidateComments: (result) => !!result.comment,
     },
-    onSuccess: (result) => {
-      // Invalidate publications to update vote counts (all publication query patterns)
-      queryClient.invalidateQueries({ queryKey: queryKeys.publications.all, exact: false });
-      
-      // Invalidate community feeds to update vote counts on community pages
-      queryClient.invalidateQueries({ queryKey: queryKeys.communities.all, exact: false });
-      
-      // Invalidate comments to refresh list with new comment
-      queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
-      
-      // Invalidate wallet queries to update balance
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
-      
-      // If comment was created, invalidate quota queries
-      if (result.comment) {
-        queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
-      }
-    },
-    onError: (error, variables, context) => {
-      console.error('Vote with comment error:', error);
-      rollbackOptimisticUpdates(queryClient, context);
-    },
+    onErrorReThrow: false,
+    errorContext: 'Vote with comment error',
   });
 }
 

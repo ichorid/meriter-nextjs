@@ -9,6 +9,8 @@ import { WalletService } from '../src/domain/services/wallet.service';
 import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
 import { TgBotsService } from '../src/tg-bots/tg-bots.service';
+import { UserEnrichmentService } from '../src/api-v1/common/services/user-enrichment.service';
+import { CommunityEnrichmentService } from '../src/api-v1/common/services/community-enrichment.service';
 import { UserGuard } from '../src/user.guard';
 import { Poll, PollDocument } from '../src/domain/models/poll/poll.schema';
 import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -98,6 +100,18 @@ describe('PollsController - Notification Language', () => {
         {
           provide: TgBotsService,
           useValue: mockTgBotsService,
+        },
+        {
+          provide: UserEnrichmentService,
+          useValue: {
+            batchFetchUsers: jest.fn().mockResolvedValue(new Map()),
+          },
+        },
+        {
+          provide: CommunityEnrichmentService,
+          useValue: {
+            batchFetchCommunities: jest.fn().mockResolvedValue(new Map()),
+          },
         },
         {
           provide: getModelToken(Community.name),

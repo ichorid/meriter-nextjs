@@ -1,34 +1,31 @@
 import { UserId, PublicationId } from '../../value-objects';
+import { BaseMetrics } from '../../common/metrics/base-metrics';
+import { EditableEntity } from '../../common/interfaces/editable-entity.interface';
+import { AuthorizationHelper } from '../../common/mixins/authorizable-entity.mixin';
 
-export class CommentMetrics {
+export class CommentMetrics extends BaseMetrics {
   private constructor(
-    public readonly upvotes: number,
-    public readonly downvotes: number,
+    upvotes: number,
+    downvotes: number,
     public readonly replyCount: number,
-  ) {}
+  ) {
+    super(upvotes, downvotes);
+  }
 
   static zero(): CommentMetrics {
     return new CommentMetrics(0, 0, 0);
   }
 
-  static fromSnapshot(data: { upvotes: number; downvotes: number; replyCount: number }): CommentMetrics {
+  static fromSnapshot(data: { upvotes: number; downvotes: number; replyCount: number; score?: number }): CommentMetrics {
     return new CommentMetrics(data.upvotes, data.downvotes, data.replyCount);
   }
 
-  applyVote(amount: number): CommentMetrics {
-    if (amount > 0) {
-      return new CommentMetrics(this.upvotes + amount, this.downvotes, this.replyCount);
-    } else {
-      return new CommentMetrics(this.upvotes, this.downvotes + Math.abs(amount), this.replyCount);
-    }
+  protected createNew(upvotes: number, downvotes: number): this {
+    return new CommentMetrics(upvotes, downvotes, this.replyCount) as this;
   }
 
   incrementReply(): CommentMetrics {
     return new CommentMetrics(this.upvotes, this.downvotes, this.replyCount + 1);
-  }
-
-  get score(): number {
-    return this.upvotes - this.downvotes;
   }
 
   toSnapshot() {
@@ -47,13 +44,18 @@ export interface CommentSnapshot {
   targetId: string;
   authorId: string;
   content: string;
-  metrics: ReturnType<CommentMetrics['toSnapshot']>;
+  metrics: {
+    upvotes: number;
+    downvotes: number;
+    replyCount: number;
+    score?: number; // Optional since it can be calculated
+  };
   parentCommentId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export class Comment {
+export class Comment implements EditableEntity {
   private constructor(
     private readonly id: string,
     private readonly targetType: 'publication' | 'comment',
@@ -114,11 +116,11 @@ export class Comment {
   }
 
   canBeEditedBy(userId: UserId): boolean {
-    return this.authorId.equals(userId);
+    return AuthorizationHelper.canBeEditedBy(this.authorId, userId);
   }
 
   canBeDeletedBy(userId: UserId): boolean {
-    return this.authorId.equals(userId);
+    return AuthorizationHelper.canBeDeletedBy(this.authorId, userId);
   }
 
   /**

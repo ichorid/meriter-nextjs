@@ -4,6 +4,7 @@ import { Connection, Model } from 'mongoose';
 import { User, UserDocument } from '../models/user/user.schema';
 import { UserId } from '../value-objects';
 import { EventBus } from '../events/event-bus';
+import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
 import { uid } from 'uid';
 
 export interface CreateUserDto {
@@ -116,43 +117,23 @@ export class UserService {
   }
 
   async addCommunityMembership(userId: string, communityId: string): Promise<User> {
-    const user = await this.userModel.findOne({ telegramId: userId }).lean();
-    
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    // Add community to memberships if not already present
-    const updatedUser = await this.userModel.findOneAndUpdate(
+    return MongoArrayUpdateHelper.addToArray<User>(
+      this.userModel,
       { telegramId: userId },
-      { 
-        $addToSet: { communityMemberships: communityId },
-        $set: { updatedAt: new Date() }
-      },
-      { new: true }
-    ).lean();
-
-    return updatedUser;
+      'communityMemberships',
+      communityId,
+      'User'
+    );
   }
 
   async removeCommunityMembership(userId: string, communityId: string): Promise<User> {
-    const user = await this.userModel.findOne({ telegramId: userId }).lean();
-    
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    // Remove community from memberships
-    const updatedUser = await this.userModel.findOneAndUpdate(
+    return MongoArrayUpdateHelper.removeFromArray<User>(
+      this.userModel,
       { telegramId: userId },
-      { 
-        $pull: { communityMemberships: communityId },
-        $set: { updatedAt: new Date() }
-      },
-      { new: true }
-    ).lean();
-
-    return updatedUser;
+      'communityMemberships',
+      communityId,
+      'User'
+    );
   }
 
   async getUserCommunities(userId: string): Promise<string[]> {

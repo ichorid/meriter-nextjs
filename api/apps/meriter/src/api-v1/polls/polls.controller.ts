@@ -16,9 +16,13 @@ import { PollCastService } from '../../domain/services/poll-cast.service';
 import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { UserService } from '../../domain/services/user.service';
+import { UserEnrichmentService } from '../common/services/user-enrichment.service';
+import { CommunityEnrichmentService } from '../common/services/community-enrichment.service';
+import { EntityMappers } from '../common/mappers/entity-mappers';
 import { Wallet } from '../../domain/aggregates/wallet/wallet.entity';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { ApiResponseHelper } from '../common/helpers/api-response.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
 import { Poll, CreatePollDto, CreatePollDtoSchema, CreatePollCastDto, CreatePollCastDtoSchema, UpdatePollDtoSchema } from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
@@ -38,6 +42,8 @@ export class PollsController {
     private readonly walletService: WalletService,
     private readonly communityService: CommunityService,
     private readonly userService: UserService,
+    private readonly userEnrichmentService: UserEnrichmentService,
+    private readonly communityEnrichmentService: CommunityEnrichmentService,
     private readonly tgBotsService: TgBotsService,
   ) {}
 
@@ -58,87 +64,20 @@ export class PollsController {
       const authorIds = [...new Set(result.map(poll => poll.toSnapshot().authorId))];
       const communityIds = [...new Set(result.map(poll => poll.toSnapshot().communityId))];
       
-      // Batch fetch all users and communities
-      const usersMap = new Map<string, any>();
-      await Promise.all(
-        authorIds.map(async (userId) => {
-          const user = await this.userService.getUser(userId);
-          if (user) {
-            usersMap.set(userId, user);
-          }
-        })
-      );
-      
-      const communitiesMap = new Map<string, any>();
-      await Promise.all(
-        communityIds.map(async (communityId) => {
-          const community = await this.communityService.getCommunity(communityId);
-          if (community) {
-            communitiesMap.set(communityId, community);
-          }
-        })
-      );
+      // Batch fetch all users and communities using enrichment services
+      const [usersMap, communitiesMap] = await Promise.all([
+        this.userEnrichmentService.batchFetchUsers(authorIds),
+        this.communityEnrichmentService.batchFetchCommunities(communityIds),
+      ]);
       
       // Transform domain Polls to API format with enriched metadata
-      const apiPolls = result.map(poll => {
-        const snapshot = poll.toSnapshot();
-        const authorId = snapshot.authorId;
-        const communityId = snapshot.communityId;
-        const author = usersMap.get(authorId);
-        const community = communitiesMap.get(communityId);
-        
-        return {
-          id: snapshot.id,
-          authorId,
-          communityId,
-          question: snapshot.question,
-          description: snapshot.description,
-          options: snapshot.options.map((opt) => ({
-            id: opt.id,
-            text: opt.text,
-            votes: opt.votes,
-            amount: opt.amount || 0,
-            casterCount: opt.casterCount,
-          })),
-          metrics: snapshot.metrics,
-          expiresAt: snapshot.expiresAt.toISOString(),
-          isActive: snapshot.isActive,
-          createdAt: snapshot.createdAt.toISOString(),
-          updatedAt: snapshot.updatedAt.toISOString(),
-          // Add metadata for frontend compatibility with PublicationCard
-          meta: {
-            author: {
-              id: authorId,
-              name: author?.displayName || author?.firstName || 'Unknown',
-              photoUrl: author?.avatarUrl,
-              username: author?.username,
-            },
-            ...(community && {
-              origin: {
-                telegramChatName: community.name,
-              },
-            }),
-          },
-          // Add type field to indicate this is a poll (for PublicationCard compatibility)
-          type: 'poll' as const,
-          // Add content field using question for PublicationCard compatibility
-          content: snapshot.question,
-        };
-      });
+      const apiPolls = result.map(poll => EntityMappers.mapPollToApi(poll, usersMap, communitiesMap));
       
-      return {
-        success: true,
-        data: {
-          data: apiPolls,
-          total: apiPolls.length,
-          skip,
-          limit: pagination.limit,
-        },
-      };
+    return ApiResponseHelper.successResponse({ data: apiPolls, total: apiPolls.length, skip, limit: pagination.limit });
     }
     
     // Default behavior: return empty array for now
-    return { success: true, data: { data: [], total: 0, skip: 0, limit: pagination.limit } };
+    return ApiResponseHelper.successResponse({ data: [], total: 0, skip: 0, limit: pagination.limit });
   }
 
   @Get(':id')
@@ -170,7 +109,7 @@ export class PollsController {
       updatedAt: snapshot.updatedAt.toISOString(),
     };
     
-    return { success: true, data: apiPoll };
+    return ApiResponseHelper.successResponse(apiPoll);
   }
 
   @Post()
@@ -188,26 +127,14 @@ export class PollsController {
     const poll = await this.pollsService.createPoll(req.user.id, domainDto);
     const snapshot = poll.toSnapshot();
     
+    // Batch fetch user and community using enrichment services
+    const [usersMap, communitiesMap] = await Promise.all([
+      this.userEnrichmentService.batchFetchUsers([snapshot.authorId]),
+      this.communityEnrichmentService.batchFetchCommunities([snapshot.communityId]),
+    ]);
+    
     // Transform domain Poll to API Poll format
-    const apiPoll: Poll = {
-      id: snapshot.id,
-      authorId: snapshot.authorId,
-      communityId: snapshot.communityId,
-      question: snapshot.question,
-      description: snapshot.description,
-      options: snapshot.options.map((opt) => ({
-        id: opt.id,
-        text: opt.text,
-        votes: opt.votes,
-        amount: opt.amount || 0,
-        casterCount: opt.casterCount,
-      })),
-      metrics: snapshot.metrics,
-      expiresAt: snapshot.expiresAt.toISOString(),
-      isActive: snapshot.isActive,
-      createdAt: snapshot.createdAt.toISOString(),
-      updatedAt: snapshot.updatedAt.toISOString(),
-    };
+    const apiPoll = EntityMappers.mapPollToApi(poll, usersMap, communitiesMap);
     
     // Send Telegram notification to community chat
     try {
@@ -235,7 +162,7 @@ export class PollsController {
       this.logger.error(`Failed to send poll notification: ${error.message}`, error.stack);
     }
     
-    return { success: true, data: apiPoll };
+    return ApiResponseHelper.successResponse(apiPoll);
   }
 
   @Put(':id')
@@ -360,13 +287,13 @@ export class PollsController {
   @Get(':id/results')
   async getPollResults(@Param('id') id: string, @Req() req: any) {
     const results = await this.pollsService.getPollResults(id);
-    return { success: true, data: results };
+    return ApiResponseHelper.successResponse(results);
   }
 
   @Get(':id/my-casts')
   async getMyPollCasts(@Param('id') id: string, @Req() req: any) {
     const casts = await this.pollsService.getUserCasts(id, req.user.id);
-    return { success: true, data: casts };
+    return ApiResponseHelper.successResponse(casts);
   }
 
   @Get('communities/:communityId')

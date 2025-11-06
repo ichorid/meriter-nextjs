@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useControlledInput } from './useControlledInput';
+import { InputWrapper } from './InputWrapper';
 
 export interface InputTextProps {
     labelTitle?: string;
@@ -29,43 +30,29 @@ export function InputText({
     value: controlledValue,
     onChange: controlledOnChange,
 }: InputTextProps) {
-    const [internalValue, setInternalValue] = useState(defaultValue);
-    const isControlled = controlledValue !== undefined;
-    const value = isControlled ? controlledValue : internalValue;
-
-    const updateInputValue = (val: string) => {
-        if (!isControlled) {
-            setInternalValue(val);
-        }
-        if (controlledOnChange) {
-            controlledOnChange(val);
-        }
-        if (updateFormValue && updateType) {
-            updateFormValue({ updateType, value: val });
-        }
-    };
-
-    useEffect(() => {
-        if (defaultValue && !isControlled) {
-            setInternalValue(defaultValue);
-        }
-    }, [defaultValue, isControlled]);
+    const { value, updateValue } = useControlledInput({
+        value: controlledValue,
+        defaultValue,
+        onChange: controlledOnChange,
+        updateFormValue,
+        updateType,
+    });
 
     return (
-        <div className={`form-control w-full ${containerStyle} ${className}`}>
-            {labelTitle && (
-                <label className="label">
-                    <span className={`label-text text-base-content ${labelStyle}`}>{labelTitle}</span>
-                </label>
-            )}
+        <InputWrapper
+            labelTitle={labelTitle}
+            labelStyle={labelStyle}
+            containerStyle={containerStyle}
+            className={className}
+        >
             <input
                 type={type}
                 value={value}
                 placeholder={placeholder}
-                onChange={(e) => updateInputValue(e.target.value)}
+                onChange={(e) => updateValue(e.target.value)}
                 className="input input-bordered w-full"
             />
-        </div>
+        </InputWrapper>
     );
 }
 

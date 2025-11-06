@@ -8,6 +8,7 @@ import { VotingPopup } from '@/components/organisms/VotingPopup';
 import { WithdrawPopup } from '@/components/organisms/WithdrawPopup';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { createCommentsColumnProps } from './helpers';
 
 export interface AdaptiveLayoutProps {
   children: React.ReactNode;
@@ -284,24 +285,22 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
               style={{ width: 'var(--right-column-width)' }}
             >
               <CommentsColumn
-                publicationSlug={selectedPostSlug!}
-                communityId={communityId!}
-                balance={balance}
-                wallets={wallets}
-                myId={myId}
-                highlightTransactionId={highlightTransactionId}
-                activeCommentHook={activeCommentHook}
-                activeSlider={activeSlider ?? null}
-                setActiveSlider={setActiveSlider}
-                activeWithdrawPost={activeWithdrawPost ?? null}
-                setActiveWithdrawPost={setActiveWithdrawPost}
-                showBackButton={true}
-                onBack={() => {
-                  // Remove post query param
-                  const params = new URLSearchParams(searchParams?.toString() ?? '');
-                  params.delete('post');
-                  window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`);
-                }}
+                {...createCommentsColumnProps(
+                  selectedPostSlug!,
+                  communityId!,
+                  searchParams,
+                  {
+                    balance: balance!,
+                    wallets: wallets || [],
+                    myId,
+                    highlightTransactionId,
+                    activeCommentHook: activeCommentHook || [null, () => {}],
+                    activeSlider: activeSlider ?? null,
+                    setActiveSlider: setActiveSlider || (() => {}),
+                    activeWithdrawPost: activeWithdrawPost ?? null,
+                    setActiveWithdrawPost: setActiveWithdrawPost || (() => {}),
+                  }
+                )}
               />
             </div>
           )}
@@ -312,24 +311,22 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
       {showComments && selectedPostSlug && communityId && (
         <div className="lg:hidden fixed inset-0 z-50 bg-base-100">
           <CommentsColumn
-            publicationSlug={selectedPostSlug}
-            communityId={communityId}
-            balance={balance}
-            wallets={wallets}
-            myId={myId}
-            highlightTransactionId={highlightTransactionId}
-            activeCommentHook={activeCommentHook}
-            activeSlider={activeSlider ?? null}
-            setActiveSlider={setActiveSlider}
-            activeWithdrawPost={activeWithdrawPost ?? null}
-            setActiveWithdrawPost={setActiveWithdrawPost}
-            showBackButton={true}
-            onBack={() => {
-              // Remove post query param
-              const params = new URLSearchParams(searchParams?.toString() ?? '');
-              params.delete('post');
-              window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`);
-            }}
+            {...createCommentsColumnProps(
+              selectedPostSlug,
+              communityId,
+              searchParams,
+              {
+                balance: balance!,
+                wallets: wallets || [],
+                myId,
+                highlightTransactionId,
+                activeCommentHook: activeCommentHook || [null, () => {}],
+                activeSlider: activeSlider ?? null,
+                setActiveSlider: setActiveSlider || (() => {}),
+                activeWithdrawPost: activeWithdrawPost ?? null,
+                setActiveWithdrawPost: setActiveWithdrawPost || (() => {}),
+              }
+            )}
           />
         </div>
       )}
