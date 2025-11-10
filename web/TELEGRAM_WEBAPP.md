@@ -54,7 +54,17 @@ meriter.pro
 - ❌ Wrong: `https://meriter.pro`
 - ❌ Wrong: `www.meriter.pro` (if you're using the non-www version)
 
-#### 3. Environment Variables
+#### 3. Disable Bot Privacy Mode for Group Features
+
+Meriter bot features that operate inside group chats (e.g., community management, hashtag tracking) require the bot to see all group messages. In @BotFather, turn off privacy mode:
+
+```
+/setprivacy
+<select your bot>
+Disable
+```
+
+#### 4. Environment Variables
 
 Ensure these are set in your `.env`:
 

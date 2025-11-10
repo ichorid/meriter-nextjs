@@ -63,10 +63,29 @@ services:
       retries: 3
       start_period: 40s
 
+  bot-webhook-init:
+    image: ghcr.io/ichorid/meriter-nextjs-api:${VERSION_API:-latest}
+    container_name: meriter-bot-webhook-init
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      - APP_URL=https://${DOMAIN}
+      - BOT_USERNAME=${BOT_USERNAME}
+      - BOT_TOKEN=${BOT_TOKEN}
+    depends_on:
+      api:
+        condition: service_started
+    command: ["node", "scripts/setup-webhook.js", "set"]
+    networks:
+      - meriter-network
+
   caddy:
     image: caddy:2-alpine
     container_name: meriter-caddy
     restart: unless-stopped
+    env_file:
+      - .env
     ports:
       - "80:80"
       - "443:443"
