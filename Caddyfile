@@ -2,7 +2,7 @@
 # Replace {$DOMAIN} with your actual domain or use environment variable
 
 # Support both HTTP and HTTPS for localhost development
-{$DOMAIN}{
+{$DOMAIN} {
     # Enable access logs
     log {
         output stdout
