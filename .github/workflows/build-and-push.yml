@@ -1,26 +1,15 @@
-name: Build and Push Docker Images
+name: Build and Deploy Images
 
-# This workflow runs automatically on dev pushes and release tags, and can also be started manually.
-# For manual runs go to Actions > Build and Push Docker Images > Run workflow
+# Each GitHub environment (dev, stage, prod) must provide secrets:
+# - VPS_HOST
+# - VPS_USER
+# - VPS_SSH_KEY
 
 on:
   push:
     branches:
       - dev
-    tags:
-      - release
-  workflow_dispatch:
-    inputs:
-      build_web:
-        description: 'Build web image'
-        required: false
-        default: true
-        type: boolean
-      build_api:
-        description: 'Build api image'
-        required: false
-        default: true
-        type: boolean
+      - main
 
 env:
   REGISTRY: ghcr.io
@@ -28,111 +17,117 @@ env:
   IMAGE_NAME_API: ${{ github.repository }}-api
 
 jobs:
-  test:
-    name: Run Tests
+  determine-target:
+    name: Select deployment target
     runs-on: ubuntu-latest
+    outputs:
+      build_type: ${{ steps.target.outputs.build_type }}
+      run_dev_deploy: ${{ steps.target.outputs.run_dev_deploy }}
+      run_stage_deploy: ${{ steps.target.outputs.run_stage_deploy }}
+      run_prod_deploy: ${{ steps.target.outputs.run_prod_deploy }}
+    steps:
+      - id: target
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/dev" ]]; then
+            {
+              echo "build_type=dev"
+              echo "run_dev_deploy=true"
+              echo "run_stage_deploy=false"
+              echo "run_prod_deploy=false"
+            } >> "$GITHUB_OUTPUT"
+          elif [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            {
+              echo "build_type=release"
+              echo "run_dev_deploy=false"
+              echo "run_stage_deploy=true"
+              echo "run_prod_deploy=true"
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "build_type="
+              echo "run_dev_deploy=false"
+              echo "run_stage_deploy=false"
+              echo "run_prod_deploy=false"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    needs: determine-target
     permissions:
       contents: read
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Ensure release tag targets main
-        if: github.event_name == 'push' && github.ref == 'refs/tags/release'
-        run: |
-          git fetch origin main --depth=1
-          if ! git merge-base --is-ancestor "${GITHUB_SHA}" "origin/main"; then
-            echo "Release tag must point to a commit on the main branch."
-            exit 1
-          fi
-
       - name: Set up pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v3
         with:
-          version: 10.20.0
-
+          version: 9
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
-
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Run tests
         run: pnpm test
 
   build-web:
-    name: Build and Push Web Image
+    name: Build and push web image
     runs-on: ubuntu-latest
-    needs: test
-    if: |
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.build_web == 'true') ||
-      (github.event_name == 'push')
+    needs:
+      - determine-target
+      - test
+    if: needs.determine-target.outputs.build_type != ''
     permissions:
       contents: read
       packages: write
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Determine build context
-        id: context
-        run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/dev" ]]; then
-            echo "build_type=dev" >> "$GITHUB_OUTPUT"
-          elif [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/tags/release" ]]; then
-            echo "build_type=release" >> "$GITHUB_OUTPUT"
-          else
-            echo "build_type=manual" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Extract version from package.json
-        id: version
-        run: |
-          VERSION=$(jq -r '.version' web/package.json)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Web version: $VERSION"
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata for Docker (dev)
+      - name: Extract version (release builds)
+        id: version
+        if: needs.determine-target.outputs.build_type == 'release'
+        run: |
+          VERSION=$(jq -r '.version' web/package.json)
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Web version: $VERSION"
+      - name: Prepare image metadata
         id: meta-dev
-        if: steps.context.outputs.build_type == 'dev'
+        if: needs.determine-target.outputs.build_type == 'dev'
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}
           tags: |
             type=raw,value=web-dev-${{ github.sha }}
             type=raw,value=web-dev-latest
-
-      - name: Extract metadata for Docker (release)
+      - name: Prepare image metadata (release)
         id: meta-release
-        if: steps.context.outputs.build_type != 'dev'
+        if: needs.determine-target.outputs.build_type == 'release'
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}
           tags: |
-            type=raw,value=v${{ steps.version.outputs.version }}
+            type=raw,value=v${{ steps.version.outputs.value }}
             type=raw,value=latest
-
-      - name: Build and push Web Docker image (dev)
-        if: steps.context.outputs.build_type == 'dev'
+            type=sha
+      - name: Build and push web Docker image
+        if: needs.determine-target.outputs.build_type == 'dev'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -142,9 +137,8 @@ jobs:
           labels: ${{ steps.meta-dev.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Build and push Web Docker image
-        if: steps.context.outputs.build_type != 'dev'
+      - name: Build and push web Docker image (release)
+        if: needs.determine-target.outputs.build_type == 'release'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -154,94 +148,75 @@ jobs:
           labels: ${{ steps.meta-release.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
       - name: Image summary
         run: |
-          echo "### Web Image Published :rocket:" >> $GITHUB_STEP_SUMMARY
-          build_type="${{ steps.context.outputs.build_type }}"
-          if [ "$build_type" = "dev" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Web image published :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.determine-target.outputs.build_type }}" = "dev" ]; then
             echo "**Context:** dev branch" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Images:**" >> $GITHUB_STEP_SUMMARY
             echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}:web-dev-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
             echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}:web-dev-latest\`" >> $GITHUB_STEP_SUMMARY
           else
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Version:** v${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Version:** v${{ steps.version.outputs.value }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Images:**" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}:v${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}:v${{ steps.version.outputs.value }}\`" >> $GITHUB_STEP_SUMMARY
             echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}:latest\`" >> $GITHUB_STEP_SUMMARY
           fi
 
   build-api:
-    name: Build and Push API Image
+    name: Build and push API image
     runs-on: ubuntu-latest
-    needs: test
-    if: |
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.build_api == 'true') ||
-      (github.event_name == 'push')
+    needs:
+      - determine-target
+      - test
+    if: needs.determine-target.outputs.build_type != ''
     permissions:
       contents: read
       packages: write
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Determine build context
-        id: context
-        run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/dev" ]]; then
-            echo "build_type=dev" >> "$GITHUB_OUTPUT"
-          elif [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/tags/release" ]]; then
-            echo "build_type=release" >> "$GITHUB_OUTPUT"
-          else
-            echo "build_type=manual" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Extract version from package.json
-        id: version
-        run: |
-          VERSION=$(jq -r '.version' api/package.json)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "API version: $VERSION"
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata for Docker (dev)
+      - name: Extract version (release builds)
+        id: version
+        if: needs.determine-target.outputs.build_type == 'release'
+        run: |
+          VERSION=$(jq -r '.version' api/package.json)
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "API version: $VERSION"
+      - name: Prepare image metadata
         id: meta-dev
-        if: steps.context.outputs.build_type == 'dev'
+        if: needs.determine-target.outputs.build_type == 'dev'
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}
           tags: |
             type=raw,value=api-dev-${{ github.sha }}
             type=raw,value=api-dev-latest
-
-      - name: Extract metadata for Docker (release)
+      - name: Prepare image metadata (release)
         id: meta-release
-        if: steps.context.outputs.build_type != 'dev'
+        if: needs.determine-target.outputs.build_type == 'release'
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}
           tags: |
-            type=raw,value=v${{ steps.version.outputs.version }}
+            type=raw,value=v${{ steps.version.outputs.value }}
             type=raw,value=latest
-
-      - name: Build and push API Docker image (dev)
-        if: steps.context.outputs.build_type == 'dev'
+            type=sha
+      - name: Build and push API Docker image
+        if: needs.determine-target.outputs.build_type == 'dev'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -251,9 +226,8 @@ jobs:
           labels: ${{ steps.meta-dev.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Build and push API Docker image
-        if: steps.context.outputs.build_type != 'dev'
+      - name: Build and push API Docker image (release)
+        if: needs.determine-target.outputs.build_type == 'release'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -263,52 +237,118 @@ jobs:
           labels: ${{ steps.meta-release.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
       - name: Image summary
         run: |
-          echo "### API Image Published :rocket:" >> $GITHUB_STEP_SUMMARY
-          build_type="${{ steps.context.outputs.build_type }}"
-          if [ "$build_type" = "dev" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### API image published :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.determine-target.outputs.build_type }}" = "dev" ]; then
             echo "**Context:** dev branch" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Images:**" >> $GITHUB_STEP_SUMMARY
             echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:api-dev-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
             echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:api-dev-latest\`" >> $GITHUB_STEP_SUMMARY
           else
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Version:** v${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Version:** v${{ steps.version.outputs.value }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Images:**" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:v${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:v${{ steps.version.outputs.value }}\`" >> $GITHUB_STEP_SUMMARY
             echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:latest\`" >> $GITHUB_STEP_SUMMARY
           fi
 
   deploy-dev:
-    name: Deploy to Dev Server
+    name: Deploy to dev server
     runs-on: ubuntu-latest
     needs:
+      - determine-target
       - build-web
       - build-api
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    env:
-      DEV_VPS_HOST: ${{ secrets.DEV_VPS_HOST }}
-      DEV_VPS_USER: ${{ secrets.DEV_VPS_USER }}
-
+    if: needs.determine-target.outputs.run_dev_deploy == 'true'
+    environment:
+      name: dev
+    concurrency:
+      group: deploy-dev
+      cancel-in-progress: true
+    # Uses environment-scoped secrets defined per environment (see header comment).
     steps:
       - name: Set up SSH agent
         uses: webfactory/ssh-agent@v0.7.0
         with:
-          ssh-private-key: ${{ secrets.DEV_VPS_SSH_KEY }}
-
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
       - name: Add VPS host to known hosts
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H "$DEV_VPS_HOST" >> ~/.ssh/known_hosts
-
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
       - name: Run remote deploy script
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
         run: |
-          ssh "$DEV_VPS_USER@$DEV_VPS_HOST" <<'EOF'
+          ssh "$VPS_USER@$VPS_HOST" <<'EOF'
+            cd /opt/meriter
+            ./deploy.sh
+          EOF
+
+  deploy-stage:
+    name: Deploy to stage server
+    runs-on: ubuntu-latest
+    needs:
+      - determine-target
+      - build-web
+      - build-api
+    if: needs.determine-target.outputs.run_stage_deploy == 'true'
+    environment:
+      name: stage
+    steps:
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+      - name: Add VPS host to known hosts
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+      - name: Run remote deploy script
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh "$VPS_USER@$VPS_HOST" <<'EOF'
+            cd /opt/meriter
+            ./deploy.sh
+          EOF
+
+  deploy-prod:
+    name: Deploy to production server
+    runs-on: ubuntu-latest
+    needs:
+      - determine-target
+      - build-web
+      - build-api
+      - deploy-stage
+    if: needs.determine-target.outputs.run_prod_deploy == 'true'
+    environment:
+      name: prod
+    steps:
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+      - name: Add VPS host to known hosts
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+      - name: Run remote deploy script
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh "$VPS_USER@$VPS_HOST" <<'EOF'
             cd /opt/meriter
             ./deploy.sh
           EOF
