@@ -1,17 +1,11 @@
 # Caddyfile for Meriter application
 # Replace {$DOMAIN} with your actual domain or use environment variable
 
-{
-    # Global options
-    auto_https disable_redirects
-}
-
 # Support both HTTP and HTTPS for localhost development
-:80, :443 {
+{$DOMAIN}{
     # Enable access logs
     log {
-        output file /var/log/caddy/access.log
-        format console
+        output stdout
         level INFO
     }
 
@@ -25,11 +19,6 @@
     handle {
         reverse_proxy web:8001
         encode gzip
-    }
-
-    # Error handling
-    handle_errors {
-        respond "{err.status_code} {err.status_text}"
     }
 }
 

@@ -8,7 +8,7 @@ const isS3Enabled = () => {
     return config.s3.enabled;
 };
 
-export const uploadStream = ({ Bucket, Key }: { Bucket: string; Key: string }) => {
+export const uploadStream = ({ Key }: { Key: string }) => {
     const pass = new stream.PassThrough()
     
     // Return no-op stream if S3 not configured
@@ -20,19 +20,25 @@ export const uploadStream = ({ Bucket, Key }: { Bucket: string; Key: string }) =
         };
     }
 
-            const s3 = new S3Client({
-                credentials: {
-                    accessKeyId: config.s3.accessKeyId!,
-                    secretAccessKey: config.s3.secretAccessKey!,
-                },
-                endpoint: config.s3.endpoint,
-                region: config.s3.region,
-            })
+    const bucket = config.s3.bucket;
+
+    if (!bucket) {
+        throw new Error('S3 bucket is not configured.');
+    }
+
+    const s3 = new S3Client({
+        credentials: {
+            accessKeyId: config.s3.accessKeyId!,
+            secretAccessKey: config.s3.secretAccessKey!,
+        },
+        endpoint: config.s3.endpoint,
+        region: config.s3.region,
+    })
 
     const upload = new Upload({
         client: s3,
         params: {
-            Bucket,
+            Bucket: bucket,
             Key,
             Body: pass,
             ACL: 'public-read',
@@ -45,7 +51,7 @@ export const uploadStream = ({ Bucket, Key }: { Bucket: string; Key: string }) =
     }
 }
 /*
-const { writeStream, promise } = uploadStream({Bucket: 'yourbucket', Key: 'yourfile.mp4'});
+const { writeStream, promise } = uploadStream({ Key: 'yourfile.mp4' });
 const readStream = fs.createReadStream('/path/to/yourfile.mp4');
 
 const pipeline = readStream.pipe(writeStream);

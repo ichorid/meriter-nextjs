@@ -1,11 +1,27 @@
+import { config } from '@/config';
+
 /**
  * Avatar utilities for URL generation and placeholder generation
  */
 
+const AVATAR_PATHS = {
+  user: 'users',
+  community: 'communities',
+} as const;
+
 // Avatar URL generation utilities
 export function getAvatarUrl(userId: string, type: 'user' | 'community' = 'user'): string {
-  const baseUrl = process.env.NEXT_PUBLIC_TELEGRAM_AVATAR_BASE_URL || 'https://telegram.hb.bizmrg.com';
-  return `${baseUrl}/${type === 'user' ? 'users' : 'communities'}/${userId}`;
+  if (!config.s3.enabled) {
+    return '';
+  }
+
+  const baseUrl = config.telegram.avatarBaseUrl;
+
+  if (!baseUrl) {
+    return '';
+  }
+
+  return `${baseUrl}/${AVATAR_PATHS[type]}/${userId}`;
 }
 
 export function getCommunityAvatarUrl(communityId: string): string {

@@ -142,31 +142,40 @@ DOMAIN=localhost
 
 ### S3 CORS Configuration (Required for Image Loading)
 
-If you're using S3-compatible storage for avatar images, you need to configure CORS to avoid browser blocking errors:
+If you're using S3-compatible storage for avatar images, you need to configure CORS to avoid browser blocking errors. Docker Compose now runs the configuration automatically during `docker-compose up` via the `s3-cors-init` service, provided the required environment variables are set.
 
 1. **Set up environment variables**
    ```bash
    cd api
-   # Make sure your .env file has S3 credentials:
+   # Make sure your .env file has S3 configuration:
+   # S3_BUCKET_NAME=telegram
    # S3_ACCESS_KEY_ID=your_key
    # S3_SECRET_ACCESS_KEY=your_secret
    # S3_ENDPOINT=https://hb.bizmrg.com
+   # S3_REGION=ru-msk
+   # (S3_BUCKET_NAME is required whenever S3_ENDPOINT is set)
    ```
 
-2. **Load credentials and run configuration script**
+2. **Set the bucket and domain**
    ```bash
-   export $(grep -E 'S3_ACCESS_KEY_ID|S3_SECRET_ACCESS_KEY|S3_ENDPOINT' .env | xargs)
-   node scripts/configure-s3-cors.js telegram your-domain.com
+   # In .env
+   S3_BUCKET_NAME=telegram
+   DOMAIN=meriter.pro
    ```
 
-3. **For multiple environments**
+3. **Compose will configure CORS automatically**
    ```bash
-   # Production
-   node scripts/configure-s3-cors.js telegram meriter.pro
-   
-   # Staging
-   node scripts/configure-s3-cors.js telegram staging.meriter.pro
+   docker-compose up -d
+   # s3-cors-init runs once and exits after applying the CORS rules
    ```
+
+If you need to re-run the configuration manually (for example, after changing domains), you can still invoke the script directly:
+
+```bash
+cd api
+export $(grep -E 'S3_ACCESS_KEY_ID|S3_SECRET_ACCESS_KEY|S3_ENDPOINT' .env | xargs)
+node scripts/configure-s3-cors.js "$S3_BUCKET_NAME" your-domain.com
+```
 
 See `api/scripts/README.md` for detailed documentation on the CORS configuration utility.
 

@@ -14,15 +14,29 @@ export interface FileUploadResult {
 export class TelegramFileHandlerService {
   private readonly logger = new Logger(TelegramFileHandlerService.name);
   private s3Client: S3Client;
+  private readonly bucketName: string;
 
   constructor() {
+    const s3Endpoint = process.env.S3_ENDPOINT;
+    const bucketName = process.env.S3_BUCKET_NAME;
+
+    if (s3Endpoint && !bucketName) {
+      throw new Error('S3_BUCKET_NAME must be configured when S3_ENDPOINT is set.');
+    }
+
+    if (!bucketName) {
+      throw new Error('S3_BUCKET_NAME must be configured for Telegram file handling.');
+    }
+
     this.s3Client = new S3Client({
       region: process.env.S3_REGION || 'us-east-1',
+      endpoint: process.env.S3_ENDPOINT,
       credentials: {
         accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
         secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
       },
     });
+    this.bucketName = bucketName;
   }
 
   async downloadAndProcessImage(fileUrl: string, fileName: string): Promise<FileUploadResult> {
@@ -80,12 +94,10 @@ export class TelegramFileHandlerService {
   }
 
   private async uploadToS3(buffer: Buffer, key: string, contentType: string): Promise<FileUploadResult> {
-    const bucketName = process.env.S3_BUCKET_NAME || 'meriter-files';
-
     const upload = new Upload({
       client: this.s3Client,
       params: {
-        Bucket: bucketName,
+        Bucket: this.bucketName,
         Key: key,
         Body: buffer,
         ContentType: contentType,
@@ -94,7 +106,7 @@ export class TelegramFileHandlerService {
     });
 
     const result = await upload.done();
-    const url = `https://${bucketName}.s3.amazonaws.com/${key}`;
+    const url = `https://${this.bucketName}.s3.amazonaws.com/${key}`;
 
     return {
       url,
@@ -108,10 +120,8 @@ export class TelegramFileHandlerService {
     this.logger.log(`Deleting file: ${key}`);
 
     try {
-      const bucketName = process.env.S3_BUCKET_NAME || 'meriter-files';
-      
       await this.s3Client.send(new PutObjectCommand({
-        Bucket: bucketName,
+        Bucket: this.bucketName,
         Key: key,
         Body: '', // Empty body to delete
       }));
