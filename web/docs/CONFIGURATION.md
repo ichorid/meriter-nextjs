@@ -100,12 +100,10 @@ function ApiComponent() {
 - `APP_URL` - Application URL
 - `BOT_TOKEN` - Telegram bot token
 - `NEXT_PUBLIC_TELEGRAM_API_URL` - Telegram API URL
-- `NEXT_PUBLIC_S3_ENABLED` - Enable S3 features
 - `S3_ACCESS_KEY_ID` - S3 access key
 - `S3_SECRET_ACCESS_KEY` - S3 secret key
-- `S3_ENDPOINT` - S3 endpoint URL
-- `S3_REGION` - S3 region
-- `NEXT_PUBLIC_TELEGRAM_AVATAR_BASE_URL` - Avatar CDN URL
+- `S3_ENDPOINT` - S3 endpoint URL (also used as the Telegram avatar base URL)
+- `S3_REGION` - S3 region (must be set when `S3_ENDPOINT` is configured)
 - `NEXT_PUBLIC_ENABLE_ANALYTICS` - Enable analytics
 - `NEXT_PUBLIC_ENABLE_DEBUG` - Enable debug mode
 
@@ -117,6 +115,7 @@ The configuration system validates all environment variables using Zod schemas:
 - **Required field validation** - Checks for required variables
 - **Default values** - Provides sensible defaults
 - **Environment-specific validation** - Validates production settings
+- **S3 coherence** - Ensures `S3_ENDPOINT` and `S3_REGION` are configured together and disables S3 features when they are absent
 
 ## Development vs Production
 

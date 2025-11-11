@@ -37,11 +37,19 @@ export class TgBotsService {
   private readonly logger = new Logger(TgBotsService.name);
   telegramApiUrl: string;
   s3;
+  private readonly s3Bucket?: string;
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Publication.name) private publicationModel: Model<PublicationDocument>,
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
   ) {
+    const s3Endpoint = process.env.S3_ENDPOINT;
+    const s3BucketName = process.env.S3_BUCKET_NAME;
+
+    if (s3Endpoint && !s3BucketName) {
+      throw new Error('S3_BUCKET_NAME must be configured when S3_ENDPOINT is set.');
+    }
+
     this.s3 = new S3Client({
       credentials: {
         accessKeyId: process.env.S3_ACCESS_KEY_ID || "",
@@ -50,6 +58,7 @@ export class TgBotsService {
       endpoint: process.env.S3_ENDPOINT || "https://hb.bizmrg.com",
       region: process.env.S3_REGION || "ru-msk",
     });
+    this.s3Bucket = s3BucketName;
     this.telegramApiUrl = process.env.TELEGRAM_API_URL || "https://api.telegram.org";
   }
 
@@ -865,7 +874,6 @@ export class TgBotsService {
       this.logger.log(`Downloading avatar from ${photoUrl} for user ${telegramId}`);
       
       const { writeStream, promise } = this.awsUploadStream({
-        Bucket: "telegram",
         Key: s3Key,
       });
 
@@ -914,7 +922,6 @@ export class TgBotsService {
 
         const { writeStream: writeStream2, promise: promise2 } =
           this.awsUploadStream({
-            Bucket: "telegram",
             Key: photoUrl2,
           });
 
@@ -946,12 +953,10 @@ export class TgBotsService {
       const photoUrl2 = `telegram_small_avatars/${chat_id}.jpg`;
       //const photoUrl2 = `public/telegram_avatars/${small_file_unique_id}.jpg`
       const { writeStream, promise } = this.awsUploadStream({
-        Bucket: "telegram",
         Key: photoUrl,
       });
       const { writeStream: writeStream2, promise: promise2 } =
         this.awsUploadStream({
-          Bucket: "telegram",
           Key: photoUrl2,
         });
       const f = await this.telegramGetFile(token, file_path).then((d) => {
@@ -972,7 +977,6 @@ export class TgBotsService {
 
         const { writeStream: writeStream2, promise: promise2 } =
           this.awsUploadStream({
-            Bucket: "telegram",
             Key: photoUrl2,
           });
 
@@ -1161,13 +1165,20 @@ export class TgBotsService {
     return { publication, communityId: community.id };
   }
 
-  awsUploadStream = ({ Bucket, Key }) => {
+  private getS3Bucket(): string {
+    if (!this.s3Bucket) {
+      throw new Error('S3 bucket is not configured.');
+    }
+    return this.s3Bucket;
+  }
+
+  awsUploadStream = ({ Key }: { Key: string }) => {
     const pass = new stream.PassThrough();
 
     const upload = new Upload({
       client: this.s3,
       params: {
-        Bucket,
+        Bucket: this.getS3Bucket(),
         Key,
         Body: pass,
         ACL: "public-read",

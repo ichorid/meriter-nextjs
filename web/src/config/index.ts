@@ -36,6 +36,14 @@ function deriveAppUrl(): string {
 }
 
 // Environment variable validation schema
+const optionalString = z.preprocess((value) => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  const trimmed = value.trim();
+  return trimmed === '' ? undefined : trimmed;
+}, z.string().optional());
+
 const envSchema = z.object({
   // Application
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -48,12 +56,11 @@ const envSchema = z.object({
   NEXT_PUBLIC_TELEGRAM_API_URL: z.string().default('https://api.telegram.org'),
   
   // S3 Configuration
-  NEXT_PUBLIC_S3_ENABLED: z.string().optional(),
-  NEXT_PUBLIC_TELEGRAM_AVATAR_BASE_URL: z.string().default('https://telegram.hb.bizmrg.com'),
-  S3_ACCESS_KEY_ID: z.string().optional(),
-  S3_SECRET_ACCESS_KEY: z.string().optional(),
-  S3_ENDPOINT: z.string().default('https://hb.bizmrg.com'),
-  S3_REGION: z.string().default('ru-msk'),
+  S3_BUCKET_NAME: optionalString,
+  S3_ACCESS_KEY_ID: optionalString,
+  S3_SECRET_ACCESS_KEY: optionalString,
+  S3_ENDPOINT: optionalString,
+  S3_REGION: optionalString,
   
   // Feature Flags
   NEXT_PUBLIC_ENABLE_ANALYTICS: z.string().optional(),
@@ -61,6 +68,34 @@ const envSchema = z.object({
   
   // Development Mode
   NEXT_PUBLIC_FAKE_DATA_MODE: z.string().optional(),
+}).superRefine((env, ctx) => {
+  const hasEndpoint = !!env.S3_ENDPOINT;
+  const hasRegion = !!env.S3_REGION;
+  const hasBucket = !!env.S3_BUCKET_NAME;
+
+  if (hasEndpoint && !hasRegion) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'S3_REGION must be configured when S3_ENDPOINT is set.',
+      path: ['S3_REGION'],
+    });
+  }
+
+  if (!hasEndpoint && hasRegion) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'S3_REGION is set but S3_ENDPOINT is missing. Either set both or remove S3_REGION.',
+      path: ['S3_REGION'],
+    });
+  }
+
+  if (hasEndpoint && !hasBucket) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'S3_BUCKET_NAME must be configured when S3_ENDPOINT is set.',
+      path: ['S3_BUCKET_NAME'],
+    });
+  }
 });
 
 // Validate and parse environment variables
@@ -69,8 +104,7 @@ const env = envSchema.parse({
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   BOT_TOKEN: process.env.BOT_TOKEN,
   NEXT_PUBLIC_TELEGRAM_API_URL: process.env.NEXT_PUBLIC_TELEGRAM_API_URL,
-  NEXT_PUBLIC_S3_ENABLED: process.env.NEXT_PUBLIC_S3_ENABLED,
-  NEXT_PUBLIC_TELEGRAM_AVATAR_BASE_URL: process.env.NEXT_PUBLIC_TELEGRAM_AVATAR_BASE_URL,
+  S3_BUCKET_NAME: process.env.S3_BUCKET_NAME,
   S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
   S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
   S3_ENDPOINT: process.env.S3_ENDPOINT,
@@ -82,6 +116,19 @@ const env = envSchema.parse({
 
 // Derive app URL from DOMAIN
 const appUrl = deriveAppUrl();
+
+function normalizeUrl(url?: string | null): string | undefined {
+  if (!url) {
+    return undefined;
+  }
+
+  return url.endsWith('/') ? url.slice(0, -1) : url;
+}
+
+const s3Endpoint = normalizeUrl(env.S3_ENDPOINT);
+const s3Region = env.S3_REGION;
+const s3Bucket = env.S3_BUCKET_NAME;
+const isS3Configured = !!(s3Endpoint && s3Region && s3Bucket && env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY);
 
 // Configuration object with computed values
 export const config = {
@@ -119,16 +166,17 @@ export const config = {
     botToken: env.BOT_TOKEN,
     apiUrl: env.NEXT_PUBLIC_TELEGRAM_API_URL,
     botUrl: env.BOT_TOKEN ? `${env.NEXT_PUBLIC_TELEGRAM_API_URL}/bot${env.BOT_TOKEN}` : '',
-    avatarBaseUrl: env.NEXT_PUBLIC_TELEGRAM_AVATAR_BASE_URL,
+    avatarBaseUrl: s3Endpoint ?? '',
   },
   
   // S3 Storage
   s3: {
-    enabled: env.NEXT_PUBLIC_S3_ENABLED !== 'false' && !!env.S3_ACCESS_KEY_ID && !!env.S3_SECRET_ACCESS_KEY,
+    enabled: isS3Configured,
+    bucket: s3Bucket,
     accessKeyId: env.S3_ACCESS_KEY_ID,
     secretAccessKey: env.S3_SECRET_ACCESS_KEY,
-    endpoint: env.S3_ENDPOINT,
-    region: env.S3_REGION,
+    endpoint: s3Endpoint,
+    region: s3Region,
   },
   
   // Feature Flags

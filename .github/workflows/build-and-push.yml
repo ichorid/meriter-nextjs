@@ -2,7 +2,6 @@ name: Build and Deploy Images
 
 # Each GitHub environment (dev, stage, prod) must provide secrets:
 # - VPS_HOST
-# - VPS_USER
 # - VPS_SSH_KEY
 
 on:
@@ -283,9 +282,8 @@ jobs:
       - name: Run remote deploy script
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
         run: |
-          ssh "$VPS_USER@$VPS_HOST" <<'EOF'
+          ssh "deploy@$VPS_HOST" <<'EOF'
             cd /opt/meriter
             ./deploy.sh
           EOF
@@ -314,9 +312,8 @@ jobs:
       - name: Run remote deploy script
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
         run: |
-          ssh "$VPS_USER@$VPS_HOST" <<'EOF'
+          ssh "deploy@$VPS_HOST" <<'EOF'
             cd /opt/meriter
             ./deploy.sh
           EOF
@@ -346,9 +343,8 @@ jobs:
       - name: Run remote deploy script
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
         run: |
-          ssh "$VPS_USER@$VPS_HOST" <<'EOF'
+          ssh "deploy@$VPS_HOST" <<'EOF'
             cd /opt/meriter
             ./deploy.sh
           EOF

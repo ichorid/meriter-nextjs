@@ -29,11 +29,13 @@ const config = {
     botToken: process.env.BOT_TOKEN || '',
   },
   s3: {
-    enabled: process.env.NEXT_PUBLIC_S3_ENABLED !== 'false' && 
-             !!process.env.S3_ACCESS_KEY_ID && 
-             !!process.env.S3_SECRET_ACCESS_KEY,
+    endpoint: process.env.S3_ENDPOINT?.trim(),
+    region: process.env.S3_REGION?.trim(),
     accessKeyId: process.env.S3_ACCESS_KEY_ID,
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+    get enabled() {
+      return !!(this.endpoint && this.region && this.accessKeyId && this.secretAccessKey);
+    },
   },
   features: {
     debug: process.env.NEXT_PUBLIC_ENABLE_DEBUG === 'true' || process.env.NODE_ENV === 'development',
@@ -63,8 +65,20 @@ if (!config.telegram.botToken) {
 }
 
 // Check S3 configuration
-if (config.s3.enabled && (!config.s3.accessKeyId || !config.s3.secretAccessKey)) {
-  errors.push('S3 is enabled but credentials are not configured');
+const hasS3Endpoint = !!config.s3.endpoint;
+const hasS3Region = !!config.s3.region;
+const hasS3Credentials = !!config.s3.accessKeyId && !!config.s3.secretAccessKey;
+
+if (hasS3Endpoint && !hasS3Region) {
+  errors.push('S3_REGION must be configured when S3_ENDPOINT is set');
+}
+
+if (!hasS3Endpoint && hasS3Region) {
+  errors.push('S3_REGION is set but S3_ENDPOINT is missing');
+}
+
+if (hasS3Endpoint && hasS3Region && !hasS3Credentials) {
+  errors.push('S3_ENDPOINT is configured but credentials are missing');
 }
 
 // Check environment-specific configuration
@@ -105,6 +119,8 @@ console.log('\n📋 Current configuration:');
 console.log(`  Environment: ${config.app.env}`);
 console.log(`  API URL: ${config.api.baseUrl}`);
 console.log(`  Bot Username: ${config.telegram.botUsername}`);
+console.log(`  S3 Endpoint: ${config.s3.endpoint || 'not configured'}`);
+console.log(`  S3 Region: ${config.s3.region || 'not configured'}`);
 console.log(`  S3 Enabled: ${config.s3.enabled}`);
 console.log(`  Debug Mode: ${config.features.debug}`);
 console.log(`  Analytics: ${config.features.analytics}`);

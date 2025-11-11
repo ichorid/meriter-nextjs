@@ -51,13 +51,14 @@ export function isTelegramWebApp(): boolean {
 }
 
 // Avatar utilities
-const isS3Enabled = () => {
-  return config.s3.enabled;
-};
-
-const telegramCdnUrl = config.telegram.avatarBaseUrl;
-
 export function telegramGetAvatarLink(chat_id: string | number) {
-  if (!chat_id || chat_id == "undefined" || !isS3Enabled()) return "";
+  if (!chat_id || chat_id === 'undefined' || !config.s3.enabled) return '';
+
+  const telegramCdnUrl = config.telegram.avatarBaseUrl;
+
+  if (!telegramCdnUrl) {
+    return '';
+  }
+
   return `${telegramCdnUrl}/telegram_small_avatars/${chat_id}.jpg`;
 }
