@@ -48,8 +48,16 @@ export function LoginForm({ className = '' }: LoginFormProps) {
     setAuthError,
   } = useAuth();
   
-  // Get return URL
+  // Get return URL and error message from query params
   const returnTo = searchParams?.get('returnTo');
+  const errorParam = searchParams?.get('error');
+  
+  // Show error from query params if present (e.g., from OAuth callback failures)
+  React.useEffect(() => {
+    if (errorParam && !authError) {
+      setAuthError(decodeURIComponent(errorParam));
+    }
+  }, [errorParam, authError, setAuthError]);
 
   // Handle fake authentication
   const handleFakeAuth = async () => {

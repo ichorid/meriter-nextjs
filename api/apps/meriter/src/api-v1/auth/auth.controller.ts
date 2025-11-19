@@ -273,6 +273,13 @@ export class AuthController {
       res.redirect(returnTo);
     } catch (error) {
       this.logger.error('Google OAuth callback error', error.stack);
+      
+      // Clear JWT cookies before redirecting to login on OAuth errors
+      // This ensures stale/invalid cookies don't prevent re-authentication
+      const cookieDomain = CookieManager.getCookieDomain();
+      const isProduction = process.env.NODE_ENV === 'production';
+      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      
       // Redirect to login page with error
       res.redirect(`/meriter/login?error=${encodeURIComponent(error.message || 'Authentication failed')}`);
     }
