@@ -13,6 +13,10 @@
 import React, { useState } from 'react';
 import { useLogout } from '@/hooks/api/useAuth';
 import { clearAuthStorage, redirectToLogin } from '@/lib/utils/auth';
+// Gluestack UI components
+import { Button, ButtonText } from '@/components/ui/button';
+import { HStack } from '@/components/ui/hstack';
+import { Spinner } from '@/components/ui/spinner';
 
 export function LogoutButton() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -35,12 +39,20 @@ export function LogoutButton() {
   };
 
   return (
-    <button
-      onClick={handleLogout}
-      disabled={isLoggingOut}
-      className="btn btn-ghost btn-sm"
+    <Button
+      variant="outline"
+      size="sm"
+      onPress={handleLogout}
+      isDisabled={isLoggingOut}
     >
-      {isLoggingOut ? 'Logging out...' : 'Logout'}
-    </button>
+      {isLoggingOut ? (
+        <HStack space="sm" alignItems="center">
+          <Spinner size="small" />
+          <ButtonText>Logging out...</ButtonText>
+        </HStack>
+      ) : (
+        <ButtonText>Logout</ButtonText>
+      )}
+    </Button>
   );
 }

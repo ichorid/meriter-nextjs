@@ -1,12 +1,21 @@
-import React from 'react';
+// Atomic Card component - теперь использует Gluestack UI
+'use client';
 
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+import React from 'react';
+import { Card as GluestackCard, CardHeader as GluestackCardHeader, CardBody as GluestackCardBody, CardFooter as GluestackCardFooter } from '@/components/ui/card';
+import { Heading } from '@/components/ui/heading';
+import { Box } from '@/components/ui/box';
+
+export interface CardProps {
   hover?: boolean;
   bordered?: boolean;
   compact?: boolean;
+  children?: React.ReactNode;
+  className?: string;
+  [key: string]: any;
 }
 
-export const Card = React.forwardRef<HTMLDivElement, CardProps>(
+export const Card = React.forwardRef<any, CardProps>(
   (
     {
       hover = false,
@@ -18,69 +27,84 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     },
     ref
   ) => {
-    const classes = [
-      'card',
-      hover && 'card-hover',
-      bordered && 'card-bordered',
-      compact && 'card-compact',
-      className,
-    ]
-      .filter(Boolean)
-      .join(' ');
-
     return (
-      <div ref={ref} className={classes} {...props}>
+      <GluestackCard
+        ref={ref}
+        borderWidth={bordered ? 1 : 0}
+        p={compact ? '$2' : '$4'}
+        {...props}
+      >
         {children}
-      </div>
+      </GluestackCard>
     );
   }
 );
 
 Card.displayName = 'Card';
 
-export interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {}
-export const CardHeader = React.forwardRef<HTMLDivElement, CardHeaderProps>(
+export interface CardHeaderProps {
+  children?: React.ReactNode;
+  className?: string;
+  [key: string]: any;
+}
+
+export const CardHeader = React.forwardRef<any, CardHeaderProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div ref={ref} className={`card-header ${className}`} {...props}>
+      <GluestackCardHeader ref={ref} {...props}>
         {children}
-      </div>
+      </GluestackCardHeader>
     );
   }
 );
 CardHeader.displayName = 'CardHeader';
 
-export interface CardBodyProps extends React.HTMLAttributes<HTMLDivElement> {}
-export const CardBody = React.forwardRef<HTMLDivElement, CardBodyProps>(
+export interface CardBodyProps {
+  children?: React.ReactNode;
+  className?: string;
+  [key: string]: any;
+}
+
+export const CardBody = React.forwardRef<any, CardBodyProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div ref={ref} className={`card-body ${className}`} {...props}>
+      <GluestackCardBody ref={ref} {...props}>
         {children}
-      </div>
+      </GluestackCardBody>
     );
   }
 );
 CardBody.displayName = 'CardBody';
 
-export interface CardFooterProps extends React.HTMLAttributes<HTMLDivElement> {}
-export const CardFooter = React.forwardRef<HTMLDivElement, CardFooterProps>(
+export interface CardFooterProps {
+  children?: React.ReactNode;
+  className?: string;
+  [key: string]: any;
+}
+
+export const CardFooter = React.forwardRef<any, CardFooterProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div ref={ref} className={`card-footer ${className}`} {...props}>
+      <GluestackCardFooter ref={ref} {...props}>
         {children}
-      </div>
+      </GluestackCardFooter>
     );
   }
 );
 CardFooter.displayName = 'CardFooter';
 
-export interface CardTitleProps extends React.HTMLAttributes<HTMLDivElement> {}
-export const CardTitle = React.forwardRef<HTMLDivElement, CardTitleProps>(
+export interface CardTitleProps {
+  children?: React.ReactNode;
+  className?: string;
+  [key: string]: any;
+}
+
+export const CardTitle = React.forwardRef<any, CardTitleProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div ref={ref} className={`card-title ${className}`} {...props}>
-        {children}
-      </div>
+      <Box ref={ref} {...props}>
+        <Heading size="lg">{children}</Heading>
+      </Box>
     );
   }
 );

@@ -68,35 +68,10 @@ const envSchema = z.object({
   
   // Development Mode
   NEXT_PUBLIC_FAKE_DATA_MODE: z.string().optional(),
-}).superRefine((env, ctx) => {
-  const hasEndpoint = !!env.S3_ENDPOINT;
-  const hasRegion = !!env.S3_REGION;
-  const hasBucket = !!env.S3_BUCKET_NAME;
-
-  if (hasEndpoint && !hasRegion) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'S3_REGION must be configured when S3_ENDPOINT is set.',
-      path: ['S3_REGION'],
-    });
-  }
-
-  if (!hasEndpoint && hasRegion) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'S3_REGION is set but S3_ENDPOINT is missing. Either set both or remove S3_REGION.',
-      path: ['S3_REGION'],
-    });
-  }
-
-  if (hasEndpoint && !hasBucket) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'S3_BUCKET_NAME must be configured when S3_ENDPOINT is set.',
-      path: ['S3_BUCKET_NAME'],
-    });
-  }
 });
+// S3 validation removed - S3 is completely optional
+// If S3_ENDPOINT is set but other params are missing, S3 will simply be disabled
+// This allows the app to run without S3 configuration (S3 is only used for Telegram bot features)
 
 // Validate and parse environment variables
 const env = envSchema.parse({

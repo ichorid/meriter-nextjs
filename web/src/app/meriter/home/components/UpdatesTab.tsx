@@ -4,6 +4,10 @@ import { UpdateCard } from '@/components/organisms/UpdateCard';
 import { sortItems, generateKey } from '../utils';
 import type { SortOrder } from '../types';
 import type { UpdateEvent } from '@/types/updates';
+// Gluestack UI components
+import { Box } from '@/components/ui/box';
+import { VStack } from '@/components/ui/vstack';
+import { Spinner } from '@/components/ui/spinner';
 
 interface UpdatesTabProps {
   updates: UpdateEvent[];
@@ -20,9 +24,9 @@ export function UpdatesTab({
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-32">
-        <span className="loading loading-spinner loading-lg"></span>
-      </div>
+      <Box flex={1} alignItems="center" justifyContent="center" height={128}>
+        <Spinner size="large" />
+      </Box>
     );
   }
 
@@ -30,17 +34,12 @@ export function UpdatesTab({
     return (
       <EmptyState
         title={t('empty.updates.title') || 'No Updates'}
-        message={
-          t('empty.updates.message') ||
-          'No updates available.'
-        }
-        icon="📬"
       />
     );
   }
 
   return (
-    <div className="space-y-4">
+    <VStack space="md">
       {sortItems(updates, sortOrder).map((update: UpdateEvent, index: number) => {
         const key = generateKey(update?.id, index, 'update');
         return (
@@ -50,7 +49,7 @@ export function UpdatesTab({
           />
         );
       })}
-    </div>
+    </VStack>
   );
 }
 

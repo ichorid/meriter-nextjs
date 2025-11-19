@@ -5,6 +5,10 @@ import { sortItems, generateKey } from '../utils';
 import type { SortOrder } from '../types';
 import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+// Gluestack UI components
+import { Box } from '@/components/ui/box';
+import { VStack } from '@/components/ui/vstack';
+import { Spinner } from '@/components/ui/spinner';
 
 interface CommentsTabProps {
   comments: any[];
@@ -39,9 +43,9 @@ export function CommentsTab({
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-32">
-        <span className="loading loading-spinner loading-lg"></span>
-      </div>
+      <Box flex={1} alignItems="center" justifyContent="center" height={128}>
+        <Spinner size="large" />
+      </Box>
     );
   }
 
@@ -52,13 +56,12 @@ export function CommentsTab({
         message={
           t('empty.comments.message') || "You haven't written any comments yet."
         }
-        icon="💬"
       />
     );
   }
 
   return (
-    <div className="space-y-4">
+    <VStack space="md">
       {sortItems(comments, sortOrder).map((comment: any, index: number) => {
           const key = generateKey(comment?.id, index, 'comment');
           
@@ -99,7 +102,7 @@ export function CommentsTab({
               />
           );
       })}
-    </div>
+    </VStack>
   );
 }
 

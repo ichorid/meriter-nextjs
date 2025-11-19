@@ -34,7 +34,7 @@ import type {
   UpdateCommunityDto,
 } from '@/types/api-v1';
 import type { PaginatedResponse } from '@/types/api-v1';
-import type { TelegramUser, AuthResult, CommunityMember, LeaderboardEntry, PollCastResult } from '@/types/api-responses';
+import type { AuthResult, CommunityMember, LeaderboardEntry, PollCastResult } from '@/types/api-responses';
 import type { UpdateEvent } from '@/types/updates';
 import { VoteWithCommentDto, VoteWithCommentDtoSchema, WithdrawAmountDtoSchema } from '@meriter/shared-types';
 
@@ -43,16 +43,6 @@ export const authApiV1 = {
   async getMe(): Promise<User> {
     const response = await apiClient.get<{ success: true; data: User }>('/api/v1/auth/me');
     return response.data;
-  },
-
-  async authenticateWithTelegramWidget(user: TelegramUser): Promise<AuthResult> {
-    const response = await apiClient.postRaw<{ success: boolean; data: AuthResult; error?: string }>('/api/v1/auth/telegram/widget', user);
-    return handleAuthResponse<AuthResult>(response);
-  },
-
-  async authenticateWithTelegramWebApp(initData: string): Promise<AuthResult> {
-    const response = await apiClient.postRaw<{ success: boolean; data: AuthResult; error?: string }>('/api/v1/auth/telegram/webapp', { initData });
-    return handleAuthResponse<AuthResult>(response);
   },
 
   async logout(): Promise<void> {

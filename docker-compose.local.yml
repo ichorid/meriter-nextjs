@@ -25,13 +25,31 @@ services:
         - NEXT_PUBLIC_API_URL=
     container_name: meriter-web
     restart: unless-stopped
+    # Load ALL variables from .env file
     env_file:
       - .env
     environment:
+      # Override specific variables if needed, but env_file loads everything
       - PORT=8001
       - NODE_ENV=production
+      # CRITICAL: Set DOCKER_ENV=true so Next.js knows it's in Docker and uses service name 'api'
+      - DOCKER_ENV=true
       # Pass DOMAIN as NEXT_PUBLIC_DOMAIN for client-side usage
       - NEXT_PUBLIC_DOMAIN=${DOMAIN}
+      # Explicitly pass Next.js public variables from .env
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-}
+      - NEXT_PUBLIC_TELEGRAM_API_URL=${NEXT_PUBLIC_TELEGRAM_API_URL:-https://api.telegram.org}
+      - NEXT_PUBLIC_TELEGRAM_AVATAR_BASE_URL=${NEXT_PUBLIC_TELEGRAM_AVATAR_BASE_URL:-}
+      - NEXT_PUBLIC_ENABLE_ANALYTICS=${NEXT_PUBLIC_ENABLE_ANALYTICS:-false}
+      - NEXT_PUBLIC_ENABLE_DEBUG=${NEXT_PUBLIC_ENABLE_DEBUG:-false}
+      - NEXT_PUBLIC_FAKE_DATA_MODE=${NEXT_PUBLIC_FAKE_DATA_MODE:-false}
+      - NEXT_PUBLIC_S3_ENABLED=${NEXT_PUBLIC_S3_ENABLED:-}
+      # S3 variables for Next.js (optional)
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-}
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-}
+      - S3_ENDPOINT=${S3_ENDPOINT:-}
+      - S3_REGION=${S3_REGION:-}
     ports:
       - "8001:8001"
     networks:
@@ -49,11 +67,81 @@ services:
       dockerfile: api/Dockerfile
     container_name: meriter-api
     restart: unless-stopped
+    # Load ALL variables from .env file - this loads everything automatically
     env_file:
       - .env
     environment:
+      # Override specific variables if needed
       - PORT=8002
       - NODE_ENV=production
+      # Explicitly pass critical variables to ensure they're available
+      # Docker Compose substitutes ${VAR_NAME} with values from .env file
+      # If variable doesn't exist in .env, fallback to empty string (:-)
+      - DOMAIN=${DOMAIN:-localhost}
+      - JWT_SECRET=${JWT_SECRET:-}
+      - MONGO_URL=${MONGO_URL:-mongodb://mongodb:27017/meriter}
+      - BOT_TOKEN=${BOT_TOKEN:-}
+      - BOT_USERNAME=${BOT_USERNAME:-}
+      # Google OAuth variables (use CALLBACK_URL if REDIRECT_URI is empty)
+      - OAUTH_GOOGLE_CLIENT_ID=${OAUTH_GOOGLE_CLIENT_ID:-}
+      - OAUTH_GOOGLE_CLIENT_SECRET=${OAUTH_GOOGLE_CLIENT_SECRET:-}
+      - OAUTH_GOOGLE_REDIRECT_URI=${OAUTH_GOOGLE_REDIRECT_URI:-${OAUTH_GOOGLE_CALLBACK_URL:-}}
+      - OAUTH_GOOGLE_CALLBACK_URL=${OAUTH_GOOGLE_CALLBACK_URL:-}
+      - OAUTH_GOOGLE_ENABLED=${OAUTH_GOOGLE_ENABLED:-}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-}
+      # Instagram OAuth variables
+      - OAUTH_INSTAGRAM_CLIENT_ID=${OAUTH_INSTAGRAM_CLIENT_ID:-}
+      - OAUTH_INSTAGRAM_CLIENT_SECRET=${OAUTH_INSTAGRAM_CLIENT_SECRET:-}
+      - OAUTH_INSTAGRAM_CALLBACK_URL=${OAUTH_INSTAGRAM_CALLBACK_URL:-}
+      - OAUTH_INSTAGRAM_ENABLED=${OAUTH_INSTAGRAM_ENABLED:-}
+      # Apple OAuth variables
+      - OAUTH_APPLE_CLIENT_ID=${OAUTH_APPLE_CLIENT_ID:-}
+      - OAUTH_APPLE_KEY_ID=${OAUTH_APPLE_KEY_ID:-}
+      - OAUTH_APPLE_TEAM_ID=${OAUTH_APPLE_TEAM_ID:-}
+      - OAUTH_APPLE_PRIVATE_KEY=${OAUTH_APPLE_PRIVATE_KEY:-}
+      - OAUTH_APPLE_CALLBACK_URL=${OAUTH_APPLE_CALLBACK_URL:-}
+      - OAUTH_APPLE_ENABLED=${OAUTH_APPLE_ENABLED:-}
+      # Sber OAuth variables
+      - OAUTH_SBER_CLIENT_ID=${OAUTH_SBER_CLIENT_ID:-}
+      - OAUTH_SBER_CLIENT_SECRET=${OAUTH_SBER_CLIENT_SECRET:-}
+      - OAUTH_SBER_AUTHORIZATION_URL=${OAUTH_SBER_AUTHORIZATION_URL:-}
+      - OAUTH_SBER_TOKEN_URL=${OAUTH_SBER_TOKEN_URL:-}
+      - OAUTH_SBER_USERINFO_URL=${OAUTH_SBER_USERINFO_URL:-}
+      - OAUTH_SBER_CALLBACK_URL=${OAUTH_SBER_CALLBACK_URL:-}
+      - OAUTH_SBER_ENABLED=${OAUTH_SBER_ENABLED:-}
+      # Telegram OAuth variables
+      - OAUTH_TELEGRAM_BOT_USERNAME=${OAUTH_TELEGRAM_BOT_USERNAME:-}
+      - OAUTH_TELEGRAM_CALLBACK_URL=${OAUTH_TELEGRAM_CALLBACK_URL:-}
+      - OAUTH_TELEGRAM_ENABLED=${OAUTH_TELEGRAM_ENABLED:-}
+      # Twitter OAuth variables
+      - OAUTH_TWITTER_CLIENT_ID=${OAUTH_TWITTER_CLIENT_ID:-}
+      - OAUTH_TWITTER_CLIENT_SECRET=${OAUTH_TWITTER_CLIENT_SECRET:-}
+      - OAUTH_TWITTER_CALLBACK_URL=${OAUTH_TWITTER_CALLBACK_URL:-}
+      - OAUTH_TWITTER_ENABLED=${OAUTH_TWITTER_ENABLED:-}
+      # VK OAuth variables
+      - OAUTH_VK_CLIENT_ID=${OAUTH_VK_CLIENT_ID:-}
+      - OAUTH_VK_CLIENT_SECRET=${OAUTH_VK_CLIENT_SECRET:-}
+      - OAUTH_VK_CALLBACK_URL=${OAUTH_VK_CALLBACK_URL:-}
+      - OAUTH_VK_ENABLED=${OAUTH_VK_ENABLED:-}
+      # Yandex OAuth variables
+      - OAUTH_YANDEX_CLIENT_ID=${OAUTH_YANDEX_CLIENT_ID:-}
+      - OAUTH_YANDEX_CLIENT_SECRET=${OAUTH_YANDEX_CLIENT_SECRET:-}
+      - OAUTH_YANDEX_CALLBACK_URL=${OAUTH_YANDEX_CALLBACK_URL:-}
+      - OAUTH_YANDEX_ENABLED=${OAUTH_YANDEX_ENABLED:-}
+      # S3 variables (optional)
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-}
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-}
+      - S3_ENDPOINT=${S3_ENDPOINT:-}
+      - S3_REGION=${S3_REGION:-}
+      # Other variables
+      - FAKE_DATA_MODE=${FAKE_DATA_MODE:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - TELEGRAM_API_URL=${TELEGRAM_API_URL:-}
+      - BANNED_CHAT_ID=${BANNED_CHAT_ID:-}
+      - MONGO_URL_SECONDARY=${MONGO_URL_SECONDARY:-}
+      # Backward compatibility: APP_URL (used for domain derivation if DOMAIN is not set)
+      - APP_URL=${APP_URL:-}
     ports:
       - "8002:8002"
     networks:

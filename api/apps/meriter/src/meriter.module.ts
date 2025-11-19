@@ -10,10 +10,8 @@ import { DatabaseModule } from './common/database/database.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation.schema';
 
-import { TelegramHookController } from './tg-bots/hook/hook.controller';
 import { UpdatesConductorsService } from './updates-conductors/updates-conductors.service';
 import { UpdatesConductorsModule } from './updates-conductors/updates-conductors.module';
-import { TgBotsModule } from './tg-bots/tg-bots.module';
 
 // Import the new domain module
 import { DomainModule } from './domain.module';
@@ -33,9 +31,8 @@ import { DomainModule } from './domain.module';
     ApiV1Module,
     DomainModule, // Domain layer with domain services
     UpdatesConductorsModule,
-    TgBotsModule,
   ],
-  controllers: [MeriterController, TelegramHookController],
+  controllers: [MeriterController],
   providers: [MeriterService],
 })
 export class MeriterModule {}

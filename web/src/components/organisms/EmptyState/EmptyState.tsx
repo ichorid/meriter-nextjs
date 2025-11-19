@@ -1,6 +1,11 @@
 'use client';
 
 import React from 'react';
+import { VStack } from '@/components/ui/vstack';
+import { Heading } from '@/components/ui/heading';
+import { Text } from '@/components/ui/text';
+import { Box } from '@/components/ui/box';
+import { Center } from '@/components/ui/center';
 
 export interface EmptyStateProps {
   title?: string;
@@ -18,16 +23,28 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   className = '',
 }) => {
   return (
-    <div className={`flex flex-col items-center justify-center py-12 px-4 ${className}`}>
-      {icon && <div className="mb-4 text-6xl opacity-50">{icon}</div>}
-      {title && (
-        <h3 className="text-lg font-semibold text-base-content mb-2">{title}</h3>
-      )}
-      {message && (
-        <p className="text-sm text-base-content/60 text-center max-w-md mb-4">{message}</p>
-      )}
-      {action && <div className="mt-2">{action}</div>}
-    </div>
+    <Box py="$12" px="$4" flex={1} justifyContent="center" alignItems="center" minHeight={400}>
+      <Center>
+        <VStack space="sm" alignItems="center" maxWidth={448}>
+          {icon && typeof icon !== 'string' && (
+            <Box opacity={0.5} mb="$2">
+              {icon}
+            </Box>
+          )}
+          {title && (
+            <Text size="md" color="$textLight500" textAlign="center" fontWeight="$normal">
+              {title}
+            </Text>
+          )}
+          {message && (
+            <Text size="sm" color="$textLight400" textAlign="center">
+              {message}
+            </Text>
+          )}
+          {action && <Box mt="$4">{action}</Box>}
+        </VStack>
+      </Center>
+    </Box>
   );
 };
 

@@ -9,6 +9,7 @@ import {
   Logger,
   ForbiddenException,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { UserGuard } from '../../user.guard';
 import { CookieManager } from '../common/utils/cookie-manager.util';
@@ -36,80 +37,7 @@ export class AuthController {
 
   constructor(private readonly authService: AuthService) {}
 
-  @Post('telegram/widget')
-  @ZodValidation(TelegramAuthDataSchema)
-  async authenticateWidget(
-    @Body() authData: TelegramAuthData,
-    @Res() res: any,
-  ) {
-    try {
-      this.logger.log('Telegram widget auth request received', {
-        userId: authData.id,
-        username: authData.username,
-      });
-
-      const result = await this.authService.authenticateTelegramWidget(authData);
-      
-      // Set JWT cookie with proper domain for Caddy reverse proxy
-      const cookieDomain = CookieManager.getCookieDomain();
-      const isProduction = process.env.NODE_ENV === 'production';
-      
-      // Clear any existing JWT cookie first to ensure clean state
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      
-      // Set new JWT cookie
-      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
-
-      this.logger.log('Authentication successful, sending response');
-
-      return res.json({
-        success: true,
-        data: {
-          user: result.user,
-          hasPendingCommunities: result.hasPendingCommunities,
-        },
-      });
-    } catch (error) {
-      this.logger.error('Widget authentication error', error.stack);
-      throw new UnauthorizedError('Authentication failed');
-    }
-  }
-
-  @Post('telegram/webapp')
-  @ZodValidation(TelegramWebAppDataSchema)
-  async authenticateWebApp(
-    @Body() body: TelegramWebAppData,
-    @Res() res: any,
-  ) {
-    try {
-      this.logger.log('Telegram Web App auth request received');
-
-      const result = await this.authService.authenticateTelegramWebApp(body.initData);
-      
-      // Set JWT cookie with proper domain for Caddy reverse proxy
-      const cookieDomain = CookieManager.getCookieDomain();
-      const isProduction = process.env.NODE_ENV === 'production';
-      
-      // Clear any existing JWT cookie first to ensure clean state
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      
-      // Set new JWT cookie
-      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
-
-      this.logger.log('Authentication successful, sending response');
-
-      return res.json({
-        success: true,
-        data: {
-          user: result.user,
-          hasPendingCommunities: result.hasPendingCommunities,
-        },
-      });
-    } catch (error) {
-      this.logger.error('Web App authentication error', error.stack);
-      throw new UnauthorizedError('Authentication failed');
-    }
-  }
+  // Telegram authentication endpoints removed: Telegram is fully disabled in this project.
 
   @Post('logout')
   async logout(@Res() res: any) {
@@ -128,7 +56,6 @@ export class AuthController {
 
   @Post('clear-cookies')
   async clearCookies(@Res() res: any) {
-    this.logger.debug('Cookie clearing request received');
     
     // Clear all possible JWT cookie variants
     // This is useful for clearing old cookies with mismatched attributes
@@ -205,6 +132,149 @@ export class AuthController {
       }
       this.logger.error('Fake authentication error', error.stack);
       throw new UnauthorizedError('Fake authentication failed');
+    }
+  }
+
+  /**
+   * Google OAuth initiation endpoint
+   * Uses Passport Google strategy according to NestJS documentation
+   * Supports return_url via OAuth2 state parameter
+   */
+  @Get('google')
+  async googleAuth(@Req() req: any, @Res() res: any) {
+    try {
+      this.logger.log('Google OAuth initiation request received');
+      
+      // Get return_url from query params (where to redirect after auth)
+      const returnTo = req.query.returnTo || '/meriter/home';
+      
+      // Check if Google OAuth is explicitly disabled
+      const enabled = process.env.OAUTH_GOOGLE_ENABLED;
+      if (enabled === 'false' || enabled === '0') {
+        this.logger.error('Google OAuth is explicitly disabled via OAUTH_GOOGLE_ENABLED');
+        throw new Error('Google OAuth is disabled');
+      }
+      
+      // Get Google OAuth credentials
+      // Support both OAUTH_GOOGLE_REDIRECT_URI and OAUTH_GOOGLE_CALLBACK_URL
+      // Note: clientSecret is not needed for initiation, only for callback
+      const clientId = process.env.OAUTH_GOOGLE_CLIENT_ID;
+      const callbackUrl = process.env.OAUTH_GOOGLE_REDIRECT_URI 
+        || process.env.OAUTH_GOOGLE_CALLBACK_URL 
+        || process.env.GOOGLE_REDIRECT_URI;
+      
+      // Check if credentials are present (clientId and callbackUrl are required for initiation)
+      if (!clientId || !callbackUrl) {
+        const missing = [];
+        if (!clientId) missing.push('OAUTH_GOOGLE_CLIENT_ID');
+        if (!callbackUrl) missing.push('OAUTH_GOOGLE_REDIRECT_URI or OAUTH_GOOGLE_CALLBACK_URL');
+        this.logger.error(`Google OAuth not configured. Missing: ${missing.join(', ')}`);
+        throw new Error(`Google OAuth not configured. Missing: ${missing.join(', ')}`);
+      }
+      
+      // Construct Google OAuth URL with state parameter containing return_url
+      // According to OAuth2 spec, state parameter is used for return_url
+      const state = JSON.stringify({ returnTo, return_url: returnTo });
+      
+      const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${encodeURIComponent(clientId)}&` +
+        `redirect_uri=${encodeURIComponent(callbackUrl)}&` +
+        `response_type=code&` +
+        `scope=${encodeURIComponent('email profile')}&` +
+        `access_type=offline&` +
+        `prompt=consent&` +
+        `state=${encodeURIComponent(state)}`;
+      
+      this.logger.log(`Redirecting to Google OAuth with return_url: ${returnTo}`);
+      res.redirect(googleAuthUrl);
+    } catch (error) {
+      this.logger.error('Google OAuth initiation error', error.stack);
+      throw new InternalServerError('Failed to initiate Google OAuth');
+    }
+  }
+
+  /**
+   * Google OAuth callback endpoint
+   * Handles OAuth callback and extracts return_url from OAuth2 state parameter
+   * Uses AuthService.authenticateGoogle for code exchange and user creation
+   */
+  @Get('google/callback')
+  async googleCallback(@Req() req: any, @Res() res: any) {
+    return this.handleGoogleCallback(req, res);
+  }
+
+  /**
+   * Alternative Google OAuth callback endpoint
+   * Matches OAUTH_GOOGLE_CALLBACK_URL from .env: /api/v1/auth/oauth/google/callback
+   */
+  @Get('oauth/google/callback')
+  async googleCallbackOAuth(@Req() req: any, @Res() res: any) {
+    return this.handleGoogleCallback(req, res);
+  }
+
+  /**
+   * Shared handler for Google OAuth callback
+   * Handles OAuth callback and extracts return_url from OAuth2 state parameter
+   */
+  private async handleGoogleCallback(@Req() req: any, @Res() res: any) {
+    try {
+      this.logger.log('Google OAuth callback received');
+      
+      const code = req.query.code;
+      const state = req.query.state;
+      
+      if (!code) {
+        throw new Error('Authorization code not provided');
+      }
+      
+      // Extract return_url from OAuth2 state parameter (according to OAuth2 spec)
+      let returnTo = '/meriter/home';
+      try {
+        if (state) {
+          const stateData = JSON.parse(decodeURIComponent(state));
+          returnTo = stateData.returnTo || stateData.return_url || '/meriter/home';
+        }
+      } catch (e) {
+        this.logger.warn('Failed to parse state, using default returnTo');
+      }
+      
+      // Normalize returnTo URL:
+      // - If it's a relative path (starts with /), it should go to web server
+      // - If it's a full URL, use it as-is
+      // - In Docker, web server is on port 8001, API is on 8002
+      // - In local dev, web is on 8001, API is on 8002
+      if (returnTo.startsWith('/')) {
+        // Relative path - redirect to web server
+        const domain = process.env.DOMAIN || 'localhost';
+        const isDocker = process.env.NODE_ENV === 'production';
+        const protocol = domain === 'localhost' && !isDocker ? 'http' : (domain === 'localhost' ? 'http' : 'https');
+        // Web server port: 8001 in local dev, no port in Docker (Caddy handles it)
+        const webPort = domain === 'localhost' && !isDocker ? ':8001' : '';
+        returnTo = `${protocol}://${domain}${webPort}${returnTo}`;
+      }
+      
+      // Authenticate with Google using authorization code
+      const result = await this.authService.authenticateGoogle(code);
+      
+      // Set JWT cookie
+      const cookieDomain = CookieManager.getCookieDomain();
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      // Clear any existing JWT cookie first
+      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      
+      // Set new JWT cookie
+      // For localhost, cookie will be set without domain to allow sharing across ports (8002 -> 8001)
+      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      
+      this.logger.log(`Google authentication successful, redirecting to: ${returnTo}`);
+      
+      // Redirect to return_url from OAuth2 state parameter (full URL to web server)
+      res.redirect(returnTo);
+    } catch (error) {
+      this.logger.error('Google OAuth callback error', error.stack);
+      // Redirect to login page with error
+      res.redirect(`/meriter/login?error=${encodeURIComponent(error.message || 'Authentication failed')}`);
     }
   }
 

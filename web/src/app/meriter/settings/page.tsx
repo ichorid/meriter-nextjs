@@ -4,9 +4,7 @@ import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useWallets } from '@/hooks/api';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { UpdatesFrequency } from '@shared/components/updates-frequency';
-import { ThemeToggle } from '@shared/components/theme-toggle';
 import { LogoutButton } from '@/components/LogoutButton';
 import { LanguageSelector } from '@shared/components/language-selector';
 import { useTranslations } from 'next-intl';
@@ -14,6 +12,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSyncCommunities } from '@/hooks/api/useCommunities';
 import { isFakeDataMode } from '@/config';
 import { communitiesApiV1 } from '@/lib/api/v1';
+// Gluestack UI components
+import { Box } from '@/components/ui/box';
+import { VStack } from '@/components/ui/vstack';
+import { HStack } from '@/components/ui/hstack';
+import { Card, CardHeader, CardBody } from '@/components/ui/card';
+import { Heading } from '@/components/ui/heading';
+import { Text } from '@/components/ui/text';
+import { Button, ButtonText } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { Center } from '@/components/ui/center';
 
 const SettingsPage = () => {
     const router = useRouter();
@@ -104,10 +112,18 @@ const SettingsPage = () => {
     // Show loading state while checking authentication
     if (isLoading) {
         return (
-            <AdaptiveLayout className="settings">
-                <div className="flex justify-center items-center min-h-[400px]">
-                    <div className="loading loading-spinner loading-lg"></div>
-                </div>
+            <AdaptiveLayout
+                activeCommentHook={activeCommentHook}
+                activeSlider={activeSlider}
+                setActiveSlider={setActiveSlider}
+                activeWithdrawPost={activeWithdrawPost}
+                setActiveWithdrawPost={setActiveWithdrawPost}
+                wallets={Array.isArray(wallets) ? wallets : []}
+                myId={user?.id}
+            >
+                <Center minHeight={400}>
+                    <Spinner size="large" />
+                </Center>
             </AdaptiveLayout>
         );
     }
@@ -119,7 +135,6 @@ const SettingsPage = () => {
 
     return (
         <AdaptiveLayout 
-            className="settings"
             activeCommentHook={activeCommentHook}
             activeSlider={activeSlider}
             setActiveSlider={setActiveSlider}
@@ -128,114 +143,129 @@ const SettingsPage = () => {
             wallets={Array.isArray(wallets) ? wallets : []}
             myId={user?.id}
         >
-            <div className="mb-6">
-                <div className="tip">
-                    {t('subtitle')}
-                </div>
-            </div>
-
-            {/* Language Section */}
-            <div className="card bg-base-100 shadow-xl mb-6">
-                <div className="card-body">
-                    <h2 className="card-title">{t('languageSection')}</h2>
-                    <div className="py-2">
+            <VStack space="lg" flex={1}>
+                {/* Language Section */}
+                <Card>
+                    <CardHeader>
+                        <Heading size="lg">{t('languageSection')}</Heading>
+                    </CardHeader>
+                    <CardBody>
                         <LanguageSelector />
-                    </div>
-                </div>
-            </div>
+                    </CardBody>
+                </Card>
 
-            {/* Update Frequency Section */}
-            <div className="card bg-base-100 shadow-xl mb-6">
-                <div className="card-body">
-                    <h2 className="card-title">{t('updatesFrequency')}</h2>
-                    <div className="py-2">
+                {/* Update Frequency Section */}
+                <Card>
+                    <CardHeader>
+                        <Heading size="lg">{t('updatesFrequency')}</Heading>
+                    </CardHeader>
+                    <CardBody>
                         <UpdatesFrequency />
-                    </div>
-                </div>
-            </div>
+                    </CardBody>
+                </Card>
 
-            {/* Theme Section */}
-            <div className="card bg-base-100 shadow-xl mb-6">
-                <div className="card-body">
-                    <h2 className="card-title">{t('themeSection')}</h2>
-                    <div className="py-2 flex items-center gap-4">
-                        <span className="text-sm">{t('themeToggle')}</span>
-                        <ThemeToggle />
-                    </div>
-                </div>
-            </div>
+                {/* Communities Section */}
+                <Card>
+                    <CardHeader>
+                        <Heading size="lg">{t('communities')}</Heading>
+                    </CardHeader>
+                    <CardBody>
+                        <VStack space="sm">
+                                <Button
+                                    variant="solid"
+                                    onPress={handleSyncCommunities}
+                                    isDisabled={syncCommunitiesMutation.isPending}
+                                >
+                                    {syncCommunitiesMutation.isPending ? (
+                                        <HStack space="sm" alignItems="center">
+                                            <Spinner size="small" />
+                                            <ButtonText>{t('syncing')}</ButtonText>
+                                        </HStack>
+                                    ) : (
+                                        <ButtonText>{t('syncCommunities')}</ButtonText>
+                                    )}
+                                </Button>
+                                {syncMessage && (
+                                    <Text 
+                                        size="sm" 
+                                        color={syncMessage.includes(t('syncError')) ? '$error500' : '$success500'}
+                                    >
+                                        {syncMessage}
+                                    </Text>
+                                )}
+                        </VStack>
+                    </CardBody>
+                </Card>
 
-            {/* Communities Section */}
-            <div className="card bg-base-100 shadow-xl mb-6">
-                <div className="card-body">
-                    <h2 className="card-title">{t('communities')}</h2>
-                    <p className="text-sm opacity-70 mb-2">
-                        {t('communitiesDescription')}
-                    </p>
-                    <div className="py-2">
-                        <button 
-                            className={`btn btn-primary ${syncCommunitiesMutation.isPending ? 'loading' : ''}`}
-                            onClick={handleSyncCommunities}
-                            disabled={syncCommunitiesMutation.isPending}
-                        >
-                            {syncCommunitiesMutation.isPending ? t('syncing') : t('syncCommunities')}
-                        </button>
-                        {syncMessage && (
-                            <div className={`mt-2 text-sm ${syncMessage.includes(t('syncError')) ? 'text-error' : 'text-success'}`}>
-                                {syncMessage}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
+                {/* Development Section - Only shown in fake mode */}
+                {fakeDataMode && (
+                    <Card>
+                        <CardHeader>
+                            <Heading size="lg">Development</Heading>
+                        </CardHeader>
+                        <CardBody>
+                            <VStack space="sm">
+                                <Button
+                                    variant="solid"
+                                    width="100%"
+                                    onPress={handleCreateFakeCommunity}
+                                    isDisabled={creatingFakeCommunity || addingToAllCommunities}
+                                >
+                                    {creatingFakeCommunity ? (
+                                        <HStack space="sm" alignItems="center">
+                                            <Spinner size="small" />
+                                            <ButtonText>Creating...</ButtonText>
+                                        </HStack>
+                                    ) : (
+                                        <ButtonText>Create Fake Community</ButtonText>
+                                    )}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    width="100%"
+                                    onPress={handleAddToAllCommunities}
+                                    isDisabled={creatingFakeCommunity || addingToAllCommunities}
+                                >
+                                    {addingToAllCommunities ? (
+                                        <HStack space="sm" alignItems="center">
+                                            <Spinner size="small" />
+                                            <ButtonText>Adding...</ButtonText>
+                                        </HStack>
+                                    ) : (
+                                        <ButtonText>Add This User to All Communities</ButtonText>
+                                    )}
+                                </Button>
+                                {fakeCommunityMessage && (
+                                    <Text 
+                                        size="sm" 
+                                        color={fakeCommunityMessage.includes('Failed') ? '$error500' : '$success500'}
+                                    >
+                                        {fakeCommunityMessage}
+                                    </Text>
+                                )}
+                                {addToAllMessage && (
+                                    <Text 
+                                        size="sm" 
+                                        color={addToAllMessage.includes('Failed') || addToAllMessage.includes('errors') ? '$error500' : '$success500'}
+                                    >
+                                        {addToAllMessage}
+                                    </Text>
+                                )}
+                            </VStack>
+                        </CardBody>
+                    </Card>
+                )}
 
-            {/* Development Section - Only shown in fake mode */}
-            {fakeDataMode && (
-                <div className="card bg-base-100 shadow-xl mb-6">
-                    <div className="card-body">
-                        <h2 className="card-title">Development</h2>
-                        <p className="text-sm opacity-70 mb-2">
-                            Create fake data for testing
-                        </p>
-                        <div className="py-2 space-y-2">
-                            <button 
-                                className={`btn btn-primary w-full ${creatingFakeCommunity ? 'loading' : ''}`}
-                                onClick={handleCreateFakeCommunity}
-                                disabled={creatingFakeCommunity || addingToAllCommunities}
-                            >
-                                {creatingFakeCommunity ? 'Creating...' : 'Create Fake Community'}
-                            </button>
-                            <button 
-                                className={`btn btn-secondary w-full ${addingToAllCommunities ? 'loading' : ''}`}
-                                onClick={handleAddToAllCommunities}
-                                disabled={creatingFakeCommunity || addingToAllCommunities}
-                            >
-                                {addingToAllCommunities ? 'Adding...' : 'Add This User to All Communities'}
-                            </button>
-                            {fakeCommunityMessage && (
-                                <div className={`mt-2 text-sm ${fakeCommunityMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>
-                                    {fakeCommunityMessage}
-                                </div>
-                            )}
-                            {addToAllMessage && (
-                                <div className={`mt-2 text-sm ${addToAllMessage.includes('Failed') || addToAllMessage.includes('errors') ? 'text-error' : 'text-success'}`}>
-                                    {addToAllMessage}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Account Section */}
-            <div className="card bg-base-100 shadow-xl mb-6">
-                <div className="card-body">
-                    <h2 className="card-title">{t('account')}</h2>
-                    <div className="py-2">
+                {/* Account Section */}
+                <Card>
+                    <CardHeader>
+                        <Heading size="lg">{t('account')}</Heading>
+                    </CardHeader>
+                    <CardBody>
                         <LogoutButton />
-                    </div>
-                </div>
-            </div>
+                    </CardBody>
+                </Card>
+            </VStack>
         </AdaptiveLayout>
     );
 };

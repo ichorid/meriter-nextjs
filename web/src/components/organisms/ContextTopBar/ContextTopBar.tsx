@@ -9,12 +9,25 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { isFakeDataMode } from '@/config';
 import { publicationsApiV1 } from '@/lib/api/v1';
+// Gluestack UI components
+import { Box } from '@/components/ui/box';
+import { HStack } from '@/components/ui/hstack';
+import { Button, ButtonText } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { Heading } from '@/components/ui/heading';
+import { Select, SelectTrigger, SelectInput, SelectIcon, SelectPortal, SelectBackdrop, SelectContent, SelectDragIndicatorWrapper, SelectDragIndicator, SelectItem } from '@/components/ui/select';
+import { ChevronDownIcon } from '@gluestack-ui/themed';
+import { useHomeTabState } from '@/app/meriter/home/hooks';
+import type { TabSortState } from '@/app/meriter/home/types';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { Pressable } from 'react-native';
+import { Spinner } from '@/components/ui/spinner';
 
 export interface ContextTopBarProps {
   className?: string;
 }
 
-export const ContextTopBar: React.FC<ContextTopBarProps> = ({ className = '' }) => {
+export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
@@ -32,80 +45,38 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = ({ className = '' }) 
   const isPostDetailPage = pathname?.match(/\/meriter\/communities\/([^\/]+)\/posts\/(.+)/);
 
   if (isPostDetailPage) {
-    return <PostDetailTopBar pathname={pathname} className={className} />;
+    return <PostDetailTopBar pathname={pathname} />;
   }
 
   if (isCommunityPage) {
     const communityId = isCommunityPage[1];
     if (!communityId) return null;
-    return <CommunityTopBar communityId={communityId} className={className} />;
+    return <CommunityTopBar communityId={communityId} />;
   }
 
   if (isHomePage) {
-    return <HomeTopBar className={className} />;
+    return <HomeTopBar />;
   }
 
   if (isSettingsPage) {
-    return <SettingsTopBar className={className} />;
+    return <SettingsTopBar />;
   }
 
-  // Default top bar
-  return (
-    <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="px-4 h-full flex items-center">
-        <h1 className="text-xl font-semibold">Meriter</h1>
-      </div>
-    </header>
-  );
+  // Default top bar - empty, no header
+  return null;
 };
 
 // Home Top Bar with Tabs
-const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
+const HomeTopBar: React.FC = () => {
   const pathname = usePathname();
-  const hash = typeof window !== 'undefined' ? window.location.hash : '';
   const t = useTranslations('home');
-
-  const [activeTab, setActiveTab] = React.useState<'publications' | 'comments' | 'polls' | 'updates'>('publications');
-  const [sortByTab, setSortByTab] = React.useState<{
-    publications: 'recent' | 'voted';
-    comments: 'recent' | 'voted';
-    polls: 'recent' | 'voted';
-    updates: 'recent' | 'voted';
-  }>({
-    publications: 'recent',
-    comments: 'recent',
-    polls: 'recent',
-    updates: 'recent',
-  });
-
-  React.useEffect(() => {
-    // Parse hash for tab
-    let detectedTab: 'publications' | 'comments' | 'polls' | 'updates' = 'publications';
-    if (hash.includes('comments')) {
-      detectedTab = 'comments';
-    } else if (hash.includes('polls')) {
-      detectedTab = 'polls';
-    } else if (hash.includes('updates-frequency')) {
-      detectedTab = 'updates';
-    } else {
-      detectedTab = 'publications';
-    }
-    setActiveTab(detectedTab);
-
-    // Parse hash for sort per tab
-    const urlParams = new URLSearchParams(hash.replace(/^#/, '').split('?')[1] || '');
-    const sortParam = urlParams.get('sort');
-    const sortValue = sortParam === 'voted' ? 'voted' : 'recent';
-    
-    // Update sort for the detected tab
-    setSortByTab(prev => ({
-      ...prev,
-      [detectedTab]: sortValue,
-    }));
-  }, [hash]);
+  const isMobile = !useMediaQuery('(min-width: 768px)');
+  
+  // Use the same hook as the page to sync state
+  const { currentTab, setCurrentTab, sortByTab, setSortByTab } = useHomeTabState();
 
   const handleTabClick = (tab: 'publications' | 'comments' | 'polls' | 'updates') => {
-    setActiveTab(tab);
+    setCurrentTab(tab);
     let hashPart = '';
     if (tab === 'comments') {
       hashPart = '#comments';
@@ -130,26 +101,26 @@ const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
 
   const handleSortClick = (sort: 'recent' | 'voted') => {
     // Update sort for the current active tab
-    setSortByTab(prev => ({
+    setSortByTab((prev: TabSortState) => ({
       ...prev,
-      [activeTab]: sort,
+      [currentTab]: sort,
     }));
     
     const urlParams = new URLSearchParams();
     urlParams.set('sort', sort);
     
     let hashPart = '';
-    if (activeTab === 'comments') {
+    if (currentTab === 'comments') {
       hashPart = '#comments';
-    } else if (activeTab === 'polls') {
+    } else if (currentTab === 'polls') {
       hashPart = '#polls';
-    } else if (activeTab === 'updates') {
+    } else if (currentTab === 'updates') {
       hashPart = '#updates-frequency';
     }
     // For publications tab, hashPart stays empty (default hash)
     
     // Set hash: for publications, use empty hash with sort params, for others use hashPart with sort
-    if (activeTab === 'publications') {
+    if (currentTab === 'publications') {
       window.location.hash = urlParams.toString() ? `?${urlParams.toString()}` : '';
     } else {
       window.location.hash = `${hashPart}?${urlParams.toString()}`;
@@ -157,75 +128,102 @@ const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
   };
 
   return (
-    <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="px-4 h-full flex items-center gap-2 justify-start md:justify-between">
-        <h1 className="text-xl font-semibold mr-4 hidden md:block">Home</h1>
+    <Box 
+      position="sticky" 
+      top={0} 
+      zIndex={30} 
+      height={64} 
+      bg="$white" 
+      borderBottomWidth={1} 
+      borderColor="$borderLight300"
+      px="$4"
+      py="$2"
+    >
+      <HStack space="md" alignItems="center" justifyContent="space-between" height="100%">
         {/* Tabs: buttons on md+, dropdown on mobile */}
-        <div className="tabs tabs-boxed hidden md:flex">
-          <button
-            onClick={() => handleTabClick('publications')}
-            className={`tab ${activeTab === 'publications' ? 'tab-active' : ''}`}
+        {!isMobile ? (
+          <HStack space="sm" flex={1} justifyContent="center">
+            <Button
+              variant={currentTab === 'publications' ? 'solid' : 'outline'}
+              size="sm"
+              onPress={() => handleTabClick('publications')}
+            >
+              <ButtonText>{t('tabs.publications') || 'My Publications'}</ButtonText>
+            </Button>
+            <Button
+              variant={currentTab === 'comments' ? 'solid' : 'outline'}
+              size="sm"
+              onPress={() => handleTabClick('comments')}
+            >
+              <ButtonText>{t('tabs.comments') || 'My Comments'}</ButtonText>
+            </Button>
+            <Button
+              variant={currentTab === 'polls' ? 'solid' : 'outline'}
+              size="sm"
+              onPress={() => handleTabClick('polls')}
+            >
+              <ButtonText>{t('tabs.polls') || 'Polls'}</ButtonText>
+            </Button>
+            <Button
+              variant={currentTab === 'updates' ? 'solid' : 'outline'}
+              size="sm"
+              onPress={() => handleTabClick('updates')}
+            >
+              <ButtonText>{t('tabs.updates') || 'Updates'}</ButtonText>
+            </Button>
+          </HStack>
+        ) : (
+          <Box flex={1}>
+          <Select
+            selectedValue={currentTab}
+            onValueChange={(value) => handleTabClick(value as any)}
           >
-            {t('tabs.publications')}
-          </button>
-          <button
-            onClick={() => handleTabClick('comments')}
-            className={`tab ${activeTab === 'comments' ? 'tab-active' : ''}`}
-          >
-            {t('tabs.comments')}
-          </button>
-          <button
-            onClick={() => handleTabClick('polls')}
-            className={`tab ${activeTab === 'polls' ? 'tab-active' : ''}`}
-          >
-            {t('tabs.polls')}
-          </button>
-          <button
-            onClick={() => handleTabClick('updates')}
-            className={`tab ${activeTab === 'updates' ? 'tab-active' : ''}`}
-          >
-            {t('tabs.updates')}
-          </button>
-        </div>
-        <div className="md:hidden">
-          <select
-            aria-label="Select tab"
-            className="select select-sm w-36"
-            value={activeTab}
-            onChange={(e) => handleTabClick(e.target.value as any)}
-          >
-            <option value="publications">{t('tabs.publications')}</option>
-            <option value="comments">{t('tabs.comments')}</option>
-            <option value="polls">{t('tabs.polls')}</option>
-            <option value="updates">{t('tabs.updates')}</option>
-          </select>
-        </div>
+            <SelectTrigger variant="outline" size="sm" minWidth={150}>
+              <SelectInput placeholder="Select tab" />
+              <SelectIcon mr="$3">
+                <ChevronDownIcon />
+              </SelectIcon>
+            </SelectTrigger>
+            <SelectPortal>
+              <SelectBackdrop />
+              <SelectContent>
+                <SelectDragIndicatorWrapper>
+                  <SelectDragIndicator />
+                </SelectDragIndicatorWrapper>
+                <SelectItem label={t('tabs.publications') || 'My Publications'} value="publications" />
+                <SelectItem label={t('tabs.comments') || 'My Comments'} value="comments" />
+                <SelectItem label={t('tabs.polls') || 'Polls'} value="polls" />
+                <SelectItem label={t('tabs.updates') || 'Updates'} value="updates" />
+              </SelectContent>
+            </SelectPortal>
+          </Select>
+          </Box>
+        )}
+        
         {/* Sort Toggle - contextual to active tab */}
-        <div className="join shadow-sm">
-          <button 
-            onClick={() => handleSortClick('recent')}
-            className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-              sortByTab[activeTab] === 'recent' ? 'btn-active btn-primary' : 'btn-ghost'
-            }`}
+        <HStack space="xs">
+          <Button
+            variant={sortByTab[currentTab] === 'recent' ? 'solid' : 'outline'}
+            size="sm"
+            onPress={() => handleSortClick('recent')}
           >
-            {t('sort.recent')}
-          </button>
-          <button 
-            onClick={() => handleSortClick('voted')}
-            className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-              sortByTab[activeTab] === 'voted' ? 'btn-active btn-primary' : 'btn-ghost'
-            }`}
+            <ButtonText>{t('sort.recent') || 'By Date'}</ButtonText>
+          </Button>
+          <Button
+            variant={sortByTab[currentTab] === 'voted' ? 'solid' : 'outline'}
+            size="sm"
+            onPress={() => handleSortClick('voted')}
           >
-            {t('sort.voted')}
-          </button>
-        </div>
-      </div>
-    </header>
+            <ButtonText>{t('sort.voted') || 'By Rating'}</ButtonText>
+          </Button>
+        </HStack>
+      </HStack>
+    </Box>
   );
 };
 
 // Community Top Bar
-const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = ({ communityId, className }) => {
+const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => {
   const { data: community } = useCommunity(communityId);
   const { user } = useAuth();
   const { data: wallets = [] } = useWallets();
@@ -326,15 +324,15 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
     }
   };
 
+  const isMobile = !useMediaQuery('(min-width: 768px)');
+  
   // Show mobile snack bar with community title when arriving/switching
   React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const isMobile = window.matchMedia('(max-width: 767px)').matches;
     if (!isMobile) return;
     setShowSnack(true);
     const timeout = setTimeout(() => setShowSnack(false), 2000);
     return () => clearTimeout(timeout);
-  }, [communityId]);
+  }, [communityId, isMobile]);
 
   if (!community) {
     return null;
@@ -351,199 +349,169 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
   );
 
   return (
-    <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="px-4 h-full flex items-center gap-2">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold hidden md:block">{community.name}</h1>
-          {isAdmin && (
-            <button
-              onClick={() => router.push(`/meriter/communities/${communityId}/settings`)}
-              className="btn btn-ghost btn-sm btn-circle"
-              title="Community Settings"
+    <Box 
+      position="sticky" 
+      top={0} 
+      zIndex={30} 
+      height={64} 
+      bg="$white" 
+      borderBottomWidth={1} 
+      borderColor="$borderLight300"
+      px="$4"
+      py="$2"
+    >
+      <HStack space="md" alignItems="center" justifyContent="flex-end" height="100%">
+        {/* Fake Data Generation Buttons - Only shown in fake mode */}
+        {fakeDataMode && (
+          <HStack space="sm" alignItems="center">
+            <Button
+              variant="outline"
+              size="sm"
+              onPress={handleGenerateUserPosts}
+              isDisabled={generatingUserPosts || generatingBeneficiaryPosts}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-          )}
-          {/* Create Poll Button */}
-          <button
-            onClick={handleCreatePoll}
-            className="btn btn-ghost btn-sm btn-circle"
-            title={t('createPoll')}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-4">
-          {/* Fake Data Generation Buttons - Only shown in fake mode */}
-          {fakeDataMode && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleGenerateUserPosts}
-                disabled={generatingUserPosts || generatingBeneficiaryPosts}
-                className="btn btn-sm btn-ghost"
-                title="Generate User Posts"
-              >
-                {generatingUserPosts ? (
-                  <span className="loading loading-spinner loading-xs"></span>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                )}
-              </button>
-              <button
-                onClick={handleGenerateBeneficiaryPosts}
-                disabled={generatingUserPosts || generatingBeneficiaryPosts}
-                className="btn btn-sm btn-ghost"
-                title="Generate Posts with Beneficiary"
-              >
-                {generatingBeneficiaryPosts ? (
-                  <span className="loading loading-spinner loading-xs"></span>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                )}
-              </button>
-              {fakeDataMessage && (
-                <div className={`text-xs ${fakeDataMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>
-                  {fakeDataMessage}
-                </div>
+              {generatingUserPosts ? (
+                <HStack space="sm" alignItems="center">
+                  <Spinner size="small" />
+                </HStack>
+              ) : (
+                <ButtonText>+</ButtonText>
               )}
-            </div>
-          )}
-          
-          {/* Tag Filter Dropdown */}
-          {hashtags.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={() => setShowTagDropdown(!showTagDropdown)}
-                className="btn btn-sm btn-ghost flex items-center gap-1"
-                title={selectedTag ? `#${selectedTag}` : t('filterByTags')}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-                {selectedTag && <span>#{selectedTag}</span>}
-              </button>
-              
-              {showTagDropdown && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-10" 
-                    onClick={() => setShowTagDropdown(false)}
-                  />
-                  <div className="absolute right-0 top-full mt-2 w-64 max-h-96 overflow-y-auto bg-base-100 shadow-lg rounded-lg border border-base-300 p-3 z-20">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={handleShowAll}
-                        className={`btn btn-xs ${
-                          !selectedTag ? 'btn-primary' : 'btn-ghost'
-                        }`}
-                      >
-                        {t('showAll')}
-                      </button>
-                      {hashtags.map((tag: string) => (
-                        <button
-                          key={tag}
-                          onClick={() => handleTagClick(tag)}
-                          className={`btn btn-xs ${
-                            selectedTag === tag ? 'btn-primary' : 'btn-ghost'
-                          }`}
-                        >
-                          #{tag}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onPress={handleGenerateBeneficiaryPosts}
+              isDisabled={generatingUserPosts || generatingBeneficiaryPosts}
+            >
+              {generatingBeneficiaryPosts ? (
+                <HStack space="sm" alignItems="center">
+                  <Spinner size="small" />
+                </HStack>
+              ) : (
+                <ButtonText>++</ButtonText>
               )}
-            </div>
-          )}
-
-          {/* Sort Toggle */}
-          <div className="join shadow-sm">
-            <button 
-              onClick={() => handleSortChange('recent')}
-              className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-                sortBy === 'recent' ? 'btn-active btn-primary' : 'btn-ghost'
-              }`}
-            >
-              {t('byDate')}
-            </button>
-            <button 
-              onClick={() => handleSortChange('voted')}
-              className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-                sortBy === 'voted' ? 'btn-active btn-primary' : 'btn-ghost'
-              }`}
-            >
-              {t('byRating')}
-            </button>
-          </div>
-        </div>
-      </div>
-      {/* Mobile snackbar with community title on navigation */}
-      {showSnack && (
-        <div className="md:hidden fixed bottom-4 left-0 right-0 z-50 flex justify-center">
-          <div className="px-3 py-2 rounded-full shadow-md bg-base-200 text-sm text-base-content border border-base-300 max-w-[80%] truncate">
-            {community.name}
-          </div>
-        </div>
-      )}
-    </header>
-  );
-};
-
-// Settings Top Bar
-const SettingsTopBar: React.FC<{ className?: string }> = ({ className }) => {
-  return (
-    <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="px-4 h-full flex items-center">
-        <h1 className="text-xl font-semibold">Settings</h1>
-      </div>
-    </header>
-  );
-};
-
-// Post Detail Top Bar with Back Button
-const PostDetailTopBar: React.FC<{ pathname: string | null; className?: string }> = ({ pathname, className }) => {
-  const router = useRouter();
-  
-  // Extract community ID from pathname
-  const match = pathname?.match(/\/meriter\/communities\/([^\/]+)\/posts\/(.+)/);
-  const communityId = match?.[1];
-
-  const { data: community } = useCommunity(communityId || '');
-
-  const handleBack = () => {
-    router.back();
-  };
-
-  return (
-    <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="px-4 h-full flex items-center gap-3">
-        {/* Mobile back button */}
-        <button
-          onClick={handleBack}
-          className="md:hidden btn btn-ghost btn-sm btn-circle"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        {community && (
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold">{community.name}</h1>
-          </div>
+            </Button>
+            {fakeDataMessage && (
+              <Text 
+                size="xs" 
+                color={fakeDataMessage.includes('Failed') ? '$error500' : '$success500'}
+              >
+                {fakeDataMessage}
+              </Text>
+            )}
+          </HStack>
         )}
-      </div>
-    </header>
+        
+        {/* Tag Filter Dropdown */}
+        {hashtags.length > 0 && (
+          <Box position="relative">
+            <Button
+              variant="outline"
+              size="sm"
+              onPress={() => setShowTagDropdown(!showTagDropdown)}
+            >
+              <ButtonText>{selectedTag ? `#${selectedTag}` : t('filterByTags')}</ButtonText>
+            </Button>
+            
+            {showTagDropdown && (
+              <>
+                <Pressable 
+                  style={{ position: 'fixed', inset: 0, zIndex: 10 }}
+                  onPress={() => setShowTagDropdown(false)}
+                />
+                <Box 
+                  position="absolute" 
+                  right={0} 
+                  top="100%" 
+                  mt="$2" 
+                  width={256} 
+                  maxHeight={384} 
+                  bg="$white" 
+                  borderRadius="$lg" 
+                  borderWidth={1} 
+                  borderColor="$borderLight300"
+                  p="$3"
+                  zIndex={20}
+                >
+                  <HStack space="sm" flexWrap="wrap">
+                    <Button
+                      variant={!selectedTag ? 'solid' : 'outline'}
+                      size="xs"
+                      onPress={handleShowAll}
+                    >
+                      <ButtonText>{t('showAll')}</ButtonText>
+                    </Button>
+                    {hashtags.map((tag: string) => (
+                      <Button
+                        key={tag}
+                        variant={selectedTag === tag ? 'solid' : 'outline'}
+                        size="xs"
+                        onPress={() => handleTagClick(tag)}
+                      >
+                        <ButtonText>#{tag}</ButtonText>
+                      </Button>
+                    ))}
+                  </HStack>
+                </Box>
+              </>
+            )}
+          </Box>
+        )}
+
+        {/* Sort Toggle */}
+        <HStack space="xs">
+          <Button
+            variant={sortBy === 'recent' ? 'solid' : 'outline'}
+            size="sm"
+            onPress={() => handleSortChange('recent')}
+          >
+            <ButtonText>{t('byDate')}</ButtonText>
+          </Button>
+          <Button
+            variant={sortBy === 'voted' ? 'solid' : 'outline'}
+            size="sm"
+            onPress={() => handleSortChange('voted')}
+          >
+            <ButtonText>{t('byRating')}</ButtonText>
+          </Button>
+        </HStack>
+      </HStack>
+      
+      {/* Mobile snackbar with community title on navigation */}
+      {showSnack && isMobile && (
+        <Box 
+          position="fixed" 
+          bottom={16} 
+          left={0} 
+          right={0} 
+          zIndex={50}
+          alignItems="center"
+        >
+          <Box 
+            px="$3" 
+            py="$2" 
+            borderRadius="$full" 
+            bg="$gray100" 
+            borderWidth={1} 
+            borderColor="$borderLight300"
+            maxWidth="80%"
+          >
+            <Text size="sm">{community.name}</Text>
+          </Box>
+        </Box>
+      )}
+    </Box>
   );
+};
+
+// Settings Top Bar - empty, no header
+const SettingsTopBar: React.FC = () => {
+  return null;
+};
+
+// Post Detail Top Bar with Back Button - empty, no header
+const PostDetailTopBar: React.FC<{ pathname: string | null }> = () => {
+  return null;
 };
 

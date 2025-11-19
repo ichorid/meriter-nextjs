@@ -26,7 +26,6 @@ import { ApiResponseHelper } from '../common/helpers/api-response.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
 import { Poll, CreatePollDto, CreatePollDtoSchema, CreatePollCastDto, CreatePollCastDtoSchema, UpdatePollDtoSchema } from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
-import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { formatDualLinks, escapeMarkdownV2 } from '../../common/helpers/telegram';
 import { BOT_USERNAME, URL as WEB_BASE_URL } from '../../config';
 import { t } from '../../i18n';
@@ -44,7 +43,6 @@ export class PollsController {
     private readonly userService: UserService,
     private readonly userEnrichmentService: UserEnrichmentService,
     private readonly communityEnrichmentService: CommunityEnrichmentService,
-    private readonly tgBotsService: TgBotsService,
   ) {}
 
   @Get()
@@ -136,31 +134,8 @@ export class PollsController {
     // Transform domain Poll to API Poll format
     const apiPoll = EntityMappers.mapPollToApi(poll, usersMap, communitiesMap);
     
-    // Send Telegram notification to community chat
-    try {
-      const community = await this.communityService.getCommunity(snapshot.communityId);
-      if (community && (community as any).telegramChatId) {
-        const tgChatId = String((community as any).telegramChatId);
-        const lang = await this.tgBotsService.getCommunityLanguageByChatId(tgChatId);
-        
-        const dualLinks = formatDualLinks('poll', { id: snapshot.id, communityId: snapshot.communityId }, BOT_USERNAME, WEB_BASE_URL);
-        const escapedQuestion = escapeMarkdownV2(snapshot.question);
-        
-        // Escape MarkdownV2 for template content, but preserve the dual links
-        const LINK_TOKEN = '__DUAL_LINKS__';
-        const templated = t('poll.created', lang, { question: escapedQuestion, dualLinks: LINK_TOKEN });
-        const escaped = escapeMarkdownV2(templated);
-        const text = escaped.replace(escapeMarkdownV2(LINK_TOKEN), dualLinks);
-        
-        await this.tgBotsService.tgSend({ tgChatId, text });
-        this.logger.log(`✅ Sent poll notification to community ${snapshot.communityId} Telegram chat ${tgChatId}`);
-      } else {
-        this.logger.log(`ℹ️  Community ${snapshot.communityId} has no Telegram chat ID, skipping notification`);
-      }
-    } catch (error) {
-      // Log error but don't fail the poll creation
-      this.logger.error(`Failed to send poll notification: ${error.message}`, error.stack);
-    }
+    // Telegram notifications are disabled in this project; skip sending poll notifications.
+    this.logger.log(`Poll ${snapshot.id} created; Telegram notifications are disabled, skipping community chat notification`);
     
     return ApiResponseHelper.successResponse(apiPoll);
   }

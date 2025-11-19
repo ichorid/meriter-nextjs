@@ -10,7 +10,11 @@ import { PollCasting } from '@features/polls/components/poll-casting';
 import { usePollCardData } from '@/hooks/usePollCardData';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { getWalletBalance } from '@/lib/utils/wallet';
-import { getPublicationIdentifier, isInteractiveElement } from '@/lib/utils/publication';
+import { getPublicationIdentifier } from '@/lib/utils/publication';
+// Gluestack UI components
+import { Card, CardBody } from '@/components/ui/card';
+import { Box } from '@/components/ui/box';
+import { Pressable } from 'react-native';
 
 import type { FeedItem, PublicationFeedItem, PollFeedItem, Wallet } from '@/types/api-v1';
 
@@ -64,16 +68,10 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   const isVoting = false;
   const isCommenting = false;
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Don't navigate if clicking on interactive elements (buttons, links, etc.)
-    // Note: PublicationActions already uses stopPropagation on its buttons,
-    // but we check here as an additional safeguard
-    const target = e.target as HTMLElement;
-    if (isInteractiveElement(target)) {
-      return;
-    }
-
+  const handleCardClick = () => {
     // Only navigate if we have a slug or id
+    // Note: Interactive elements (buttons, links) should use stopPropagation
+    // to prevent this handler from firing
     const postSlug = getPublicationIdentifier(publication);
     if (postSlug) {
       const params = new URLSearchParams(searchParams?.toString() ?? '');
@@ -86,33 +84,33 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   if (isPoll && pollData) {
     const pollItem = publication as PollFeedItem;
     return (
-      <article 
-        className={`card bg-base-100 shadow-md rounded-lg p-6 ${className}`}
-      >
-        <PublicationHeader
-          publication={{
-            id: pollItem.id,
-            slug: undefined,
-            createdAt: pollItem.createdAt,
-            meta: pollItem.meta,
-          }}
-          showCommunityAvatar={showCommunityAvatar}
-          className="mb-4"
-        />
-        
-        <PollCasting
-          pollData={pollData}
-          pollId={pollItem.id}
-          userCast={userCast}
-          userCastSummary={userCastSummary}
-          balance={pollBalance}
-          onCastSuccess={() => {
-            // Mutations handle query invalidation automatically
-          }}
-          communityId={pollItem.communityId}
-          initiallyExpanded={false}
-        />
-      </article>
+      <Card shadowColor="$black" shadowOffset={{ width: 0, height: 2 }} shadowOpacity={0.1} shadowRadius={3.84} elevation={5} borderRadius="$lg" p="$6">
+        <CardBody>
+          <PublicationHeader
+            publication={{
+              id: pollItem.id,
+              slug: undefined,
+              createdAt: pollItem.createdAt,
+              meta: pollItem.meta,
+            }}
+            showCommunityAvatar={showCommunityAvatar}
+            className="mb-4"
+          />
+          
+          <PollCasting
+            pollData={pollData}
+            pollId={pollItem.id}
+            userCast={userCast}
+            userCastSummary={userCastSummary}
+            balance={pollBalance}
+            onCastSuccess={() => {
+              // Mutations handle query invalidation automatically
+            }}
+            communityId={pollItem.communityId}
+            initiallyExpanded={false}
+          />
+        </CardBody>
+      </Card>
     );
   }
 
@@ -135,54 +133,64 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   };
   
   return (
-    <article 
-      className={`card bg-base-100 shadow-md rounded-lg p-6 cursor-pointer hover:shadow-lg transition-shadow overflow-hidden ${className}`}
-      onClick={handleCardClick}
-    >
-      <PublicationHeader
-        publication={{
-          id: pubItem.id,
-          slug: pubItem.slug,
-          createdAt: pubItem.createdAt,
-          meta: pubItem.meta,
-        }}
-        showCommunityAvatar={showCommunityAvatar}
-        className="mb-4"
-      />
-      
-      <PublicationContent
-        publication={{
-          id: pubItem.id,
-          createdAt: pubItem.createdAt,
-          content: pubItem.content,
-          meta: transformedMeta,
-        }}
-        className="mb-6"
-      />
-      
-      <PublicationActions
-        publication={{
-          id: pubItem.id,
-          createdAt: pubItem.createdAt,
-          authorId: pubItem.authorId,
-          communityId: pubItem.communityId,
-          slug: pubItem.slug,
-          content: pubItem.content,
-          type: pubItem.type,
-          metrics: pubItem.metrics,
-          meta: transformedMeta,
-        }}
-        onVote={handleVote}
-        onComment={handleComment}
-        activeCommentHook={activeCommentHook}
-        isVoting={isVoting}
-        isCommenting={isCommenting}
-        maxPlus={currentBalance}
-        activeSlider={activeSlider}
-        setActiveSlider={setActiveSlider}
-        wallets={wallets}
-        // maxMinus is calculated in PublicationActions using quota data
-      />
-    </article>
+    <Pressable onPress={handleCardClick}>
+      <Card 
+        shadowColor="$black"
+        shadowOffset={{ width: 0, height: 2 }}
+        shadowOpacity={0.1}
+        shadowRadius={3.84}
+        elevation={5}
+        borderRadius="$lg"
+        p="$6"
+        overflow="hidden"
+      >
+      <CardBody>
+        <PublicationHeader
+          publication={{
+            id: pubItem.id,
+            slug: pubItem.slug,
+            createdAt: pubItem.createdAt,
+            meta: pubItem.meta,
+          }}
+          showCommunityAvatar={showCommunityAvatar}
+          className="mb-4"
+        />
+        
+        <PublicationContent
+          publication={{
+            id: pubItem.id,
+            createdAt: pubItem.createdAt,
+            content: pubItem.content,
+            meta: transformedMeta,
+          }}
+          className="mb-6"
+        />
+        
+        <PublicationActions
+          publication={{
+            id: pubItem.id,
+            createdAt: pubItem.createdAt,
+            authorId: pubItem.authorId,
+            communityId: pubItem.communityId,
+            slug: pubItem.slug,
+            content: pubItem.content,
+            type: pubItem.type,
+            metrics: pubItem.metrics,
+            meta: transformedMeta,
+          }}
+          onVote={handleVote}
+          onComment={handleComment}
+          activeCommentHook={activeCommentHook}
+          isVoting={isVoting}
+          isCommenting={isCommenting}
+          maxPlus={currentBalance}
+          activeSlider={activeSlider}
+          setActiveSlider={setActiveSlider}
+          wallets={wallets}
+          // maxMinus is calculated in PublicationActions using quota data
+        />
+      </CardBody>
+    </Card>
+    </Pressable>
   );
 };

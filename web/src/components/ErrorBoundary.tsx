@@ -1,8 +1,21 @@
 'use client';
 
 import React, { Component, ReactNode } from 'react';
-import { Button } from './atoms';
 import { ErrorDisplay } from './atoms/ErrorDisplay';
+
+// Use plain HTML button instead of Gluestack UI Button to avoid SSR issues
+const Button = ({ variant, onClick, children }: { variant?: string; onClick?: () => void; children: ReactNode }) => {
+  const baseClasses = 'px-4 py-2 rounded font-medium transition-colors';
+  const variantClasses = variant === 'primary' 
+    ? 'bg-blue-500 text-white hover:bg-blue-600' 
+    : 'bg-gray-200 text-gray-800 hover:bg-gray-300';
+  
+  return (
+    <button className={`${baseClasses} ${variantClasses}`} onClick={onClick}>
+      {children}
+    </button>
+  );
+};
 
 interface Props {
   children: ReactNode;

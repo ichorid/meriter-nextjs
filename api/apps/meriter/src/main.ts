@@ -15,6 +15,19 @@ async function bootstrap() {
   const nodeEnv = process.env.NODE_ENV || 'development';
   const isProduction = nodeEnv === 'production';
   
+  // Log Google OAuth configuration status (for debugging)
+  const googleClientId = process.env.OAUTH_GOOGLE_CLIENT_ID;
+  const googleClientSecret = process.env.OAUTH_GOOGLE_CLIENT_SECRET;
+  const googleRedirectUri = process.env.OAUTH_GOOGLE_REDIRECT_URI || process.env.GOOGLE_REDIRECT_URI;
+  
+  if (googleClientId && googleClientSecret && googleRedirectUri) {
+    logger.log('✅ Google OAuth configured');
+    logger.debug(`Google OAuth callback URL: ${googleRedirectUri}`);
+  } else {
+    logger.warn('⚠️  Google OAuth not configured (optional)');
+    logger.debug(`Google OAuth status: clientId=${!!googleClientId}, clientSecret=${!!googleClientSecret}, redirectUri=${!!googleRedirectUri}`);
+  }
+  
   if (isProduction) {
     const botUsername = process.env.BOT_USERNAME;
     if (!botUsername || botUsername.trim() === '') {

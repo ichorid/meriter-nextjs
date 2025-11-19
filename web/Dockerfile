@@ -16,6 +16,8 @@ COPY web/package.json ./web/
 RUN pnpm --filter @meriter/web... install --frozen-lockfile
 
 COPY web ./web
+# Increase Node.js memory limit for build (6GB) - required for Gluestack UI + React Native Web
+ENV NODE_OPTIONS="--max-old-space-size=6144"
 RUN pnpm -C web build
 
 # --- run ---

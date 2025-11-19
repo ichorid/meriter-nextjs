@@ -257,7 +257,7 @@ export function CommentCard({
         variant="ghost"
         size="xs"
         className="absolute top-2 right-2 z-10 btn-sm opacity-60 hover:opacity-100"
-        onClick={(e) => {
+        onClick={(e: React.MouseEvent) => {
           e.stopPropagation();
           setShowDetailsPopup(true);
         }}

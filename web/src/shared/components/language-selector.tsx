@@ -1,11 +1,14 @@
 'use client';
 
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
+// Gluestack UI components
+import { Select, SelectTrigger, SelectInput, SelectIcon, SelectPortal, SelectBackdrop, SelectContent, SelectDragIndicatorWrapper, SelectDragIndicator, SelectItem } from '@/components/ui/select';
+import { ChevronDownIcon } from '@gluestack-ui/themed';
+import { FormControl, FormControlLabel, FormControlLabelText } from '@/components/ui/form-control';
 
 export function LanguageSelector() {
     const t = useTranslations('settings');
-    const locale = useLocale();
     const [selectedValue, setSelectedValue] = useState('auto');
 
     useEffect(() => {
@@ -30,25 +33,33 @@ export function LanguageSelector() {
     };
 
     return (
-        <div className="form-control w-full max-w-xs">
-            <label className="label">
-                <span className="label-text font-medium">{t('language')}</span>
-            </label>
-            <select
-                className="select select-bordered w-full"
-                value={selectedValue}
-                onChange={(e) => changeLanguage(e.target.value)}
+        <FormControl>
+            <FormControlLabel>
+                <FormControlLabelText>{t('language')}</FormControlLabelText>
+            </FormControlLabel>
+            <Select
+                selectedValue={selectedValue}
+                onValueChange={changeLanguage}
             >
-                <option value="auto">{t('languageAuto')}</option>
-                <option value="en">English</option>
-                <option value="ru">Русский</option>
-            </select>
-            <label className="label">
-                <span className="label-text-alt text-base-content/60">
-                    {t('languageDescription')}
-                </span>
-            </label>
-        </div>
+                <SelectTrigger variant="outline" width="100%" maxWidth={320}>
+                    <SelectInput placeholder={t('languageAuto')} />
+                    <SelectIcon mr="$3">
+                        <ChevronDownIcon />
+                    </SelectIcon>
+                </SelectTrigger>
+                <SelectPortal>
+                    <SelectBackdrop />
+                    <SelectContent>
+                        <SelectDragIndicatorWrapper>
+                            <SelectDragIndicator />
+                        </SelectDragIndicatorWrapper>
+                        <SelectItem label={t('languageAuto')} value="auto" />
+                        <SelectItem label="English" value="en" />
+                        <SelectItem label="Русский" value="ru" />
+                    </SelectContent>
+                </SelectPortal>
+            </Select>
+        </FormControl>
     );
 }
 
