@@ -1,20 +1,29 @@
-// Atomic Switch component
+// Atomic Switch component - теперь использует Gluestack UI
 'use client';
 
 import React from 'react';
+import { Switch as GluestackSwitch } from '@/components/ui/switch';
+import { HStack } from '@/components/ui/hstack';
+import { Text } from '@/components/ui/text';
 
 export type SwitchVariant = 'primary' | 'secondary' | 'accent' | 'success' | 'warning' | 'error';
 export type SwitchSize = 'xs' | 'sm' | 'md' | 'lg';
 
-export interface SwitchProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size' | 'type'> {
+export interface SwitchProps {
   variant?: SwitchVariant;
   size?: SwitchSize;
   label?: string;
   labelPosition?: 'left' | 'right';
   fullWidth?: boolean;
+  checked?: boolean;
+  onValueChange?: (value: boolean) => void;
+  disabled?: boolean;
+  className?: string;
+  id?: string;
+  [key: string]: any;
 }
 
-export const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
+export const Switch = React.forwardRef<any, SwitchProps>(
   (
     {
       variant = 'primary',
@@ -22,66 +31,37 @@ export const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
       label,
       labelPosition = 'right',
       fullWidth = false,
+      checked,
+      onValueChange,
+      disabled,
       className = '',
       id,
       ...props
     },
     ref
   ) => {
-    const variantClasses = {
-      primary: 'toggle-primary',
-      secondary: 'toggle-secondary',
-      accent: 'toggle-accent',
-      success: 'toggle-success',
-      warning: 'toggle-warning',
-      error: 'toggle-error',
-    };
-
-    const sizeClasses = {
-      xs: 'toggle-xs',
-      sm: 'toggle-sm',
-      md: 'toggle-md',
-      lg: 'toggle-lg',
-    };
-
     const switchId = id || `switch-${Math.random().toString(36).substring(2, 9)}`;
-
-    const toggleClasses = [
-      'toggle',
-      variantClasses[variant],
-      sizeClasses[size],
-      className,
-    ]
-      .filter(Boolean)
-      .join(' ');
-
-    const containerClasses = [
-      'form-control',
-      fullWidth && 'w-full',
-      label && 'items-center',
-      labelPosition === 'left' ? 'flex-row' : 'flex-row-reverse',
-    ]
-      .filter(Boolean)
-      .join(' ');
-
-    return (
-      <div className={containerClasses}>
-        <label className="label cursor-pointer gap-2" htmlFor={switchId}>
-          {label && (
-            <span className="label-text">
-              {label}
-            </span>
-          )}
-          <input
-            ref={ref}
-            id={switchId}
-            type="checkbox"
-            className={toggleClasses}
-            {...props}
-          />
-        </label>
-      </div>
+    
+    const content = (
+      <HStack 
+        space="sm" 
+        alignItems="center"
+        flexDirection={labelPosition === 'left' ? 'row-reverse' : 'row'}
+        width={fullWidth ? '100%' : undefined}
+      >
+        {label && (
+          <Text>{label}</Text>
+        )}
+        <GluestackSwitch
+          ref={ref}
+          value={checked}
+          onValueChange={onValueChange}
+          {...props}
+        />
+      </HStack>
     );
+    
+    return content;
   }
 );
 

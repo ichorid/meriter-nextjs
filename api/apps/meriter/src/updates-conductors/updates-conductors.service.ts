@@ -6,7 +6,6 @@ import {
 } from './model/updates-conductor.schema';
 import { Model } from 'mongoose';
 import { fillDefined } from '@common/lambdas/pure/objects';
-import { TgBotsService } from '../tg-bots/tg-bots.service';
 import { Cron, SchedulerRegistry } from '@nestjs/schedule';
 import { URL as WEB_BASE_URL, BOT_USERNAME } from '../config';
 import { formatDualLinks } from '../common/helpers/telegram';
@@ -31,7 +30,6 @@ export class UpdatesConductorsService {
     @InjectModel(UpdatesConductor.name)
     updatesConductorModel: Model<UpdatesConductorDocument>,
 
-    private readonly tgBotsService: TgBotsService,
     private readonly userSettingsService: UserSettingsService,
     private readonly userUpdatesService: UserUpdatesService,
   ) {
@@ -94,7 +92,8 @@ export class UpdatesConductorsService {
     for (const u of hourlyUsers) {
       const events = await this.userUpdatesService.getUserUpdateEvents(u.userId, from, to);
       if (events.length > 0) {
-        await this.tgBotsService.sendUserUpdates(u.userId, events, 'en');
+        // Telegram notifications are disabled in this project; skip sending.
+        this.logger.log(`Hourly updates ready for user=${u.userId}, Telegram delivery disabled, skipping sendUserUpdates`);
         await this.userSettingsService.markHourlyDelivered(u.userId, to);
       }
     }
@@ -113,7 +112,8 @@ export class UpdatesConductorsService {
     for (const u of dailyUsers) {
       const events = await this.userUpdatesService.getUserUpdateEvents(u.userId, from, to);
       if (events.length > 0) {
-        await this.tgBotsService.sendUserUpdates(u.userId, events, 'en');
+        // Telegram notifications are disabled in this project; skip sending.
+        this.logger.log(`Daily updates ready for user=${u.userId}, Telegram delivery disabled, skipping sendUserUpdates`);
         await this.userSettingsService.markDailyDelivered(u.userId, to);
       }
     }

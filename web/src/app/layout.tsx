@@ -9,7 +9,8 @@ import { Root } from '@/components/Root';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AppModeProvider } from '@/contexts/AppModeContext';
-import { BotConfigProvider } from '@/contexts/BotConfigContext';
+import StyledJsxRegistry from '@/registry';
+import { GluestackWrapper } from '@/components/GluestackWrapper';
 
 export const metadata: Metadata = {
     title: 'Meriter',
@@ -53,17 +54,19 @@ export default async function RootLayout({
                 />
             </head>
             <body suppressHydrationWarning>
-                <BotConfigProvider>
-                    <AppModeProvider>
-                        <QueryProvider>
-                            <AuthProvider>
-                                <NextIntlClientProvider messages={messages}>
-                                    <Root>{children}</Root>
-                                </NextIntlClientProvider>
-                            </AuthProvider>
-                        </QueryProvider>
-                    </AppModeProvider>
-                </BotConfigProvider>
+                <StyledJsxRegistry>
+                    <GluestackWrapper>
+                        <AppModeProvider>
+                            <QueryProvider>
+                                <AuthProvider>
+                                    <NextIntlClientProvider messages={messages}>
+                                        <Root>{children}</Root>
+                                    </NextIntlClientProvider>
+                                </AuthProvider>
+                            </QueryProvider>
+                        </AppModeProvider>
+                    </GluestackWrapper>
+                </StyledJsxRegistry>
             </body>
         </html>
     );

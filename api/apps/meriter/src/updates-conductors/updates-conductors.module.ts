@@ -8,7 +8,6 @@ import {
 import { UpdatesConductorsService } from './updates-conductors.service';
 
 import { DomainModule } from '../domain.module';
-import { TgBotsModule } from '../tg-bots/tg-bots.module';
 import { DatabaseModule } from '../common/database/database.module';
 
 @Module({
@@ -19,7 +18,6 @@ import { DatabaseModule } from '../common/database/database.module';
       { name: UpdatesConductor.name, schema: UpdatesConductorSchema }
     ]),
     DomainModule,
-    TgBotsModule,
   ],
   providers: [UpdatesConductorsService],
   exports: [UpdatesConductorsService],

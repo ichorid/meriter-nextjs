@@ -57,6 +57,13 @@ export function useHomeTabState() {
     };
   }, []);
 
-  return { currentTab, setCurrentTab, sortByTab, setSortByTab };
+  const updateSort = (tab: HomeTab, sort: SortOrder) => {
+    setSortByTab((prev) => ({
+      ...prev,
+      [tab]: sort,
+    }));
+  };
+
+  return { currentTab, setCurrentTab, sortByTab, setSortByTab, updateSort };
 }
 

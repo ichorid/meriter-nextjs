@@ -17,7 +17,6 @@ import { PublicationService } from '../../domain/services/publication.service';
 import { UserService } from '../../domain/services/user.service';
 import { CommunityFeedService } from '../../domain/services/community-feed.service';
 import { WalletService } from '../../domain/services/wallet.service';
-import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { UserGuard } from '../../user.guard';
 import { User } from '../../decorators/user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
@@ -42,7 +41,6 @@ export class CommunitiesController {
     private readonly userService: UserService,
     private readonly communityFeedService: CommunityFeedService,
     private readonly walletService: WalletService,
-    private readonly tgBotsService: TgBotsService,
   ) {}
 
   /**
@@ -221,15 +219,10 @@ export class CommunitiesController {
     const hashtagsRaw = (community.hashtags || []).map((h) => `#${h}`).join(' ');
     const hashtagsEscaped = escapeMarkdownV2(hashtagsRaw);
 
-    // Escape MarkdownV2 for template content, but preserve the dual links
-    const LINK_TOKEN = '__DUAL_LINKS__';
-    const templated = t('community.welcome', lang, { dualLinksCommunity: LINK_TOKEN, hashtags: hashtagsEscaped });
-    const escaped = escapeMarkdownV2(templated);
-    const text = escaped.replace(escapeMarkdownV2(LINK_TOKEN), dualLinksCommunity);
+    // Telegram notifications are disabled in this project; skip sending welcome message.
+    this.logger.log(`Telegram welcome message disabled for community ${id}, chat ${tgChatId}`);
 
-    await this.tgBotsService.tgSend({ tgChatId, text });
-
-    return ApiResponseHelper.successResponse({ sent: true });
+    return ApiResponseHelper.successResponse({ sent: false });
   }
 
   // TODO: Implement getCommunityMembers in CommunityService
@@ -424,25 +417,13 @@ export class CommunitiesController {
         }
         
         try {
-          const isMember = await this.tgBotsService.tgGetChatMember(
-            community.telegramChatId,
-            telegramId
-          );
+          // Telegram membership checks are disabled; rely on existing data only.
+          const isMember = false;
           
           if (isMember) {
             communityChatIds.push(community.telegramChatId);
             syncedCount++;
             this.logger.log(`User ${userId} is a member of community ${community.name}`);
-            
-            // Update communityTags (used by wallets to find communities)
-            try {
-              await this.tgBotsService.updateUserChatMembership(community.telegramChatId, telegramId);
-            } catch (tagError) {
-              this.logger.warn(
-                `Error updating community tag for community ${community.telegramChatId} to user ${userId}:`,
-                tagError.message
-              );
-            }
             
             // Add community membership to user's communityMemberships array (used by getUserCommunities)
             try {

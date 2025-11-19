@@ -3,11 +3,18 @@
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useComments } from '@/shared/hooks/use-comments';
-import { Button } from '@/components/atoms';
 import { useTranslations } from 'next-intl';
 import { CommentsList } from '@/lib/comments/components/CommentsList';
 import { buildTree } from '@/lib/comments/tree';
 import { transformComments } from '@/lib/comments/utils/transform';
+// Gluestack UI components
+import { Box } from '@/components/ui/box';
+import { VStack } from '@/components/ui/vstack';
+import { HStack } from '@/components/ui/hstack';
+import { Heading } from '@/components/ui/heading';
+import { Button, ButtonText } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { Divider } from '@/components/ui/divider';
 
 export interface CommentsColumnProps {
   publicationSlug: string;
@@ -94,29 +101,29 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
   }, [comments]);
 
   return (
-    <div className="h-full flex flex-col bg-base-100 border-l border-base-300">
+    <Box height="100%" flexDirection="column" bg="$white" borderLeftWidth={1} borderColor="$borderLight300">
       {/* Header with close/back button and sort toggle */}
-      <div className="flex flex-col border-b border-base-300 bg-base-200">
-        <div className="flex items-center gap-2 p-4">
+      <VStack borderBottomWidth={1} borderColor="$borderLight300" bg="$gray50">
+        <HStack space="sm" alignItems="center" p="$4">
           {(showBackButton || onBack) ? (
             <>
               <Button
-                variant="ghost"
+                variant="link"
                 size="sm"
-                onClick={handleBack}
+                onPress={handleBack}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                <span className="ml-2 hidden sm:inline">Back</span>
+                <HStack space="sm" alignItems="center">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  <ButtonText>Back</ButtonText>
+                </HStack>
               </Button>
-              <h2 className="text-lg font-semibold flex-1">Comments</h2>
+              <Heading size="lg" fontWeight="$semibold" flex={1}>Comments</Heading>
               <Button
-                variant="ghost"
+                variant="link"
                 size="sm"
-                onClick={handleBack}
-                className="hidden lg:flex"
-                title="Close comments"
+                onPress={handleBack}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -124,34 +131,32 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
               </Button>
             </>
           ) : (
-            <h2 className="text-lg font-semibold flex-1">Comments</h2>
+            <Heading size="lg" fontWeight="$semibold" flex={1}>Comments</Heading>
           )}
-        </div>
+        </HStack>
         {/* Sort Toggle */}
-        <div className="px-4 pb-3 flex justify-end">
-          <div className="join shadow-sm">
-            <button 
-              onClick={() => setSortBy('recent')}
-              className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-                sortBy === 'recent' ? 'btn-active btn-primary' : ''
-              }`}
+        <HStack space="sm" justifyContent="flex-end" px="$4" pb="$3">
+          <HStack space="xs">
+            <Button
+              variant={sortBy === 'recent' ? 'solid' : 'outline'}
+              size="sm"
+              onPress={() => setSortBy('recent')}
             >
-              {t('sort.recent')}
-            </button>
-            <button 
-              onClick={() => setSortBy('voted')}
-              className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-                sortBy === 'voted' ? 'btn-active btn-primary' : ''
-              }`}
+              <ButtonText>{t('sort.recent')}</ButtonText>
+            </Button>
+            <Button
+              variant={sortBy === 'voted' ? 'solid' : 'outline'}
+              size="sm"
+              onPress={() => setSortBy('voted')}
             >
-              {t('sort.voted')}
-            </button>
-          </div>
-        </div>
-      </div>
+              <ButtonText>{t('sort.voted')}</ButtonText>
+            </Button>
+          </HStack>
+        </HStack>
+      </VStack>
 
       {/* Comments list with tree navigation */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <Box flex={1} overflowY="auto" p="$4">
         {commentTree.length > 0 ? (
           <CommentsList 
             roots={commentTree}
@@ -170,12 +175,12 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
             isDetailPage={false}
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-base-content/60">
-            <p>No comments yet</p>
-          </div>
+          <Box flex={1} alignItems="center" justifyContent="center">
+            <Text color="$textLight600">No comments yet</Text>
+          </Box>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

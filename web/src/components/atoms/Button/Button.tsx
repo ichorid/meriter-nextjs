@@ -1,21 +1,29 @@
-// Atomic Button component
+// Atomic Button component - теперь использует Gluestack UI
 'use client';
 
 import React from 'react';
+import { Button as GluestackButton, ButtonText } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { HStack } from '@/components/ui/hstack';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link';
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps {
   variant?: ButtonVariant;
   size?: ButtonSize;
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   fullWidth?: boolean;
+  disabled?: boolean;
+  children?: React.ReactNode;
+  onPress?: () => void;
+  className?: string;
+  [key: string]: any;
 }
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+export const Button = React.forwardRef<any, ButtonProps>(
   (
     {
       variant = 'primary',
@@ -24,56 +32,41 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       leftIcon,
       rightIcon,
       fullWidth = false,
-      className = '',
       disabled,
       children,
+      onPress,
+      className = '',
       ...props
     },
     ref
   ) => {
-    const baseClasses = 'btn';
-    
-    const variantClasses = {
-      primary: 'btn-primary',
-      secondary: 'btn-secondary',
-      ghost: 'btn-ghost',
-      danger: 'btn-error',
-      link: 'btn-link',
-    };
-    
-    const sizeClasses = {
-      xs: 'btn-xs',
-      sm: 'btn-sm',
-      md: 'btn-md',
-      lg: 'btn-lg',
-    };
-    
-    const classes = [
-      baseClasses,
-      variantClasses[variant],
-      sizeClasses[size],
-      fullWidth && 'btn-block',
-      className,
-    ]
-      .filter(Boolean)
-      .join(' ');
-    
     const isDisabled = disabled || isLoading;
     
+    // Map variants to Gluestack UI variants
+    const gluestackVariant = variant === 'primary' ? 'solid' : 
+                            variant === 'link' ? 'link' : 
+                            variant === 'danger' ? 'solid' : 'outline';
+    
+    // Map sizes
+    const gluestackSize = size === 'xs' ? 'sm' : size === 'lg' ? 'lg' : 'md';
+    
     return (
-      <button
+      <GluestackButton
         ref={ref}
-        className={classes}
-        disabled={isDisabled}
+        variant={gluestackVariant}
+        size={gluestackSize}
+        isDisabled={isDisabled}
+        onPress={onPress}
+        width={fullWidth ? '100%' : undefined}
         {...props}
       >
-        {isLoading && (
-          <span className="loading loading-spinner loading-sm mr-2"></span>
-        )}
-        {!isLoading && leftIcon && <span className="mr-2">{leftIcon}</span>}
-        {children}
-        {!isLoading && rightIcon && <span className="ml-2">{rightIcon}</span>}
-      </button>
+        <HStack space="sm" alignItems="center">
+          {isLoading && <Spinner size="small" />}
+          {!isLoading && leftIcon && <>{leftIcon}</>}
+          <ButtonText>{children}</ButtonText>
+          {!isLoading && rightIcon && <>{rightIcon}</>}
+        </HStack>
+      </GluestackButton>
     );
   }
 );

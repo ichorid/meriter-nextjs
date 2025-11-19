@@ -4,7 +4,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserService } from '../../domain/services/user.service';
 import { CommunityService } from '../../domain/services/community.service';
-import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { User } from '../../../../../../libs/shared-types/dist/index';
 import { signJWT } from '../../common/helpers/jwt';
 import { Community, CommunityDocument } from '../../domain/models/community/community.schema';
@@ -28,7 +27,6 @@ export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly communityService: CommunityService,
-    private readonly tgBotsService: TgBotsService,
     private readonly configService: ConfigService,
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
   ) {}
@@ -37,181 +35,7 @@ export class AuthService {
     return process.env.FAKE_DATA_MODE === 'true';
   }
 
-  async authenticateTelegramWidget(authData: TelegramAuthData): Promise<{
-    user: User;
-    hasPendingCommunities: boolean;
-    jwt: string;
-  }> {
-    const botToken = this.configService.get<string>('bot.token');
-    
-    if (!botToken) {
-      throw new Error('Bot token not configured');
-    }
-
-    // Verify the Telegram auth data
-    const isValid = this.verifyTelegramAuth(authData, botToken);
-    if (!isValid) {
-      throw new Error('Invalid authentication data');
-    }
-
-    // Find or create user
-    const telegramId = authData.id.toString();
-
-    // Get existing user to compare avatar
-    const existingUser = await this.userService.getUserByTelegramId(telegramId);
-
-    let avatarUrl = existingUser?.avatarUrl;
-
-    // Try to get user's profile photo using Bot API
-    try {
-      this.logger.log(`Fetching avatar for user ${telegramId}...`);
-      const newAvatarUrl = await this.tgBotsService.telegramGetChatPhotoUrl(
-        botToken,
-        telegramId,
-        true, // revalidate - force refresh
-      );
-      
-      if (newAvatarUrl) {
-        const timestamp = Date.now();
-        avatarUrl = `${newAvatarUrl}?t=${timestamp}`;
-        this.logger.log(`Avatar fetched successfully for user ${telegramId}`);
-      } else {
-        this.logger.log(`No avatar available for user ${telegramId}`);
-        avatarUrl = null;
-      }
-    } catch (error) {
-      this.logger.warn(`Failed to fetch avatar via Bot API for user ${telegramId}:`, error.message);
-      const existingIsS3 = existingUser?.avatarUrl?.includes('telegram_small_avatars');
-      avatarUrl = existingIsS3 ? existingUser.avatarUrl : null;
-    }
-    
-    this.logger.log(`Creating or updating user ${telegramId}...`);
-
-    const displayName = [authData.first_name, authData.last_name].filter((a) => a).join(' ');
-
-    const user = await this.userService.createOrUpdateUser({
-      telegramId,
-      username: authData.username || undefined,
-      firstName: authData.first_name,
-      lastName: authData.last_name,
-      displayName,
-      avatarUrl: avatarUrl || undefined,
-    });
-
-    if (!user) {
-      throw new Error('Failed to create user session');
-    }
-
-    this.logger.log(`User ${telegramId} created/updated successfully`);
-
-    // Start community discovery in background
-    this.discoverUserCommunities(telegramId).catch(error => {
-      this.logger.error(`Background community discovery failed for user ${telegramId}:`, error);
-    });
-
-    // Generate JWT
-    const jwtToken = JwtService.generateTokenFromConfig(
-      user.id,
-      telegramId,
-      user.communityTags || [],
-      this.configService
-    );
-
-    this.logger.log(`JWT generated for user ${telegramId}`);
-
-    return {
-      user: JwtService.mapUserToV1Format(user),
-      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
-      jwt: jwtToken,
-    };
-  }
-
-  async authenticateTelegramWebApp(initData: string): Promise<{
-    user: User;
-    hasPendingCommunities: boolean;
-    jwt: string;
-  }> {
-    const botToken = this.configService.get<string>('bot.token');
-    
-    if (!botToken) {
-      throw new Error('Bot token not configured');
-    }
-
-    const { valid, user: webAppUser } = this.verifyTelegramWebAppData(initData, botToken);
-    
-    if (!valid || !webAppUser) {
-      throw new Error('Invalid Web App authentication data');
-    }
-
-    // Reuse existing user creation logic
-    const telegramId = webAppUser.id.toString();
-
-    const existingUser = await this.userService.getUserByTelegramId(telegramId);
-
-    let avatarUrl = existingUser?.avatarUrl;
-
-    try {
-      const newAvatarUrl = await this.tgBotsService.telegramGetChatPhotoUrl(
-        botToken,
-        telegramId,
-        true,
-      );
-      
-      if (newAvatarUrl) {
-        const timestamp = Date.now();
-        avatarUrl = `${newAvatarUrl}?t=${timestamp}`;
-      } else {
-        avatarUrl = null;
-      }
-    } catch (error) {
-      this.logger.warn(`Failed to fetch avatar via Bot API for user ${telegramId}:`, error.message);
-      const existingIsS3 = existingUser?.avatarUrl?.includes('telegram_small_avatars');
-      avatarUrl = existingIsS3 ? existingUser.avatarUrl : null;
-    }
-
-    const displayName = [webAppUser.first_name, webAppUser.last_name].filter((a) => a).join(' ');
-
-    const user = await this.userService.createOrUpdateUser({
-      telegramId,
-      username: webAppUser.username || undefined,
-      firstName: webAppUser.first_name,
-      lastName: webAppUser.last_name,
-      displayName,
-      avatarUrl: avatarUrl || undefined,
-    });
-
-    if (!user) {
-      throw new Error('Failed to create user session');
-    }
-
-    // Start community discovery in background
-    this.discoverUserCommunities(telegramId).catch(error => {
-      this.logger.error(`Background community discovery failed for user ${telegramId}:`, error);
-    });
-
-    // Generate JWT
-    const jwtSecret = this.configService.get<string>('jwt.secret');
-    if (!jwtSecret) {
-      this.logger.error('JWT_SECRET is not configured. Cannot generate JWT token.');
-      throw new Error('JWT secret not configured');
-    }
-    
-    const jwtToken = signJWT(
-      {
-        uid: user.id,
-        telegramId,
-        communityTags: user.communityTags || [],
-      },
-      jwtSecret,
-      '365d',
-    );
-
-    return {
-      user: JwtService.mapUserToV1Format(user),
-      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
-      jwt: jwtToken,
-    };
-  }
+  // Telegram authentication methods removed: Telegram is fully disabled in this project.
 
   async authenticateFakeUser(fakeUserId?: string): Promise<{
     user: User;
@@ -266,6 +90,227 @@ export class AuthService {
 
     this.logger.log(`JWT generated for fake user ${telegramId}`);
 
+    return {
+      user: JwtService.mapUserToV1Format(user),
+      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
+      jwt: jwtToken,
+    };
+  }
+
+  async authenticateGoogle(code: string): Promise<{
+    user: User;
+    hasPendingCommunities: boolean;
+    jwt: string;
+  }> {
+    this.logger.log('Authenticating with Google OAuth code');
+    
+    const clientId = process.env.OAUTH_GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.OAUTH_GOOGLE_CLIENT_SECRET;
+    
+    if (!clientId || !clientSecret) {
+      throw new Error('Google OAuth credentials not configured');
+    }
+    
+    // Get callback URL - must match the one used in googleAuth endpoint
+    // Support both OAUTH_GOOGLE_REDIRECT_URI and OAUTH_GOOGLE_CALLBACK_URL
+    let callbackUrl = process.env.OAUTH_GOOGLE_REDIRECT_URI 
+      || process.env.OAUTH_GOOGLE_CALLBACK_URL 
+      || process.env.GOOGLE_REDIRECT_URI;
+
+    if (!callbackUrl) {
+      const domain = process.env.DOMAIN || process.env.APP_URL?.replace(/^https?:\/\//, '') || 'localhost';
+      const isDocker = process.env.NODE_ENV === 'production';
+      const protocol = domain === 'localhost' && !isDocker ? 'http' : (domain === 'localhost' ? 'http' : 'https');
+      // In Docker, Caddy proxies /api/* to API, so no port needed
+      // In local dev, use port 8002 for direct API access
+      const port = domain === 'localhost' && !isDocker ? ':8002' : '';
+      callbackUrl = `${protocol}://${domain}${port}/api/v1/auth/google/callback`;
+    }
+    
+    // Exchange code for access token
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: callbackUrl,
+        grant_type: 'authorization_code',
+      }),
+    });
+    
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      this.logger.error(`Failed to exchange code for token: ${errorText}`);
+      throw new Error('Failed to exchange authorization code for token');
+    }
+    
+    const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
+    
+    if (!accessToken) {
+      throw new Error('Access token not received from Google');
+    }
+    
+    // Get user info from Google
+    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    
+    if (!userInfoResponse.ok) {
+      const errorText = await userInfoResponse.text();
+      this.logger.error(`Failed to get user info from Google: ${errorText}`);
+      throw new Error('Failed to get user information from Google');
+    }
+    
+    const googleUser = await userInfoResponse.json();
+    this.logger.log(`Google user info received: ${googleUser.email}`);
+    
+    // Find or create user by googleId
+    const googleId = googleUser.id;
+    const email = googleUser.email;
+    const firstName = googleUser.given_name || '';
+    const lastName = googleUser.family_name || '';
+    const displayName = googleUser.name || `${firstName} ${lastName}`.trim() || email;
+    const avatarUrl = googleUser.picture;
+    
+    // Check if user exists by googleId (if schema supports it) or by email
+    // For now, we'll use a placeholder telegramId based on googleId
+    // TODO: Update schema to support googleId directly
+    const telegramId = `google_${googleId}`;
+    
+    let user = await this.userService.getUserByTelegramId(telegramId);
+    
+    if (!user) {
+      // Create new user
+      user = await this.userService.createOrUpdateUser({
+        telegramId,
+        username: email?.split('@')[0],
+        firstName,
+        lastName,
+        displayName,
+        avatarUrl,
+      });
+    } else {
+      // Update existing user
+      user = await this.userService.createOrUpdateUser({
+        telegramId,
+        username: email?.split('@')[0],
+        firstName,
+        lastName,
+        displayName,
+        avatarUrl,
+      });
+    }
+    
+    if (!user) {
+      throw new Error('Failed to create or update user');
+    }
+    
+    // Generate JWT
+    const jwtSecret = this.configService.get<string>('jwt.secret');
+    if (!jwtSecret) {
+      this.logger.error('JWT_SECRET is not configured. Cannot generate JWT token.');
+      throw new Error('JWT secret not configured');
+    }
+    
+    const jwtToken = signJWT(
+      {
+        uid: user.id,
+        telegramId,
+        communityTags: user.communityTags || [],
+      },
+      jwtSecret,
+      '365d',
+    );
+    
+    this.logger.log(`JWT generated for Google user ${email}`);
+    
+    return {
+      user: JwtService.mapUserToV1Format(user),
+      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
+      jwt: jwtToken,
+    };
+  }
+
+  /**
+   * Authenticate user with any OAuth provider
+   * Supports multiple providers: google, github, etc.
+   * Provider data comes from Passport strategy validation
+   */
+  async authenticateWithProvider(providerUser: {
+    provider: string;
+    providerId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    displayName: string;
+    avatarUrl?: string;
+  }): Promise<{
+    user: User;
+    hasPendingCommunities: boolean;
+    jwt: string;
+  }> {
+    this.logger.log(`Authenticating user with provider: ${providerUser.provider}`);
+    
+    const { provider, providerId, email, firstName, lastName, displayName, avatarUrl } = providerUser;
+    
+    // Create provider-specific ID (e.g., google_123456, github_789012)
+    const authId = `${provider}_${providerId}`;
+    
+    // Find or create user by provider ID
+    let user = await this.userService.getUserByTelegramId(authId);
+    
+    if (!user) {
+      // Create new user
+      user = await this.userService.createOrUpdateUser({
+        telegramId: authId,
+        username: email?.split('@')[0],
+        firstName,
+        lastName,
+        displayName,
+        avatarUrl,
+      });
+    } else {
+      // Update existing user
+      user = await this.userService.createOrUpdateUser({
+        telegramId: authId,
+        username: email?.split('@')[0],
+        firstName,
+        lastName,
+        displayName,
+        avatarUrl,
+      });
+    }
+    
+    if (!user) {
+      throw new Error('Failed to create or update user');
+    }
+    
+    // Generate JWT
+    const jwtSecret = this.configService.get<string>('jwt.secret');
+    if (!jwtSecret) {
+      this.logger.error('JWT_SECRET is not configured. Cannot generate JWT token.');
+      throw new Error('JWT secret not configured');
+    }
+    
+    const jwtToken = signJWT(
+      {
+        uid: user.id,
+        telegramId: authId,
+        communityTags: user.communityTags || [],
+      },
+      jwtSecret,
+      '365d',
+    );
+    
+    this.logger.log(`JWT generated for ${provider} user ${email}`);
+    
     return {
       user: JwtService.mapUserToV1Format(user),
       hasPendingCommunities: (user.communityTags?.length || 0) > 0,
@@ -375,11 +420,8 @@ export class AuthService {
       const chatId = community.telegramChatId;
       if (!chatId) return;
 
-      try {
-        await this.tgBotsService.updateUserChatMembership(chatId, telegramId);
-      } catch (error) {
-        this.logger.warn(`Failed to check membership for ${chatId}:`, error.message);
-      }
+      // Telegram membership checks are disabled in this project; skip updating tags.
+      this.logger.debug(`Skipping Telegram membership check for community chat ${chatId}`);
     });
 
     await Promise.all(membershipChecks);

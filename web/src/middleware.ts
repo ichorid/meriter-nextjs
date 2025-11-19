@@ -75,20 +75,33 @@ export function middleware(request: NextRequest) {
     const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
     
     // API routes and static files are always allowed
-    if (pathname.startsWith('/api/') || pathname.startsWith('/_next/') || pathname.startsWith('/meriter/')) {
-        // For API routes, let them handle their own auth
-        if (pathname.startsWith('/api/')) {
+    if (pathname.startsWith('/api/') || pathname.startsWith('/_next/')) {
+        return NextResponse.next();
+    }
+    
+    // Protect /meriter/* routes (except public ones) by requiring JWT cookie
+    if (pathname.startsWith('/meriter/')) {
+        if (isPublicRoute) {
+            // Allow access to login page without auth
             return NextResponse.next();
         }
         
-        // For public meriter routes
-        if (isPublicRoute) {
-            return NextResponse.next();
+        // Check for JWT cookie set by backend (CookieManager uses 'jwt' name)
+        const jwtCookie = request.cookies.get('jwt');
+        
+        // If no JWT cookie, redirect to login
+        if (!jwtCookie) {
+            const loginUrl = new URL('/meriter/login', request.url);
+            // Preserve original path for post-login redirect
+            loginUrl.searchParams.set('returnTo', pathname);
+            return NextResponse.redirect(loginUrl);
         }
+        
+        // JWT cookie exists - allow request, backend will validate token
+        return NextResponse.next();
     }
     
-    // Let all other requests through - authentication is handled client-side
-    // The pages themselves use React Query to check /api/v1/auth/me and redirect if needed
+    // Let all other requests through
     return NextResponse.next();
 }
 

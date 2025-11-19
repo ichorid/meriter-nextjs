@@ -36,29 +36,38 @@ import { UpdateEventItem } from '../domain/services/user-updates.service';
 export class TgBotsService {
   private readonly logger = new Logger(TgBotsService.name);
   telegramApiUrl: string;
-  s3;
+  s3: S3Client | null; // Allow s3 to be null
   private readonly s3Bucket?: string;
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Publication.name) private publicationModel: Model<PublicationDocument>,
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
   ) {
+    // S3 is completely optional - only initialize if fully configured
     const s3Endpoint = process.env.S3_ENDPOINT;
     const s3BucketName = process.env.S3_BUCKET_NAME;
+    const s3AccessKeyId = process.env.S3_ACCESS_KEY_ID;
+    const s3SecretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
 
-    if (s3Endpoint && !s3BucketName) {
-      throw new Error('S3_BUCKET_NAME must be configured when S3_ENDPOINT is set.');
+    const isS3Configured = !!(s3Endpoint && s3BucketName && s3AccessKeyId && s3SecretAccessKey);
+
+    if (isS3Configured) {
+      this.logger.log('✅ S3 storage is configured');
+      this.s3 = new S3Client({
+        credentials: {
+          accessKeyId: s3AccessKeyId,
+          secretAccessKey: s3SecretAccessKey,
+        },
+        endpoint: s3Endpoint,
+        region: process.env.S3_REGION || "ru-msk",
+      });
+      this.s3Bucket = s3BucketName;
+    } else {
+      this.logger.warn('⚠️  S3 storage is not configured - file upload features will be disabled');
+      this.s3 = null;
+      this.s3Bucket = undefined;
     }
 
-    this.s3 = new S3Client({
-      credentials: {
-        accessKeyId: process.env.S3_ACCESS_KEY_ID || "",
-        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || "",
-      },
-      endpoint: process.env.S3_ENDPOINT || "https://hb.bizmrg.com",
-      region: process.env.S3_REGION || "ru-msk",
-    });
-    this.s3Bucket = s3BucketName;
     this.telegramApiUrl = process.env.TELEGRAM_API_URL || "https://api.telegram.org";
   }
 

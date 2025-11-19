@@ -2,7 +2,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApiV1 } from '@/lib/api/v1';
 import { queryKeys } from '@/lib/constants/queryKeys';
-import type { TelegramUser } from '@/types/telegram';
 import type { User } from '@/types/api-v1';
 
 export const useMe = () => {
@@ -16,34 +15,6 @@ export const useMe = () => {
         return false;
       }
       return true;
-    },
-  });
-};
-
-export const useTelegramAuth = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (telegramUser: TelegramUser) => authApiV1.authenticateWithTelegramWidget(telegramUser),
-    onSuccess: () => {
-      // Invalidate queries but don't refetch immediately
-      // Let the redirect and page reload handle the refetch
-      // This ensures cookies are properly set before refetching
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all, refetchType: 'none' });
-    },
-  });
-};
-
-export const useTelegramWebAppAuth = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (initData: string) => authApiV1.authenticateWithTelegramWebApp(initData),
-    onSuccess: () => {
-      // Invalidate queries but don't refetch immediately
-      // Let the redirect and page reload handle the refetch
-      // This ensures cookies are properly set before refetching
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all, refetchType: 'none' });
     },
   });
 };

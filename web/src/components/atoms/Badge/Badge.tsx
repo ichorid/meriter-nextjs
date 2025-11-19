@@ -1,18 +1,22 @@
-// Atomic Badge component
+// Atomic Badge component - теперь использует Gluestack UI
 'use client';
 
 import React from 'react';
+import { Badge as GluestackBadge, BadgeText } from '@/components/ui/badge';
 
 export type BadgeVariant = 'primary' | 'secondary' | 'accent' | 'info' | 'success' | 'warning' | 'error';
 export type BadgeSize = 'xs' | 'sm' | 'md' | 'lg';
 
-export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface BadgeProps {
   variant?: BadgeVariant;
   size?: BadgeSize;
   outline?: boolean;
+  children?: React.ReactNode;
+  className?: string;
+  [key: string]: any;
 }
 
-export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
+export const Badge = React.forwardRef<any, BadgeProps>(
   (
     {
       variant = 'primary',
@@ -24,37 +28,21 @@ export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
     },
     ref
   ) => {
-    const variantClasses = {
-      primary: 'badge-primary',
-      secondary: 'badge-secondary',
-      accent: 'badge-accent',
-      info: 'badge-info',
-      success: 'badge-success',
-      warning: 'badge-warning',
-      error: 'badge-error',
-    };
-
-    const sizeClasses = {
-      xs: 'badge-xs',
-      sm: 'badge-sm',
-      md: 'badge-md',
-      lg: 'badge-lg',
-    };
-
-    const classes = [
-      'badge',
-      variantClasses[variant],
-      sizeClasses[size],
-      outline && 'badge-outline',
-      className,
-    ]
-      .filter(Boolean)
-      .join(' ');
-
+    // Map variant to Gluestack UI variant
+    const gluestackVariant = outline ? 'outline' : 'solid';
+    
+    // Map size
+    const gluestackSize = size === 'xs' ? 'sm' : size === 'lg' ? 'lg' : 'md';
+    
     return (
-      <div ref={ref} className={classes} {...props}>
-        {children}
-      </div>
+      <GluestackBadge
+        ref={ref}
+        variant={gluestackVariant}
+        size={gluestackSize}
+        {...props}
+      >
+        <BadgeText>{children}</BadgeText>
+      </GluestackBadge>
     );
   }
 );

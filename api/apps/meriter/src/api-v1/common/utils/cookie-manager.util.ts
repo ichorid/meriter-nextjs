@@ -128,16 +128,30 @@ export class CookieManager {
     isProduction?: boolean
   ): void {
     const production = isProduction ?? process.env.NODE_ENV === 'production';
-    const domain = cookieDomain ?? this.getCookieDomain();
+    let domain = cookieDomain ?? this.getCookieDomain();
     
-    response.cookie('jwt', jwtToken, {
+    // For localhost, don't set domain to allow cookie sharing across ports
+    // localhost:8002 and localhost:8001 should share cookies
+    if (domain === 'localhost' || domain === undefined) {
+      domain = undefined; // No domain restriction for localhost
+    }
+    
+    const cookieOptions: any = {
       httpOnly: true,
       secure: production,
-      sameSite: production ? 'none' : 'lax',
+      // For localhost in dev, use 'none' to allow cross-port cookie sharing (8002 -> 8001)
+      // Browsers allow sameSite='none' with secure=false for localhost
+      sameSite: production ? 'none' : (domain === undefined || domain === 'localhost' ? 'none' : 'lax'),
       maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
       path: '/',
-      domain,
-    });
+    };
+    
+    // Only set domain if it's not localhost/undefined
+    if (domain) {
+      cookieOptions.domain = domain;
+    }
+    
+    response.cookie('jwt', jwtToken, cookieOptions);
   }
 }
 

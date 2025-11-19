@@ -3,6 +3,10 @@ import { PublicationCardComponent as PublicationCard } from '@/components/organi
 import { EmptyState } from '@/components/organisms/EmptyState/EmptyState';
 import { sortItems, generateKey } from '../utils';
 import type { SortOrder } from '../types';
+// Gluestack UI components
+import { Box } from '@/components/ui/box';
+import { VStack } from '@/components/ui/vstack';
+import { Spinner } from '@/components/ui/spinner';
 
 interface PollsTabProps {
   polls: any[];
@@ -21,9 +25,9 @@ export function PollsTab({
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-32">
-        <span className="loading loading-spinner loading-lg"></span>
-      </div>
+      <Box flex={1} alignItems="center" justifyContent="center" height={128}>
+        <Spinner size="large" />
+      </Box>
     );
   }
 
@@ -34,13 +38,12 @@ export function PollsTab({
         message={
           t('empty.polls.message') || "You haven't created any polls yet."
         }
-        icon="📊"
       />
     );
   }
 
   return (
-    <div className="space-y-4">
+    <VStack space="md">
       {sortItems(polls, sortOrder).map((poll: any, index: number) => {
         const key = generateKey(poll?.id, index, 'poll');
         return (
@@ -49,11 +52,10 @@ export function PollsTab({
             publication={poll}
             wallets={wallets}
             showCommunityAvatar={true}
-            className="w-full"
           />
         );
       })}
-    </div>
+    </VStack>
   );
 }
 

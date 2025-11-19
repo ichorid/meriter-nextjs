@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { EmptyCommunitiesBanner } from '@/components/organisms';
 import { useHomeTabState, useHomeData, useHomeAuth } from './hooks';
 import {
   PublicationsTab,
@@ -12,10 +11,14 @@ import {
   PollCreateModal,
 } from './components';
 import type { HomeTab } from './types';
+// Gluestack UI components
+import { Box } from '@/components/ui/box';
+import { VStack } from '@/components/ui/vstack';
+import { Spinner } from '@/components/ui/spinner';
 
 export default function PageHome() {
   const { user, userLoading, isAuthenticated } = useHomeAuth();
-  const { currentTab, sortByTab } = useHomeTabState();
+  const { currentTab, setCurrentTab, sortByTab, setSortByTab } = useHomeTabState();
   const {
     myPublications,
     publicationsLoading,
@@ -52,9 +55,9 @@ export default function PageHome() {
   if (userLoading || !isAuthenticated) {
     return (
       <AdaptiveLayout className="feed">
-        <div className="flex justify-center items-center h-64">
-          <span className="loading loading-spinner loading-lg"></span>
-        </div>
+        <Box flex={1} alignItems="center" justifyContent="center" height={256}>
+          <Spinner size="large" />
+        </Box>
       </AdaptiveLayout>
     );
   }
@@ -110,7 +113,6 @@ export default function PageHome() {
 
   return (
     <AdaptiveLayout
-      className="feed"
       activeCommentHook={activeCommentHook}
       activeSlider={activeSlider}
       setActiveSlider={setActiveSlider}
@@ -118,9 +120,10 @@ export default function PageHome() {
       setActiveWithdrawPost={setActiveWithdrawPost}
       wallets={wallets}
       myId={user?.id}
-    >
-      <EmptyCommunitiesBanner />
-      <div className="space-y-4">{renderTabContent()}</div>
+          >
+            <VStack space="md" flex={1}>
+        {renderTabContent()}
+      </VStack>
 
       {showPollCreate && (
         <PollCreateModal

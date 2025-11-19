@@ -3,6 +3,10 @@ import { PublicationCardComponent as PublicationCard } from '@/components/organi
 import { EmptyState } from '@/components/organisms/EmptyState/EmptyState';
 import { sortItems, generateKey } from '../utils';
 import type { SortOrder } from '../types';
+// Gluestack UI components
+import { Box } from '@/components/ui/box';
+import { VStack } from '@/components/ui/vstack';
+import { Spinner } from '@/components/ui/spinner';
 
 interface PublicationsTabProps {
   publications: any[];
@@ -21,9 +25,9 @@ export function PublicationsTab({
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-32">
-        <span className="loading loading-spinner loading-lg"></span>
-      </div>
+      <Box flex={1} alignItems="center" justifyContent="center" height={128}>
+        <Spinner size="large" />
+      </Box>
     );
   }
 
@@ -35,7 +39,6 @@ export function PublicationsTab({
           t('empty.publications.message') ||
           "You haven't created any publications yet."
         }
-        icon="📝"
       />
     );
   }
@@ -45,7 +48,7 @@ export function PublicationsTab({
   );
 
   return (
-    <div className="space-y-4">
+    <VStack space="md">
       {sortItems(filteredPublications, sortOrder).map((p, index) => {
         const key = generateKey(p?.id, index, 'pub');
         return (
@@ -54,11 +57,10 @@ export function PublicationsTab({
             publication={p}
             wallets={wallets}
             showCommunityAvatar={true}
-            className="w-full"
           />
         );
       })}
-    </div>
+    </VStack>
   );
 }
 

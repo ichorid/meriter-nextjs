@@ -1,8 +1,14 @@
 'use client';
 
-import { ChangeEvent, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from 'next-intl';
 import { useUpdatesFrequency, useSetUpdatesFrequency } from '@/hooks/api/useUsers';
+// Gluestack UI components
+import { Box } from '@/components/ui/box';
+import { Select, SelectTrigger, SelectInput, SelectIcon, SelectPortal, SelectBackdrop, SelectContent, SelectDragIndicatorWrapper, SelectDragIndicator, SelectItem } from '@/components/ui/select';
+import { ChevronDownIcon } from '@gluestack-ui/themed';
+import { FormControl, FormControlLabel, FormControlLabelText } from '@/components/ui/form-control';
+import { Spinner } from '@/components/ui/spinner';
 
 export const UpdatesFrequency = () => {
     const t = useTranslations('pages');
@@ -42,33 +48,42 @@ export const UpdatesFrequency = () => {
         },
     ];
 
+    const currentFrequency = frequency || options.find((o) => o.default)?.frequency || 'daily';
+
     return (
-        <div id={"updates-frequency"} className="form-control w-full">
-            <label className="label">
-                <span className="label-text">{t('updateFrequency.telegramBotFrequency')}</span>
-            </label>
-            <select
-                className="select select-bordered w-full max-w-xs"
-                value={frequency || options.find((o) => o.default)?.frequency}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-                    setFrequency(e.target.value);
-                }}
-                disabled={isUpdating}
-            >
-                {options.map((o, i) => (
-                    <option
-                        key={i}
-                        value={o.frequency}
-                    >
-                        {o.label}
-                    </option>
-                ))}
-            </select>
-            {isUpdating && (
-                <label className="label">
-                    <span className="label-text-alt text-base-content/70">Updating...</span>
-                </label>
-            )}
-        </div>
+        <Box id="updates-frequency">
+            <FormControl>
+                <FormControlLabel>
+                    <FormControlLabelText>{t('updateFrequency.telegramBotFrequency')}</FormControlLabelText>
+                </FormControlLabel>
+                <Select
+                    selectedValue={currentFrequency}
+                    onValueChange={setFrequency}
+                    isDisabled={isUpdating}
+                >
+                    <SelectTrigger variant="outline" width="100%" maxWidth={320}>
+                        <SelectInput placeholder={options.find(o => o.frequency === currentFrequency)?.label} />
+                        <SelectIcon mr="$3">
+                            {isUpdating ? <Spinner size="small" /> : <ChevronDownIcon />}
+                        </SelectIcon>
+                    </SelectTrigger>
+                    <SelectPortal>
+                        <SelectBackdrop />
+                        <SelectContent>
+                            <SelectDragIndicatorWrapper>
+                                <SelectDragIndicator />
+                            </SelectDragIndicatorWrapper>
+                            {options.map((o) => (
+                                <SelectItem 
+                                    key={o.frequency}
+                                    label={o.label} 
+                                    value={o.frequency} 
+                                />
+                            ))}
+                        </SelectContent>
+                    </SelectPortal>
+                </Select>
+            </FormControl>
+        </Box>
     );
 };

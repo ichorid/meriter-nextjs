@@ -3,7 +3,7 @@
  * 
  * Provides a centralized authentication system with:
  * - User state management
- * - Authentication methods (Telegram widget, Web App)
+ * - Authentication methods (Google OAuth, Fake auth for development)
  * - Token management
  * - Logout functionality
  * - Deep link handling
@@ -14,10 +14,9 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMe, useTelegramAuth, useTelegramWebAppAuth, useFakeAuth, useLogout } from '@/hooks/api/useAuth';
+import { useMe, useFakeAuth, useLogout } from '@/hooks/api/useAuth';
 import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
 import { clearAuthStorage, redirectToLogin, clearJwtCookie } from '@/lib/utils/auth';
-import type { TelegramUser } from '@/types/telegram';
 import type { User } from '@/types/api-v1';
 import type { Router } from 'next/router';
 import type { ParsedUrlQuery } from 'querystring';
@@ -26,8 +25,6 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  authenticateWithTelegram: (user: TelegramUser) => Promise<void>;
-  authenticateWithTelegramWebApp: (initData: string) => Promise<void>;
   authenticateFakeUser: () => Promise<void>;
   logout: () => Promise<void>;
   handleDeepLink: (router: Router, searchParams: ParsedUrlQuery, startParam?: string) => void;
@@ -53,8 +50,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [sessionExpired, setSessionExpired] = useState(false);
   
   const { data: user, isLoading: userLoading, error: userError } = useMe();
-  const telegramAuthMutation = useTelegramAuth();
-  const telegramWebAppAuthMutation = useTelegramWebAppAuth();
   const fakeAuthMutation = useFakeAuth();
   const logoutMutation = useLogout();
   
@@ -65,38 +60,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const isAuthError = userError && 
     !((userError as any)?.details?.status === 401 || (userError as any)?.code === 'HTTP_401');
   const isAuthenticated = !!user && !isAuthError;
-  
-  const authenticateWithTelegram = async (telegramUser: TelegramUser) => {
-    try {
-      setIsAuthenticating(true);
-      setAuthError(null);
-      // Clear any existing JWT cookies before authentication to ensure clean state
-      clearJwtCookie();
-      await telegramAuthMutation.mutateAsync(telegramUser);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Authentication failed';
-      setAuthError(message);
-      throw error;
-    } finally {
-      setIsAuthenticating(false);
-    }
-  };
-  
-  const authenticateWithTelegramWebApp = async (initData: string) => {
-    try {
-      setIsAuthenticating(true);
-      setAuthError(null);
-      // Clear any existing JWT cookies before authentication to ensure clean state
-      clearJwtCookie();
-      await telegramWebAppAuthMutation.mutateAsync(initData);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Authentication failed';
-      setAuthError(message);
-      throw error;
-    } finally {
-      setIsAuthenticating(false);
-    }
-  };
 
   const authenticateFakeUser = async () => {
     try {
@@ -135,7 +98,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
   
   useEffect(() => {
-    let timer: NodeJS.Timeout | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     
     if (userError) {
       // Check if it's a 401 error - invalid/expired JWT
@@ -169,8 +132,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     user: user || null,
     isLoading,
     isAuthenticated,
-    authenticateWithTelegram,
-    authenticateWithTelegramWebApp,
     authenticateFakeUser,
     logout,
     handleDeepLink,

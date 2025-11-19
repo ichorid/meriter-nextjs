@@ -16,7 +16,6 @@ import { Connection } from 'mongoose';
 import { VoteService } from '../../domain/services/vote.service';
 import { UserSettingsService } from '../../domain/services/user-settings.service';
 import { UserUpdatesService } from '../../domain/services/user-updates.service';
-import { TgBotsService } from '../../tg-bots/tg-bots.service';
 import { PublicationService } from '../../domain/services/publication.service';
 import { UserService } from '../../domain/services/user.service';
 import { WalletService } from '../../domain/services/wallet.service';
@@ -41,7 +40,6 @@ export class VotesController {
     private readonly communityService: CommunityService,
     private readonly userSettingsService: UserSettingsService,
     private readonly userUpdatesService: UserUpdatesService,
-    private readonly tgBotsService: TgBotsService,
     @InjectConnection() private readonly connection: Connection,
   ) {}
 
@@ -299,24 +297,8 @@ export class VotesController {
         if (beneficiaryId) {
           const settings = await this.userSettingsService.getOrCreate(beneficiaryId);
           if (settings.updatesFrequency === 'immediate') {
-            this.logger.log(`Immediate updates enabled; sending Telegram notification to beneficiary=${beneficiaryId} for publication=${id}`);
-            const voterDisplayName = req.user.displayName || `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'Unknown';
-            await this.tgBotsService.sendImmediateVoteNotification(
-              beneficiaryId,
-              {
-                actorId: req.user.id,
-                actorName: voterDisplayName,
-                actorUsername: req.user.username,
-                targetType: 'publication',
-                targetId: id,
-                publicationId: id,
-                communityId: communityId,
-                amount: absoluteAmount,
-                direction: direction,
-                createdAt: new Date(),
-              },
-              'en'
-            );
+            // Telegram notifications are disabled in this project; skip sending.
+            this.logger.log(`Immediate updates enabled; Telegram notifications are disabled, skipping notification for beneficiary=${beneficiaryId} publication=${id}`);
           }
         }
       } catch {}
