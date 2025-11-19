@@ -129,7 +129,7 @@ describe('PollsController - Notification Language', () => {
     tgBotsService = module.get(TgBotsService) as jest.Mocked<TgBotsService>;
   });
 
-  it('should send poll notification in Russian when community language is set to "ru"', async () => {
+  it('should create poll without sending Telegram notification (notifications disabled)', async () => {
     const communityId = uid();
     const telegramChatId = '-1001234567890';
     const userId = uid();
@@ -197,32 +197,21 @@ describe('PollsController - Notification Language', () => {
     // Setup mocks
     pollService.createPoll.mockResolvedValue(mockPoll);
     communityService.getCommunity.mockResolvedValue(mockCommunity as any);
-    tgBotsService.getCommunityLanguageByChatId.mockResolvedValue('ru');
 
     // Call createPoll
     const req = { user: { id: userId } } as any;
-    await controller.createPoll(createPollDto, req);
+    const result = await controller.createPoll(createPollDto, req);
 
-    // Verify getCommunityLanguageByChatId was called with the correct chat ID
-    expect(tgBotsService.getCommunityLanguageByChatId).toHaveBeenCalledWith(telegramChatId);
+    // Verify poll was created successfully
+    expect(result.success).toBe(true);
+    expect(result.data.id).toBe(pollId);
     
-    // Verify tgBotsService.tgSend was called
-    expect(tgBotsService.tgSend).toHaveBeenCalledTimes(1);
-
-    // Get the call arguments
-    const tgSendCall = tgBotsService.tgSend.mock.calls[0];
-    const [sendArgs] = tgSendCall;
-    
-    expect(sendArgs.tgChatId).toBe(telegramChatId);
-    
-    // Verify the message contains Russian text
-    // The Russian translation for 'poll.created' should contain 'Новый опрос'
-    const messageText = sendArgs.text;
-    expect(messageText).toContain('Новый опрос'); // Russian for "New poll"
-    expect(messageText).toContain(createPollDto.question);
+    // Verify Telegram notification methods were NOT called (notifications are disabled)
+    expect(tgBotsService.getCommunityLanguageByChatId).not.toHaveBeenCalled();
+    expect(tgBotsService.tgSend).not.toHaveBeenCalled();
   });
 
-  it('should send poll notification in English when community language is set to "en"', async () => {
+  it('should create poll without sending Telegram notification for English community (notifications disabled)', async () => {
     const communityId = uid();
     const telegramChatId = '-1001234567890';
     const userId = uid();
@@ -290,29 +279,18 @@ describe('PollsController - Notification Language', () => {
     // Setup mocks
     pollService.createPoll.mockResolvedValue(mockPoll);
     communityService.getCommunity.mockResolvedValue(mockCommunity as any);
-    tgBotsService.getCommunityLanguageByChatId.mockResolvedValue('en');
 
     // Call createPoll
     const req = { user: { id: userId } } as any;
-    await controller.createPoll(createPollDto, req);
+    const result = await controller.createPoll(createPollDto, req);
 
-    // Verify getCommunityLanguageByChatId was called with the correct chat ID
-    expect(tgBotsService.getCommunityLanguageByChatId).toHaveBeenCalledWith(telegramChatId);
+    // Verify poll was created successfully
+    expect(result.success).toBe(true);
+    expect(result.data.id).toBe(pollId);
     
-    // Verify tgBotsService.tgSend was called
-    expect(tgBotsService.tgSend).toHaveBeenCalledTimes(1);
-
-    // Get the call arguments
-    const tgSendCall = tgBotsService.tgSend.mock.calls[0];
-    const [sendArgs] = tgSendCall;
-    
-    expect(sendArgs.tgChatId).toBe(telegramChatId);
-    
-    // Verify the message contains English text
-    // The English translation for 'poll.created' should contain 'New poll'
-    const messageText = sendArgs.text;
-    expect(messageText).toContain('New poll'); // English text
-    expect(messageText).toContain(createPollDto.question);
+    // Verify Telegram notification methods were NOT called (notifications are disabled)
+    expect(tgBotsService.getCommunityLanguageByChatId).not.toHaveBeenCalled();
+    expect(tgBotsService.tgSend).not.toHaveBeenCalled();
   });
 });
 

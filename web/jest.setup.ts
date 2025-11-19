@@ -241,6 +241,23 @@ if (process.env.NODE_ENV === 'test') {
   console.log = jest.fn();
 }
 
+// Mock @gluestack-ui/themed to avoid ES module issues
+jest.mock('@gluestack-ui/themed', () => ({
+  Button: 'Button',
+  ButtonText: 'ButtonText',
+  Spinner: 'Spinner',
+  Card: 'Card',
+  CardHeader: 'CardHeader',
+  CardBody: 'CardBody',
+  CardFooter: 'CardFooter',
+  VStack: 'VStack',
+  HStack: 'HStack',
+  Heading: 'Heading',
+  Text: 'Text',
+  Box: 'Box',
+  Center: 'Center',
+}));
+
 // Increase default test timeout for async-heavy flows
 jest.setTimeout(30000);
 
