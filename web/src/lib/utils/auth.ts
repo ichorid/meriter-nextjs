@@ -48,40 +48,81 @@ export function clearJwtCookie(): void {
   const isProduction = process.env.NODE_ENV === 'production';
   const expiry = 'Thu, 01 Jan 1970 00:00:00 GMT';
   
-  // Clear JWT cookie with same attributes used when setting it
-  const clearCookie = (domain?: string) => {
-    let cookieStr = `jwt=;expires=${expiry};path=/`;
-    if (domain) {
-      cookieStr += `;domain=${domain}`;
-    }
-    if (isProduction) {
-      cookieStr += `;secure;sameSite=none`;
-    } else {
-      cookieStr += `;sameSite=lax`;
-    }
-    document.cookie = cookieStr;
-  };
+  // Clear JWT cookie with same attributes used when setting it (matching backend CookieManager)
+  // Backend uses: httpOnly (not clearable from JS), secure, sameSite, path='/'
+  // Note: httpOnly cookies cannot be cleared from JavaScript, but we can try all domain/path/attribute combinations
   
-  // Try clearing with different domain combinations
-  clearCookie(); // No domain
-  clearCookie(window.location.hostname); // Current domain
+  // Build all domain variants to try (matching backend CookieManager.clearAllJwtCookieVariants)
+  const domainsToTry: (string | undefined)[] = [undefined]; // Always try no domain
   
-  if (cookieDomain && cookieDomain !== window.location.hostname) {
-    clearCookie(cookieDomain); // Cookie domain if set
+  // Add current hostname
+  domainsToTry.push(window.location.hostname);
+  
+  if (cookieDomain && cookieDomain !== 'localhost') {
+    domainsToTry.push(cookieDomain);
     
-    // Try variants with/without leading dot
+    // Try variants with/without leading dot (matching backend logic)
     if (!cookieDomain.startsWith('.')) {
-      clearCookie(`.${cookieDomain}`);
+      domainsToTry.push(`.${cookieDomain}`);
     }
     if (cookieDomain.startsWith('.')) {
-      clearCookie(cookieDomain.substring(1));
+      domainsToTry.push(cookieDomain.substring(1));
     }
   }
   
   // Try parent domain for subdomains
   if (window.location.hostname.includes('.')) {
     const parentDomain = '.' + window.location.hostname.split('.').slice(-2).join('.');
-    clearCookie(parentDomain);
+    if (!domainsToTry.includes(parentDomain)) {
+      domainsToTry.push(parentDomain);
+    }
+  }
+  
+  // Remove duplicates
+  const uniqueDomains = Array.from(new Set(domainsToTry.map(d => d ?? 'undefined')))
+    .map(d => d === 'undefined' ? undefined : d);
+  
+  // Clear cookie with all attribute combinations matching backend
+  // Backend tries both: httpOnly + attributes, and non-httpOnly + attributes
+  // Since httpOnly cookies can't be cleared from JS, we focus on matching secure/sameSite/path/domain
+  
+  // Production: secure=true, sameSite=none
+  // Development: secure=false, sameSite=lax or none (depending on domain)
+  const sameSite = isProduction ? 'none' : (cookieDomain === undefined || cookieDomain === 'localhost' ? 'none' : 'lax');
+  
+  // Try clearing with each domain variant and all attribute combinations
+  for (const domain of uniqueDomains) {
+    // Combination 1: With secure flag (for HTTPS/production)
+    if (isProduction || window.location.protocol === 'https:') {
+      let cookieStr = `jwt=;expires=${expiry};path=/;secure;sameSite=${sameSite}`;
+      if (domain) {
+        cookieStr += `;domain=${domain}`;
+      }
+      document.cookie = cookieStr;
+    }
+    
+    // Combination 2: Without secure flag (for HTTP/development)
+    let cookieStr = `jwt=;expires=${expiry};path=/;sameSite=${sameSite}`;
+    if (domain) {
+      cookieStr += `;domain=${domain}`;
+    }
+    document.cookie = cookieStr;
+    
+    // Combination 3: With lax sameSite (for development)
+    if (!isProduction && sameSite === 'none') {
+      cookieStr = `jwt=;expires=${expiry};path=/;sameSite=lax`;
+      if (domain) {
+        cookieStr += `;domain=${domain}`;
+      }
+      document.cookie = cookieStr;
+    }
+    
+    // Combination 4: Minimal attributes (path only)
+    cookieStr = `jwt=;expires=${expiry};path=/`;
+    if (domain) {
+      cookieStr += `;domain=${domain}`;
+    }
+    document.cookie = cookieStr;
   }
 }
 
