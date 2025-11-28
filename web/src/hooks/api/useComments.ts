@@ -12,7 +12,7 @@ import {
     useValidatedQuery,
     useValidatedMutation,
 } from "@/lib/api/validated-query";
-import { CommentSchema, CreateCommentDtoSchema } from "@/types/api-v1";
+import { CommentSchema, CreateCommentDtoSchema } from "@/types/api-v1/schemas";
 import type {
     Comment,
     CreateCommentDto,

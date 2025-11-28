@@ -1,8 +1,7 @@
 // Frontend API types - Re-exported from shared-types (Zod schemas as single source of truth)
 // All domain types come from @meriter/shared-types
-// NOTE: Due to TypeScript module resolution issues with symlinked packages,
-// we're using a workaround that re-exports types via wildcard import
-export * from "@meriter/shared-types";
+// NOTE: Using explicit type-only re-exports instead of wildcard export to avoid
+// TypeScript memory issues when resolving all Zod schema inferences at once
 
 // Import types for use in interface definitions
 // Using type-only import to avoid runtime issues
@@ -15,11 +14,94 @@ import type {
     Community,
     Vote,
     Wallet,
+    Transaction,
+    Team,
+    Invite,
+    UserCommunityRole,
     CreatePublicationDto,
     CreateCommentDto,
+    UpdateCommentDto,
     CreatePollDto,
+    UpdatePollDto,
     CreatePollCastDto,
+    TransferDto,
+    WithdrawDto,
+    UpdateCommunityDto,
+    CreateCommunityDto,
+    UpdatePublicationDto,
+    VoteDirectionDto,
+    TelegramAuthData,
+    TelegramWebAppData,
+    UpdatesFrequency,
+    WithdrawAmountDto,
+    VoteWithCommentDto,
+    CreateTargetlessVoteDto,
+    PostingRules,
+    VotingRules,
+    VisibilityRules,
+    MeritRules,
+    MeritConversion,
+    ApiResponse,
+    ApiErrorResponse,
+    PaginationParams,
+    SortParams,
+    FilterParams,
+    ListQueryParams,
+    FeedItem,
+    PublicationFeedItem,
+    PollFeedItem,
 } from "@meriter/shared-types";
+
+// Re-export types explicitly (type-only to avoid pulling in all Zod schemas)
+export type {
+    User,
+    Poll,
+    PollCast,
+    Publication,
+    Comment,
+    Community,
+    Vote,
+    Wallet,
+    Transaction,
+    Team,
+    Invite,
+    UserCommunityRole,
+    CreatePublicationDto,
+    CreateCommentDto,
+    UpdateCommentDto,
+    CreatePollDto,
+    UpdatePollDto,
+    CreatePollCastDto,
+    TransferDto,
+    WithdrawDto,
+    UpdateCommunityDto,
+    CreateCommunityDto,
+    UpdatePublicationDto,
+    VoteDirectionDto,
+    TelegramAuthData,
+    TelegramWebAppData,
+    UpdatesFrequency,
+    WithdrawAmountDto,
+    VoteWithCommentDto,
+    CreateTargetlessVoteDto,
+    PostingRules,
+    VotingRules,
+    VisibilityRules,
+    MeritRules,
+    MeritConversion,
+    ApiResponse,
+    ApiErrorResponse,
+    PaginationParams,
+    SortParams,
+    FilterParams,
+    ListQueryParams,
+    FeedItem,
+    PublicationFeedItem,
+    PollFeedItem,
+};
+
+// Schemas are exported from a separate file to avoid pulling them into type-only resolution
+// Import from './schemas' when you need Zod schemas at runtime
 
 // Re-export PollOption type (inferred from PollOptionSchema)
 export type PollOption = NonNullable<Poll["options"]>[number];

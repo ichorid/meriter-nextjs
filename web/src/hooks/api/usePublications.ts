@@ -11,7 +11,7 @@ import {
     useValidatedQuery,
     useValidatedMutation,
 } from "@/lib/api/validated-query";
-import { PublicationSchema, CreatePublicationDtoSchema } from "@/types/api-v1";
+import { PublicationSchema, CreatePublicationDtoSchema } from "@/types/api-v1/schemas";
 import type {
     Publication,
     PaginatedResponse,

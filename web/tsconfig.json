@@ -8,6 +8,7 @@
     ],
     "allowJs": true,
     "skipLibCheck": true,
+    "maxNodeModuleJsDepth": 1,
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,

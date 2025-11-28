@@ -19,7 +19,7 @@ import {
     CreatePollDtoSchema,
     CreatePollCastDtoSchema,
     UpdateCommunityDtoSchema,
-} from "@/types/api-v1";
+} from "@/types/api-v1/schemas";
 import type {
     User,
     Community,
