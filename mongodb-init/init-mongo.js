@@ -2,19 +2,14 @@
 // This script creates an application user for MongoDB
 // Admin user is created automatically by MongoDB using MONGO_INITDB_ROOT_USERNAME and MONGO_INITDB_ROOT_PASSWORD
 
-// Read application user password from file (set via MONGO_APP_PASSWORD_FILE)
-// Fallback to environment variable or default
-const fs = require('fs');
+// Read application user password from environment variable
+// Set via MONGO_APP_PASSWORD in docker-compose.yml (from .env file)
 let appPassword = 'CHANGE_ME_APP_PASSWORD';
 
-if (process.env.MONGO_APP_PASSWORD_FILE) {
-  try {
-    appPassword = fs.readFileSync(process.env.MONGO_APP_PASSWORD_FILE, 'utf8').trim();
-  } catch (e) {
-    print('Warning: Could not read MONGO_APP_PASSWORD_FILE, using default');
-  }
-} else if (process.env.MONGO_APP_PASSWORD) {
+if (process.env.MONGO_APP_PASSWORD) {
   appPassword = process.env.MONGO_APP_PASSWORD;
+} else {
+  print('Warning: MONGO_APP_PASSWORD not set, using default password. This should be changed!');
 }
 
 // Switch to application database

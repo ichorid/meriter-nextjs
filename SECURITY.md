@@ -57,18 +57,21 @@ MongoDB is configured with:
 
 ### Setup
 
-1. Create password files in `secrets/`:
+1. Generate strong passwords:
    ```bash
-   echo "your-strong-admin-password" > secrets/mongo_admin_password.txt
-   echo "your-strong-app-password" > secrets/mongo_app_password.txt
-   chmod 600 secrets/mongo_admin_password.txt secrets/mongo_app_password.txt
+   # Generate passwords
+   openssl rand -base64 32  # Use this for MONGO_ADMIN_PASSWORD
+   openssl rand -base64 32  # Use this for MONGO_APP_PASSWORD
    ```
 
-2. Update `.env` with MongoDB connection string:
-   ```
-   MONGO_URL=mongodb://meriter_user:your-strong-app-password@mongodb:27017/meriter?authSource=meriter
+2. Update `.env` with MongoDB passwords and connection string:
+   ```env
+   MONGO_ADMIN_PASSWORD=your-strong-admin-password
    MONGO_APP_PASSWORD=your-strong-app-password
+   MONGO_URL=mongodb://meriter_user:${MONGO_APP_PASSWORD}@mongodb:27017/meriter?authSource=meriter
    ```
+
+**Note:** These passwords are only used during first initialization. After that, MongoDB uses the already-created users.
 
 ## Docker Compose Security
 
@@ -101,7 +104,8 @@ The following environment variables are sensitive and should never be committed:
 
 - `JWT_SECRET` - JWT token signing secret
 - `BOT_TOKEN` - Telegram bot token
-- `MONGO_APP_PASSWORD` - MongoDB application user password
+- `MONGO_ADMIN_PASSWORD` - MongoDB admin user password (used only during initialization)
+- `MONGO_APP_PASSWORD` - MongoDB application user password (used during initialization and for connections)
 - `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` - S3 credentials
 - OAuth client secrets (Google, Instagram, Apple, etc.)
 

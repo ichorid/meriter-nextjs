@@ -7,18 +7,17 @@ services:
     # Access only through Docker network
     # ports:
     #   - "27017:27017"
+    env_file:
+      - .env
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongo_admin_password
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ADMIN_PASSWORD}
       - MONGO_INITDB_DATABASE=meriter
-      # App password will be read from secret file in init script
-      - MONGO_APP_PASSWORD_FILE=/run/secrets/mongo_app_password
+      # App password for init script (creates meriter_user)
+      - MONGO_APP_PASSWORD=${MONGO_APP_PASSWORD}
     volumes:
       - mongodb_data:/data/db
       - ./mongodb-init:/docker-entrypoint-initdb.d:ro
-    secrets:
-      - mongo_admin_password
-      - mongo_app_password
     networks:
       - meriter-database-network
     healthcheck:
@@ -216,9 +215,3 @@ volumes:
     driver: local
   caddy_config:
     driver: local
-
-secrets:
-  mongo_admin_password:
-    file: ./secrets/mongo_admin_password.txt
-  mongo_app_password:
-    file: ./secrets/mongo_app_password.txt
