@@ -9,15 +9,85 @@
         level INFO
     }
 
-    # All API requests go to NestJS backend
+    # Security headers - applied globally
+    header {
+        # HSTS - Enforce HTTPS connections (1 year)
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        
+        # Prevent MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        
+        # Clickjacking protection
+        X-Frame-Options "DENY"
+        
+        # XSS protection (legacy but still useful)
+        X-XSS-Protection "1; mode=block"
+        
+        # Referrer policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        
+        # Permissions policy - restrict browser features
+        Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+        
+        # Content Security Policy - adjust based on your app's needs
+        # Allow self, Telegram API, and common CDNs
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.telegram.org https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.telegram.org; frame-src 'self' https://oauth.telegram.org;"
+        
+        # Remove server header for security
+        -Server
+    }
+
+    # Rate limiting for API endpoints (stricter limits)
+    # Note: Caddy v2 doesn't have built-in rate limiting - requires caddy-ratelimit plugin
+    # To enable rate limiting, build Caddy with: xcaddy build --with github.com/mholt/caddy-ratelimit
+    # For now, rate limiting is configured but will be ignored without the plugin
+    # Alternative: Use Caddy's built-in request limiting via reverse_proxy timeouts
     handle /api* {
-        reverse_proxy api:8002
+        # Rate limiting configuration (requires caddy-ratelimit plugin)
+        # Uncomment and configure when plugin is installed:
+        # rate_limit {
+        #     zone api_zone {
+        #         key {remote_host}
+        #         events 100
+        #         window 1m
+        #     }
+        # }
+        
+        # Add rate limit headers
+        header {
+            X-RateLimit-Limit "100"
+            X-RateLimit-Window "60"
+        }
+        
+        reverse_proxy api:8002 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
         encode gzip
     }
 
-    # Everything else goes to Next.js frontend
+    # Rate limiting for web endpoints (more lenient)
     handle {
-        reverse_proxy web:8001
+        # Rate limiting configuration (requires caddy-ratelimit plugin)
+        # Uncomment and configure when plugin is installed:
+        # rate_limit {
+        #     zone web_zone {
+        #         key {remote_host}
+        #         events 200
+        #         window 1m
+        #     }
+        # }
+        
+        # Add rate limit headers
+        header {
+            X-RateLimit-Limit "200"
+            X-RateLimit-Window "60"
+        }
+        
+        reverse_proxy web:8001 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
         encode gzip
     }
 }

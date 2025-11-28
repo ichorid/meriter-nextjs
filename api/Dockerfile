@@ -1,5 +1,5 @@
 # --- build ---
-FROM node:22-alpine AS builder
+FROM node:22.11-alpine AS builder
 WORKDIR /repo
 RUN corepack enable && corepack prepare pnpm@10.18.2 --activate
 
@@ -31,11 +31,13 @@ RUN mkdir -p /out && \
     rm -rf api/deploy
 
 # --- run ---
-FROM node:22-alpine AS runner
+FROM node:22.11-alpine AS runner
 WORKDIR /app
 RUN addgroup -S nodejs && adduser -S -G nodejs nestjs
 ENV NODE_ENV=production
 COPY --from=builder --chown=nestjs:nodejs /out ./
 USER nestjs
 EXPOSE 8002
+# Security: Run as non-root user (nestjs)
+# Note: read_only filesystem and tmpfs should be configured in docker-compose.yml
 CMD ["node", "dist/apps/meriter/main"]

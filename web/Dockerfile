@@ -1,5 +1,5 @@
 # --- build ---
-FROM node:22-alpine AS builder
+FROM node:22.11-alpine AS builder
 WORKDIR /repo
 RUN corepack enable && corepack prepare pnpm@10.18.2 --activate
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -21,7 +21,7 @@ ENV NODE_OPTIONS="--max-old-space-size=6144"
 RUN pnpm -C web build
 
 # --- run ---
-FROM node:22-alpine AS runner
+FROM node:22.11-alpine AS runner
 WORKDIR /app
 RUN addgroup -S nodejs && adduser -S -G nodejs nextjs
 ENV NODE_ENV=production
@@ -35,4 +35,6 @@ COPY --from=builder --chown=nextjs:nodejs /repo/web/public ./web/public
 
 USER nextjs
 EXPOSE 8001
+# Security: Run as non-root user (nextjs)
+# Note: read_only filesystem and tmpfs should be configured in docker-compose.yml
 CMD ["node", "web/server.js"]
