@@ -1,7 +1,8 @@
 # --- build ---
 FROM node:22.11-alpine AS builder
 WORKDIR /repo
-RUN corepack enable && corepack prepare pnpm@10.18.2 --activate
+# Install pnpm directly via npm to avoid corepack signature verification issues
+RUN npm install -g pnpm@10.24.0
 
 # Workspace manifest + only what this package needs to resolve deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./

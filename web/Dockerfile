@@ -1,7 +1,8 @@
 # --- build ---
 FROM node:22.11-alpine AS builder
 WORKDIR /repo
-RUN corepack enable && corepack prepare pnpm@10.18.2 --activate
+# Install pnpm directly via npm to avoid corepack signature verification issues
+RUN npm install -g pnpm@10.24.0
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Accept build arguments for Next.js public environment variables
