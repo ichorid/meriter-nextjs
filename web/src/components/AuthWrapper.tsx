@@ -61,10 +61,21 @@ export function AuthWrapper({ children, enabledProviders }: AuthWrapperProps) {
     return <>{children}</>;
   }
 
+  // Helper function to check if user needs invite
+  // Superadmins never need invites - they bypass the requirement
+  const checkNeedsInvite = (user: any): boolean => {
+    // Superadmins never need invites
+    if (user?.globalRole === 'superadmin') {
+      return false;
+    }
+    // Regular users need invite if they have no invite code and no community memberships
+    return user && !user.inviteCode && (!user.communityMemberships || user.communityMemberships.length === 0);
+  };
+
   // If authenticated and on login page, redirect to home
   useEffect(() => {
     if (isAuthenticated && pathname === '/meriter/login') {
-      const needsInvite = user && !user.inviteCode && (!user.communityMemberships || user.communityMemberships.length === 0) && !user.globalRole;
+      const needsInvite = checkNeedsInvite(user);
       console.log('[AuthWrapper] Redirect check:', { isAuthenticated, pathname, needsInvite });
       if (!needsInvite) {
         console.log('[AuthWrapper] Redirecting to /meriter/home');
@@ -97,7 +108,7 @@ export function AuthWrapper({ children, enabledProviders }: AuthWrapperProps) {
   }
 
   // If authenticated, check if user needs to enter invite
-  const needsInvite = user && !user.inviteCode && (!user.communityMemberships || user.communityMemberships.length === 0) && !user.globalRole;
+  const needsInvite = checkNeedsInvite(user);
 
   if (isAuthenticated && needsInvite) {
     console.log('[AuthWrapper] Authenticated but needs invite - showing invite form');
