@@ -1,6 +1,6 @@
 {
   "name": "@meriter/api",
-  "version": "0.13.0",
+  "version": "0.11.0",
   "description": "",
   "author": "",
   "private": true,
@@ -18,7 +18,8 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./apps/meriter/test/jest-e2e.json --forceExit"
+    "test:e2e": "jest --config ./apps/meriter/test/jest-e2e.json --forceExit",
+    "migrate": "ts-node -r tsconfig-paths/register apps/meriter/src/migrations/run-all-migrations.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.920.0",

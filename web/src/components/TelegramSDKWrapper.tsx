@@ -5,9 +5,9 @@ import dynamic from 'next/dynamic';
 import { AppRoot } from '@telegram-apps/telegram-ui';
 
 import { ThemeProvider } from '@/shared/lib/theme-provider';
-import { ToastContainer } from '@/shared/components/toast-container';
 
 const NavigationBar = dynamic(() => import('./organisms/NavigationBar/NavigationBar').then(mod => ({ default: mod.NavigationBar })), { ssr: false });
+const ToastContainer = dynamic(() => import('@/shared/components/toast-container').then(mod => ({ default: mod.ToastContainer })), { ssr: false });
 
 export default function TelegramSDKWrapper({ children }: PropsWithChildren) {
   const [appearance, setAppearance] = useState<'light' | 'dark'>('light');

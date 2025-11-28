@@ -1,39 +1,40 @@
-'use client';
-
-import { useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { LoginForm } from '@/components/LoginForm';
 import { VersionDisplay } from '@/components/organisms';
-import { clearAuthStorage } from '@/lib/utils/auth';
-// Gluestack UI components
-import { Box } from '@/components/ui/box';
-import { Center } from '@/components/ui/center';
+import { getEnabledProviders } from '@/lib/utils/oauth-providers';
 
-const PageMeriterLogin = () => {
-    const searchParams = useSearchParams();
-    
-    // Clear cookies and storage when error param is present (from OAuth callback failures)
-    useEffect(() => {
-        const error = searchParams?.get('error');
-        if (error) {
-            // Clear all auth storage to ensure clean state for re-authentication
-            clearAuthStorage();
-        }
-    }, [searchParams]);
-    
+export default function PageMeriterLogin() {
+    // Get enabled providers from env (explicitly accessing process.env for Next.js)
+    const env = {
+        OAUTH_GOOGLE_ENABLED: process.env.OAUTH_GOOGLE_ENABLED,
+        OAUTH_YANDEX_ENABLED: process.env.OAUTH_YANDEX_ENABLED,
+        OAUTH_VK_ENABLED: process.env.OAUTH_VK_ENABLED,
+        OAUTH_TELEGRAM_ENABLED: process.env.OAUTH_TELEGRAM_ENABLED,
+        OAUTH_APPLE_ENABLED: process.env.OAUTH_APPLE_ENABLED,
+        OAUTH_TWITTER_ENABLED: process.env.OAUTH_TWITTER_ENABLED,
+        OAUTH_INSTAGRAM_ENABLED: process.env.OAUTH_INSTAGRAM_ENABLED,
+        OAUTH_SBER_ENABLED: process.env.OAUTH_SBER_ENABLED,
+    };
+    const enabledProviders = getEnabledProviders(env);
+
     return (
-        <Box minHeight="100vh" bg="$white" px="$4" py="$8">
-            <Center>
-                <Box width="100%" maxWidth={448}>
-                    <LoginForm />
-                    
-                    <Center mt="$8">
-                        <VersionDisplay />
-                    </Center>
-                </Box>
-            </Center>
-        </Box>
-    );
-};
+        <div className="min-h-screen bg-white px-4 py-8 flex items-center justify-center">
+            <div className="w-full max-w-md">
+                {/* DEBUG SECTION - REMOVE BEFORE PRODUCTION */}
+                <div className="mb-4 p-2 bg-red-100 rounded-md">
+                    <p><strong>Debug Info:</strong></p>
+                    <pre style={{ fontSize: '10px', overflow: 'auto' }}>
+                        Enabled: {JSON.stringify(enabledProviders, null, 2)}
+                        <br />
+                        Google Raw: {process.env.OAUTH_GOOGLE_ENABLED}
+                    </pre>
+                </div>
+                {/* END DEBUG SECTION */}
+                <LoginForm enabledProviders={enabledProviders} />
 
-export default PageMeriterLogin;
+                <div className="mt-8 flex justify-center">
+                    <VersionDisplay />
+                </div>
+            </div>
+        </div>
+    );
+}

@@ -1,18 +1,20 @@
 import { useTranslations } from 'next-intl';
 import { PublicationCardComponent as PublicationCard } from '@/components/organisms/Publication';
 import { EmptyState } from '@/components/organisms/EmptyState/EmptyState';
+import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { sortItems, generateKey } from '../utils';
 import type { SortOrder } from '../types';
-// Gluestack UI components
-import { Box } from '@/components/ui/box';
-import { VStack } from '@/components/ui/vstack';
-import { Spinner } from '@/components/ui/spinner';
+import { Loader2 } from 'lucide-react';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 interface PublicationsTabProps {
   publications: any[];
   isLoading: boolean;
   wallets: any[];
   sortOrder: SortOrder;
+  fetchNextPage?: () => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
 }
 
 export function PublicationsTab({
@@ -20,14 +22,27 @@ export function PublicationsTab({
   isLoading,
   wallets,
   sortOrder,
+  fetchNextPage,
+  hasNextPage = false,
+  isFetchingNextPage = false,
 }: PublicationsTabProps) {
   const t = useTranslations('home');
 
+  // Infinite scroll trigger
+  const observerTarget = useInfiniteScroll({
+    hasNextPage,
+    fetchNextPage: fetchNextPage || (() => {}),
+    isFetchingNextPage,
+    threshold: 200,
+  });
+
   if (isLoading) {
     return (
-      <Box flex={1} alignItems="center" justifyContent="center" height={128}>
-        <Spinner size="large" />
-      </Box>
+      <div className="space-y-4">
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
+      </div>
     );
   }
 
@@ -48,7 +63,7 @@ export function PublicationsTab({
   );
 
   return (
-    <VStack space="md">
+    <div className="space-y-4">
       {sortItems(filteredPublications, sortOrder).map((p, index) => {
         const key = generateKey(p?.id, index, 'pub');
         return (
@@ -60,7 +75,17 @@ export function PublicationsTab({
           />
         );
       })}
-    </VStack>
+      
+      {/* Infinite scroll trigger */}
+      <div ref={observerTarget} className="h-4" />
+      
+      {/* Loading indicator */}
+      {isFetchingNextPage && (
+        <div className="flex justify-center py-4">
+          <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+        </div>
+      )}
+    </div>
   );
 }
 

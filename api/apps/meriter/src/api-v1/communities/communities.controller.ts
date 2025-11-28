@@ -41,7 +41,7 @@ export class CommunitiesController {
     private readonly userService: UserService,
     private readonly communityFeedService: CommunityFeedService,
     private readonly walletService: WalletService,
-  ) {}
+  ) { }
 
   /**
    * Helper to safely convert hashtagDescriptions from MongoDB Map to plain object.
@@ -71,11 +71,11 @@ export class CommunitiesController {
     if (!community) {
       throw new NotFoundError('Community', id);
     }
-    
+
     // A community needs setup if it's missing essential configurations
     // Note: Having default currency name "merit" is NOT considered needing setup
     const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
-    
+
     this.logger.log(`Community ${id} setup check:`, {
       ...CommunitySetupHelpers.calculateSetupStatusDetails(community),
       needsSetup,
@@ -84,11 +84,11 @@ export class CommunitiesController {
       dailyEmission: community.settings?.dailyEmission,
       iconUrl: community.settings?.iconUrl
     });
-    
+
     return {
       ...community,
-      // Normalize adminsTG from legacy fields if necessary
-      adminsTG: (community as any).adminsTG || (community as any).administratorsTg || (community as any).administrators || [],
+      // Normalize adminIds from legacy fields if necessary
+      adminIds: (community as any).adminIds || [],
       // Ensure settings.language is provided to match type expectations
       settings: {
         currencyNames: community.settings?.currencyNames,
@@ -107,15 +107,39 @@ export class CommunitiesController {
   @Post()
   @ZodValidation(CreateCommunityDtoSchema)
   async createCommunity(@Body() createDto: any, @Req() req: any): Promise<Community> {
-    const community = await this.communityService.createCommunity(createDto);
-    
+    // Ensure creator is added as admin
+    const adminId = req.user.id;
+    if (!adminId) {
+      this.logger.warn(`User has no id when creating community`);
+    }
+
+    const communityDtoWithAdmin = {
+      ...createDto,
+      adminIds: [adminId].filter(Boolean),
+    };
+
+    const community = await this.communityService.createCommunity(communityDtoWithAdmin);
+
+    // Add creator as member and update memberships
+    await this.communityService.addMember(community.id, req.user.id);
+    await this.userService.addCommunityMembership(req.user.id, community.id);
+
+    // Create wallet for the creator
+    const currency = community.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+    await this.walletService.createOrGetWallet(req.user.id, community.id, currency);
+
     // A community needs setup if it's missing essential configurations
     // Note: Having default currency name "merit" is NOT considered needing setup
     const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
-    
+
     return {
       ...community,
-      adminsTG: (community as any).adminsTG || (community as any).administratorsTg || (community as any).administrators || [],
+      avatarUrl: community.avatarUrl,
+      adminIds: (community as any).adminIds || (community as any).adminAuthIds || (community as any).adminsTG || (community as any).administratorsTg || (community as any).administrators || [],
       settings: {
         currencyNames: community.settings?.currencyNames,
         dailyEmission: community.settings?.dailyEmission as number,
@@ -143,11 +167,11 @@ export class CommunitiesController {
     }
 
     const community = await this.communityService.updateCommunity(id, updateDto);
-    
+
     // A community needs setup if it's missing essential configurations
     // Note: Having default currency name "merit" is NOT considered needing setup
     const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
-    
+
     this.logger.log(`Community ${id} setup check after update:`, {
       ...CommunitySetupHelpers.calculateSetupStatusDetails(community),
       needsSetup,
@@ -156,10 +180,11 @@ export class CommunitiesController {
       dailyEmission: community.settings?.dailyEmission,
       iconUrl: community.settings?.iconUrl
     });
-    
+
     return {
       ...community,
-      adminsTG: (community as any).adminsTG || (community as any).administratorsTg || (community as any).administrators || [],
+      avatarUrl: community.avatarUrl,
+      adminIds: (community as any).adminIds || (community as any).adminAuthIds || (community as any).adminsTG || (community as any).administratorsTg || (community as any).administrators || [],
       settings: {
         currencyNames: community.settings?.currencyNames,
         dailyEmission: community.settings?.dailyEmission as number,
@@ -208,11 +233,6 @@ export class CommunitiesController {
       throw new NotFoundError('Community', id);
     }
 
-    const tgChatId = String((community as any).telegramChatId || '');
-    if (!tgChatId) {
-      throw new ValidationError('Community has no telegram chat id');
-    }
-
     const lang = ((community.settings as any)?.language as 'en' | 'ru') || 'en';
 
     const dualLinksCommunity = formatDualLinks('community', { id }, BOT_USERNAME, WEB_BASE_URL);
@@ -220,7 +240,7 @@ export class CommunitiesController {
     const hashtagsEscaped = escapeMarkdownV2(hashtagsRaw);
 
     // Telegram notifications are disabled in this project; skip sending welcome message.
-    this.logger.log(`Telegram welcome message disabled for community ${id}, chat ${tgChatId}`);
+    this.logger.log(`Telegram welcome message disabled for community ${id}`);
 
     return ApiResponseHelper.successResponse({ sent: false });
   }
@@ -246,8 +266,7 @@ export class CommunitiesController {
     const testCommunity = await this.communityService.createCommunity({
       name: `Test Community ${Date.now()}`,
       description: 'Test community for fake data',
-      telegramChatId: `-${Date.now()}`,
-      adminsTG: [user.telegramId || `fake_user_${Date.now()}`],
+      adminIds: [user.id],
     });
 
     this.logger.log(`Created fake community: ${testCommunity.id}`);
@@ -255,34 +274,15 @@ export class CommunitiesController {
     // Add user to the community
     // 1. Add user to community's members list
     await this.communityService.addMember(testCommunity.id, user.id);
-    
+
     // 2. Add community to user's memberships
-    if (!user.telegramId) {
-      throw new Error('User telegramId is required');
+    if (!user.authId) {
+      throw new Error('User authId is required');
     }
-    await this.userService.addCommunityMembership(user.telegramId, testCommunity.id);
-    
-    // 3. Add community's telegramChatId to user's communityTags
-    // This is required for the community to show up in the user's communities list
-    const userDoc = await this.userService.getUserByTelegramId(user.telegramId);
-    if (userDoc) {
-      const currentTags = userDoc.communityTags || [];
-      if (!currentTags.includes(testCommunity.telegramChatId)) {
-        // Use UserService's internal model to update communityTags
-        // We need to access the model through the service's private property
-        const UserModel = (this.userService as any).userModel;
-        if (UserModel) {
-          await UserModel.updateOne(
-            { telegramId: user.telegramId },
-            { 
-              $addToSet: { communityTags: testCommunity.telegramChatId },
-              $set: { updatedAt: new Date() }
-            }
-          );
-          this.logger.log(`Added community ${testCommunity.telegramChatId} to user's communityTags`);
-        }
-      }
-    }
+    await this.userService.addCommunityMembership(user.id, testCommunity.id);
+
+    // 3. Add community to user's memberships (skip legacy communityTags update)
+    // Legacy: communityTags was used for Telegram chat IDs - REMOVED
 
     this.logger.log(`Added user ${user.id} to fake community ${testCommunity.id}`);
 
@@ -300,7 +300,7 @@ export class CommunitiesController {
       success: true,
       data: {
         ...testCommunity,
-        adminsTG: (testCommunity as any).adminsTG || [],
+        adminIds: (testCommunity as any).adminIds || [],
         isAdmin: true,
       },
     };
@@ -313,8 +313,8 @@ export class CommunitiesController {
       throw new ForbiddenException('Fake data mode is not enabled');
     }
 
-    if (!user.telegramId) {
-      throw new Error('User telegramId is required');
+    if (!user.authId) {
+      throw new Error('User authId is required');
     }
 
     this.logger.log(`Adding user ${user.id} to all communities`);
@@ -330,14 +330,13 @@ export class CommunitiesController {
     for (const community of allCommunities) {
       try {
         // Check if user is already a member
-        const userDoc = await this.userService.getUserByTelegramId(user.telegramId);
+        const userDoc = await this.userService.getUserByAuthId(user.authProvider, user.authId);
         if (userDoc) {
           const currentTags = userDoc.communityTags || [];
           const currentMemberships = userDoc.communityMemberships || [];
 
           // Check if already a member
-          const isAlreadyMember = currentTags.includes(community.telegramChatId) || 
-                                  currentMemberships.includes(community.id);
+          const isAlreadyMember = currentMemberships.includes(community.id);
 
           if (isAlreadyMember) {
             skippedCount++;
@@ -348,19 +347,10 @@ export class CommunitiesController {
           await this.communityService.addMember(community.id, user.id);
 
           // 2. Add community to user's memberships
-          await this.userService.addCommunityMembership(user.telegramId, community.id);
+          await this.userService.addCommunityMembership(user.id, community.id);
 
-          // 3. Add community's telegramChatId to user's communityTags
-          const UserModel = (this.userService as any).userModel;
-          if (UserModel) {
-            await UserModel.updateOne(
-              { telegramId: user.telegramId },
-              { 
-                $addToSet: { communityTags: community.telegramChatId },
-                $set: { updatedAt: new Date() }
-              }
-            );
-          }
+          // 3. Add community to user's memberships (skip legacy communityTags update)
+          // Legacy: communityTags was used for Telegram chat IDs - REMOVED
 
           // 4. Create wallet for the user in this community
           const currency = community.settings?.currencyNames || {
@@ -396,9 +386,9 @@ export class CommunitiesController {
   @Post('sync')
   async syncCommunities(@Req() req: any) {
     const userId = req.user.id;
-    const telegramId = req.user.telegramId;
+    const authId = req.user.authId;
     this.logger.log(`Syncing communities for user: ${userId}`);
-    
+
     try {
       // Get all active communities
       const allCommunities = await this.communityService.getAllCommunities(1000, 0);
@@ -415,33 +405,8 @@ export class CommunitiesController {
           this.logger.log(`Skipping inactive community: ${community.name}`);
           continue;
         }
-        
-        try {
-          // Telegram membership checks are disabled; rely on existing data only.
-          const isMember = false;
-          
-          if (isMember) {
-            communityChatIds.push(community.telegramChatId);
-            syncedCount++;
-            this.logger.log(`User ${userId} is a member of community ${community.name}`);
-            
-            // Add community membership to user's communityMemberships array (used by getUserCommunities)
-            try {
-              await this.userService.addCommunityMembership(telegramId, community.id);
-              membershipsAdded++;
-              this.logger.log(`Added community ${community.id} to user ${userId} memberships`);
-            } catch (membershipError) {
-              // Log but continue - membership might already exist or there might be a transient error
-              this.logger.warn(
-                `Error adding membership for community ${community.id} to user ${userId}:`,
-                membershipError.message
-              );
-            }
-          }
-        } catch (error) {
-          this.logger.warn(`Error checking membership for community ${community.telegramChatId}:`, error.message);
-          // Continue with other communities
-        }
+
+        // Telegram membership checks are disabled
       }
 
       this.logger.log(`Synced ${syncedCount} communities for user ${userId}, added ${membershipsAdded} memberships`);
@@ -474,7 +439,7 @@ export class CommunitiesController {
   ) {
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
-    
+
     const publications = await this.publicationService.getPublicationsByCommunity(
       id,
       pagination.limit,

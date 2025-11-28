@@ -18,63 +18,57 @@ import { LoadingState } from '@/components/atoms/LoadingState';
 import { ErrorDisplay } from '@/components/atoms/ErrorDisplay';
 import { handleAuthRedirect } from '@/lib/utils/auth';
 import { getErrorMessage } from '@/lib/api/errors';
-import { authApiV1 } from '@/lib/api/v1';
-import { isFakeDataMode, config } from '@/config';
+import { isFakeDataMode } from '@/config';
 import { OAUTH_PROVIDERS, getOAuthUrl, type OAuthProvider } from '@/lib/utils/oauth-providers';
-// Gluestack UI components
-import { Card, CardHeader, CardBody, CardFooter } from '@/components/ui/card';
-import { Button, ButtonText } from '@/components/ui/button';
-import { VStack } from '@/components/ui/vstack';
-import { HStack } from '@/components/ui/hstack';
-import { Heading } from '@/components/ui/heading';
-import { Text } from '@/components/ui/text';
-import { Box } from '@/components/ui/box';
-import { Center } from '@/components/ui/center';
+import { BrandButton, BrandInput, BrandFormControl } from '@/components/ui';
 
 interface LoginFormProps {
   className?: string;
+  enabledProviders?: string[];
 }
 
-export function LoginForm({ className = '' }: LoginFormProps) {
+export function LoginForm({ className = '', enabledProviders }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('login');
+  const tReg = useTranslations('registration');
   const fakeDataMode = isFakeDataMode();
-  
-  const { 
+
+  const {
     authenticateFakeUser,
-    isLoading, 
-    authError, 
+    isLoading,
+    authError,
     setAuthError,
   } = useAuth();
-  
-  // Get return URL and error message from query params
+
+  // Get return URL and invite code from URL
   const returnTo = searchParams?.get('returnTo');
-  const errorParam = searchParams?.get('error');
-  
-  // Show error from query params if present (e.g., from OAuth callback failures)
-  React.useEffect(() => {
-    if (errorParam && !authError) {
-      setAuthError(decodeURIComponent(errorParam));
-    }
-  }, [errorParam, authError, setAuthError]);
+  const inviteCodeFromUrl = searchParams?.get('invite');
+  const [inviteCode, setInviteCode] = useState(inviteCodeFromUrl || '');
+
+  // Filter providers if enabledProviders is passed
+  const displayedProviders = enabledProviders
+    ? OAUTH_PROVIDERS.filter(p => enabledProviders.includes(p.id))
+    : OAUTH_PROVIDERS;
 
   // Handle fake authentication
   const handleFakeAuth = async () => {
     try {
       await authenticateFakeUser();
-      
-      handleAuthRedirect(returnTo);
+      handleAuthRedirect(null, '/meriter/home');
     } catch (error: unknown) {
       const message = getErrorMessage(error);
       console.error('❌ Fake authentication failed:', error);
       setAuthError(message);
     }
   };
-  
+
   // Handle OAuth provider authentication
   const handleOAuthAuth = (providerId: string) => {
-    const oauthUrl = getOAuthUrl(providerId, returnTo || undefined);
+    const params = new URLSearchParams();
+    if (returnTo) params.set('returnTo', returnTo);
+    if (inviteCode.trim()) params.set('invite', inviteCode.trim());
+    const oauthUrl = getOAuthUrl(providerId, params.toString() || undefined);
     window.location.href = oauthUrl;
   };
 
@@ -82,95 +76,97 @@ export function LoginForm({ className = '' }: LoginFormProps) {
   const renderProviderIcon = (provider: OAuthProvider) => {
     const IconComponent = LucideIcons[provider.icon] as React.ComponentType<{ className?: string; size?: number }>;
     if (!IconComponent) {
-      // Fallback to a default icon if not found
       return <LucideIcons.LogIn className="w-5 h-5" />;
     }
     return <IconComponent className="w-5 h-5" />;
   };
-  
+
   return (
-    <Box width="100%" maxWidth={448} mx="auto">
-      <Card>
-        <CardHeader>
-          <Center>
-            <Heading size="xl" textAlign="center">
-              {t('title')}
-            </Heading>
-          </Center>
-        </CardHeader>
-        
-        <CardBody>
-          <VStack space="md">
-            {authError && (
-              <ErrorDisplay
-                title="Authentication Error"
-                message={authError}
-                variant="alert"
-              />
-            )}
-            
-            {isLoading && (
-              <LoadingState text="Authenticating..." />
-            )}
-            
-            {!isLoading && (
-              <VStack space="md">
-                {fakeDataMode ? (
-                  <VStack space="md" alignItems="center">
-                    <Text size="sm" color="$textLight600">
-                      Fake Data Mode Enabled
-                    </Text>
-                    <Button
-                      variant="solid"
+    <div className={`w-full max-w-md mx-auto ${className}`}>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">
+            {t('title')}
+          </h1>
+          {displayedProviders.length > 0 && !fakeDataMode && (
+            <p className="mt-2 text-sm text-gray-600">
+              {t('subtitle')}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          {authError && (
+            <ErrorDisplay
+              title="Authentication Error"
+              message={authError}
+              variant="alert"
+            />
+          )}
+
+          {/* Invite Code Input */}
+          <BrandFormControl
+            label={tReg('inviteCodeLabel')}
+            helperText={tReg('inviteDescription')}
+          >
+            <BrandInput
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              placeholder={tReg('inviteCodePlaceholder')}
+              autoCapitalize="none"
+              autoComplete="off"
+            />
+          </BrandFormControl>
+
+          {isLoading && (
+            <LoadingState text="Authenticating..." />
+          )}
+
+          {!isLoading && (
+            <div className="space-y-4">
+              {fakeDataMode ? (
+                <div className="space-y-4 text-center">
+                  <p className="text-sm text-gray-600 bg-yellow-50 p-2 rounded-lg border border-yellow-200">
+                    Fake Data Mode Enabled
+                  </p>
+                  <BrandButton
+                    variant="primary"
+                    size="lg"
+                    fullWidth
+                    onClick={handleFakeAuth}
+                    disabled={isLoading}
+                  >
+                    Fake Login
+                  </BrandButton>
+                </div>
+              ) : displayedProviders.length > 0 ? (
+                <div className="space-y-3">
+                  {displayedProviders.map((provider) => (
+                    <BrandButton
+                      key={provider.id}
+                      variant="outline"
                       size="lg"
-                      width="100%"
-                      onPress={handleFakeAuth}
-                      isDisabled={isLoading}
+                      fullWidth
+                      onClick={() => handleOAuthAuth(provider.id)}
+                      disabled={isLoading}
+                      leftIcon={renderProviderIcon(provider)}
+                      className="justify-start pl-6"
                     >
-                      <ButtonText>Fake Login</ButtonText>
-                    </Button>
-                  </VStack>
-                ) : (
-                  <VStack space="md">
-                    <Text size="sm" color="$textLight600" textAlign="center">
-                      Sign in to continue
-                    </Text>
-                    <VStack space="sm">
-                      {OAUTH_PROVIDERS.map((provider) => (
-                        <Button
-                          key={provider.id}
-                          variant="outline"
-                          size="lg"
-                          width="100%"
-                          onPress={() => handleOAuthAuth(provider.id)}
-                          isDisabled={isLoading}
-                        >
-                          <HStack space="sm" alignItems="center">
-                            <Box>{renderProviderIcon(provider)}</Box>
-                            <ButtonText>Sign in with {provider.name}</ButtonText>
-                          </HStack>
-                        </Button>
-                      ))}
-                    </VStack>
-                  </VStack>
-                )}
-              </VStack>
-            )}
-          </VStack>
-        </CardBody>
-        
-        <CardFooter>
-          <Center width="100%">
-            <Button
-              variant="link"
-              size="sm"
-              onPress={() => router.push('/')}
-            >
-              <ButtonText>{t('backToHome')}</ButtonText>
-            </Button>
-          </Center>
-        </CardFooter>
-      </Card>
-    </Box>
+                      {t('signInWith', { provider: provider.name })}
+                    </BrandButton>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center p-4 bg-red-50 rounded-xl border border-red-100">
+                  <p className="text-sm text-red-600">
+                    No authentication providers configured. Please contact administrator.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

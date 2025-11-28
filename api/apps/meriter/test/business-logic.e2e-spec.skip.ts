@@ -24,13 +24,13 @@ describe('Business Logic E2E Tests', () => {
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
   let connection: Connection;
-  
+
   let communityService: CommunityService;
   let voteService: VoteService;
   let publicationService: PublicationService;
   let pollService: PollService;
   let walletService: WalletService;
-  
+
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
@@ -48,7 +48,7 @@ describe('Business Logic E2E Tests', () => {
 
   beforeAll(async () => {
     jest.setTimeout(30000);
-    
+
     testDb = new TestDatabaseHelper();
     const mongoUri = await testDb.start();
     process.env.MONGO_URL = mongoUri;
@@ -66,9 +66,9 @@ describe('Business Logic E2E Tests', () => {
     publicationService = app.get<PublicationService>(PublicationService);
     pollService = app.get<PollService>(PollService);
     walletService = app.get<WalletService>(WalletService);
-    
+
     connection = app.get(getConnectionToken());
-    
+
     communityModel = connection.model<CommunityDocument>(Community.name);
     userModel = connection.model<UserDocument>(User.name);
     publicationModel = connection.model<PublicationDocument>(Publication.name);
@@ -85,7 +85,7 @@ describe('Business Logic E2E Tests', () => {
     testUserId = uid();
     testUserId2 = uid();
     testCommunityId = uid();
-    
+
     await userModel.create([
       {
         id: testUserId,
@@ -112,7 +112,6 @@ describe('Business Logic E2E Tests', () => {
     // Create test community with dailyEmission=10
     await communityModel.create({
       id: testCommunityId,
-      telegramChatId: `chat_${testCommunityId}`,
       name: 'Test Community',
       administrators: [testUserId],
       members: [testUserId, testUserId2],
@@ -170,7 +169,7 @@ describe('Business Logic E2E Tests', () => {
       const collection = collections[key];
       // Drop old token index if it exists
       try {
-        await collection.dropIndex('token_1').catch(() => {});
+        await collection.dropIndex('token_1').catch(() => { });
       } catch (err) {
         // Index doesn't exist, ignore
       }
@@ -226,9 +225,9 @@ describe('Business Logic E2E Tests', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      
+
       const publication = await publicationModel.findOne({ id: testPublicationId }).lean();
-      
+
       expect(publication).toBeDefined();
       expect(publication.metrics.upvotes).toBe(0);
       expect(publication.metrics.downvotes).toBe(0);
@@ -317,7 +316,7 @@ describe('Business Logic E2E Tests', () => {
       });
 
       const optionId = poll.options[0].id;
-      
+
       const pollVote = await pollVoteModel.create({
         id: uid(),
         pollId: poll.id,
@@ -338,13 +337,13 @@ describe('Business Logic E2E Tests', () => {
   describe('Community Default Values', () => {
     it('should have dailyEmission default of 10', async () => {
       const community = await communityModel.findOne({ id: testCommunityId });
-      
+
       expect(community.settings.dailyEmission).toBe(10); // Business requirement
     });
 
     it('should support custom currency names', async () => {
       const community = await communityModel.findOne({ id: testCommunityId });
-      
+
       expect(community.settings.currencyNames.singular).toBe('merit');
       expect(community.settings.currencyNames.plural).toBe('merits');
       expect(community.settings.currencyNames.genitive).toBe('merits');
@@ -354,10 +353,10 @@ describe('Business Logic E2E Tests', () => {
   describe('Wallet Operations', () => {
     it('should have community-specific wallet per user', async () => {
       const wallets = await walletModel.find({ userId: testUserId }).lean();
-      
+
       expect(wallets.length).toBeGreaterThan(0);
       const wallet = wallets.find(w => w.communityId === testCommunityId);
-      
+
       expect(wallet).toBeDefined();
       expect(wallet.balance).toBe(100);
       expect(wallet.currency.singular).toBe('merit');
@@ -365,10 +364,9 @@ describe('Business Logic E2E Tests', () => {
 
     it('should maintain separate wallets for different communities', async () => {
       const communityId2 = uid();
-      
+
       await communityModel.create({
         id: communityId2,
-        telegramChatId: `chat_${communityId2}`,
         name: 'Second Community',
         administrators: [testUserId],
         members: [testUserId],
@@ -401,10 +399,10 @@ describe('Business Logic E2E Tests', () => {
 
       const wallets = await walletModel.find({ userId: testUserId }).lean();
       expect(wallets.length).toBe(2);
-      
+
       const wallet1 = wallets.find(w => w.communityId === testCommunityId);
       const wallet2 = wallets.find(w => w.communityId === communityId2);
-      
+
       expect(wallet1.currency.singular).toBe('merit');
       expect(wallet2.currency.singular).toBe('token');
     });
@@ -439,7 +437,7 @@ describe('Business Logic E2E Tests', () => {
       expect(poll.options[0].votes).toBe(5);
       expect(poll.options[0].amount).toBe(50);
       expect(poll.options[0].voterCount).toBe(3);
-      
+
       expect(poll.description).toBe('Choose your favorite');
       expect(poll.metrics.totalVotes).toBe(8);
       expect(poll.metrics.voterCount).toBe(5);
@@ -489,7 +487,7 @@ describe('Business Logic E2E Tests', () => {
       });
 
       const wallet = await walletModel.findOne({ userId: testUserId2, communityId: testCommunityId });
-      
+
       const transaction = await transactionModel.create({
         id: uid(),
         walletId: wallet.id,
@@ -525,7 +523,7 @@ describe('Business Logic E2E Tests', () => {
       });
 
       const wallet = await walletModel.findOne({ userId: testUserId2, communityId: testCommunityId });
-      
+
       const transaction = await transactionModel.create({
         id: uid(),
         walletId: wallet.id,
@@ -546,7 +544,7 @@ describe('Business Logic E2E Tests', () => {
   describe('Community Hashtag Management', () => {
     it('should store hashtagDescriptions as plain object', async () => {
       const community = await communityModel.findOne({ id: testCommunityId });
-      
+
       expect(community.hashtagDescriptions).toBeDefined();
       expect(community.hashtagDescriptions).toEqual({
         test: 'Test hashtag',
@@ -559,14 +557,14 @@ describe('Business Logic E2E Tests', () => {
   describe('User Schema', () => {
     it('should not have token field', async () => {
       const user = await userModel.findOne({ id: testUserId }).lean();
-      
+
       // Verify token field is not present in user schema
       expect(user).not.toHaveProperty('token');
     });
 
     it('should have communityTags and communityMemberships', async () => {
       const user = await userModel.findOne({ id: testUserId });
-      
+
       expect(user.communityTags).toBeDefined();
       expect(user.communityMemberships).toBeDefined();
     });
@@ -604,7 +602,7 @@ describe('Business Logic E2E Tests', () => {
     it('should use attachedCommentId instead of commentId', async () => {
       const pubId = uid();
       const commentId = uid();
-      
+
       await commentModel.create({
         id: commentId,
         targetType: 'publication',

@@ -1,10 +1,6 @@
-// Atomic Switch component - теперь использует Gluestack UI
 'use client';
 
 import React from 'react';
-import { Switch as GluestackSwitch } from '@/components/ui/switch';
-import { HStack } from '@/components/ui/hstack';
-import { Text } from '@/components/ui/text';
 
 export type SwitchVariant = 'primary' | 'secondary' | 'accent' | 'success' | 'warning' | 'error';
 export type SwitchSize = 'xs' | 'sm' | 'md' | 'lg';
@@ -20,10 +16,9 @@ export interface SwitchProps {
   disabled?: boolean;
   className?: string;
   id?: string;
-  [key: string]: any;
 }
 
-export const Switch = React.forwardRef<any, SwitchProps>(
+export const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
   (
     {
       variant = 'primary',
@@ -31,9 +26,9 @@ export const Switch = React.forwardRef<any, SwitchProps>(
       label,
       labelPosition = 'right',
       fullWidth = false,
-      checked,
+      checked = false,
       onValueChange,
-      disabled,
+      disabled = false,
       className = '',
       id,
       ...props
@@ -41,27 +36,39 @@ export const Switch = React.forwardRef<any, SwitchProps>(
     ref
   ) => {
     const switchId = id || `switch-${Math.random().toString(36).substring(2, 9)}`;
-    
-    const content = (
-      <HStack 
-        space="sm" 
-        alignItems="center"
-        flexDirection={labelPosition === 'left' ? 'row-reverse' : 'row'}
-        width={fullWidth ? '100%' : undefined}
-      >
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      onValueChange?.(e.target.checked);
+    };
+
+    return (
+      <div className={`inline-flex items-center gap-2 ${fullWidth ? 'w-full justify-between' : ''} ${labelPosition === 'left' ? 'flex-row-reverse' : ''} ${className}`}>
         {label && (
-          <Text>{label}</Text>
+          <label htmlFor={switchId} className={`text-sm font-medium text-brand-text-primary ${disabled ? 'opacity-50' : ''}`}>
+            {label}
+          </label>
         )}
-        <GluestackSwitch
-          ref={ref}
-          value={checked}
-          onValueChange={onValueChange}
-          {...props}
-        />
-      </HStack>
+        <div className="relative inline-flex items-center cursor-pointer">
+          <input
+            ref={ref}
+            type="checkbox"
+            id={switchId}
+            className="sr-only peer"
+            checked={checked}
+            onChange={handleChange}
+            disabled={disabled}
+            {...props}
+          />
+          <div className={`
+            w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-primary/20 rounded-full peer 
+            peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white 
+            after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border 
+            after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary
+            ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+          `}></div>
+        </div>
+      </div>
     );
-    
-    return content;
   }
 );
 

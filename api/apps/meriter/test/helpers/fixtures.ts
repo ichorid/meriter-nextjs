@@ -25,7 +25,6 @@ export function createTestUser(overrides: Partial<any> = {}): any {
  */
 export function createTestCommunity(overrides: Partial<CreateCommunityDto> = {}): CreateCommunityDto {
   return {
-    telegramChatId: `-100${Math.floor(Math.random() * 1000000000)}`,
     name: `Test Community ${uid()}`,
     description: 'A test community',
     avatarUrl: `https://example.com/community/${uid()}.jpg`,
@@ -93,7 +92,7 @@ export function createTestVote(targetType: 'publication' | 'comment', targetId: 
 export function createTestPoll(communityId: string, overrides: Partial<CreatePollDto> = {}): CreatePollDto {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7); // Expires in 7 days
-  
+
   return {
     communityId,
     question: `Test poll question ${uid()}`,

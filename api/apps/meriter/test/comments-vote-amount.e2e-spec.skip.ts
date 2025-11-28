@@ -17,7 +17,7 @@ describe('Comment Vote Amount - API E2E', () => {
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
   let connection: Connection;
-  
+
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
@@ -31,11 +31,11 @@ describe('Comment Vote Amount - API E2E', () => {
 
   beforeAll(async () => {
     jest.setTimeout(30000);
-    
+
     testDb = new TestDatabaseHelper();
     const mongoUri = await testDb.start();
     process.env.MONGO_URL = mongoUri;
-    
+
     // Set JWT secret for testing
     jwtSecret = process.env.JWT_SECRET || 'test-secret-key';
     process.env.JWT_SECRET = jwtSecret;
@@ -51,7 +51,7 @@ describe('Comment Vote Amount - API E2E', () => {
     await app.init();
 
     connection = app.get(getConnectionToken());
-    
+
     communityModel = connection.model<CommunityDocument>(Community.name);
     userModel = connection.model<UserDocument>(User.name);
     publicationModel = connection.model<PublicationDocument>(Publication.name);
@@ -63,7 +63,7 @@ describe('Comment Vote Amount - API E2E', () => {
     // Create test user
     testUserId = uid();
     testCommunityId = uid();
-    
+
     await userModel.create({
       id: testUserId,
       telegramId: `user_${testUserId}`,
@@ -82,7 +82,6 @@ describe('Comment Vote Amount - API E2E', () => {
     // Create test community
     await communityModel.create({
       id: testCommunityId,
-      telegramChatId: `chat_${testCommunityId}`,
       name: 'Test Community',
       administrators: [],
       members: [testUserId],
@@ -143,7 +142,7 @@ describe('Comment Vote Amount - API E2E', () => {
     for (const key in collections) {
       const collection = collections[key];
       try {
-        await collection.dropIndex('token_1').catch(() => {});
+        await collection.dropIndex('token_1').catch(() => { });
       } catch (err) {
         // Index doesn't exist, ignore
       }
@@ -166,7 +165,7 @@ describe('Comment Vote Amount - API E2E', () => {
 
   it('should return correct vote amount when fetching comments after voting with quota using combined endpoint', async () => {
     const jwt = generateJWT(testUserId, `user_${testUserId}`, []);
-    
+
     // Use the new combined endpoint to vote with comment in a single request
     const voteAmount = 5;
     const commentText = 'This is a comment that will have a vote';
@@ -199,7 +198,7 @@ describe('Comment Vote Amount - API E2E', () => {
     expect(commentsResponse.body.data.length).toBe(1);
 
     const comment = commentsResponse.body.data[0];
-    
+
     // Step 3: Verify the comment has the correct vote amount data
     expect(comment.id).toBe(commentId);
     expect(comment.amountTotal).toBe(voteAmount); // Should be 5, not 0

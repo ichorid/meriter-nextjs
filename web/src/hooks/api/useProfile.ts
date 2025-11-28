@@ -1,0 +1,52 @@
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { profileApiV1, type UserCommunityRoleWithName, type PublicationWithCommunityName, type UpdateProfileData, type MeritStatsResponse } from '@/lib/api/v1/profile';
+import type { PaginatedResponse, User } from '@/types/api-v1';
+
+export function useUserRoles(userId: string) {
+  return useQuery<UserCommunityRoleWithName[]>({
+    queryKey: ['profile', 'roles', userId],
+    queryFn: () => profileApiV1.getUserRoles(userId),
+    enabled: !!userId,
+  });
+}
+
+export function useUserProjects(userId: string, pageSize: number = 20) {
+  return useInfiniteQuery<PaginatedResponse<PublicationWithCommunityName>>({
+    queryKey: ['profile', 'projects', userId, pageSize],
+    queryFn: ({ pageParam = 1 }) => profileApiV1.getUserProjects(userId, pageParam as number, pageSize),
+    getNextPageParam: (lastPage) => {
+      const currentPage = lastPage.meta?.pagination?.page || 1;
+      const totalPages = lastPage.meta?.pagination?.totalPages || 1;
+      return currentPage < totalPages ? currentPage + 1 : undefined;
+    },
+    initialPageParam: 1,
+    enabled: !!userId,
+  });
+}
+
+export function useLeadCommunities(userId: string) {
+  return useQuery({
+    queryKey: ['profile', 'lead-communities', userId],
+    queryFn: () => profileApiV1.getLeadCommunities(userId),
+    enabled: !!userId,
+  });
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation<User, Error, UpdateProfileData>({
+    mutationFn: (data) => profileApiV1.updateProfile(data),
+    onSuccess: () => {
+      // Invalidate user queries to refetch updated data
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
+}
+
+export function useMeritStats() {
+  return useQuery<MeritStatsResponse>({
+    queryKey: ['profile', 'merit-stats'],
+    queryFn: () => profileApiV1.getMeritStats(),
+  });
+}

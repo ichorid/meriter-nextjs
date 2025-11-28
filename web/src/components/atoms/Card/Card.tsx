@@ -1,10 +1,6 @@
-// Atomic Card component - теперь использует Gluestack UI
 'use client';
 
 import React from 'react';
-import { Card as GluestackCard, CardHeader as GluestackCardHeader, CardBody as GluestackCardBody, CardFooter as GluestackCardFooter } from '@/components/ui/card';
-import { Heading } from '@/components/ui/heading';
-import { Box } from '@/components/ui/box';
 
 export interface CardProps {
   hover?: boolean;
@@ -15,7 +11,7 @@ export interface CardProps {
   [key: string]: any;
 }
 
-export const Card = React.forwardRef<any, CardProps>(
+export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   (
     {
       hover = false,
@@ -28,14 +24,19 @@ export const Card = React.forwardRef<any, CardProps>(
     ref
   ) => {
     return (
-      <GluestackCard
+      <div
         ref={ref}
-        borderWidth={bordered ? 1 : 0}
-        p={compact ? '$2' : '$4'}
+        className={`
+          bg-white rounded-xl shadow-sm
+          ${bordered ? 'border border-brand-border' : ''}
+          ${compact ? 'p-2' : 'p-4'}
+          ${hover ? 'hover:shadow-md transition-shadow duration-200' : ''}
+          ${className}
+        `}
         {...props}
       >
         {children}
-      </GluestackCard>
+      </div>
     );
   }
 );
@@ -48,12 +49,12 @@ export interface CardHeaderProps {
   [key: string]: any;
 }
 
-export const CardHeader = React.forwardRef<any, CardHeaderProps>(
+export const CardHeader = React.forwardRef<HTMLDivElement, CardHeaderProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <GluestackCardHeader ref={ref} {...props}>
+      <div ref={ref} className={`mb-4 ${className}`} {...props}>
         {children}
-      </GluestackCardHeader>
+      </div>
     );
   }
 );
@@ -65,12 +66,12 @@ export interface CardBodyProps {
   [key: string]: any;
 }
 
-export const CardBody = React.forwardRef<any, CardBodyProps>(
+export const CardBody = React.forwardRef<HTMLDivElement, CardBodyProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <GluestackCardBody ref={ref} {...props}>
+      <div ref={ref} className={`${className}`} {...props}>
         {children}
-      </GluestackCardBody>
+      </div>
     );
   }
 );
@@ -82,12 +83,12 @@ export interface CardFooterProps {
   [key: string]: any;
 }
 
-export const CardFooter = React.forwardRef<any, CardFooterProps>(
+export const CardFooter = React.forwardRef<HTMLDivElement, CardFooterProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <GluestackCardFooter ref={ref} {...props}>
+      <div ref={ref} className={`mt-4 pt-4 border-t border-brand-border ${className}`} {...props}>
         {children}
-      </GluestackCardFooter>
+      </div>
     );
   }
 );
@@ -99,12 +100,12 @@ export interface CardTitleProps {
   [key: string]: any;
 }
 
-export const CardTitle = React.forwardRef<any, CardTitleProps>(
+export const CardTitle = React.forwardRef<HTMLDivElement, CardTitleProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <Box ref={ref} {...props}>
-        <Heading size="lg">{children}</Heading>
-      </Box>
+      <div ref={ref} className={`${className}`} {...props}>
+        <h3 className="text-lg font-bold text-brand-text-primary">{children}</h3>
+      </div>
     );
   }
 );

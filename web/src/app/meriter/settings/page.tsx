@@ -1,10 +1,8 @@
 'use client';
 
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { useWallets } from '@/hooks/api';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { UpdatesFrequency } from '@shared/components/updates-frequency';
 import { LogoutButton } from '@/components/LogoutButton';
 import { LanguageSelector } from '@shared/components/language-selector';
 import { useTranslations } from 'next-intl';
@@ -12,39 +10,23 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSyncCommunities } from '@/hooks/api/useCommunities';
 import { isFakeDataMode } from '@/config';
 import { communitiesApiV1 } from '@/lib/api/v1';
-// Gluestack UI components
-import { Box } from '@/components/ui/box';
-import { VStack } from '@/components/ui/vstack';
-import { HStack } from '@/components/ui/hstack';
-import { Card, CardHeader, CardBody } from '@/components/ui/card';
-import { Heading } from '@/components/ui/heading';
-import { Text } from '@/components/ui/text';
-import { Button, ButtonText } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
-import { Center } from '@/components/ui/center';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { BrandButton } from '@/components/ui/BrandButton';
+import { Loader2 } from 'lucide-react';
 
 const SettingsPage = () => {
     const router = useRouter();
     const t = useTranslations('settings');
-    const tCommon = useTranslations('common');
-    
-    // Use centralized auth context
     const { user, isLoading, isAuthenticated } = useAuth();
-    const { data: wallets = [] } = useWallets();
     const syncCommunitiesMutation = useSyncCommunities();
     const [syncMessage, setSyncMessage] = useState('');
-    const activeCommentHook = useState<string | null>(null);
-    const [activeSlider, setActiveSlider] = useState<string | null>(null);
-    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
-    
-    // Fake community creation state
+
     const fakeDataMode = isFakeDataMode();
     const [creatingFakeCommunity, setCreatingFakeCommunity] = useState(false);
     const [fakeCommunityMessage, setFakeCommunityMessage] = useState('');
     const [addingToAllCommunities, setAddingToAllCommunities] = useState(false);
     const [addToAllMessage, setAddToAllMessage] = useState('');
 
-    // Redirect if not authenticated
     useEffect(() => {
         if (!isLoading && !isAuthenticated) {
             router.push('/meriter/login?returnTo=' + encodeURIComponent(window.location.pathname));
@@ -53,7 +35,6 @@ const SettingsPage = () => {
 
     const handleSyncCommunities = async () => {
         setSyncMessage('');
-        
         try {
             const result = await syncCommunitiesMutation.mutateAsync();
             setSyncMessage(t('syncSuccess', { count: result.syncedCount }));
@@ -67,11 +48,9 @@ const SettingsPage = () => {
     const handleCreateFakeCommunity = async () => {
         setCreatingFakeCommunity(true);
         setFakeCommunityMessage('');
-        
         try {
             const community = await communitiesApiV1.createFakeCommunity();
             setFakeCommunityMessage(`Successfully created community: ${community.name}`);
-            // Redirect to the new community
             setTimeout(() => {
                 router.push(`/meriter/communities/${community.id}`);
             }, 1000);
@@ -87,7 +66,6 @@ const SettingsPage = () => {
     const handleAddToAllCommunities = async () => {
         setAddingToAllCommunities(true);
         setAddToAllMessage('');
-        
         try {
             const result = await communitiesApiV1.addUserToAllCommunities();
             if (result.errors && result.errors.length > 0) {
@@ -96,7 +74,6 @@ const SettingsPage = () => {
                 setAddToAllMessage(`Successfully added to ${result.added} communities (${result.skipped} already members)`);
             }
             setTimeout(() => setAddToAllMessage(''), 5000);
-            // Refresh the page to show updated communities
             setTimeout(() => {
                 window.location.reload();
             }, 2000);
@@ -109,166 +86,107 @@ const SettingsPage = () => {
         }
     };
 
-    // Show loading state while checking authentication
     if (isLoading) {
         return (
-            <AdaptiveLayout
-                activeCommentHook={activeCommentHook}
-                activeSlider={activeSlider}
-                setActiveSlider={setActiveSlider}
-                activeWithdrawPost={activeWithdrawPost}
-                setActiveWithdrawPost={setActiveWithdrawPost}
-                wallets={Array.isArray(wallets) ? wallets : []}
-                myId={user?.id}
-            >
-                <Center minHeight={400}>
-                    <Spinner size="large" />
-                </Center>
+            <AdaptiveLayout>
+                <div className="flex justify-center items-center min-h-[400px]">
+                    <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+                </div>
             </AdaptiveLayout>
         );
     }
 
-    // Don't render if not authenticated (will redirect)
     if (!isAuthenticated || !user) {
         return null;
     }
 
     return (
-        <AdaptiveLayout 
-            activeCommentHook={activeCommentHook}
-            activeSlider={activeSlider}
-            setActiveSlider={setActiveSlider}
-            activeWithdrawPost={activeWithdrawPost}
-            setActiveWithdrawPost={setActiveWithdrawPost}
-            wallets={Array.isArray(wallets) ? wallets : []}
-            myId={user?.id}
-        >
-            <VStack space="lg" flex={1}>
-                {/* Language Section */}
-                <Card>
-                    <CardHeader>
-                        <Heading size="lg">{t('languageSection')}</Heading>
-                    </CardHeader>
-                    <CardBody>
+        <AdaptiveLayout>
+            <div className="flex flex-col min-h-screen bg-white">
+                <PageHeader title={t('title')} showBack={true} />
+
+                <div className="p-4 space-y-6">
+                    {/* Language Section */}
+                    <div className="space-y-3">
+                        <h2 className="text-base font-semibold text-brand-text-primary">
+                            {t('languageSection')}
+                        </h2>
                         <LanguageSelector />
-                    </CardBody>
-                </Card>
+                    </div>
 
-                {/* Update Frequency Section */}
-                <Card>
-                    <CardHeader>
-                        <Heading size="lg">{t('updatesFrequency')}</Heading>
-                    </CardHeader>
-                    <CardBody>
-                        <UpdatesFrequency />
-                    </CardBody>
-                </Card>
+                    {/* Communities Section */}
+                    <div className="space-y-3">
+                        <h2 className="text-base font-semibold text-brand-text-primary">
+                            {t('communities')}
+                        </h2>
+                        <BrandButton
+                            variant="primary"
+                            size="md"
+                            onClick={handleSyncCommunities}
+                            isLoading={syncCommunitiesMutation.isPending}
+                            disabled={syncCommunitiesMutation.isPending}
+                        >
+                            {syncCommunitiesMutation.isPending ? t('syncing') : t('syncCommunities')}
+                        </BrandButton>
+                        {syncMessage && (
+                            <p className={`text-sm ${syncMessage.includes(t('syncError')) ? 'text-red-600' : 'text-green-600'}`}>
+                                {syncMessage}
+                            </p>
+                        )}
+                    </div>
 
-                {/* Communities Section */}
-                <Card>
-                    <CardHeader>
-                        <Heading size="lg">{t('communities')}</Heading>
-                    </CardHeader>
-                    <CardBody>
-                        <VStack space="sm">
-                                <Button
-                                    variant="solid"
-                                    onPress={handleSyncCommunities}
-                                    isDisabled={syncCommunitiesMutation.isPending}
+                    {/* Development Section (Fake Data Mode) */}
+                    {fakeDataMode && (
+                        <div className="space-y-3">
+                            <h2 className="text-base font-semibold text-brand-text-primary">
+                                Development
+                            </h2>
+                            <div className="space-y-2">
+                                <BrandButton
+                                    variant="primary"
+                                    size="md"
+                                    onClick={handleCreateFakeCommunity}
+                                    isLoading={creatingFakeCommunity}
+                                    disabled={creatingFakeCommunity || addingToAllCommunities}
+                                    fullWidth
                                 >
-                                    {syncCommunitiesMutation.isPending ? (
-                                        <HStack space="sm" alignItems="center">
-                                            <Spinner size="small" />
-                                            <ButtonText>{t('syncing')}</ButtonText>
-                                        </HStack>
-                                    ) : (
-                                        <ButtonText>{t('syncCommunities')}</ButtonText>
-                                    )}
-                                </Button>
-                                {syncMessage && (
-                                    <Text 
-                                        size="sm" 
-                                        color={syncMessage.includes(t('syncError')) ? '$error500' : '$success500'}
-                                    >
-                                        {syncMessage}
-                                    </Text>
-                                )}
-                        </VStack>
-                    </CardBody>
-                </Card>
-
-                {/* Development Section - Only shown in fake mode */}
-                {fakeDataMode && (
-                    <Card>
-                        <CardHeader>
-                            <Heading size="lg">Development</Heading>
-                        </CardHeader>
-                        <CardBody>
-                            <VStack space="sm">
-                                <Button
-                                    variant="solid"
-                                    width="100%"
-                                    onPress={handleCreateFakeCommunity}
-                                    isDisabled={creatingFakeCommunity || addingToAllCommunities}
-                                >
-                                    {creatingFakeCommunity ? (
-                                        <HStack space="sm" alignItems="center">
-                                            <Spinner size="small" />
-                                            <ButtonText>Creating...</ButtonText>
-                                        </HStack>
-                                    ) : (
-                                        <ButtonText>Create Fake Community</ButtonText>
-                                    )}
-                                </Button>
-                                <Button
+                                    {creatingFakeCommunity ? 'Creating...' : 'Create Fake Community'}
+                                </BrandButton>
+                                <BrandButton
                                     variant="outline"
-                                    width="100%"
-                                    onPress={handleAddToAllCommunities}
-                                    isDisabled={creatingFakeCommunity || addingToAllCommunities}
+                                    size="md"
+                                    onClick={handleAddToAllCommunities}
+                                    isLoading={addingToAllCommunities}
+                                    disabled={creatingFakeCommunity || addingToAllCommunities}
+                                    fullWidth
                                 >
-                                    {addingToAllCommunities ? (
-                                        <HStack space="sm" alignItems="center">
-                                            <Spinner size="small" />
-                                            <ButtonText>Adding...</ButtonText>
-                                        </HStack>
-                                    ) : (
-                                        <ButtonText>Add This User to All Communities</ButtonText>
-                                    )}
-                                </Button>
+                                    {addingToAllCommunities ? 'Adding...' : 'Add This User to All Communities'}
+                                </BrandButton>
                                 {fakeCommunityMessage && (
-                                    <Text 
-                                        size="sm" 
-                                        color={fakeCommunityMessage.includes('Failed') ? '$error500' : '$success500'}
-                                    >
+                                    <p className={`text-sm ${fakeCommunityMessage.includes('Failed') ? 'text-red-600' : 'text-green-600'}`}>
                                         {fakeCommunityMessage}
-                                    </Text>
+                                    </p>
                                 )}
                                 {addToAllMessage && (
-                                    <Text 
-                                        size="sm" 
-                                        color={addToAllMessage.includes('Failed') || addToAllMessage.includes('errors') ? '$error500' : '$success500'}
-                                    >
+                                    <p className={`text-sm ${addToAllMessage.includes('Failed') || addToAllMessage.includes('errors') ? 'text-red-600' : 'text-green-600'}`}>
                                         {addToAllMessage}
-                                    </Text>
+                                    </p>
                                 )}
-                            </VStack>
-                        </CardBody>
-                    </Card>
-                )}
+                            </div>
+                        </div>
+                    )}
 
-                {/* Account Section */}
-                <Card>
-                    <CardHeader>
-                        <Heading size="lg">{t('account')}</Heading>
-                    </CardHeader>
-                    <CardBody>
+                    {/* Account Section */}
+                    <div className="space-y-3">
+                        <h2 className="text-base font-semibold text-brand-text-primary">
+                            {t('account')}
+                        </h2>
                         <LogoutButton />
-                    </CardBody>
-                </Card>
-            </VStack>
+                    </div>
+                </div>
+            </div>
         </AdaptiveLayout>
     );
 };
 
 export default SettingsPage;
-

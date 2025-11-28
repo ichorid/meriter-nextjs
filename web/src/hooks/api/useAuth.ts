@@ -5,6 +5,8 @@ import { queryKeys } from '@/lib/constants/queryKeys';
 import type { User } from '@/types/api-v1';
 
 export const useMe = () => {
+  // Always make request - React Query will handle 401 errors correctly
+  // The API client sends cookies automatically with withCredentials: true
   return useQuery({
     queryKey: queryKeys.auth.me(),
     queryFn: () => authApiV1.getMe(),
@@ -15,6 +17,14 @@ export const useMe = () => {
         return false;
       }
       return true;
+    },
+    // Retry once on 401 to handle cases where cookie was just set
+    retry: (failureCount, error: any) => {
+      const is401 = error?.details?.status === 401 || error?.code === 'HTTP_401';
+      // Don't retry on 401 errors (token is invalid/expired)
+      if (is401) return false;
+      // Retry other errors up to 1 time
+      return failureCount < 1;
     },
   });
 };

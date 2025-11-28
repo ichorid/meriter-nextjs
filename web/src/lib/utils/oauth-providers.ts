@@ -92,23 +92,52 @@ export const OAUTH_PROVIDERS: OAuthProvider[] = [
  */
 export function getOAuthUrl(providerId: string, returnTo?: string): string {
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/meriter/home';
-  const returnPath = returnTo || currentPath;
   
+  // Parse returnTo if it contains query parameters
+  let returnPath: string = currentPath;
+  let queryParams = '';
+  
+  if (returnTo && returnTo.length > 0) {
+    if (returnTo.includes('?')) {
+      const [path, query] = returnTo.split('?');
+      returnPath = path || currentPath;
+      queryParams = query ? `?${query}` : '';
+    } else {
+      returnPath = returnTo;
+    }
+  }
+
   // Build full URL with current origin (web server, port 8001)
-  const returnUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}${returnPath.startsWith('/') ? returnPath : `/${returnPath}`}`
+  const returnUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}${returnPath.startsWith('/') ? returnPath : `/${returnPath}`}${queryParams}`
     : returnPath;
-  
+
   // Determine API URL
-  const isLocalDev = typeof window !== 'undefined' && 
-                     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  
+  const isLocalDev = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || (isLocalDev ? 'http://localhost:8002' : '');
-  
-  const oauthUrl = apiBaseUrl 
+
+  const oauthUrl = apiBaseUrl
     ? `${apiBaseUrl}/api/v1/auth/${providerId}?returnTo=${encodeURIComponent(returnUrl)}`
     : `/api/v1/auth/${providerId}?returnTo=${encodeURIComponent(returnUrl)}`;
-  
+
   return oauthUrl;
 }
 
+
+/**
+ * Filter providers based on environment variables
+ */
+export function getEnabledProviders(env: Record<string, string | undefined> = {}): string[] {
+  // Default to all enabled if no env vars are checked (or handle as needed)
+  // But here we want to respect the flags.
+  // If env is empty, we might want to return all or none. 
+  // Given the requirement, we should check specific flags.
+
+  return OAUTH_PROVIDERS.filter(provider => {
+    const key = `OAUTH_${provider.id.toUpperCase()}_ENABLED`;
+    const value = env[key];
+    return value === 'true';
+  }).map(p => p.id);
+}

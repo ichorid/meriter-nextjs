@@ -7,6 +7,9 @@ import { PollsModule } from './polls/polls.module';
 import { WalletsModule } from './wallets/wallets.module';
 import { UsersModule } from './users/users.module';
 import { ApiV1ConfigModule } from './config/config.module';
+import { InvitesModule } from './invites/invites.module';
+import { TeamsModule } from './teams/teams.module';
+import { UserCommunityRolesModule } from './user-community-roles/user-community-roles.module';
 
 @Module({
   imports: [
@@ -18,6 +21,9 @@ import { ApiV1ConfigModule } from './config/config.module';
     WalletsModule,
     UsersModule,
     ApiV1ConfigModule,
+    InvitesModule,
+    TeamsModule,
+    UserCommunityRolesModule,
   ],
 })
 export class ApiV1Module {}

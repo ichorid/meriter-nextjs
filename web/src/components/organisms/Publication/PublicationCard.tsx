@@ -11,9 +11,6 @@ import { usePollCardData } from '@/hooks/usePollCardData';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { getWalletBalance } from '@/lib/utils/wallet';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
-// Gluestack UI components
-import { Card, CardBody } from '@/components/ui/card';
-import { Box } from '@/components/ui/box';
 import { Pressable } from 'react-native';
 
 import type { FeedItem, PublicationFeedItem, PollFeedItem, Wallet } from '@/types/api-v1';
@@ -84,8 +81,8 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   if (isPoll && pollData) {
     const pollItem = publication as PollFeedItem;
     return (
-      <Card shadowColor="$black" shadowOffset={{ width: 0, height: 2 }} shadowOpacity={0.1} shadowRadius={3.84} elevation={5} borderRadius="$lg" p="$6">
-        <CardBody>
+      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-200">
+        <div>
           <PublicationHeader
             publication={{
               id: pollItem.id,
@@ -109,10 +106,11 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             communityId={pollItem.communityId}
             initiallyExpanded={false}
           />
-        </CardBody>
-      </Card>
+        </div>
+      </div>
     );
   }
+
 
   // Render publication card
   const pubItem = publication as PublicationFeedItem;
@@ -134,23 +132,18 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   
   return (
     <Pressable onPress={handleCardClick}>
-      <Card 
-        shadowColor="$black"
-        shadowOffset={{ width: 0, height: 2 }}
-        shadowOpacity={0.1}
-        shadowRadius={3.84}
-        elevation={5}
-        borderRadius="$lg"
-        p="$6"
-        overflow="hidden"
+      <div 
+        className="bg-white rounded-xl p-6 shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-200"
       >
-      <CardBody>
+      <div>
         <PublicationHeader
           publication={{
             id: pubItem.id,
             slug: pubItem.slug,
             createdAt: pubItem.createdAt,
             meta: pubItem.meta,
+            postType: (pubItem as any).postType,
+            isProject: (pubItem as any).isProject,
           }}
           showCommunityAvatar={showCommunityAvatar}
           className="mb-4"
@@ -161,6 +154,9 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             id: pubItem.id,
             createdAt: pubItem.createdAt,
             content: pubItem.content,
+            title: (pubItem as any).title,
+            description: (pubItem as any).description,
+            isProject: (pubItem as any).isProject,
             meta: transformedMeta,
           }}
           className="mb-6"
@@ -177,6 +173,8 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             type: pubItem.type,
             metrics: pubItem.metrics,
             meta: transformedMeta,
+            postType: (pubItem as any).postType,
+            isProject: (pubItem as any).isProject,
           }}
           onVote={handleVote}
           onComment={handleComment}
@@ -189,8 +187,8 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           wallets={wallets}
           // maxMinus is calculated in PublicationActions using quota data
         />
-      </CardBody>
-    </Card>
+      </div>
+    </div>
     </Pressable>
   );
 };

@@ -1,6 +1,7 @@
 'use client';
 
 import { Avatar } from '@/components/atoms';
+import { Settings } from 'lucide-react';
 
 interface CommunityAvatarProps {
   avatarUrl?: string;
@@ -14,7 +15,7 @@ interface CommunityAvatarProps {
 /**
  * Simple community avatar component without badge overlay
  * Shows the community's Telegram profile photo (or placeholder)
- * Optionally shows a "!" badge when needsSetup is true
+ * Optionally shows a setup badge when needsSetup is true
  */
 export const CommunityAvatar = ({
   avatarUrl,
@@ -35,8 +36,8 @@ export const CommunityAvatar = ({
         onError={onError}
       />
       {needsSetup && (
-        <div className="absolute -top-1 -right-1 bg-warning text-warning-content rounded-full flex items-center justify-center text-xs font-bold" style={{ width: size * 0.4, height: size * 0.4, minWidth: '16px', minHeight: '16px' }}>
-          !
+        <div className="absolute -top-1 -right-1 bg-yellow-500 text-white rounded-full p-0.5 border-2 border-white shadow-sm">
+          <Settings size={12} />
         </div>
       )}
     </div>

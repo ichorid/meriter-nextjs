@@ -8,14 +8,17 @@ import { cookies } from 'next/headers';
 import { Root } from '@/components/Root';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthWrapper } from '@/components/AuthWrapper';
 import { AppModeProvider } from '@/contexts/AppModeContext';
 import StyledJsxRegistry from '@/registry';
-import { GluestackWrapper } from '@/components/GluestackWrapper';
+
+import { getEnabledProviders } from '@/lib/utils/oauth-providers';
 
 export const metadata: Metadata = {
     title: 'Meriter',
     description: 'Merit-based community platform',
 };
+
 
 export default async function RootLayout({
     children,
@@ -25,11 +28,11 @@ export default async function RootLayout({
     // Get server-side locale and messages
     const headersList = await headers();
     const acceptLanguage = headersList.get('accept-language');
-    
+
     // Get locale from cookie with fallback to browser detection
     const cookieStore = await cookies();
     const localePreference = cookieStore.get('NEXT_LOCALE')?.value;
-    
+
     let locale = DEFAULT_LOCALE;
     if (localePreference === 'auto') {
         locale = detectBrowserLanguage(acceptLanguage || undefined);
@@ -38,9 +41,22 @@ export default async function RootLayout({
     } else {
         locale = detectBrowserLanguage(acceptLanguage || undefined);
     }
-    
+
     const messages = await getMessages({ locale });
-    
+
+    // Get enabled providers from env (explicitly accessing process.env for Next.js)
+    const env = {
+        OAUTH_GOOGLE_ENABLED: process.env.OAUTH_GOOGLE_ENABLED,
+        OAUTH_YANDEX_ENABLED: process.env.OAUTH_YANDEX_ENABLED,
+        OAUTH_VK_ENABLED: process.env.OAUTH_VK_ENABLED,
+        OAUTH_TELEGRAM_ENABLED: process.env.OAUTH_TELEGRAM_ENABLED,
+        OAUTH_APPLE_ENABLED: process.env.OAUTH_APPLE_ENABLED,
+        OAUTH_TWITTER_ENABLED: process.env.OAUTH_TWITTER_ENABLED,
+        OAUTH_INSTAGRAM_ENABLED: process.env.OAUTH_INSTAGRAM_ENABLED,
+        OAUTH_SBER_ENABLED: process.env.OAUTH_SBER_ENABLED,
+    };
+    const enabledProviders = getEnabledProviders(env);
+
     return (
         <html lang={locale} suppressHydrationWarning>
             <head>
@@ -55,17 +71,18 @@ export default async function RootLayout({
             </head>
             <body suppressHydrationWarning>
                 <StyledJsxRegistry>
-                    <GluestackWrapper>
-                        <AppModeProvider>
-                            <QueryProvider>
+                    <AppModeProvider>
+                        <QueryProvider>
+                            <NextIntlClientProvider messages={messages}>
                                 <AuthProvider>
-                                    <NextIntlClientProvider messages={messages}>
+                                    {/* Temporarily disable AuthWrapper for debugging - set DISABLE_AUTH_WRAPPER = true in AuthWrapper.tsx */}
+                                    <AuthWrapper enabledProviders={enabledProviders}>
                                         <Root>{children}</Root>
-                                    </NextIntlClientProvider>
+                                    </AuthWrapper>
                                 </AuthProvider>
-                            </QueryProvider>
-                        </AppModeProvider>
-                    </GluestackWrapper>
+                            </NextIntlClientProvider>
+                        </QueryProvider>
+                    </AppModeProvider>
                 </StyledJsxRegistry>
             </body>
         </html>

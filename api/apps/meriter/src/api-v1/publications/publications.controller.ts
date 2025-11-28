@@ -1,8 +1,21 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, ForbiddenException, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { NotFoundException } from '@nestjs/common';
 import { PublicationService } from '../../domain/services/publication.service';
 import { UserService } from '../../domain/services/user.service';
 import { CommunityService } from '../../domain/services/community.service';
+import { PermissionService } from '../../domain/services/permission.service';
 import { UserEnrichmentService } from '../common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../common/services/community-enrichment.service';
 import { EntityMappers } from '../common/mappers/entity-mappers';
@@ -10,7 +23,7 @@ import { ApiResponseHelper } from '../common/helpers/api-response.helper';
 import { User } from '../../decorators/user.decorator';
 import { UserGuard } from '../../user.guard';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
-import { 
+import {
   CreatePublicationDto,
   CreatePublicationDtoSchema,
   UpdatePublicationDtoSchema,
@@ -27,6 +40,7 @@ export class PublicationsController {
     private publicationService: PublicationService,
     private userService: UserService,
     private communityService: CommunityService,
+    private permissionService: PermissionService,
     private userEnrichmentService: UserEnrichmentService,
     private communityEnrichmentService: CommunityEnrichmentService,
   ) {}
@@ -37,14 +51,29 @@ export class PublicationsController {
     @User() user: AuthenticatedUser,
     @Body() dto: CreatePublicationDto,
   ) {
-    const publication = await this.publicationService.createPublication(user.id, dto);
+    // Check permissions using PermissionService
+    const canCreate = await this.permissionService.canCreatePublication(
+      user.id,
+      dto.communityId,
+    );
+
+    if (!canCreate) {
+      throw new ForbiddenException(
+        'You do not have permission to create publications in this community',
+      );
+    }
+
+    const publication = await this.publicationService.createPublication(
+      user.id,
+      dto,
+    );
     return ApiResponseHelper.successResponse(publication);
   }
 
   @Get(':id')
   async getPublication(@Param('id') id: string) {
     const publication = await this.publicationService.getPublication(id);
-    
+
     if (!publication) {
       throw new NotFoundException('Publication not found');
     }
@@ -61,7 +90,11 @@ export class PublicationsController {
       this.communityEnrichmentService.batchFetchCommunities([communityId]),
     ]);
 
-    const mappedPublication = EntityMappers.mapPublicationToApi(publication, usersMap, communitiesMap);
+    const mappedPublication = EntityMappers.mapPublicationToApi(
+      publication,
+      usersMap,
+      communitiesMap,
+    );
     return ApiResponseHelper.successResponse(mappedPublication);
   }
 
@@ -78,13 +111,13 @@ export class PublicationsController {
     // Support both pagination formats: limit/skip and page/pageSize
     let parsedLimit = 20;
     let parsedSkip = 0;
-    
+
     if (pageSize) {
       parsedLimit = parseInt(pageSize, 10);
     } else if (limit) {
       parsedLimit = parseInt(limit, 10);
     }
-    
+
     if (page && pageSize) {
       parsedSkip = (parseInt(page, 10) - 1) * parsedLimit;
     } else if (skip) {
@@ -92,16 +125,25 @@ export class PublicationsController {
     }
 
     if (communityId) {
-      return this.publicationService.getPublicationsByCommunity(communityId, parsedLimit, parsedSkip);
+      return this.publicationService.getPublicationsByCommunity(
+        communityId,
+        parsedLimit,
+        parsedSkip,
+      );
     }
-    
+
     if (authorId) {
-      const publications = await this.publicationService.getPublicationsByAuthor(authorId, parsedLimit, parsedSkip);
+      const publications =
+        await this.publicationService.getPublicationsByAuthor(
+          authorId,
+          parsedLimit,
+          parsedSkip,
+        );
 
       // Extract unique user IDs (authors and beneficiaries) and community IDs
       const userIds = new Set<string>();
       const communityIds = new Set<string>();
-      publications.forEach(pub => {
+      publications.forEach((pub) => {
         userIds.add(pub.getAuthorId.getValue());
         if (pub.getBeneficiaryId) {
           userIds.add(pub.getBeneficiaryId.getValue());
@@ -112,19 +154,29 @@ export class PublicationsController {
       // Batch fetch all users and communities
       const [usersMap, communitiesMap] = await Promise.all([
         this.userEnrichmentService.batchFetchUsers(Array.from(userIds)),
-        this.communityEnrichmentService.batchFetchCommunities(Array.from(communityIds)),
+        this.communityEnrichmentService.batchFetchCommunities(
+          Array.from(communityIds),
+        ),
       ]);
 
       // Convert domain entities to DTOs with enriched user metadata
-      const mappedPublications = publications.map(publication => 
-        EntityMappers.mapPublicationToApi(publication, usersMap, communitiesMap)
+      const mappedPublications = publications.map((publication) =>
+        EntityMappers.mapPublicationToApi(
+          publication,
+          usersMap,
+          communitiesMap,
+        ),
       );
 
       return ApiResponseHelper.successResponse(mappedPublications);
     }
 
     if (hashtag) {
-      return this.publicationService.getPublicationsByHashtag(hashtag, parsedLimit, parsedSkip);
+      return this.publicationService.getPublicationsByHashtag(
+        hashtag,
+        parsedLimit,
+        parsedSkip,
+      );
     }
 
     return this.publicationService.getTopPublications(parsedLimit, parsedSkip);
@@ -137,6 +189,17 @@ export class PublicationsController {
     @Param('id') id: string,
     @Body() updates: any,
   ) {
+    // Check permissions using PermissionService
+    const canEdit = await this.permissionService.canEditPublication(
+      user.id,
+      id,
+    );
+    if (!canEdit) {
+      throw new ForbiddenException(
+        'You do not have permission to edit this publication',
+      );
+    }
+
     return this.publicationService.updatePublication(id, user.id, updates);
   }
 
@@ -145,6 +208,17 @@ export class PublicationsController {
     @User() user: AuthenticatedUser,
     @Param('id') id: string,
   ) {
+    // Check permissions using PermissionService
+    const canDelete = await this.permissionService.canDeletePublication(
+      user.id,
+      id,
+    );
+    if (!canDelete) {
+      throw new ForbiddenException(
+        'You do not have permission to delete this publication',
+      );
+    }
+
     await this.publicationService.deletePublication(id, user.id);
     return { success: true };
   }
@@ -156,7 +230,20 @@ export class PublicationsController {
     @Param('id') id: string,
     @Body() dto: any,
   ) {
-    return this.publicationService.voteOnPublication(id, user.id, dto.amount, dto.direction);
+    // Check permissions using PermissionService
+    const canVote = await this.permissionService.canVote(user.id, id);
+    if (!canVote) {
+      throw new ForbiddenException(
+        'You do not have permission to vote on this publication',
+      );
+    }
+
+    return this.publicationService.voteOnPublication(
+      id,
+      user.id,
+      dto.amount,
+      dto.direction,
+    );
   }
 
   @Post('fake-data')
@@ -169,7 +256,9 @@ export class PublicationsController {
       throw new ForbiddenException('Fake data mode is not enabled');
     }
 
-    this.logger.log(`Generating fake data: type=${body.type}, userId=${user.id}`);
+    this.logger.log(
+      `Generating fake data: type=${body.type}, userId=${user.id}`,
+    );
 
     // Get or use the specified community, or create/get a test community
     let communityId: string;
@@ -191,8 +280,7 @@ export class PublicationsController {
         const testCommunity = await this.communityService.createCommunity({
           name: 'Test Community',
           description: 'Test community for fake data',
-          telegramChatId: '-1',
-          adminsTG: [],
+          adminIds: [],
         });
         communityId = testCommunity.id;
         community = testCommunity;
@@ -221,29 +309,33 @@ export class PublicationsController {
         'Test post #1 from fake user',
         'Test post #2 from fake user',
       ];
-      
+
       for (let i = 0; i < Math.min(2, contents.length); i++) {
-        const publication = await this.publicationService.createPublication(user.id, {
-          communityId,
-          content: contents[i],
-          type: 'text',
-          hashtags: ['#test'],
-        });
+        const publication = await this.publicationService.createPublication(
+          user.id,
+          {
+            communityId,
+            content: contents[i],
+            type: 'text',
+            hashtags: ['#test'],
+          },
+        );
         createdPublications.push(publication);
       }
     } else if (body.type === 'beneficiary') {
       // Get a random user (excluding fake users)
       const allUsers = await this.userService.getAllUsers(100, 0);
-      const otherUsers = allUsers.filter(u => 
-        !u.telegramId?.startsWith('fake_user_') && u.id !== user.id
+      const otherUsers = allUsers.filter(
+        (u) => !u.authId?.startsWith('fake_user_') && u.id !== user.id,
       );
-      
+
       let beneficiaryId: string;
-      
+
       if (otherUsers.length === 0) {
         // Create a test beneficiary user if none exists
         const testBeneficiary = await this.userService.createOrUpdateUser({
-          telegramId: `fake_beneficiary_${Date.now()}`,
+          authProvider: 'fake',
+          authId: `fake_beneficiary_${Date.now()}`,
           username: 'fakebeneficiary',
           firstName: 'Fake',
           lastName: 'Beneficiary',
@@ -263,16 +355,19 @@ export class PublicationsController {
         'Test post #1 with beneficiary',
         'Test post #2 with beneficiary',
       ];
-      
+
       for (let i = 0; i < Math.min(2, contents.length); i++) {
         try {
-          const publication = await this.publicationService.createPublication(user.id, {
-            communityId,
-            content: contents[i],
-            type: 'text',
-            hashtags: ['#test'],
-            beneficiaryId,
-          });
+          const publication = await this.publicationService.createPublication(
+            user.id,
+            {
+              communityId,
+              content: contents[i],
+              type: 'text',
+              hashtags: ['#test'],
+              beneficiaryId,
+            },
+          );
           createdPublications.push(publication);
         } catch (error) {
           this.logger.error(`Failed to create publication ${i + 1}:`, error);

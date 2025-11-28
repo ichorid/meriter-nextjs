@@ -87,6 +87,9 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const t = useTranslations('feed');
   const myId = user?.id;
   
+  // Check if this is a PROJECT post (no voting allowed)
+  const isProject = (publication as any).postType === 'project' || (publication as any).isProject === true;
+  
   // Extract beneficiary information
   const beneficiaryId = publication.beneficiaryId || publication.meta?.beneficiary?.id;
   const authorId = publication.authorId;
@@ -149,7 +152,21 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   return (
     <div className={`space-y-4 ${className}`}>
       <div className="flex items-center justify-between">
-        {showWithdraw ? (
+        {isProject ? (
+          // PROJECT posts: no voting, only comments
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleCommentToggle}
+              className="flex items-center gap-2 text-brand-text-secondary hover:text-brand-text-primary transition-colors"
+            >
+              <span>{t('comments')}</span>
+              <span className="text-sm">({publication.metrics?.commentCount || 0})</span>
+            </button>
+            <span className="text-sm text-brand-text-secondary italic">
+              {t('projectNoVoting')}
+            </span>
+          </div>
+        ) : showWithdraw ? (
           <BarWithdraw
             balance={maxWithdrawAmount}
             onWithdraw={handleWithdrawClick}

@@ -1,18 +1,20 @@
 import { useTranslations } from 'next-intl';
 import { PublicationCardComponent as PublicationCard } from '@/components/organisms/Publication';
 import { EmptyState } from '@/components/organisms/EmptyState/EmptyState';
+import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { sortItems, generateKey } from '../utils';
 import type { SortOrder } from '../types';
-// Gluestack UI components
-import { Box } from '@/components/ui/box';
-import { VStack } from '@/components/ui/vstack';
-import { Spinner } from '@/components/ui/spinner';
+import { Loader2 } from 'lucide-react';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 interface PollsTabProps {
   polls: any[];
   isLoading: boolean;
   wallets: any[];
   sortOrder: SortOrder;
+  fetchNextPage?: () => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
 }
 
 export function PollsTab({
@@ -20,14 +22,27 @@ export function PollsTab({
   isLoading,
   wallets,
   sortOrder,
+  fetchNextPage,
+  hasNextPage = false,
+  isFetchingNextPage = false,
 }: PollsTabProps) {
   const t = useTranslations('home');
 
+  // Infinite scroll trigger
+  const observerTarget = useInfiniteScroll({
+    hasNextPage,
+    fetchNextPage: fetchNextPage || (() => {}),
+    isFetchingNextPage,
+    threshold: 200,
+  });
+
   if (isLoading) {
     return (
-      <Box flex={1} alignItems="center" justifyContent="center" height={128}>
-        <Spinner size="large" />
-      </Box>
+      <div className="space-y-4">
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
+      </div>
     );
   }
 
@@ -43,7 +58,7 @@ export function PollsTab({
   }
 
   return (
-    <VStack space="md">
+    <div className="space-y-4">
       {sortItems(polls, sortOrder).map((poll: any, index: number) => {
         const key = generateKey(poll?.id, index, 'poll');
         return (
@@ -55,7 +70,17 @@ export function PollsTab({
           />
         );
       })}
-    </VStack>
+      
+      {/* Infinite scroll trigger */}
+      <div ref={observerTarget} className="h-4" />
+      
+      {/* Loading indicator */}
+      {isFetchingNextPage && (
+        <div className="flex justify-center py-4">
+          <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+        </div>
+      )}
+    </div>
   );
 }
 

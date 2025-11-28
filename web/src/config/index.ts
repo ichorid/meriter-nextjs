@@ -119,10 +119,12 @@ export const config = {
   
   // API
   api: {
-    // In production with Caddy, use relative URLs (empty string) when not explicitly set
-    // In development, default to localhost
-    // When explicitly set, always use the provided value
-    baseUrl: env.NEXT_PUBLIC_API_URL ?? (env.NODE_ENV === 'production' ? '' : 'http://localhost:8002'),
+    // Always use relative URLs to go through Next.js rewrites proxy
+    // Next.js rewrites will proxy /api/* to backend API server
+    // In production with Caddy, use empty string (relative URLs)
+    // In development, also use empty string to go through Next.js rewrites
+    // Only use absolute URL if explicitly set via NEXT_PUBLIC_API_URL
+    baseUrl: env.NEXT_PUBLIC_API_URL ?? '',
     endpoints: {
       auth: '/api/v1/auth',
       publications: '/api/v1/publications',

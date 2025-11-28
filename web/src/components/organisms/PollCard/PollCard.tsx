@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { Card, CardBody, CardHeader, CardTitle, Button, Badge, Avatar } from '@/components/atoms';
 
@@ -57,7 +59,7 @@ export const PollCard: React.FC<PollCardProps> = ({
           </Badge>
         )}
       </CardHeader>
-      
+
       <CardBody>
         <div className="space-y-2">
           {options.map((option) => (
@@ -71,10 +73,9 @@ export const PollCard: React.FC<PollCardProps> = ({
                     </span>
                   </div>
                   <div className="w-full bg-base-300 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        selectedOption === option.id ? 'bg-primary' : 'bg-base-content/20'
-                      }`}
+                    <div
+                      className={`h-2 rounded-full transition-all duration-300 ${selectedOption === option.id ? 'bg-primary' : 'bg-base-content/20'
+                        }`}
                       style={{ width: `${option.percentage}%` }}
                     ></div>
                   </div>
@@ -96,7 +97,7 @@ export const PollCard: React.FC<PollCardProps> = ({
               )}
             </div>
           ))}
-          
+
           <div className="text-xs text-base-content/60 mt-2">
             {totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}
             {createdAt && ` • ${new Date(createdAt).toLocaleDateString()}`}
