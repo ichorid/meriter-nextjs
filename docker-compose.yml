@@ -30,11 +30,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '1'
+          memory: 1G
     security_opt:
       - no-new-privileges:true
 
@@ -65,11 +62,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '1'
+          memory: 1G
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -106,11 +100,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '1'
+          memory: 1G
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -199,9 +190,6 @@ services:
         limits:
           cpus: '1'
           memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
     security_opt:
       - no-new-privileges:true
     # Caddy needs write access to /data and /config for certificates
