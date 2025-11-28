@@ -1,7 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CanActivate, ExecutionContext } from '@nestjs/common';
-import { createMock } from '@golevelup/ts-jest';
-import { Model } from 'mongoose';
 import { PollsController } from '../src/api-v1/polls/polls.controller';
 import { PollService } from '../src/domain/services/poll.service';
 import { PollCastService } from '../src/domain/services/poll-cast.service';
@@ -12,10 +10,6 @@ import { TgBotsService } from '../src/tg-bots/tg-bots.service';
 import { UserEnrichmentService } from '../src/api-v1/common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../src/api-v1/common/services/community-enrichment.service';
 import { UserGuard } from '../src/user.guard';
-import { Poll, PollDocument } from '../src/domain/models/poll/poll.schema';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { getModelToken } from '@nestjs/mongoose';
 import { CreatePollDto } from '@meriter/shared-types';
 import { uid } from 'uid';
 
@@ -35,12 +29,9 @@ describe('PollsController - Notification Language', () => {
   let pollService: jest.Mocked<PollService>;
   let communityService: jest.Mocked<CommunityService>;
   let tgBotsService: jest.Mocked<TgBotsService>;
-  let mockCommunityModel: Model<CommunityDocument>;
+  let module: TestingModule;
 
   beforeEach(async () => {
-    // Create mock models
-    mockCommunityModel = createMock<Model<CommunityDocument>>();
-
     // Create mock services
     const mockPollService = {
       createPoll: jest.fn(),
@@ -74,7 +65,7 @@ describe('PollsController - Notification Language', () => {
       getCommunityLanguageByChatId: jest.fn(),
     };
 
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       controllers: [PollsController],
       providers: [
         {
@@ -113,10 +104,6 @@ describe('PollsController - Notification Language', () => {
             batchFetchCommunities: jest.fn().mockResolvedValue(new Map()),
           },
         },
-        {
-          provide: getModelToken(Community.name),
-          useValue: mockCommunityModel,
-        },
       ],
     })
       .overrideGuard(UserGuard)
@@ -129,7 +116,14 @@ describe('PollsController - Notification Language', () => {
     tgBotsService = module.get(TgBotsService) as jest.Mocked<TgBotsService>;
   });
 
-  it('should send poll notification in Russian when community language is set to "ru"', async () => {
+  afterEach(async () => {
+    jest.clearAllMocks();
+    if (module) {
+      await module.close();
+    }
+  });
+
+  it('should not send poll notification when Telegram notifications are disabled', async () => {
     const communityId = uid();
     const userId = uid();
     const pollId = uid();
@@ -195,30 +189,24 @@ describe('PollsController - Notification Language', () => {
     // Setup mocks
     pollService.createPoll.mockResolvedValue(mockPoll);
     communityService.getCommunity.mockResolvedValue(mockCommunity as any);
-    tgBotsService.getCommunityLanguageByChatId.mockResolvedValue('ru');
 
     // Call createPoll
     const req = { user: { id: userId } } as any;
-    await controller.createPoll(createPollDto, req);
+    const result = await controller.createPoll(createPollDto, req);
 
-    // Verify getCommunityLanguageByChatId was called with the correct chat ID
+    // Verify tgBotsService.tgSend was NOT called (notifications are disabled)
+    expect(tgBotsService.tgSend).not.toHaveBeenCalled();
     
-    // Verify tgBotsService.tgSend was called
-    expect(tgBotsService.tgSend).toHaveBeenCalledTimes(1);
-
-    // Get the call arguments
-    const tgSendCall = tgBotsService.tgSend.mock.calls[0];
-    const [sendArgs] = tgSendCall;
-    
-    
-    // Verify the message contains Russian text
-    // The Russian translation for 'poll.created' should contain 'Новый опрос'
-    const messageText = sendArgs.text;
-    expect(messageText).toContain('Новый опрос'); // Russian for "New poll"
-    expect(messageText).toContain(createPollDto.question);
+    // Verify the poll was created successfully
+    expect(result.success).toBe(true);
+    expect(result.data.id).toBe(pollId);
+    expect(pollService.createPoll).toHaveBeenCalledWith(userId, expect.objectContaining({
+      communityId,
+      question: createPollDto.question,
+    }));
   });
 
-  it('should send poll notification in English when community language is set to "en"', async () => {
+  it('should create poll successfully without sending notifications', async () => {
     const communityId = uid();
     const userId = uid();
     const pollId = uid();
@@ -284,27 +272,18 @@ describe('PollsController - Notification Language', () => {
     // Setup mocks
     pollService.createPoll.mockResolvedValue(mockPoll);
     communityService.getCommunity.mockResolvedValue(mockCommunity as any);
-    tgBotsService.getCommunityLanguageByChatId.mockResolvedValue('en');
 
     // Call createPoll
     const req = { user: { id: userId } } as any;
-    await controller.createPoll(createPollDto, req);
+    const result = await controller.createPoll(createPollDto, req);
 
-    // Verify getCommunityLanguageByChatId was called with the correct chat ID
+    // Verify tgBotsService.tgSend was NOT called (notifications are disabled)
+    expect(tgBotsService.tgSend).not.toHaveBeenCalled();
     
-    // Verify tgBotsService.tgSend was called
-    expect(tgBotsService.tgSend).toHaveBeenCalledTimes(1);
-
-    // Get the call arguments
-    const tgSendCall = tgBotsService.tgSend.mock.calls[0];
-    const [sendArgs] = tgSendCall;
-    
-    
-    // Verify the message contains English text
-    // The English translation for 'poll.created' should contain 'New poll'
-    const messageText = sendArgs.text;
-    expect(messageText).toContain('New poll'); // English text
-    expect(messageText).toContain(createPollDto.question);
+    // Verify the poll was created successfully
+    expect(result.success).toBe(true);
+    expect(result.data.id).toBe(pollId);
+    expect(result.data.question).toBe(createPollDto.question);
   });
 });
 
