@@ -10,6 +10,10 @@ export const useMe = () => {
   return useQuery({
     queryKey: queryKeys.auth.me(),
     queryFn: () => authApiV1.getMe(),
+    // Use longer staleTime for auth data since it doesn't change frequently during a session
+    staleTime: 5 * 60 * 1000, // 5 minutes - auth data stays fresh for 5 minutes
+    // Don't refetch on mount if data is fresh - prevents excessive refetches on navigation
+    refetchOnMount: false,
     // Don't refetch on reconnect if query failed with 401
     refetchOnReconnect: (query) => {
       const lastError = query.state.error as any;

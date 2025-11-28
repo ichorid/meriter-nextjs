@@ -11,7 +11,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMe, useFakeAuth, useLogout } from '@/hooks/api/useAuth';
@@ -55,18 +55,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
   
   const { handleDeepLink } = useDeepLinkHandler(router as unknown as Router, null, undefined);
   
-  const isLoading = userLoading || isAuthenticating;
+  // Memoize derived values to prevent unnecessary recalculations
+  const isLoading = useMemo(() => userLoading || isAuthenticating, [userLoading, isAuthenticating]);
   
-  // Check if we have a 401 error (unauthorized)
-  const errorStatus = userError ? ((userError as any)?.details?.status || (userError as any)?.code) : null;
-  const is401Error = errorStatus === 401 || errorStatus === 'HTTP_401';
+  // Check if we have a 401 error (unauthorized) - memoized
+  const is401Error = useMemo(() => {
+    const errorStatus = userError ? ((userError as any)?.details?.status || (userError as any)?.code) : null;
+    return errorStatus === 401 || errorStatus === 'HTTP_401';
+  }, [userError]);
   
   // User is authenticated ONLY if:
   // 1. We have a user object (not null/undefined)
   // 2. There's no error OR the error is not a 401 (401 means not authenticated)
-  const isAuthenticated = !!user && !is401Error;
+  const isAuthenticated = useMemo(() => !!user && !is401Error, [user, is401Error]);
 
-  const authenticateFakeUser = async () => {
+  const authenticateFakeUser = useCallback(async () => {
     try {
       setIsAuthenticating(true);
       setAuthError(null);
@@ -80,9 +83,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsAuthenticating(false);
     }
-  };
+  }, [fakeAuthMutation]);
   
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       setIsAuthenticating(true);
       setAuthError(null);
@@ -100,7 +103,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsAuthenticating(false);
     }
-  };
+  }, [logoutMutation]);
+  
+  // Memoize setAuthError wrapper to ensure stable reference
+  const setAuthErrorMemoized = useCallback((error: string | null) => {
+    setAuthError(error);
+  }, []);
   
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -133,7 +141,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [userError]);
   
-  const contextValue: AuthContextType = {
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  // Only recreate when actual values change, not object references
+  const contextValue: AuthContextType = useMemo(() => ({
     user: user || null,
     isLoading,
     isAuthenticated,
@@ -141,8 +151,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     handleDeepLink,
     authError,
-    setAuthError,
-  };
+    setAuthError: setAuthErrorMemoized,
+  }), [
+    user,
+    isLoading,
+    isAuthenticated,
+    authenticateFakeUser,
+    logout,
+    handleDeepLink,
+    authError,
+    setAuthErrorMemoized,
+  ]);
   
   return (
     <AuthContext.Provider value={contextValue}>
