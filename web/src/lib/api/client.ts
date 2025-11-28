@@ -49,15 +49,20 @@ export class ApiClient {
       },
       (error: AxiosError) => {
         // Handle 401 Unauthorized errors - clear auth storage and allow re-login
-        // Clear cookies/storage for ALL 401 errors, including during OAuth flows
-        // This ensures stale/invalid cookies are removed so users can re-authenticate
         if (error.response?.status === 401) {
-          // Clear JWT cookie and local storage using the centralized utility
-          if (typeof document !== 'undefined') {
-            clearAuthStorage();
+          // Don't clear if this is an auth endpoint (might be during login flow)
+          const url = error.config?.url || '';
+          const isAuthEndpoint = url.includes('/api/v1/auth/telegram/widget') || 
+                                 url.includes('/api/v1/auth/telegram/webapp');
+          
+          if (!isAuthEndpoint) {
+            // Clear JWT cookie and local storage using the centralized utility
+            if (typeof document !== 'undefined') {
+              clearAuthStorage();
+            }
+            // Invalidate React Query cache to remove stale auth data
+            invalidateAuthQueries();
           }
-          // Invalidate React Query cache to remove stale auth data
-          invalidateAuthQueries();
         }
         
         const apiError = transformAxiosError(error);

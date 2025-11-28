@@ -4,10 +4,7 @@ import { UpdateCard } from '@/components/organisms/UpdateCard';
 import { sortItems, generateKey } from '../utils';
 import type { SortOrder } from '../types';
 import type { UpdateEvent } from '@/types/updates';
-// Gluestack UI components
-import { Box } from '@/components/ui/box';
-import { VStack } from '@/components/ui/vstack';
-import { Spinner } from '@/components/ui/spinner';
+import { Loader2 } from 'lucide-react';
 
 interface UpdatesTabProps {
   updates: UpdateEvent[];
@@ -24,9 +21,9 @@ export function UpdatesTab({
 
   if (isLoading) {
     return (
-      <Box flex={1} alignItems="center" justifyContent="center" height={128}>
-        <Spinner size="large" />
-      </Box>
+      <div className="flex flex-1 items-center justify-center h-32">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+      </div>
     );
   }
 
@@ -39,7 +36,7 @@ export function UpdatesTab({
   }
 
   return (
-    <VStack space="md">
+    <div className="space-y-4">
       {sortItems(updates, sortOrder).map((update: UpdateEvent, index: number) => {
         const key = generateKey(update?.id, index, 'update');
         return (
@@ -49,7 +46,7 @@ export function UpdatesTab({
           />
         );
       })}
-    </VStack>
+    </div>
   );
 }
 

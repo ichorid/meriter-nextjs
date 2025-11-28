@@ -5,47 +5,38 @@ import { useQueryClient } from '@tanstack/react-query';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useRouter, useSearchParams } from "next/navigation";
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
-import { FormPollCreate } from "@features/polls";
-import { BottomPortal } from "@shared/components/bottom-portal";
+import { FabMenu } from "@/components/molecules/FabMenu/FabMenu";
 import { useTranslations } from 'next-intl';
 import { useWallets, useCommunity } from '@/hooks/api';
 import { useCommunityFeed } from '@/hooks/api/useCommunityFeed';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { routes } from '@/lib/constants/routes';
-import { queryKeys } from '@/lib/constants/queryKeys';
-import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
-
-// Publication type imported from shared-types (single source of truth)
-
+import type { FeedItem } from '@meriter/shared-types';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { BrandButton } from '@/components/ui/BrandButton';
+import { CommunityHero } from '@/components/organisms/Community/CommunityHero';
+import { Loader2 } from 'lucide-react';
 
 const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const t = useTranslations('pages');
-    const tCommunities = useTranslations('communities');
+    const tCommunities = useTranslations('pages.communities');
     const resolvedParams = use(params);
     const chatId = resolvedParams.id;
-    const pathname = `/meriter/communities/${chatId}`;
-    
+
     // Get the post parameter from URL for deep linking
     const targetPostSlug = searchParams?.get('post');
     const targetPollId = searchParams?.get('poll');
-    
-    // Get sort and modal state from URL params
+
+    // Get sort state from URL params
     const sortBy = searchParams?.get('sort') || 'recent';
     const selectedTag = searchParams?.get('tag');
-    const showPollCreate = searchParams?.get('modal') === 'createPoll';
+    const searchQuery = searchParams?.get('q') || '';
 
     const [paginationEnd, setPaginationEnd] = useState(false);
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
-    
-    // Handle poll modal close
-    const handlePollClose = () => {
-        const params = new URLSearchParams(searchParams?.toString() ?? '');
-        params.delete('modal');
-        router.push(`?${params.toString()}`);
-    };
 
     // Use v1 API hook
     const { data: comms } = useCommunity(chatId);
@@ -90,62 +81,32 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 // Ensure type is set
                 type: p.type || (p.content ? 'publication' : 'poll'),
             }))
-            .filter((p: FeedItem, index: number, self: FeedItem[]) => 
+            .filter((p: FeedItem, index: number, self: FeedItem[]) =>
                 index === self.findIndex((t: FeedItem) => t?.id === p?.id)
             );
     }, [data?.pages]); // Only recalculate when data.pages changes
-
-    // Debug logging
-    useEffect(() => {
-        if (data) {
-            console.log('📊 Publications data:', {
-                pagesCount: data.pages?.length,
-                firstPage: data.pages?.[0],
-                publicationsCount: publications.length
-            });
-        }
-    }, [data, publications.length]);
 
     // Handle deep linking to specific post or poll
     useEffect(() => {
         if ((targetPostSlug || targetPollId) && publications.length > 0) {
             let targetPost: FeedItem | undefined;
-            
+
             if (targetPollId) {
-                console.log('🔍 Looking for poll with id:', targetPollId);
-                console.log('🔍 Available publications:', publications.map((p: FeedItem) => ({ slug: p.slug, id: p.id, type: p.type })));
-                
                 targetPost = publications.find((p: FeedItem) => p.id === targetPollId && p.type === 'poll');
-                if (targetPost) {
-                    console.log('🎯 Found target poll for deep link:', targetPollId);
-                } else {
-                    console.log('❌ Target poll not found with id:', targetPollId);
-                }
             } else if (targetPostSlug) {
-                console.log('🔍 Looking for post with slug:', targetPostSlug);
-                console.log('🔍 Available publications:', publications.map((p: FeedItem) => ({ slug: p.slug, id: p.id, type: p.type })));
-                
                 targetPost = publications.find((p: FeedItem) => p.slug === targetPostSlug);
-                if (targetPost) {
-                    console.log('🎯 Found target post for deep link:', targetPostSlug, 'with id:', targetPost.id);
-                } else {
-                    console.log('❌ Target post not found with slug:', targetPostSlug);
-                }
             }
-            
+
             if (targetPost) {
                 setHighlightedPostId(targetPost.id);
-                
+
                 // Scroll to the post after a short delay to ensure it's rendered
                 setTimeout(() => {
                     const postElement = document.getElementById(`post-${targetPost.id}`);
                     if (postElement) {
-                        console.log('🎯 Scrolling to post element:', postElement);
                         postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         // Remove highlight after 3 seconds
                         setTimeout(() => setHighlightedPostId(null), 3000);
-                    } else {
-                        console.log('❌ Post element not found with id:', `post-${targetPost.id}`);
                     }
                 }, 500);
             }
@@ -153,15 +114,15 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     }, [targetPostSlug, targetPollId, publications]);
 
     const error =
-        (publications??[])?.[0]?.error || err
+        (publications ?? [])?.[0]?.error || err
             ? true
             : publications.length > 0
-            ? false
-            : undefined;
+                ? false
+                : undefined;
 
     const { user, isLoading: userLoading, isAuthenticated } = useAuth();
     const { data: wallets = [], isLoading: walletsLoading } = useWallets();
-    
+
     // Get wallet balance using standardized hook
     const { data: balance = 0 } = useWalletBalance(chatId);
 
@@ -171,12 +132,6 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         }
     }, [isAuthenticated, userLoading, router]);
 
-
-    const [findTransaction, setFindTransaction] = useState<string | undefined>(undefined);
-    useEffect(() => {
-        if (document.location.search)
-            setFindTransaction(document.location.search?.replace("#", ""));
-    }, []);
 
     const cooldown = useRef(false);
     useEffect(() => {
@@ -200,12 +155,8 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     }, []);
 
     // Use community data for chat info (same as comms)
-    const chatName = comms?.name;
     const chatUrl = comms?.description;
-    const chatNameVerb = String(comms?.name ?? "");
-    
-    const queryClient = useQueryClient();
-    
+
     // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     // Declare all state hooks unconditionally at the top level
     const activeCommentHook = useState<string | null>(null);
@@ -215,47 +166,49 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     // Early return AFTER all hooks have been called
     if (!isAuthenticated) return null;
 
-    const tgAuthorId = user?.id;
+    // Filter publications by tag and search query
+    const filteredPublications = useMemo(() => {
+        let filtered = publications;
 
-    const onlyPublication =
-        publications.filter((p: FeedItem) => (p.type === 'publication' ? p.content : true) || p.type === 'poll')?.length == 1;
-    
-    const sortItems = (items: FeedItem[]): FeedItem[] => {
-        if (!items) return [];
-        return [...items].sort((a, b) => {
-            if (sortBy === "recent") {
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-            } else {
-                // Handle score sorting - publications have score, polls have totalAmount
-                const aScore = a.type === 'publication' 
-                    ? (a.metrics?.score || 0)
-                    : (a.metrics?.totalAmount || 0);
-                const bScore = b.type === 'publication'
-                    ? (b.metrics?.score || 0)
-                    : (b.metrics?.totalAmount || 0);
-                return bScore - aScore;
-            }
-        });
-    };
+        // Filter by tag
+        if (selectedTag) {
+            filtered = filtered.filter((p: FeedItem) => {
+                if (p.type === 'publication') {
+                    const tags = p.hashtags as string[] | undefined;
+                    return tags && Array.isArray(tags) && tags.includes(selectedTag);
+                } else {
+                    // Polls don't have hashtags in the schema, skip filtering
+                    return true;
+                }
+            });
+        }
 
-    // Filter publications by tag if selected
-    const filteredPublications = selectedTag
-        ? publications.filter((p: FeedItem) => {
-            if (p.type === 'publication') {
-                const tags = p.hashtags as string[] | undefined;
-                return tags && Array.isArray(tags) && tags.includes(selectedTag);
-            } else {
-                // Polls don't have hashtags in the schema, skip filtering
-                return true;
-            }
-        })
-        : publications;
+        // Filter by search query
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            filtered = filtered.filter((p: FeedItem) => {
+                if (p.type === 'publication') {
+                    const content = (p.content || '').toLowerCase();
+                    const title = ((p as any).title || '').toLowerCase();
+                    const authorName = (p.meta?.author?.name || '').toLowerCase();
+                    const hashtags = (p.hashtags || []).join(' ').toLowerCase();
+                    
+                    return content.includes(query) ||
+                           title.includes(query) ||
+                           authorName.includes(query) ||
+                           hashtags.includes(query);
+                } else if (p.type === 'poll') {
+                    const question = ((p as any).question || '').toLowerCase();
+                    const authorName = (p.meta?.author?.name || '').toLowerCase();
+                    
+                    return question.includes(query) || authorName.includes(query);
+                }
+                return false;
+            });
+        }
 
-    const handlePostSelect = (postSlug: string) => {
-        const params = new URLSearchParams(searchParams?.toString() ?? '');
-        params.set('post', postSlug);
-        router.push(`?${params.toString()}`);
-    };
+        return filtered;
+    }, [publications, selectedTag, searchQuery]);
 
     return (
         <AdaptiveLayout
@@ -270,123 +223,124 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
         >
-            {error === false && (
-                <>
-                    <div>
-                        {chatUrl && (
-                            <div className="tip">
-                                {t('communities.toAddPublication')}{" "}
-                                <a href={chatUrl}>
-                                    {" "}
-                                    {t('communities.writeMessageInChat')}
-                                </a>{" "}
-                                <br />
-                                <br />
+            <div className="flex flex-col min-h-screen bg-white">
+                <PageHeader
+                    title={comms?.name || 'Community'}
+                    showBack={true}
+                />
+
+                <div className="p-4 space-y-6">
+                    {/* Community Hero Section */}
+                    {comms && (
+                        <CommunityHero
+                            community={comms}
+                            stats={{
+                                publications: filteredPublications.length,
+                                // members и activity можно добавить когда будет API
+                            }}
+                        />
+                    )}
+
+                    {/* Error Messages */}
+                    {error === false && chatUrl && (
+                        <div className="bg-blue-50 text-blue-700 p-4 rounded-lg text-sm border border-blue-200">
+                            {t('communities.toAddPublication')}{" "}
+                            <a href={chatUrl} className="underline font-medium hover:opacity-80">
+                                {t('communities.writeMessageInChat')}
+                            </a>
+                        </div>
+                    )}
+                    {error === true && (
+                        <div className="bg-red-50 text-red-700 p-4 rounded-lg text-sm border border-red-200 text-center">
+                            {t('communities.noAccess')}
+                        </div>
+                    )}
+
+                    {/* Setup banner */}
+                    {comms?.needsSetup && (
+                        <div className={`p-4 rounded-lg border ${comms?.isAdmin ? "bg-yellow-50 text-yellow-800 border-yellow-200" : "bg-blue-50 text-blue-800 border-blue-200"}`}>
+                            {comms?.isAdmin ? (
+                                <span>
+                                    {tCommunities('unconfigured.banner.adminPrefix')}{' '}
+                                    <a
+                                        href={routes.communitySettings(chatId)}
+                                        className="underline font-semibold hover:opacity-80"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            router.push(routes.communitySettings(chatId));
+                                        }}
+                                    >
+                                        {tCommunities('unconfigured.banner.adminLink')}
+                                    </a>
+                                    {' '}{tCommunities('unconfigured.banner.adminSuffix')}
+                                </span>
+                            ) : (
+                                <span>{tCommunities('unconfigured.banner.user')}</span>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Divider before feed */}
+                    {(error === false || filteredPublications.length > 0) && (
+                        <div className="border-t border-brand-secondary/10" />
+                    )}
+
+                    <div className="space-y-4">
+                        {isAuthenticated &&
+                            filteredPublications
+                                .filter((p: FeedItem) => {
+                                    if (p.type === 'publication') {
+                                        return !!p.content;
+                                    } else {
+                                        return p.type === 'poll';
+                                    }
+                                })
+                                .map((p) => {
+                                    // Check if this post is selected (for comments or polls)
+                                    const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug))
+                                        || !!(targetPollId && p.id === targetPollId);
+
+                                    return (
+                                        <div
+                                            key={p.id}
+                                            id={`post-${p.id}`}
+                                            className={
+                                                highlightedPostId === p.id
+                                                    ? 'ring-2 ring-brand-primary ring-opacity-50 rounded-lg p-1 bg-brand-primary/5'
+                                                    : isSelected
+                                                        ? 'ring-2 ring-brand-secondary ring-opacity-70 rounded-lg p-1 bg-brand-secondary/5 transition-all duration-300'
+                                                        : 'hover:shadow-md transition-shadow rounded-lg'
+                                            }
+                                        >
+                                            <PublicationCard
+                                                publication={p}
+                                                wallets={Array.isArray(wallets) ? wallets : []}
+                                                showCommunityAvatar={false}
+                                                isSelected={isSelected}
+                                            />
+                                        </div>
+                                    );
+                                })}
+
+                        {isFetchingNextPage && (
+                            <div className="flex justify-center py-4">
+                                <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
                             </div>
                         )}
-                    </div>
-                </>
-            )}
-            {error === true && <div>{t('communities.noAccess')}</div>}
 
-            {/* Setup banner */}
-            {comms?.needsSetup && (
-                <div 
-                    className={comms?.isAdmin ? "alert alert-warning cursor-pointer" : "alert alert-info"}
-                    onClick={comms?.isAdmin ? () => router.push(routes.communitySettings(chatId)) : undefined}
-                    role={comms?.isAdmin ? "button" : undefined}
-                    tabIndex={comms?.isAdmin ? 0 : undefined}
-                    onKeyDown={comms?.isAdmin ? (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            router.push(routes.communitySettings(chatId));
-                        }
-                    } : undefined}
-                >
-                    <span>
-                        {comms?.isAdmin 
-                            ? tCommunities('unconfigured.banner.admin')
-                            : tCommunities('unconfigured.banner.user')
-                        }
-                    </span>
+                        {!paginationEnd && filteredPublications.length > 1 && !isFetchingNextPage && (
+                            <BrandButton
+                                variant="primary"
+                                onClick={() => fetchNextPage()}
+                                className="w-full sm:w-auto mx-auto block"
+                            >
+                                {t('communities.loadMore')}
+                            </BrandButton>
+                        )}
+                    </div>
                 </div>
-            )}
-
-            <div className="space-y-4">
-                {isAuthenticated &&
-                    filteredPublications
-                        .filter((p: FeedItem) => {
-                            if (p.type === 'publication') {
-                                return !!p.content;
-                            } else {
-                                return p.type === 'poll';
-                            }
-                        })
-                        .map((p) => {
-                            // Console logging for debugging
-                            console.log('📄 Rendering publication card:', {
-                                id: p.id,
-                                type: 'PublicationCardComponent',
-                                hasBeneficiary: !!p.meta?.beneficiary,
-                                beneficiary: p.meta?.beneficiary,
-                                meta: p.meta,
-                                fullPublication: p
-                            });
-                            
-                            // Check if this post is selected (for comments or polls)
-                            const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug)) 
-                                || !!(targetPollId && p.id === targetPollId);
-                            
-                            return (
-                                <div
-                                    key={p.id}
-                                    id={`post-${p.id}`}
-                                    className={
-                                        highlightedPostId === p.id 
-                                            ? 'ring-2 ring-primary ring-opacity-50 rounded-lg p-2 bg-primary bg-opacity-10' 
-                                            : isSelected
-                                            ? 'ring-2 ring-secondary ring-opacity-70 rounded-lg p-2 bg-secondary bg-opacity-10 transition-all duration-300'
-                                            : ''
-                                    }
-                                >
-                                    <PublicationCard
-                                        publication={p}
-                                        wallets={Array.isArray(wallets) ? wallets : []}
-                                        showCommunityAvatar={false}
-                                        isSelected={isSelected}
-                                    />
-                                </div>
-                            );
-                        })}
-                {!paginationEnd && filteredPublications.length > 1 && (
-                    <button onClick={() => fetchNextPage()} className="btn btn-primary btn-wide mx-auto block">
-                        {t('communities.loadMore')}
-                    </button>
-                )}
             </div>
-            {showPollCreate && (
-                <BottomPortal>
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-5 overflow-y-auto pointer-events-auto">
-                        <div className="pointer-events-auto">
-                            <FormPollCreate
-                                communityId={chatId}
-                                onSuccess={(pollId) => {
-                                    handlePollClose();
-                                    // Invalidate feed query to refresh data
-                                    queryClient.invalidateQueries({ 
-                                        queryKey: queryKeys.communities.feed(chatId, {
-                                            pageSize: 5,
-                                            sort: sortBy === 'recent' ? 'recent' : 'score',
-                                            tag: selectedTag || undefined,
-                                        })
-                                    });
-                                }}
-                                onCancel={handlePollClose}
-                            />
-                        </div>
-                    </div>
-                </BottomPortal>
-            )}
+            <FabMenu communityId={chatId} />
         </AdaptiveLayout>
     );
 };

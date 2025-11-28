@@ -1,6 +1,7 @@
 export interface AuthenticatedUser {
   id: string;
-  telegramId: string;
+  authProvider: string;
+  authId: string;
   username?: string;
   firstName?: string;
   lastName?: string;

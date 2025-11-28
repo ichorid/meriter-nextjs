@@ -17,7 +17,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMe, useFakeAuth, useLogout } from '@/hooks/api/useAuth';
 import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
 import { clearAuthStorage, redirectToLogin, clearJwtCookie } from '@/lib/utils/auth';
-import { invalidateAuthQueries, clearAllQueries } from '@/lib/utils/query-client-cache';
 import type { User } from '@/types/api-v1';
 import type { Router } from 'next/router';
 import type { ParsedUrlQuery } from 'querystring';
@@ -57,10 +56,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { handleDeepLink } = useDeepLinkHandler(router as unknown as Router, null, undefined);
   
   const isLoading = userLoading || isAuthenticating;
-  // Don't treat 401 errors as preventing authentication - allow re-login
-  const isAuthError = userError && 
-    !((userError as any)?.details?.status === 401 || (userError as any)?.code === 'HTTP_401');
-  const isAuthenticated = !!user && !isAuthError;
+  
+  // Check if we have a 401 error (unauthorized)
+  const errorStatus = userError ? ((userError as any)?.details?.status || (userError as any)?.code) : null;
+  const is401Error = errorStatus === 401 || errorStatus === 'HTTP_401';
+  
+  // User is authenticated ONLY if:
+  // 1. We have a user object (not null/undefined)
+  // 2. There's no error OR the error is not a 401 (401 means not authenticated)
+  const isAuthenticated = !!user && !is401Error;
 
   const authenticateFakeUser = async () => {
     try {
@@ -82,20 +86,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setIsAuthenticating(true);
       setAuthError(null);
-      
-      // Call backend logout to clear server-side cookies
       await logoutMutation.mutateAsync();
       
-      // Clear frontend storage and cookies
       clearAuthStorage();
-      
-      // Clear React Query cache to remove stale auth data
-      invalidateAuthQueries();
-      clearAllQueries();
-      
-      // Small delay to ensure cookies are cleared before redirect
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
       redirectToLogin();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Logout failed';
@@ -103,12 +96,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Still clear everything and redirect on error
       clearAuthStorage();
-      invalidateAuthQueries();
-      clearAllQueries();
-      
-      // Small delay to ensure cookies are cleared before redirect
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
       redirectToLogin();
     } finally {
       setIsAuthenticating(false);

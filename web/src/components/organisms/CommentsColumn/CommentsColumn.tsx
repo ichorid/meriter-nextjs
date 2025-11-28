@@ -7,14 +7,8 @@ import { useTranslations } from 'next-intl';
 import { CommentsList } from '@/lib/comments/components/CommentsList';
 import { buildTree } from '@/lib/comments/tree';
 import { transformComments } from '@/lib/comments/utils/transform';
-// Gluestack UI components
-import { Box } from '@/components/ui/box';
-import { VStack } from '@/components/ui/vstack';
-import { HStack } from '@/components/ui/hstack';
-import { Heading } from '@/components/ui/heading';
-import { Button, ButtonText } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
-import { Divider } from '@/components/ui/divider';
+import { BrandButton } from '@/components/ui/BrandButton';
+import { ArrowLeft, X } from 'lucide-react';
 
 export interface CommentsColumnProps {
   publicationSlug: string;
@@ -101,62 +95,55 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
   }, [comments]);
 
   return (
-    <Box height="100%" flexDirection="column" bg="$white" borderLeftWidth={1} borderColor="$borderLight300">
+    <div className="h-full flex flex-col bg-white border-l border-gray-200">
       {/* Header with close/back button and sort toggle */}
-      <VStack borderBottomWidth={1} borderColor="$borderLight300" bg="$gray50">
-        <HStack space="sm" alignItems="center" p="$4">
+      <div className="border-b border-gray-200 bg-gray-50">
+        <div className="flex items-center gap-2 p-4">
           {(showBackButton || onBack) ? (
             <>
-              <Button
-                variant="link"
+              <BrandButton
+                variant="ghost"
                 size="sm"
-                onPress={handleBack}
+                onClick={handleBack}
+                leftIcon={<ArrowLeft size={16} />}
               >
-                <HStack space="sm" alignItems="center">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  <ButtonText>Back</ButtonText>
-                </HStack>
-              </Button>
-              <Heading size="lg" fontWeight="$semibold" flex={1}>Comments</Heading>
-              <Button
-                variant="link"
+                Back
+              </BrandButton>
+              <h2 className="text-lg font-semibold flex-1">Comments</h2>
+              <BrandButton
+                variant="ghost"
                 size="sm"
-                onPress={handleBack}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </Button>
+                onClick={handleBack}
+                leftIcon={<X size={16} />}
+              />
             </>
           ) : (
-            <Heading size="lg" fontWeight="$semibold" flex={1}>Comments</Heading>
+            <h2 className="text-lg font-semibold flex-1">Comments</h2>
           )}
-        </HStack>
+        </div>
         {/* Sort Toggle */}
-        <HStack space="sm" justifyContent="flex-end" px="$4" pb="$3">
-          <HStack space="xs">
-            <Button
-              variant={sortBy === 'recent' ? 'solid' : 'outline'}
+        <div className="flex justify-end gap-2 px-4 pb-3">
+          <div className="flex gap-1">
+            <BrandButton
+              variant={sortBy === 'recent' ? 'primary' : 'outline'}
               size="sm"
-              onPress={() => setSortBy('recent')}
+              onClick={() => setSortBy('recent')}
             >
-              <ButtonText>{t('sort.recent')}</ButtonText>
-            </Button>
-            <Button
-              variant={sortBy === 'voted' ? 'solid' : 'outline'}
+              {t('sort.recent')}
+            </BrandButton>
+            <BrandButton
+              variant={sortBy === 'voted' ? 'primary' : 'outline'}
               size="sm"
-              onPress={() => setSortBy('voted')}
+              onClick={() => setSortBy('voted')}
             >
-              <ButtonText>{t('sort.voted')}</ButtonText>
-            </Button>
-          </HStack>
-        </HStack>
-      </VStack>
+              {t('sort.voted')}
+            </BrandButton>
+          </div>
+        </div>
+      </div>
 
       {/* Comments list with tree navigation */}
-      <Box flex={1} overflowY="auto" p="$4">
+      <div className="flex-1 overflow-y-auto p-4">
         {commentTree.length > 0 ? (
           <CommentsList 
             roots={commentTree}
@@ -175,12 +162,12 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
             isDetailPage={false}
           />
         ) : (
-          <Box flex={1} alignItems="center" justifyContent="center">
-            <Text color="$textLight600">No comments yet</Text>
-          </Box>
+          <div className="flex-1 flex items-center justify-center">
+            <span className="text-gray-500">No comments yet</span>
+          </div>
         )}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };
 

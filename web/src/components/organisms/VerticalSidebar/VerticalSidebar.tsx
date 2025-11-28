@@ -16,7 +16,7 @@ export interface VerticalSidebarProps {
   isExpanded?: boolean; // True for desktop (expanded cards), false for tablet (avatar-only)
 }
 
-export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({ 
+export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   className = '',
   isExpanded = false,
 }) => {
@@ -51,11 +51,10 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
       <div className={paddingClass}>
         <Link href={routes.home}>
           <button
-            className={`${isExpanded ? 'w-full px-3' : 'w-12'} h-12 rounded-lg flex items-center justify-center transition-colors mb-2 ${
-              pathname === routes.home
-                ? 'bg-primary text-primary-content'
-                : 'hover:bg-base-300 text-base-content'
-            }`}
+            className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} h-12 rounded-lg flex items-center transition-colors mb-2 ${pathname === routes.home
+              ? 'bg-primary text-primary-content'
+              : 'hover:bg-base-300 text-base-content'
+              }`}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -81,7 +80,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
           {isAuthenticated && communityIds.map((communityId: string) => {
             const wallet = wallets.find((w: any) => w?.communityId === communityId);
             const quota = quotasMap.get(communityId);
-            
+
             return (
               <CommunityCard
                 key={communityId}
@@ -93,6 +92,22 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
               />
             );
           })}
+
+          {/* Create Community Button */}
+          {isAuthenticated && (
+            <Link href="/meriter/communities/create">
+              <button
+                className={`w-full rounded-lg flex items-center transition-colors border border-dashed border-base-300 hover:border-primary hover:text-primary text-base-content/50 ${isExpanded ? 'h-12 px-3 justify-start' : 'h-12 w-12 justify-center'
+                  }`}
+                title="Create Community"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                {isExpanded && <span className="ml-2 text-sm font-medium">Create Community</span>}
+              </button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -100,11 +115,10 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
       <div className={paddingClass}>
         <Link href={routes.settings}>
           <button
-            className={`${isExpanded ? 'w-full px-3' : 'w-12'} h-12 rounded-lg flex items-center justify-center transition-colors mt-2 ${
-              pathname === routes.settings
-                ? 'bg-primary text-primary-content'
-                : 'hover:bg-base-300 text-base-content'
-            }`}
+            className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} h-12 rounded-lg flex items-center transition-colors mt-2 ${pathname === routes.settings
+              ? 'bg-primary text-primary-content'
+              : 'hover:bg-base-300 text-base-content'
+              }`}
           >
             {isExpanded && user ? (
               <div className="flex items-center w-full">
@@ -126,7 +140,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
             )}
           </button>
         </Link>
-        
+
         {/* Version Display - only show when expanded */}
         {isExpanded && (
           <div className="mt-2 pt-2 border-t border-base-300">

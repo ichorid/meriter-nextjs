@@ -1,75 +1,116 @@
-import { useMyPublications, useWallets, usePolls, useUpdates } from '@/hooks/api';
-import { useMyComments } from '@/hooks/api/useComments';
-import { useAuth } from '@/contexts/AuthContext';
-import { normalizeArray, normalizePaginatedData } from '../utils';
+import { useWallets, useUpdates } from "@/hooks/api";
+import { useInfiniteMyPublications } from "@/hooks/api/usePublications";
+import { useInfiniteMyComments } from "@/hooks/api/useComments";
+import { useInfiniteMyPolls } from "@/hooks/api/usePolls";
+import { useInfiniteUpdates } from "@/hooks/api/useUpdates";
+import { useAuth } from "@/contexts/AuthContext";
+import { normalizeArray } from "../utils";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useMemo } from "react";
 
 /**
- * Hook to fetch all home page data
+ * Hook to fetch all home page data with infinite scroll support
  */
 export function useHomeData() {
-  const { user } = useAuth();
+    const { user } = useAuth();
+    const isMobile = useMediaQuery("(max-width: 640px)");
+    const pageSize = isMobile ? 10 : 20; // Меньше данных на mobile
 
-  // Fetch publications
-  const {
-    data: myPublicationsData,
-    isLoading: publicationsLoading,
-  } = useMyPublications({
-    skip: 0,
-    limit: 100,
-    userId: user?.id || undefined,
-  });
+    // Fetch wallets
+    const { data: wallets = [], isLoading: walletsLoading } = useWallets();
 
-  // Fetch wallets
-  const { data: wallets = [], isLoading: walletsLoading } = useWallets();
+    // Fetch publications with infinite scroll
+    const {
+        data: publicationsData,
+        isLoading: publicationsLoading,
+        fetchNextPage: fetchNextPublications,
+        hasNextPage: hasNextPublications,
+        isFetchingNextPage: isFetchingNextPublications,
+    } = useInfiniteMyPublications(user?.id || "", pageSize);
 
-  // Fetch polls
-  const { data: pollsData, isLoading: pollsLoading } = usePolls({
-    skip: 0,
-    limit: 100,
-    userId: user?.id || undefined,
-  });
+    // Fetch polls with infinite scroll
+    const {
+        data: pollsData,
+        isLoading: pollsLoading,
+        fetchNextPage: fetchNextPolls,
+        hasNextPage: hasNextPolls,
+        isFetchingNextPage: isFetchingNextPolls,
+    } = useInfiniteMyPolls(user?.id || "", pageSize);
 
-  // Fetch transaction updates
-  const {
-    data: updatesData,
-    isLoading: updatesLoading,
-  } = useUpdates(user?.id || 'me', { skip: 0, limit: 100 });
+    // Fetch transaction updates with infinite scroll
+    const {
+        data: updatesData,
+        isLoading: updatesLoading,
+        fetchNextPage: fetchNextUpdates,
+        hasNextPage: hasNextUpdates,
+        isFetchingNextPage: isFetchingNextUpdates,
+    } = useInfiniteUpdates(user?.id || "", pageSize);
 
-  // Fetch user comments
-  const {
-    data: commentsData,
-    isLoading: commentsLoading,
-  } = useMyComments(user?.id || '', { skip: 0, limit: 100 });
+    // Fetch user comments with infinite scroll
+    const {
+        data: commentsData,
+        isLoading: commentsLoading,
+        fetchNextPage: fetchNextComments,
+        hasNextPage: hasNextComments,
+        isFetchingNextPage: isFetchingNextComments,
+    } = useInfiniteMyComments(user?.id || "", pageSize);
 
-  // Normalize data
-  const myPublications = normalizeArray(myPublicationsData);
+    // Flatten data from all pages
+    const myPublications = useMemo(() => {
+        return (publicationsData?.pages ?? []).flatMap((page) => {
+            return Array.isArray(page) ? page : [];
+        });
+    }, [publicationsData?.pages]);
 
-  const myComments = normalizePaginatedData(commentsData?.data);
+    const myComments = useMemo(() => {
+        return (commentsData?.pages ?? []).flatMap((page) => {
+            return page?.data || [];
+        });
+    }, [commentsData?.pages]);
 
-  const myPolls = normalizePaginatedData(pollsData?.data);
+    const myPolls = useMemo(() => {
+        return (pollsData?.pages ?? []).flatMap((page) => {
+            return page?.data || [];
+        });
+    }, [pollsData?.pages]);
 
-  const updatesArray = normalizePaginatedData(updatesData);
+    const updatesArray = useMemo(() => {
+        return (updatesData?.pages ?? []).flatMap((page) => {
+            return page?.data || [];
+        });
+    }, [updatesData?.pages]);
 
-  return {
-    // Publications
-    myPublications,
-    publicationsLoading,
+    return {
+        // Publications
+        myPublications,
+        publicationsLoading,
+        fetchNextPublications,
+        hasNextPublications,
+        isFetchingNextPublications,
 
-    // Comments
-    myComments,
-    commentsLoading,
+        // Comments
+        myComments,
+        commentsLoading,
+        fetchNextComments,
+        hasNextComments,
+        isFetchingNextComments,
 
-    // Polls
-    myPolls,
-    pollsLoading,
+        // Polls
+        myPolls,
+        pollsLoading,
+        fetchNextPolls,
+        hasNextPolls,
+        isFetchingNextPolls,
 
-    // Updates
-    updatesArray,
-    updatesLoading,
+        // Updates
+        updatesArray,
+        updatesLoading,
+        fetchNextUpdates,
+        hasNextUpdates,
+        isFetchingNextUpdates,
 
-    // Wallets
-    wallets: normalizeArray(wallets),
-    walletsLoading,
-  };
+        // Wallets
+        wallets: normalizeArray(wallets),
+        walletsLoading,
+    };
 }
-

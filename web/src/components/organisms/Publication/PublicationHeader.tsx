@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { Avatar, Badge } from '@/components/atoms';
+import { Badge as BrandBadge } from '@/components/ui/Badge';
 import { dateVerbose } from '@shared/lib/date';
 
 // Local Publication type definition
@@ -96,11 +97,18 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
         <span className="text-xs text-base-content/60">
           {dateVerbose(new Date(publication.createdAt))}
         </span>
-        {publication.meta?.hashtagName && (
-          <Badge variant="primary" size="sm">
-            #{publication.meta?.hashtagName}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {(publication as any).postType === 'project' || (publication as any).isProject ? (
+            <BrandBadge variant="warning" size="sm">
+              PROJECT
+            </BrandBadge>
+          ) : null}
+          {publication.meta?.hashtagName && (
+            <Badge variant="primary" size="sm">
+              #{publication.meta?.hashtagName}
+            </Badge>
+          )}
+        </div>
       </div>
     </div>
   );

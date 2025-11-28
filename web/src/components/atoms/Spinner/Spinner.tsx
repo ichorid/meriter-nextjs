@@ -1,18 +1,16 @@
-// Atomic Spinner component - теперь использует Gluestack UI
 'use client';
 
 import React from 'react';
-import { Spinner as GluestackSpinner } from '@/components/ui/spinner';
+import { Loader2 } from 'lucide-react';
 
 export type SpinnerSize = 'xs' | 'sm' | 'md' | 'lg';
 
 export interface SpinnerProps {
   size?: SpinnerSize;
   className?: string;
-  [key: string]: any;
 }
 
-export const Spinner = React.forwardRef<any, SpinnerProps>(
+export const Spinner = React.forwardRef<HTMLDivElement, SpinnerProps>(
   (
     {
       size = 'md',
@@ -21,15 +19,17 @@ export const Spinner = React.forwardRef<any, SpinnerProps>(
     },
     ref
   ) => {
-    // Map sizes to Gluestack UI sizes
-    const gluestackSize = size === 'xs' || size === 'sm' ? 'small' : 'large';
-    
+    const sizeMap = {
+      xs: 12,
+      sm: 16,
+      md: 24,
+      lg: 32,
+    };
+
     return (
-      <GluestackSpinner
-        ref={ref}
-        size={gluestackSize}
-        {...props}
-      />
+      <div ref={ref} className={`flex items-center justify-center ${className}`} {...props}>
+        <Loader2 className="animate-spin text-brand-primary" size={sizeMap[size]} />
+      </div>
     );
   }
 );

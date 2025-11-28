@@ -9,7 +9,9 @@ import { ErrorPage } from '@/components/ErrorPage';
 import { useDidMount } from '@/hooks/useDidMount';
 import { ThemeProvider } from '@/shared/lib/theme-provider';
 import { useAppMode } from '@/contexts/AppModeContext';
-import { ToastContainer } from '@/shared/components/toast-container';
+
+// Dynamically import ToastContainer to avoid SSR issues
+const ToastContainer = dynamic(() => import('@/shared/components/toast-container').then(mod => ({ default: mod.ToastContainer })), { ssr: false });
 
 import './styles.css';
 

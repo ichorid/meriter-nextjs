@@ -51,9 +51,6 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
   });
 
   it('user sees only their communities', async () => {
-    const telegramChatId1 = '-1001234567890';
-    const telegramChatId2 = '-1001234567891';
-    const telegramChatId3 = '-1001234567892';
 
     // Create user with membership in communities 1 and 2
     await userModel.create({
@@ -63,7 +60,6 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
       firstName: 'Test',
       lastName: 'User',
       displayName: 'Test User',
-      communityTags: [telegramChatId1, telegramChatId2],
       communityMemberships: [],
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -73,7 +69,6 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
     await communityModel.create([
       {
         id: 'community-1',
-        telegramChatId: telegramChatId1,
         name: 'Community 1',
         isActive: true,
         settings: {
@@ -86,7 +81,6 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
       },
       {
         id: 'community-2',
-        telegramChatId: telegramChatId2,
         name: 'Community 2',
         isActive: true,
         settings: {
@@ -99,7 +93,6 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
       },
       {
         id: 'community-3',
-        telegramChatId: telegramChatId3,
         name: 'Community 3',
         isActive: true,
         settings: {
@@ -139,7 +132,6 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
     // Create a community
     await communityModel.create({
       id: 'community-1',
-      telegramChatId: '-1001234567890',
       name: 'Community 1',
       isActive: true,
       settings: {
@@ -159,8 +151,6 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
   });
 
   it('inactive communities are excluded', async () => {
-    const telegramChatId1 = '-1001234567890';
-    const telegramChatId2 = '-1001234567891';
 
     // Create user with membership in both communities
     await userModel.create({
@@ -170,7 +160,6 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
       firstName: 'Test',
       lastName: 'User',
       displayName: 'Test User',
-      communityTags: [telegramChatId1, telegramChatId2],
       communityMemberships: [],
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -180,7 +169,6 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
     await communityModel.create([
       {
         id: 'community-1',
-        telegramChatId: telegramChatId1,
         name: 'Active Community',
         isActive: true,
         settings: {
@@ -193,7 +181,6 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
       },
       {
         id: 'community-2',
-        telegramChatId: telegramChatId2,
         name: 'Inactive Community',
         isActive: false,
         settings: {

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { VerticalSidebar, ContextTopBar } from '@/components/organisms';
+import { VerticalSidebar, ContextTopBar, BottomNavigation } from '@/components/organisms';
 import { CommentsColumn } from '@/components/organisms/CommentsColumn';
 import { VotingPopup } from '@/components/organisms/VotingPopup';
 import { WithdrawPopup } from '@/components/organisms/WithdrawPopup';
@@ -39,11 +39,11 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   wallets = [],
   myId,
   highlightTransactionId,
-  activeCommentHook = [null, () => {}],
+  activeCommentHook = [null, () => { }],
   activeSlider,
-  setActiveSlider = () => {},
+  setActiveSlider = () => { },
   activeWithdrawPost,
-  setActiveWithdrawPost = () => {},
+  setActiveWithdrawPost = () => { },
 }) => {
   const searchParams = useSearchParams();
   const selectedPostSlug = searchParams?.get('post');
@@ -60,7 +60,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   // - lg+: Expanded
   // - < lg: Avatar-only
   const sidebarExpandedDesktop = !showCommentsColumn;
-  
+
   // Calculate minimum required width: sidebar(280) + comments(400) + content(min ~600) = ~1280px
   // Below xl (1280px), shrink sidebar when comments shown
 
@@ -82,7 +82,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   // Validate and clamp saved width on mount and window resize
   useEffect(() => {
     if (!isDesktop || !showCommentsColumn) return;
-    
+
     const validateWidth = () => {
       const clamped = clampWidth(rightColumnWidth);
       if (clamped !== rightColumnWidth) {
@@ -92,7 +92,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
     // Validate on mount
     validateWidth();
-    
+
     // Validate on window resize
     window.addEventListener('resize', validateWidth);
     return () => window.removeEventListener('resize', validateWidth);
@@ -105,7 +105,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
       document.documentElement.style.setProperty('--right-column-width', '400px');
       return;
     }
-    
+
     const clampedWidth = clampWidth(rightColumnWidth);
     document.documentElement.style.setProperty('--right-column-width', `${clampedWidth}px`);
   }, [rightColumnWidth, isDesktop, showCommentsColumn, clampWidth]);
@@ -125,13 +125,13 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   // Mouse event handlers for resizing
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!isDesktop || !showCommentsColumn) return;
-    
+
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
     dragStartX.current = e.clientX;
     dragStartWidth.current = rightColumnWidth;
-    
+
     // Prevent text selection during drag
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'col-resize';
@@ -144,7 +144,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
       const deltaX = dragStartX.current - e.clientX; // Negative delta = drag left = increase width
       const newWidth = dragStartWidth.current + deltaX;
       const clampedWidth = clampWidth(newWidth);
-      
+
       // Update CSS variable directly for smooth drag (no state update during drag)
       document.documentElement.style.setProperty('--right-column-width', `${clampedWidth}px`);
     });
@@ -152,21 +152,21 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
   const handleMouseUp = useCallback(() => {
     if (!isDragging) return;
-    
+
     setIsDragging(false);
-    
+
     // Restore cursor and selection
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
-    
+
     // Get current width from CSS variable and update state
     const currentWidth = parseFloat(
       getComputedStyle(document.documentElement).getPropertyValue('--right-column-width')
     ) || rightColumnWidth;
-    
+
     const clamped = clampWidth(currentWidth);
     setRightColumnWidth(clamped);
-    
+
     // Debounced save for persistence
     saveWidth(clamped);
   }, [isDragging, rightColumnWidth, clampWidth, setRightColumnWidth, saveWidth]);
@@ -177,7 +177,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    
+
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
@@ -231,26 +231,24 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
           - Mobile/Tablet: 72px (avatar-only sidebar)
           - Desktop: sidebar uses sticky positioning, takes natural space (no padding)
       */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${
-        showCommentsColumn 
-          ? 'pl-0 sm:pl-[72px] lg:pl-0' // No padding on small mobile when comments shown (sidebar hidden), 72px on larger mobile/tablet
-          : 'pl-[72px] lg:pl-0' // 72px on mobile/tablet, no padding on desktop
-      }`}>
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${showCommentsColumn
+        ? 'pl-0 sm:pl-[72px] lg:pl-0' // No padding on small mobile when comments shown (sidebar hidden), 72px on larger mobile/tablet
+        : 'pl-[72px] lg:pl-0' // 72px on mobile/tablet, no padding on desktop
+        }`}>
         {/* Top Bar */}
         <ContextTopBar />
-        
+
         {/* Content Wrapper - Flex container for posts and comments */}
         <div className="flex-1 flex relative">
           {/* Center Column - Posts */}
-          <div 
-            className={`transition-all duration-300 flex-1 sm:max-w-2xl lg:max-w-4xl ${
-              showCommentsColumn 
-                ? '' // Make room for comments column when shown via margin
-                : 'mx-auto' // Center content when comments hidden
-            }`}
+          <div
+            className={`transition-all duration-300 flex-1 sm:max-w-2xl lg:max-w-4xl ${showCommentsColumn
+              ? '' // Make room for comments column when shown via margin
+              : 'mx-auto' // Center content when comments hidden
+              }`}
             style={showCommentsColumn && isDesktop ? { marginRight: 'var(--right-column-width)' } : undefined}
           >
-            <main className="px-4 py-6 max-w-[100vw - 73px]">
+            <main className="px-4 py-6 pb-20 lg:pb-6 max-w-[calc(100vw-73px)]">
               {children}
             </main>
           </div>
@@ -261,12 +259,11 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
               role="separator"
               aria-label="Resize comments column"
               aria-orientation="vertical"
-              className={`hidden lg:block absolute top-0 bottom-0 z-30 cursor-col-resize select-none transition-colors ${
-                isDragging 
-                  ? 'bg-base-300/80' 
-                  : 'bg-transparent hover:bg-base-300/50'
-              }`}
-              style={{ 
+              className={`hidden lg:block absolute top-0 bottom-0 z-30 cursor-col-resize select-none transition-colors ${isDragging
+                ? 'bg-base-300/80'
+                : 'bg-transparent hover:bg-base-300/50'
+                }`}
+              style={{
                 right: 'var(--right-column-width)',
                 marginLeft: '-6px',
                 marginRight: '-6px',
@@ -278,10 +275,9 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
           {/* Right Column - Comments (Desktop only) */}
           {showCommentsColumn && (
-            <div 
-              className={`hidden lg:block absolute right-0 top-0 bottom-0 bg-base-100 border-l border-base-300 z-20 ${
-                isDragging ? 'transition-none' : 'transition-all duration-300'
-              }`}
+            <div
+              className={`hidden lg:block absolute right-0 top-0 bottom-0 bg-base-100 border-l border-base-300 z-20 ${isDragging ? 'transition-none' : 'transition-all duration-300'
+                }`}
               style={{ width: 'var(--right-column-width)' }}
             >
               <CommentsColumn
@@ -294,11 +290,11 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
                     wallets: wallets || [],
                     myId,
                     highlightTransactionId,
-                    activeCommentHook: activeCommentHook || [null, () => {}],
+                    activeCommentHook: activeCommentHook || [null, () => { }],
                     activeSlider: activeSlider ?? null,
-                    setActiveSlider: setActiveSlider || (() => {}),
+                    setActiveSlider: setActiveSlider || (() => { }),
                     activeWithdrawPost: activeWithdrawPost ?? null,
-                    setActiveWithdrawPost: setActiveWithdrawPost || (() => {}),
+                    setActiveWithdrawPost: setActiveWithdrawPost || (() => { }),
                   }
                 )}
               />
@@ -320,29 +316,32 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
                 wallets: wallets || [],
                 myId,
                 highlightTransactionId,
-                activeCommentHook: activeCommentHook || [null, () => {}],
+                activeCommentHook: activeCommentHook || [null, () => { }],
                 activeSlider: activeSlider ?? null,
-                setActiveSlider: setActiveSlider || (() => {}),
+                setActiveSlider: setActiveSlider || (() => { }),
                 activeWithdrawPost: activeWithdrawPost ?? null,
-                setActiveWithdrawPost: setActiveWithdrawPost || (() => {}),
+                setActiveWithdrawPost: setActiveWithdrawPost || (() => { }),
               }
             )}
           />
         </div>
       )}
-      
+
       {/* Bottom Widget Area - for BottomPortal to render forms */}
       <div className="bottom-widget-area fixed inset-0 z-50 pointer-events-none touch-none" />
-      
+
       {/* Global Voting Popup */}
       <VotingPopup
         communityId={communityId}
       />
-      
+
       {/* Global Withdraw Popup */}
       <WithdrawPopup
         communityId={communityId}
       />
+
+      {/* Mobile Bottom Navigation */}
+      <BottomNavigation />
     </div>
   );
 };

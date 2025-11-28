@@ -21,13 +21,13 @@ describe('Comments and Votes Integration Tests', () => {
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
   let connection: Connection;
-  
+
   let communityService: CommunityService;
   let voteService: VoteService;
   let publicationService: PublicationService;
   let commentService: CommentService;
   let userService: UserService;
-  
+
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
@@ -42,7 +42,7 @@ describe('Comments and Votes Integration Tests', () => {
 
   beforeAll(async () => {
     jest.setTimeout(30000);
-    
+
     testDb = new TestDatabaseHelper();
     const mongoUri = await testDb.start();
     process.env.MONGO_URL = mongoUri;
@@ -60,9 +60,9 @@ describe('Comments and Votes Integration Tests', () => {
     publicationService = app.get<PublicationService>(PublicationService);
     commentService = app.get<CommentService>(CommentService);
     userService = app.get<UserService>(UserService);
-    
+
     connection = app.get(getConnectionToken());
-    
+
     communityModel = connection.model<CommunityDocument>(Community.name);
     userModel = connection.model<UserDocument>(User.name);
     publicationModel = connection.model<PublicationDocument>(Publication.name);
@@ -76,7 +76,7 @@ describe('Comments and Votes Integration Tests', () => {
     testUserId = uid();
     testUserId2 = uid();
     testCommunityId = uid();
-    
+
     await userModel.create([
       {
         id: testUserId,
@@ -111,7 +111,6 @@ describe('Comments and Votes Integration Tests', () => {
     // Create test community
     await communityModel.create({
       id: testCommunityId,
-      telegramChatId: `chat_${testCommunityId}`,
       name: 'Test Community',
       administrators: [testUserId],
       members: [testUserId, testUserId2],
@@ -188,7 +187,7 @@ describe('Comments and Votes Integration Tests', () => {
     for (const key in collections) {
       const collection = collections[key];
       try {
-        await collection.dropIndex('token_1').catch(() => {});
+        await collection.dropIndex('token_1').catch(() => { });
       } catch (err) {
         // Index doesn't exist, ignore
       }

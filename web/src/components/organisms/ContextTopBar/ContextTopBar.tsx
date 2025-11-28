@@ -5,23 +5,17 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommunity, useWallets } from '@/hooks/api';
 import { useUserQuota } from '@/hooks/api/useQuota';
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { isFakeDataMode } from '@/config';
 import { publicationsApiV1 } from '@/lib/api/v1';
-// Gluestack UI components
-import { Box } from '@/components/ui/box';
-import { HStack } from '@/components/ui/hstack';
-import { Button, ButtonText } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
-import { Heading } from '@/components/ui/heading';
-import { Select, SelectTrigger, SelectInput, SelectIcon, SelectPortal, SelectBackdrop, SelectContent, SelectDragIndicatorWrapper, SelectDragIndicator, SelectItem } from '@/components/ui/select';
-import { ChevronDownIcon } from '@gluestack-ui/themed';
+import { BrandButton } from '@/components/ui/BrandButton';
+import { BrandSelect } from '@/components/ui/BrandSelect';
+import { BrandInput } from '@/components/ui/BrandInput';
+import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
+import { Clock, TrendingUp, Loader2, Search, X } from 'lucide-react';
 import { useHomeTabState } from '@/app/meriter/home/hooks';
 import type { TabSortState } from '@/app/meriter/home/types';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { Pressable } from 'react-native';
-import { Spinner } from '@/components/ui/spinner';
 
 export interface ContextTopBarProps {
   className?: string;
@@ -29,9 +23,6 @@ export interface ContextTopBarProps {
 
 export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user } = useAuth();
-  const t = useTranslations('home');
 
   // Don't show on login page
   if (pathname?.includes('/login')) {
@@ -45,7 +36,7 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
   const isPostDetailPage = pathname?.match(/\/meriter\/communities\/([^\/]+)\/posts\/(.+)/);
 
   if (isPostDetailPage) {
-    return <PostDetailTopBar pathname={pathname} />;
+    return null; // PostDetailTopBar was empty
   }
 
   if (isCommunityPage) {
@@ -59,7 +50,7 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
   }
 
   if (isSettingsPage) {
-    return <SettingsTopBar />;
+    return null; // SettingsTopBar was empty
   }
 
   // Default top bar - empty, no header
@@ -68,10 +59,12 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
 
 // Home Top Bar with Tabs
 const HomeTopBar: React.FC = () => {
-  const pathname = usePathname();
   const t = useTranslations('home');
+  const router = useRouter();
   const isMobile = !useMediaQuery('(min-width: 768px)');
-  
+  const [showSearchModal, setShowSearchModal] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState('');
+
   // Use the same hook as the page to sync state
   const { currentTab, setCurrentTab, sortByTab, setSortByTab } = useHomeTabState();
 
@@ -90,7 +83,7 @@ const HomeTopBar: React.FC = () => {
     // Use the stored sort preference for this tab
     const urlParams = new URLSearchParams();
     urlParams.set('sort', sortByTab[tab]);
-    
+
     // Set hash: for publications, use empty hash with sort params, for others use hashPart with sort
     if (tab === 'publications') {
       window.location.hash = urlParams.toString() ? `?${urlParams.toString()}` : '';
@@ -105,10 +98,10 @@ const HomeTopBar: React.FC = () => {
       ...prev,
       [currentTab]: sort,
     }));
-    
+
     const urlParams = new URLSearchParams();
     urlParams.set('sort', sort);
-    
+
     let hashPart = '';
     if (currentTab === 'comments') {
       hashPart = '#comments';
@@ -118,7 +111,7 @@ const HomeTopBar: React.FC = () => {
       hashPart = '#updates-frequency';
     }
     // For publications tab, hashPart stays empty (default hash)
-    
+
     // Set hash: for publications, use empty hash with sort params, for others use hashPart with sort
     if (currentTab === 'publications') {
       window.location.hash = urlParams.toString() ? `?${urlParams.toString()}` : '';
@@ -127,98 +120,136 @@ const HomeTopBar: React.FC = () => {
     }
   };
 
+  const handleSearch = (value: string) => {
+    setSearchQuery(value);
+    if (value.trim()) {
+      router.push(`/meriter/search?q=${encodeURIComponent(value.trim())}`);
+      setShowSearchModal(false);
+    }
+  };
+
+  const handleSearchClear = () => {
+    setSearchQuery('');
+  };
+
   return (
-    <Box 
-      position="sticky" 
-      top={0} 
-      zIndex={30} 
-      height={64} 
-      bg="$white" 
-      borderBottomWidth={1} 
-      borderColor="$borderLight300"
-      px="$4"
-      py="$2"
-    >
-      <HStack space="md" alignItems="center" justifyContent="space-between" height="100%">
-        {/* Tabs: buttons on md+, dropdown on mobile */}
-        {!isMobile ? (
-          <HStack space="sm" flex={1} justifyContent="center">
-            <Button
-              variant={currentTab === 'publications' ? 'solid' : 'outline'}
-              size="sm"
-              onPress={() => handleTabClick('publications')}
-            >
-              <ButtonText>{t('tabs.publications') || 'My Publications'}</ButtonText>
-            </Button>
-            <Button
-              variant={currentTab === 'comments' ? 'solid' : 'outline'}
-              size="sm"
-              onPress={() => handleTabClick('comments')}
-            >
-              <ButtonText>{t('tabs.comments') || 'My Comments'}</ButtonText>
-            </Button>
-            <Button
-              variant={currentTab === 'polls' ? 'solid' : 'outline'}
-              size="sm"
-              onPress={() => handleTabClick('polls')}
-            >
-              <ButtonText>{t('tabs.polls') || 'Polls'}</ButtonText>
-            </Button>
-            <Button
-              variant={currentTab === 'updates' ? 'solid' : 'outline'}
-              size="sm"
-              onPress={() => handleTabClick('updates')}
-            >
-              <ButtonText>{t('tabs.updates') || 'Updates'}</ButtonText>
-            </Button>
-          </HStack>
-        ) : (
-          <Box flex={1}>
-          <Select
-            selectedValue={currentTab}
-            onValueChange={(value) => handleTabClick(value as any)}
-          >
-            <SelectTrigger variant="outline" size="sm" minWidth={150}>
-              <SelectInput placeholder="Select tab" />
-              <SelectIcon mr="$3">
-                <ChevronDownIcon />
-              </SelectIcon>
-            </SelectTrigger>
-            <SelectPortal>
-              <SelectBackdrop />
-              <SelectContent>
-                <SelectDragIndicatorWrapper>
-                  <SelectDragIndicator />
-                </SelectDragIndicatorWrapper>
-                <SelectItem label={t('tabs.publications') || 'My Publications'} value="publications" />
-                <SelectItem label={t('tabs.comments') || 'My Comments'} value="comments" />
-                <SelectItem label={t('tabs.polls') || 'Polls'} value="polls" />
-                <SelectItem label={t('tabs.updates') || 'Updates'} value="updates" />
-              </SelectContent>
-            </SelectPortal>
-          </Select>
-          </Box>
-        )}
-        
-        {/* Sort Toggle - contextual to active tab */}
-        <HStack space="xs">
-          <Button
-            variant={sortByTab[currentTab] === 'recent' ? 'solid' : 'outline'}
+    <div>
+      <div className="sticky top-0 z-30 h-16 bg-white border-b border-brand-border px-4 py-2">
+        <div className="flex items-center justify-between h-full gap-4">
+          {/* Search Button */}
+          <BrandButton
+            variant="ghost"
             size="sm"
-            onPress={() => handleSortClick('recent')}
+            onClick={() => setShowSearchModal(true)}
+            aria-label="Search"
+            className="px-2"
           >
-            <ButtonText>{t('sort.recent') || 'By Date'}</ButtonText>
-          </Button>
-          <Button
-            variant={sortByTab[currentTab] === 'voted' ? 'solid' : 'outline'}
-            size="sm"
-            onPress={() => handleSortClick('voted')}
+            <Search size={18} />
+          </BrandButton>
+
+          {/* Tabs: buttons on md+, dropdown on mobile */}
+          {!isMobile ? (
+            <div className="flex flex-1 justify-center gap-2">
+              <BrandButton
+                variant={currentTab === 'publications' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => handleTabClick('publications')}
+              >
+                {t('tabs.publications') || 'My Publications'}
+              </BrandButton>
+              <BrandButton
+                variant={currentTab === 'comments' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => handleTabClick('comments')}
+              >
+                {t('tabs.comments') || 'My Comments'}
+              </BrandButton>
+              <BrandButton
+                variant={currentTab === 'polls' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => handleTabClick('polls')}
+              >
+                {t('tabs.polls') || 'Polls'}
+              </BrandButton>
+              <BrandButton
+                variant={currentTab === 'updates' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => handleTabClick('updates')}
+              >
+                {t('tabs.updates') || 'Updates'}
+              </BrandButton>
+            </div>
+          ) : (
+            <div className="flex-1">
+              <BrandSelect
+                value={currentTab}
+                onChange={(value) => handleTabClick(value as any)}
+                options={[
+                  { label: t('tabs.publications') || 'My Publications', value: 'publications' },
+                  { label: t('tabs.comments') || 'My Comments', value: 'comments' },
+                  { label: t('tabs.polls') || 'Polls', value: 'polls' },
+                  { label: t('tabs.updates') || 'Updates', value: 'updates' },
+                ]}
+                placeholder="Select tab"
+                fullWidth
+              />
+            </div>
+          )}
+
+          {/* Sort Toggle - contextual to active tab */}
+          <div className="flex gap-1 bg-brand-surface p-1 rounded-md border border-brand-border">
+          <button
+            onClick={() => handleSortClick('recent')}
+            className={`p-2 rounded-md transition-colors ${sortByTab[currentTab] === 'recent'
+                ? 'bg-white shadow-sm text-brand-primary'
+                : 'text-brand-text-secondary hover:text-brand-text-primary'
+              }`}
           >
-            <ButtonText>{t('sort.voted') || 'By Rating'}</ButtonText>
-          </Button>
-        </HStack>
-      </HStack>
-    </Box>
+            <Clock size={16} />
+          </button>
+          <button
+            onClick={() => handleSortClick('voted')}
+            className={`p-2 rounded-md transition-colors ${sortByTab[currentTab] === 'voted'
+                ? 'bg-white shadow-sm text-brand-primary'
+                : 'text-brand-text-secondary hover:text-brand-text-primary'
+              }`}
+          >
+            <TrendingUp size={16} />
+          </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Search Modal Portal - only render when open */}
+      {showSearchModal && (
+        <BottomActionSheet
+          isOpen={showSearchModal}
+          onClose={() => setShowSearchModal(false)}
+          title="Search"
+        >
+          <div className="space-y-4">
+            <BrandInput
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              leftIcon={<Search size={18} />}
+              rightIcon={searchQuery ? (
+                <button
+                  type="button"
+                  onClick={handleSearchClear}
+                  className="text-brand-text-muted hover:text-brand-text-primary transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X size={18} />
+                </button>
+              ) : undefined}
+              className="w-full"
+            />
+          </div>
+        </BottomActionSheet>
+      )}
+    </div>
   );
 };
 
@@ -226,30 +257,24 @@ const HomeTopBar: React.FC = () => {
 const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => {
   const { data: community } = useCommunity(communityId);
   const { user } = useAuth();
-  const { data: wallets = [] } = useWallets();
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('pages.communities');
   const [showTagDropdown, setShowTagDropdown] = React.useState(false);
   const [showSnack, setShowSnack] = React.useState(false);
-  
+  const [showSearchModal, setShowSearchModal] = React.useState(false);
+
   // Fake data generation state
   const fakeDataMode = isFakeDataMode();
   const [generatingUserPosts, setGeneratingUserPosts] = React.useState(false);
   const [generatingBeneficiaryPosts, setGeneratingBeneficiaryPosts] = React.useState(false);
   const [fakeDataMessage, setFakeDataMessage] = React.useState('');
 
-  // Get wallet balance for this community
-  const wallet = wallets.find((w: any) => w.communityId === communityId);
-  const balance = wallet?.balance || 0;
-
-  // Get free vote quota using standardized hook
-  const { data: quota, error: quotaError } = useUserQuota(community?.id);
-
-
   // Get sortBy from URL params
   const sortBy = searchParams?.get('sort') || 'recent';
   const selectedTag = searchParams?.get('tag');
+  const searchQuery = searchParams?.get('q') || '';
+  const [localSearchQuery, setLocalSearchQuery] = React.useState(searchQuery);
 
   // Handle sort change
   const handleSortChange = (sort: 'recent' | 'voted') => {
@@ -278,23 +303,40 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
     setShowTagDropdown(false);
   };
 
-  // Handle create poll - set modal state via URL param
-  const handleCreatePoll = () => {
+  // Handle search query change
+  const handleSearchChange = (value: string) => {
+    setLocalSearchQuery(value);
     const params = new URLSearchParams(searchParams?.toString() ?? '');
-    params.set('modal', 'createPoll');
+    if (value.trim()) {
+      params.set('q', value.trim());
+    } else {
+      params.delete('q');
+    }
     router.push(`?${params.toString()}`);
   };
+
+  // Handle search clear
+  const handleSearchClear = () => {
+    setLocalSearchQuery('');
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    params.delete('q');
+    router.push(`?${params.toString()}`);
+  };
+
+  // Sync local search query with URL params
+  React.useEffect(() => {
+    setLocalSearchQuery(searchQuery);
+  }, [searchQuery]);
 
   // Handle fake data generation
   const handleGenerateUserPosts = async () => {
     setGeneratingUserPosts(true);
     setFakeDataMessage('');
-    
+
     try {
       const result = await publicationsApiV1.generateFakeData('user', communityId);
       setFakeDataMessage(`Created ${result.count} user post(s)`);
       setTimeout(() => setFakeDataMessage(''), 3000);
-      // Refresh the page to show new posts
       router.refresh();
     } catch (error) {
       console.error('Generate user posts error:', error);
@@ -308,12 +350,11 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
   const handleGenerateBeneficiaryPosts = async () => {
     setGeneratingBeneficiaryPosts(true);
     setFakeDataMessage('');
-    
+
     try {
       const result = await publicationsApiV1.generateFakeData('beneficiary', communityId);
       setFakeDataMessage(`Created ${result.count} post(s) with beneficiary`);
       setTimeout(() => setFakeDataMessage(''), 3000);
-      // Refresh the page to show new posts
       router.refresh();
     } catch (error) {
       console.error('Generate beneficiary posts error:', error);
@@ -325,7 +366,7 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
   };
 
   const isMobile = !useMediaQuery('(min-width: 768px)');
-  
+
   // Show mobile snack bar with community title when arriving/switching
   React.useEffect(() => {
     if (!isMobile) return;
@@ -339,179 +380,181 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
   }
 
   const hashtags = community.hashtags || [];
-  // Determine admin rights: prefer backend-computed flag, fallback to telegram-based list
+  // Determine admin rights
   const isAdmin = Boolean(
     community.isAdmin ?? (
-      Array.isArray((community as any).adminsTG) && user?.telegramId
-        ? (community as any).adminsTG.includes(user.telegramId)
+      Array.isArray((community as any).adminIds) && user?.id
+        ? (community as any).adminIds.includes(user.id)
         : false
     )
   );
 
   return (
-    <Box 
-      position="sticky" 
-      top={0} 
-      zIndex={30} 
-      height={64} 
-      bg="$white" 
-      borderBottomWidth={1} 
-      borderColor="$borderLight300"
-      px="$4"
-      py="$2"
-    >
-      <HStack space="md" alignItems="center" justifyContent="flex-end" height="100%">
-        {/* Fake Data Generation Buttons - Only shown in fake mode */}
-        {fakeDataMode && (
-          <HStack space="sm" alignItems="center">
-            <Button
-              variant="outline"
-              size="sm"
-              onPress={handleGenerateUserPosts}
-              isDisabled={generatingUserPosts || generatingBeneficiaryPosts}
-            >
-              {generatingUserPosts ? (
-                <HStack space="sm" alignItems="center">
-                  <Spinner size="small" />
-                </HStack>
-              ) : (
-                <ButtonText>+</ButtonText>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onPress={handleGenerateBeneficiaryPosts}
-              isDisabled={generatingUserPosts || generatingBeneficiaryPosts}
-            >
-              {generatingBeneficiaryPosts ? (
-                <HStack space="sm" alignItems="center">
-                  <Spinner size="small" />
-                </HStack>
-              ) : (
-                <ButtonText>++</ButtonText>
-              )}
-            </Button>
-            {fakeDataMessage && (
-              <Text 
-                size="xs" 
-                color={fakeDataMessage.includes('Failed') ? '$error500' : '$success500'}
-              >
-                {fakeDataMessage}
-              </Text>
-            )}
-          </HStack>
-        )}
-        
-        {/* Tag Filter Dropdown */}
-        {hashtags.length > 0 && (
-          <Box position="relative">
-            <Button
-              variant="outline"
-              size="sm"
-              onPress={() => setShowTagDropdown(!showTagDropdown)}
-            >
-              <ButtonText>{selectedTag ? `#${selectedTag}` : t('filterByTags')}</ButtonText>
-            </Button>
-            
-            {showTagDropdown && (
-              <>
-                <Pressable 
-                  style={{ position: 'fixed', inset: 0, zIndex: 10 }}
-                  onPress={() => setShowTagDropdown(false)}
-                />
-                <Box 
-                  position="absolute" 
-                  right={0} 
-                  top="100%" 
-                  mt="$2" 
-                  width={256} 
-                  maxHeight={384} 
-                  bg="$white" 
-                  borderRadius="$lg" 
-                  borderWidth={1} 
-                  borderColor="$borderLight300"
-                  p="$3"
-                  zIndex={20}
-                >
-                  <HStack space="sm" flexWrap="wrap">
-                    <Button
-                      variant={!selectedTag ? 'solid' : 'outline'}
-                      size="xs"
-                      onPress={handleShowAll}
-                    >
-                      <ButtonText>{t('showAll')}</ButtonText>
-                    </Button>
-                    {hashtags.map((tag: string) => (
-                      <Button
-                        key={tag}
-                        variant={selectedTag === tag ? 'solid' : 'outline'}
-                        size="xs"
-                        onPress={() => handleTagClick(tag)}
-                      >
-                        <ButtonText>#{tag}</ButtonText>
-                      </Button>
-                    ))}
-                  </HStack>
-                </Box>
-              </>
-            )}
-          </Box>
-        )}
+    <div>
+      <div className="sticky top-0 z-50 bg-white border-b border-brand-border shadow-sm">
+        <div className="flex items-center justify-between gap-4 px-4 py-3 min-h-[56px]">
+          {/* Search Button */}
+          <BrandButton
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowSearchModal(true)}
+            aria-label={t('searchPlaceholder') || 'Search'}
+          >
+            <Search size={18} />
+          </BrandButton>
 
-        {/* Sort Toggle */}
-        <HStack space="xs">
-          <Button
-            variant={sortBy === 'recent' ? 'solid' : 'outline'}
-            size="sm"
-            onPress={() => handleSortChange('recent')}
-          >
-            <ButtonText>{t('byDate')}</ButtonText>
-          </Button>
-          <Button
-            variant={sortBy === 'voted' ? 'solid' : 'outline'}
-            size="sm"
-            onPress={() => handleSortChange('voted')}
-          >
-            <ButtonText>{t('byRating')}</ButtonText>
-          </Button>
-        </HStack>
-      </HStack>
-      
-      {/* Mobile snackbar with community title on navigation */}
+          {/* Filters and Actions Row */}
+          <div className="flex items-center gap-4">
+            {/* Fake Data Generation Buttons */}
+            {fakeDataMode && (
+              <div className="flex items-center gap-2">
+                <BrandButton
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateUserPosts}
+                  disabled={generatingUserPosts || generatingBeneficiaryPosts}
+                >
+                  {generatingUserPosts ? <Loader2 className="animate-spin" size={16} /> : '+'}
+                </BrandButton>
+                <BrandButton
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateBeneficiaryPosts}
+                  disabled={generatingUserPosts || generatingBeneficiaryPosts}
+                >
+                  {generatingBeneficiaryPosts ? <Loader2 className="animate-spin" size={16} /> : '++'}
+                </BrandButton>
+                {fakeDataMessage && (
+                  <span className={`text-xs ${fakeDataMessage.includes('Failed') ? 'text-red-500' : 'text-green-500'}`}>
+                    {fakeDataMessage}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Tag Filter Dropdown */}
+            {hashtags.length > 0 && (
+              <div className="relative">
+                <BrandButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTagDropdown(!showTagDropdown)}
+                >
+                  {selectedTag ? `#${selectedTag}` : t('filterByTags')}
+                </BrandButton>
+
+                {showTagDropdown && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowTagDropdown(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-2 w-64 max-h-96 bg-white rounded-lg border border-brand-border p-3 z-20 shadow-lg overflow-y-auto">
+                      <div className="flex flex-wrap gap-2">
+                        <BrandButton
+                          variant={!selectedTag ? 'primary' : 'outline'}
+                          size="sm"
+                          onClick={handleShowAll}
+                          className="text-xs"
+                        >
+                          {t('showAll')}
+                        </BrandButton>
+                        {hashtags.map((tag: string) => (
+                          <BrandButton
+                            key={tag}
+                            variant={selectedTag === tag ? 'primary' : 'outline'}
+                            size="sm"
+                            onClick={() => handleTagClick(tag)}
+                            className="text-xs"
+                          >
+                            #{tag}
+                          </BrandButton>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Admin Settings Button */}
+            {isAdmin && (
+              <BrandButton
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/meriter/communities/${communityId}/settings`)}
+              >
+                Settings
+              </BrandButton>
+            )}
+
+            {/* Sort Toggle - Icon Tabs */}
+            <div className="flex gap-1 bg-brand-surface p-1 rounded-md border border-brand-border">
+              <button
+                onClick={() => handleSortChange('recent')}
+                className={`p-2 rounded-md transition-colors ${sortBy === 'recent'
+                    ? 'bg-white shadow-sm text-brand-primary'
+                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                  }`}
+              >
+                <Clock size={16} />
+              </button>
+              <button
+                onClick={() => handleSortChange('voted')}
+                className={`p-2 rounded-md transition-colors ${sortBy === 'voted'
+                    ? 'bg-white shadow-sm text-brand-primary'
+                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                  }`}
+              >
+                <TrendingUp size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile snackbar with community title */}
       {showSnack && isMobile && (
-        <Box 
-          position="fixed" 
-          bottom={16} 
-          left={0} 
-          right={0} 
-          zIndex={50}
-          alignItems="center"
-        >
-          <Box 
-            px="$3" 
-            py="$2" 
-            borderRadius="$full" 
-            bg="$gray100" 
-            borderWidth={1} 
-            borderColor="$borderLight300"
-            maxWidth="80%"
-          >
-            <Text size="sm">{community.name}</Text>
-          </Box>
-        </Box>
+        <div className="fixed bottom-4 left-0 right-0 z-50 flex justify-center pointer-events-none">
+          <div className="px-3 py-2 rounded-full bg-gray-100 border border-brand-border max-w-[80%] shadow-md">
+            <span className="text-sm font-medium text-brand-text-primary">{community.name}</span>
+          </div>
+        </div>
       )}
-    </Box>
+
+      {/* Search Modal Portal - only render when open */}
+      {showSearchModal && (
+        <BottomActionSheet
+          isOpen={showSearchModal}
+          onClose={() => setShowSearchModal(false)}
+          title={t('searchPlaceholder') || 'Search publications...'}
+        >
+          <div className="space-y-4">
+            <BrandInput
+              type="text"
+              placeholder={t('searchPlaceholder') || 'Search publications...'}
+              value={localSearchQuery}
+              onChange={(e) => {
+                handleSearchChange(e.target.value);
+              }}
+              leftIcon={<Search size={18} />}
+              rightIcon={localSearchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSearchClear();
+                  }}
+                  className="text-brand-text-muted hover:text-brand-text-primary transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X size={18} />
+                </button>
+              ) : undefined}
+              className="w-full"
+            />
+          </div>
+        </BottomActionSheet>
+      )}
+    </div>
   );
 };
-
-// Settings Top Bar - empty, no header
-const SettingsTopBar: React.FC = () => {
-  return null;
-};
-
-// Post Detail Top Bar with Back Button - empty, no header
-const PostDetailTopBar: React.FC<{ pathname: string | null }> = () => {
-  return null;
-};
-

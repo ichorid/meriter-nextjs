@@ -29,18 +29,18 @@ export class TelegramBotLifecycleService {
   constructor(
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-  ) {}
+  ) { }
 
   async handleBotAddedToChat(chatInfo: TelegramChatInfo): Promise<void> {
     this.logger.log(`Bot added to chat: ${chatInfo.chatId}`);
 
     // Check if community already exists
-    const existingCommunity = await this.communityModel.findOne({ telegramChatId: chatInfo.chatId }).lean();
+    const existingCommunity = null;
     if (existingCommunity) {
       this.logger.log(`Community already exists for chat ${chatInfo.chatId}, reactivating`);
       await this.communityModel.updateOne(
         { _id: existingCommunity._id },
-        { 
+        {
           $set: {
             isActive: true,
             updatedAt: new Date(),
@@ -52,10 +52,10 @@ export class TelegramBotLifecycleService {
 
     // Create new community
     const community = await this.communityModel.create({
-      telegramChatId: chatInfo.chatId,
+
       name: chatInfo.title || `Chat ${chatInfo.chatId}`,
       description: chatInfo.description,
-      adminsTG: [],
+      adminIds: [], // adminAuthIds removed
       members: [],
       settings: {
         currencyNames: {
@@ -79,7 +79,7 @@ export class TelegramBotLifecycleService {
   async handleBotRemovedFromChat(chatId: string): Promise<void> {
     this.logger.log(`Bot removed from chat: ${chatId}`);
 
-    const community = await this.communityModel.findOne({ telegramChatId: chatId }).lean();
+    const community = null;
     if (!community) {
       this.logger.warn(`Community not found for chat ${chatId}`);
       return;
@@ -88,7 +88,7 @@ export class TelegramBotLifecycleService {
     // Mark community as inactive
     await this.communityModel.updateOne(
       { _id: community._id },
-      { 
+      {
         $set: {
           isActive: false,
           updatedAt: new Date(),
@@ -112,11 +112,12 @@ export class TelegramBotLifecycleService {
     this.logger.log(`User joined chat: ${userInfo.userId} in ${chatId}`);
 
     // Find or create user
-    let user = await this.userModel.findOne({ telegramId: userInfo.userId }).lean();
+    let user = await this.userModel.findOne({ authProvider: 'telegram', authId: userInfo.userId }).lean();
     if (!user) {
       const newUser = await this.userModel.create({
         id: uid(),
-        telegramId: userInfo.userId,
+        authProvider: 'telegram',
+        authId: userInfo.userId,
         displayName: userInfo.displayName,
         username: userInfo.username,
         firstName: userInfo.firstName,
@@ -143,7 +144,7 @@ export class TelegramBotLifecycleService {
     );
 
     // Add user to community members
-    const community = await this.communityModel.findOne({ telegramChatId: chatId }).lean();
+    const community = null;
     if (community) {
       await this.communityModel.updateOne(
         { _id: community._id },
@@ -157,7 +158,7 @@ export class TelegramBotLifecycleService {
   async handleUserLeftChat(chatId: string, userId: string): Promise<void> {
     this.logger.log(`User left chat: ${userId} from ${chatId}`);
 
-    const user = await this.userModel.findOne({ telegramId: userId }).lean();
+    const user = await this.userModel.findOne({ authProvider: 'telegram', authId: userId }).lean();
     if (!user) {
       this.logger.warn(`User not found: ${userId}`);
       return;
@@ -170,7 +171,7 @@ export class TelegramBotLifecycleService {
     );
 
     // Remove user from community members
-    const community = await this.communityModel.findOne({ telegramChatId: chatId }).lean();
+    const community = null;
     if (community) {
       await this.communityModel.updateOne(
         { _id: community._id },

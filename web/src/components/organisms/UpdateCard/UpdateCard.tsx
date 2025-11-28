@@ -21,7 +21,7 @@ export const UpdateCard: React.FC<UpdateCardProps> = ({
     if (update.communityId && update.publicationId) {
       // Navigate to publication, optionally with comment highlight
       const path = `/meriter/communities/${update.communityId}/posts/${update.publicationId}`;
-      const params = update.targetType === 'comment' && update.targetId 
+      const params = update.targetType === 'comment' && update.targetId
         ? `?highlight=${update.targetId}`
         : '';
       router.push(path + params);
@@ -41,7 +41,7 @@ export const UpdateCard: React.FC<UpdateCardProps> = ({
       if (diffMins < 60) return `${diffMins}${t('timeMinutesAgo') || 'm ago'}`;
       if (diffHours < 24) return `${diffHours}${t('timeHoursAgo') || 'h ago'}`;
       if (diffDays < 7) return `${diffDays}${t('timeDaysAgo') || 'd ago'}`;
-      
+
       return date.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -55,11 +55,11 @@ export const UpdateCard: React.FC<UpdateCardProps> = ({
     if (update.eventType === 'vote') {
       return update.direction === 'up' ? '↑' : '↓';
     }
-    return '👤';
+    return '';
   };
 
   const getEventDescription = () => {
-    const targetTypeLabel = update.targetType === 'publication' 
+    const targetTypeLabel = update.targetType === 'publication'
       ? (t('targetType.post') || 'post')
       : (t('targetType.comment') || 'comment');
 

@@ -1,5 +1,11 @@
 packages:
-  - 'api'
-  - 'web'
-  - 'libs/shared-types'
+  - api
+  - web
+  - libs/shared-types
 
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - bcrypt
+  - es5-ext
+  - mongodb-memory-server
+  - sharp

@@ -1,0 +1,75 @@
+--- libs/shared-types/src/schemas.ts
++++ libs/shared-types/src/schemas.ts
+@@ -154,18 +254,47 @@ export const UserSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
+   lastName: z.string().optional(),
+   displayName: z.string().min(1),
+   avatarUrl: z.string().url().optional(),
++  globalRole: z.enum(["superadmin"]).optional(), // Глобальная роль (только для суперадминов)
+   profile: UserProfileSchema.default({ isVerified: false }),
++  meritStats: z.record(z.string(), z.number().int().min(0)).optional(), // Статистика меритов по коммьюнити (только для lead)
++  inviteCode: z.string().optional(), // Код, использованный при регистрации
++  teamId: z.string().optional(), // ID команды, к которой принадлежит пользователь
+   communityTags: z.array(z.string()).default([]),
+   communityMemberships: z.array(z.string()).default([]),
+ });
+ 
+-export const CommunitySchema = IdentifiableSchema.merge(TimestampsSchema).extend({
++export const CommunitySchema = IdentifiableSchema.merge(
++  TimestampsSchema
++).extend({
+   name: z.string().min(1),
+   description: z.string().optional(),
+   avatarUrl: z.string().url().optional(),
+-  // IDs of administrators (internal User IDs)
++  // IDs of administrators (internal User IDs) - УСТАРЕВШЕЕ, использовать UserCommunityRole
+   adminIds: z.array(z.string()).default([]),
+-  members: z.array(z.string()).default([]),
++  members: z.array(z.string()).default([]), // УСТАРЕВШЕЕ, использовать UserCommunityRole
++  // НОВОЕ: Метка типа (опциональная, только для удобства)
++  typeTag: z
++    .enum([
++      "future-vision",
++      "marathon-of-good",
++      "team",
++      "political",
++      "housing",
++      "volunteer",
++      "corporate",
++      "custom",
++    ])
++    .optional(),
++  // НОВОЕ: Связанные валюты (настраивается)
++  linkedCurrencies: z.array(z.string()).optional(),
++  // НОВОЕ: Правила публикации (НАСТРАИВАЕМЫЕ)
++  postingRules: PostingRulesSchema.optional(),
++  // НОВОЕ: Правила голосования (НАСТРАИВАЕМЫЕ)
++  votingRules: VotingRulesSchema.optional(),
++  // НОВОЕ: Правила видимости (НАСТРАИВАЕМЫЕ)
++  visibilityRules: VisibilityRulesSchema.optional(),
++  // НОВОЕ: Правила меритов (НАСТРАИВАЕМЫЕ)
++  meritRules: MeritRulesSchema.optional(),
+   settings: CommunitySettingsSchema,
+   hashtags: z.array(z.string()).default([]),
+   hashtagDescriptions: z.record(z.string(), z.string()).optional().default({}),
+@@ -393,14 +549,16 @@ export const UpdatePublicationDtoSchema = z.object({
+   hashtags: z.array(z.string()).optional(),
+ });
+ 
+-export const CreateCommunityDtoSchema = z.object({
+-  name: z.string().min(1),
+-  description: z.string().optional(),
+-}).passthrough(); // Allow additional fields
++export const CreateCommunityDtoSchema = z
++  .object({
++    name: z.string().min(1),
++    description: z.string().optional(),
++  })
++  .passthrough(); // Allow additional fields
+ 
+ export const VoteDirectionDtoSchema = z.object({
+   amount: z.number().int(),
+-  direction: z.enum(['up', 'down']),
++  direction: z.enum(["up", "down"]),
+ });
+ 
+ export const TelegramAuthDataSchema = z.object({

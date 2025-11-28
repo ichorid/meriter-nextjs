@@ -33,39 +33,39 @@ export class WalletsController {
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectConnection() private mongoose: Connection,
-  ) {}
+  ) { }
 
   @Get('users/:userId/wallets')
   async getUserWallets(@Param('userId') userId: string, @Req() req: any): Promise<Wallet[]> {
     // Handle 'me' token for current user
     const actualUserId = userId === 'me' ? req.user.id : userId;
-    
+
     // Users can only see their own wallets
     if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
-    
-    // Get user's community tags (Telegram chat IDs where user is a member)
+
+    // Get user's community memberships (internal community IDs)
     const user = await this.userModel.findOne({ id: actualUserId }).lean();
     if (!user) {
       throw new NotFoundError('User', userId);
     }
-    
-    const userCommunityTags = user.communityTags || [];
-    this.logger.log(`User ${actualUserId} has ${userCommunityTags.length} community tags`);
-    
+
+    const userCommunityIds = user.communityMemberships || [];
+    this.logger.log(`User ${actualUserId} is member of ${userCommunityIds.length} communities`);
+
     // Get only active communities where user is a member
-    const userCommunities = await this.communityModel.find({ 
+    const userCommunities = await this.communityModel.find({
+      id: { $in: userCommunityIds },
       isActive: true,
-      telegramChatId: { $in: userCommunityTags }
     }).lean();
-    
+
     this.logger.log(`Found ${userCommunities.length} active communities for user ${actualUserId}`);
-    
+
     // Create wallets for communities where user doesn't have one yet
     const walletPromises = userCommunities.map(async (community) => {
       let wallet = await this.walletsService.getWallet(actualUserId, community.id);
-      
+
       if (!wallet) {
         // Create wallet with community currency settings
         wallet = await this.walletsService.createOrGetWallet(
@@ -75,12 +75,12 @@ export class WalletsController {
         );
         this.logger.log(`Created wallet for user ${actualUserId} in community ${community.name}`);
       }
-      
+
       return wallet;
     });
-    
+
     const wallets = await Promise.all(walletPromises);
-    
+
     return wallets.map(wallet => {
       const snapshot = wallet.toSnapshot();
       return {
@@ -100,7 +100,7 @@ export class WalletsController {
   ): Promise<Wallet> {
     // Handle 'me' token for current user
     const actualUserId = userId === 'me' ? req.user.id : userId;
-    
+
     // Users can only see their own wallets
     if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);
@@ -126,7 +126,7 @@ export class WalletsController {
   ) {
     // Handle 'me' token for current user
     const actualUserId = userId === 'me' ? req.user.id : userId;
-    
+
     // Users can only see their own transactions
     if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);
@@ -145,12 +145,12 @@ export class WalletsController {
   ) {
     // Handle 'me' token for current user
     const actualUserId = userId === 'me' ? req.user.id : userId;
-    
+
     // Users can only see their own quota
     if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
-    
+
     if (!communityId) {
       throw new BadRequestException('communityId is required');
     }
@@ -178,7 +178,7 @@ export class WalletsController {
     // Use lastQuotaResetAt if set, otherwise use start of today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const quotaStartTime = community.lastQuotaResetAt 
+    const quotaStartTime = community.lastQuotaResetAt
       ? new Date(community.lastQuotaResetAt)
       : today;
 
@@ -236,7 +236,7 @@ export class WalletsController {
   ) {
     // Handle 'me' token for current user
     const actualUserId = userId === 'me' ? req.user.id : userId;
-    
+
     // Users can only withdraw from their own wallets
     if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);
@@ -255,7 +255,7 @@ export class WalletsController {
   ) {
     // Handle 'me' token for current user
     const actualUserId = userId === 'me' ? req.user.id : userId;
-    
+
     // Users can only transfer from their own wallets
     if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);

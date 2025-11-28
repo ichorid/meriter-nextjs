@@ -11,7 +11,6 @@ module.exports = {
         "<rootDir>/src/__tests__/components/LoginForm.test.tsx",
         "<rootDir>/src/__tests__/components/AuthGuard.test.tsx",
         "<rootDir>/src/__tests__/contexts/AuthContext.test.tsx",
-        "<rootDir>/src/__tests__/integration/login-page.integration.test.tsx",
     ],
     preset: 'ts-jest',
     transform: {

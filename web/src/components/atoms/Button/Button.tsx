@@ -1,29 +1,22 @@
-// Atomic Button component - теперь использует Gluestack UI
 'use client';
 
 import React from 'react';
-import { Button as GluestackButton, ButtonText } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
-import { HStack } from '@/components/ui/hstack';
+import { BrandButton } from '@/components/ui/BrandButton';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link';
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
-export interface ButtonProps {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   fullWidth?: boolean;
-  disabled?: boolean;
-  children?: React.ReactNode;
   onPress?: () => void;
-  className?: string;
-  [key: string]: any;
 }
 
-export const Button = React.forwardRef<any, ButtonProps>(
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
       variant = 'primary',
@@ -32,41 +25,38 @@ export const Button = React.forwardRef<any, ButtonProps>(
       leftIcon,
       rightIcon,
       fullWidth = false,
-      disabled,
-      children,
       onPress,
-      className = '',
+      onClick,
+      children,
       ...props
     },
     ref
   ) => {
-    const isDisabled = disabled || isLoading;
-    
-    // Map variants to Gluestack UI variants
-    const gluestackVariant = variant === 'primary' ? 'solid' : 
-                            variant === 'link' ? 'link' : 
-                            variant === 'danger' ? 'solid' : 'outline';
-    
-    // Map sizes
-    const gluestackSize = size === 'xs' ? 'sm' : size === 'lg' ? 'lg' : 'md';
-    
+    // Map 'danger' to 'primary' with red styling or just use 'primary' for now as BrandButton doesn't have danger
+    // Actually BrandButton has variants: primary, secondary, outline, ghost.
+    // We'll map 'danger' to 'primary' but maybe add a class if needed, or just accept it.
+    // 'link' -> 'ghost' or 'link' if BrandButton supports it. BrandButton supports 'ghost'.
+
+    const mapVariant = (v: ButtonVariant): any => {
+      if (v === 'danger') return 'primary'; // Fallback
+      if (v === 'link') return 'ghost';
+      return v;
+    };
+
     return (
-      <GluestackButton
+      <BrandButton
         ref={ref}
-        variant={gluestackVariant}
-        size={gluestackSize}
-        isDisabled={isDisabled}
-        onPress={onPress}
-        width={fullWidth ? '100%' : undefined}
+        variant={mapVariant(variant)}
+        size={size === 'xs' ? 'sm' : size} // Map xs to sm
+        isLoading={isLoading}
+        leftIcon={leftIcon}
+        rightIcon={rightIcon}
+        fullWidth={fullWidth}
+        onClick={onPress || onClick}
         {...props}
       >
-        <HStack space="sm" alignItems="center">
-          {isLoading && <Spinner size="small" />}
-          {!isLoading && leftIcon && <>{leftIcon}</>}
-          <ButtonText>{children}</ButtonText>
-          {!isLoading && rightIcon && <>{rightIcon}</>}
-        </HStack>
-      </GluestackButton>
+        {children}
+      </BrandButton>
     );
   }
 );

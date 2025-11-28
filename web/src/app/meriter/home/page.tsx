@@ -9,12 +9,13 @@ import {
   PollsTab,
   UpdatesTab,
   PollCreateModal,
+  HeroSection,
 } from './components';
 import type { HomeTab } from './types';
-// Gluestack UI components
-import { Box } from '@/components/ui/box';
-import { VStack } from '@/components/ui/vstack';
-import { Spinner } from '@/components/ui/spinner';
+import { InviteHandler } from '@/components/InviteHandler';
+import { HomeFabMenu } from '@/components/molecules/FabMenu/HomeFabMenu';
+
+import { Loader2 } from 'lucide-react';
 
 export default function PageHome() {
   const { user, userLoading, isAuthenticated } = useHomeAuth();
@@ -22,10 +23,19 @@ export default function PageHome() {
   const {
     myPublications,
     publicationsLoading,
+    fetchNextPublications,
+    hasNextPublications,
+    isFetchingNextPublications,
     myComments,
     commentsLoading,
+    fetchNextComments,
+    hasNextComments,
+    isFetchingNextComments,
     myPolls,
     pollsLoading,
+    fetchNextPolls,
+    hasNextPolls,
+    isFetchingNextPolls,
     updatesArray,
     updatesLoading,
     wallets,
@@ -55,9 +65,9 @@ export default function PageHome() {
   if (userLoading || !isAuthenticated) {
     return (
       <AdaptiveLayout className="feed">
-        <Box flex={1} alignItems="center" justifyContent="center" height={256}>
-          <Spinner size="large" />
-        </Box>
+        <div className="flex flex-1 items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+        </div>
       </AdaptiveLayout>
     );
   }
@@ -73,6 +83,9 @@ export default function PageHome() {
             isLoading={publicationsLoading}
             wallets={wallets}
             sortOrder={sortOrder}
+            fetchNextPage={fetchNextPublications}
+            hasNextPage={hasNextPublications}
+            isFetchingNextPage={isFetchingNextPublications}
           />
         );
 
@@ -84,6 +97,9 @@ export default function PageHome() {
             sortOrder={sortOrder}
             wallets={wallets}
             myId={user?.id}
+            fetchNextPage={fetchNextComments}
+            hasNextPage={hasNextComments}
+            isFetchingNextPage={isFetchingNextComments}
           />
         );
 
@@ -94,6 +110,9 @@ export default function PageHome() {
             isLoading={pollsLoading}
             wallets={wallets}
             sortOrder={sortOrder}
+            fetchNextPage={fetchNextPolls}
+            hasNextPage={hasNextPolls}
+            isFetchingNextPage={isFetchingNextPolls}
           />
         );
 
@@ -120,10 +139,33 @@ export default function PageHome() {
       setActiveWithdrawPost={setActiveWithdrawPost}
       wallets={wallets}
       myId={user?.id}
-          >
-            <VStack space="md" flex={1}>
+    >
+      <InviteHandler />
+      <div className="flex-1 space-y-4">
+        {/* Hero Section with greeting and statistics */}
+        <HeroSection
+          userName={
+            user?.firstName && user?.lastName
+              ? `${user.firstName} ${user.lastName}`
+              : user?.firstName || user?.displayName || user?.username || undefined
+          }
+          userAvatar={undefined}
+          stats={{
+            publications: myPublications.length,
+            comments: myComments.length,
+            polls: myPolls.length,
+            updates: updatesArray.length,
+          }}
+          isLoading={
+            publicationsLoading ||
+            commentsLoading ||
+            pollsLoading ||
+            updatesLoading
+          }
+        />
+
         {renderTabContent()}
-      </VStack>
+      </div>
 
       {showPollCreate && (
         <PollCreateModal
@@ -131,6 +173,9 @@ export default function PageHome() {
           onClose={() => setShowPollCreate(false)}
         />
       )}
+
+      {/* FAB Menu for creating content */}
+      <HomeFabMenu />
     </AdaptiveLayout>
   );
 }

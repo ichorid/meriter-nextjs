@@ -133,7 +133,6 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
     testCommunityId = uid();
     await communityModel.create({
       id: testCommunityId,
-      telegramChatId: `chat_${testCommunityId}`,
       name: 'Test Community',
       administrators: [testUserId],
       members: [testUserId, testUserId2],

@@ -16,7 +16,7 @@ export class TelegramPublicationCreatorService {
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private messageProcessor: TelegramMessageProcessorService,
-  ) {}
+  ) { }
 
   async createPublicationFromMessage(message: TelegramMessage): Promise<void> {
     this.logger.log(`Creating publication from message: ${message.messageId}`);
@@ -25,7 +25,7 @@ export class TelegramPublicationCreatorService {
     const parsedMessage = this.messageProcessor.parseMessage(message);
 
     // Find community
-    const community = await this.communityModel.findOne({ telegramChatId: message.chatId }).lean();
+    const community = null;
     if (!community) {
       this.logger.warn(`Community not found for chat: ${message.chatId}`);
       return;
