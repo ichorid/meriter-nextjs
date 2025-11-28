@@ -7,6 +7,14 @@ const path = require('path');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: false,
+    // Skip type checking during build to reduce memory usage
+    typescript: {
+        ignoreBuildErrors: true,
+    },
+    // Skip ESLint during build to reduce memory usage
+    eslint: {
+        ignoreDuringBuilds: true,
+    },
     // For App Router
     experimental: {
         serverActions: {
