@@ -37,6 +37,7 @@ export class EntityMappers {
     const author = usersMap.get(authorId);
     const beneficiary = beneficiaryId ? usersMap.get(beneficiaryId) : null;
     const community = communitiesMap.get(communityId);
+    const snapshot = publication.toSnapshot();
 
     return {
       id: publication.getId.getValue(),
@@ -48,8 +49,8 @@ export class EntityMappers {
       content: publication.getContent,
       type: publication.getType,
       hashtags: publication.getHashtags,
-      imageUrl: undefined, // Not available in current entity
-      videoUrl: undefined, // Not available in current entity
+      imageUrl: snapshot.imageUrl || undefined,
+      videoUrl: snapshot.videoUrl || undefined,
       metrics: {
         upvotes: publication.getMetrics.upvotes,
         downvotes: publication.getMetrics.downvotes,
@@ -66,8 +67,8 @@ export class EntityMappers {
           origin: this.formatCommunityForApi(community),
         }),
       },
-      createdAt: publication.toSnapshot().createdAt.toISOString(),
-      updatedAt: publication.toSnapshot().updatedAt.toISOString(),
+      createdAt: snapshot.createdAt.toISOString(),
+      updatedAt: snapshot.updatedAt.toISOString(),
     };
   }
 
