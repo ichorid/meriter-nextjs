@@ -16,6 +16,31 @@ env:
   IMAGE_NAME_API: ${{ github.repository }}-api
 
 jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run tests
+        run: pnpm test
+
   determine-target:
     name: Select deployment target
     runs-on: ubuntu-latest
@@ -64,32 +89,6 @@ jobs:
           echo "api_version=$API_VERSION" >> "$GITHUB_OUTPUT"
           echo "Web version: $WEB_VERSION"
           echo "API version: $API_VERSION"
-
-  test:
-    name: Run tests
-    runs-on: ubuntu-latest
-    needs: determine-target
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Run tests
-        run: pnpm test
 
   build-images:
     name: Build and push ${{ matrix.component }} image
@@ -201,24 +200,11 @@ jobs:
       cancel-in-progress: true
     # Uses environment-scoped secrets defined per environment (see header comment).
     steps:
-      - name: Set up SSH agent
-        uses: webfactory/ssh-agent@v0.7.0
+      - name: Deploy
+        uses: ./.github/actions/deploy
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
-      - name: Add VPS host to known hosts
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
-      - name: Run remote deploy script
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-        run: |
-          ssh "deploy@$VPS_HOST" <<'EOF'
-            cd /opt/meriter
-            ./deploy.sh
-          EOF
+          vps-host: ${{ secrets.VPS_HOST }}
 
   deploy-stage:
     name: Deploy to stage server
@@ -230,51 +216,24 @@ jobs:
     environment:
       name: stage
     steps:
-      - name: Set up SSH agent
-        uses: webfactory/ssh-agent@v0.7.0
+      - name: Deploy
+        uses: ./.github/actions/deploy
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
-      - name: Add VPS host to known hosts
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
-      - name: Run remote deploy script
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-        run: |
-          ssh "deploy@$VPS_HOST" <<'EOF'
-            cd /opt/meriter
-            ./deploy.sh
-          EOF
+          vps-host: ${{ secrets.VPS_HOST }}
 
   deploy-prod:
     name: Deploy to production server
     runs-on: ubuntu-latest
     needs:
       - determine-target
-      - build-images
       - deploy-stage
     if: needs.determine-target.outputs.run_prod_deploy == 'true'
     environment:
       name: prod
     steps:
-      - name: Set up SSH agent
-        uses: webfactory/ssh-agent@v0.7.0
+      - name: Deploy
+        uses: ./.github/actions/deploy
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
-      - name: Add VPS host to known hosts
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
-      - name: Run remote deploy script
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-        run: |
-          ssh "deploy@$VPS_HOST" <<'EOF'
-            cd /opt/meriter
-            ./deploy.sh
-          EOF
+          vps-host: ${{ secrets.VPS_HOST }}
