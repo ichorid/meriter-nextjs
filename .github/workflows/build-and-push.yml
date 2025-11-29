@@ -9,6 +9,10 @@ on:
     branches:
       - dev
       - main
+  pull_request:
+    branches:
+      - dev
+      - main
 
 env:
   REGISTRY: ghcr.io
@@ -96,7 +100,6 @@ jobs:
     needs:
       - determine-target
       - test
-    if: needs.determine-target.outputs.build_type != ''
     strategy:
       matrix:
         component: [web, api]
@@ -111,6 +114,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -123,43 +127,50 @@ jobs:
           BUILD_TYPE="${{ needs.determine-target.outputs.build_type }}"
           IMAGE_NAME="${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.component }}"
           
-          if [ "$BUILD_TYPE" = "dev" ]; then
-            TAG1="${COMPONENT}-dev-${{ github.sha }}"
-            TAG2="${COMPONENT}-dev-latest"
-            TAGS_MULTILINE="type=raw,value=${TAG1}"$'\n'"type=raw,value=${TAG2}"
-          else
-            VERSION="${{ needs.determine-target.outputs.web_version }}"
-            if [ "$COMPONENT" = "api" ]; then
-              VERSION="${{ needs.determine-target.outputs.api_version }}"
-            fi
-            TAGS_MULTILINE="type=raw,value=v${VERSION}"$'\n'"type=raw,value=latest"$'\n'"type=sha"
-          fi
-          
-          {
-            echo "tags<<EOF"
-            echo "$TAGS_MULTILINE"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
           echo "image_name=${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
-          echo "Generated tags for ${COMPONENT}:"
-          echo "$TAGS_MULTILINE"
+          
+          if [[ "${{ github.event_name }}" == "push" && "$BUILD_TYPE" != "" ]]; then
+            if [ "$BUILD_TYPE" = "dev" ]; then
+              TAG1="${COMPONENT}-dev-${{ github.sha }}"
+              TAG2="${COMPONENT}-dev-latest"
+              TAGS_MULTILINE="type=raw,value=${TAG1}"$'\n'"type=raw,value=${TAG2}"
+            else
+              VERSION="${{ needs.determine-target.outputs.web_version }}"
+              if [ "$COMPONENT" = "api" ]; then
+                VERSION="${{ needs.determine-target.outputs.api_version }}"
+              fi
+              TAGS_MULTILINE="type=raw,value=v${VERSION}"$'\n'"type=raw,value=latest"$'\n'"type=sha"
+            fi
+            
+            {
+              echo "tags<<EOF"
+              echo "$TAGS_MULTILINE"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+            echo "Generated tags for ${COMPONENT}:"
+            echo "$TAGS_MULTILINE"
+          else
+            echo "Skipping tag generation for PR or non-deployment build"
+          fi
       - name: Prepare image metadata
+        if: github.event_name == 'push' && needs.determine-target.outputs.build_type != ''
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ steps.tags.outputs.image_name }}
           tags: ${{ steps.tags.outputs.tags }}
-      - name: Build and push Docker image
+      - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./${{ matrix.component }}/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ github.event_name == 'push' && needs.determine-target.outputs.build_type != '' }}
+          tags: ${{ github.event_name == 'push' && needs.determine-target.outputs.build_type != '' && steps.meta.outputs.tags || '' }}
+          labels: ${{ github.event_name == 'push' && needs.determine-target.outputs.build_type != '' && steps.meta.outputs.labels || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Image summary
+        if: github.event_name == 'push' && needs.determine-target.outputs.build_type != ''
         run: |
           COMPONENT="${{ matrix.component }}"
           BUILD_TYPE="${{ needs.determine-target.outputs.build_type }}"
@@ -200,6 +211,8 @@ jobs:
       cancel-in-progress: true
     # Uses environment-scoped secrets defined per environment (see header comment).
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Deploy
         uses: ./.github/actions/deploy
         with:
@@ -216,6 +229,8 @@ jobs:
     environment:
       name: stage
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Deploy
         uses: ./.github/actions/deploy
         with:
@@ -232,6 +247,8 @@ jobs:
     environment:
       name: prod
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Deploy
         uses: ./.github/actions/deploy
         with:
