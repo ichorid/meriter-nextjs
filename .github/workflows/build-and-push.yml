@@ -24,7 +24,13 @@ jobs:
       run_dev_deploy: ${{ steps.target.outputs.run_dev_deploy }}
       run_stage_deploy: ${{ steps.target.outputs.run_stage_deploy }}
       run_prod_deploy: ${{ steps.target.outputs.run_prod_deploy }}
+      web_version: ${{ steps.versions.outputs.web_version }}
+      api_version: ${{ steps.versions.outputs.api_version }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - id: target
         run: |
           if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/dev" ]]; then
@@ -49,6 +55,15 @@ jobs:
               echo "run_prod_deploy=false"
             } >> "$GITHUB_OUTPUT"
           fi
+      - id: versions
+        if: steps.target.outputs.build_type == 'release'
+        run: |
+          WEB_VERSION=$(jq -r '.version' web/package.json)
+          API_VERSION=$(jq -r '.version' api/package.json)
+          echo "web_version=$WEB_VERSION" >> "$GITHUB_OUTPUT"
+          echo "api_version=$API_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Web version: $WEB_VERSION"
+          echo "API version: $API_VERSION"
 
   test:
     name: Run tests
@@ -76,13 +91,16 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-  build-web:
-    name: Build and push web image
+  build-images:
+    name: Build and push ${{ matrix.component }} image
     runs-on: ubuntu-latest
     needs:
       - determine-target
       - test
     if: needs.determine-target.outputs.build_type != ''
+    strategy:
+      matrix:
+        component: [web, api]
     permissions:
       contents: read
       packages: write
@@ -99,159 +117,74 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract version (release builds)
-        id: version
-        if: needs.determine-target.outputs.build_type == 'release'
+      - name: Generate tag values
+        id: tags
         run: |
-          VERSION=$(jq -r '.version' web/package.json)
-          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Web version: $VERSION"
-      - name: Prepare image metadata
-        id: meta-dev
-        if: needs.determine-target.outputs.build_type == 'dev'
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}
-          tags: |
-            type=raw,value=web-dev-${{ github.sha }}
-            type=raw,value=web-dev-latest
-      - name: Prepare image metadata (release)
-        id: meta-release
-        if: needs.determine-target.outputs.build_type == 'release'
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}
-          tags: |
-            type=raw,value=v${{ steps.version.outputs.value }}
-            type=raw,value=latest
-            type=sha
-      - name: Build and push web Docker image
-        if: needs.determine-target.outputs.build_type == 'dev'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./web/Dockerfile
-          push: true
-          tags: ${{ steps.meta-dev.outputs.tags }}
-          labels: ${{ steps.meta-dev.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: Build and push web Docker image (release)
-        if: needs.determine-target.outputs.build_type == 'release'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./web/Dockerfile
-          push: true
-          tags: ${{ steps.meta-release.outputs.tags }}
-          labels: ${{ steps.meta-release.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: Image summary
-        run: |
-          echo "### Web image published :rocket:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ needs.determine-target.outputs.build_type }}" = "dev" ]; then
-            echo "**Context:** dev branch" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Images:**" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}:web-dev-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}:web-dev-latest\`" >> $GITHUB_STEP_SUMMARY
+          COMPONENT="${{ matrix.component }}"
+          BUILD_TYPE="${{ needs.determine-target.outputs.build_type }}"
+          IMAGE_NAME="${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.component }}"
+          
+          if [ "$BUILD_TYPE" = "dev" ]; then
+            TAG1="${COMPONENT}-dev-${{ github.sha }}"
+            TAG2="${COMPONENT}-dev-latest"
+            TAGS_MULTILINE="type=raw,value=${TAG1}"$'\n'"type=raw,value=${TAG2}"
           else
-            echo "**Version:** v${{ steps.version.outputs.value }}" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Images:**" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}:v${{ steps.version.outputs.value }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_WEB }}:latest\`" >> $GITHUB_STEP_SUMMARY
+            VERSION="${{ needs.determine-target.outputs.web_version }}"
+            if [ "$COMPONENT" = "api" ]; then
+              VERSION="${{ needs.determine-target.outputs.api_version }}"
+            fi
+            TAGS_MULTILINE="type=raw,value=v${VERSION}"$'\n'"type=raw,value=latest"$'\n'"type=sha"
           fi
-
-  build-api:
-    name: Build and push API image
-    runs-on: ubuntu-latest
-    needs:
-      - determine-target
-      - test
-    if: needs.determine-target.outputs.build_type != ''
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract version (release builds)
-        id: version
-        if: needs.determine-target.outputs.build_type == 'release'
-        run: |
-          VERSION=$(jq -r '.version' api/package.json)
-          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "API version: $VERSION"
+          
+          {
+            echo "tags<<EOF"
+            echo "$TAGS_MULTILINE"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "image_name=${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Generated tags for ${COMPONENT}:"
+          echo "$TAGS_MULTILINE"
       - name: Prepare image metadata
-        id: meta-dev
-        if: needs.determine-target.outputs.build_type == 'dev'
+        id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}
-          tags: |
-            type=raw,value=api-dev-${{ github.sha }}
-            type=raw,value=api-dev-latest
-      - name: Prepare image metadata (release)
-        id: meta-release
-        if: needs.determine-target.outputs.build_type == 'release'
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}
-          tags: |
-            type=raw,value=v${{ steps.version.outputs.value }}
-            type=raw,value=latest
-            type=sha
-      - name: Build and push API Docker image
-        if: needs.determine-target.outputs.build_type == 'dev'
+          images: ${{ steps.tags.outputs.image_name }}
+          tags: ${{ steps.tags.outputs.tags }}
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./api/Dockerfile
+          file: ./${{ matrix.component }}/Dockerfile
           push: true
-          tags: ${{ steps.meta-dev.outputs.tags }}
-          labels: ${{ steps.meta-dev.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: Build and push API Docker image (release)
-        if: needs.determine-target.outputs.build_type == 'release'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./api/Dockerfile
-          push: true
-          tags: ${{ steps.meta-release.outputs.tags }}
-          labels: ${{ steps.meta-release.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Image summary
         run: |
-          echo "### API image published :rocket:" >> $GITHUB_STEP_SUMMARY
+          COMPONENT="${{ matrix.component }}"
+          BUILD_TYPE="${{ needs.determine-target.outputs.build_type }}"
+          IMAGE_NAME="${{ steps.tags.outputs.image_name }}"
+          
+          echo "### ${COMPONENT^} image published :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ needs.determine-target.outputs.build_type }}" = "dev" ]; then
+          
+          if [ "$BUILD_TYPE" = "dev" ]; then
             echo "**Context:** dev branch" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Images:**" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:api-dev-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:api-dev-latest\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`${IMAGE_NAME}:${COMPONENT}-dev-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`${IMAGE_NAME}:${COMPONENT}-dev-latest\`" >> $GITHUB_STEP_SUMMARY
           else
-            echo "**Version:** v${{ steps.version.outputs.value }}" >> $GITHUB_STEP_SUMMARY
+            VERSION="${{ needs.determine-target.outputs.web_version }}"
+            if [ "$COMPONENT" = "api" ]; then
+              VERSION="${{ needs.determine-target.outputs.api_version }}"
+            fi
+            echo "**Version:** v${VERSION}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Images:**" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:v${{ steps.version.outputs.value }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:latest\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`${IMAGE_NAME}:v${VERSION}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`${IMAGE_NAME}:latest\`" >> $GITHUB_STEP_SUMMARY
           fi
 
   deploy-dev:
@@ -259,8 +192,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - determine-target
-      - build-web
-      - build-api
+      - build-images
     if: needs.determine-target.outputs.run_dev_deploy == 'true'
     environment:
       name: dev
@@ -293,8 +225,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - determine-target
-      - build-web
-      - build-api
+      - build-images
     if: needs.determine-target.outputs.run_stage_deploy == 'true'
     environment:
       name: stage
@@ -323,8 +254,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - determine-target
-      - build-web
-      - build-api
+      - build-images
       - deploy-stage
     if: needs.determine-target.outputs.run_prod_deploy == 'true'
     environment:
