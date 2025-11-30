@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { usePathname } from 'next/navigation';
 import { Bell, Menu, Moon, Sun } from 'lucide-react';
 import Link from 'next/link';
@@ -21,29 +21,18 @@ export function Header({
     onProfileClick,
     className = '',
 }: HeaderProps) {
-    const { resolvedTheme, setTheme } = useTheme();
-    const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light');
-
-    useEffect(() => {
-        const stored = localStorage.getItem('theme') as 'light' | 'dark' | null;
-        if (stored === 'light' || stored === 'dark') {
-            setCurrentTheme(stored);
-        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            setCurrentTheme('dark');
-        } else {
-            setCurrentTheme('light');
-        }
-    }, []);
-
-    useEffect(() => {
-        setCurrentTheme(resolvedTheme);
-    }, [resolvedTheme]);
+    const { theme, resolvedTheme, setTheme } = useTheme();
 
     const handleThemeToggle = () => {
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        setTheme(newTheme);
-        setCurrentTheme(newTheme);
-        document.documentElement.setAttribute('data-theme', newTheme);
+        // Cycle through: light -> dark -> auto -> light
+        if (theme === 'light') {
+            setTheme('dark');
+        } else if (theme === 'dark') {
+            setTheme('auto');
+        } else {
+            // theme === 'auto'
+            setTheme('light');
+        }
     };
 
     const openNotification = () => {
@@ -63,16 +52,19 @@ export function Header({
             </div>
 
             <div className="flex-none">
-                {/* Light and dark theme selection toggle */}
+                {/* Light, dark, and auto theme selection toggle */}
                 <label className="swap">
-                    <input type="checkbox" checked={currentTheme === 'dark'} onChange={handleThemeToggle} />
+                    <input 
+                        type="checkbox" 
+                        checked={resolvedTheme === 'dark'} 
+                        onChange={handleThemeToggle}
+                        title={`Theme: ${theme === 'auto' ? `Auto (${resolvedTheme})` : theme === 'dark' ? 'Dark' : 'Light'}`}
+                    />
                     <Sun
-                        data-set-theme="light"
-                        className={`w-6 h-6 ${currentTheme === 'dark' ? 'swap-on' : 'swap-off'}`}
+                        className={`w-6 h-6 ${resolvedTheme === 'dark' ? 'swap-on' : 'swap-off'}`}
                     />
                     <Moon
-                        data-set-theme="dark"
-                        className={`w-6 h-6 ${currentTheme === 'light' ? 'swap-on' : 'swap-off'}`}
+                        className={`w-6 h-6 ${resolvedTheme === 'light' ? 'swap-on' : 'swap-off'}`}
                     />
                 </label>
 
