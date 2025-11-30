@@ -13,5 +13,10 @@
     "test:web": "pnpm --filter @meriter/web test",
     "test": "pnpm test:api && pnpm test:web",
     "lint": "pnpm --filter @meriter/api lint && pnpm --filter @meriter/web lint"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "@react-native/assets-registry@0.76.9": "web/patches/@react-native__assets-registry@0.76.9.patch"
+    }
   }
 }
