@@ -86,7 +86,7 @@ See [README.deployment.md](README.deployment.md) for detailed Docker deployment 
 ### Frontend
 - **Next.js 15** - React framework with App Router
 - **TypeScript** - Type safety
-- **Tailwind CSS + DaisyUI** - Styling
+- **Tailwind CSS** - Styling
 - **react-i18next** - Internationalization
 - **TanStack Query (React Query)** - Data fetching and caching
 
