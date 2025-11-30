@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogoutButton } from '@/components/LogoutButton';
 import { LanguageSelector } from '@shared/components/language-selector';
+import { ThemeSelector } from '@shared/components/theme-selector';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSyncCommunities } from '@/hooks/api/useCommunities';
@@ -112,6 +113,14 @@ const SettingsPage = () => {
                             {t('languageSection')}
                         </h2>
                         <LanguageSelector />
+                    </div>
+
+                    {/* Theme Section */}
+                    <div className="space-y-3">
+                        <h2 className="text-base font-semibold text-brand-text-primary">
+                            {t('themeSection')}
+                        </h2>
+                        <ThemeSelector />
                     </div>
 
                     {/* Communities Section */}

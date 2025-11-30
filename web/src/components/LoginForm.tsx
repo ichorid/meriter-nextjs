@@ -92,13 +92,13 @@ export function LoginForm({ className = '', enabledProviders }: LoginFormProps) 
 
   return (
     <div className={`w-full max-w-md mx-auto ${className}`}>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+      <div className="bg-base-100 rounded-2xl shadow-sm border border-base-300 p-6 sm:p-8">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-base-content">
             {t('title')}
           </h1>
           {displayedProviders.length > 0 && !fakeDataMode && (
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-base-content/70">
               {t('subtitle')}
             </p>
           )}
@@ -127,7 +127,7 @@ export function LoginForm({ className = '', enabledProviders }: LoginFormProps) 
             <div className="space-y-4">
               {fakeDataMode ? (
                 <div className="space-y-4 text-center">
-                  <p className="text-sm text-gray-600 bg-yellow-50 p-2 rounded-lg border border-yellow-200">
+                  <p className="text-sm text-base-content bg-warning/10 p-2 rounded-lg border border-warning/20">
                     Fake Data Mode Enabled
                   </p>
                   <BrandButton
