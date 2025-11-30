@@ -72,7 +72,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
   }, [content, isHtmlContent]);
 
   return (
-    <div className={`prose prose-sm max-w-none ${className}`}>
+    <div className={`prose prose-sm dark:prose-invert max-w-none text-base-content ${className}`}>
       {isProject && (
         <div className="mb-2">
           <span className="inline-block px-2 py-1 text-xs font-semibold text-white bg-blue-600 rounded">
@@ -81,19 +81,19 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
         </div>
       )}
       {title && (
-        <h3 className="text-lg font-semibold mb-2">{title}</h3>
+        <h3 className="text-lg font-semibold mb-2 text-base-content">{title}</h3>
       )}
       {description && isHtmlContent ? (
         <div
-          className="text-gray-700 mb-3"
+          className="text-base-content mb-3"
           dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
         />
       ) : description ? (
-        <p className="text-gray-700 mb-3">{description}</p>
+        <p className="text-base-content mb-3">{description}</p>
       ) : null}
       {content && !description && (
         isHtmlContent ? (
-          <div dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
+          <div className="text-base-content" dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
         ) : (
           <WithTelegramEntities
             entities={publication.meta?.commentTgEntities || []}

@@ -139,7 +139,7 @@ export default function NotificationsPage() {
 
   return (
     <AdaptiveLayout>
-      <div className="flex flex-col min-h-screen bg-white">
+      <div className="flex flex-col min-h-screen bg-base-100">
         <PageHeader
           title={t('title') || 'Notifications'}
           showBack={true}
@@ -235,10 +235,10 @@ export default function NotificationsPage() {
                               e.stopPropagation();
                               markAsRead.mutate(notification.id);
                             }}
-                            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                            className="p-1 hover:bg-base-200 rounded-full transition-colors"
                             aria-label="Mark as read"
                           >
-                            <Check size={16} className="text-gray-400" />
+                            <Check size={16} className="text-base-content/60" />
                           </button>
                         )}
                         <button
@@ -246,7 +246,7 @@ export default function NotificationsPage() {
                           className="p-1 hover:bg-red-50 rounded-full transition-colors"
                           aria-label="Delete"
                         >
-                          <Trash2 size={16} className="text-gray-400 hover:text-red-500" />
+                          <Trash2 size={16} className="text-base-content/60 hover:text-error" />
                         </button>
                       </div>
                     }
@@ -267,8 +267,8 @@ export default function NotificationsPage() {
               )}
             </div>
           ) : (
-            <div className="text-center py-12 text-gray-500">
-              <Bell className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <div className="text-center py-12 text-base-content/60">
+              <Bell className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
               <p className="font-medium">{t('noNotifications') || 'No notifications'}</p>
               <p className="text-sm mt-1">
                 {filter === 'unread' 
@@ -313,14 +313,14 @@ function NotificationPreferencesPanel() {
 
   if (isLoading) {
     return (
-      <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+      <div className="p-4 bg-base-200 rounded-xl border border-base-300">
         <Loader2 className="w-5 h-5 animate-spin text-brand-primary mx-auto" />
       </div>
     );
   }
 
   return (
-    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
+    <div className="p-4 bg-base-200 rounded-xl border border-base-300 space-y-3">
       <h3 className="font-semibold text-brand-text-primary">
         {t('preferences.title') || 'Notification Preferences'}
       </h3>
@@ -328,7 +328,7 @@ function NotificationPreferencesPanel() {
         {Object.entries(localPreferences).map(([key, value]) => (
           <label
             key={key}
-            className="flex items-center gap-2 cursor-pointer p-2 hover:bg-white rounded-lg transition-colors"
+            className="flex items-center gap-2 cursor-pointer p-2 hover:bg-base-200 rounded-lg transition-colors"
           >
             <input
               type="checkbox"

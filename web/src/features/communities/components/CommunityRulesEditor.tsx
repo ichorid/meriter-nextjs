@@ -546,7 +546,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
         <div className="space-y-2">
           {linkedCurrencies.map((currency) => (
-            <div key={currency} className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200">
+            <div key={currency} className="flex items-center justify-between p-2 bg-base-200 rounded-md border border-base-300">
               <span className="text-sm text-brand-text-primary">{currency}</span>
               <BrandButton size="sm" variant="outline" onClick={() => removeCurrency(currency)}>
                 {t('remove')}
@@ -627,7 +627,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
       {/* History */}
       {showHistory && (
-        <div className="border border-brand-border rounded-xl overflow-hidden bg-white">
+        <div className="border border-brand-border rounded-xl overflow-hidden bg-base-100">
           <div className="p-4 border-b border-brand-border">
             <h3 className="text-lg font-semibold text-brand-text-primary">{t('history')}</h3>
           </div>
@@ -639,13 +639,13 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
                 {getHistory().map((entry) => (
                   <div
                     key={entry.id}
-                    className="p-3 border border-gray-200 rounded-md flex items-center justify-between"
+                    className="p-3 border border-base-300 rounded-md flex items-center justify-between"
                   >
                     <div>
                       <p className="text-sm font-bold text-brand-text-primary">
                         {new Date(entry.timestamp).toLocaleString()}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-base-content/60">
                         {t('historyEntry')}
                       </p>
                     </div>
@@ -666,7 +666,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
       {/* Preview */}
       {showPreview && (
-        <div className="border border-brand-border rounded-xl overflow-hidden bg-white">
+        <div className="border border-brand-border rounded-xl overflow-hidden bg-base-100">
           <div className="p-4 border-b border-brand-border">
             <h3 className="text-lg font-semibold text-brand-text-primary">{t('preview')}</h3>
           </div>
@@ -674,7 +674,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             {/* Posting Rules Preview */}
             <div className="space-y-2">
               <h4 className="text-sm font-semibold text-brand-text-primary">{t('postingRules')}</h4>
-              <pre className="text-xs bg-gray-50 p-2 rounded border border-gray-200 overflow-auto">
+              <pre className="text-xs bg-base-200 p-2 rounded border border-base-300 overflow-auto">
                 {JSON.stringify(postingRules, null, 2)}
               </pre>
             </div>
@@ -682,7 +682,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             {/* Voting Rules Preview */}
             <div className="space-y-2">
               <h4 className="text-sm font-semibold text-brand-text-primary">{t('votingRules')}</h4>
-              <pre className="text-xs bg-gray-50 p-2 rounded border border-gray-200 overflow-auto">
+              <pre className="text-xs bg-base-200 p-2 rounded border border-base-300 overflow-auto">
                 {JSON.stringify(votingRules, null, 2)}
               </pre>
             </div>
@@ -690,7 +690,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             {/* Visibility Rules Preview */}
             <div className="space-y-2">
               <h4 className="text-sm font-semibold text-brand-text-primary">{t('visibilityRules')}</h4>
-              <pre className="text-xs bg-gray-50 p-2 rounded border border-gray-200 overflow-auto">
+              <pre className="text-xs bg-base-200 p-2 rounded border border-base-300 overflow-auto">
                 {JSON.stringify(visibilityRules, null, 2)}
               </pre>
             </div>
@@ -698,7 +698,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             {/* Merit Rules Preview */}
             <div className="space-y-2">
               <h4 className="text-sm font-semibold text-brand-text-primary">{t('meritRules')}</h4>
-              <pre className="text-xs bg-gray-50 p-2 rounded border border-gray-200 overflow-auto">
+              <pre className="text-xs bg-base-200 p-2 rounded border border-base-300 overflow-auto">
                 {JSON.stringify(meritRules, null, 2)}
               </pre>
             </div>

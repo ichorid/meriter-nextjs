@@ -63,7 +63,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         <>
             <div
                 className={`
-          sticky top-0 z-20 w-full bg-brand-surface/80 backdrop-blur-md border-b border-brand-secondary/10
+          sticky top-0 z-20 w-full bg-brand-surface/80 dark:bg-base-100 backdrop-blur-md border-b border-brand-secondary/10 dark:border-base-300/50
           flex items-center justify-between px-4 h-14
           ${className}
         `}
@@ -73,14 +73,14 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                         <BrandButton
                             variant="ghost"
                             size="sm"
-                            className="mr-2 -ml-2 px-2"
+                            className="mr-2 -ml-2 px-2 dark:text-base-content"
                             onClick={handleBack}
                             aria-label="Go back"
                         >
-                            <ArrowLeft size={20} />
+                            <ArrowLeft size={20} className="dark:text-base-content" />
                         </BrandButton>
                     )}
-                    <h1 className="text-lg font-bold text-brand-text-primary truncate">
+                    <h1 className="text-lg font-bold text-brand-text-primary dark:text-base-content truncate">
                         {title}
                     </h1>
                 </div>

@@ -104,7 +104,7 @@ export default function ProfilePage() {
 
   return (
     <AdaptiveLayout>
-      <div className="flex flex-col min-h-screen bg-white">
+      <div className="flex flex-col min-h-screen bg-base-100">
         <PageHeader
           title={t('title')}
           showBack={true}
@@ -183,7 +183,7 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <Users className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
                 <p className="text-brand-text-secondary">{t('noRoles')}</p>
               </div>
             )}
@@ -205,7 +205,7 @@ export default function ProfilePage() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="text-sm border border-brand-secondary/20 rounded-lg px-3 py-1.5 bg-white text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                  className="text-sm border border-brand-secondary/20 rounded-lg px-3 py-1.5 bg-base-100 text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary"
                 >
                   <option value="recent">{t('sortBy.recent')}</option>
                   <option value="oldest">{t('sortBy.oldest')}</option>
@@ -245,7 +245,7 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <Briefcase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <Briefcase className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
                 <p className="text-brand-text-secondary">{t('noProjects')}</p>
               </div>
             )}

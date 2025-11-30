@@ -36,12 +36,12 @@ export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
 
     const variantStyles = {
       primary: outline ? "border border-brand-primary text-brand-primary" : "bg-brand-primary text-white",
-      secondary: outline ? "border border-gray-500 text-gray-500" : "bg-gray-100 text-gray-800",
+      secondary: outline ? "border border-base-content/60 text-base-content/60" : "bg-base-200 text-base-content",
       accent: outline ? "border border-brand-accent text-brand-accent" : "bg-brand-accent text-white",
-      info: outline ? "border border-blue-500 text-blue-500" : "bg-blue-100 text-blue-800",
-      success: outline ? "border border-green-500 text-green-500" : "bg-green-100 text-green-800",
-      warning: outline ? "border border-yellow-500 text-yellow-500" : "bg-yellow-100 text-yellow-800",
-      error: outline ? "border border-red-500 text-red-500" : "bg-red-100 text-red-800",
+      info: outline ? "border border-info text-info" : "bg-info/20 text-info",
+      success: outline ? "border border-success text-success" : "bg-success/20 text-success",
+      warning: outline ? "border border-warning text-warning" : "bg-warning/20 text-warning",
+      error: outline ? "border border-error text-error" : "bg-error/20 text-error",
     };
 
     return (

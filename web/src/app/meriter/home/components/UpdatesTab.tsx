@@ -36,7 +36,7 @@ export function UpdatesTab({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-base-100 dark:bg-base-100">
       {sortItems(updates, sortOrder).map((update: UpdateEvent, index: number) => {
         const key = generateKey(update?.id, index, 'update');
         return (

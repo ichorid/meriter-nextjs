@@ -33,8 +33,8 @@ export const BrandButton = React.forwardRef<HTMLButtonElement, BrandButtonProps>
         const variants = {
             primary: 'bg-brand-primary text-white hover:bg-brand-primary/90 active:bg-brand-primary/95',
             secondary: 'bg-brand-secondary text-white hover:bg-brand-secondary/90 active:bg-brand-secondary/95',
-            outline: 'border border-brand-primary text-brand-primary hover:bg-brand-primary/10 active:bg-brand-primary/20',
-            ghost: 'hover:bg-brand-surface text-brand-text-primary hover:text-brand-primary',
+            outline: 'border border-brand-primary text-brand-primary hover:bg-brand-primary/10 active:bg-brand-primary/20 dark:border-brand-primary dark:text-brand-primary',
+            ghost: 'hover:bg-brand-surface text-brand-text-primary hover:text-brand-primary dark:text-base-content dark:hover:bg-brand-surface',
             link: 'text-brand-primary underline-offset-4 hover:underline',
         };
 

@@ -9,22 +9,62 @@ const config: Config = {
     './src/features/**/*.{js,ts,jsx,tsx,mdx}',
     './src/shared/**/*.{js,ts,jsx,tsx,mdx}',
   ],
-  darkMode: ["class", '[data-theme="dark"]'],
+  darkMode: ["selector", '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
         brand: {
-          primary: '#2563EB', // Blue 600 - Placeholder for Meriter Blue
-          secondary: '#64748B', // Slate 500
-          accent: '#0EA5E9', // Sky 500
-          background: '#F8F9FA', // Gray 50
-          surface: '#FFFFFF',
+          primary: 'var(--brand-primary)',
+          secondary: 'var(--brand-secondary)',
+          accent: 'var(--brand-accent)',
+          background: 'var(--brand-background)',
+          surface: 'var(--brand-surface)',
+          border: 'var(--brand-border)',
           text: {
-            primary: '#1F2937', // Gray 800
-            secondary: '#6B7280', // Gray 500
-            muted: '#9CA3AF', // Gray 400
+            primary: 'var(--brand-text-primary)',
+            secondary: 'var(--brand-text-secondary)',
+            muted: 'var(--brand-text-muted)',
           }
-        }
+        },
+        // DaisyUI-compatible semantic colors via CSS variables
+        base: {
+          '100': 'var(--base-100)',
+          '200': 'var(--base-200)',
+          '300': 'var(--base-300)',
+          content: 'var(--base-content)',
+        },
+        primary: {
+          DEFAULT: 'var(--primary)',
+          content: 'var(--primary-content)',
+        },
+        secondary: {
+          DEFAULT: 'var(--secondary)',
+          content: 'var(--secondary-content)',
+        },
+        accent: {
+          DEFAULT: 'var(--accent)',
+          content: 'var(--accent-content)',
+        },
+        neutral: {
+          DEFAULT: 'var(--neutral)',
+          content: 'var(--neutral-content)',
+        },
+        info: {
+          DEFAULT: 'var(--info)',
+          content: 'var(--info-content)',
+        },
+        success: {
+          DEFAULT: 'var(--success)',
+          content: 'var(--success-content)',
+        },
+        warning: {
+          DEFAULT: 'var(--warning)',
+          content: 'var(--warning-content)',
+        },
+        error: {
+          DEFAULT: 'var(--error)',
+          content: 'var(--error-content)',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'Roboto', 'system-ui', 'sans-serif'],
@@ -32,7 +72,11 @@ const config: Config = {
       },
     },
   },
-  plugins: [typography],
+  plugins: [
+    typography({
+      target: 'modern',
+    }),
+  ],
 };
 
 export default config;

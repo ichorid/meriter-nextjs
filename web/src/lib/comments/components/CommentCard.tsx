@@ -196,7 +196,7 @@ export function CommentCard({
       {/* Connection lines */}
       {needsHorizontalFork && (
         <div
-          className="absolute left-0 top-1/2 w-[20px] h-[1px] -translate-y-1/2 bg-base-300 dark:bg-base-700"
+          className="absolute left-0 top-1/2 w-[20px] h-[1px] -translate-y-1/2 bg-base-300"
           style={{ left: `${paddingLeft - 20}px` }}
         />
       )}
@@ -204,7 +204,7 @@ export function CommentCard({
       {needsSiblingVerticalLine && (
         <div
           className={classList(
-            "absolute left-0 w-[1px] bg-base-300 dark:bg-base-700",
+            "absolute left-0 w-[1px] bg-base-300",
             isFirstSibling ? "top-1/2" : "-top-[12px]",
             isLastSibling ? "bottom-1/2" : "-bottom-[12px]"
           )}
@@ -216,7 +216,7 @@ export function CommentCard({
 
       {needsParentChildLine && !hasSiblings && (
         <div
-          className="absolute left-0 -top-[12px] w-[1px] bg-base-300 dark:bg-base-700"
+          className="absolute left-0 -top-[12px] w-[1px] bg-base-300"
           style={{ 
             left: `${paddingLeft - 20}px`,
             height: 'calc(50% + 12px)',
@@ -227,7 +227,7 @@ export function CommentCard({
       {needsVerticalLineDown && (
         <div
           className={classList(
-            "absolute left-0 w-[1px] bg-base-300 dark:bg-base-700",
+            "absolute left-0 w-[1px] bg-base-300",
             hasSiblings ? "top-1/2 -bottom-[12px]" : "top-1/2 -bottom-[12px]"
           )}
           style={{ left: `${paddingLeft - 20}px` }}

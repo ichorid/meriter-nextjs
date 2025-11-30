@@ -46,7 +46,7 @@ export const BrandCheckbox: React.FC<BrandCheckboxProps> = ({
           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2
           ${checked || indeterminate
                         ? 'bg-brand-primary border-brand-primary'
-                        : 'bg-white border-gray-300 hover:border-brand-primary'
+                        : 'bg-base-100 border-base-300 hover:border-brand-primary'
                     }
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}

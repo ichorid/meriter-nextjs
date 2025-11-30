@@ -196,7 +196,7 @@ export const PollCasting = ({
                     return (
                         <div
                             key={`poll-option-${option.id}`}
-                            className={`card bg-base-200 shadow-md p-4 ${isSelected ? "ring-2 ring-primary" : ""
+                            className={`card bg-base-200 shadow-md dark:border dark:border-base-content/20 p-4 ${isSelected ? "ring-2 ring-primary" : ""
                                 } ${userCastAmount > 0 ? "bg-primary/10" : ""} ${isExpired ? "opacity-70" : "hover:shadow-lg transition-shadow"
                                 }`}
                         >
@@ -242,7 +242,7 @@ export const PollCasting = ({
             </div>
 
             {!isExpired && (
-                <div className="card bg-base-200 shadow-md p-4">
+                <div className="card bg-base-200 shadow-md dark:border dark:border-base-content/20 p-4">
                     <div className="form-control mb-3">
                         <label className="label" htmlFor="cast-amount">
                             <span className="label-text">{t('amountLabel')}</span>

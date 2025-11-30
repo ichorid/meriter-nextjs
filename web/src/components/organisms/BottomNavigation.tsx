@@ -39,7 +39,7 @@ export const BottomNavigation = () => {
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-[env(safe-area-inset-bottom)] z-50 lg:hidden">
+        <div className="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 pb-[env(safe-area-inset-bottom)] z-50 lg:hidden">
             <div className="h-16 flex items-center justify-around px-2">
                 {tabs.map((tab) => {
                     const active = tab.isActive(pathname || '');
@@ -52,10 +52,10 @@ export const BottomNavigation = () => {
                             className="flex-1 flex flex-col items-center justify-center py-2 bg-transparent border-none relative"
                             type="button"
                         >
-                            <div className={`p-1.5 rounded-full ${active ? 'bg-blue-50' : 'bg-transparent'} relative`}>
+                            <div className={`p-1.5 rounded-full ${active ? 'bg-primary/10' : 'bg-transparent'} relative`}>
                                 <Icon
                                     size={24}
-                                    className={active ? 'text-blue-600' : 'text-gray-400'}
+                                    className={active ? 'text-primary' : 'text-base-content/60'}
                                     strokeWidth={active ? 2.5 : 2}
                                 />
                                 {tab.badge && tab.badge > 0 && (
@@ -65,7 +65,7 @@ export const BottomNavigation = () => {
                                 )}
                             </div>
                             <span
-                                className={`text-xs mt-1 font-medium ${active ? 'text-blue-600' : 'text-gray-400'}`}
+                                className={`text-xs mt-1 font-medium ${active ? 'text-primary' : 'text-base-content/60'}`}
                             >
                                 {tab.name}
                             </span>

@@ -22,17 +22,17 @@ export const BrandFormControl: React.FC<BrandFormControlProps> = ({
     return (
         <div className={`space-y-1.5 ${className}`}>
             {label && (
-                <label className="block text-sm font-medium text-brand-text-primary">
+                <label className="block text-sm font-medium text-brand-text-primary dark:text-base-content">
                     {label}
                     {required && <span className="text-red-500 ml-1">*</span>}
                 </label>
             )}
             {children}
             {helperText && !error && (
-                <p className="text-xs text-brand-text-secondary">{helperText}</p>
+                <p className="text-xs text-brand-text-secondary dark:text-base-content/70">{helperText}</p>
             )}
             {error && (
-                <p className="text-xs text-red-600">{error}</p>
+                <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
             )}
         </div>
     );

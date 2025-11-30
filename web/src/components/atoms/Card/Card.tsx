@@ -27,8 +27,8 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={`
-          bg-white rounded-xl shadow-sm
-          ${bordered ? 'border border-brand-border' : ''}
+          bg-base-100 rounded-xl shadow-sm dark:border dark:border-base-content/20
+          ${bordered ? 'border border-brand-border dark:border-base-content/20' : ''}
           ${compact ? 'p-2' : 'p-4'}
           ${hover ? 'hover:shadow-md transition-shadow duration-200' : ''}
           ${className}
@@ -86,7 +86,7 @@ export interface CardFooterProps {
 export const CardFooter = React.forwardRef<HTMLDivElement, CardFooterProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div ref={ref} className={`mt-4 pt-4 border-t border-brand-border ${className}`} {...props}>
+      <div ref={ref} className={`mt-4 pt-4 border-t border-brand-border dark:border-base-content/20 ${className}`} {...props}>
         {children}
       </div>
     );

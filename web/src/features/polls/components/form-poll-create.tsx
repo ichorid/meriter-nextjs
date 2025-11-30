@@ -288,7 +288,7 @@ export const FormPollCreate = ({
                         <ArrowLeft size={24} />
                     </BrandButton>
                 )}
-                <h1 className="text-xl font-bold text-brand-text-primary">{t('createTitle')}</h1>
+                <h1 className="text-xl font-bold text-brand-text-primary dark:text-base-content">{t('createTitle')}</h1>
             </div>
 
             {/* Poll Title Section */}
@@ -310,17 +310,17 @@ export const FormPollCreate = ({
                     placeholder={t('descriptionPlaceholder')}
                     disabled={isCreating}
                     rows={3}
-                    className="w-full px-4 py-3 bg-brand-surface border border-brand-border rounded-xl text-brand-text-primary placeholder:text-brand-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+                    className="w-full px-4 py-3 bg-brand-surface dark:bg-base-100 border border-brand-border dark:border-base-300/50 rounded-xl text-brand-text-primary dark:text-base-content placeholder:text-brand-text-secondary/50 dark:placeholder:text-base-content/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed resize-none"
                 />
             </BrandFormControl>
 
             {/* Poll Options Section */}
             <div>
-                <h2 className="text-sm font-semibold text-brand-text-primary mb-2">{t('options')}</h2>
+                <h2 className="text-sm font-semibold text-brand-text-primary dark:text-base-content mb-2">{t('options')}</h2>
                 <div className="space-y-2">
                     {options.map((option, index) => (
                         <div key={`option-${option.id}`} className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-brand-text-primary w-6">{index + 1}.</span>
+                            <span className="text-sm font-medium text-brand-text-primary dark:text-base-content w-6">{index + 1}.</span>
                             <div className="flex-1">
                                 <BrandInput
                                     value={option.text}
@@ -405,8 +405,8 @@ export const FormPollCreate = ({
 
             {/* Error Alert */}
             {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-600">{error}</p>
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg">
+                    <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
                 </div>
             )}
 
