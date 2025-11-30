@@ -7,14 +7,113 @@
 @import '@telegram-apps/telegram-ui/dist/styles.css';
 
 @layer base {
+  :root {
+    /* Light theme colors (default) */
+    --base-100: #ffffff;
+    --base-200: #f2f2f2;
+    --base-300: #e5e6e6;
+    --base-content: #1f2937;
+    
+    --primary: #2563eb;
+    --primary-content: #ffffff;
+    
+    --secondary: #64748b;
+    --secondary-content: #ffffff;
+    
+    --accent: #0ea5e9;
+    --accent-content: #ffffff;
+    
+    --neutral: #3d4451;
+    --neutral-content: #ffffff;
+    
+    --info: #3b82f6;
+    --info-content: #ffffff;
+    
+    --success: #10b981;
+    --success-content: #ffffff;
+    
+    --warning: #f59e0b;
+    --warning-content: #ffffff;
+    
+    --error: #ef4444;
+    --error-content: #ffffff;
+    
+    /* Brand colors (light theme) */
+    --brand-primary: #2563eb;
+    --brand-secondary: #64748b;
+    --brand-accent: #0ea5e9;
+    --brand-background: #f8f9fa;
+    --brand-surface: #ffffff;
+    --brand-border: #e5e7eb;
+    --brand-text-primary: #1f2937;
+    --brand-text-secondary: #6b7280;
+    --brand-text-muted: #9ca3af;
+    
+    /* Loading indicator colors */
+    --loading-overlay: rgba(0, 0, 0, 0.5);
+    --loading-spinner-bg: #f3f3f3;
+    --loading-spinner-active: #0474bf;
+    --loading-text: #ffffff;
+  }
+  
+  [data-theme="dark"] {
+    /* Dark theme colors */
+    --base-100: #1d232a;
+    --base-200: #191e24;
+    --base-300: #15191e;
+    --base-content: #a6adbb;
+    
+    --primary: #3b82f6;
+    --primary-content: #ffffff;
+    
+    --secondary: #64748b;
+    --secondary-content: #ffffff;
+    
+    --accent: #0ea5e9;
+    --accent-content: #ffffff;
+    
+    --neutral: #3d4451;
+    --neutral-content: #ffffff;
+    
+    --info: #3b82f6;
+    --info-content: #ffffff;
+    
+    --success: #10b981;
+    --success-content: #ffffff;
+    
+    --warning: #f59e0b;
+    --warning-content: #ffffff;
+    
+    --error: #ef4444;
+    --error-content: #ffffff;
+    
+    /* Brand colors (dark theme) */
+    --brand-primary: #3b82f6;
+    --brand-secondary: #64748b;
+    --brand-accent: #0ea5e9;
+    --brand-background: #1d232a;
+    --brand-surface: #2a3239;
+    --brand-border: #3d4451;
+    --brand-text-primary: #a6adbb;
+    --brand-text-secondary: #8b92a0;
+    --brand-text-muted: #6b7280;
+    
+    /* Loading indicator colors (dark theme) */
+    --loading-overlay: rgba(0, 0, 0, 0.7);
+    --loading-spinner-bg: #2a3239;
+    --loading-spinner-active: #3b82f6;
+    --loading-text: #ffffff;
+  }
+  
   body {
-    @apply bg-gray-50 text-gray-900;
+    background-color: var(--base-100);
+    color: var(--base-content);
   }
 }
 
 .loading-indicator:before {
     content: '';
-    background: #00000080;
+    background: var(--loading-overlay);
     position: fixed;
     width: 100%;
     height: 100%;
@@ -29,12 +128,12 @@
     top: 40%;
     left: 45%;
     z-index: 10010;
-    color:white;
+    color: var(--loading-text);
     text-align:center;
     font-weight:bold;
     font-size:1.2rem;        
-    border: 16px solid #f3f3f3; /* Light grey */
-    border-top: 16px solid #0474bf; /* Blue */
+    border: 16px solid var(--loading-spinner-bg);
+    border-top: 16px solid var(--loading-spinner-active);
     border-radius: 50%;
     width: 120px;
     height: 120px;
@@ -175,6 +274,25 @@
   }
   20%, 40%, 60%, 80% {
     transform: translateX(5px);
+  }
+}
+
+/* DaisyUI-compatible utility classes via CSS variables */
+@layer utilities {
+  .bg-base-100 {
+    background-color: var(--base-100);
+  }
+  .bg-base-200 {
+    background-color: var(--base-200);
+  }
+  .bg-base-300 {
+    background-color: var(--base-300);
+  }
+  .text-base-content {
+    color: var(--base-content);
+  }
+  .border-base-300 {
+    border-color: var(--base-300);
   }
 }
 

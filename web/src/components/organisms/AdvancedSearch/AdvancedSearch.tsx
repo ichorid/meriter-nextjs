@@ -190,7 +190,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
             query ? (
               <button
                 onClick={handleClear}
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-1 hover:bg-base-200 rounded-full transition-colors"
                 aria-label="Clear"
               >
                 <X size={16} />
@@ -203,16 +203,16 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         {showHistory && searchHistory.length > 0 && (
           <div
             ref={historyRef}
-            className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"
+            className="absolute z-50 w-full mt-2 bg-base-100 border border-base-300 rounded-xl shadow-lg max-h-60 overflow-y-auto"
           >
             {searchHistory.map((item, index) => (
               <button
                 key={index}
                 onClick={() => handleHistorySelect(item)}
-                className="w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors flex items-center gap-2"
+                className="w-full px-4 py-2 text-left hover:bg-base-200 transition-colors flex items-center gap-2"
               >
-                <Search size={16} className="text-gray-400" />
-                <span className="text-sm text-gray-700">{item}</span>
+                <Search size={16} className="text-base-content/60" />
+                <span className="text-sm text-base-content">{item}</span>
               </button>
             ))}
           </div>
@@ -240,7 +240,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
 
       {/* Advanced Filters */}
       {showFilters && (
-        <div className="space-y-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+        <div className="space-y-4 p-4 bg-base-200 rounded-xl border border-base-300">
           {/* Content Type */}
           <div>
             <label className="block text-sm font-medium text-brand-text-primary mb-2">

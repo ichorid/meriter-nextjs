@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 
 const Map = dynamic(() => import('./Map'), {
     ssr: false,
-    loading: () => <div className="h-64 w-full bg-gray-100 animate-pulse rounded-xl flex items-center justify-center text-gray-400">Loading map...</div>,
+    loading: () => <div className="h-64 w-full bg-base-200 animate-pulse rounded-xl flex items-center justify-center text-base-content/50">Loading map...</div>,
 });
 
 interface LocationPickerProps {
@@ -113,20 +113,20 @@ export function LocationPicker({ initialRegion, initialCity, onLocationSelect }:
                     rightElement={
                         <button
                             onClick={handleSearch}
-                            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                            className="p-1 hover:bg-base-200 rounded-full transition-colors"
                             disabled={isLoading}
                         >
-                            {isLoading ? <Loader2 className="w-5 h-5 animate-spin text-brand-primary" /> : <Search className="w-5 h-5 text-gray-500" />}
+                            {isLoading ? <Loader2 className="w-5 h-5 animate-spin text-brand-primary" /> : <Search className="w-5 h-5 text-base-content/60" />}
                         </button>
                     }
                 />
 
                 {results.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <div className="absolute z-50 w-full mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         {results.map((result, index) => (
                             <button
                                 key={index}
-                                className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-start space-x-2 text-sm"
+                                className="w-full text-left px-4 py-2 hover:bg-base-200 flex items-start space-x-2 text-sm"
                                 onClick={() => handleSelectResult(result)}
                             >
                                 <MapPin className="w-4 h-4 mt-0.5 text-brand-primary shrink-0" />
@@ -137,15 +137,15 @@ export function LocationPicker({ initialRegion, initialCity, onLocationSelect }:
                 )}
             </div>
 
-            <div className="h-64 w-full rounded-xl overflow-hidden border border-gray-200 relative">
+            <div className="h-64 w-full rounded-xl overflow-hidden border border-base-300 relative">
                 <Map
                     center={center}
                     zoom={zoom}
                     onLocationSelect={handleMapClick}
                 />
                 {!showMap && !initialCity && !initialRegion && (
-                    <div className="absolute inset-0 bg-gray-50/80 flex items-center justify-center z-[400]">
-                        <p className="text-gray-500 text-sm">Search for a location to view on map</p>
+                    <div className="absolute inset-0 bg-base-200/80 flex items-center justify-center z-[400]">
+                        <p className="text-base-content/60 text-sm">Search for a location to view on map</p>
                     </div>
                 )}
             </div>

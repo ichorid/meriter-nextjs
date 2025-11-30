@@ -7,8 +7,8 @@ import { ErrorDisplay } from './atoms/ErrorDisplay';
 const Button = ({ variant, onClick, children }: { variant?: string; onClick?: () => void; children: ReactNode }) => {
   const baseClasses = 'px-4 py-2 rounded font-medium transition-colors';
   const variantClasses = variant === 'primary' 
-    ? 'bg-blue-500 text-white hover:bg-blue-600' 
-    : 'bg-gray-200 text-gray-800 hover:bg-gray-300';
+    ? 'bg-primary text-primary-content hover:bg-primary/90' 
+    : 'bg-base-200 text-base-content hover:bg-base-300';
   
   return (
     <button className={`${baseClasses} ${variantClasses}`} onClick={onClick}>

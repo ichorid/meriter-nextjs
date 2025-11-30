@@ -46,7 +46,7 @@ export const BrandSelect: React.FC<BrandSelectProps> = ({
           ${fullWidth ? 'w-full' : ''}
           px-4 py-2.5 pr-10
           text-sm text-brand-text-primary
-          bg-white
+          bg-base-100
           border rounded-xl
           transition-colors
           focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2

@@ -60,7 +60,7 @@ export default function CommunitiesPage() {
 
     return (
         <AdaptiveLayout>
-            <div className="flex flex-col min-h-screen bg-white">
+            <div className="flex flex-col min-h-screen bg-base-100">
                 <PageHeader
                     title="Communities"
                     showBack={false}
@@ -108,8 +108,8 @@ export default function CommunitiesPage() {
                             )}
                         </div>
                     ) : (
-                        <div className="text-center py-12 text-gray-500">
-                            <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                        <div className="text-center py-12 text-base-content/60">
+                            <Users className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
                             <p className="font-medium">No communities found</p>
                             {searchQuery && <p className="text-sm mt-1">Try adjusting your search</p>}
                         </div>

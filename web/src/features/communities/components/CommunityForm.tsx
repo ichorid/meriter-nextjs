@@ -251,7 +251,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                     helperText={t('hashtagsHelp')}
                 />
 
-                <div className="border-t border-gray-200 pt-6">
+                <div className="border-t border-base-300 pt-6">
                     <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
                         {t('configuration')}
                     </h2>
@@ -315,7 +315,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
 
                 {isEditMode && (
                     <>
-                        <div className="border-t border-gray-200 pt-6">
+                        <div className="border-t border-base-300 pt-6">
                             <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
                                 {t('administrators')}
                             </h2>
@@ -324,7 +324,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                                 {adminIds.map((adminId) => (
                                     <div
                                         key={adminId}
-                                        className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+                                        className="flex items-center justify-between p-3 border border-base-300 rounded-lg"
                                     >
                                         <p className="text-sm text-brand-text-primary">{adminId}</p>
                                         <BrandButton
@@ -361,7 +361,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                         </div>
 
                         {canGenerateInvites && (
-                            <div className="border-t border-gray-200 pt-6">
+                            <div className="border-t border-base-300 pt-6">
                                 <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
                                     {tInvites('title')}
                                 </h2>

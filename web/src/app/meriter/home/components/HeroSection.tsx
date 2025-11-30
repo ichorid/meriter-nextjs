@@ -67,7 +67,7 @@ export function HeroSection({
   ];
 
   return (
-    <div className="bg-gradient-to-br from-brand-primary/5 via-white to-brand-secondary/5 rounded-2xl p-6 mb-6 border border-gray-100">
+    <div className="bg-gradient-to-br from-brand-primary/5 via-base-100 to-brand-secondary/5 rounded-2xl p-6 mb-6 border border-base-300">
       {/* Greeting Section */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -95,7 +95,7 @@ export function HeroSection({
           return (
             <div
               key={index}
-              className={`${stat.bgColor} rounded-xl p-4 border border-white/50 transition-all hover:shadow-md`}
+              className={`${stat.bgColor} rounded-xl p-4 border border-base-100/50 transition-all hover:shadow-md`}
             >
               <div className="flex items-center justify-between mb-2">
                 <Icon className={`${stat.color} w-5 h-5`} />
@@ -103,7 +103,7 @@ export function HeroSection({
                   {isLoading ? '...' : stat.value}
                 </span>
               </div>
-              <p className="text-xs text-gray-600 font-medium">
+              <p className="text-xs text-base-content/70 font-medium">
                 {stat.label}
               </p>
             </div>

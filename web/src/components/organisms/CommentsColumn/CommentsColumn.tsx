@@ -95,9 +95,9 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
   }, [comments]);
 
   return (
-    <div className="h-full flex flex-col bg-white border-l border-gray-200">
+    <div className="h-full flex flex-col bg-base-100 border-l border-base-300">
       {/* Header with close/back button and sort toggle */}
-      <div className="border-b border-gray-200 bg-gray-50">
+      <div className="border-b border-base-300 bg-base-200">
         <div className="flex items-center gap-2 p-4">
           {(showBackButton || onBack) ? (
             <>
@@ -163,7 +163,7 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
           />
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <span className="text-gray-500">No comments yet</span>
+            <span className="text-base-content/60">No comments yet</span>
           </div>
         )}
       </div>

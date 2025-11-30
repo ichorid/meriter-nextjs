@@ -30,7 +30,7 @@ export function PullToRefresh({
       {/* Pull indicator */}
       {isPulling && (
         <div
-          className="fixed top-0 left-0 right-0 flex items-center justify-center z-50 bg-white/90 backdrop-blur-sm"
+          className="fixed top-0 left-0 right-0 flex items-center justify-center z-50 bg-base-100/90 backdrop-blur-sm"
           style={{
             height: `${Math.min(pullDistance, threshold * 1.5)}px`,
             transform: `translateY(${Math.min(pullDistance - threshold, 0)}px)`,
@@ -61,7 +61,7 @@ export function PullToRefresh({
 
       {/* Refreshing indicator */}
       {isRefreshing && (
-        <div className="fixed top-0 left-0 right-0 flex items-center justify-center z-50 bg-white/90 backdrop-blur-sm h-16">
+        <div className="fixed top-0 left-0 right-0 flex items-center justify-center z-50 bg-base-100/90 backdrop-blur-sm h-16">
           <div className="flex flex-col items-center gap-2">
             <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
             <span className="text-sm text-brand-text-secondary">Refreshing...</span>

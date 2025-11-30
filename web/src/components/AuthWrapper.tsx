@@ -122,7 +122,7 @@ export function AuthWrapper({ children, enabledProviders }: AuthWrapperProps) {
   // If not authenticated, show login page (regardless of route, unless it's a public API)
   if (!isAuthenticated && !pathname?.startsWith('/api')) {
     return (
-      <div className="min-h-screen bg-white px-4 py-8">
+      <div className="min-h-screen bg-base-100 px-4 py-8">
         <div className="flex justify-center">
           <div className="w-full max-w-md">
             <LoginForm enabledProviders={enabledProviders} />
@@ -138,7 +138,7 @@ export function AuthWrapper({ children, enabledProviders }: AuthWrapperProps) {
   // If authenticated, check if user needs to enter invite
   if (isAuthenticated && needsInvite) {
     return (
-      <div className="min-h-screen bg-white px-4 py-8">
+      <div className="min-h-screen bg-base-100 px-4 py-8">
         <div className="flex justify-center">
           <div className="w-full max-w-md">
             <InviteEntryForm />

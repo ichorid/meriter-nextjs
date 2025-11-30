@@ -60,8 +60,8 @@ export function InviteEntryForm({ className = '' }: InviteEntryFormProps) {
 
     return (
         <div className="w-full max-w-md mx-auto">
-            <div className="bg-white rounded-xl shadow-md border border-gray-200">
-                <div className="p-6 border-b border-gray-200">
+            <div className="bg-base-100 rounded-xl shadow-md border border-base-300">
+                <div className="p-6 border-b border-base-300">
                     <div className="flex justify-center">
                         <h2 className="text-2xl font-bold text-center">
                             {t('title')}
@@ -71,7 +71,7 @@ export function InviteEntryForm({ className = '' }: InviteEntryFormProps) {
 
                 <div className="p-6">
                     <div className="space-y-4">
-                        <p className="text-sm text-gray-600 text-center">
+                        <p className="text-sm text-base-content/70 text-center">
                             {t('inviteDescription')}
                         </p>
 
@@ -104,7 +104,7 @@ export function InviteEntryForm({ className = '' }: InviteEntryFormProps) {
                     </div>
                 </div>
 
-                <div className="p-6 border-t border-gray-200">
+                <div className="p-6 border-t border-base-300">
                     <div className="flex justify-center w-full">
                         <BrandButton
                             variant="link"

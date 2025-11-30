@@ -57,7 +57,7 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
         <div className="fixed bottom-6 right-6 z-50" ref={menuRef}>
             {/* Menu Items */}
             {isOpen && (
-                <div className="absolute bottom-16 right-0 w-56 bg-white rounded-xl shadow-xl border border-brand-border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-xl shadow-xl border border-brand-border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
                     <div className="py-1">
                         <button
                             onClick={handleCreatePost}

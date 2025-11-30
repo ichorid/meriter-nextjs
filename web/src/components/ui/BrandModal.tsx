@@ -83,14 +83,14 @@ export const BrandModal: React.FC<BrandModalProps> = ({
                 tabIndex={-1}
                 className={`
           relative w-full ${sizeClasses[size]}
-          bg-white rounded-2xl shadow-xl
+          bg-base-100 rounded-2xl shadow-xl
           animate-in zoom-in-95 duration-200
           max-h-[90vh] flex flex-col
         `}
             >
                 {/* Header */}
                 {(title || showCloseButton) && (
-                    <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                    <div className="flex items-center justify-between p-6 border-b border-base-300">
                         {title && (
                             <h2
                                 id="modal-title"
@@ -120,7 +120,7 @@ export const BrandModal: React.FC<BrandModalProps> = ({
 
                 {/* Footer */}
                 {footer && (
-                    <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100">
+                    <div className="flex items-center justify-end gap-3 p-6 border-t border-base-300">
                         {footer}
                     </div>
                 )}

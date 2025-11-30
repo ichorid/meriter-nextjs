@@ -134,7 +134,7 @@ const HomeTopBar: React.FC = () => {
 
   return (
     <div>
-      <div className="sticky top-0 z-30 h-16 bg-white border-b border-brand-border px-4 py-2">
+      <div className="sticky top-0 z-30 h-16 bg-base-100 border-b border-brand-border px-4 py-2">
         <div className="flex items-center justify-between h-full gap-4">
           {/* Search Button */}
           <BrandButton
@@ -201,7 +201,7 @@ const HomeTopBar: React.FC = () => {
           <button
             onClick={() => handleSortClick('recent')}
             className={`p-2 rounded-md transition-colors ${sortByTab[currentTab] === 'recent'
-                ? 'bg-white shadow-sm text-brand-primary'
+                ? 'bg-base-100 shadow-sm text-brand-primary'
                 : 'text-brand-text-secondary hover:text-brand-text-primary'
               }`}
           >
@@ -210,7 +210,7 @@ const HomeTopBar: React.FC = () => {
           <button
             onClick={() => handleSortClick('voted')}
             className={`p-2 rounded-md transition-colors ${sortByTab[currentTab] === 'voted'
-                ? 'bg-white shadow-sm text-brand-primary'
+                ? 'bg-base-100 shadow-sm text-brand-primary'
                 : 'text-brand-text-secondary hover:text-brand-text-primary'
               }`}
           >
@@ -391,7 +391,7 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
 
   return (
     <div>
-      <div className="sticky top-0 z-50 bg-white border-b border-brand-border shadow-sm">
+      <div className="sticky top-0 z-50 bg-base-100 border-b border-brand-border shadow-sm">
         <div className="flex items-center justify-between gap-4 px-4 py-3 min-h-[56px]">
           {/* Search Button */}
           <BrandButton
@@ -449,7 +449,7 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
                       className="fixed inset-0 z-10"
                       onClick={() => setShowTagDropdown(false)}
                     />
-                    <div className="absolute right-0 top-full mt-2 w-64 max-h-96 bg-white rounded-lg border border-brand-border p-3 z-20 shadow-lg overflow-y-auto">
+                    <div className="absolute right-0 top-full mt-2 w-64 max-h-96 bg-base-100 rounded-lg border border-brand-border p-3 z-20 shadow-lg overflow-y-auto">
                       <div className="flex flex-wrap gap-2">
                         <BrandButton
                           variant={!selectedTag ? 'primary' : 'outline'}
@@ -493,7 +493,7 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
               <button
                 onClick={() => handleSortChange('recent')}
                 className={`p-2 rounded-md transition-colors ${sortBy === 'recent'
-                    ? 'bg-white shadow-sm text-brand-primary'
+                    ? 'bg-base-100 shadow-sm text-brand-primary'
                     : 'text-brand-text-secondary hover:text-brand-text-primary'
                   }`}
               >
@@ -502,7 +502,7 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
               <button
                 onClick={() => handleSortChange('voted')}
                 className={`p-2 rounded-md transition-colors ${sortBy === 'voted'
-                    ? 'bg-white shadow-sm text-brand-primary'
+                    ? 'bg-base-100 shadow-sm text-brand-primary'
                     : 'text-brand-text-secondary hover:text-brand-text-primary'
                   }`}
               >
@@ -516,7 +516,7 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
       {/* Mobile snackbar with community title */}
       {showSnack && isMobile && (
         <div className="fixed bottom-4 left-0 right-0 z-50 flex justify-center pointer-events-none">
-          <div className="px-3 py-2 rounded-full bg-gray-100 border border-brand-border max-w-[80%] shadow-md">
+          <div className="px-3 py-2 rounded-full bg-base-200 border border-brand-border max-w-[80%] shadow-md">
             <span className="text-sm font-medium text-brand-text-primary">{community.name}</span>
           </div>
         </div>

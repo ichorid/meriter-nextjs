@@ -81,7 +81,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   if (isPoll && pollData) {
     const pollItem = publication as PollFeedItem;
     return (
-      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-200">
+      <div className="bg-base-100 rounded-xl p-6 shadow-md border border-base-300 hover:shadow-lg transition-shadow duration-200">
         <div>
           <PublicationHeader
             publication={{
@@ -133,7 +133,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   return (
     <Pressable onPress={handleCardClick}>
       <div 
-        className="bg-white rounded-xl p-6 shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-200"
+        className="bg-base-100 rounded-xl p-6 shadow-md border border-base-300 overflow-hidden hover:shadow-lg transition-shadow duration-200"
       >
       <div>
         <PublicationHeader
