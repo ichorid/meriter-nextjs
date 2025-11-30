@@ -22,22 +22,27 @@ RUN pnpm --filter @meriter/shared-types build
 COPY api ./api
 RUN pnpm --filter @meriter/api exec nest build
 
-# Deploy production dependencies with flattened structure
+# Prepare production output
 ENV CI=true
+# Reinstall with --shamefully-hoist to create traditional node_modules structure
+RUN pnpm --filter @meriter/api... install --prod --frozen-lockfile --ignore-scripts --shamefully-hoist
+# Copy built artifacts and production node_modules
 RUN mkdir -p /out && \
-    pnpm -C api deploy --filter=@meriter/api --prod --legacy ./deploy && \
-    mv api/deploy/node_modules /out/node_modules && \
-    mv api/deploy/* /out/ 2>/dev/null || true && \
     cp -R api/dist /out/dist && \
     cp api/package.json /out/package.json && \
-    cp pnpm-lock.yaml /out/pnpm-lock.yaml && \
-    rm -rf api/deploy
+    # Copy root node_modules (with --shamefully-hoist, packages are at root level)
+    cp -R node_modules /out/node_modules && \
+    # Copy shared-types built output
+    mkdir -p /out/libs/shared-types && \
+    cp -R libs/shared-types/dist /out/libs/shared-types/dist && \
+    cp libs/shared-types/package.json /out/libs/shared-types/package.json
 
 # --- run ---
 FROM node:22.11-alpine AS runner
 WORKDIR /app
 RUN addgroup -S nodejs && adduser -S -G nodejs nestjs
 ENV NODE_ENV=production
+# Copy built artifacts and production node_modules (from pnpm deploy)
 COPY --from=builder --chown=nestjs:nodejs /out ./
 USER nestjs
 EXPOSE 8002

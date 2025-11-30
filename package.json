@@ -20,6 +20,14 @@
   "pnpm": {
     "patchedDependencies": {
       "@react-native/assets-registry@0.76.9": "web/patches/@react-native__assets-registry@0.76.9.patch"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "bcrypt",
+      "es5-ext",
+      "mongodb-memory-server",
+      "postinstall-postinstall",
+      "sharp"
+    ]
   }
 }
