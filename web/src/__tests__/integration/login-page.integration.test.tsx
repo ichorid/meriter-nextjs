@@ -19,14 +19,19 @@ import { AppModeProvider } from '@/contexts/AppModeContext';
 
 // Mock toast store
 const mockAddToast = jest.fn();
+const mockRemoveToast = jest.fn();
 jest.mock('@/shared/stores/toast.store', () => ({
   useToastStore: jest.fn((selector: any) => {
     if (selector.toString().includes('addToast')) {
       return mockAddToast;
     }
+    if (selector.toString().includes('removeToast')) {
+      return mockRemoveToast;
+    }
     return {
       toasts: [],
-      removeToast: jest.fn(),
+      addToast: mockAddToast,
+      removeToast: mockRemoveToast,
     };
   }),
 }));
