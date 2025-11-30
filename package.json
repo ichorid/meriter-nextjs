@@ -11,7 +11,10 @@
     "build": "pnpm build:api && pnpm build:web",
     "test:api": "pnpm --filter @meriter/api test",
     "test:web": "pnpm --filter @meriter/web test",
+    "test:api:ci": "pnpm --filter @meriter/api test:ci",
+    "test:web:ci": "pnpm --filter @meriter/web test:ci",
     "test": "pnpm test:api && pnpm test:web",
+    "test:ci": "pnpm test:api:ci && pnpm test:web:ci",
     "lint": "pnpm --filter @meriter/api lint && pnpm --filter @meriter/web lint"
   },
   "pnpm": {

@@ -21,7 +21,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:web
-      - run: pnpm test:web -- --ci
+      - run: pnpm --filter @meriter/web test:ci
 
   api-tests:
     runs-on: ubuntu-latest
@@ -37,7 +37,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:api
-      - run: pnpm test:api -- --ci
+      - run: pnpm --filter @meriter/api test:ci
 
   docker-build:
     runs-on: ubuntu-latest

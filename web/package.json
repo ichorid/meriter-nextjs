@@ -8,6 +8,7 @@
         "build": "next build",
         "start": "next start -p 8001",
         "test": "jest",
+        "test:ci": "jest --ci",
         "test:watch": "jest --watch",
         "validate-config": "node scripts/validate-config.js"
     },
