@@ -1,0 +1,35 @@
+name: 'Deploy to VPS'
+description: 'Deploy application to VPS server via SSH'
+
+inputs:
+  ssh-private-key:
+    description: 'SSH private key for authentication'
+    required: true
+  vps-host:
+    description: 'VPS host address'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up SSH agent
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ inputs.ssh-private-key }}
+    - name: Add VPS host to known hosts
+      shell: bash
+      env:
+        VPS_HOST: ${{ inputs.vps-host }}
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+    - name: Run remote deploy script
+      shell: bash
+      env:
+        VPS_HOST: ${{ inputs.vps-host }}
+      run: |
+        ssh "deploy@$VPS_HOST" <<'EOF'
+          cd /opt/meriter
+          ./deploy.sh
+        EOF
+
