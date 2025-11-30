@@ -17,10 +17,10 @@ export default function PageMeriterLogin() {
     const enabledProviders = getEnabledProviders(env);
 
     return (
-        <div className="min-h-screen bg-white px-4 py-8 flex items-center justify-center">
+        <div className="min-h-screen bg-base-100 px-4 py-8 flex items-center justify-center">
             <div className="w-full max-w-md">
                 {/* DEBUG SECTION - REMOVE BEFORE PRODUCTION */}
-                <div className="mb-4 p-2 bg-red-100 rounded-md">
+                <div className="mb-4 p-2 bg-error/10 rounded-md border border-error/20">
                     <p><strong>Debug Info:</strong></p>
                     <pre style={{ fontSize: '10px', overflow: 'auto' }}>
                         Enabled: {JSON.stringify(enabledProviders, null, 2)}
