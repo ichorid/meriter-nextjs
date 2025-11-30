@@ -14,8 +14,12 @@
     "dependencies": {
         "@aws-sdk/client-s3": "^3.940.0",
         "@aws-sdk/lib-storage": "^3.940.0",
-        "@heroicons/react": "^2.2.0",
-        "@material-symbols/font-400": "^0.36.4",
+        "@gluestack-style/react": "^1.0.57",
+        "@gluestack-ui/config": "^1.1.20",
+        "@gluestack-ui/overlay": "^0.1.22",
+        "@gluestack-ui/provider": "^0.1.19",
+        "@gluestack-ui/toast": "^1.0.9",
+        "@gluestack/ui-next-adapter": "^3.0.3",
         "@meriter/shared-types": "file:../libs/shared-types",
         "@react-native-aria/focus": "^0.2.9",
         "@react-native-aria/interactions": "^0.2.16",
@@ -23,13 +27,22 @@
         "@tanstack/react-query-devtools": "^5.91.1",
         "@telegram-apps/sdk-react": "^3.3.9",
         "@telegram-apps/telegram-ui": "^2.1.13",
+        "@tiptap/extension-link": "^3.11.1",
+        "@tiptap/extension-placeholder": "^3.11.1",
+        "@tiptap/react": "^3.11.1",
+        "@tiptap/starter-kit": "^3.11.1",
+        "@types/dompurify": "^3.2.0",
+        "@types/leaflet": "^1.9.21",
         "aws4": "^1.13.2",
         "axios": "^1.13.2",
+        "clsx": "^2.1.1",
         "cookie": "^0.7.2",
+        "dompurify": "^3.3.0",
         "emoji-picker-react": "^4.16.1",
         "eruda": "^3.4.3",
         "framer-motion": "^11.18.2",
         "jsonwebtoken": "^9.0.2",
+        "leaflet": "^1.9.4",
         "lucide-react": "^0.553.0",
         "nanoid": "^5.1.6",
         "next": "^15.5.6",
@@ -41,6 +54,7 @@
         "react": "^18.3.1",
         "react-awesome-reveal": "^4.3.1",
         "react-dom": "^18.3.1",
+        "react-leaflet": "^4.2.1",
         "react-linkify": "1.0.0-alpha",
         "react-markdown": "^9.1.0",
         "react-native": "^0.76.9",
@@ -49,12 +63,15 @@
         "react-transition-group": "^4.4.5",
         "sharp": "^0.33.5",
         "styled-jsx": "^5.1.7",
+        "tailwind-merge": "^3.4.0",
         "uid": "^2.0.2",
         "zod": "^4.1.13",
         "zustand": "^5.0.8"
     },
     "devDependencies": {
+        "@babel/plugin-transform-typescript": "^7.28.5",
         "@babel/preset-env": "^7.28.5",
+        "@babel/preset-flow": "^7.27.1",
         "@babel/preset-react": "^7.28.5",
         "@babel/preset-typescript": "^7.28.5",
         "@tailwindcss/typography": "^0.5.19",
@@ -73,10 +90,13 @@
         "cross-env": "^7.0.3",
         "dotenv": "^17.2.3",
         "identity-obj-proxy": "^3.0.0",
+        "ignore-loader": "^0.1.2",
         "jest": "^29.7.0",
         "jest-environment-jsdom": "^30.2.0",
         "mongodb-memory-server": "^10.3.0",
+        "patch-package": "^8.0.1",
         "postcss": "^8.5.6",
+        "postinstall-postinstall": "^2.1.0",
         "tailwindcss": "^3.4.18",
         "ts-jest": "^29.4.5",
         "typescript": "^5.9.3"
@@ -84,5 +104,10 @@
     "prettier": {
         "tabWidth": 4
     },
-    "packageManager": "pnpm@10.20.0"
+    "packageManager": "pnpm@10.20.0",
+    "pnpm": {
+        "patchedDependencies": {
+            "@react-native/assets-registry@0.76.9": "patches/@react-native__assets-registry@0.76.9.patch"
+        }
+    }
 }

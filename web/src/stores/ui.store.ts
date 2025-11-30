@@ -27,6 +27,7 @@ interface UIState {
   // Voting popup state - non-persistent
   activeVotingTarget: string | null;
   votingTargetType: VotingTargetType;
+  votingMode?: 'standard' | 'wallet-only' | 'quota-only';
   activeVotingFormData: VotingFormData | null;
   // Withdraw popup state - non-persistent
   activeWithdrawTarget: string | null;
@@ -44,7 +45,7 @@ interface UIActions {
   setActiveTab: (tab: string | null) => void;
   resetUI: () => void;
   // Voting popup actions
-  openVotingPopup: (targetId: string, targetType: VotingTargetType) => void;
+  openVotingPopup: (targetId: string, targetType: VotingTargetType, mode?: 'standard' | 'wallet-only' | 'quota-only') => void;
   closeVotingPopup: () => void;
   updateVotingFormData: (data: Partial<VotingFormData>) => void;
   // Withdraw popup actions
@@ -61,6 +62,7 @@ const initialState: UIState = {
   activeTab: null,
   activeVotingTarget: null,
   votingTargetType: null,
+  votingMode: 'standard',
   activeVotingFormData: null,
   activeWithdrawTarget: null,
   withdrawTargetType: null,
@@ -74,19 +76,20 @@ export const useUIStore = create<UIState & UIActions>()(
         ...initialState,
         openModal: (modal) => set({ activeModal: modal }),
         closeModal: () => set({ activeModal: null }),
-        toggleModal: (modal) => 
+        toggleModal: (modal) =>
           set((state) => ({ activeModal: state.activeModal === modal ? null : modal })),
         setActiveSidebar: (sidebar) => set({ activeSidebar: sidebar }),
         setActiveWithdrawPost: (id) => set({ activeWithdrawPost: id }),
         setActiveSlider: (id) => set({ activeSlider: id }),
         setActiveTab: (tab) => set({ activeTab: tab }),
         resetUI: () => set(initialState),
-        openVotingPopup: (targetId, targetType) => set({ 
+        openVotingPopup: (targetId, targetType, mode = 'standard') => set({
           activeVotingTarget: targetId,
           votingTargetType: targetType,
+          votingMode: mode,
           activeVotingFormData: { comment: '', delta: 0, error: '' }
         }),
-        closeVotingPopup: () => set({ 
+        closeVotingPopup: () => set({
           activeVotingTarget: null,
           votingTargetType: null,
           activeVotingFormData: null
@@ -96,12 +99,12 @@ export const useUIStore = create<UIState & UIActions>()(
             ? { ...state.activeVotingFormData, ...data }
             : { comment: '', delta: 0, error: '', ...data }
         })),
-        openWithdrawPopup: (targetId, targetType, maxWithdrawAmount, maxTopUpAmount) => set({ 
+        openWithdrawPopup: (targetId, targetType, maxWithdrawAmount, maxTopUpAmount) => set({
           activeWithdrawTarget: targetId,
           withdrawTargetType: targetType,
           activeWithdrawFormData: { comment: '', amount: 0, error: '', maxWithdrawAmount, maxTopUpAmount }
         }),
-        closeWithdrawPopup: () => set({ 
+        closeWithdrawPopup: () => set({
           activeWithdrawTarget: null,
           withdrawTargetType: null,
           activeWithdrawFormData: null
@@ -112,7 +115,7 @@ export const useUIStore = create<UIState & UIActions>()(
             : { comment: '', amount: 0, error: '', ...data }
         })),
       }),
-      { 
+      {
         name: 'meriter-ui',
         // Exclude voting popup state from persistence to prevent auto-show on page load
         partialize: (state) => ({

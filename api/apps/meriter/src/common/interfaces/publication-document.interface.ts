@@ -16,6 +16,10 @@ export interface PublicationDocument {
   };
   imageUrl?: string;
   videoUrl?: string;
+  postType?: 'basic' | 'poll' | 'project';
+  isProject?: boolean;
+  title?: string;
+  description?: string;
   createdAt: Date;
   updatedAt: Date;
 }

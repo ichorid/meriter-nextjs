@@ -11,6 +11,7 @@ import {
 } from '@/components/ui';
 import { Loader2 } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { LocationPicker } from '@/components/molecules/LocationPicker';
 
 interface ProfileEditFormProps {
   onCancel: () => void;
@@ -145,26 +146,15 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
 
       <div className="space-y-3">
         <h3 className="font-bold text-base">{t('location')}</h3>
-        <BrandFormControl
-          label={t('region')}
-          error={errors.region}
-        >
-          <BrandInput
-            value={region}
-            onChange={(e) => setRegion(e.target.value)}
-            placeholder={t('regionPlaceholder')}
-          />
-        </BrandFormControl>
-        <BrandFormControl
-          label={t('city')}
-          error={errors.city}
-        >
-          <BrandInput
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder={t('cityPlaceholder')}
-          />
-        </BrandFormControl>
+        <LocationPicker
+          initialRegion={region}
+          initialCity={city}
+          onLocationSelect={(loc) => {
+            setRegion(loc.region);
+            setCity(loc.city);
+          }}
+        />
+        {/* Hidden inputs to maintain state if needed, or just rely on state */}
       </div>
 
       <BrandFormControl
@@ -229,17 +219,17 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
       {(user?.globalRole === 'superadmin' || userRoles.some(r => r.role === 'lead')) && (
         <div className="space-y-3">
           <h3 className="font-bold text-base">{t('contacts')}</h3>
-        <BrandFormControl
-          label={t('email')}
-          error={errors.email}
-        >
-          <BrandInput
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={t('emailPlaceholder')}
-          />
-        </BrandFormControl>
+          <BrandFormControl
+            label={t('email')}
+            error={errors.email}
+          >
+            <BrandInput
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t('emailPlaceholder')}
+            />
+          </BrandFormControl>
           <BrandFormControl
             label={t('messenger')}
           >

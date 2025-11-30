@@ -24,6 +24,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   const {
     activeVotingTarget,
     votingTargetType,
+    votingMode,
     activeVotingFormData,
     closeVotingPopup,
     updateVotingFormData,
@@ -52,7 +53,17 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   // Note: Quota and wallet optimistic updates are handled by mutation hooks
 
   const hasPoints = freePlusAmount > 0 || walletBalance > 0;
-  const maxPlus = freePlusAmount + (walletBalance || 0);
+
+  // Calculate maxPlus based on voting mode
+  let maxPlus = 0;
+  if (votingMode === 'wallet-only') {
+    maxPlus = walletBalance || 0;
+  } else if (votingMode === 'quota-only') {
+    maxPlus = freePlusAmount;
+  } else {
+    maxPlus = freePlusAmount + (walletBalance || 0);
+  }
+
   // maxMinus should use wallet balance for negative votes (downvotes use wallet only)
   // When walletBalance is 0, maxMinus should be 0 to prevent negative slider positions
   const calculatedMaxMinus = walletBalance || 0;
@@ -74,7 +85,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   const voteBreakdown = useMemo(() => {
     const amount = Math.abs(formData.delta);
     const isUpvote = formData.delta > 0;
-    
+
     if (!isUpvote) {
       // Downvotes use wallet only (no quota)
       return {
@@ -83,17 +94,34 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
         isSplit: false,
       };
     }
-    
+
+    // Handle restricted modes
+    if (votingMode === 'wallet-only') {
+      return {
+        quotaAmount: 0,
+        walletAmount: amount,
+        isSplit: false,
+      };
+    }
+
+    if (votingMode === 'quota-only') {
+      return {
+        quotaAmount: Math.min(amount, quotaRemaining),
+        walletAmount: 0,
+        isSplit: false,
+      };
+    }
+
     // Upvotes: use quota first, then wallet
     const quotaAmount = Math.min(amount, quotaRemaining);
     const walletAmount = Math.max(0, amount - quotaRemaining);
-    
+
     return {
       quotaAmount,
       walletAmount,
       isSplit: walletAmount > 0,
     };
-  }, [formData.delta, quotaRemaining]);
+  }, [formData.delta, quotaRemaining, votingMode]);
 
   const handleClose = () => {
     closeVotingPopup();
@@ -117,14 +145,22 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
     const isUpvote = directionPlus;
     const absoluteAmount = Math.abs(delta);
-    
+
     // Calculate vote breakdown
     let quotaAmount = 0;
     let walletAmount = 0;
-    
+
     if (isUpvote) {
-      quotaAmount = Math.min(absoluteAmount, quotaRemaining);
-      walletAmount = Math.max(0, absoluteAmount - quotaRemaining);
+      if (votingMode === 'wallet-only') {
+        walletAmount = absoluteAmount;
+        quotaAmount = 0;
+      } else if (votingMode === 'quota-only') {
+        quotaAmount = Math.min(absoluteAmount, quotaRemaining);
+        walletAmount = 0;
+      } else {
+        quotaAmount = Math.min(absoluteAmount, quotaRemaining);
+        walletAmount = Math.max(0, absoluteAmount - quotaRemaining);
+      }
     } else {
       // Downvotes use wallet only
       walletAmount = absoluteAmount;

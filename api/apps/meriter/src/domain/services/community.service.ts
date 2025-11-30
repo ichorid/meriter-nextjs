@@ -22,14 +22,14 @@ export interface CreateCommunityDto {
   description?: string;
   avatarUrl?: string;
   typeTag?:
-    | 'future-vision'
-    | 'marathon-of-good'
-    | 'team'
-    | 'political'
-    | 'housing'
-    | 'volunteer'
-    | 'corporate'
-    | 'custom';
+  | 'future-vision'
+  | 'marathon-of-good'
+  | 'team'
+  | 'political'
+  | 'housing'
+  | 'volunteer'
+  | 'corporate'
+  | 'custom';
   // Internal User IDs
   adminIds: string[];
   settings?: {
@@ -72,7 +72,7 @@ export class CommunityService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
-  ) {}
+  ) { }
 
   async getCommunity(communityId: string): Promise<Community | null> {
     // Query by internal ID only
@@ -83,6 +83,68 @@ export class CommunityService {
   async getCommunityByTypeTag(typeTag: string): Promise<Community | null> {
     const doc = await this.communityModel.findOne({ typeTag }).lean();
     return doc as any as Community;
+  }
+
+  async onModuleInit() {
+    await this.ensureBaseCommunities();
+  }
+
+  private async ensureBaseCommunities() {
+    this.logger.log('Checking base communities...');
+
+    // Try to find a superadmin to assign as admin
+    const superadmin = await this.userModel
+      .findOne({ globalRole: 'superadmin' })
+      .lean();
+    const adminIds = superadmin ? [superadmin.id] : [];
+
+    // 1. Future Vision
+    const futureVision = await this.getCommunityByTypeTag('future-vision');
+    if (!futureVision) {
+      this.logger.log('Creating "Future Vision" community...');
+      try {
+        await this.createCommunity({
+          name: 'Образ Будущего',
+          description: 'Группа для публикации и обсуждения образов будущего.',
+          typeTag: 'future-vision',
+          adminIds,
+          settings: {
+            currencyNames: {
+              singular: 'merit',
+              plural: 'merits',
+              genitive: 'merits',
+            },
+            dailyEmission: 10,
+          },
+        });
+      } catch (e) {
+        this.logger.error('Failed to create Future Vision', e);
+      }
+    }
+
+    // 2. Marathon of Good
+    const marathon = await this.getCommunityByTypeTag('marathon-of-good');
+    if (!marathon) {
+      this.logger.log('Creating "Marathon of Good" community...');
+      try {
+        await this.createCommunity({
+          name: 'Марафон Добра',
+          description: 'Группа для отчетов о добрых делах.',
+          typeTag: 'marathon-of-good',
+          adminIds,
+          settings: {
+            currencyNames: {
+              singular: 'merit',
+              plural: 'merits',
+              genitive: 'merits',
+            },
+            dailyEmission: 10,
+          },
+        });
+      } catch (e) {
+        this.logger.error('Failed to create Marathon of Good', e);
+      }
+    }
   }
 
   async createCommunity(dto: CreateCommunityDto): Promise<Community> {
@@ -112,13 +174,45 @@ export class CommunityService {
       awardsMerits: true,
     };
 
-    // For Good Deeds Marathon: Members cannot vote for Representative posts
+    // Set default posting rules
+    const defaultPostingRules = {
+      allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'] as (
+        | 'superadmin'
+        | 'lead'
+        | 'participant'
+        | 'viewer'
+      )[],
+      requiresTeamMembership: false,
+      onlyTeamLead: false,
+      autoMembership: false,
+    };
+
+    // Special rules for "Marathon of Good"
     if (dto.typeTag === 'marathon-of-good') {
+      // Voting: Members cannot vote for Representative posts
       defaultVotingRules.participantsCannotVoteForLead = true;
+      // Posting: Only Representatives (leads) can post
+      defaultPostingRules.allowedRoles = ['superadmin', 'lead'];
+      defaultPostingRules.onlyTeamLead = true;
     }
 
-    // For Future Vision: Members cannot vote for their own posts (already default)
-    // Additional rules can be set here if needed
+    // Special rules for "Future Vision"
+    if (dto.typeTag === 'future-vision') {
+      // Voting: Representatives CAN vote for own posts (exception)
+      defaultVotingRules.canVoteForOwnPosts = true;
+      // Posting: Only Representatives (leads) can post
+      defaultPostingRules.allowedRoles = ['superadmin', 'lead'];
+      defaultPostingRules.onlyTeamLead = true;
+    }
+
+    // Special rules for "Team"
+    if (dto.typeTag === 'team') {
+      // Posting: Only Team Members and Lead
+      defaultPostingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
+      defaultPostingRules.requiresTeamMembership = true;
+      // Voting: Team Members can vote
+      defaultVotingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
+    }
 
     const community = {
       id: uid(),
@@ -137,17 +231,7 @@ export class CommunityService {
         },
         dailyEmission: dto.settings?.dailyEmission || 10,
       },
-      postingRules: {
-        allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'] as (
-          | 'superadmin'
-          | 'lead'
-          | 'participant'
-          | 'viewer'
-        )[],
-        requiresTeamMembership: false,
-        onlyTeamLead: false,
-        autoMembership: false,
-      },
+      postingRules: defaultPostingRules,
       votingRules: defaultVotingRules,
       visibilityRules: {
         visibleToRoles: ['superadmin', 'lead', 'participant', 'viewer'] as (
@@ -379,5 +463,45 @@ export class CommunityService {
       `Quota reset timestamp updated for community ${communityId} at ${resetAt.toISOString()}`,
     );
     return { resetAt };
+  }
+
+  async getCommunityMembers(
+    communityId: string,
+    limit: number = 50,
+    skip: number = 0,
+  ): Promise<{ members: any[]; total: number }> {
+    const community = await this.communityModel.findOne({ id: communityId }).lean();
+    if (!community) {
+      throw new NotFoundException('Community not found');
+    }
+
+    const memberIds = community.members || [];
+    const total = memberIds.length;
+
+    // Reverse to show newest members first (assuming appended to end)
+    // or just slice. Let's slice for now, but usually we want recent.
+    // Arrays in Mongo are usually appended.
+    const paginatedIds = memberIds.slice(skip, skip + limit);
+
+    if (paginatedIds.length === 0) {
+      return { members: [], total };
+    }
+
+    const members = await this.userModel.find({
+      id: { $in: paginatedIds }
+    }).lean();
+
+    // Map to DTOs
+    const mappedMembers = members.map(user => ({
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      globalRole: user.globalRole,
+      // We might want to fetch community-specific role here too, but that's expensive
+      // for a list. PermissionService has getUserRoleInCommunity.
+    }));
+
+    return { members: mappedMembers, total };
   }
 }

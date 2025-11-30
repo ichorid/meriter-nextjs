@@ -19,10 +19,10 @@ export function InviteHandler() {
   const inviteCode = searchParams?.get('invite');
   const t = useTranslations('registration');
   const addToast = useToastStore((state) => state.addToast);
-  
+
   // Check invite status before using
   const { data: invite, isLoading: inviteLoading } = useInviteByCode(inviteCode || '');
-  
+
   useEffect(() => {
     // Only process invite if user is authenticated and invite code is present
     if (isAuthenticated && user && inviteCode && invite && !inviteLoading) {
@@ -35,7 +35,7 @@ export function InviteHandler() {
         router.replace(newUrl.pathname + newUrl.search);
         return;
       }
-      
+
       // Check expiration
       if (invite.expiresAt) {
         const expiresAt = new Date(invite.expiresAt);
@@ -48,12 +48,19 @@ export function InviteHandler() {
           return;
         }
       }
-      
+
       const processInvite = async () => {
         try {
-          await useInviteMutation.mutateAsync(inviteCode);
+          const response = await useInviteMutation.mutateAsync(inviteCode);
           addToast(t('inviteUsedSuccess'), 'success');
-          
+
+          // Check for teamGroupId in response and redirect if present
+          // The response is the data object itself, not wrapped in 'data' property
+          if ((response as any)?.teamGroupId) {
+            router.push(`/meriter/communities/${(response as any).teamGroupId}/settings`);
+            return;
+          }
+
           // Remove invite from URL
           const newUrl = new URL(window.location.href);
           newUrl.searchParams.delete('invite');
@@ -64,11 +71,11 @@ export function InviteHandler() {
           addToast(errorMessage, 'error');
         }
       };
-      
+
       processInvite();
     }
   }, [isAuthenticated, user, inviteCode, invite, inviteLoading, useInviteMutation, router, addToast, t]);
-  
+
   return null; // This component doesn't render anything
 }
 

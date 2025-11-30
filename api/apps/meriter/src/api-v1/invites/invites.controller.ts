@@ -16,6 +16,7 @@ import { PermissionService } from '../../domain/services/permission.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { TeamService } from '../../domain/services/team.service';
 import { UserService } from '../../domain/services/user.service';
+import { WalletService } from '../../domain/services/wallet.service';
 import { User } from '../../decorators/user.decorator';
 import { UserGuard } from '../../user.guard';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
@@ -25,7 +26,10 @@ import { z } from 'zod';
 import { uid } from 'uid';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { User as UserModel, UserDocument } from '../../domain/models/user/user.schema';
+import {
+  User as UserModel,
+  UserDocument,
+} from '../../domain/models/user/user.schema';
 
 const CreateInviteDtoSchema = z.object({
   targetUserId: z.string().min(1),
@@ -49,6 +53,7 @@ export class InvitesController {
     private communityService: CommunityService,
     private teamService: TeamService,
     private userService: UserService,
+    private walletService: WalletService,
     @InjectModel(UserModel.name) private userModel: Model<UserDocument>,
   ) {}
 
@@ -130,18 +135,46 @@ export class InvitesController {
   ) {
     const invite = await this.inviteService.useInvite(code, user.id);
 
+    // Get community to access settings
+    const community = await this.communityService.getCommunity(
+      invite.communityId,
+    );
+    if (!community) {
+      throw new NotFoundException('Community not found');
+    }
+
     // Assign role based on invite type
     if (invite.type === 'superadmin-to-lead') {
+      // 1. Set role
       await this.userCommunityRoleService.setRole(
         user.id,
         invite.communityId,
         'lead',
       );
 
-      // Auto-create Team Group when user becomes Representative
+      // 2. Add user to community (members list and memberships)
+      await this.communityService.addMember(invite.communityId, user.id);
+      await this.userService.addCommunityMembership(
+        user.id,
+        invite.communityId,
+      );
+
+      // 3. Create wallet for user in community
+      const currency = community.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+      await this.walletService.createOrGetWallet(
+        user.id,
+        invite.communityId,
+        currency,
+      );
+
+      // 4. Auto-create Team Group when user becomes Representative
       const userData = await this.userService.getUserById(user.id);
       const teamName = `Team ${userData?.displayName || userData?.username || user.id}`;
-      
+
       // Create team group community
       const teamCommunity = await this.communityService.createCommunity({
         name: teamName,
@@ -149,6 +182,22 @@ export class InvitesController {
         typeTag: 'team',
         adminIds: [user.id],
       });
+
+      // Add user to team community
+      await this.communityService.addMember(teamCommunity.id, user.id);
+      await this.userService.addCommunityMembership(user.id, teamCommunity.id);
+
+      // Create wallet for user in team community
+      const teamCurrency = teamCommunity.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+      await this.walletService.createOrGetWallet(
+        user.id,
+        teamCommunity.id,
+        teamCurrency,
+      );
 
       // Create team record
       const team = await this.teamService.createTeam(
@@ -161,7 +210,7 @@ export class InvitesController {
       // Update user with teamId
       await this.userModel.updateOne(
         { id: user.id },
-        { $set: { teamId: team.id, updatedAt: new Date() } }
+        { $set: { teamId: team.id, updatedAt: new Date() } },
       );
 
       return ApiResponseHelper.successResponse({
@@ -171,13 +220,33 @@ export class InvitesController {
         message: 'Invite used successfully. Team group created.',
       });
     } else if (invite.type === 'lead-to-participant') {
+      // 1. Set role
       await this.userCommunityRoleService.setRole(
         user.id,
         invite.communityId,
         'participant',
       );
 
-      // Add user to team if teamId is provided
+      // 2. Add user to community (members list and memberships)
+      await this.communityService.addMember(invite.communityId, user.id);
+      await this.userService.addCommunityMembership(
+        user.id,
+        invite.communityId,
+      );
+
+      // 3. Create wallet for user in community
+      const currency = community.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+      await this.walletService.createOrGetWallet(
+        user.id,
+        invite.communityId,
+        currency,
+      );
+
+      // 4. Add user to team if teamId is provided
       if (invite.teamId) {
         const team = await this.teamService.getTeamById(invite.teamId);
         if (team) {
@@ -217,7 +286,3 @@ export class InvitesController {
     return ApiResponseHelper.successResponse({ message: 'Invite deleted' });
   }
 }
-
-
-
-

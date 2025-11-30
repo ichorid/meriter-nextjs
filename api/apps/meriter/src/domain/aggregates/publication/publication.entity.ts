@@ -51,9 +51,13 @@ export class Publication implements EditableEntity {
     private metrics: Metrics,
     private readonly imageUrl: string | null,
     private readonly videoUrl: string | null,
+    private readonly postType: 'basic' | 'poll' | 'project',
+    private readonly isProject: boolean,
+    private readonly title: string | null,
+    private readonly description: string | null,
     private readonly createdAt: Date,
     private updatedAt: Date,
-  ) {}
+  ) { }
 
   static create(
     authorId: UserId,
@@ -65,10 +69,14 @@ export class Publication implements EditableEntity {
       hashtags?: string[];
       imageUrl?: string;
       videoUrl?: string;
+      postType?: 'basic' | 'poll' | 'project';
+      isProject?: boolean;
+      title?: string;
+      description?: string;
     } = {},
   ): Publication {
     const publicationContent = PublicationContent.create(content);
-    
+
     return new Publication(
       PublicationId.generate(),
       communityId,
@@ -80,6 +88,10 @@ export class Publication implements EditableEntity {
       Metrics.zero(),
       options.imageUrl || null,
       options.videoUrl || null,
+      options.postType || 'basic',
+      options.isProject || false,
+      options.title || null,
+      options.description || null,
       new Date(),
       new Date(),
     );
@@ -97,6 +109,10 @@ export class Publication implements EditableEntity {
       Metrics.fromSnapshot(snapshot.metrics),
       snapshot.imageUrl || null,
       snapshot.videoUrl || null,
+      snapshot.postType || 'basic',
+      snapshot.isProject || false,
+      snapshot.title || null,
+      snapshot.description || null,
       snapshot.createdAt,
       snapshot.updatedAt,
     );
@@ -179,6 +195,22 @@ export class Publication implements EditableEntity {
     return this.metrics.score;
   }
 
+  get getPostType(): 'basic' | 'poll' | 'project' {
+    return this.postType;
+  }
+
+  get getIsProject(): boolean {
+    return this.isProject;
+  }
+
+  get getTitle(): string | null {
+    return this.title;
+  }
+
+  get getDescription(): string | null {
+    return this.description;
+  }
+
   // Serialization
   toSnapshot(): PublicationSnapshot {
     return {
@@ -192,6 +224,10 @@ export class Publication implements EditableEntity {
       metrics: this.metrics.toSnapshot(),
       imageUrl: this.imageUrl || undefined,
       videoUrl: this.videoUrl || undefined,
+      postType: this.postType,
+      isProject: this.isProject,
+      title: this.title || undefined,
+      description: this.description || undefined,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

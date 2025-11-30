@@ -86,41 +86,42 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const { user } = useAuth();
   const t = useTranslations('feed');
   const myId = user?.id;
-  
+
   // Check if this is a PROJECT post (no voting allowed)
   const isProject = (publication as any).postType === 'project' || (publication as any).isProject === true;
-  
+
   // Extract beneficiary information
   const beneficiaryId = publication.beneficiaryId || publication.meta?.beneficiary?.id;
   const authorId = publication.authorId;
-  
+
   // Calculate beneficiary status
   const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== authorId);
   const isAuthor = !!(myId && authorId && myId === authorId);
   const isBeneficiary = !!(hasBeneficiary && myId && beneficiaryId && myId === beneficiaryId);
   const currentScore = publication.metrics?.score || 0;
-  
+
   // Calculate withdraw amounts
   const maxWithdrawAmount = (isAuthor && !hasBeneficiary) || isBeneficiary
     ? Math.floor(10 * currentScore) / 10
     : 0;
-  
+
   // Get current wallet balance for topup
   const communityId = publication.communityId;
   const currentBalance = getWalletBalance(wallets, communityId);
   const maxTopUpAmount = Math.floor(10 * currentBalance) / 10;
-  
+
   // Mutual exclusivity logic
   const showWithdraw = (isAuthor && !hasBeneficiary) || isBeneficiary;
   const showVote = !isAuthor && !isBeneficiary;
   const showVoteForAuthor = isAuthor && hasBeneficiary;
-  
+
   const publicationId = getPublicationIdentifier(publication);
-  
+
   const handleVoteClick = () => {
-    useUIStore.getState().openVotingPopup(publicationId, 'publication');
+    const mode = isProject ? 'wallet-only' : 'quota-only';
+    useUIStore.getState().openVotingPopup(publicationId, 'publication', mode);
   };
-  
+
   const handleCommentToggle = () => {
     // For now, comment toggle can still use activeCommentHook for backwards compatibility
     // but voting uses the store
@@ -128,7 +129,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     const setActiveComment = activeCommentHook[1];
     setActiveComment(activeComment === publicationId ? null : publicationId);
   };
-  
+
   // Handle withdraw button click - opens popup
   const handleWithdrawClick = () => {
     useUIStore.getState().openWithdrawPopup(
@@ -138,7 +139,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
       maxTopUpAmount
     );
   };
-  
+
   // Handle topup button click - opens popup for adding votes
   const handleTopupClick = () => {
     useUIStore.getState().openWithdrawPopup(
@@ -152,21 +153,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   return (
     <div className={`space-y-4 ${className}`}>
       <div className="flex items-center justify-between">
-        {isProject ? (
-          // PROJECT posts: no voting, only comments
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleCommentToggle}
-              className="flex items-center gap-2 text-brand-text-secondary hover:text-brand-text-primary transition-colors"
-            >
-              <span>{t('comments')}</span>
-              <span className="text-sm">({publication.metrics?.commentCount || 0})</span>
-            </button>
-            <span className="text-sm text-brand-text-secondary italic">
-              {t('projectNoVoting')}
-            </span>
-          </div>
-        ) : showWithdraw ? (
+        {showWithdraw ? (
           <BarWithdraw
             balance={maxWithdrawAmount}
             onWithdraw={handleWithdrawClick}

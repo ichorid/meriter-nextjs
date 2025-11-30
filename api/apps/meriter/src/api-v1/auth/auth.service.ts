@@ -6,7 +6,10 @@ import { UserService } from '../../domain/services/user.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { User } from '../../../../../../libs/shared-types/dist/index';
 import { signJWT } from '../../common/helpers/jwt';
-import { Community, CommunityDocument } from '../../domain/models/community/community.schema';
+import {
+  Community,
+  CommunityDocument,
+} from '../../domain/models/community/community.schema';
 import { JwtService } from '../common/utils/jwt-service.util';
 import * as crypto from 'crypto';
 
@@ -28,8 +31,9 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly communityService: CommunityService,
     private readonly configService: ConfigService,
-    @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
-  ) { }
+    @InjectModel(Community.name)
+    private communityModel: Model<CommunityDocument>,
+  ) {}
 
   private isFakeDataMode(): boolean {
     return process.env.FAKE_DATA_MODE === 'true';
@@ -46,12 +50,16 @@ export class AuthService {
       throw new Error('Fake data mode is not enabled');
     }
 
-    const authId = fakeUserId || `fake_user_dev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const authId =
+      fakeUserId ||
+      `fake_user_dev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
     this.logger.log(`Creating or updating fake user ${authId}...`);
 
     // Generate username and display name from the fake user ID
-    const sessionNumber = fakeUserId ? fakeUserId.split('_').pop()?.substring(0, 6) || 'dev' : 'dev';
+    const sessionNumber = fakeUserId
+      ? fakeUserId.split('_').pop()?.substring(0, 6) || 'dev'
+      : 'dev';
     const username = `fakedev_${sessionNumber}`;
     const displayName = `Fake Dev User ${sessionNumber}`;
 
@@ -71,10 +79,15 @@ export class AuthService {
 
     this.logger.log(`Fake user ${authId} created/updated successfully`);
 
+    // Ensure user is added to base communities
+    await this.userService.ensureUserInBaseCommunities(user.id);
+
     // Generate JWT
     const jwtSecret = this.configService.get<string>('jwt.secret');
     if (!jwtSecret) {
-      this.logger.error('JWT_SECRET is not configured. Cannot generate JWT token.');
+      this.logger.error(
+        'JWT_SECRET is not configured. Cannot generate JWT token.',
+      );
       throw new Error('JWT secret not configured');
     }
 
@@ -114,14 +127,23 @@ export class AuthService {
 
     // Get callback URL - must match the one used in googleAuth endpoint
     // Support both OAUTH_GOOGLE_REDIRECT_URI and OAUTH_GOOGLE_CALLBACK_URL
-    let callbackUrl = process.env.OAUTH_GOOGLE_REDIRECT_URI
-      || process.env.OAUTH_GOOGLE_CALLBACK_URL
-      || process.env.GOOGLE_REDIRECT_URI;
+    let callbackUrl =
+      process.env.OAUTH_GOOGLE_REDIRECT_URI ||
+      process.env.OAUTH_GOOGLE_CALLBACK_URL ||
+      process.env.GOOGLE_REDIRECT_URI;
 
     if (!callbackUrl) {
-      const domain = process.env.DOMAIN || process.env.APP_URL?.replace(/^https?:\/\//, '') || 'localhost';
+      const domain =
+        process.env.DOMAIN ||
+        process.env.APP_URL?.replace(/^https?:\/\//, '') ||
+        'localhost';
       const isDocker = process.env.NODE_ENV === 'production';
-      const protocol = domain === 'localhost' && !isDocker ? 'http' : (domain === 'localhost' ? 'http' : 'https');
+      const protocol =
+        domain === 'localhost' && !isDocker
+          ? 'http'
+          : domain === 'localhost'
+            ? 'http'
+            : 'https';
       // In Docker, Caddy proxies /api/* to API, so no port needed
       // In local dev, use port 8002 for direct API access
       const port = domain === 'localhost' && !isDocker ? ':8002' : '';
@@ -157,11 +179,14 @@ export class AuthService {
     }
 
     // Get user info from Google
-    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
+    const userInfoResponse = await fetch(
+      'https://www.googleapis.com/oauth2/v2/userinfo',
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       },
-    });
+    );
 
     if (!userInfoResponse.ok) {
       const errorText = await userInfoResponse.text();
@@ -177,7 +202,8 @@ export class AuthService {
     const email = googleUser.email;
     const firstName = googleUser.given_name || '';
     const lastName = googleUser.family_name || '';
-    const displayName = googleUser.name || `${firstName} ${lastName}`.trim() || email;
+    const displayName =
+      googleUser.name || `${firstName} ${lastName}`.trim() || email;
     const avatarUrl = googleUser.picture;
 
     // Check if user exists by googleId (if schema supports it) or by email
@@ -215,10 +241,15 @@ export class AuthService {
       throw new Error('Failed to create or update user');
     }
 
+    // Ensure user is added to base communities
+    await this.userService.ensureUserInBaseCommunities(user.id);
+
     // Generate JWT
     const jwtSecret = this.configService.get<string>('jwt.secret');
     if (!jwtSecret) {
-      this.logger.error('JWT_SECRET is not configured. Cannot generate JWT token.');
+      this.logger.error(
+        'JWT_SECRET is not configured. Cannot generate JWT token.',
+      );
       throw new Error('JWT secret not configured');
     }
 
@@ -260,9 +291,19 @@ export class AuthService {
     hasPendingCommunities: boolean;
     jwt: string;
   }> {
-    this.logger.log(`Authenticating user with provider: ${providerUser.provider}`);
+    this.logger.log(
+      `Authenticating user with provider: ${providerUser.provider}`,
+    );
 
-    const { provider, providerId, email, firstName, lastName, displayName, avatarUrl } = providerUser;
+    const {
+      provider,
+      providerId,
+      email,
+      firstName,
+      lastName,
+      displayName,
+      avatarUrl,
+    } = providerUser;
 
     // Create provider-specific ID (e.g., google_123456, github_789012)
     // const authId = `${provider}_${providerId}`;
@@ -298,10 +339,15 @@ export class AuthService {
       throw new Error('Failed to create or update user');
     }
 
+    // Ensure user is added to base communities
+    await this.userService.ensureUserInBaseCommunities(user.id);
+
     // Generate JWT
     const jwtSecret = this.configService.get<string>('jwt.secret');
     if (!jwtSecret) {
-      this.logger.error('JWT_SECRET is not configured. Cannot generate JWT token.');
+      this.logger.error(
+        'JWT_SECRET is not configured. Cannot generate JWT token.',
+      );
       throw new Error('JWT secret not configured');
     }
 
@@ -326,7 +372,10 @@ export class AuthService {
   }
 
   async getCurrentUser(reqUser: any): Promise<User> {
-    this.logger.log(`Getting current user for reqUser:`, JSON.stringify(reqUser, null, 2));
+    this.logger.log(
+      `Getting current user for reqUser:`,
+      JSON.stringify(reqUser, null, 2),
+    );
 
     const userId = reqUser?.id;
     this.logger.log(`Looking up user with id: ${userId}`);
@@ -347,7 +396,10 @@ export class AuthService {
     return JwtService.mapUserToV1Format(user);
   }
 
-  private verifyTelegramAuth(data: TelegramAuthData, botToken: string): boolean {
+  private verifyTelegramAuth(
+    data: TelegramAuthData,
+    botToken: string,
+  ): boolean {
     const { hash, ...fields } = data;
 
     const dataCheckString = Object.keys(fields)
@@ -369,7 +421,10 @@ export class AuthService {
     return hashValid && timeValid;
   }
 
-  private verifyTelegramWebAppData(initData: string, botToken: string): { valid: boolean; user?: any } {
+  private verifyTelegramWebAppData(
+    initData: string,
+    botToken: string,
+  ): { valid: boolean; user?: any } {
     try {
       const urlParams = new URLSearchParams(initData);
       const hash = urlParams.get('hash');

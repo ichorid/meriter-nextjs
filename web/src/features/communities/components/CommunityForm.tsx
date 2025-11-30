@@ -1,15 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCommunity, useUpdateCommunity, useCreateCommunity } from '@/hooks/api/useCommunities';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserRoles } from '@/hooks/api/useProfile';
+import { useCreateInvite } from '@/hooks/api/useInvites';
 import { HashtagInput } from '@/shared/components/HashtagInput';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandInput } from '@/components/ui/BrandInput';
 import { BrandSelect } from '@/components/ui/BrandSelect';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, Copy, Check } from 'lucide-react';
+import { useToastStore } from '@/shared/stores/toast.store';
+import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 
 interface CommunityFormProps {
     communityId?: string; // Если нет - создание, если есть - редактирование
@@ -20,6 +25,12 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const queryClient = useQueryClient();
     const t = useTranslations('pages.communitySettings');
     const tCreate = useTranslations('communities.create');
+    const tInvites = useTranslations('invites.create');
+
+    const { user } = useAuth();
+    const { data: userRoles } = useUserRoles(user?.id || '');
+    const createInvite = useCreateInvite();
+    const addToast = useToastStore((state) => state.addToast);
 
     const isEditMode = !!communityId;
     const { data: community, isLoading } = useCommunity(communityId || '');
@@ -37,6 +48,12 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const [hashtags, setHashtags] = useState<string[]>([]);
     const [adminIds, setAdminIds] = useState<string[]>([]);
     const [newAdminId, setNewAdminId] = useState('');
+    
+    // Invite generation state
+    const [inviteTargetUserId, setInviteTargetUserId] = useState('');
+    const [inviteExpiresInDays, setInviteExpiresInDays] = useState<number | ''>(30);
+    const [generatedInvite, setGeneratedInvite] = useState<{ code: string } | null>(null);
+    const [inviteCopied, setInviteCopied] = useState(false);
 
     useEffect(() => {
         if (community && isEditMode) {
@@ -102,15 +119,66 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 queryClient.invalidateQueries({ queryKey: ['communities'] });
                 queryClient.invalidateQueries({ queryKey: ['wallets'] });
 
+                addToast(tCreate('success'), 'success');
                 router.push(`/meriter/communities/${result.id}`);
             }
         } catch (error) {
             console.error(`Failed to ${isEditMode ? 'update' : 'create'} community:`, error);
-            // TODO: Show error toast
+            const errorMessage = extractErrorMessage(error, tCreate('errors.createFailed'));
+            addToast(errorMessage, 'error');
         }
     };
 
     const isPending = isEditMode ? updateCommunity.isPending : createCommunity.isPending;
+
+    // Check if user is superadmin
+    const isSuperadmin = user?.globalRole === 'superadmin';
+
+    // Check if user is lead/admin of this community
+    const isUserLead = useMemo(() => {
+        if (!communityId || !user?.id || !userRoles) return false;
+        const role = userRoles.find(r => r.communityId === communityId);
+        // User is lead if they have 'lead' role OR are in adminIds
+        return role?.role === 'lead' || community?.adminIds?.includes(user.id);
+    }, [communityId, user?.id, userRoles, community?.adminIds]);
+
+    // Superadmin can create invites for leads in any community
+    // Lead can create invites for participants in their community
+    const canGenerateInvites = isEditMode && (isSuperadmin || isUserLead);
+    const inviteType = isSuperadmin ? 'superadmin-to-lead' : 'lead-to-participant';
+
+    const handleGenerateInvite = async () => {
+        if (!communityId || !inviteTargetUserId.trim()) return;
+
+        try {
+            const expiresAt = inviteExpiresInDays && inviteExpiresInDays > 0
+                ? new Date(Date.now() + inviteExpiresInDays * 24 * 60 * 60 * 1000).toISOString()
+                : undefined;
+
+            const invite = await createInvite.mutateAsync({
+                targetUserId: inviteTargetUserId.trim(),
+                type: inviteType,
+                communityId,
+                expiresAt,
+            });
+
+            setGeneratedInvite({ code: invite.code });
+            setInviteCopied(false);
+            addToast(tInvites('success'), 'success');
+        } catch (error) {
+            console.error('Failed to create invite:', error);
+            const errorMessage = extractErrorMessage(error, tInvites('errors.createFailed'));
+            addToast(errorMessage, 'error');
+        }
+    };
+
+    const handleCopyInviteCode = () => {
+        if (generatedInvite?.code) {
+            navigator.clipboard.writeText(generatedInvite.code);
+            setInviteCopied(true);
+            setTimeout(() => setInviteCopied(false), 2000);
+        }
+    };
 
     if (isEditMode && isLoading) {
         return (
@@ -246,50 +314,142 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 </div>
 
                 {isEditMode && (
-                    <div className="border-t border-gray-200 pt-6">
-                        <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
-                            {t('administrators')}
-                        </h2>
+                    <>
+                        <div className="border-t border-gray-200 pt-6">
+                            <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
+                                {t('administrators')}
+                            </h2>
 
-                        <div className="space-y-2 mb-4">
-                            {adminIds.map((adminId) => (
-                                <div
-                                    key={adminId}
-                                    className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
-                                >
-                                    <p className="text-sm text-brand-text-primary">{adminId}</p>
-                                    <BrandButton
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleRemoveAdmin(adminId)}
+                            <div className="space-y-2 mb-4">
+                                {adminIds.map((adminId) => (
+                                    <div
+                                        key={adminId}
+                                        className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
                                     >
-                                        <X size={16} />
+                                        <p className="text-sm text-brand-text-primary">{adminId}</p>
+                                        <BrandButton
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleRemoveAdmin(adminId)}
+                                        >
+                                            <X size={16} />
+                                        </BrandButton>
+                                    </div>
+                                ))}
+                                {adminIds.length === 0 && (
+                                    <p className="text-sm text-brand-text-secondary">{t('noAdmins')}</p>
+                                )}
+                            </div>
+
+                            <BrandFormControl label={t('addAdmin')}>
+                                <div className="flex gap-2">
+                                    <BrandInput
+                                        value={newAdminId}
+                                        onChange={(e) => setNewAdminId(e.target.value)}
+                                        placeholder={t('addAdminPlaceholder')}
+                                        fullWidth
+                                    />
+                                    <BrandButton
+                                        variant="primary"
+                                        onClick={handleAddAdmin}
+                                        disabled={!newAdminId}
+                                    >
+                                        {t('add')}
                                     </BrandButton>
                                 </div>
-                            ))}
-                            {adminIds.length === 0 && (
-                                <p className="text-sm text-brand-text-secondary">{t('noAdmins')}</p>
-                            )}
+                            </BrandFormControl>
                         </div>
 
-                        <BrandFormControl label={t('addAdmin')}>
-                            <div className="flex gap-2">
-                                <BrandInput
-                                    value={newAdminId}
-                                    onChange={(e) => setNewAdminId(e.target.value)}
-                                    placeholder={t('addAdminPlaceholder')}
-                                    fullWidth
-                                />
-                                <BrandButton
-                                    variant="primary"
-                                    onClick={handleAddAdmin}
-                                    disabled={!newAdminId}
-                                >
-                                    {t('add')}
-                                </BrandButton>
+                        {canGenerateInvites && (
+                            <div className="border-t border-gray-200 pt-6">
+                                <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
+                                    {tInvites('title')}
+                                </h2>
+
+                                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <p className="text-sm text-blue-800">
+                                        {isSuperadmin 
+                                            ? tInvites('superadminToLeadDescription') || 'Create an invite to make a user a Lead (Representative) of this community'
+                                            : tInvites('leadToParticipantDescription') || 'Create an invite to add a participant to this team community'
+                                        }
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <BrandFormControl 
+                                        label={tInvites('targetUserId')}
+                                        helperText={isSuperadmin 
+                                            ? 'User ID who will become a Lead (Representative)'
+                                            : 'User ID who will become a Participant'
+                                        }
+                                    >
+                                        <BrandInput
+                                            value={inviteTargetUserId}
+                                            onChange={(e) => setInviteTargetUserId(e.target.value)}
+                                            placeholder={tInvites('targetUserIdPlaceholder')}
+                                            fullWidth
+                                        />
+                                    </BrandFormControl>
+
+                                    <BrandFormControl
+                                        label={tInvites('expiresInDays')}
+                                        helperText={tInvites('expiresInDaysHelp')}
+                                    >
+                                        <BrandInput
+                                            type="number"
+                                            value={inviteExpiresInDays.toString()}
+                                            onChange={(e) => {
+                                                const num = parseInt(e.target.value, 10);
+                                                setInviteExpiresInDays(isNaN(num) ? '' : num);
+                                            }}
+                                            placeholder={tInvites('expiresInDaysPlaceholder')}
+                                            fullWidth
+                                        />
+                                    </BrandFormControl>
+
+                                    {generatedInvite && (
+                                        <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-sm font-semibold text-brand-text-primary">
+                                                    {tInvites('generatedInvites')}
+                                                </p>
+                                                <BrandButton
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={handleCopyInviteCode}
+                                                >
+                                                    {inviteCopied ? (
+                                                        <Check size={16} className="text-green-600" />
+                                                    ) : (
+                                                        <Copy size={16} />
+                                                    )}
+                                                </BrandButton>
+                                            </div>
+                                            <p className="font-mono text-sm text-brand-text-secondary break-all">
+                                                {generatedInvite.code}
+                                            </p>
+                                            {inviteCopied && (
+                                                <p className="text-xs text-green-600">
+                                                    {tInvites('invitesCopied')}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <BrandButton
+                                        variant="primary"
+                                        size="lg"
+                                        onClick={handleGenerateInvite}
+                                        disabled={!inviteTargetUserId.trim() || createInvite.isPending}
+                                        isLoading={createInvite.isPending}
+                                        fullWidth
+                                    >
+                                        {createInvite.isPending ? tInvites('creating') : tInvites('create')}
+                                    </BrandButton>
+                                </div>
                             </div>
-                        </BrandFormControl>
-                    </div>
+                        )}
+                    </>
                 )}
 
                 <div className="flex justify-end pt-4">

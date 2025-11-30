@@ -74,7 +74,10 @@ export function CommunityHero({ community, stats }: CommunityHeroProps) {
                 </div>
               </div>
               {stats.members !== undefined && (
-                <div className="text-center">
+                <a
+                  href={`/meriter/communities/${community.id}/members`}
+                  className="text-center hover:bg-brand-secondary/5 rounded-lg p-1 transition-colors cursor-pointer block"
+                >
                   <div className="flex items-center justify-center mb-1">
                     <Users size={18} className="text-brand-text-secondary mr-1" />
                   </div>
@@ -84,7 +87,7 @@ export function CommunityHero({ community, stats }: CommunityHeroProps) {
                   <div className="text-xs text-brand-text-secondary mt-1">
                     Members
                   </div>
-                </div>
+                </a>
               )}
               {stats.activity !== undefined ? (
                 <div className="text-center">

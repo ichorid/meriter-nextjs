@@ -1,3 +1,6 @@
 ignoredBuiltDependencies:
   - mongodb-memory-server
   - sharp
+
+patchedDependencies:
+  '@react-native/assets-registry@0.76.9': patches/@react-native__assets-registry@0.76.9.patch

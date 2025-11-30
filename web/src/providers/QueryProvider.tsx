@@ -5,6 +5,30 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState, ReactNode, useEffect } from 'react';
 import { setQueryClient } from '@/lib/utils/query-client-cache';
+import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
+
+// Global error handler for toast notifications
+// This will be set after QueryProvider mounts
+let globalToastHandler: ((message: string, type: 'error' | 'warning' | 'success' | 'info') => void) | null = null;
+
+export function setGlobalToastHandler(handler: (message: string, type: 'error' | 'warning' | 'success' | 'info') => void) {
+  globalToastHandler = handler;
+}
+
+function handleQueryError(error: any, isMutation = false) {
+  // Don't show toast for 401 errors - they are handled in AuthContext
+  const errorStatus = error?.details?.status || error?.code;
+  if (errorStatus === 401 || errorStatus === 'HTTP_401') {
+    return;
+  }
+
+  // Only show toast for mutations by default (queries errors are usually handled in UI)
+  // But we can show for queries too if needed
+  if (globalToastHandler) {
+    const message = extractErrorMessage(error, 'An error occurred');
+    globalToastHandler(message, 'error');
+  }
+}
 
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -35,6 +59,8 @@ export function QueryProvider({ children }: { children: ReactNode }) {
               }
               return true;
             },
+            // Global error handler for queries (optional - usually handled in UI)
+            // onError: handleQueryError,
           },
           mutations: {
             // Retry failed mutations, but not for 401 errors
@@ -45,6 +71,8 @@ export function QueryProvider({ children }: { children: ReactNode }) {
               }
               return failureCount < 1;
             },
+            // Global error handler for mutations - show toast automatically
+            onError: (error: any) => handleQueryError(error, true),
           },
         },
       })

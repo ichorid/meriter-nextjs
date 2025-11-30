@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { IPollData, IPollCast, IPollUserCastSummary } from "../types";
 import { useTranslations } from 'next-intl';
 import { useCastPoll } from '@/hooks/api/usePolls';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { usePollTimeRemaining } from '../hooks/usePollTimeRemaining';
 import { usePollAmountValidation } from '../hooks/usePollAmountValidation';
+import { useToastStore } from '@/shared/stores/toast.store';
 
 interface IPollCastingProps {
     pollData: IPollData;
@@ -30,6 +31,7 @@ export const PollCasting = ({
     initiallyExpanded = false,
 }: IPollCastingProps) => {
     const t = useTranslations('polls');
+    const addToast = useToastStore((state) => state.addToast);
     const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
     const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
     const [amountInputValue, setAmountInputValue] = useState<string>("1");
@@ -49,7 +51,9 @@ export const PollCasting = ({
 
     const handleCastPoll = async () => {
         if (!selectedOptionId) {
-            setError(t('selectOption'));
+            const message = t('selectOption');
+            setError(message);
+            addToast(message, 'warning');
             return;
         }
 
@@ -57,12 +61,17 @@ export const PollCasting = ({
         const validation = validateAmount(amountInputValue);
         if (!validation.isValid || validation.numValue === null) {
             setAmountValidationError(validation.error);
+            if (validation.error) {
+                addToast(validation.error, 'error');
+            }
             return;
         }
 
         // Double-check balance (UX validation should prevent this, but safety check)
         if (validation.numValue > balance) {
-            setAmountValidationError(t('amountInsufficient', { balance }));
+            const message = t('amountInsufficient', { balance });
+            setAmountValidationError(message);
+            addToast(message, 'error');
             return;
         }
 
@@ -86,10 +95,12 @@ export const PollCasting = ({
             setAmountInputValue("1");
             setSelectedOptionId(null);
 
+            addToast(t('castSuccess'), 'success');
             onCastSuccess && onCastSuccess();
         } catch (err: unknown) {
             const errorMessage = extractErrorMessage(err, t('castError'));
             setError(errorMessage);
+            addToast(errorMessage, 'error');
         }
     };
 
@@ -202,6 +213,7 @@ export const PollCasting = ({
                                             if (!isExpired) {
                                                 setSelectedOptionId(e.target.value);
                                                 setError("");
+                                                setAmountValidationError(null);
                                             }
                                         }}
                                     />
@@ -288,7 +300,6 @@ export const PollCasting = ({
                             </label>
                         )}
                     </div>
-                    {error && <div className="alert alert-error mb-3 py-2">{error}</div>}
                     <button
                         className="btn btn-primary w-full"
                         onClick={handleCastPoll}
@@ -300,13 +311,13 @@ export const PollCasting = ({
             )}
 
             {userCastSummary && userCastSummary.castCount > 0 && (
-                <div className="alert alert-info">
+                <div className="text-sm text-info p-3 bg-info/10 rounded-lg">
                     <span>{t('youCastSummary', { count: userCastSummary.castCount, amount: userCastSummary.totalAmount })}</span>
                 </div>
             )}
 
             {isExpired && (
-                <div className="alert alert-warning">
+                <div className="text-sm text-warning p-3 bg-warning/10 rounded-lg">
                     <span>{t('pollExpired')}</span>
                 </div>
             )}

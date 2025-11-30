@@ -245,13 +245,33 @@ export class CommunitiesController {
     return ApiResponseHelper.successResponse({ sent: false });
   }
 
-  // TODO: Implement getCommunityMembers in CommunityService
-  // @Get(':id/members')
-  // async getCommunityMembers(@Param('id') id: string, @Query() query: any) {
-  //   const pagination = PaginationHelper.parseOptions(query);
-  //   const result = await this.communityService.getCommunityMembers(id, pagination);
-  //   return result;
-  // }
+  @Get(':id/members')
+  async getCommunityMembers(@Param('id') id: string, @Query() query: any) {
+    const pagination = PaginationHelper.parseOptions(query);
+    const skip = PaginationHelper.getSkip(pagination);
+    const result = await this.communityService.getCommunityMembers(id, pagination.limit, skip);
+    return PaginationHelper.createResult(result.members, result.total, pagination);
+  }
+
+  @Delete(':id/members/:userId')
+  async removeMember(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Req() req: any,
+  ) {
+    const isAdmin = await this.communityService.isUserAdmin(id, req.user.id);
+    if (!isAdmin) {
+      throw new ForbiddenError('Only administrators can remove members');
+    }
+
+    // Remove from community
+    await this.communityService.removeMember(id, userId);
+
+    // Remove from user memberships
+    await this.userService.removeCommunityMembership(userId, id);
+
+    return ApiResponseHelper.successMessage('Member removed successfully');
+  }
 
   @Post('fake-community')
   async createFakeCommunity(@User() user: AuthenticatedUser) {

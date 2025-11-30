@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import XMarkIcon from '@heroicons/react/24/solid/XMarkIcon';
+import { X } from 'lucide-react';
 
 export interface RightSidebarBody {
     [key: string]: React.ComponentType<any> | null;
@@ -54,7 +54,7 @@ export function RightSidebar({
                             className="float-left btn btn-circle btn-outline btn-sm"
                             onClick={() => close()}
                         >
-                            <XMarkIcon className="h-5 w-5" />
+                            <X className="h-5 w-5" />
                         </button>
                         {header && <span className="ml-2 font-bold text-xl">{header}</span>}
                     </div>

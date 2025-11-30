@@ -9,18 +9,18 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import * as LucideIcons from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoadingState } from '@/components/atoms/LoadingState';
-import { ErrorDisplay } from '@/components/atoms/ErrorDisplay';
 import { handleAuthRedirect } from '@/lib/utils/auth';
 import { getErrorMessage } from '@/lib/api/errors';
 import { isFakeDataMode } from '@/config';
 import { OAUTH_PROVIDERS, getOAuthUrl, type OAuthProvider } from '@/lib/utils/oauth-providers';
 import { BrandButton, BrandInput, BrandFormControl } from '@/components/ui';
+import { useToastStore } from '@/shared/stores/toast.store';
 
 interface LoginFormProps {
   className?: string;
@@ -40,6 +40,7 @@ export function LoginForm({ className = '', enabledProviders }: LoginFormProps) 
     authError,
     setAuthError,
   } = useAuth();
+  const addToast = useToastStore((state) => state.addToast);
 
   // Get return URL and invite code from URL
   const returnTo = searchParams?.get('returnTo');
@@ -51,6 +52,13 @@ export function LoginForm({ className = '', enabledProviders }: LoginFormProps) 
     ? OAUTH_PROVIDERS.filter(p => enabledProviders.includes(p.id))
     : OAUTH_PROVIDERS;
 
+  // Show auth error toast when error changes
+  useEffect(() => {
+    if (authError) {
+      addToast(authError, 'error');
+    }
+  }, [authError, addToast]);
+
   // Handle fake authentication
   const handleFakeAuth = async () => {
     try {
@@ -60,6 +68,7 @@ export function LoginForm({ className = '', enabledProviders }: LoginFormProps) 
       const message = getErrorMessage(error);
       console.error('❌ Fake authentication failed:', error);
       setAuthError(message);
+      addToast(message, 'error');
     }
   };
 
@@ -96,14 +105,6 @@ export function LoginForm({ className = '', enabledProviders }: LoginFormProps) 
         </div>
 
         <div className="space-y-4">
-          {authError && (
-            <ErrorDisplay
-              title="Authentication Error"
-              message={authError}
-              variant="alert"
-            />
-          )}
-
           {/* Invite Code Input */}
           <BrandFormControl
             label={tReg('inviteCodeLabel')}

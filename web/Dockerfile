@@ -14,9 +14,41 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY libs/shared-types ./libs/shared-types
 COPY web/package.json ./web/
+# Copy patches directory before install so pnpm can apply them
+COPY web/patches ./web/patches/
 RUN pnpm --filter @meriter/web... install --frozen-lockfile
 
 COPY web ./web
+# Manually apply patch to fix Flow syntax in @react-native/assets-registry
+# Replace the file with a version without Flow syntax
+RUN cat > node_modules/.pnpm/@react-native+assets-registry@0.76.9/node_modules/@react-native/assets-registry/registry.js << 'ENDOFFILE'
+/**
+* Copyright (c) Meta Platforms, Inc. and affiliates.
+*
+* This source code is licensed under the MIT license found in the
+* LICENSE file in the root directory of this source tree.
+*
+* @flow strict
+* @format
+*/
+
+'use strict';
+
+const assets = [];
+
+function registerAsset(asset) {
+// `push` returns new array length, so the first asset will
+// get id 1 (not 0) to make the value truthy
+return assets.push(asset);
+}
+
+function getAssetByID(assetId) {
+return assets[assetId - 1];
+}
+
+// eslint-disable-next-line @react-native/monorepo/no-commonjs-exports
+module.exports = {registerAsset, getAssetByID};
+ENDOFFILE
 # Increase Node.js memory limit for build (6GB) - required for Gluestack UI + React Native Web
 ENV NODE_OPTIONS="--max-old-space-size=6144"
 RUN pnpm -C web build

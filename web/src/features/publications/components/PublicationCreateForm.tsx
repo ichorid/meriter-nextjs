@@ -14,6 +14,7 @@ import { HashtagInput } from '@/shared/components/HashtagInput';
 import { PublicationContent } from '@/components/organisms/Publication/PublicationContent';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { X, Check, ArrowLeft, Save, FileText, Loader2 } from 'lucide-react';
+import { RichTextEditor } from '@/components/molecules/RichTextEditor';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project';
 
@@ -197,7 +198,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     try {
       // Ensure postType is 'project' if isProject is true
       const finalPostType = isProject ? 'project' : postType;
-      
+
       const publication = await createPublication.mutateAsync({
         communityId,
         title: title.trim(),
@@ -295,14 +296,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           helperText={`${description.length}/5000 ${t('fields.characters')}`}
           required
         >
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+          <RichTextEditor
+            content={description}
+            onChange={(content) => setDescription(content)}
             placeholder={t('fields.descriptionPlaceholder')}
-            disabled={isSubmitting}
-            rows={6}
-            maxLength={5000}
-            className="w-full px-4 py-3 bg-brand-surface border border-brand-border rounded-xl text-brand-text-primary placeholder:text-brand-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+            className={isSubmitting ? 'opacity-50 pointer-events-none' : ''}
           />
         </BrandFormControl>
 
@@ -337,6 +335,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               options={[
                 { label: t('postTypes.basic'), value: 'basic' },
                 { label: t('postTypes.poll'), value: 'poll' },
+                { label: t('postTypes.project'), value: 'project' },
               ]}
               placeholder={t('fields.postTypePlaceholder')}
               disabled={isSubmitting}
