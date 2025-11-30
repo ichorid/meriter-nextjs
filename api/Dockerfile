@@ -8,6 +8,8 @@ RUN npm install -g pnpm@10.24.0
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY libs/shared-types ./libs/shared-types
 COPY api/package.json ./api/
+# Copy patches directory before install so pnpm can apply them (required for patchedDependencies in root package.json)
+COPY web/patches ./web/patches/
 
 # Install all dependencies first
 RUN pnpm --filter @meriter/shared-types... install --frozen-lockfile && \

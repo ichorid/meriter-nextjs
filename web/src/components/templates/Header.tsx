@@ -2,10 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import BellIcon from '@heroicons/react/24/outline/BellIcon';
-import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
-import MoonIcon from '@heroicons/react/24/outline/MoonIcon';
-import SunIcon from '@heroicons/react/24/outline/SunIcon';
+import { Bell, Menu, Moon, Sun } from 'lucide-react';
 import Link from 'next/link';
 import { useTheme } from '@/shared/lib/theme-provider';
 
@@ -60,7 +57,7 @@ export function Header({
             {/* Menu toggle for mobile view or small screen */}
             <div className="flex-1">
                 <label htmlFor="left-sidebar-drawer" className="btn btn-primary drawer-button lg:hidden">
-                    <Bars3Icon className="h-5 inline-block w-5" />
+                    <Menu className="h-5 w-5" />
                 </label>
                 <h1 className="text-2xl font-semibold ml-2">{pageTitle}</h1>
             </div>
@@ -69,20 +66,20 @@ export function Header({
                 {/* Light and dark theme selection toggle */}
                 <label className="swap">
                     <input type="checkbox" checked={currentTheme === 'dark'} onChange={handleThemeToggle} />
-                    <SunIcon
+                    <Sun
                         data-set-theme="light"
-                        className={`fill-current w-6 h-6 ${currentTheme === 'dark' ? 'swap-on' : 'swap-off'}`}
+                        className={`w-6 h-6 ${currentTheme === 'dark' ? 'swap-on' : 'swap-off'}`}
                     />
-                    <MoonIcon
+                    <Moon
                         data-set-theme="dark"
-                        className={`fill-current w-6 h-6 ${currentTheme === 'light' ? 'swap-on' : 'swap-off'}`}
+                        className={`w-6 h-6 ${currentTheme === 'light' ? 'swap-on' : 'swap-off'}`}
                     />
                 </label>
 
                 {/* Notification icon */}
                 <button className="btn btn-ghost ml-4 btn-circle" onClick={openNotification}>
                     <div className="indicator">
-                        <BellIcon className="h-6 w-6" />
+                        <Bell className="h-6 w-6" />
                         {noOfNotifications > 0 && (
                             <span className="indicator-item badge badge-secondary badge-sm">
                                 {noOfNotifications}

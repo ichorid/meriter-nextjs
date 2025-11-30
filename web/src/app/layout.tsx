@@ -7,8 +7,10 @@ import { detectBrowserLanguage, SUPPORTED_LOCALES, DEFAULT_LOCALE } from '@/i18n
 import { cookies } from 'next/headers';
 import { Root } from '@/components/Root';
 import { QueryProvider } from '@/providers/QueryProvider';
+import { GluestackUIProvider } from '@/providers/GluestackUIProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AuthWrapper } from '@/components/AuthWrapper';
+import { ToastContainer } from '@/shared/components/toast-container';
 import { AppModeProvider } from '@/contexts/AppModeContext';
 import StyledJsxRegistry from '@/registry';
 
@@ -71,18 +73,21 @@ export default async function RootLayout({
             </head>
             <body suppressHydrationWarning>
                 <StyledJsxRegistry>
-                    <AppModeProvider>
-                        <QueryProvider>
-                            <NextIntlClientProvider messages={messages}>
-                                <AuthProvider>
-                                    {/* Temporarily disable AuthWrapper for debugging - set DISABLE_AUTH_WRAPPER = true in AuthWrapper.tsx */}
-                                    <AuthWrapper enabledProviders={enabledProviders}>
-                                        <Root>{children}</Root>
-                                    </AuthWrapper>
-                                </AuthProvider>
-                            </NextIntlClientProvider>
-                        </QueryProvider>
-                    </AppModeProvider>
+                    <GluestackUIProvider>
+                        <AppModeProvider>
+                            <QueryProvider>
+                                <NextIntlClientProvider messages={messages}>
+                                    <AuthProvider>
+                                        {/* Temporarily disable AuthWrapper for debugging - set DISABLE_AUTH_WRAPPER = true in AuthWrapper.tsx */}
+                                        <AuthWrapper enabledProviders={enabledProviders}>
+                                            <Root>{children}</Root>
+                                        </AuthWrapper>
+                                        <ToastContainer />
+                                    </AuthProvider>
+                                </NextIntlClientProvider>
+                            </QueryProvider>
+                        </AppModeProvider>
+                    </GluestackUIProvider>
                 </StyledJsxRegistry>
             </body>
         </html>

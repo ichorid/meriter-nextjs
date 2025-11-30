@@ -1,0 +1,154 @@
+'use client';
+import React, { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+import { BrandInput } from '@/components/ui/BrandInput';
+import { Search, MapPin, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+const Map = dynamic(() => import('./Map'), {
+    ssr: false,
+    loading: () => <div className="h-64 w-full bg-gray-100 animate-pulse rounded-xl flex items-center justify-center text-gray-400">Loading map...</div>,
+});
+
+interface LocationPickerProps {
+    initialRegion?: string;
+    initialCity?: string;
+    onLocationSelect: (location: { region: string; city: string }) => void;
+}
+
+interface NominatimResult {
+    lat: string;
+    lon: string;
+    display_name: string;
+    address: {
+        city?: string;
+        town?: string;
+        village?: string;
+        state?: string;
+        country?: string;
+        [key: string]: string | undefined;
+    };
+}
+
+export function LocationPicker({ initialRegion, initialCity, onLocationSelect }: LocationPickerProps) {
+    const t = useTranslations('common'); // Assuming common translations exist, or fallback
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<NominatimResult[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [center, setCenter] = useState<[number, number]>([55.7558, 37.6173]); // Default Moscow
+    const [zoom, setZoom] = useState(10);
+    const [showMap, setShowMap] = useState(false);
+
+    // Initialize query from props if available
+    useEffect(() => {
+        if (initialCity || initialRegion) {
+            const parts = [initialCity, initialRegion].filter(Boolean);
+            if (parts.length > 0) {
+                setQuery(parts.join(', '));
+                // Optionally try to geocode this to set map center
+            }
+        }
+    }, []);
+
+    const searchLocation = async (q: string) => {
+        if (!q) return;
+        setIsLoading(true);
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&limit=5`);
+            const data = await response.json();
+            setResults(data);
+        } catch (error) {
+            console.error('Error searching location:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSearch = () => {
+        searchLocation(query);
+        setShowMap(true);
+    };
+
+    const handleSelectResult = (result: NominatimResult) => {
+        const lat = parseFloat(result.lat);
+        const lon = parseFloat(result.lon);
+        setCenter([lat, lon]);
+        setZoom(13);
+        setResults([]);
+
+        const city = result.address.city || result.address.town || result.address.village || '';
+        const region = result.address.state || result.address.country || '';
+
+        setQuery(result.display_name);
+        onLocationSelect({ region, city });
+    };
+
+    const handleMapClick = async (lat: number, lng: number) => {
+        setCenter([lat, lng]);
+        setIsLoading(true);
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`);
+            const data = await response.json();
+
+            const city = data.address.city || data.address.town || data.address.village || '';
+            const region = data.address.state || data.address.country || '';
+
+            setQuery(data.display_name);
+            onLocationSelect({ region, city });
+        } catch (error) {
+            console.error('Error reverse geocoding:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="relative">
+                <BrandInput
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search city or region..."
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    rightElement={
+                        <button
+                            onClick={handleSearch}
+                            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? <Loader2 className="w-5 h-5 animate-spin text-brand-primary" /> : <Search className="w-5 h-5 text-gray-500" />}
+                        </button>
+                    }
+                />
+
+                {results.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {results.map((result, index) => (
+                            <button
+                                key={index}
+                                className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-start space-x-2 text-sm"
+                                onClick={() => handleSelectResult(result)}
+                            >
+                                <MapPin className="w-4 h-4 mt-0.5 text-brand-primary shrink-0" />
+                                <span className="truncate">{result.display_name}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="h-64 w-full rounded-xl overflow-hidden border border-gray-200 relative">
+                <Map
+                    center={center}
+                    zoom={zoom}
+                    onLocationSelect={handleMapClick}
+                />
+                {!showMap && !initialCity && !initialRegion && (
+                    <div className="absolute inset-0 bg-gray-50/80 flex items-center justify-center z-[400]">
+                        <p className="text-gray-500 text-sm">Search for a location to view on map</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}

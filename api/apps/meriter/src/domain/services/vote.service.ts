@@ -15,7 +15,7 @@ export class VoteService {
     @InjectModel(Vote.name) private voteModel: Model<VoteDocument>,
     @InjectConnection() private mongoose: Connection,
     @Inject(forwardRef(() => PublicationService)) private publicationService: PublicationService,
-  ) {}
+  ) { }
 
   /**
    * Get the effective beneficiary for a target (publication or vote)
@@ -102,6 +102,46 @@ export class VoteService {
       throw new BadRequestException('Comment is required');
     }
 
+    // Enforce voting rules based on target type
+    if (targetType === 'publication') {
+      const publication = await this.publicationService.getPublication(targetId);
+      if (!publication) {
+        throw new NotFoundException('Publication not found');
+      }
+
+      const postType = publication.getPostType;
+      const isProject = publication.getIsProject;
+
+      // Project (Idea): Voting with wallet (Merits) only
+      if (postType === 'project' || isProject) {
+        if (amountQuota > 0) {
+          throw new BadRequestException(
+            'Projects can only be voted on with Merits (Wallet), not Daily Quota',
+          );
+        }
+        if (amountWallet <= 0) {
+          throw new BadRequestException(
+            'Projects require Merits (Wallet) to vote',
+          );
+        }
+      }
+
+      // Report (Good Deed) / Basic: Voting with Daily Quota only
+      // Assuming 'basic' implies Report/Good Deed context for now
+      if (postType === 'basic' && !isProject) {
+        if (amountWallet > 0) {
+          throw new BadRequestException(
+            'Reports (Good Deeds) can only be voted on with Daily Quota',
+          );
+        }
+        if (amountQuota <= 0) {
+          throw new BadRequestException(
+            'Reports require Daily Quota to vote',
+          );
+        }
+      }
+    }
+
     // Allow multiple votes on the same content - remove the duplicate check
     // Users can vote multiple times on the same publication/vote
 
@@ -128,7 +168,7 @@ export class VoteService {
     const result = await this.voteModel.deleteOne(
       { userId, targetType, targetId }
     );
-    
+
     if (result.deletedCount > 0) {
       this.logger.log(`Vote removed successfully`);
     }
@@ -160,26 +200,26 @@ export class VoteService {
 
   async getVotesOnVotes(voteIds: string[]): Promise<Map<string, Vote[]>> {
     if (voteIds.length === 0) return new Map();
-    
+
     const votes = await this.voteModel
       .find({ targetType: 'vote', targetId: { $in: voteIds } })
       .lean()
       .exec();
-    
+
     const votesMap = new Map<string, Vote[]>();
     votes.forEach(vote => {
       const existing = votesMap.get(vote.targetId) || [];
       existing.push(vote);
       votesMap.set(vote.targetId, existing);
     });
-    
+
     return votesMap;
   }
 
   async getVotesOnPublication(publicationId: string): Promise<Vote[]> {
     return this.voteModel
-      .find({ 
-        targetType: 'publication', 
+      .find({
+        targetType: 'publication',
         targetId: publicationId,
       })
       .lean()
@@ -202,39 +242,39 @@ export class VoteService {
     if (sortField === 'score') {
       // Fetch all votes (we'll sort after calculating scores)
       const allVotes = await this.voteModel
-        .find({ 
-          targetType: 'publication', 
+        .find({
+          targetType: 'publication',
           targetId: publicationId,
         })
         .lean()
         .exec();
-      
+
       // Calculate scores for each vote (sum of votes on votes)
       const voteIds = allVotes.map(v => v.id);
       const votesOnVotesMap = await this.getVotesOnVotes(voteIds);
-      
+
       // Add score to each vote
       const votesWithScores = allVotes.map(vote => ({
         ...vote,
         _score: (votesOnVotesMap.get(vote.id) || []).reduce((sum, r) => sum + (r.amountQuota + r.amountWallet), 0),
       }));
-      
+
       // Sort by score
       votesWithScores.sort((a, b) => {
         return sortOrder === 'asc' ? a._score - b._score : b._score - a._score;
       });
-      
+
       // Apply pagination
       return votesWithScores.slice(skip, skip + limit);
     }
-    
+
     // For other fields, sort in MongoDB query
     const sortValue = sortOrder === 'asc' ? 1 : -1;
     const sort: Record<string, 1 | -1> = { [sortField]: sortValue };
-    
+
     return this.voteModel
-      .find({ 
-        targetType: 'publication', 
+      .find({
+        targetType: 'publication',
         targetId: publicationId,
       })
       .limit(limit)

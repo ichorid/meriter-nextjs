@@ -57,7 +57,7 @@ export class VotesController {
     @InjectConnection() private readonly connection: Connection,
     @InjectModel(PublicationSchema.name)
     private readonly publicationModel: Model<PublicationDocument>,
-  ) {}
+  ) { }
 
   /**
    * Calculate remaining quota for a user in a community
@@ -171,6 +171,90 @@ export class VotesController {
   }
 
   /**
+   * Credit user wallet with automatic merit conversion for GDM Representatives
+   */
+  private async creditUserWithConversion(
+    userId: string,
+    communityId: string,
+    amount: number,
+    community: any,
+    referenceType: string,
+    referenceId: string,
+    description: string,
+  ): Promise<void> {
+    // Check if this is Good Deeds Marathon and user is Representative
+    let isGdmRepresentative = false;
+    if (community.typeTag === 'marathon-of-good') {
+      const userRole = await this.permissionService.getUserRoleInCommunity(
+        userId,
+        communityId,
+      );
+      if (userRole === 'lead') {
+        isGdmRepresentative = true;
+      }
+    }
+
+    // If GDM Representative, credit ONLY Future Vision wallet
+    if (isGdmRepresentative) {
+      // Find Future Vision community
+      const futureVisionCommunity =
+        await this.communityService.getCommunityByTypeTag('future-vision');
+
+      if (futureVisionCommunity) {
+        const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        };
+
+        // Credit Future Vision wallet (converted merits)
+        await this.walletService.addTransaction(
+          userId,
+          futureVisionCommunity.id,
+          'credit',
+          amount,
+          'personal',
+          'merit_transfer_gdm_to_fv',
+          referenceId,
+          fvCurrency,
+          `Converted merits from GDM: ${description}`,
+        );
+
+        this.logger.log(
+          `Awarded ${amount} converted merits to Representative ${userId} in Future Vision from GDM reference ${referenceId}`,
+        );
+      } else {
+        this.logger.warn(
+          `Future Vision community not found for merit conversion. Crediting GDM instead.`,
+        );
+        // Fallback: credit GDM if FV not found
+        isGdmRepresentative = false;
+      }
+    }
+
+    // If NOT GDM Representative (or fallback), credit the original community wallet
+    if (!isGdmRepresentative) {
+      const currency = community.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+
+      await this.walletService.addTransaction(
+        userId,
+        communityId,
+        'credit',
+        amount,
+        'personal',
+        referenceType,
+        referenceId,
+        currency,
+        description,
+      );
+    }
+  }
+
+  /**
    * Award merits to beneficiary after voting
    * For Good Deeds Marathon: awards to Representative's wallet in GDM
    * Also implements shared merits: if GDM, also credits FV wallet (if user is Representative)
@@ -186,66 +270,15 @@ export class VotesController {
       return;
     }
 
-    // Award merits to beneficiary in the current community
-    const currency = community.settings?.currencyNames || {
-      singular: 'merit',
-      plural: 'merits',
-      genitive: 'merits',
-    };
-
-    await this.walletService.addTransaction(
+    await this.creditUserWithConversion(
       beneficiaryId,
       communityId,
-      'credit',
       amount,
-      'personal',
+      community,
       'publication_vote',
       publication.getId.getValue(),
-      currency,
       `Merits from vote on publication ${publication.getId.getValue()}`,
     );
-
-    // If this is Good Deeds Marathon, also credit Future Vision wallet (shared merits)
-    // Only for Representatives (lead role)
-    if (community.typeTag === 'marathon-of-good') {
-      const beneficiaryRole =
-        await this.permissionService.getUserRoleInCommunity(
-          beneficiaryId,
-          communityId,
-        );
-
-      // Only Representatives get shared merits
-      if (beneficiaryRole === 'lead') {
-        // Find Future Vision community
-        const futureVisionCommunity =
-          await this.communityService.getCommunityByTypeTag('future-vision');
-
-        if (futureVisionCommunity) {
-          const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          };
-
-          // Credit Future Vision wallet (shared merits)
-          await this.walletService.addTransaction(
-            beneficiaryId,
-            futureVisionCommunity.id,
-            'credit',
-            amount,
-            'personal',
-            'merit_transfer_gdm_to_fv',
-            publication.getId.getValue(),
-            fvCurrency,
-            `Shared merits from GDM publication ${publication.getId.getValue()}`,
-          );
-
-          this.logger.log(
-            `Awarded ${amount} shared merits to Representative ${beneficiaryId} in Future Vision from GDM publication ${publication.getId.getValue()}`,
-          );
-        }
-      }
-    }
   }
 
   /**
@@ -514,7 +547,7 @@ export class VotesController {
           );
         }
       }
-    } catch {}
+    } catch { }
 
     return ApiResponseHelper.successResponse(
       { vote },
@@ -677,20 +710,14 @@ export class VotesController {
       throw new BadRequestException('Withdraw amount must be positive');
     }
 
-    // Transfer to wallet
-    await this.walletService.addTransaction(
+    // Transfer to wallet using shared method with conversion logic
+    await this.creditUserWithConversion(
       beneficiaryId,
       communityId,
-      'credit',
       withdrawAmount,
-      'personal',
+      community,
       'publication_withdrawal',
       id,
-      community.settings?.currencyNames || {
-        singular: 'merit',
-        plural: 'merits',
-        genitive: 'merits',
-      },
       `Withdrawal from publication ${id}`,
     );
 
@@ -770,20 +797,14 @@ export class VotesController {
       throw new BadRequestException('Withdraw amount must be positive');
     }
 
-    // Transfer to wallet
-    await this.walletService.addTransaction(
+    // Transfer to wallet using shared method with conversion logic
+    await this.creditUserWithConversion(
       beneficiaryId,
       communityId,
-      'credit',
       withdrawAmount,
-      'personal',
+      community,
       'vote_withdrawal',
       id,
-      community.settings?.currencyNames || {
-        singular: 'merit',
-        plural: 'merits',
-        genitive: 'merits',
-      },
       `Withdrawal from vote ${id}`,
     );
 

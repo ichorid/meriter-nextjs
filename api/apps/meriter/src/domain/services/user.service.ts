@@ -1,12 +1,24 @@
-import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleInit,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { User, UserDocument } from '../models/user/user.schema';
-import { Community, CommunityDocument } from '../models/community/community.schema';
+import {
+  Community,
+  CommunityDocument,
+} from '../models/community/community.schema';
 import { UserId } from '../value-objects';
 import { EventBus } from '../events/event-bus';
 import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
 import { uid } from 'uid';
+import { CommunityService } from './community.service';
+import { WalletService } from './wallet.service';
 
 export interface CreateUserDto {
   authProvider: string;
@@ -28,8 +40,13 @@ export class UserService implements OnModuleInit {
 
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(Community.name) private communityModel: Model<CommunityDocument>, // Modified constructor
-  ) { }
+    @InjectModel(Community.name)
+    private communityModel: Model<CommunityDocument>,
+    @Inject(forwardRef(() => CommunityService))
+    private communityService: CommunityService,
+    @Inject(forwardRef(() => WalletService))
+    private walletService: WalletService,
+  ) {}
 
   async onModuleInit() {
     try {
@@ -42,7 +59,8 @@ export class UserService implements OnModuleInit {
     } catch (error) {
       // Ignore error if index doesn't exist (though indexExists check should prevent this)
       // or if other error occurs, just log it
-      if (error.code !== 27) { // 27 is IndexNotFound
+      if (error.code !== 27) {
+        // 27 is IndexNotFound
         this.logger.warn(`Failed to drop legacy index: ${error.message}`);
       }
     }
@@ -60,7 +78,10 @@ export class UserService implements OnModuleInit {
     return doc;
   }
 
-  async getUserByAuthId(authProvider: string, authId: string): Promise<User | null> {
+  async getUserByAuthId(
+    authProvider: string,
+    authId: string,
+  ): Promise<User | null> {
     // Search by authProvider and authId
     const doc = await this.userModel.findOne({ authProvider, authId }).lean();
     return doc;
@@ -73,10 +94,12 @@ export class UserService implements OnModuleInit {
 
   async createOrUpdateUser(dto: CreateUserDto, token?: string): Promise<User> {
     // Check if user exists
-    let user = await this.userModel.findOne({
-      authProvider: dto.authProvider,
-      authId: dto.authId
-    }).lean();
+    let user = await this.userModel
+      .findOne({
+        authProvider: dto.authProvider,
+        authId: dto.authId,
+      })
+      .lean();
 
     if (user) {
       // Update existing user
@@ -85,7 +108,9 @@ export class UserService implements OnModuleInit {
         username: dto.username,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        displayName: dto.displayName || `${dto.firstName || ''} ${dto.lastName || ''}`.trim(),
+        displayName:
+          dto.displayName ||
+          `${dto.firstName || ''} ${dto.lastName || ''}`.trim(),
         avatarUrl: dto.avatarUrl,
         updatedAt: new Date(),
       };
@@ -95,22 +120,32 @@ export class UserService implements OnModuleInit {
       }
 
       // Update profile fields if provided (using dot notation for nested fields)
-      if (dto.bio !== undefined || dto.location !== undefined || dto.website !== undefined || dto.isVerified !== undefined) {
+      if (
+        dto.bio !== undefined ||
+        dto.location !== undefined ||
+        dto.website !== undefined ||
+        dto.isVerified !== undefined
+      ) {
         if (dto.bio !== undefined) updateData['profile.bio'] = dto.bio;
-        if (dto.location !== undefined) updateData['profile.location'] = dto.location;
-        if (dto.website !== undefined) updateData['profile.website'] = dto.website;
-        if (dto.isVerified !== undefined) updateData['profile.isVerified'] = dto.isVerified;
+        if (dto.location !== undefined)
+          updateData['profile.location'] = dto.location;
+        if (dto.website !== undefined)
+          updateData['profile.website'] = dto.website;
+        if (dto.isVerified !== undefined)
+          updateData['profile.isVerified'] = dto.isVerified;
       }
 
       await this.userModel.updateOne(
         { authProvider: dto.authProvider, authId: dto.authId },
-        { $set: updateData }
+        { $set: updateData },
       );
       // Re-fetch user to get updated data including preserved communityTags and communityMemberships
-      user = await this.userModel.findOne({
-        authProvider: dto.authProvider,
-        authId: dto.authId
-      }).lean();
+      user = await this.userModel
+        .findOne({
+          authProvider: dto.authProvider,
+          authId: dto.authId,
+        })
+        .lean();
     } else {
       // Create new user
       const newUser = {
@@ -120,7 +155,9 @@ export class UserService implements OnModuleInit {
         username: dto.username,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        displayName: dto.displayName || `${dto.firstName || ''} ${dto.lastName || ''}`.trim(),
+        displayName:
+          dto.displayName ||
+          `${dto.firstName || ''} ${dto.lastName || ''}`.trim(),
         avatarUrl: dto.avatarUrl,
         profile: {
           bio: dto.bio,
@@ -141,23 +178,127 @@ export class UserService implements OnModuleInit {
     return user;
   }
 
-  async addCommunityMembership(userId: string, communityId: string): Promise<User> {
+  /**
+   * Ensure user is a member of base communities (Future Vision and Marathon of Good)
+   * This should be called after user creation or on first login
+   * Performs complete membership setup:
+   * 1. Adds user to community's members list
+   * 2. Adds community to user's memberships
+   * 3. Creates wallet for user in community
+   */
+  async ensureUserInBaseCommunities(userId: string): Promise<void> {
+    this.logger.log(`Ensuring user ${userId} is in base communities`);
+
+    // Get base communities by typeTag
+    const futureVision = await this.communityModel
+      .findOne({ typeTag: 'future-vision' })
+      .lean();
+    const marathonOfGood = await this.communityModel
+      .findOne({ typeTag: 'marathon-of-good' })
+      .lean();
+
+    if (!futureVision || !marathonOfGood) {
+      this.logger.warn(
+        'Base communities not found. They should be created on server startup.',
+      );
+      return;
+    }
+
+    // Check if user is already a member
+    const user = await this.userModel.findOne({ id: userId }).lean();
+    if (!user) {
+      this.logger.error(`User ${userId} not found`);
+      return;
+    }
+
+    const memberships = user.communityMemberships || [];
+    const needsToJoinFV = !memberships.includes(futureVision.id);
+    const needsToJoinMG = !memberships.includes(marathonOfGood.id);
+
+    // Add user to Future Vision if needed
+    if (needsToJoinFV) {
+      this.logger.log(`Adding user ${userId} to Future Vision`);
+      try {
+        // 1. Add user to community's members list
+        await this.communityService.addMember(futureVision.id, userId);
+        // 2. Add community to user's memberships
+        await this.addCommunityMembership(userId, futureVision.id);
+        // 3. Create wallet for user in community
+        const currency = futureVision.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        };
+        await this.walletService.createOrGetWallet(
+          userId,
+          futureVision.id,
+          currency,
+        );
+        this.logger.log(`User ${userId} successfully added to Future Vision`);
+      } catch (error) {
+        this.logger.error(
+          `Failed to add user ${userId} to Future Vision: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+      }
+    }
+
+    // Add user to Marathon of Good if needed
+    if (needsToJoinMG) {
+      this.logger.log(`Adding user ${userId} to Marathon of Good`);
+      try {
+        // 1. Add user to community's members list
+        await this.communityService.addMember(marathonOfGood.id, userId);
+        // 2. Add community to user's memberships
+        await this.addCommunityMembership(userId, marathonOfGood.id);
+        // 3. Create wallet for user in community
+        const currency = marathonOfGood.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        };
+        await this.walletService.createOrGetWallet(
+          userId,
+          marathonOfGood.id,
+          currency,
+        );
+        this.logger.log(
+          `User ${userId} successfully added to Marathon of Good`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to add user ${userId} to Marathon of Good: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+      }
+    }
+
+    if (!needsToJoinFV && !needsToJoinMG) {
+      this.logger.log(`User ${userId} already in base communities`);
+    }
+  }
+
+  async addCommunityMembership(
+    userId: string,
+    communityId: string,
+  ): Promise<User> {
     return MongoArrayUpdateHelper.addToArray<User>(
       this.userModel,
       { id: userId },
       'communityMemberships',
       communityId,
-      'User'
+      'User',
     );
   }
 
-  async removeCommunityMembership(userId: string, communityId: string): Promise<User> {
+  async removeCommunityMembership(
+    userId: string,
+    communityId: string,
+  ): Promise<User> {
     return MongoArrayUpdateHelper.removeFromArray<User>(
       this.userModel,
       { id: userId },
       'communityMemberships',
       communityId,
-      'User'
+      'User',
     );
   }
 
@@ -166,11 +307,16 @@ export class UserService implements OnModuleInit {
     return user?.communityMemberships || [];
   }
 
-  async isUserMemberOfCommunity(userId: string, communityId: string): Promise<boolean> {
-    const user = await this.userModel.findOne({
-      id: userId,
-      communityMemberships: communityId
-    }).lean();
+  async isUserMemberOfCommunity(
+    userId: string,
+    communityId: string,
+  ): Promise<boolean> {
+    const user = await this.userModel
+      .findOne({
+        id: userId,
+        communityMemberships: communityId,
+      })
+      .lean();
     return user !== null;
   }
 
@@ -183,7 +329,11 @@ export class UserService implements OnModuleInit {
       .lean();
   }
 
-  async getUsersByCommunity(communityId: string, limit: number = 50, skip: number = 0): Promise<User[]> {
+  async getUsersByCommunity(
+    communityId: string,
+    limit: number = 50,
+    skip: number = 0,
+  ): Promise<User[]> {
     return this.userModel
       .find({ communityMemberships: communityId })
       .limit(limit)
@@ -192,14 +342,17 @@ export class UserService implements OnModuleInit {
       .lean();
   }
 
-  async updateProfile(userId: string, profileData: {
-    bio?: string;
-    location?: { region: string; city: string };
-    website?: string;
-    values?: string;
-    about?: string;
-    contacts?: { email: string; messenger: string };
-  }): Promise<User> {
+  async updateProfile(
+    userId: string,
+    profileData: {
+      bio?: string;
+      location?: { region: string; city: string };
+      website?: string;
+      values?: string;
+      about?: string;
+      contacts?: { email: string; messenger: string };
+    },
+  ): Promise<User> {
     const user = await this.userModel.findOne({ id: userId });
     if (!user) {
       throw new NotFoundException(`User with id ${userId} not found`);
@@ -229,15 +382,14 @@ export class UserService implements OnModuleInit {
       updateData['profile.contacts'] = profileData.contacts;
     }
 
-    await this.userModel.updateOne(
-      { id: userId },
-      { $set: updateData }
-    );
+    await this.userModel.updateOne({ id: userId }, { $set: updateData });
 
     // Re-fetch user to get updated data
     const updatedUser = await this.userModel.findOne({ id: userId }).lean();
     if (!updatedUser) {
-      throw new NotFoundException(`User with id ${userId} not found after update`);
+      throw new NotFoundException(
+        `User with id ${userId} not found after update`,
+      );
     }
     return updatedUser;
   }

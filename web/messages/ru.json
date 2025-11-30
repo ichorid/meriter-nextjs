@@ -695,6 +695,8 @@
             "inviteType": "Тип приглашения",
             "leadToParticipant": "От лида к участнику",
             "superadminToLead": "От суперадмина к лиду",
+            "leadToParticipantDescription": "Создать инвайт для добавления участника в это командное сообщество",
+            "superadminToLeadDescription": "Создать инвайт для назначения пользователя Лидом (Представителем) этого сообщества",
             "targetUserId": "ID целевого пользователя",
             "targetUserIdPlaceholder": "Введите ID целевого пользователя (необязательно)",
             "expiresInDays": "Истекает через (дней)",

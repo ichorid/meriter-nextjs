@@ -698,6 +698,8 @@
             "inviteType": "Invite Type",
             "leadToParticipant": "Lead to Participant",
             "superadminToLead": "Superadmin to Lead",
+            "leadToParticipantDescription": "Create an invite to add a participant to this team community",
+            "superadminToLeadDescription": "Create an invite to make a user a Lead (Representative) of this community",
             "targetUserId": "Target User ID",
             "targetUserIdPlaceholder": "Enter target user ID (optional)",
             "expiresInDays": "Expires In (Days)",

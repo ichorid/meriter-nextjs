@@ -2,6 +2,7 @@
 
 import { useTheme } from '../lib/theme-provider';
 import { initDataRaw, useSignal } from '@telegram-apps/sdk-react';
+import { Smartphone, Sun, Moon } from 'lucide-react';
 
 export function ThemeToggle() {
     const { theme, setTheme, resolvedTheme } = useTheme();
@@ -27,12 +28,12 @@ export function ThemeToggle() {
 
     const getIcon = () => {
         if (isInTelegram) {
-            return 'phone_android'; // Different icon to indicate Telegram mode
+            return Smartphone; // Different icon to indicate Telegram mode
         }
         if (theme === 'auto') {
-            return 'brightness_auto';
+            return Sun; // Auto theme uses sun icon
         }
-        return resolvedTheme === 'dark' ? 'dark_mode' : 'light_mode';
+        return resolvedTheme === 'dark' ? Moon : Sun;
     };
 
     const getLabel = () => {
@@ -45,6 +46,8 @@ export function ThemeToggle() {
         return theme === 'dark' ? 'Dark' : 'Light';
     };
 
+    const Icon = getIcon();
+
     return (
         <button
             onClick={cycleTheme}
@@ -52,7 +55,7 @@ export function ThemeToggle() {
             aria-label={`Theme: ${getLabel()}`}
             title={`Theme: ${getLabel()}${isInTelegram ? ' - Follows Telegram settings' : ''}`}
         >
-            <span className="material-symbols-outlined">{getIcon()}</span>
+            <Icon className="w-5 h-5" />
         </button>
     );
 }

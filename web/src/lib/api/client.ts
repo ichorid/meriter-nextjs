@@ -7,6 +7,7 @@ import { ValidationError as ZodValidationError } from './validation';
 import { formatValidationError, logValidationError } from './validation-error-handler';
 import { clearAuthStorage } from '@/lib/utils/auth';
 import { invalidateAuthQueries } from '@/lib/utils/query-client-cache';
+import { useToastStore } from '@/shared/stores/toast.store';
 
 interface RequestConfig {
   timeout?: number;
@@ -52,9 +53,9 @@ export class ApiClient {
         if (error.response?.status === 401) {
           // Don't clear if this is an auth endpoint (might be during login flow)
           const url = error.config?.url || '';
-          const isAuthEndpoint = url.includes('/api/v1/auth/telegram/widget') || 
-                                 url.includes('/api/v1/auth/telegram/webapp');
-          
+          const isAuthEndpoint = url.includes('/api/v1/auth/telegram/widget') ||
+            url.includes('/api/v1/auth/telegram/webapp');
+
           if (!isAuthEndpoint) {
             // Clear JWT cookie and local storage using the centralized utility
             if (typeof document !== 'undefined') {
@@ -62,10 +63,37 @@ export class ApiClient {
             }
             // Invalidate React Query cache to remove stale auth data
             invalidateAuthQueries();
+
+            // Show toast notification with server message or fallback
+            const serverMessage = (error.response?.data as any)?.error?.message ||
+              (error.response?.data as any)?.message ||
+              'Session expired. Please login again.';
+            useToastStore.getState().addToast(serverMessage, 'error');
           }
         }
-        
+
         const apiError = transformAxiosError(error);
+
+        // Handle 500 Server Errors globally
+        if (error.response?.status && error.response.status >= 500) {
+          const serverMessage = (error.response?.data as any)?.error?.message ||
+            (error.response?.data as any)?.message ||
+            'Server error. Please try again later.';
+          useToastStore.getState().addToast(serverMessage, 'error');
+        }
+
+        // Handle Network Errors globally
+        if (apiError.code === 'NETWORK_ERROR') {
+          useToastStore.getState().addToast('Network error. Please check your connection.', 'error');
+        } else if (!error.response?.status || error.response.status < 500) {
+          // Handle other API errors (except 500s which are already handled)
+          // We also skip 401s here because they are handled above with a specific message
+          // But we need to make sure we don't duplicate toasts if we add more specific handlers later
+          if (error.response?.status !== 401) {
+            useToastStore.getState().addToast(apiError.message || 'An error occurred', 'error');
+          }
+        }
+
         return Promise.reject(apiError);
       }
     );

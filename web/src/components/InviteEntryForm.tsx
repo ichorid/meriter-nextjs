@@ -6,8 +6,9 @@ import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInviteByCode, useInvite } from '@/hooks/api/useInvites';
 import { LoadingState } from '@/components/atoms/LoadingState';
-import { ErrorDisplay } from '@/components/atoms/ErrorDisplay';
 import { BrandButton, BrandInput, BrandFormControl } from '@/components/ui';
+import { useToastStore } from '@/shared/stores/toast.store';
+import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 
 interface InviteEntryFormProps {
     className?: string;
@@ -20,6 +21,7 @@ export function InviteEntryForm({ className = '' }: InviteEntryFormProps) {
     const tCommon = useTranslations('common');
 
     const { logout, isLoading: authLoading } = useAuth();
+    const addToast = useToastStore((state) => state.addToast);
     const [inviteCode, setInviteCode] = useState(searchParams?.get('invite') || '');
     const [inviteError, setInviteError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,7 +30,9 @@ export function InviteEntryForm({ className = '' }: InviteEntryFormProps) {
 
     const handleSubmit = async () => {
         if (!inviteCode.trim()) {
-            setInviteError(t('errors.inviteCodeRequired'));
+            const message = t('errors.inviteCodeRequired');
+            setInviteError(message);
+            addToast(message, 'warning');
             return;
         }
 
@@ -37,10 +41,13 @@ export function InviteEntryForm({ className = '' }: InviteEntryFormProps) {
 
         try {
             await useInviteMutation.mutateAsync(inviteCode.trim());
+            addToast(t('success'), 'success');
             router.push('/meriter/home');
         } catch (error: any) {
             console.error('Failed to use invite:', error);
-            setInviteError(error.message || t('errors.invalidInviteCode'));
+            const errorMessage = extractErrorMessage(error, t('errors.invalidInviteCode'));
+            setInviteError(errorMessage);
+            addToast(errorMessage, 'error');
         } finally {
             setIsSubmitting(false);
         }

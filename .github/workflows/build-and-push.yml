@@ -33,7 +33,7 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 9
+          version: 10.24.0
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -43,7 +43,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Run tests
-        run: pnpm test
+        run: pnpm test:ci
 
   determine-target:
     name: Select deployment target
@@ -126,9 +126,8 @@ jobs:
           COMPONENT="${{ matrix.component }}"
           BUILD_TYPE="${{ needs.determine-target.outputs.build_type }}"
           IMAGE_NAME="${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.component }}"
-          
+
           echo "image_name=${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
-          
           if [[ "${{ github.event_name }}" == "push" && "$BUILD_TYPE" != "" ]]; then
             if [ "$BUILD_TYPE" = "dev" ]; then
               TAG1="${COMPONENT}-dev-${{ github.sha }}"
@@ -175,10 +174,9 @@ jobs:
           COMPONENT="${{ matrix.component }}"
           BUILD_TYPE="${{ needs.determine-target.outputs.build_type }}"
           IMAGE_NAME="${{ steps.tags.outputs.image_name }}"
-          
+
           echo "### ${COMPONENT^} image published :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
           if [ "$BUILD_TYPE" = "dev" ]; then
             echo "**Context:** dev branch" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY

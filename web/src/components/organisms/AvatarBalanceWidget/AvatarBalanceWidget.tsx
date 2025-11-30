@@ -4,6 +4,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { Settings } from 'lucide-react';
 import { Avatar } from '@/components/atoms/Avatar';
 import { Button } from '@/components/atoms/Button';
 
@@ -78,7 +79,7 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
               aria-label="Settings"
               title="Settings"
             >
-              <span className="material-symbols-outlined text-xs">settings</span>
+              <Settings className="w-3 h-3" />
             </Button>
           </div>
         </div>

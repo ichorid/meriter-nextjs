@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
+import { Info } from 'lucide-react';
 
 export interface InputWrapperProps {
     labelTitle?: string;
@@ -45,7 +45,7 @@ export function InputWrapper({
                         <span className={`text-base-content ${labelStyle}`}>{labelTitle}</span>
                         {labelDescription && (
                             <div className="tooltip tooltip-right" data-tip={labelDescription}>
-                                <InformationCircleIcon className="w-4 h-4" />
+                                <Info className="w-4 h-4" />
                             </div>
                         )}
                     </div>

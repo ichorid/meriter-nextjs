@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, useCallback, memo } from "react";
+import { useState, useMemo, useCallback, memo, useEffect } from "react";
 import { etv } from '@shared/lib/input-utils';
 import Slider from "rc-slider";
 import { classList } from '@lib/classList';
 import { useTranslations } from 'next-intl';
+import { useToastStore } from '@/shared/stores/toast.store';
 import 'rc-slider/assets/index.css';
 
 export interface FormCommentVoteBaseProps {
@@ -47,6 +48,7 @@ export const FormCommentVoteBase = memo(({
     currencyIconUrl,
 }: FormCommentVoteBaseProps) => {
     const t = useTranslations('comments');
+    const addToast = useToastStore((state) => state.addToast);
     const [selected, setSelected] = useState(false);
     const overflow = amount >= 0 ? amount > freePlus : amount < -freeMinus;
     const directionPlus = amount > 0;
@@ -106,6 +108,13 @@ export const FormCommentVoteBase = memo(({
             boxShadow: amount !== 0 ? `0 0 0 3px ${amount > 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}` : 'none',
         };
     }, [isVertical, amount]);
+
+    // Show error toast when error changes
+    useEffect(() => {
+        if (error) {
+            addToast(error, 'error');
+        }
+    }, [error, addToast]);
 
     // Format amount display for vertical mode
     const formatAmountDisplay = () => {
@@ -260,7 +269,7 @@ export const FormCommentVoteBase = memo(({
             
             {/* Warning for vertical mode when comment is empty */}
             {isVertical && amount !== 0 && !comment?.trim() && (
-                <div className="alert alert-warning mt-2">
+                <div className="text-sm text-warning p-2 bg-warning/10 rounded-lg mt-2">
                     <div className="flex items-center gap-2">
                         <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -271,7 +280,6 @@ export const FormCommentVoteBase = memo(({
                     </div>
                 </div>
             )}
-            {error && <div className="alert alert-error mt-2">{error}</div>}
         </div>
     );
 });

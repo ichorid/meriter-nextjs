@@ -14,9 +14,12 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY libs/shared-types ./libs/shared-types
 COPY web/package.json ./web/
+# Copy patches directory before install so pnpm can apply them
+COPY web/patches ./web/patches/
 RUN pnpm --filter @meriter/web... install --frozen-lockfile
 
 COPY web ./web
+# Patch is automatically applied by pnpm via patchedDependencies in root package.json
 # Increase Node.js memory limit for build (6GB) - required for Gluestack UI + React Native Web
 ENV NODE_OPTIONS="--max-old-space-size=6144"
 RUN pnpm -C web build

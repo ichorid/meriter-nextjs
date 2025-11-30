@@ -17,6 +17,25 @@ import { LoginForm } from '@/components/LoginForm';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AppModeProvider } from '@/contexts/AppModeContext';
 
+// Mock toast store
+const mockAddToast = jest.fn();
+const mockRemoveToast = jest.fn();
+jest.mock('@/shared/stores/toast.store', () => ({
+  useToastStore: jest.fn((selector: any) => {
+    if (selector.toString().includes('addToast')) {
+      return mockAddToast;
+    }
+    if (selector.toString().includes('removeToast')) {
+      return mockRemoveToast;
+    }
+    return {
+      toasts: [],
+      addToast: mockAddToast,
+      removeToast: mockRemoveToast,
+    };
+  }),
+}));
+
 // Mock next-intl
 const mockMessages = {
   login: {
@@ -164,6 +183,8 @@ describe('Login Page Integration', () => {
     jest.clearAllMocks();
     mockPush.mockClear();
     mockReplace.mockClear();
+    mockAddToast.mockClear();
+    mockRemoveToast.mockClear();
 
     // Reset fake data mode to false by default
     mockIsFakeDataMode.mockReturnValue(false);
@@ -296,7 +317,7 @@ describe('Login Page Integration', () => {
   });
 
   describe('Error Handling', () => {
-    it('should display auth error when present', () => {
+    it('should display auth error when present via toast', async () => {
       mockUseAuth.mockReturnValue({
         user: null,
         isLoading: false,
@@ -316,7 +337,10 @@ describe('Login Page Integration', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByText(/Authentication failed/i)).toBeInTheDocument();
+      // Wait for useEffect to trigger toast
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith('Authentication failed', 'error');
+      });
     });
 
     it('should show loading state during authentication', () => {
