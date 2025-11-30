@@ -23,6 +23,7 @@ export const BrandInput = React.forwardRef<HTMLInputElement, BrandInputProps>(
             leftIcon,
             rightIcon,
             id,
+            fullWidth,
             ...props
         },
         ref
@@ -34,7 +35,7 @@ export const BrandInput = React.forwardRef<HTMLInputElement, BrandInputProps>(
                 {label && (
                     <label
                         htmlFor={inputId}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-brand-text-primary"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-brand-text-primary dark:text-base-content"
                     >
                         {label}
                     </label>
@@ -49,7 +50,7 @@ export const BrandInput = React.forwardRef<HTMLInputElement, BrandInputProps>(
                         id={inputId}
                         ref={ref}
                         className={`
-              flex h-11 w-full rounded-xl border border-brand-secondary/20 bg-brand-surface px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-brand-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50
+              flex h-11 w-full rounded-xl border border-brand-secondary/20 dark:border-base-300/50 bg-brand-surface dark:bg-base-100 px-3 py-2 text-sm ring-offset-white dark:ring-offset-base-100 file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-brand-text-muted dark:placeholder:text-base-content/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50
               ${leftIcon ? 'pl-10' : ''}
               ${rightIcon ? 'pr-10' : ''}
               ${error ? 'border-red-500 focus-visible:ring-red-500' : ''}
@@ -64,10 +65,10 @@ export const BrandInput = React.forwardRef<HTMLInputElement, BrandInputProps>(
                     )}
                 </div>
                 {error && (
-                    <p className="text-xs text-red-500 font-medium">{error}</p>
+                    <p className="text-xs text-red-500 dark:text-red-400 font-medium">{error}</p>
                 )}
                 {!error && helperText && (
-                    <p className="text-xs text-brand-text-muted">{helperText}</p>
+                    <p className="text-xs text-brand-text-muted dark:text-base-content/70">{helperText}</p>
                 )}
             </div>
         );

@@ -136,6 +136,7 @@ export const RichTextEditor = ({ content, onChange, placeholder, className, edit
         ],
         content,
         editable,
+        immediatelyRender: false,
         onUpdate: ({ editor }) => {
             onChange(editor.getHTML());
         },

@@ -80,10 +80,10 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
             />
           </div>
           <div className="flex-1 min-w-0">
-            <div className={`text-sm font-medium truncate ${isActive ? 'text-primary-content' : ''}`}>
+            <div className={`text-sm font-medium truncate ${isActive ? 'text-primary-content' : 'text-base-content dark:text-base-content'}`}>
               {community.name}
             </div>
-            <div className={`text-xs truncate flex items-center gap-1 ${isActive ? 'text-primary-content/80' : 'text-base-content/60'}`}>
+            <div className={`text-xs truncate flex items-center gap-1 ${isActive ? 'text-primary-content/80' : 'text-base-content/60 dark:text-base-content/60'}`}>
               {currencyIconUrl && (
                 <img src={currencyIconUrl} alt="Currency" className="w-3 h-3 inline-block" />
               )}

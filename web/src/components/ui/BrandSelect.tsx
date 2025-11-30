@@ -45,15 +45,15 @@ export const BrandSelect: React.FC<BrandSelectProps> = ({
           appearance-none
           ${fullWidth ? 'w-full' : ''}
           px-4 py-2.5 pr-10
-          text-sm text-brand-text-primary
-          bg-base-100
+          text-sm text-brand-text-primary dark:text-base-content
+          bg-base-100 dark:bg-base-100
           border rounded-xl
           transition-colors
           focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2
           disabled:opacity-50 disabled:cursor-not-allowed
           ${error
                         ? 'border-red-500 focus:ring-red-500'
-                        : 'border-brand-secondary/20 hover:border-brand-primary/50'
+                        : 'border-brand-secondary/20 dark:border-base-300/50 hover:border-brand-primary/50 dark:hover:border-base-300'
                     }
         `}
             >
@@ -69,7 +69,7 @@ export const BrandSelect: React.FC<BrandSelectProps> = ({
                 ))}
             </select>
             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                <ChevronDown size={18} className="text-brand-text-secondary" />
+                <ChevronDown size={18} className="text-brand-text-secondary dark:text-base-content/70" />
             </div>
         </div>
     );

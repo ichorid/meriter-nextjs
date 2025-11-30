@@ -40,34 +40,34 @@ export function HeroSection({
       label: t('hero.stats.publications'),
       value: stats.publications,
       icon: FileText,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
     },
     {
       label: t('hero.stats.comments'),
       value: stats.comments,
       icon: MessageSquare,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
+      color: 'text-green-600 dark:text-green-400',
+      bgColor: 'bg-green-50 dark:bg-green-900/20',
     },
     {
       label: t('hero.stats.polls'),
       value: stats.polls,
       icon: BarChart3,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
+      color: 'text-purple-600 dark:text-purple-400',
+      bgColor: 'bg-purple-50 dark:bg-purple-900/20',
     },
     {
       label: t('hero.stats.updates'),
       value: stats.updates,
       icon: TrendingUp,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
+      color: 'text-orange-600 dark:text-orange-400',
+      bgColor: 'bg-orange-50 dark:bg-orange-900/20',
     },
   ];
 
   return (
-    <div className="bg-gradient-to-br from-brand-primary/5 via-base-100 to-brand-secondary/5 rounded-2xl p-6 mb-6 border border-base-300">
+    <div className="bg-gradient-to-br from-brand-primary/5 via-base-100 to-brand-secondary/5 rounded-2xl p-6 mb-6 border border-base-300 dark:border-base-content/20">
       {/* Greeting Section */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -78,10 +78,10 @@ export function HeroSection({
             size="lg"
           />
           <div>
-            <h1 className="text-2xl font-bold text-brand-text-primary">
+            <h1 className="text-2xl font-bold text-brand-text-primary dark:text-base-content">
               {getGreeting()}, {userName || t('hero.user')}!
             </h1>
-            <p className="text-sm text-brand-text-secondary mt-1">
+            <p className="text-sm text-brand-text-secondary dark:text-base-content/80 mt-1">
               {t('hero.subtitle')}
             </p>
           </div>
@@ -103,7 +103,7 @@ export function HeroSection({
                   {isLoading ? '...' : stat.value}
                 </span>
               </div>
-              <p className="text-xs text-base-content/70 font-medium">
+              <p className="text-xs text-base-content/70 dark:text-base-content/70 font-medium">
                 {stat.label}
               </p>
             </div>

@@ -296,6 +296,31 @@
   }
 }
 
+/* Dark mode shadows - lighter shadows for dark theme */
+[data-theme="dark"] .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .shadow-md {
+  box-shadow: 0 4px 6px -1px rgba(255, 255, 255, 0.05), 0 2px 4px -1px rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(255, 255, 255, 0.05), 0 4px 6px -2px rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .shadow-xl {
+  box-shadow: 0 20px 25px -5px rgba(255, 255, 255, 0.05), 0 10px 10px -5px rgba(255, 255, 255, 0.02);
+}
+
+[data-theme="dark"] .hover\:shadow-lg:hover {
+  box-shadow: 0 10px 15px -3px rgba(255, 255, 255, 0.08), 0 4px 6px -2px rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .hover\:shadow-xl:hover {
+  box-shadow: 0 20px 25px -5px rgba(255, 255, 255, 0.08), 0 10px 10px -5px rgba(255, 255, 255, 0.05);
+}
+
 /* Utility classes */
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;

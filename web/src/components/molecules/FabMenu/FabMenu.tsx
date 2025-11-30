@@ -57,35 +57,35 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
         <div className="fixed bottom-6 right-6 z-50" ref={menuRef}>
             {/* Menu Items */}
             {isOpen && (
-                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-xl shadow-xl border border-brand-border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-xl shadow-xl border border-brand-border dark:border-base-300/50 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
                     <div className="py-1">
                         <button
                             onClick={handleCreatePost}
                             className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left"
                         >
                             <FileText size={18} className="text-brand-primary" />
-                            <span className="text-sm font-medium text-brand-text-primary">{t('createPost')}</span>
+                            <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">{t('createPost')}</span>
                         </button>
                         <button
                             onClick={handleCreatePoll}
                             className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left"
                         >
                             <BarChart2 size={18} className="text-brand-primary" />
-                            <span className="text-sm font-medium text-brand-text-primary">{t('createPoll')}</span>
+                            <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">{t('createPoll')}</span>
                         </button>
                         <button
                             onClick={handleCreateProject}
                             className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left opacity-50 cursor-not-allowed"
                         >
-                            <FolderKanban size={18} className="text-brand-text-secondary" />
-                            <span className="text-sm font-medium text-brand-text-secondary">Project (Coming Soon)</span>
+                            <FolderKanban size={18} className="text-brand-text-secondary dark:text-base-content/70" />
+                            <span className="text-sm font-medium text-brand-text-secondary dark:text-base-content/70">Project (Coming Soon)</span>
                         </button>
                         <button
                             onClick={handleCreateReport}
                             className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left opacity-50 cursor-not-allowed"
                         >
-                            <FileSpreadsheet size={18} className="text-brand-text-secondary" />
-                            <span className="text-sm font-medium text-brand-text-secondary">Report (Coming Soon)</span>
+                            <FileSpreadsheet size={18} className="text-brand-text-secondary dark:text-base-content/70" />
+                            <span className="text-sm font-medium text-brand-text-secondary dark:text-base-content/70">Report (Coming Soon)</span>
                         </button>
                     </div>
                 </div>

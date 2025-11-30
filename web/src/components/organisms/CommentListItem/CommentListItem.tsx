@@ -65,7 +65,7 @@ export const CommentListItem: React.FC<CommentListItemProps> = ({
   return (
     <div className={`mb-4 ${className}`}>
       <div
-        className="card bg-base-100 shadow-md rounded-xl overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+        className="card bg-base-100 shadow-md dark:border dark:border-base-content/20 rounded-xl overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
         onClick={handleClick}
       >
         <div className="flex">

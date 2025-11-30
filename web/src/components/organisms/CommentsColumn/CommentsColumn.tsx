@@ -106,15 +106,17 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
                 size="sm"
                 onClick={handleBack}
                 leftIcon={<ArrowLeft size={16} />}
+                className="dark:text-base-content"
               >
                 Back
               </BrandButton>
-              <h2 className="text-lg font-semibold flex-1">Comments</h2>
+              <h2 className="text-lg font-semibold flex-1 text-base-content dark:text-base-content">Comments</h2>
               <BrandButton
                 variant="ghost"
                 size="sm"
                 onClick={handleBack}
                 leftIcon={<X size={16} />}
+                className="dark:text-base-content"
               />
             </>
           ) : (

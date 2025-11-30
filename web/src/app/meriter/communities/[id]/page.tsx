@@ -243,28 +243,28 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
                     {/* Error Messages */}
                     {error === false && chatUrl && (
-                        <div className="bg-blue-50 text-blue-700 p-4 rounded-lg text-sm border border-blue-200">
+                        <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-4 rounded-lg text-sm border border-blue-200 dark:border-blue-800/50">
                             {t('communities.toAddPublication')}{" "}
-                            <a href={chatUrl} className="underline font-medium hover:opacity-80">
+                            <a href={chatUrl} className="underline font-medium hover:opacity-80 dark:text-blue-300">
                                 {t('communities.writeMessageInChat')}
                             </a>
                         </div>
                     )}
                     {error === true && (
-                        <div className="bg-red-50 text-red-700 p-4 rounded-lg text-sm border border-red-200 text-center">
+                        <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-4 rounded-lg text-sm border border-red-200 dark:border-red-800/50 text-center">
                             {t('communities.noAccess')}
                         </div>
                     )}
 
                     {/* Setup banner */}
                     {comms?.needsSetup && (
-                        <div className={`p-4 rounded-lg border ${comms?.isAdmin ? "bg-yellow-50 text-yellow-800 border-yellow-200" : "bg-blue-50 text-blue-800 border-blue-200"}`}>
+                        <div className={`p-4 rounded-lg border ${comms?.isAdmin ? "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/50" : "bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800/50"}`}>
                             {comms?.isAdmin ? (
                                 <span>
                                     {tCommunities('unconfigured.banner.adminPrefix')}{' '}
                                     <a
                                         href={routes.communitySettings(chatId)}
-                                        className="underline font-semibold hover:opacity-80"
+                                        className="underline font-semibold hover:opacity-80 dark:text-yellow-300"
                                         onClick={(e) => {
                                             e.preventDefault();
                                             router.push(routes.communitySettings(chatId));

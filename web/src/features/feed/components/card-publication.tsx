@@ -51,7 +51,7 @@ export const CardPublication = ({
     
     return (
     <div 
-        className={`card bg-base-100 shadow-lg rounded-2xl mb-5 overflow-hidden transition-all${clickableClass}`}
+        className={`card bg-base-100 shadow-lg dark:border dark:border-base-content/20 rounded-2xl mb-5 overflow-hidden transition-all${clickableClass}`}
         onClick={onClick}
     >
         <div className="card-body p-0">
@@ -75,10 +75,10 @@ export const CardPublication = ({
                                 />
                             </div>
                         )}
-                        <div className="text-[10px] opacity-60">{subtitle}</div>
+                        <div className="text-[10px] opacity-60 text-base-content dark:text-base-content">{subtitle}</div>
                     </div>
                     <div
-                        className="description text-right opacity-30 cursor-pointer hover:opacity-50 text-xs"
+                        className="description text-right opacity-30 cursor-pointer hover:opacity-50 text-xs text-base-content dark:text-base-content"
                         onClick={(e) => {
                             e.stopPropagation();
                             if (onDescriptionClick) onDescriptionClick();
@@ -98,12 +98,12 @@ export const CardPublication = ({
                             onError={onAvatarUrlNotFound}
                         />
                         <div className="info">
-                            <div className="text-xs font-medium">{title}</div>
+                            <div className="text-xs font-medium text-base-content dark:text-base-content">{title}</div>
                         </div>
                     </div>
                     {beneficiaryName && (
                         <div className="flex items-center gap-2">
-                            <span className="text-xs opacity-70">to:</span>
+                            <span className="text-xs opacity-70 text-base-content dark:text-base-content">to:</span>
                             <Avatar
                                 src={beneficiaryAvatarUrl}
                                 alt={beneficiaryName}
@@ -111,9 +111,9 @@ export const CardPublication = ({
                                 size={32}
                             />
                             <div className="info">
-                                <div className="text-xs font-medium">{beneficiaryName}</div>
+                                <div className="text-xs font-medium text-base-content dark:text-base-content">{beneficiaryName}</div>
                                 {beneficiarySubtitle && (
-                                    <div className="text-[10px] opacity-60">{beneficiarySubtitle}</div>
+                                    <div className="text-[10px] opacity-60 text-base-content dark:text-base-content">{beneficiarySubtitle}</div>
                                 )}
                             </div>
                         </div>

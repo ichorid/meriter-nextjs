@@ -45,14 +45,14 @@ export function CommunityHero({ community, stats }: CommunityHeroProps) {
         {/* Community Info */}
         <div className="mt-4 space-y-2">
           <div>
-            <h1 className="text-2xl font-bold text-brand-text-primary">
+            <h1 className="text-2xl font-bold text-brand-text-primary dark:text-base-content">
               {name}
             </h1>
           </div>
 
           {/* Description */}
           {description && (
-            <p className="text-sm text-brand-text-primary leading-relaxed">
+            <p className="text-sm text-brand-text-primary dark:text-base-content leading-relaxed">
               {description}
             </p>
           )}
@@ -64,12 +64,12 @@ export function CommunityHero({ community, stats }: CommunityHeroProps) {
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
                 <div className="flex items-center justify-center mb-1">
-                  <FileText size={18} className="text-brand-text-secondary mr-1" />
+                  <FileText size={18} className="text-brand-text-secondary dark:text-base-content/70 mr-1" />
                 </div>
-                <div className="text-2xl font-bold text-brand-text-primary">
+                <div className="text-2xl font-bold text-brand-text-primary dark:text-base-content">
                   {stats.publications}
                 </div>
-                <div className="text-xs text-brand-text-secondary mt-1">
+                <div className="text-xs text-brand-text-secondary dark:text-base-content/70 mt-1">
                   Publications
                 </div>
               </div>
@@ -79,12 +79,12 @@ export function CommunityHero({ community, stats }: CommunityHeroProps) {
                   className="text-center hover:bg-brand-secondary/5 rounded-lg p-1 transition-colors cursor-pointer block"
                 >
                   <div className="flex items-center justify-center mb-1">
-                    <Users size={18} className="text-brand-text-secondary mr-1" />
+                    <Users size={18} className="text-brand-text-secondary dark:text-base-content/70 mr-1" />
                   </div>
-                  <div className="text-2xl font-bold text-brand-text-primary">
+                  <div className="text-2xl font-bold text-brand-text-primary dark:text-base-content">
                     {stats.members}
                   </div>
-                  <div className="text-xs text-brand-text-secondary mt-1">
+                  <div className="text-xs text-brand-text-secondary dark:text-base-content/70 mt-1">
                     Members
                   </div>
                 </a>
@@ -92,21 +92,21 @@ export function CommunityHero({ community, stats }: CommunityHeroProps) {
               {stats.activity !== undefined ? (
                 <div className="text-center">
                   <div className="flex items-center justify-center mb-1">
-                    <TrendingUp size={18} className="text-brand-text-secondary mr-1" />
+                    <TrendingUp size={18} className="text-brand-text-secondary dark:text-base-content/70 mr-1" />
                   </div>
-                  <div className="text-2xl font-bold text-brand-text-primary">
+                  <div className="text-2xl font-bold text-brand-text-primary dark:text-base-content">
                     {stats.activity}
                   </div>
-                  <div className="text-xs text-brand-text-secondary mt-1">
+                  <div className="text-xs text-brand-text-secondary dark:text-base-content/70 mt-1">
                     Activity
                   </div>
                 </div>
               ) : (
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-brand-text-primary">
+                  <div className="text-2xl font-bold text-brand-text-primary dark:text-base-content">
                     -
                   </div>
-                  <div className="text-xs text-brand-text-secondary mt-1">
+                  <div className="text-xs text-brand-text-secondary dark:text-base-content/70 mt-1">
                     Activity
                   </div>
                 </div>

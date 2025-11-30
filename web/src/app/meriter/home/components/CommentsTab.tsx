@@ -76,7 +76,7 @@ export function CommentsTab({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-base-100 dark:bg-base-100">
       {sortItems(comments, sortOrder).map((comment: any, index: number) => {
         const key = generateKey(comment?.id, index, 'comment');
 

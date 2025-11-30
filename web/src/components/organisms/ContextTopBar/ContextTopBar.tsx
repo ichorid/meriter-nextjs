@@ -154,6 +154,7 @@ const HomeTopBar: React.FC = () => {
                 variant={currentTab === 'publications' ? 'primary' : 'ghost'}
                 size="sm"
                 onClick={() => handleTabClick('publications')}
+                className={currentTab !== 'publications' ? 'dark:text-base-content' : ''}
               >
                 {t('tabs.publications') || 'My Publications'}
               </BrandButton>
@@ -161,6 +162,7 @@ const HomeTopBar: React.FC = () => {
                 variant={currentTab === 'comments' ? 'primary' : 'ghost'}
                 size="sm"
                 onClick={() => handleTabClick('comments')}
+                className={currentTab !== 'comments' ? 'dark:text-base-content' : ''}
               >
                 {t('tabs.comments') || 'My Comments'}
               </BrandButton>
@@ -168,6 +170,7 @@ const HomeTopBar: React.FC = () => {
                 variant={currentTab === 'polls' ? 'primary' : 'ghost'}
                 size="sm"
                 onClick={() => handleTabClick('polls')}
+                className={currentTab !== 'polls' ? 'dark:text-base-content' : ''}
               >
                 {t('tabs.polls') || 'Polls'}
               </BrandButton>
@@ -175,6 +178,7 @@ const HomeTopBar: React.FC = () => {
                 variant={currentTab === 'updates' ? 'primary' : 'ghost'}
                 size="sm"
                 onClick={() => handleTabClick('updates')}
+                className={currentTab !== 'updates' ? 'dark:text-base-content' : ''}
               >
                 {t('tabs.updates') || 'Updates'}
               </BrandButton>
@@ -202,7 +206,7 @@ const HomeTopBar: React.FC = () => {
             onClick={() => handleSortClick('recent')}
             className={`p-2 rounded-md transition-colors ${sortByTab[currentTab] === 'recent'
                 ? 'bg-base-100 shadow-sm text-brand-primary'
-                : 'text-brand-text-secondary hover:text-brand-text-primary'
+                : 'text-brand-text-secondary hover:text-brand-text-primary dark:text-base-content dark:hover:text-base-content'
               }`}
           >
             <Clock size={16} />
@@ -211,7 +215,7 @@ const HomeTopBar: React.FC = () => {
             onClick={() => handleSortClick('voted')}
             className={`p-2 rounded-md transition-colors ${sortByTab[currentTab] === 'voted'
                 ? 'bg-base-100 shadow-sm text-brand-primary'
-                : 'text-brand-text-secondary hover:text-brand-text-primary'
+                : 'text-brand-text-secondary hover:text-brand-text-primary dark:text-base-content dark:hover:text-base-content'
               }`}
           >
             <TrendingUp size={16} />
@@ -494,7 +498,7 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
                 onClick={() => handleSortChange('recent')}
                 className={`p-2 rounded-md transition-colors ${sortBy === 'recent'
                     ? 'bg-base-100 shadow-sm text-brand-primary'
-                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                    : 'text-brand-text-secondary hover:text-brand-text-primary dark:text-base-content dark:hover:text-base-content'
                   }`}
               >
                 <Clock size={16} />
@@ -503,7 +507,7 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
                 onClick={() => handleSortChange('voted')}
                 className={`p-2 rounded-md transition-colors ${sortBy === 'voted'
                     ? 'bg-base-100 shadow-sm text-brand-primary'
-                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                    : 'text-brand-text-secondary hover:text-brand-text-primary dark:text-base-content dark:hover:text-base-content'
                   }`}
               >
                 <TrendingUp size={16} />
@@ -516,8 +520,8 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
       {/* Mobile snackbar with community title */}
       {showSnack && isMobile && (
         <div className="fixed bottom-4 left-0 right-0 z-50 flex justify-center pointer-events-none">
-          <div className="px-3 py-2 rounded-full bg-base-200 border border-brand-border max-w-[80%] shadow-md">
-            <span className="text-sm font-medium text-brand-text-primary">{community.name}</span>
+          <div className="px-3 py-2 rounded-full bg-base-200 border border-brand-border dark:border-base-300/50 max-w-[80%] shadow-md">
+            <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">{community.name}</span>
           </div>
         </div>
       )}

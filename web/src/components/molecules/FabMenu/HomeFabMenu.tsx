@@ -62,7 +62,7 @@ export const HomeFabMenu: React.FC = () => {
         <div className="fixed bottom-6 right-6 z-50" ref={menuRef}>
             {/* Menu Items */}
             {isOpen && (
-                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-xl shadow-xl border border-brand-border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-xl shadow-xl border border-brand-border dark:border-base-300/50 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
                     <div className="py-1">
                         {!hasCommunities ? (
                             // No communities - show create community option
@@ -71,7 +71,7 @@ export const HomeFabMenu: React.FC = () => {
                                 className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left"
                             >
                                 <Users size={18} className="text-brand-primary" />
-                                <span className="text-sm font-medium text-brand-text-primary">
+                                <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">
                                     {t('hero.actions.createCommunity') || 'Create Community'}
                                 </span>
                             </button>
@@ -83,7 +83,7 @@ export const HomeFabMenu: React.FC = () => {
                                     className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left"
                                 >
                                     <FileText size={18} className="text-brand-primary" />
-                                    <span className="text-sm font-medium text-brand-text-primary">
+                                    <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">
                                         {tCommunities('createPost') || 'Create Post'}
                                     </span>
                                 </button>
@@ -92,7 +92,7 @@ export const HomeFabMenu: React.FC = () => {
                                     className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left"
                                 >
                                     <BarChart2 size={18} className="text-brand-primary" />
-                                    <span className="text-sm font-medium text-brand-text-primary">
+                                    <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">
                                         {tCommunities('createPoll') || 'Create Poll'}
                                     </span>
                                 </button>
