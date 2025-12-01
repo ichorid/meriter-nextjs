@@ -17,9 +17,19 @@ import { CommunityService } from '../../domain/services/community.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
-import { Wallet, Transaction, WithdrawDto, TransferDto, WithdrawDtoSchema, TransferDtoSchema } from '../../../../../../libs/shared-types/dist/index';
+import {
+  Wallet,
+  Transaction,
+  WithdrawDto,
+  TransferDto,
+  WithdrawDtoSchema,
+  TransferDtoSchema,
+} from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
-import { Community, CommunityDocument } from '../../domain/models/community/community.schema';
+import {
+  Community,
+  CommunityDocument,
+} from '../../domain/models/community/community.schema';
 import { User, UserDocument } from '../../domain/models/user/user.schema';
 
 @Controller('api/v1')
@@ -30,13 +40,17 @@ export class WalletsController {
   constructor(
     private readonly walletsService: WalletService,
     private readonly communityService: CommunityService,
-    @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
+    @InjectModel(Community.name)
+    private communityModel: Model<CommunityDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectConnection() private mongoose: Connection,
-  ) { }
+  ) {}
 
   @Get('users/:userId/wallets')
-  async getUserWallets(@Param('userId') userId: string, @Req() req: any): Promise<Wallet[]> {
+  async getUserWallets(
+    @Param('userId') userId: string,
+    @Req() req: any,
+  ): Promise<Wallet[]> {
     // Handle 'me' token for current user
     const actualUserId = userId === 'me' ? req.user.id : userId;
 
@@ -52,28 +66,43 @@ export class WalletsController {
     }
 
     const userCommunityIds = user.communityMemberships || [];
-    this.logger.log(`User ${actualUserId} is member of ${userCommunityIds.length} communities`);
+    this.logger.log(
+      `User ${actualUserId} is member of ${userCommunityIds.length} communities`,
+    );
 
     // Get only active communities where user is a member
-    const userCommunities = await this.communityModel.find({
-      id: { $in: userCommunityIds },
-      isActive: true,
-    }).lean();
+    const userCommunities = await this.communityModel
+      .find({
+        id: { $in: userCommunityIds },
+        isActive: true,
+      })
+      .lean();
 
-    this.logger.log(`Found ${userCommunities.length} active communities for user ${actualUserId}`);
+    this.logger.log(
+      `Found ${userCommunities.length} active communities for user ${actualUserId}`,
+    );
 
     // Create wallets for communities where user doesn't have one yet
     const walletPromises = userCommunities.map(async (community) => {
-      let wallet = await this.walletsService.getWallet(actualUserId, community.id);
+      let wallet = await this.walletsService.getWallet(
+        actualUserId,
+        community.id,
+      );
 
       if (!wallet) {
         // Create wallet with community currency settings
         wallet = await this.walletsService.createOrGetWallet(
           actualUserId,
           community.id,
-          community.settings?.currencyNames || { singular: 'merit', plural: 'merits', genitive: 'merits' }
+          community.settings?.currencyNames || {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          },
         );
-        this.logger.log(`Created wallet for user ${actualUserId} in community ${community.name}`);
+        this.logger.log(
+          `Created wallet for user ${actualUserId} in community ${community.name}`,
+        );
       }
 
       return wallet;
@@ -81,7 +110,7 @@ export class WalletsController {
 
     const wallets = await Promise.all(walletPromises);
 
-    return wallets.map(wallet => {
+    return wallets.map((wallet) => {
       const snapshot = wallet.toSnapshot();
       return {
         ...snapshot,
@@ -105,7 +134,10 @@ export class WalletsController {
     if (actualUserId !== req.user.id) {
       throw new NotFoundError('User', userId);
     }
-    const wallet = await this.walletsService.getUserWallet(actualUserId, communityId);
+    const wallet = await this.walletsService.getUserWallet(
+      actualUserId,
+      communityId,
+    );
     if (!wallet) {
       throw new NotFoundError('Wallet', `${actualUserId}-${communityId}`);
     }
@@ -133,8 +165,18 @@ export class WalletsController {
     }
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
-    const result = await this.walletsService.getUserTransactions(actualUserId, 'all', pagination.limit, skip);
-    return { data: result, total: result.length, skip, limit: pagination.limit };
+    const result = await this.walletsService.getUserTransactions(
+      actualUserId,
+      'all',
+      pagination.limit,
+      skip,
+    );
+    return {
+      data: result,
+      total: result.length,
+      skip,
+      limit: pagination.limit,
+    };
   }
 
   @Get('users/:userId/quota')
@@ -156,7 +198,9 @@ export class WalletsController {
     }
 
     // Query community by internal ID
-    const community = await this.communityModel.findOne({ id: communityId }).lean();
+    const community = await this.communityModel
+      .findOne({ id: communityId })
+      .lean();
     if (!community) {
       throw new NotFoundError('Community', communityId);
     }
@@ -164,12 +208,22 @@ export class WalletsController {
     // Hard check that settings exist and dailyEmission is configured
     if (!community.settings) {
       this.logger.warn(`Community ${communityId} missing settings`);
-      throw new BadRequestException('Community settings are not configured. Please complete community setup.');
+      throw new BadRequestException(
+        'Community settings are not configured. Please complete community setup.',
+      );
     }
 
-    if (typeof community.settings.dailyEmission !== 'number' || community.settings.dailyEmission == null) {
-      this.logger.warn(`Community ${communityId} missing dailyEmission:`, community.settings.dailyEmission);
-      throw new BadRequestException('Daily emission quota is not configured. Please complete community setup.');
+    if (
+      typeof community.settings.dailyEmission !== 'number' ||
+      community.settings.dailyEmission == null
+    ) {
+      this.logger.warn(
+        `Community ${communityId} missing dailyEmission:`,
+        community.settings.dailyEmission,
+      );
+      throw new BadRequestException(
+        'Daily emission quota is not configured. Please complete community setup.',
+      );
     }
 
     const dailyQuota = community.settings.dailyEmission;
@@ -182,6 +236,52 @@ export class WalletsController {
       ? new Date(community.lastQuotaResetAt)
       : today;
 
+    // Ensure wallet exists first to get walletId
+    const currency = community.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+    const wallet = await this.walletsService.createOrGetWallet(
+      actualUserId,
+      community.id,
+      currency,
+    );
+
+    // Check if daily quota was already credited to wallet today
+    // Transactions store walletId, not userId/communityId
+    const lastDailyQuotaTransaction = await this.mongoose.db
+      .collection('transactions')
+      .findOne(
+        {
+          walletId: wallet.getId.getValue(),
+          referenceType: 'daily_quota',
+          type: 'deposit',
+          createdAt: { $gte: today },
+        },
+        { sort: { createdAt: -1 } },
+      );
+
+    // If daily quota not credited today, credit it to wallet
+    if (!lastDailyQuotaTransaction && dailyQuota > 0) {
+      // Credit daily quota to wallet
+      await this.walletsService.addTransaction(
+        actualUserId,
+        community.id,
+        'credit',
+        dailyQuota,
+        'quota',
+        'daily_quota',
+        `daily_quota_${today.toISOString().split('T')[0]}`,
+        currency,
+        `Daily quota for ${today.toISOString().split('T')[0]}`,
+      );
+
+      this.logger.log(
+        `Credited ${dailyQuota} daily quota to wallet for user ${actualUserId} in community ${community.id}`,
+      );
+    }
+
     // Query votes with amountQuota > 0 for this user in this community created after quotaStartTime
     // Use absolute value of amountQuota - both upvotes and downvotes consume quota
     const usedToday = await this.mongoose.db
@@ -192,20 +292,20 @@ export class WalletsController {
             userId: actualUserId,
             communityId: community.id,
             amountQuota: { $gt: 0 },
-            createdAt: { $gte: quotaStartTime }
-          }
+            createdAt: { $gte: quotaStartTime },
+          },
         },
         {
           $project: {
-            absAmount: '$amountQuota'
-          }
+            absAmount: '$amountQuota',
+          },
         },
         {
           $group: {
             _id: null,
-            total: { $sum: '$absAmount' }
-          }
-        }
+            total: { $sum: '$absAmount' },
+          },
+        },
       ])
       .toArray();
 
@@ -214,15 +314,16 @@ export class WalletsController {
     // Calculate resetAt as next midnight or next reset time if reset was done today
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const resetAt = community.lastQuotaResetAt && community.lastQuotaResetAt >= today
-      ? new Date(community.lastQuotaResetAt.getTime() + 24 * 60 * 60 * 1000) // 24 hours after reset
-      : tomorrow;
+    const resetAt =
+      community.lastQuotaResetAt && community.lastQuotaResetAt >= today
+        ? new Date(community.lastQuotaResetAt.getTime() + 24 * 60 * 60 * 1000) // 24 hours after reset
+        : tomorrow;
 
     return {
       dailyQuota,
       usedToday: used,
       remainingToday: Math.max(0, dailyQuota - used),
-      resetAt: resetAt.toISOString()
+      resetAt: resetAt.toISOString(),
     };
   }
 
@@ -263,5 +364,4 @@ export class WalletsController {
     // Transfer functionality not implemented yet
     throw new Error('Transfer functionality not implemented');
   }
-
 }

@@ -77,7 +77,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
             </details>
           )}
           {actions && (
-            <div className="card-actions justify-center mt-4">
+            <div className="card-actions justify-center mt-4 gap-3">
               {actions}
             </div>
           )}

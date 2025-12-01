@@ -36,7 +36,8 @@ export default function CreatePublicationPage({
         <PublicationCreateForm
           communityId={communityId}
           onSuccess={(publicationId) => {
-            router.push(`/meriter/communities/${communityId}/posts/${publicationId}`);
+            // Redirect to community page with post parameter in query string
+            router.push(`/meriter/communities/${communityId}?post=${publicationId}`);
           }}
           onCancel={() => {
             router.push(`/meriter/communities/${communityId}`);

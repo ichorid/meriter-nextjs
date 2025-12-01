@@ -8,6 +8,9 @@ import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { usePollTimeRemaining } from '../hooks/usePollTimeRemaining';
 import { usePollAmountValidation } from '../hooks/usePollAmountValidation';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { BrandButton } from '@/components/ui/BrandButton';
+import { BrandInput } from '@/components/ui/BrandInput';
+import { BrandFormControl } from '@/components/ui/BrandFormControl';
 
 interface IPollCastingProps {
     pollData: IPollData;
@@ -253,7 +256,6 @@ export const PollCasting = ({
                             type="text"
                             inputMode="numeric"
                             value={amountInputValue}
-                            className={`input input-bordered w-full ${amountValidationError ? 'input-error' : ''}`}
                             onChange={(e) => {
                                 const inputValue = e.target.value;
                                 // Always update input value for user to see what they type
@@ -293,20 +295,31 @@ export const PollCasting = ({
                                 }
                             }}
                             disabled={isCasting}
+                            className="input input-bordered w-full"
                         />
-                        {amountValidationError && (
-                            <label className="label">
-                                <span className="label-text-alt text-error">{amountValidationError}</span>
-                            </label>
-                        )}
                     </div>
-                    <button
-                        className="btn btn-primary w-full"
-                        onClick={handleCastPoll}
-                        disabled={isCasting || !selectedOptionId || amountValidationError !== null}
-                    >
-                        {isCasting ? t('casting') : t('castPoll')}
-                    </button>
+                    {amountValidationError && (
+                        <div className="label">
+                            <span className="label-text-alt text-error">{amountValidationError}</span>
+                        </div>
+                    )}
+                    {balance === 0 && (
+                        <div className="label">
+                            <span className="label-text-alt text-error">{t('insufficientPoints')}</span>
+                        </div>
+                    )}
+                    <div className="mt-4">
+                        <BrandButton
+                            variant="primary"
+                            size="md"
+                            fullWidth
+                            onClick={handleCastPoll}
+                            isLoading={isCasting}
+                            disabled={isCasting || !selectedOptionId || amountValidationError !== null || balance === 0}
+                        >
+                            {isCasting ? t('casting') : t('castPoll')}
+                        </BrandButton>
+                    </div>
                 </div>
             )}
 

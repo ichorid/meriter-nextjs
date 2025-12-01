@@ -46,7 +46,7 @@ export class UserService implements OnModuleInit {
     private communityService: CommunityService,
     @Inject(forwardRef(() => WalletService))
     private walletService: WalletService,
-  ) {}
+  ) { }
 
   async onModuleInit() {
     try {
@@ -392,5 +392,42 @@ export class UserService implements OnModuleInit {
       );
     }
     return updatedUser;
+  }
+
+  async searchUsers(query: string, limit: number = 20): Promise<User[]> {
+    const regex = new RegExp(query, 'i');
+    return this.userModel
+      .find({
+        $or: [
+          { username: regex },
+          { displayName: regex },
+          { firstName: regex },
+          { lastName: regex },
+          { 'profile.contacts.email': regex },
+        ],
+      })
+      .limit(limit)
+      .lean();
+  }
+
+  async updateGlobalRole(
+    userId: string,
+    role: 'superadmin' | 'user',
+  ): Promise<User> {
+    const user = await this.userModel.findOne({ id: userId });
+    if (!user) {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
+
+    if (role === 'superadmin') {
+      user.globalRole = 'superadmin';
+    } else {
+      user.globalRole = undefined;
+    }
+
+    user.updatedAt = new Date();
+    await user.save();
+
+    return user.toObject();
   }
 }

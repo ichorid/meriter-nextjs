@@ -22,14 +22,14 @@ export interface CreateCommunityDto {
   description?: string;
   avatarUrl?: string;
   typeTag?:
-  | 'future-vision'
-  | 'marathon-of-good'
-  | 'team'
-  | 'political'
-  | 'housing'
-  | 'volunteer'
-  | 'corporate'
-  | 'custom';
+    | 'future-vision'
+    | 'marathon-of-good'
+    | 'team'
+    | 'political'
+    | 'housing'
+    | 'volunteer'
+    | 'corporate'
+    | 'custom';
   // Internal User IDs
   adminIds: string[];
   settings?: {
@@ -60,6 +60,7 @@ export interface UpdateCommunityDto {
     };
     dailyEmission?: number;
   };
+  isPriority?: boolean;
 }
 
 @Injectable()
@@ -72,7 +73,7 @@ export class CommunityService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
-  ) { }
+  ) {}
 
   async getCommunity(communityId: string): Promise<Community | null> {
     // Query by internal ID only
@@ -257,6 +258,7 @@ export class CommunityService {
       hashtags: [],
       hashtagDescriptions: {},
       isActive: true, // Default to active
+      isPriority: dto.isPriority || false, // Default to false
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -284,6 +286,7 @@ export class CommunityService {
     if (dto.hashtagDescriptions !== undefined) {
       updateData.hashtagDescriptions = dto.hashtagDescriptions;
     }
+    if (dto.isPriority !== undefined) updateData.isPriority = dto.isPriority;
 
     if (dto.settings) {
       // Only merge nested properties if they exist
@@ -383,14 +386,14 @@ export class CommunityService {
       .find({})
       .limit(limit)
       .skip(skip)
-      .sort({ createdAt: -1 })
+      .sort({ isPriority: -1, createdAt: -1 }) // Приоритетные сообщества сначала, затем по дате создания
       .lean() as any as Community[];
   }
 
   async getUserCommunities(userId: string): Promise<Community[]> {
     return this.communityModel
       .find({ members: userId })
-      .sort({ createdAt: -1 })
+      .sort({ isPriority: -1, createdAt: -1 }) // Приоритетные сообщества сначала, затем по дате создания
       .lean() as any as Community[];
   }
 
@@ -470,7 +473,9 @@ export class CommunityService {
     limit: number = 50,
     skip: number = 0,
   ): Promise<{ members: any[]; total: number }> {
-    const community = await this.communityModel.findOne({ id: communityId }).lean();
+    const community = await this.communityModel
+      .findOne({ id: communityId })
+      .lean();
     if (!community) {
       throw new NotFoundException('Community not found');
     }
@@ -487,12 +492,14 @@ export class CommunityService {
       return { members: [], total };
     }
 
-    const members = await this.userModel.find({
-      id: { $in: paginatedIds }
-    }).lean();
+    const members = await this.userModel
+      .find({
+        id: { $in: paginatedIds },
+      })
+      .lean();
 
     // Map to DTOs
-    const mappedMembers = members.map(user => ({
+    const mappedMembers = members.map((user) => ({
       id: user.id,
       username: user.username,
       displayName: user.displayName,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useCreatePublication } from '@/hooks/api/usePublications';
@@ -63,6 +63,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [hasDraft, setHasDraft] = useState(false);
   const [showDraftAlert, setShowDraftAlert] = useState(false);
   const addToast = useToastStore((state) => state.addToast);
+  const isSubmittingRef = useRef(false);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -188,10 +189,18 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   };
 
   const handleSubmit = async () => {
+    // Prevent double submission using ref for immediate check
+    if (isSubmittingRef.current || isSubmitting) {
+      console.warn('Prevented double submission');
+      return;
+    }
+
     if (!validate()) {
       return;
     }
 
+    // Set both ref and state immediately to prevent double submission
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setErrors({});
 
@@ -216,16 +225,25 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       localStorage.removeItem(draftKey);
       setHasDraft(false);
 
+      // Navigate after successful creation
       if (onSuccess) {
         onSuccess(publication.id);
       } else {
-        router.push(`/meriter/communities/${communityId}/posts/${publication.id}`);
+        // Redirect to community page with post parameter in query string
+        // Use slug if available, otherwise fall back to id
+        const postIdentifier = publication.slug || publication.id;
+        router.push(`/meriter/communities/${communityId}?post=${postIdentifier}`);
       }
+      
+      // Don't reset state here - navigation will unmount component
+      // If navigation doesn't happen, state will remain but that's okay since we're navigating away
     } catch (error: any) {
+      console.error('Publication creation error:', error);
       setErrors({
         submit: error?.message || t('errors.submitFailed'),
       });
-    } finally {
+      // Reset state on error so user can retry
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -436,9 +454,13 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             )}
             <BrandButton
               variant="primary"
-              onClick={handleSubmit}
-              disabled={!title.trim() || !description.trim() || isSubmitting}
-              isLoading={isSubmitting}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+              }}
+              disabled={!title.trim() || !description.trim() || isSubmitting || isSubmittingRef.current}
+              isLoading={isSubmitting || isSubmittingRef.current}
             >
               {t('create')}
             </BrandButton>

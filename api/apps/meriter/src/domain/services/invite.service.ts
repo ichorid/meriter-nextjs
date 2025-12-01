@@ -26,11 +26,12 @@ export class InviteService {
    */
   async createInvite(
     createdBy: string,
-    targetUserId: string,
+    targetUserId: string | undefined,
     type: 'superadmin-to-lead' | 'lead-to-participant',
     communityId: string,
     teamId?: string,
     expiresAt?: Date,
+    targetUserName?: string,
   ): Promise<Invite> {
     // Generate unique code
     const code = uid(16);
@@ -41,6 +42,7 @@ export class InviteService {
       type,
       createdBy,
       targetUserId,
+      targetUserName,
       communityId,
       teamId,
       expiresAt,
@@ -81,6 +83,13 @@ export class InviteService {
   }
 
   /**
+   * Get all invites for a community
+   */
+  async getInvitesByCommunity(communityId: string): Promise<Invite[]> {
+    return this.inviteModel.find({ communityId }).exec();
+  }
+
+  /**
    * Use an invite (mark as used)
    */
   async useInvite(code: string, userId: string): Promise<InviteDocument> {
@@ -94,8 +103,9 @@ export class InviteService {
       throw new BadRequestException('Invite already used');
     }
 
-    // Check if invite is for this user
-    if (invite.targetUserId !== userId) {
+    // Check if invite is for this user (only if targetUserId is specified)
+    // If targetUserName is specified, the invite can be used by anyone
+    if (invite.targetUserId && invite.targetUserId !== userId) {
       throw new BadRequestException('This invite is not for you');
     }
 

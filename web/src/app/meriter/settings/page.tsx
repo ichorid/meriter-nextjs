@@ -14,6 +14,7 @@ import { communitiesApiV1 } from '@/lib/api/v1';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { Loader2 } from 'lucide-react';
+import { SuperadminManagement } from '@/components/settings/SuperadminManagement';
 
 const SettingsPage = () => {
     const router = useRouter();
@@ -183,6 +184,11 @@ const SettingsPage = () => {
                                 )}
                             </div>
                         </div>
+                    )}
+
+                    {/* Superadmin Section */}
+                    {user.globalRole === 'superadmin' && (
+                        <SuperadminManagement />
                     )}
 
                     {/* Account Section */}

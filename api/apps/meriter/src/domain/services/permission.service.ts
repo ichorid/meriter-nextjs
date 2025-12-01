@@ -19,7 +19,7 @@ export class PermissionService {
     private publicationService: PublicationService,
     private commentService: CommentService,
     private userCommunityRoleService: UserCommunityRoleService,
-  ) {}
+  ) { }
 
   /**
    * Get user role in a community
@@ -40,7 +40,18 @@ export class PermissionService {
       userId,
       communityId,
     );
-    return userRole?.role || null;
+
+    if (userRole?.role) {
+      return userRole.role;
+    }
+
+    // 3. Fallback: Check if user is in community adminIds (Legacy/Owner)
+    const community = await this.communityService.getCommunity(communityId);
+    if (community?.adminIds?.includes(userId)) {
+      return 'lead';
+    }
+
+    return null;
   }
 
   /**

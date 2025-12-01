@@ -126,7 +126,8 @@ export const InviteSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   code: z.string().min(1),
   type: z.enum(["superadmin-to-lead", "lead-to-participant"]), // В переводах "superadmin-to-representative" и "representative-to-participant"
   createdBy: z.string(),
-  targetUserId: z.string(), // ID конкретного пользователя, для которого создан инвайт (обязательное поле)
+  targetUserId: z.string().optional(), // ID конкретного пользователя, для которого создан инвайт (опционально, если указан targetUserName)
+  targetUserName: z.string().optional(), // Имя нового пользователя (опционально, если указан targetUserId)
   usedBy: z.string().optional(), // Должен совпадать с targetUserId
   usedAt: z.string().datetime().optional(),
   expiresAt: z.string().datetime().optional(),
@@ -199,6 +200,7 @@ export const CommunitySchema = IdentifiableSchema.merge(
   hashtags: z.array(z.string()).default([]),
   hashtagDescriptions: z.record(z.string(), z.string()).optional().default({}),
   isActive: z.boolean().default(true),
+  isPriority: z.boolean().optional().default(false), // Приоритетные сообщества отображаются первыми
   isAdmin: z.boolean().optional(), // Computed field - is current user an admin?
   needsSetup: z.boolean().optional(), // Computed field - does community need setup?
 });
@@ -415,6 +417,7 @@ export const UpdateCommunityDtoSchema = z.object({
   hashtags: z.array(z.string()).optional(),
   hashtagDescriptions: z.record(z.string(), z.string()).optional(),
   settings: CommunitySettingsSchema.partial().optional(),
+  isPriority: z.boolean().optional(),
 });
 
 export const UpdatePublicationDtoSchema = z.object({

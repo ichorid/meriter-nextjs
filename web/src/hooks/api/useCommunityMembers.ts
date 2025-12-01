@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api/client';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api/client";
 
 export interface CommunityMember {
     id: string;
@@ -23,10 +23,10 @@ export const useCommunityMembers = (
     const { limit = 50, skip = 0 } = options;
 
     return useQuery({
-        queryKey: ['community-members', communityId, limit, skip],
+        queryKey: ["community-members", communityId, limit, skip],
         queryFn: async () => {
             const response = await apiClient.get<CommunityMembersResponse>(
-                `/communities/${communityId}/members`,
+                `/api/v1/communities/${communityId}/members`,
                 { params: { limit, skip } }
             );
             return response;
@@ -40,10 +40,14 @@ export const useRemoveCommunityMember = (communityId: string) => {
 
     return useMutation({
         mutationFn: async (userId: string) => {
-            await apiClient.delete(`/communities/${communityId}/members/${userId}`);
+            await apiClient.delete(
+                `/api/v1/communities/${communityId}/members/${userId}`
+            );
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['community-members', communityId] });
+            queryClient.invalidateQueries({
+                queryKey: ["community-members", communityId],
+            });
         },
     });
 };

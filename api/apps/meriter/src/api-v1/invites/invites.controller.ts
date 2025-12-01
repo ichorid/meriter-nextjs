@@ -31,13 +31,19 @@ import {
   UserDocument,
 } from '../../domain/models/user/user.schema';
 
-const CreateInviteDtoSchema = z.object({
-  targetUserId: z.string().min(1),
-  type: z.enum(['superadmin-to-lead', 'lead-to-participant']),
-  communityId: z.string().min(1),
-  teamId: z.string().optional(),
-  expiresAt: z.string().datetime().optional(),
-});
+const CreateInviteDtoSchema = z
+  .object({
+    targetUserId: z.string().optional(), // Опционально, если указан targetUserName
+    targetUserName: z.string().optional(), // Опционально, если указан targetUserId
+    type: z.enum(['superadmin-to-lead', 'lead-to-participant']),
+    communityId: z.string().min(1),
+    teamId: z.string().optional(),
+    expiresAt: z.string().datetime().optional(),
+  })
+  .refine((data) => data.targetUserId || data.targetUserName, {
+    message: 'Either targetUserId or targetUserName must be provided',
+    path: ['targetUserId'],
+  });
 
 const UseInviteDtoSchema = z.object({
   code: z.string().min(1),
@@ -81,10 +87,10 @@ export class InvitesController {
         );
       }
     } else if (dto.type === 'lead-to-participant') {
-      // Only lead can create lead-to-participant invites
-      if (userRole !== 'lead') {
+      // Lead or superadmin can create lead-to-participant invites
+      if (userRole !== 'lead' && userRole !== 'superadmin') {
         throw new ForbiddenException(
-          'Only lead can create lead-to-participant invites',
+          'Only lead or superadmin can create lead-to-participant invites',
         );
       }
     }
@@ -96,6 +102,7 @@ export class InvitesController {
       dto.communityId,
       dto.teamId,
       dto.expiresAt ? new Date(dto.expiresAt) : undefined,
+      dto.targetUserName,
     );
 
     return ApiResponseHelper.successResponse(invite);
@@ -108,6 +115,31 @@ export class InvitesController {
   @Get()
   async getInvites(@User() user: AuthenticatedUser) {
     const invites = await this.inviteService.getInvitesByCreator(user.id);
+    return ApiResponseHelper.successResponse(invites);
+  }
+
+  /**
+   * Get all invites for a community
+   * GET /api/v1/invites/community/:communityId
+   * Must be before @Get(':code') to avoid route conflicts
+   */
+  @Get('community/:communityId')
+  async getCommunityInvites(
+    @Param('communityId') communityId: string,
+    @User() user: AuthenticatedUser,
+  ) {
+    // Check if user is admin of the community
+    const isAdmin = await this.communityService.isUserAdmin(
+      communityId,
+      user.id,
+    );
+    if (!isAdmin && user.globalRole !== 'superadmin') {
+      throw new ForbiddenException(
+        'Only administrators can view community invites',
+      );
+    }
+
+    const invites = await this.inviteService.getInvitesByCommunity(communityId);
     return ApiResponseHelper.successResponse(invites);
   }
 
@@ -133,6 +165,26 @@ export class InvitesController {
     @User() user: AuthenticatedUser,
     @Param('code') code: string,
   ) {
+    // Get invite first to check if it has targetUserName
+    const inviteDoc = await this.inviteService.getInviteByCode(code);
+    if (!inviteDoc) {
+      throw new NotFoundException('Invite not found');
+    }
+
+    // If invite has targetUserName, update user's displayName
+    if (inviteDoc.targetUserName) {
+      await this.userModel.updateOne(
+        { id: user.id },
+        {
+          $set: {
+            displayName: inviteDoc.targetUserName,
+            firstName: inviteDoc.targetUserName,
+            updatedAt: new Date(),
+          },
+        },
+      );
+    }
+
     const invite = await this.inviteService.useInvite(code, user.id);
 
     // Get community to access settings

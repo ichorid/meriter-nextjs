@@ -57,7 +57,7 @@ export class VotesController {
     @InjectConnection() private readonly connection: Connection,
     @InjectModel(PublicationSchema.name)
     private readonly publicationModel: Model<PublicationDocument>,
-  ) { }
+  ) {}
 
   /**
    * Calculate remaining quota for a user in a community
@@ -146,16 +146,18 @@ export class VotesController {
       communityId,
     );
 
-    // Deduct from wallet if wallet amount is used
-    if (walletAmount > 0) {
+    // Deduct from wallet: both quotaAmount and walletAmount are deducted from wallet balance
+    // Daily quota is now stored in wallet, so quotaAmount also needs to be deducted
+    const totalAmountToDeduct = quotaAmount + walletAmount;
+    if (totalAmountToDeduct > 0) {
       const transactionType =
         targetType === 'publication' ? 'publication_vote' : 'vote_vote';
       await this.walletService.addTransaction(
         userId,
         communityId,
         'debit',
-        walletAmount,
-        'personal',
+        totalAmountToDeduct,
+        quotaAmount > 0 ? 'quota' : 'personal',
         transactionType,
         targetId,
         community.settings?.currencyNames || {
@@ -163,7 +165,7 @@ export class VotesController {
           plural: 'merits',
           genitive: 'merits',
         },
-        `Vote on ${targetType} ${targetId}`,
+        `Vote on ${targetType} ${targetId}${quotaAmount > 0 && walletAmount > 0 ? ` (quota: ${quotaAmount}, wallet: ${walletAmount})` : quotaAmount > 0 ? ` (quota: ${quotaAmount})` : ` (wallet: ${walletAmount})`}`,
       );
     }
 
@@ -329,7 +331,7 @@ export class VotesController {
     );
     const walletBalance = await this.getWalletBalance(userId, communityId);
 
-    // Validation: check quota limit
+    // Validation: check quota limit (daily quota usage limit)
     if (quotaAmount > remainingQuota) {
       throw new BadRequestException(
         `Insufficient quota. Available: ${remainingQuota}, Requested: ${quotaAmount}`,
@@ -337,16 +339,11 @@ export class VotesController {
     }
 
     // Validation: check wallet balance
-    if (walletAmount > walletBalance) {
+    // Since daily quota is now stored in wallet, both quotaAmount and walletAmount are deducted from wallet
+    // So we need to check that totalAmount doesn't exceed walletBalance
+    if (totalAmount > walletBalance) {
       throw new BadRequestException(
-        `Insufficient wallet balance. Available: ${walletBalance}, Requested: ${walletAmount}`,
-      );
-    }
-
-    // Validation: total vote amount should not exceed available quota + wallet
-    if (totalAmount > remainingQuota + walletBalance) {
-      throw new BadRequestException(
-        `Insufficient total balance. Available: ${remainingQuota + walletBalance}, Requested: ${totalAmount}`,
+        `Insufficient wallet balance. Available: ${walletBalance}, Requested: ${totalAmount} (quota: ${quotaAmount}, wallet: ${walletAmount})`,
       );
     }
 
@@ -547,7 +544,7 @@ export class VotesController {
           );
         }
       }
-    } catch { }
+    } catch {}
 
     return ApiResponseHelper.successResponse(
       { vote },

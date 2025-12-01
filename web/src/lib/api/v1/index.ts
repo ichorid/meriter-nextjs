@@ -261,6 +261,25 @@ export const usersApiV1 = {
         }>(`/api/v1/users/${userId}/updates`, { params });
         return response.data;
     },
+
+    async searchUsers(query: string, limit: number = 20): Promise<User[]> {
+        const response = await apiClient.get<{ success: true; data: User[] }>(
+            "/api/v1/users/search",
+            { params: { q: query, limit } }
+        );
+        return response.data;
+    },
+
+    async updateGlobalRole(
+        userId: string,
+        role: "superadmin" | "user"
+    ): Promise<User> {
+        const response = await apiClient.put<{ success: true; data: User }>(
+            `/api/v1/users/${userId}/global-role`,
+            { role }
+        );
+        return response.data;
+    },
 };
 
 // Communities API
@@ -595,28 +614,24 @@ export const publicationsApiV1 = {
         return response.data;
     },
 
-    async getPublication(id: string): Promise<Publication> {
+    async getPublication(id: string): Promise<{ success: true; data: Publication }> {
         const response = await apiClient.get<{
             success: true;
             data: Publication;
         }>(`/api/v1/publications/${id}`);
-        return validateApiResponse(
-            PublicationSchema,
-            response,
-            "getPublication"
-        );
+        // Return full response for useValidatedQuery to validate
+        return response;
     },
 
-    async createPublication(data: CreatePublicationDto): Promise<Publication> {
+    async createPublication(
+        data: CreatePublicationDto
+    ): Promise<{ success: true; data: Publication }> {
         const response = await apiClient.post<{
             success: true;
             data: Publication;
         }>("/api/v1/publications", data);
-        return validateApiResponse(
-            PublicationSchema,
-            response,
-            "createPublication"
-        );
+        // Return full response for useValidatedMutation to validate
+        return response;
     },
 
     async updatePublication(

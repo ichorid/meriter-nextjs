@@ -1,18 +1,24 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useQueryClient } from '@tanstack/react-query';
-import { useCommunity, useUpdateCommunity, useCreateCommunity } from '@/hooks/api/useCommunities';
+import { useQueryClient, useQueries } from '@tanstack/react-query';
+import { useCommunity, useUpdateCommunity, useCreateCommunity, useCommunityMembers, useRemoveCommunityMember } from '@/hooks/api';
+import type { CommunityMember } from '@/hooks/api/useCommunityMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
-import { useCreateInvite } from '@/hooks/api/useInvites';
+import { useCreateInvite, useCommunityInvites } from '@/hooks/api/useInvites';
+import { useUserProfile } from '@/hooks/api/useUsers';
+import { usersApiV1 } from '@/lib/api/v1';
+import { queryKeys } from '@/lib/constants/queryKeys';
 import { HashtagInput } from '@/shared/components/HashtagInput';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandInput } from '@/components/ui/BrandInput';
 import { BrandSelect } from '@/components/ui/BrandSelect';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
-import { Loader2, X, Copy, Check } from 'lucide-react';
+import { BrandCheckbox } from '@/components/ui/BrandCheckbox';
+import { Loader2, X, Copy, Check, UserX, CheckCircle2, Clock } from 'lucide-react';
+import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 
@@ -32,8 +38,8 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const createInvite = useCreateInvite();
     const addToast = useToastStore((state) => state.addToast);
 
-    const isEditMode = !!communityId;
-    const { data: community, isLoading } = useCommunity(communityId || '');
+    const isEditMode = !!communityId && communityId !== 'create';
+    const { data: community, isLoading } = useCommunity(isEditMode ? communityId : '');
     const updateCommunity = useUpdateCommunity();
     const createCommunity = useCreateCommunity();
 
@@ -48,11 +54,19 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const [hashtags, setHashtags] = useState<string[]>([]);
     const [adminIds, setAdminIds] = useState<string[]>([]);
     const [newAdminId, setNewAdminId] = useState('');
+    const [isPriority, setIsPriority] = useState(false);
     
     // Invite generation state
     const [inviteTargetUserId, setInviteTargetUserId] = useState('');
+    const [inviteTargetUserName, setInviteTargetUserName] = useState('');
+    const [useUserName, setUseUserName] = useState(false); // Toggle between User ID and User Name
     const [inviteExpiresInDays, setInviteExpiresInDays] = useState<number | ''>(30);
-    const [generatedInvite, setGeneratedInvite] = useState<{ code: string } | null>(null);
+    const [inviteRole, setInviteRole] = useState<'lead' | 'participant'>('lead'); // Role selection for superadmin
+    const [generatedInvite, setGeneratedInvite] = useState<{ 
+        code: string; 
+        targetUserId?: string; 
+        targetUserName?: string;
+    } | null>(null);
     const [inviteCopied, setInviteCopied] = useState(false);
 
     useEffect(() => {
@@ -67,8 +81,33 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             setLanguage((community.settings?.language as 'en' | 'ru') || 'en');
             setHashtags(community.hashtags || []);
             setAdminIds((community as any).adminIds || []);
+            setIsPriority((community as any).isPriority || false);
         }
     }, [community, isEditMode]);
+
+    // Load admin user profiles (after adminIds is set)
+    const adminQueries = useQueries({
+        queries: adminIds.map((adminId) => ({
+            queryKey: queryKeys.users.profile(adminId),
+            queryFn: () => usersApiV1.getUser(adminId),
+            enabled: !!adminId && isEditMode,
+        })),
+    });
+
+    // Create a map of adminId -> user data
+    const adminUsersMap = useMemo(() => {
+        const map = new Map<string, { name: string; id: string }>();
+        adminIds.forEach((adminId, index) => {
+            const userData = adminQueries[index]?.data;
+            if (userData) {
+                const displayName = userData.displayName || userData.firstName || userData.username || adminId;
+                map.set(adminId, { name: displayName, id: adminId });
+            } else {
+                map.set(adminId, { name: adminId, id: adminId });
+            }
+        });
+        return map;
+    }, [adminIds, adminQueries]);
 
     const handleAddAdmin = () => {
         if (newAdminId && !adminIds.includes(newAdminId)) {
@@ -109,15 +148,21 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             if (isEditMode) {
                 await updateCommunity.mutateAsync({
                     id: communityId!,
-                    data,
+                    data: {
+                        ...data,
+                        ...(isSuperadmin && { isPriority }),
+                    },
                 });
                 router.push(`/meriter/communities/${communityId}`);
             } else {
-                const result = await createCommunity.mutateAsync(data);
+                const createData = {
+                    ...data,
+                    ...(isSuperadmin && { isPriority }),
+                };
+                const result = await createCommunity.mutateAsync(createData);
 
-                // Invalidate communities list to refresh it
-                queryClient.invalidateQueries({ queryKey: ['communities'] });
-                queryClient.invalidateQueries({ queryKey: ['wallets'] });
+                // Note: Invalidation is handled in useCreateCommunity hook's onSuccess
+                // No need to invalidate here as it's already done in the mutation hook
 
                 addToast(tCreate('success'), 'success');
                 router.push(`/meriter/communities/${result.id}`);
@@ -142,13 +187,93 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
         return role?.role === 'lead' || community?.adminIds?.includes(user.id);
     }, [communityId, user?.id, userRoles, community?.adminIds]);
 
-    // Superadmin can create invites for leads in any community
+    // Superadmin can create invites for leads or participants in any community
     // Lead can create invites for participants in their community
     const canGenerateInvites = isEditMode && (isSuperadmin || isUserLead);
-    const inviteType = isSuperadmin ? 'superadmin-to-lead' : 'lead-to-participant';
+    // Superadmin can choose role, non-superadmin can only invite participants
+    const inviteType = isSuperadmin 
+        ? (inviteRole === 'lead' ? 'superadmin-to-lead' : 'lead-to-participant')
+        : 'lead-to-participant';
+
+    // Get community members and invites for settings page
+    const { data: membersData, isLoading: membersLoading } = useCommunityMembers(isEditMode ? communityId : '');
+    const { data: communityInvites = [] } = useCommunityInvites(isEditMode ? communityId : '');
+    const { mutate: removeMember, isPending: isRemoving } = useRemoveCommunityMember(isEditMode ? communityId : '');
+
+    // Create a map of userId -> invite status
+    const memberInviteMap = useMemo(() => {
+        const map = new Map<string, { isUsed: boolean; inviteCode?: string; targetUserName?: string }>();
+        communityInvites.forEach((invite) => {
+            // Match by targetUserId (for existing users) or usedBy (for used invites)
+            // If invite was used, use usedBy; otherwise use targetUserId
+            const userId = invite.isUsed ? invite.usedBy : invite.targetUserId;
+            if (userId) {
+                map.set(userId, {
+                    isUsed: invite.isUsed || false,
+                    inviteCode: invite.code,
+                    targetUserName: invite.targetUserName,
+                });
+            }
+        });
+        return map;
+    }, [communityInvites]);
+
+    // Create combined list of members and pending invites
+    const allMembersAndInvites = useMemo(() => {
+        const members = membersData?.data || [];
+        const memberIds = new Set(members.map(m => m.id));
+        
+        // Add pending invites for users not yet in members list
+        const pendingInvites = communityInvites
+            .filter(invite => !invite.isUsed)
+            .map(invite => {
+                // If invite has targetUserId and user is not in members, add as pending
+                if (invite.targetUserId && !memberIds.has(invite.targetUserId)) {
+                    return {
+                        id: `invite-${invite.id}`,
+                        username: invite.targetUserId,
+                        displayName: invite.targetUserId,
+                        avatarUrl: undefined,
+                        globalRole: '',
+                        isPendingInvite: true,
+                        inviteCode: invite.code,
+                        targetUserName: invite.targetUserName,
+                        inviteType: invite.type,
+                    };
+                }
+                // If invite has targetUserName (new user), add as pending
+                if (invite.targetUserName && !invite.targetUserId) {
+                    return {
+                        id: `invite-${invite.id}`,
+                        username: invite.targetUserName,
+                        displayName: invite.targetUserName,
+                        avatarUrl: undefined,
+                        globalRole: '',
+                        isPendingInvite: true,
+                        inviteCode: invite.code,
+                        targetUserName: invite.targetUserName,
+                        inviteType: invite.type,
+                    };
+                }
+                return null;
+            })
+            .filter(Boolean) as Array<CommunityMember & { isPendingInvite?: boolean; inviteCode?: string; targetUserName?: string; inviteType?: string }>;
+        
+        return [...members, ...pendingInvites];
+    }, [membersData?.data, communityInvites]);
+
+    const handleRemoveMember = (userId: string, userName: string) => {
+        if (confirm(t('members.confirmRemove', { name: userName }) || `Remove ${userName} from community?`)) {
+            removeMember(userId);
+        }
+    };
 
     const handleGenerateInvite = async () => {
-        if (!communityId || !inviteTargetUserId.trim()) return;
+        if (!communityId) return;
+        
+        // Check if either userId or userName is provided
+        if (!useUserName && !inviteTargetUserId.trim()) return;
+        if (useUserName && !inviteTargetUserName.trim()) return;
 
         try {
             const expiresAt = inviteExpiresInDays && inviteExpiresInDays > 0
@@ -156,13 +281,20 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 : undefined;
 
             const invite = await createInvite.mutateAsync({
-                targetUserId: inviteTargetUserId.trim(),
+                ...(useUserName 
+                    ? { targetUserName: inviteTargetUserName.trim() }
+                    : { targetUserId: inviteTargetUserId.trim() }
+                ),
                 type: inviteType,
                 communityId,
                 expiresAt,
             });
 
-            setGeneratedInvite({ code: invite.code });
+            setGeneratedInvite({ 
+                code: invite.code,
+                targetUserId: invite.targetUserId,
+                targetUserName: invite.targetUserName,
+            });
             setInviteCopied(false);
             addToast(tInvites('success'), 'success');
         } catch (error) {
@@ -313,6 +445,22 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                     </div>
                 </div>
 
+                {isSuperadmin && !isEditMode && (
+                    <div className="border-t border-gray-200 pt-6">
+                        <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
+                            {t('prioritySettings') || 'Priority Settings'}
+                        </h2>
+                        <BrandFormControl helperText={t('priorityHelp') || 'Priority communities are displayed first in the list'}>
+                            <BrandCheckbox
+                                checked={isPriority}
+                                onChange={(checked) => setIsPriority(checked)}
+                                label={t('isPriority') || 'Mark as priority community'}
+                                disabled={isPending}
+                            />
+                        </BrandFormControl>
+                    </div>
+                )}
+
                 {isEditMode && (
                     <>
                         <div className="border-t border-base-300 pt-6">
@@ -321,21 +469,32 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                             </h2>
 
                             <div className="space-y-2 mb-4">
-                                {adminIds.map((adminId) => (
-                                    <div
-                                        key={adminId}
-                                        className="flex items-center justify-between p-3 border border-base-300 rounded-lg"
-                                    >
-                                        <p className="text-sm text-brand-text-primary">{adminId}</p>
-                                        <BrandButton
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleRemoveAdmin(adminId)}
+                                {adminIds.map((adminId) => {
+                                    const adminUser = adminUsersMap.get(adminId);
+                                    const isLoading = adminQueries[adminIds.indexOf(adminId)]?.isLoading;
+                                    const displayName = adminUser?.name || adminId;
+                                    
+                                    return (
+                                        <div
+                                            key={adminId}
+                                            className="flex items-center justify-between p-3 border border-base-300 rounded-lg"
                                         >
-                                            <X size={16} />
-                                        </BrandButton>
-                                    </div>
-                                ))}
+                                            <div className="flex items-center gap-2">
+                                                {isLoading && <Loader2 className="w-4 h-4 animate-spin text-brand-text-secondary" />}
+                                                <p className="text-sm text-brand-text-primary">
+                                                    {displayName} <span className="text-brand-text-secondary">({adminId})</span>
+                                                </p>
+                                            </div>
+                                            <BrandButton
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleRemoveAdmin(adminId)}
+                                            >
+                                                <X size={16} />
+                                            </BrandButton>
+                                        </div>
+                                    );
+                                })}
                                 {adminIds.length === 0 && (
                                     <p className="text-sm text-brand-text-secondary">{t('noAdmins')}</p>
                                 )}
@@ -360,36 +519,124 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                             </BrandFormControl>
                         </div>
 
+                        {isSuperadmin && (
+                            <div className="border-t border-gray-200 pt-6">
+                                <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
+                                    {t('prioritySettings') || 'Priority Settings'}
+                                </h2>
+                                <BrandFormControl helperText={t('priorityHelp') || 'Priority communities are displayed first in the list'}>
+                                    <BrandCheckbox
+                                        checked={isPriority}
+                                        onChange={(checked) => setIsPriority(checked)}
+                                        label={t('isPriority') || 'Mark as priority community'}
+                                        disabled={isPending}
+                                    />
+                                </BrandFormControl>
+                            </div>
+                        )}
+
                         {canGenerateInvites && (
                             <div className="border-t border-base-300 pt-6">
                                 <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
                                     {tInvites('title')}
                                 </h2>
 
+                                {isSuperadmin && (
+                                    <BrandFormControl 
+                                        label={tInvites('inviteRole') || 'Invite Role'}
+                                        helperText={tInvites('inviteRoleHelp') || 'Select the role for the invited user'}
+                                    >
+                                        <div className="flex gap-2">
+                                            <BrandButton
+                                                variant={inviteRole === 'lead' ? "primary" : "outline"}
+                                                onClick={() => setInviteRole('lead')}
+                                                size="sm"
+                                            >
+                                                {tInvites('roleLead') || 'Lead'}
+                                            </BrandButton>
+                                            <BrandButton
+                                                variant={inviteRole === 'participant' ? "primary" : "outline"}
+                                                onClick={() => setInviteRole('participant')}
+                                                size="sm"
+                                            >
+                                                {tInvites('roleParticipant') || 'Participant'}
+                                            </BrandButton>
+                                        </div>
+                                    </BrandFormControl>
+                                )}
+
                                 <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                     <p className="text-sm text-blue-800">
                                         {isSuperadmin 
-                                            ? tInvites('superadminToLeadDescription') || 'Create an invite to make a user a Lead (Representative) of this community'
+                                            ? (inviteRole === 'lead' 
+                                                ? tInvites('superadminToLeadDescription') || 'Create an invite to make a user a Lead (Representative) of this community'
+                                                : tInvites('leadToParticipantDescription') || 'Create an invite to add a participant to this team community')
                                             : tInvites('leadToParticipantDescription') || 'Create an invite to add a participant to this team community'
                                         }
                                     </p>
                                 </div>
 
                                 <div className="space-y-4">
-                                    <BrandFormControl 
-                                        label={tInvites('targetUserId')}
-                                        helperText={isSuperadmin 
-                                            ? 'User ID who will become a Lead (Representative)'
-                                            : 'User ID who will become a Participant'
-                                        }
-                                    >
-                                        <BrandInput
-                                            value={inviteTargetUserId}
-                                            onChange={(e) => setInviteTargetUserId(e.target.value)}
-                                            placeholder={tInvites('targetUserIdPlaceholder')}
-                                            fullWidth
-                                        />
+                                    <BrandFormControl helperText={tInvites('inviteModeHelp') || 'Choose whether to invite an existing user by ID or a new user by name'}>
+                                        <div className="flex gap-2">
+                                            <BrandButton
+                                                variant={!useUserName ? "primary" : "outline"}
+                                                onClick={() => {
+                                                    setUseUserName(false);
+                                                    setInviteTargetUserName('');
+                                                }}
+                                                size="sm"
+                                            >
+                                                {tInvites('existingUser') || 'Existing User'}
+                                            </BrandButton>
+                                            <BrandButton
+                                                variant={useUserName ? "primary" : "outline"}
+                                                onClick={() => {
+                                                    setUseUserName(true);
+                                                    setInviteTargetUserId('');
+                                                }}
+                                                size="sm"
+                                            >
+                                                {tInvites('newUser') || 'New User'}
+                                            </BrandButton>
+                                        </div>
                                     </BrandFormControl>
+
+                                    {!useUserName ? (
+                                        <BrandFormControl 
+                                            label={tInvites('targetUserId')}
+                                            helperText={isSuperadmin 
+                                                ? (inviteRole === 'lead' 
+                                                    ? 'User ID who will become a Lead (Representative)'
+                                                    : 'User ID who will become a Participant')
+                                                : 'User ID who will become a Participant'
+                                            }
+                                        >
+                                            <BrandInput
+                                                value={inviteTargetUserId}
+                                                onChange={(e) => setInviteTargetUserId(e.target.value)}
+                                                placeholder={tInvites('targetUserIdPlaceholder')}
+                                                fullWidth
+                                            />
+                                        </BrandFormControl>
+                                    ) : (
+                                        <BrandFormControl 
+                                            label={tInvites('targetUserName') || 'User Name'}
+                                            helperText={isSuperadmin 
+                                                ? (inviteRole === 'lead' 
+                                                    ? 'Name of the new user who will become a Lead (Representative)'
+                                                    : 'Name of the new user who will become a Participant')
+                                                : 'Name of the new user who will become a Participant'
+                                            }
+                                        >
+                                            <BrandInput
+                                                value={inviteTargetUserName}
+                                                onChange={(e) => setInviteTargetUserName(e.target.value)}
+                                                placeholder={tInvites('targetUserNamePlaceholder') || 'Enter user name'}
+                                                fullWidth
+                                            />
+                                        </BrandFormControl>
+                                    )}
 
                                     <BrandFormControl
                                         label={tInvites('expiresInDays')}
@@ -425,9 +672,16 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                                                     )}
                                                 </BrandButton>
                                             </div>
-                                            <p className="font-mono text-sm text-brand-text-secondary break-all">
-                                                {generatedInvite.code}
-                                            </p>
+                                            <div className="space-y-2">
+                                                <p className="font-mono text-sm text-brand-text-secondary break-all">
+                                                    {generatedInvite.code}
+                                                </p>
+                                                {(generatedInvite.targetUserName || generatedInvite.targetUserId) && (
+                                                    <p className="text-xs text-brand-text-secondary">
+                                                        {tInvites('for') || 'For'}: {generatedInvite.targetUserName || generatedInvite.targetUserId}
+                                                    </p>
+                                                )}
+                                            </div>
                                             {inviteCopied && (
                                                 <p className="text-xs text-green-600">
                                                     {tInvites('invitesCopied')}
@@ -440,7 +694,11 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                                         variant="primary"
                                         size="lg"
                                         onClick={handleGenerateInvite}
-                                        disabled={!inviteTargetUserId.trim() || createInvite.isPending}
+                                        disabled={
+                                            (!useUserName && !inviteTargetUserId.trim()) ||
+                                            (useUserName && !inviteTargetUserName.trim()) ||
+                                            createInvite.isPending
+                                        }
                                         isLoading={createInvite.isPending}
                                         fullWidth
                                     >
@@ -450,6 +708,116 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                             </div>
                         )}
                     </>
+                )}
+
+                {/* Members Section - only in edit mode */}
+                {isEditMode && (isSuperadmin || isUserLead) && (
+                    <div className="mt-8 space-y-4">
+                        <h2 className="text-xl font-semibold text-brand-text-primary">
+                            {t('members.title') || 'Community Members'}
+                        </h2>
+                        
+                        {membersLoading ? (
+                            <div className="flex justify-center py-8">
+                                <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+                            </div>
+                        ) : allMembersAndInvites && allMembersAndInvites.length > 0 ? (
+                            <div className="space-y-2">
+                                {allMembersAndInvites.map((member) => {
+                                    const isPendingInvite = (member as any).isPendingInvite;
+                                    const inviteInfo = isPendingInvite 
+                                        ? { isUsed: false, inviteCode: (member as any).inviteCode, targetUserName: (member as any).targetUserName }
+                                        : memberInviteMap.get(member.id);
+                                    const hasInvite = !!inviteInfo || isPendingInvite;
+                                    const inviteUsed = inviteInfo?.isUsed || false;
+                                    
+                                    return (
+                                        <div
+                                            key={member.id}
+                                            className={`flex items-center justify-between p-3 bg-white border border-brand-secondary/10 rounded-lg shadow-sm hover:shadow-md transition-shadow ${isPendingInvite ? 'opacity-75' : ''}`}
+                                        >
+                                            <div className="flex items-center space-x-3 flex-1">
+                                                <BrandAvatar
+                                                    src={member.avatarUrl}
+                                                    fallback={member.displayName || member.username}
+                                                    size="md"
+                                                />
+                                                <div className="flex-1">
+                                                    <div className="font-medium text-brand-text-primary">
+                                                        {member.displayName || member.username}
+                                                        {isPendingInvite && (
+                                                            <span className="ml-2 text-xs text-amber-600">
+                                                                ({t('members.invited') || 'Invited'})
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-xs text-brand-text-secondary flex items-center gap-2">
+                                                        {!isPendingInvite && <span>@{member.username}</span>}
+                                                        {member.globalRole && (
+                                                            <>
+                                                                {!isPendingInvite && <span>•</span>}
+                                                                <span>{member.globalRole}</span>
+                                                            </>
+                                                        )}
+                                                        {isPendingInvite && (member as any).inviteType && (
+                                                            <>
+                                                                <span>•</span>
+                                                                <span>{(member as any).inviteType === 'superadmin-to-lead' ? 'Lead' : 'Participant'}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                    {hasInvite && (
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            {inviteUsed ? (
+                                                                <div className="flex items-center gap-1 text-xs text-green-600">
+                                                                    <CheckCircle2 className="w-3 h-3" />
+                                                                    <span>{t('members.inviteUsed') || 'Invite used'}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-1 text-xs text-amber-600">
+                                                                    <Clock className="w-3 h-3" />
+                                                                    <span>{t('members.invitePending') || 'Invite pending'}</span>
+                                                                </div>
+                                                            )}
+                                                            {inviteInfo?.inviteCode && (
+                                                                <span className="text-xs text-brand-text-secondary font-mono">
+                                                                    ({inviteInfo.inviteCode})
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {!hasInvite && !isPendingInvite && (
+                                                        <div className="text-xs text-brand-text-secondary mt-1">
+                                                            {t('members.noInvite') || 'No invite'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {!isPendingInvite && member.id !== user?.id && (
+                                                <button
+                                                    onClick={() => handleRemoveMember(member.id, member.displayName || member.username)}
+                                                    disabled={isRemoving}
+                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                                    title={t('members.remove') || 'Remove member'}
+                                                >
+                                                    {isRemoving ? (
+                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                    ) : (
+                                                        <UserX className="w-4 h-4" />
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 text-brand-text-secondary">
+                                {t('members.noMembers') || 'No members yet'}
+                            </div>
+                        )}
+                    </div>
                 )}
 
                 <div className="flex justify-end pt-4">
