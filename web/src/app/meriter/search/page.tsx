@@ -99,7 +99,7 @@ export default function SearchResultsPage() {
 
   return (
     <AdaptiveLayout>
-      <div className="flex flex-col min-h-screen bg-white">
+      <div className="flex flex-col min-h-screen bg-base-100">
         <PageHeader
           title={t('results.title') || 'Search Results'}
           showBack={true}
@@ -185,8 +185,8 @@ export default function SearchResultsPage() {
               ))}
             </div>
           ) : searchParamsState.query || searchParamsState.tags?.length ? (
-            <div className="text-center py-12 text-gray-500">
-              <Search className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <div className="text-center py-12 text-base-content/60">
+              <Search className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
               <p className="font-medium">{t('results.noResults') || 'No results found'}</p>
               <p className="text-sm mt-1">
                 {t('results.tryDifferent') || 'Try different search terms or filters'}

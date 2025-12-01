@@ -60,7 +60,7 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-1">
           <div className="text-right min-w-0 flex-1">
-            <div className="text-xs sm:text-sm font-medium text-base-content truncate">
+            <div className="text-xs sm:text-sm font-medium text-base-content dark:text-base-content truncate">
               {userName || 'User'}
             </div>
           </div>

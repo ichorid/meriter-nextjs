@@ -58,7 +58,7 @@ export function PollsTab({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-base-100 dark:bg-base-100">
       {sortItems(polls, sortOrder).map((poll: any, index: number) => {
         const key = generateKey(poll?.id, index, 'poll');
         return (

@@ -19,7 +19,7 @@ export function TitleCard({
     className = '',
 }: TitleCardProps) {
     return (
-        <div className={`card w-full p-6 bg-base-100 shadow-xl ${topMargin || 'mt-6'} ${className}`}>
+        <div className={`card w-full p-6 bg-base-100 shadow-xl dark:border dark:border-base-content/20 ${topMargin || 'mt-6'} ${className}`}>
             {/* Title for Card */}
             {title && (
                 <>

@@ -22,15 +22,22 @@ RUN pnpm --filter @meriter/shared-types build
 COPY api ./api
 RUN pnpm --filter @meriter/api exec nest build
 
-# Prepare production output - copy only what's needed for install
-RUN mkdir -p /out/web && \
+# Prepare production output
+ENV CI=true
+# Reinstall with --shamefully-hoist to create traditional node_modules structure
+RUN pnpm --filter @meriter/api... install --prod --frozen-lockfile --ignore-scripts --shamefully-hoist
+# Copy built artifacts and production node_modules
+RUN mkdir -p /out && \
     cp -R api/dist /out/dist && \
     cp -R libs /out/libs && \
     cp -R web/patches /out/web/ && \
     cp api/package.json /out/package.json && \
-    cp pnpm-lock.yaml /out/pnpm-lock.yaml && \
-    cp pnpm-workspace.yaml /out/pnpm-workspace.yaml && \
-    cp package.json /out/package.json.root
+    # Copy root node_modules (with --shamefully-hoist, packages are at root level)
+    cp -R node_modules /out/node_modules && \
+    # Copy shared-types built output
+    mkdir -p /out/libs/shared-types && \
+    cp -R libs/shared-types/dist /out/libs/shared-types/dist && \
+    cp libs/shared-types/package.json /out/libs/shared-types/package.json
 
 # --- run ---
 FROM node:22.11-alpine AS runner
@@ -38,8 +45,7 @@ WORKDIR /app
 RUN addgroup -S nodejs && adduser -S -G nodejs nestjs && \
     npm install -g pnpm@10.24.0
 ENV NODE_ENV=production
-
-# Copy build artifacts and package files
+# Copy built artifacts and production node_modules (from pnpm deploy)
 COPY --from=builder --chown=nestjs:nodejs /out ./
 
 # Install production dependencies

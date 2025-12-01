@@ -84,7 +84,7 @@ export default function CreateInvitePage() {
 
   return (
     <AdaptiveLayout>
-      <div className="flex flex-col min-h-screen bg-white">
+      <div className="flex flex-col min-h-screen bg-base-100">
         <PageHeader title={t('title')} showBack={true} />
 
         <div className="p-4 space-y-6">

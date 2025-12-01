@@ -8,7 +8,7 @@ A modern, type-safe React/Next.js frontend for the Meriter platform, built with 
 - **Modern React**: Built with React 18 and Next.js 15
 - **State Management**: TanStack Query for server state
 - **Authentication**: Centralized auth system with Telegram integration
-- **UI Components**: DaisyUI + Telegram UI for consistent design
+- **UI Components**: Custom Tailwind CSS components + Telegram UI for consistent design
 - **Internationalization**: Multi-language support with next-intl
 - **Testing**: Comprehensive test suite with Jest and React Testing Library
 - **Performance**: Optimized for speed and user experience
@@ -193,7 +193,7 @@ The project uses strict TypeScript configuration with:
 
 ### Tailwind CSS
 
-- DaisyUI components
+- Custom component library
 - Custom theme configuration
 - Responsive design utilities
 - Dark mode support
@@ -261,6 +261,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Next.js team for the amazing framework
 - React Query team for excellent state management
-- DaisyUI team for beautiful components
 - Telegram team for Web App SDK
 - All contributors and maintainers

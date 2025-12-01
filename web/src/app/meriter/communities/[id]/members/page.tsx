@@ -114,7 +114,7 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
             communityId={communityId}
             myId={user?.id}
         >
-            <div className="flex flex-col min-h-screen bg-white">
+            <div className="flex flex-col min-h-screen bg-base-100">
                 <PageHeader
                     title={t('members.title')}
                     showBack={true}
@@ -144,7 +144,7 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
                             {membersData.data.map((member) => (
                                 <div
                                     key={member.id}
-                                    className="flex items-center justify-between p-3 bg-white border border-brand-secondary/10 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                                    className="flex items-center justify-between p-3 bg-base-100 border border-brand-secondary/10 rounded-lg shadow-sm hover:shadow-md transition-shadow"
                                 >
                                     <div className="flex items-center space-x-3">
                                         <BrandAvatar

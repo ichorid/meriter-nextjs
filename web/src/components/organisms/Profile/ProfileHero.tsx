@@ -41,7 +41,7 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
     userRoles.some(r => r.role === 'lead');
 
   return (
-    <div className="relative bg-white rounded-xl overflow-hidden border border-brand-secondary/10 shadow-sm">
+    <div className="relative bg-base-100 rounded-xl overflow-hidden border border-brand-secondary/10 shadow-sm">
       {/* Cover Image Section */}
       <div className="relative h-32 bg-gradient-to-r from-brand-primary/20 via-brand-primary/10 to-brand-secondary/10">
         {/* Optional: Add cover image here when available */}
@@ -54,7 +54,7 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
               variant="ghost"
               size="sm"
               onClick={onEdit}
-              className="bg-white/90 backdrop-blur-sm hover:bg-white text-brand-text-primary"
+              className="bg-base-100/90 backdrop-blur-sm hover:bg-base-100 text-brand-text-primary"
             >
               <Edit size={16} className="mr-2" />
               Edit
@@ -73,7 +73,7 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
                 src={avatarUrl}
                 fallback={displayName}
                 size="xl"
-                className="border-4 border-white shadow-lg bg-white"
+                className="border-4 border-base-100 shadow-lg bg-base-100"
               />
               {/* Status Badge */}
               <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 border-4 border-white rounded-full" />

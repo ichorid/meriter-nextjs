@@ -9,6 +9,6 @@ export interface SubtitleProps {
 }
 
 export function Subtitle({ styleClass = '', className = '', children }: SubtitleProps) {
-    return <div className={`text-xl font-semibold ${styleClass} ${className}`}>{children}</div>;
+    return <div className={`text-xl font-semibold text-base-content ${styleClass} ${className}`}>{children}</div>;
 }
 

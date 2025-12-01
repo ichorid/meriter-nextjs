@@ -401,7 +401,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
         {/* Preview */}
         {showPreview && (title.trim() || description.trim()) && (
-          <div className="border border-brand-border rounded-xl overflow-hidden bg-white">
+          <div className="border border-brand-border rounded-xl overflow-hidden bg-base-100">
             <div className="p-4 space-y-4">
               <h3 className="text-lg font-semibold text-brand-text-primary">{t('preview')}</h3>
               <PublicationContent

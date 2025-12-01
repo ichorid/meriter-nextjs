@@ -61,8 +61,8 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
   // Card variant
   return (
     <div className={`${containerClasses} ${className}`}>
-      <div className="card bg-base-200 shadow-xl max-w-md w-full">
-        <div className="card-body p-6">
+      <div className="card bg-base-200 shadow-xl dark:border dark:border-base-content/20 max-w-md w-full">
+        <div className="card-body">
           {errorIcon}
           <h2 className={`${variant === 'card' ? 'card-title' : 'text-xl font-semibold'} text-error text-center mb-2`}>
             {title || 'Something went wrong'}

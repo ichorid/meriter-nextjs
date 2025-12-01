@@ -62,6 +62,30 @@ export default async function RootLayout({
     return (
         <html lang={locale} suppressHydrationWarning>
             <head>
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+(function() {
+  try {
+    const stored = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    let theme = 'light';
+    
+    if (stored === 'dark' || stored === 'light') {
+      theme = stored;
+    } else if (stored === 'auto' || !stored) {
+      theme = prefersDark ? 'dark' : 'light';
+    }
+    
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {
+    // localStorage not available, use default
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+                        `,
+                    }}
+                />
                 <link
                     href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap"
                     rel="stylesheet"

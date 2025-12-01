@@ -33,7 +33,7 @@ export function ProfileStats({ meritStats, isLoading }: ProfileStatsProps) {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-16 bg-gray-200 rounded-lg animate-pulse"
+              className="h-16 bg-base-200 rounded-lg animate-pulse"
             />
           ))}
         </div>
@@ -60,7 +60,7 @@ export function ProfileStats({ meritStats, isLoading }: ProfileStatsProps) {
         {meritStats.map((stat) => (
           <div
             key={stat.communityId}
-            className="flex items-center justify-between p-4 bg-white border border-brand-secondary/10 rounded-lg hover:border-brand-primary/20 transition-colors"
+            className="flex items-center justify-between p-4 bg-base-100 border border-brand-secondary/10 rounded-lg hover:border-brand-primary/20 transition-colors"
           >
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-brand-text-primary truncate">

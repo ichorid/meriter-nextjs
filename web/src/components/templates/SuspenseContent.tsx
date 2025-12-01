@@ -8,7 +8,7 @@ export interface SuspenseContentProps {
 
 export function SuspenseContent({ className = '' }: SuspenseContentProps) {
     return (
-        <div className={`w-full h-screen text-gray-300 dark:text-gray-200 bg-base-100 ${className}`}>
+        <div className={`w-full h-screen text-base-content bg-base-100 ${className}`}>
             Loading...
         </div>
     );

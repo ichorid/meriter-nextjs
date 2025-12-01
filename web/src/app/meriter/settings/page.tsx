@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogoutButton } from '@/components/LogoutButton';
 import { LanguageSelector } from '@shared/components/language-selector';
+import { ThemeSelector } from '@shared/components/theme-selector';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSyncCommunities } from '@/hooks/api/useCommunities';
@@ -103,21 +104,29 @@ const SettingsPage = () => {
 
     return (
         <AdaptiveLayout>
-            <div className="flex flex-col min-h-screen bg-white">
+            <div className="flex flex-col min-h-screen bg-base-100">
                 <PageHeader title={t('title')} showBack={true} />
 
                 <div className="p-4 space-y-6">
                     {/* Language Section */}
                     <div className="space-y-3">
-                        <h2 className="text-base font-semibold text-brand-text-primary">
+                        <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
                             {t('languageSection')}
                         </h2>
                         <LanguageSelector />
                     </div>
 
+                    {/* Theme Section */}
+                    <div className="space-y-3">
+                        <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
+                            {t('themeSection')}
+                        </h2>
+                        <ThemeSelector />
+                    </div>
+
                     {/* Communities Section */}
                     <div className="space-y-3">
-                        <h2 className="text-base font-semibold text-brand-text-primary">
+                        <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
                             {t('communities')}
                         </h2>
                         <BrandButton
@@ -130,7 +139,7 @@ const SettingsPage = () => {
                             {syncCommunitiesMutation.isPending ? t('syncing') : t('syncCommunities')}
                         </BrandButton>
                         {syncMessage && (
-                            <p className={`text-sm ${syncMessage.includes(t('syncError')) ? 'text-red-600' : 'text-green-600'}`}>
+                            <p className={`text-sm ${syncMessage.includes(t('syncError')) ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                                 {syncMessage}
                             </p>
                         )}
@@ -139,7 +148,7 @@ const SettingsPage = () => {
                     {/* Development Section (Fake Data Mode) */}
                     {fakeDataMode && (
                         <div className="space-y-3">
-                            <h2 className="text-base font-semibold text-brand-text-primary">
+                            <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
                                 Development
                             </h2>
                             <div className="space-y-2">
@@ -164,12 +173,12 @@ const SettingsPage = () => {
                                     {addingToAllCommunities ? 'Adding...' : 'Add This User to All Communities'}
                                 </BrandButton>
                                 {fakeCommunityMessage && (
-                                    <p className={`text-sm ${fakeCommunityMessage.includes('Failed') ? 'text-red-600' : 'text-green-600'}`}>
+                                    <p className={`text-sm ${fakeCommunityMessage.includes('Failed') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                                         {fakeCommunityMessage}
                                     </p>
                                 )}
                                 {addToAllMessage && (
-                                    <p className={`text-sm ${addToAllMessage.includes('Failed') || addToAllMessage.includes('errors') ? 'text-red-600' : 'text-green-600'}`}>
+                                    <p className={`text-sm ${addToAllMessage.includes('Failed') || addToAllMessage.includes('errors') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                                         {addToAllMessage}
                                     </p>
                                 )}
@@ -184,7 +193,7 @@ const SettingsPage = () => {
 
                     {/* Account Section */}
                     <div className="space-y-3">
-                        <h2 className="text-base font-semibold text-brand-text-primary">
+                        <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
                             {t('account')}
                         </h2>
                         <LogoutButton />

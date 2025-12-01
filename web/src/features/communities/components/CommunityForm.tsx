@@ -383,7 +383,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                     helperText={t('hashtagsHelp')}
                 />
 
-                <div className="border-t border-gray-200 pt-6">
+                <div className="border-t border-base-300 pt-6">
                     <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
                         {t('configuration')}
                     </h2>
@@ -463,21 +463,22 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
 
                 {isEditMode && (
                     <>
-                        <div className="border-t border-gray-200 pt-6">
+                        <div className="border-t border-base-300 pt-6">
                             <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
                                 {t('administrators')}
                             </h2>
 
                             <div className="space-y-2 mb-4">
-                                {adminIds.map((adminId) => {
-                                    const adminUser = adminUsersMap.get(adminId);
-                                    const isLoading = adminQueries[adminIds.indexOf(adminId)]?.isLoading;
-                                    const displayName = adminUser?.name || adminId;
-                                    
-                                    return (
-                                        <div
-                                            key={adminId}
-                                            className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+                                {adminIds.map((adminId) => (
+                                    <div
+                                        key={adminId}
+                                        className="flex items-center justify-between p-3 border border-base-300 rounded-lg"
+                                    >
+                                        <p className="text-sm text-brand-text-primary">{adminId}</p>
+                                        <BrandButton
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleRemoveAdmin(adminId)}
                                         >
                                             <div className="flex items-center gap-2">
                                                 {isLoading && <Loader2 className="w-4 h-4 animate-spin text-brand-text-secondary" />}
@@ -536,7 +537,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                         )}
 
                         {canGenerateInvites && (
-                            <div className="border-t border-gray-200 pt-6">
+                            <div className="border-t border-base-300 pt-6">
                                 <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
                                     {tInvites('title')}
                                 </h2>

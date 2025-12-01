@@ -63,7 +63,7 @@ export function PublicationsTab({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-base-100 dark:bg-base-100">
       {sortItems(filteredPublications, sortOrder).map((p, index) => {
         const key = generateKey(p?.id, index, 'pub');
         return (

@@ -65,7 +65,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
         <div className="flex items-start sm:items-center gap-2 flex-col sm:flex-row">
           <Avatar src={author.photoUrl} alt={author.name} size="md" />
           <div className="flex flex-col">
-            <span className="font-medium">{author.name}</span>
+            <span className="font-medium text-base-content">{author.name}</span>
             {author.username && <span className="text-sm text-base-content/60">@{author.username}</span>}
           </div>
         </div>
@@ -76,7 +76,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             <div className="flex items-center gap-2">
               <Avatar src={beneficiary.photoUrl} alt={beneficiary.name} size="sm" />
               <div className="flex flex-col">
-                <span className="font-medium text-sm">{beneficiary.name}</span>
+                <span className="font-medium text-sm text-base-content">{beneficiary.name}</span>
                 {beneficiary.username && <span className="text-xs text-base-content/60">@{beneficiary.username}</span>}
               </div>
             </div>
