@@ -34,8 +34,15 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
 
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [inviteTargetUserId, setInviteTargetUserId] = useState('');
+    const [inviteTargetUserName, setInviteTargetUserName] = useState('');
+    const [useUserName, setUseUserName] = useState(false);
     const [inviteExpiresInDays, setInviteExpiresInDays] = useState<number | ''>(30);
-    const [generatedInvite, setGeneratedInvite] = useState<{ code: string } | null>(null);
+    const [inviteRole, setInviteRole] = useState<'lead' | 'participant'>('lead'); // Role selection for superadmin
+    const [generatedInvite, setGeneratedInvite] = useState<{ 
+        code: string; 
+        targetUserId?: string; 
+        targetUserName?: string;
+    } | null>(null);
     const [inviteCopied, setInviteCopied] = useState(false);
 
     // Check if user is admin (superadmin or lead of this community)
@@ -43,7 +50,10 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
     const isSuperadmin = user?.globalRole === 'superadmin';
     const isUserLead = userRoles.some(r => r.communityId === communityId && r.role === 'lead');
     const canGenerateInvites = isAdmin && (isSuperadmin || isUserLead);
-    const inviteType = isSuperadmin ? 'superadmin-to-lead' : 'lead-to-participant';
+    // Superadmin can choose role, non-superadmin can only invite participants
+    const inviteType = isSuperadmin 
+        ? (inviteRole === 'lead' ? 'superadmin-to-lead' : 'lead-to-participant')
+        : 'lead-to-participant';
 
     const handleRemoveMember = (userId: string, userName: string) => {
         if (confirm(t('members.confirmRemove', { name: userName }))) {
@@ -52,7 +62,9 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
     };
 
     const handleGenerateInvite = async () => {
-        if (!communityId || !inviteTargetUserId.trim()) return;
+        if (!communityId) return;
+        if (!useUserName && !inviteTargetUserId.trim()) return;
+        if (useUserName && !inviteTargetUserName.trim()) return;
 
         try {
             const expiresAt = inviteExpiresInDays && inviteExpiresInDays > 0
@@ -60,13 +72,20 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
                 : undefined;
 
             const invite = await createInvite.mutateAsync({
-                targetUserId: inviteTargetUserId.trim(),
+                ...(useUserName 
+                    ? { targetUserName: inviteTargetUserName.trim() }
+                    : { targetUserId: inviteTargetUserId.trim() }
+                ),
                 type: inviteType,
                 communityId,
                 expiresAt,
             });
 
-            setGeneratedInvite({ code: invite.code });
+            setGeneratedInvite({ 
+                code: invite.code,
+                targetUserId: invite.targetUserId,
+                targetUserName: invite.targetUserName,
+            });
             setInviteCopied(false);
         } catch (error) {
             console.error('Failed to create invite:', error);
@@ -174,34 +193,109 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
                         setShowInviteModal(false);
                         setGeneratedInvite(null);
                         setInviteTargetUserId('');
+                        setInviteTargetUserName('');
+                        setUseUserName(false);
                         setInviteExpiresInDays(30);
+                        setInviteRole('lead');
                     }}
                     title={tInvites('title')}
                 >
                     <div className="space-y-4">
+                        {isSuperadmin && (
+                            <BrandFormControl 
+                                label={tInvites('inviteRole') || 'Invite Role'}
+                                helperText={tInvites('inviteRoleHelp') || 'Select the role for the invited user'}
+                            >
+                                <div className="flex gap-2">
+                                    <BrandButton
+                                        variant={inviteRole === 'lead' ? "primary" : "outline"}
+                                        onClick={() => setInviteRole('lead')}
+                                        size="sm"
+                                    >
+                                        {tInvites('roleLead') || 'Lead'}
+                                    </BrandButton>
+                                    <BrandButton
+                                        variant={inviteRole === 'participant' ? "primary" : "outline"}
+                                        onClick={() => setInviteRole('participant')}
+                                        size="sm"
+                                    >
+                                        {tInvites('roleParticipant') || 'Participant'}
+                                    </BrandButton>
+                                </div>
+                            </BrandFormControl>
+                        )}
+
                         <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                             <p className="text-sm text-blue-800">
                                 {isSuperadmin 
-                                    ? tInvites('superadminToLeadDescription') || 'Create an invite to make a user a Lead (Representative)'
+                                    ? (inviteRole === 'lead' 
+                                        ? tInvites('superadminToLeadDescription') || 'Create an invite to make a user a Lead (Representative)'
+                                        : tInvites('leadToParticipantDescription') || 'Create an invite to add a participant to this team community')
                                     : tInvites('leadToParticipantDescription') || 'Create an invite to add a participant to this team community'
                                 }
                             </p>
                         </div>
 
-                        <BrandFormControl 
-                            label={tInvites('targetUserId')}
-                            helperText={isSuperadmin 
-                                ? 'User ID who will become a Lead (Representative)'
-                                : 'User ID who will become a Participant'
-                            }
-                        >
-                            <BrandInput
-                                value={inviteTargetUserId}
-                                onChange={(e) => setInviteTargetUserId(e.target.value)}
-                                placeholder={tInvites('targetUserIdPlaceholder')}
-                                fullWidth
-                            />
+                        <BrandFormControl helperText={tInvites('inviteModeHelp') || 'Choose whether to invite an existing user by ID or a new user by name'}>
+                            <div className="flex gap-2">
+                                <BrandButton
+                                    variant={!useUserName ? "primary" : "outline"}
+                                    onClick={() => {
+                                        setUseUserName(false);
+                                        setInviteTargetUserName('');
+                                    }}
+                                    size="sm"
+                                >
+                                    {tInvites('existingUser') || 'Existing User'}
+                                </BrandButton>
+                                <BrandButton
+                                    variant={useUserName ? "primary" : "outline"}
+                                    onClick={() => {
+                                        setUseUserName(true);
+                                        setInviteTargetUserId('');
+                                    }}
+                                    size="sm"
+                                >
+                                    {tInvites('newUser') || 'New User'}
+                                </BrandButton>
+                            </div>
                         </BrandFormControl>
+
+                        {!useUserName ? (
+                            <BrandFormControl 
+                                label={tInvites('targetUserId')}
+                                helperText={isSuperadmin 
+                                    ? (inviteRole === 'lead' 
+                                        ? 'User ID who will become a Lead (Representative)'
+                                        : 'User ID who will become a Participant')
+                                    : 'User ID who will become a Participant'
+                                }
+                            >
+                                <BrandInput
+                                    value={inviteTargetUserId}
+                                    onChange={(e) => setInviteTargetUserId(e.target.value)}
+                                    placeholder={tInvites('targetUserIdPlaceholder')}
+                                    fullWidth
+                                />
+                            </BrandFormControl>
+                        ) : (
+                            <BrandFormControl 
+                                label={tInvites('targetUserName') || 'User Name'}
+                                helperText={isSuperadmin 
+                                    ? (inviteRole === 'lead' 
+                                        ? 'Name of the new user who will become a Lead (Representative)'
+                                        : 'Name of the new user who will become a Participant')
+                                    : 'Name of the new user who will become a Participant'
+                                }
+                            >
+                                <BrandInput
+                                    value={inviteTargetUserName}
+                                    onChange={(e) => setInviteTargetUserName(e.target.value)}
+                                    placeholder={tInvites('targetUserNamePlaceholder') || 'Enter user name'}
+                                    fullWidth
+                                />
+                            </BrandFormControl>
+                        )}
 
                         <BrandFormControl
                             label={tInvites('expiresInDays')}
@@ -235,7 +329,14 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
                                         )}
                                     </button>
                                 </div>
-                                <p className="font-mono text-sm text-green-900 break-all">{generatedInvite.code}</p>
+                                <div className="space-y-1">
+                                    <p className="font-mono text-sm text-green-900 break-all">{generatedInvite.code}</p>
+                                    {(generatedInvite.targetUserName || generatedInvite.targetUserId) && (
+                                        <p className="text-xs text-green-700">
+                                            {tInvites('for') || 'For'}: {generatedInvite.targetUserName || generatedInvite.targetUserId}
+                                        </p>
+                                    )}
+                                </div>
                                 {inviteCopied && (
                                     <p className="text-xs text-green-600 mt-1">{tCommon('copied') || 'Copied!'}</p>
                                 )}
@@ -258,7 +359,11 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
                             <BrandButton
                                 variant="primary"
                                 onClick={handleGenerateInvite}
-                                disabled={!inviteTargetUserId.trim() || createInvite.isPending}
+                                disabled={
+                                    (!useUserName && !inviteTargetUserId.trim()) ||
+                                    (useUserName && !inviteTargetUserName.trim()) ||
+                                    createInvite.isPending
+                                }
                                 isLoading={createInvite.isPending}
                                 fullWidth
                             >

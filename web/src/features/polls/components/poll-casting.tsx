@@ -8,6 +8,9 @@ import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { usePollTimeRemaining } from '../hooks/usePollTimeRemaining';
 import { usePollAmountValidation } from '../hooks/usePollAmountValidation';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { BrandButton } from '@/components/ui/BrandButton';
+import { BrandInput } from '@/components/ui/BrandInput';
+import { BrandFormControl } from '@/components/ui/BrandFormControl';
 
 interface IPollCastingProps {
     pollData: IPollData;
@@ -242,18 +245,17 @@ export const PollCasting = ({
             </div>
 
             {!isExpired && (
-                <div className="card bg-base-200 shadow-md p-4">
-                    <div className="form-control mb-3">
-                        <label className="label" htmlFor="cast-amount">
-                            <span className="label-text">{t('amountLabel')}</span>
-                            <span className="label-text-alt">{t('available')}: {balance}</span>
-                        </label>
-                        <input
+                <div className="bg-brand-surface rounded-xl border border-brand-border p-4 shadow-sm">
+                    <BrandFormControl
+                        label={t('amountLabel')}
+                        helperText={balance > 0 ? `${t('available')}: ${balance}` : undefined}
+                        error={amountValidationError || (balance === 0 ? t('insufficientPoints') : undefined)}
+                    >
+                        <BrandInput
                             id="cast-amount"
                             type="text"
                             inputMode="numeric"
                             value={amountInputValue}
-                            className={`input input-bordered w-full ${amountValidationError ? 'input-error' : ''}`}
                             onChange={(e) => {
                                 const inputValue = e.target.value;
                                 // Always update input value for user to see what they type
@@ -293,20 +295,21 @@ export const PollCasting = ({
                                 }
                             }}
                             disabled={isCasting}
+                            fullWidth
                         />
-                        {amountValidationError && (
-                            <label className="label">
-                                <span className="label-text-alt text-error">{amountValidationError}</span>
-                            </label>
-                        )}
+                    </BrandFormControl>
+                    <div className="mt-4">
+                        <BrandButton
+                            variant="primary"
+                            size="md"
+                            fullWidth
+                            onClick={handleCastPoll}
+                            isLoading={isCasting}
+                            disabled={isCasting || !selectedOptionId || amountValidationError !== null || balance === 0}
+                        >
+                            {isCasting ? t('casting') : t('castPoll')}
+                        </BrandButton>
                     </div>
-                    <button
-                        className="btn btn-primary w-full"
-                        onClick={handleCastPoll}
-                        disabled={isCasting || !selectedOptionId || amountValidationError !== null}
-                    >
-                        {isCasting ? t('casting') : t('castPoll')}
-                    </button>
                 </div>
             )}
 

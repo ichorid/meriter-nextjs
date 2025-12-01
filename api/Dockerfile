@@ -18,29 +18,34 @@ RUN pnpm --filter @meriter/shared-types... install --frozen-lockfile && \
 # Build shared-types first
 RUN pnpm --filter @meriter/shared-types build
 
-# Add sources and build API (skip prebuild since shared-types already built)
+# Add sources and build API
 COPY api ./api
 RUN pnpm --filter @meriter/api exec nest build
 
-# Deploy production dependencies with flattened structure
-ENV CI=true
-RUN mkdir -p /out && \
-    pnpm -C api deploy --filter=@meriter/api --prod --legacy ./deploy && \
-    mv api/deploy/node_modules /out/node_modules && \
-    mv api/deploy/* /out/ 2>/dev/null || true && \
+# Prepare production output - copy only what's needed for install
+RUN mkdir -p /out/web && \
     cp -R api/dist /out/dist && \
+    cp -R libs /out/libs && \
+    cp -R web/patches /out/web/ && \
     cp api/package.json /out/package.json && \
     cp pnpm-lock.yaml /out/pnpm-lock.yaml && \
-    rm -rf api/deploy
+    cp pnpm-workspace.yaml /out/pnpm-workspace.yaml && \
+    cp package.json /out/package.json.root
 
 # --- run ---
 FROM node:22.11-alpine AS runner
 WORKDIR /app
-RUN addgroup -S nodejs && adduser -S -G nodejs nestjs
+RUN addgroup -S nodejs && adduser -S -G nodejs nestjs && \
+    npm install -g pnpm@10.24.0
 ENV NODE_ENV=production
+
+# Copy build artifacts and package files
 COPY --from=builder --chown=nestjs:nodejs /out ./
+
+# Install production dependencies
+RUN pnpm install --prod && \
+    rm -f package.json.root pnpm-workspace.yaml pnpm-lock.yaml
+
 USER nestjs
 EXPOSE 8002
-# Security: Run as non-root user (nestjs)
-# Note: read_only filesystem and tmpfs should be configured in docker-compose.yml
 CMD ["node", "dist/apps/meriter/main"]

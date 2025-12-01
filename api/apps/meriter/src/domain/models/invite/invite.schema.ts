@@ -32,8 +32,11 @@ export class Invite {
   @Prop({ required: true, index: true })
   createdBy: string; // ID создателя (суперадмин или лид)
 
-  @Prop({ required: true, index: true })
-  targetUserId: string; // ID конкретного пользователя, для которого создан инвайт (обязательное поле)
+  @Prop({ index: true })
+  targetUserId?: string; // ID конкретного пользователя, для которого создан инвайт (опционально, если указан targetUserName)
+
+  @Prop()
+  targetUserName?: string; // Имя нового пользователя (опционально, если указан targetUserId)
 
   @Prop({ index: true })
   usedBy?: string; // ID пользователя, использовавшего код (должен совпадать с targetUserId)
@@ -65,13 +68,6 @@ export const InviteSchema = SchemaFactory.createForClass(Invite);
 // Indexes for common queries
 InviteSchema.index({ code: 1 }, { unique: true });
 InviteSchema.index({ createdBy: 1 });
-InviteSchema.index({ targetUserId: 1 });
+InviteSchema.index({ targetUserId: 1 }, { sparse: true }); // Sparse index since targetUserId is optional
 InviteSchema.index({ isUsed: 1 });
 InviteSchema.index({ communityId: 1 });
-
-
-
-
-
-
-

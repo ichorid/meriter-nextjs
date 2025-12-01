@@ -8,7 +8,6 @@ import { PublicationContent } from './PublicationContent';
 import { PublicationActions } from './PublicationActions';
 import { PollCasting } from '@features/polls/components/poll-casting';
 import { usePollCardData } from '@/hooks/usePollCardData';
-import { useWalletBalance } from '@/hooks/api/useWallet';
 import { getWalletBalance } from '@/lib/utils/wallet';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { Pressable } from 'react-native';
@@ -42,7 +41,8 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   
   // Get wallet balance for polls
   const communityId = publication.communityId;
-  const { data: pollBalance = 0 } = useWalletBalance(isPoll ? communityId : '');
+  // Use wallets array to get balance instead of separate query
+  const pollBalance = getWalletBalance(wallets, communityId);
   
   // For publications, use the publication hook
   // Note: usePublication expects a different Publication type, so we need to adapt

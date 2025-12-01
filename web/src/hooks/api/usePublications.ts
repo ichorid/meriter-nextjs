@@ -11,7 +11,10 @@ import {
     useValidatedQuery,
     useValidatedMutation,
 } from "@/lib/api/validated-query";
-import { PublicationSchema, CreatePublicationDtoSchema } from "@/types/api-v1/schemas";
+import {
+    PublicationSchema,
+    CreatePublicationDtoSchema,
+} from "@/types/api-v1/schemas";
 import type {
     Publication,
     PaginatedResponse,
@@ -153,9 +156,24 @@ export function useCreatePublication() {
         inputSchema: CreatePublicationDtoSchema,
         outputSchema: PublicationSchema,
         context: "useCreatePublication",
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
+            // Invalidate publications lists
             queryClient.invalidateQueries({
                 queryKey: queryKeys.publications.lists(),
+                exact: false,
+            });
+            // Invalidate community feed for the specific community
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.communities.feed(variables.communityId),
+                exact: false,
+            });
+            // Also invalidate all community feeds to ensure consistency
+            queryClient.invalidateQueries({
+                queryKey: [
+                    ...queryKeys.communities.detail(variables.communityId),
+                    "feed",
+                ],
+                exact: false,
             });
         },
     });

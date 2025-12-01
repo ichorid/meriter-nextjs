@@ -17,16 +17,29 @@ import { PublicationService } from '../../domain/services/publication.service';
 import { UserService } from '../../domain/services/user.service';
 import { CommunityFeedService } from '../../domain/services/community-feed.service';
 import { WalletService } from '../../domain/services/wallet.service';
+import { UserCommunityRoleService } from '../../domain/services/user-community-role.service';
 import { UserGuard } from '../../user.guard';
 import { User } from '../../decorators/user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
-import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
+import {
+  NotFoundError,
+  ForbiddenError,
+  ValidationError,
+} from '../../common/exceptions/api.exceptions';
 import { CommunitySetupHelpers } from '../common/helpers/community-setup.helpers';
 import { ApiResponseHelper } from '../common/helpers/api-response.helper';
-import { Community, UpdateCommunityDto, UpdateCommunityDtoSchema, CreateCommunityDtoSchema } from '../../../../../../libs/shared-types/dist/index';
+import {
+  Community,
+  UpdateCommunityDto,
+  UpdateCommunityDtoSchema,
+  CreateCommunityDtoSchema,
+} from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
-import { formatDualLinks, escapeMarkdownV2 } from '../../common/helpers/telegram';
+import {
+  formatDualLinks,
+  escapeMarkdownV2,
+} from '../../common/helpers/telegram';
 import { BOT_USERNAME, URL as WEB_BASE_URL } from '../../config';
 import { t } from '../../i18n';
 
@@ -41,13 +54,16 @@ export class CommunitiesController {
     private readonly userService: UserService,
     private readonly communityFeedService: CommunityFeedService,
     private readonly walletService: WalletService,
-  ) { }
+    private readonly userCommunityRoleService: UserCommunityRoleService,
+  ) {}
 
   /**
    * Helper to safely convert hashtagDescriptions from MongoDB Map to plain object.
    * When using .lean(), Mongoose returns a plain object instead of a Map.
    */
-  private convertHashtagDescriptions(descriptions: any): Record<string, string> | undefined {
+  private convertHashtagDescriptions(
+    descriptions: any,
+  ): Record<string, string> | undefined {
     if (!descriptions) return undefined;
     if (descriptions instanceof Map) {
       return Object.fromEntries(descriptions);
@@ -56,17 +72,32 @@ export class CommunitiesController {
     return descriptions as Record<string, string>;
   }
 
-
   @Get()
   async getCommunities(@Query() query: any) {
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
-    const result = await this.communityService.getAllCommunities(pagination.limit, skip);
-    return { data: result, total: result.length, skip, limit: pagination.limit };
+    const result = await this.communityService.getAllCommunities(
+      pagination.limit,
+      skip,
+    );
+    return {
+      data: result,
+      total: result.length,
+      skip,
+      limit: pagination.limit,
+    };
   }
 
   @Get(':id')
-  async getCommunity(@Param('id') id: string, @Req() req: any): Promise<Community> {
+  async getCommunity(
+    @Param('id') id: string,
+    @Req() req: any,
+  ): Promise<Community> {
+    // Prevent "create" from being treated as an ID
+    if (id === 'create') {
+      throw new NotFoundError('Community', id);
+    }
+
     const community = await this.communityService.getCommunity(id);
     if (!community) {
       throw new NotFoundError('Community', id);
@@ -74,7 +105,10 @@ export class CommunitiesController {
 
     // A community needs setup if it's missing essential configurations
     // Note: Having default currency name "merit" is NOT considered needing setup
-    const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
+    const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(
+      community,
+      false,
+    );
 
     this.logger.log(`Community ${id} setup check:`, {
       ...CommunitySetupHelpers.calculateSetupStatusDetails(community),
@@ -82,7 +116,7 @@ export class CommunitiesController {
       hashtags: community.hashtags,
       currencyNames: community.settings?.currencyNames,
       dailyEmission: community.settings?.dailyEmission,
-      iconUrl: community.settings?.iconUrl
+      iconUrl: community.settings?.iconUrl,
     });
 
     return {
@@ -96,7 +130,9 @@ export class CommunitiesController {
         iconUrl: community.settings?.iconUrl,
         language: (community.settings as any)?.language ?? 'en',
       },
-      hashtagDescriptions: this.convertHashtagDescriptions(community.hashtagDescriptions),
+      hashtagDescriptions: this.convertHashtagDescriptions(
+        community.hashtagDescriptions,
+      ),
       isAdmin: await this.communityService.isUserAdmin(id, req.user.id),
       needsSetup,
       createdAt: community.createdAt.toISOString(),
@@ -106,23 +142,43 @@ export class CommunitiesController {
 
   @Post()
   @ZodValidation(CreateCommunityDtoSchema)
-  async createCommunity(@Body() createDto: any, @Req() req: any): Promise<Community> {
+  async createCommunity(
+    @Body() createDto: any,
+    @Req() req: any,
+  ): Promise<Community> {
     // Ensure creator is added as admin
     const adminId = req.user.id;
     if (!adminId) {
       this.logger.warn(`User has no id when creating community`);
     }
 
+    // Only superadmin can set isPriority
+    const isSuperadmin = req.user.globalRole === 'superadmin';
+    if (createDto.isPriority && !isSuperadmin) {
+      throw new ForbiddenError('Only superadmin can set community priority');
+    }
+
     const communityDtoWithAdmin = {
       ...createDto,
       adminIds: [adminId].filter(Boolean),
+      // Remove isPriority if user is not superadmin
+      ...(isSuperadmin ? { isPriority: createDto.isPriority } : {}),
     };
 
-    const community = await this.communityService.createCommunity(communityDtoWithAdmin);
+    const community = await this.communityService.createCommunity(
+      communityDtoWithAdmin,
+    );
 
     // Add creator as member and update memberships
     await this.communityService.addMember(community.id, req.user.id);
     await this.userService.addCommunityMembership(req.user.id, community.id);
+
+    // Set creator as lead
+    await this.userCommunityRoleService.setRole(
+      req.user.id,
+      community.id,
+      'lead',
+    );
 
     // Create wallet for the creator
     const currency = community.settings?.currencyNames || {
@@ -130,23 +186,38 @@ export class CommunitiesController {
       plural: 'merits',
       genitive: 'merits',
     };
-    await this.walletService.createOrGetWallet(req.user.id, community.id, currency);
+    await this.walletService.createOrGetWallet(
+      req.user.id,
+      community.id,
+      currency,
+    );
 
     // A community needs setup if it's missing essential configurations
     // Note: Having default currency name "merit" is NOT considered needing setup
-    const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
+    const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(
+      community,
+      false,
+    );
 
     return {
       ...community,
       avatarUrl: community.avatarUrl,
-      adminIds: (community as any).adminIds || (community as any).adminAuthIds || (community as any).adminsTG || (community as any).administratorsTg || (community as any).administrators || [],
+      adminIds:
+        (community as any).adminIds ||
+        (community as any).adminAuthIds ||
+        (community as any).adminsTG ||
+        (community as any).administratorsTg ||
+        (community as any).administrators ||
+        [],
       settings: {
         currencyNames: community.settings?.currencyNames,
         dailyEmission: community.settings?.dailyEmission as number,
         iconUrl: community.settings?.iconUrl,
         language: (community.settings as any)?.language ?? 'en',
       },
-      hashtagDescriptions: this.convertHashtagDescriptions(community.hashtagDescriptions),
+      hashtagDescriptions: this.convertHashtagDescriptions(
+        community.hashtagDescriptions,
+      ),
       isAdmin: true, // Creator is admin
       needsSetup,
       createdAt: community.createdAt.toISOString(),
@@ -162,15 +233,30 @@ export class CommunitiesController {
     @Req() req: any,
   ): Promise<Community> {
     const isAdmin = await this.communityService.isUserAdmin(id, req.user.id);
-    if (!isAdmin) {
-      throw new ForbiddenError('Only administrators can update community settings');
+    const isSuperadmin = req.user.globalRole === 'superadmin';
+
+    if (!isAdmin && !isSuperadmin) {
+      throw new ForbiddenError(
+        'Only administrators can update community settings',
+      );
     }
 
-    const community = await this.communityService.updateCommunity(id, updateDto);
+    // Only superadmin can set isPriority
+    if (updateDto.isPriority !== undefined && !isSuperadmin) {
+      throw new ForbiddenError('Only superadmin can set community priority');
+    }
+
+    const community = await this.communityService.updateCommunity(
+      id,
+      updateDto,
+    );
 
     // A community needs setup if it's missing essential configurations
     // Note: Having default currency name "merit" is NOT considered needing setup
-    const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
+    const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(
+      community,
+      false,
+    );
 
     this.logger.log(`Community ${id} setup check after update:`, {
       ...CommunitySetupHelpers.calculateSetupStatusDetails(community),
@@ -178,20 +264,28 @@ export class CommunitiesController {
       hashtags: community.hashtags,
       currencyNames: community.settings?.currencyNames,
       dailyEmission: community.settings?.dailyEmission,
-      iconUrl: community.settings?.iconUrl
+      iconUrl: community.settings?.iconUrl,
     });
 
     return {
       ...community,
       avatarUrl: community.avatarUrl,
-      adminIds: (community as any).adminIds || (community as any).adminAuthIds || (community as any).adminsTG || (community as any).administratorsTg || (community as any).administrators || [],
+      adminIds:
+        (community as any).adminIds ||
+        (community as any).adminAuthIds ||
+        (community as any).adminsTG ||
+        (community as any).administratorsTg ||
+        (community as any).administrators ||
+        [],
       settings: {
         currencyNames: community.settings?.currencyNames,
         dailyEmission: community.settings?.dailyEmission as number,
         iconUrl: community.settings?.iconUrl,
         language: (community.settings as any)?.language ?? 'en',
       },
-      hashtagDescriptions: this.convertHashtagDescriptions(community.hashtagDescriptions),
+      hashtagDescriptions: this.convertHashtagDescriptions(
+        community.hashtagDescriptions,
+      ),
       isAdmin: await this.communityService.isUserAdmin(id, req.user.id),
       needsSetup,
       createdAt: community.createdAt.toISOString(),
@@ -218,7 +312,9 @@ export class CommunitiesController {
     }
 
     const { resetAt } = await this.communityService.resetDailyQuota(id);
-    return ApiResponseHelper.successResponse({ resetAt: resetAt.toISOString() });
+    return ApiResponseHelper.successResponse({
+      resetAt: resetAt.toISOString(),
+    });
   }
 
   @Post(':id/send-memo')
@@ -235,8 +331,15 @@ export class CommunitiesController {
 
     const lang = ((community.settings as any)?.language as 'en' | 'ru') || 'en';
 
-    const dualLinksCommunity = formatDualLinks('community', { id }, BOT_USERNAME, WEB_BASE_URL);
-    const hashtagsRaw = (community.hashtags || []).map((h) => `#${h}`).join(' ');
+    const dualLinksCommunity = formatDualLinks(
+      'community',
+      { id },
+      BOT_USERNAME,
+      WEB_BASE_URL,
+    );
+    const hashtagsRaw = (community.hashtags || [])
+      .map((h) => `#${h}`)
+      .join(' ');
     const hashtagsEscaped = escapeMarkdownV2(hashtagsRaw);
 
     // Telegram notifications are disabled in this project; skip sending welcome message.
@@ -249,8 +352,16 @@ export class CommunitiesController {
   async getCommunityMembers(@Param('id') id: string, @Query() query: any) {
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
-    const result = await this.communityService.getCommunityMembers(id, pagination.limit, skip);
-    return PaginationHelper.createResult(result.members, result.total, pagination);
+    const result = await this.communityService.getCommunityMembers(
+      id,
+      pagination.limit,
+      skip,
+    );
+    return PaginationHelper.createResult(
+      result.members,
+      result.total,
+      pagination,
+    );
   }
 
   @Delete(':id/members/:userId')
@@ -304,7 +415,9 @@ export class CommunitiesController {
     // 3. Add community to user's memberships (skip legacy communityTags update)
     // Legacy: communityTags was used for Telegram chat IDs - REMOVED
 
-    this.logger.log(`Added user ${user.id} to fake community ${testCommunity.id}`);
+    this.logger.log(
+      `Added user ${user.id} to fake community ${testCommunity.id}`,
+    );
 
     // 4. Create wallet for the user in this community
     // This ensures the wallet is immediately available and prevents 404 errors
@@ -313,8 +426,14 @@ export class CommunitiesController {
       plural: 'merits',
       genitive: 'merits',
     };
-    await this.walletService.createOrGetWallet(user.id, testCommunity.id, currency);
-    this.logger.log(`Created wallet for user ${user.id} in fake community ${testCommunity.id}`);
+    await this.walletService.createOrGetWallet(
+      user.id,
+      testCommunity.id,
+      currency,
+    );
+    this.logger.log(
+      `Created wallet for user ${user.id} in fake community ${testCommunity.id}`,
+    );
 
     return {
       success: true,
@@ -340,8 +459,13 @@ export class CommunitiesController {
     this.logger.log(`Adding user ${user.id} to all communities`);
 
     // Get all communities
-    const allCommunities = await this.communityService.getAllCommunities(1000, 0);
-    this.logger.log(`Found ${allCommunities.length} communities to add user to`);
+    const allCommunities = await this.communityService.getAllCommunities(
+      1000,
+      0,
+    );
+    this.logger.log(
+      `Found ${allCommunities.length} communities to add user to`,
+    );
 
     let addedCount = 0;
     let skippedCount = 0;
@@ -350,7 +474,10 @@ export class CommunitiesController {
     for (const community of allCommunities) {
       try {
         // Check if user is already a member
-        const userDoc = await this.userService.getUserByAuthId(user.authProvider, user.authId);
+        const userDoc = await this.userService.getUserByAuthId(
+          user.authProvider,
+          user.authId,
+        );
         if (userDoc) {
           const currentTags = userDoc.communityTags || [];
           const currentMemberships = userDoc.communityMemberships || [];
@@ -378,10 +505,16 @@ export class CommunitiesController {
             plural: 'merits',
             genitive: 'merits',
           };
-          await this.walletService.createOrGetWallet(user.id, community.id, currency);
+          await this.walletService.createOrGetWallet(
+            user.id,
+            community.id,
+            currency,
+          );
 
           addedCount++;
-          this.logger.log(`Added user ${user.id} to community ${community.name} (${community.id})`);
+          this.logger.log(
+            `Added user ${user.id} to community ${community.name} (${community.id})`,
+          );
         }
       } catch (error) {
         const errorMsg = `Failed to add user to community ${community.name}: ${error instanceof Error ? error.message : 'Unknown error'}`;
@@ -390,7 +523,9 @@ export class CommunitiesController {
       }
     }
 
-    this.logger.log(`Added user to ${addedCount} communities, skipped ${skippedCount}, errors: ${errors.length}`);
+    this.logger.log(
+      `Added user to ${addedCount} communities, skipped ${skippedCount}, errors: ${errors.length}`,
+    );
 
     return {
       success: true,
@@ -411,7 +546,10 @@ export class CommunitiesController {
 
     try {
       // Get all active communities
-      const allCommunities = await this.communityService.getAllCommunities(1000, 0);
+      const allCommunities = await this.communityService.getAllCommunities(
+        1000,
+        0,
+      );
       this.logger.log(`Found ${allCommunities.length} active communities`);
 
       const communityChatIds: string[] = [];
@@ -429,7 +567,9 @@ export class CommunitiesController {
         // Telegram membership checks are disabled
       }
 
-      this.logger.log(`Synced ${syncedCount} communities for user ${userId}, added ${membershipsAdded} memberships`);
+      this.logger.log(
+        `Synced ${syncedCount} communities for user ${userId}, added ${membershipsAdded} memberships`,
+      );
       return {
         success: true,
         data: {
@@ -460,15 +600,16 @@ export class CommunitiesController {
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
 
-    const publications = await this.publicationService.getPublicationsByCommunity(
-      id,
-      pagination.limit,
-      skip
-    );
+    const publications =
+      await this.publicationService.getPublicationsByCommunity(
+        id,
+        pagination.limit,
+        skip,
+      );
 
     // Extract unique user IDs (authors and beneficiaries)
     const userIds = new Set<string>();
-    publications.forEach(pub => {
+    publications.forEach((pub) => {
       userIds.add(pub.getAuthorId.getValue());
       if (pub.getBeneficiaryId) {
         userIds.add(pub.getBeneficiaryId.getValue());
@@ -483,11 +624,11 @@ export class CommunitiesController {
         if (user) {
           usersMap.set(userId, user);
         }
-      })
+      }),
     );
 
     // Convert domain entities to DTOs with enriched user metadata
-    const mappedPublications = publications.map(publication => {
+    const mappedPublications = publications.map((publication) => {
       const authorId = publication.getAuthorId.getValue();
       const beneficiaryId = publication.getBeneficiaryId?.getValue();
       const author = usersMap.get(authorId);
@@ -518,7 +659,8 @@ export class CommunitiesController {
           },
           ...(beneficiary && {
             beneficiary: {
-              name: beneficiary.displayName || beneficiary.firstName || 'Unknown',
+              name:
+                beneficiary.displayName || beneficiary.firstName || 'Unknown',
               photoUrl: beneficiary.avatarUrl,
               username: beneficiary.username,
             },
@@ -529,7 +671,11 @@ export class CommunitiesController {
       };
     });
 
-    return PaginationHelper.createResult(mappedPublications, mappedPublications.length, pagination);
+    return PaginationHelper.createResult(
+      mappedPublications,
+      mappedPublications.length,
+      pagination,
+    );
   }
 
   @Get(':id/feed')
@@ -563,5 +709,4 @@ export class CommunitiesController {
       },
     };
   }
-
 }

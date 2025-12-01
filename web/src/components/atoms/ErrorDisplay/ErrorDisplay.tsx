@@ -62,7 +62,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
   return (
     <div className={`${containerClasses} ${className}`}>
       <div className="card bg-base-200 shadow-xl max-w-md w-full">
-        <div className="card-body">
+        <div className="card-body p-6">
           {errorIcon}
           <h2 className={`${variant === 'card' ? 'card-title' : 'text-xl font-semibold'} text-error text-center mb-2`}>
             {title || 'Something went wrong'}
@@ -77,7 +77,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
             </details>
           )}
           {actions && (
-            <div className="card-actions justify-center mt-4">
+            <div className="card-actions justify-center mt-4 gap-3">
               {actions}
             </div>
           )}

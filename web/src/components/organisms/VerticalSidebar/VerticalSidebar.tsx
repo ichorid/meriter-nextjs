@@ -10,6 +10,7 @@ import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { VersionDisplay } from '@/components/organisms/VersionDisplay';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { routes } from '@/lib/constants/routes';
+import { useTranslations } from 'next-intl';
 
 export interface VerticalSidebarProps {
   className?: string;
@@ -23,6 +24,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
   const { data: wallets = [], isLoading: walletsLoading } = useWallets();
+  const t = useTranslations('common');
 
   // Get unique community IDs from wallets
   const communityIds = React.useMemo(() => {
@@ -35,6 +37,20 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 
   // Fetch quotas for all communities in parallel
   const { quotasMap } = useCommunityQuotas(communityIds);
+  
+  // Calculate total wallet balance (permanent merits)
+  const totalWalletBalance = React.useMemo(() => {
+    return wallets.reduce((sum, wallet) => sum + (wallet.balance || 0), 0);
+  }, [wallets]);
+  
+  // Calculate total daily quota (daily merits)
+  const totalDailyQuota = React.useMemo(() => {
+    let total = 0;
+    quotasMap.forEach((quota) => {
+      total += quota.remainingToday || 0;
+    });
+    return total;
+  }, [quotasMap]);
 
   // Don't show sidebar on login page
   if (pathname?.includes('/login')) {
@@ -115,7 +131,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
       <div className={paddingClass}>
         <Link href={routes.settings}>
           <button
-            className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} h-12 rounded-lg flex items-center transition-colors mt-2 ${pathname === routes.settings
+            className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mt-2 ${pathname === routes.settings
               ? 'bg-primary text-primary-content'
               : 'hover:bg-base-300 text-base-content'
               }`}
@@ -127,7 +143,17 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                   alt={user.displayName || 'User'}
                   size="sm"
                 />
-                <svg className="w-5 h-5 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex-1 ml-2 min-w-0">
+                  <div className="text-xs font-medium text-base-content truncate">
+                    {user.displayName || 'User'}
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-base-content/70 mt-0.5">
+                    <span>{t('dailyMerits')}: <span className="font-semibold text-brand-primary">{totalDailyQuota}</span></span>
+                    <span className="text-base-content/40">|</span>
+                    <span>{t('permanentMerits')}: <span className="font-semibold text-brand-primary">{totalWalletBalance}</span></span>
+                  </div>
+                </div>
+                <svg className="w-5 h-5 ml-auto flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button, Icon, Avatar } from '@/components/atoms';
@@ -8,6 +8,9 @@ import { routes } from '@/lib/constants/routes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUIStore } from '@/stores/ui.store';
 import { useRouter } from 'next/navigation';
+import { useWallets } from '@/hooks/api/useWallet';
+import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
+import { useTranslations } from 'next-intl';
 
 export interface NavigationBarProps {
   className?: string;
@@ -21,6 +24,24 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const t = useTranslations('common');
+  
+  // Get wallets and calculate total balance (permanent merits)
+  const { data: wallets = [] } = useWallets();
+  const totalWalletBalance = useMemo(() => {
+    return wallets.reduce((sum, wallet) => sum + (wallet.balance || 0), 0);
+  }, [wallets]);
+  
+  // Get quota for all communities and calculate total daily quota (daily merits)
+  const communityIds = useMemo(() => wallets.map(w => w.communityId).filter(Boolean), [wallets]);
+  const { quotasMap } = useCommunityQuotas(communityIds);
+  const totalDailyQuota = useMemo(() => {
+    let total = 0;
+    quotasMap.forEach((quota) => {
+      total += quota.remainingToday || 0;
+    });
+    return total;
+  }, [quotasMap]);
   
   const navLinks = [
     { href: routes.home, label: 'Home', icon: 'home' },
@@ -86,7 +107,19 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
                   onClick={() => setShowDropdown(!showDropdown)}
                   className="flex items-center gap-2"
                 >
-                  <Avatar src={user.avatarUrl} alt={user.displayName} size="sm" />
+                  <div className="flex items-center gap-2">
+                    <Avatar src={user.avatarUrl} alt={user.displayName} size="sm" />
+                    <div className="hidden md:flex flex-col items-start text-xs">
+                      <div className="flex items-center gap-1">
+                        <span className="text-brand-text-secondary">{t('dailyMerits')}:</span>
+                        <span className="font-semibold text-brand-primary">{totalDailyQuota}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-brand-text-secondary">{t('permanentMerits')}:</span>
+                        <span className="font-semibold text-brand-primary">{totalWalletBalance}</span>
+                      </div>
+                    </div>
+                  </div>
                   <span className="hidden lg:inline">{user.displayName}</span>
                   <Icon name="arrow_drop_down" size={16} />
                 </Button>

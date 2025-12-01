@@ -28,6 +28,7 @@ interface UpdateCommunityDto {
     description?: string;
     avatarUrl?: string;
     isActive?: boolean;
+    isPriority?: boolean;
     settings?: {
         iconUrl?: string;
         currencyNames?: { singular: string; plural: string; genitive: string };
@@ -76,7 +77,7 @@ export const useCommunity = (id: string) => {
     return useQuery({
         queryKey: queryKeys.communities.detail(id),
         queryFn: () => communitiesApiV1.getCommunity(id),
-        enabled: !!id,
+        enabled: !!id && id !== "create",
     });
 };
 
@@ -87,8 +88,14 @@ export const useCreateCommunity = () => {
         mutationFn: (data: CreateCommunityDto) =>
             communitiesApiV1.createCommunity(data),
         onSuccess: () => {
+            // Invalidate all communities queries (including infinite queries)
             queryClient.invalidateQueries({
                 queryKey: queryKeys.communities.all,
+                exact: false,
+            });
+            // Also invalidate wallets since they're used to display communities
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.wallet.wallets(),
             });
         },
     });

@@ -41,7 +41,7 @@ export class UsersController {
     private readonly communityService: CommunityService,
     @InjectConnection() private mongoose: Connection,
     private readonly userSettingsService: UserSettingsService,
-  ) {}
+  ) { }
 
   @Get(':userId')
   async getUser(@Param('userId') userId: string): Promise<User> {
@@ -217,24 +217,24 @@ export class UsersController {
     const voteUpdatesRaw =
       userPublicationIds.length > 0 || userVoteIds.length > 0
         ? await this.mongoose.db
-            .collection('votes')
-            .find({
-              $or: [
-                ...(userPublicationIds.length > 0
-                  ? [
-                      {
-                        targetType: 'publication',
-                        targetId: { $in: userPublicationIds },
-                      },
-                    ]
-                  : []),
-                ...(userVoteIds.length > 0
-                  ? [{ targetType: 'vote', targetId: { $in: userVoteIds } }]
-                  : []),
-              ],
-              userId: { $ne: actualUserId }, // Exclude user's own votes
-            })
-            .toArray()
+          .collection('votes')
+          .find({
+            $or: [
+              ...(userPublicationIds.length > 0
+                ? [
+                  {
+                    targetType: 'publication',
+                    targetId: { $in: userPublicationIds },
+                  },
+                ]
+                : []),
+              ...(userVoteIds.length > 0
+                ? [{ targetType: 'vote', targetId: { $in: userVoteIds } }]
+                : []),
+            ],
+            userId: { $ne: actualUserId }, // Exclude user's own votes
+          })
+          .toArray()
         : [];
 
     // Enrich votes with publication/vote info
@@ -528,6 +528,34 @@ export class UsersController {
     return {
       meritStats,
     };
+  }
+
+  @Get('search')
+  async searchUsers(@Query('q') query: string, @Query('limit') limit: number) {
+    if (!query || query.length < 2) {
+      return [];
+    }
+    const users = await this.userService.searchUsers(query, limit || 20);
+    return users.map((u) => this.mapUserToV1Format(u));
+  }
+
+  @Put(':userId/global-role')
+  async updateGlobalRole(
+    @Param('userId') userId: string,
+    @Body() body: { role: 'superadmin' | 'user' },
+    @Req() req: any,
+  ) {
+    // Check if requester is superadmin
+    const requester = await this.userService.getUser(req.user.id);
+    if (requester?.globalRole !== 'superadmin') {
+      throw new ForbiddenError('Only superadmins can update global roles');
+    }
+
+    const updatedUser = await this.userService.updateGlobalRole(
+      userId,
+      body.role,
+    );
+    return this.mapUserToV1Format(updatedUser);
   }
 
   private mapUserToV1Format(user: any): User {

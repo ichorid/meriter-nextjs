@@ -191,6 +191,9 @@ export class Community {
   @Prop({ default: true })
   isActive: boolean;
 
+  @Prop({ default: false })
+  isPriority: boolean; // Приоритетные сообщества отображаются первыми
+
   @Prop({ type: Date, required: false })
   lastQuotaResetAt?: Date;
 

@@ -11,7 +11,9 @@
         "delete": "Delete",
         "edit": "Edit",
         "close": "Close",
-        "confirm": "Confirm"
+        "confirm": "Confirm",
+        "dailyMerits": "Daily",
+        "permanentMerits": "Permanent"
     },
     "home": {
         "breadcrumb": "Home",
@@ -407,6 +409,19 @@
             "dualPlaceholder": "e.g., merits",
             "pluralForm": "Plural form (optional)",
             "pluralPlaceholder": "e.g., merits",
+            "isPriority": "Mark as priority community",
+            "prioritySettings": "Priority Settings",
+            "priorityHelp": "Priority communities are displayed first in the list",
+            "members": {
+                "title": "Community Members",
+                "noMembers": "No members yet",
+                "noInvite": "No invite",
+                "inviteUsed": "Invite used",
+                "invitePending": "Invite pending",
+                "invited": "Invited",
+                "remove": "Remove member",
+                "confirmRemove": "Remove {name} from community?"
+            },
             "currencyIcon": "Currency Icon",
             "selectIcon": "Select a currency icon",
             "communityValues": "Community Values (Hashtags)",
@@ -702,6 +717,8 @@
             "superadminToLeadDescription": "Create an invite to make a user a Lead (Representative) of this community",
             "targetUserId": "Target User ID",
             "targetUserIdPlaceholder": "Enter target user ID (optional)",
+            "targetUserName": "User Name",
+            "targetUserNamePlaceholder": "Enter user name",
             "expiresInDays": "Expires In (Days)",
             "expiresInDaysPlaceholder": "Enter number of days",
             "expiresInDaysHelp": "Leave empty for no expiration",
@@ -712,7 +729,16 @@
             "creating": "Creating...",
             "create": "Create Invites",
             "noPermission": "No Permission",
-            "noPermissionDescription": "You don't have permission to create invites. You need to be a lead in at least one community."
+            "noPermissionDescription": "You don't have permission to create invites. You need to be a lead in at least one community.",
+            "inviteModeHelp": "Choose whether to invite an existing user by ID or a new user by name",
+            "existingUser": "Existing User",
+            "newUser": "New User",
+            "success": "Invite created successfully",
+            "for": "For",
+            "inviteRole": "Invite Role",
+            "inviteRoleHelp": "Select the role for the invited user",
+            "roleLead": "Lead",
+            "roleParticipant": "Participant"
         }
     },
     "search": {

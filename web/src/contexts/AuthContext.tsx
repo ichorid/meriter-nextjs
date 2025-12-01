@@ -11,6 +11,8 @@
 
 'use client';
 
+import { authApiV1 } from '@/lib/api/v1';
+
 import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -93,6 +95,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setAuthError(null);
       await logoutMutation.mutateAsync();
 
+      // Call server-side clear-cookies to ensure HttpOnly cookies are removed
+      try {
+        await authApiV1.clearCookies();
+      } catch (e) {
+        console.error('Failed to clear server cookies:', e);
+      }
+
       clearAuthStorage();
       redirectToLogin();
     } catch (error: unknown) {
@@ -100,6 +109,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setAuthError(message);
 
       // Still clear everything and redirect on error
+      try {
+        await authApiV1.clearCookies();
+      } catch (e) {
+        console.error('Failed to clear server cookies:', e);
+      }
       clearAuthStorage();
       redirectToLogin();
     } finally {
@@ -120,6 +134,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Clear auth storage on 401 errors to allow re-login
         clearAuthStorage();
         setAuthError(null); // Clear error to allow login
+
+        // Call server-side clear-cookies to ensure HttpOnly cookies are removed
+        // We use a fire-and-forget approach here to avoid blocking
+        authApiV1.clearCookies().catch(e => console.error('Failed to clear server cookies on 401:', e));
 
         // Toast is now handled globally in api/client.ts
         // const currentErrorId = `${errorStatus}-${(userError as any)?.message || '401'}`;
