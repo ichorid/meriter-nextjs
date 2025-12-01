@@ -295,9 +295,19 @@ export const PollCasting = ({
                                 }
                             }}
                             disabled={isCasting}
-                            fullWidth
+                            className="input input-bordered w-full"
                         />
-                    </BrandFormControl>
+                    </div>
+                    {amountValidationError && (
+                        <div className="label">
+                            <span className="label-text-alt text-error">{amountValidationError}</span>
+                        </div>
+                    )}
+                    {balance === 0 && (
+                        <div className="label">
+                            <span className="label-text-alt text-error">{t('insufficientPoints')}</span>
+                        </div>
+                    )}
                     <div className="mt-4">
                         <BrandButton
                             variant="primary"

@@ -469,16 +469,15 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                             </h2>
 
                             <div className="space-y-2 mb-4">
-                                {adminIds.map((adminId) => (
-                                    <div
-                                        key={adminId}
-                                        className="flex items-center justify-between p-3 border border-base-300 rounded-lg"
-                                    >
-                                        <p className="text-sm text-brand-text-primary">{adminId}</p>
-                                        <BrandButton
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleRemoveAdmin(adminId)}
+                                {adminIds.map((adminId) => {
+                                    const adminUser = adminUsersMap.get(adminId);
+                                    const isLoading = adminQueries[adminIds.indexOf(adminId)]?.isLoading;
+                                    const displayName = adminUser?.name || adminId;
+                                    
+                                    return (
+                                        <div
+                                            key={adminId}
+                                            className="flex items-center justify-between p-3 border border-base-300 rounded-lg"
                                         >
                                             <div className="flex items-center gap-2">
                                                 {isLoading && <Loader2 className="w-4 h-4 animate-spin text-brand-text-secondary" />}
