@@ -11,6 +11,10 @@ ENV NEXT_PUBLIC_DOMAIN=${NEXT_PUBLIC_DOMAIN}
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
+# Accept OpenAPI spec file as build arg (optional, can be provided from CI/CD)
+ARG OPENAPI_SPEC_FILE
+ARG OPENAPI_URL
+
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY libs/shared-types ./libs/shared-types
 COPY web/package.json ./web/
@@ -19,6 +23,19 @@ COPY web/patches ./web/patches/
 RUN pnpm --filter @meriter/web... install --frozen-lockfile
 
 COPY web ./web
+# Copy OpenAPI spec file if provided as build arg, otherwise will use URL from orval.config.ts
+RUN if [ -n "$OPENAPI_SPEC_FILE" ] && [ -f "$OPENAPI_SPEC_FILE" ]; then \
+        cp "$OPENAPI_SPEC_FILE" ./web/api-spec.json && \
+        cd web && OPENAPI_FILE=./api-spec.json pnpm generate:api; \
+    elif [ -f ./api-spec.json ]; then \
+        cp ./api-spec.json ./web/api-spec.json && \
+        cd web && OPENAPI_FILE=./api-spec.json pnpm generate:api; \
+    elif [ -n "$OPENAPI_URL" ]; then \
+        cd web && OPENAPI_URL="$OPENAPI_URL" pnpm generate:api; \
+    else \
+        cd web && pnpm generate:api || echo 'Warning: API generation skipped - ensure API server is running or provide OPENAPI_SPEC_FILE/OPENAPI_URL'; \
+    fi
+
 # Patch is automatically applied by pnpm via patchedDependencies in root package.json
 # Increase Node.js memory limit for build (6GB) - required for Gluestack UI + React Native Web
 ENV NODE_OPTIONS="--max-old-space-size=6144"

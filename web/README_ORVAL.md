@@ -111,14 +111,132 @@ cd ../api && pnpm dev:api
 ./scripts/test-orval-setup.sh
 ```
 
+## 🎣 React Query Hooks Generation
+
+In addition to Orval's low-level hooks, we generate high-level React Query hooks with business logic:
+
+- **Custom Query Keys**: Uses centralized `queryKeys` factory
+- **Cache Invalidation**: Automatic cache invalidation on mutations
+- **Optimistic Updates**: Support for optimistic wallet updates (e.g., `useCastPoll`)
+- **Standard Patterns**: Consistent patterns across all resources
+
+### Generate Hooks
+
+```bash
+# Generate both Orval hooks and high-level hooks
+pnpm generate:all
+
+# Or generate hooks separately
+pnpm generate:api      # Orval hooks
+pnpm generate:hooks    # High-level hooks
+```
+
+### Hook Configuration
+
+Hook configurations are in `src/lib/api/hook-configs/`:
+
+- `communities.config.ts` - Communities hook config
+- `polls.config.ts` - Polls hook config (includes optimistic updates)
+- `comments.config.ts` - Comments hook config
+- `publications.config.ts` - Publications hook config
+
+### Configuration Example
+
+```typescript
+// src/lib/api/hook-configs/polls.config.ts
+export const pollsHookConfig = {
+  resourceName: 'polls',
+  apiWrapper: 'pollsApi',
+  queryKeys: {
+    all: () => queryKeys.polls.all,
+    lists: () => queryKeys.polls.lists(),
+    list: (params) => queryKeys.polls.list(params),
+    detail: (id) => queryKeys.polls.detail(id),
+    results: (id) => [...queryKeys.polls.all, 'results', id] as const,
+  },
+  cacheInvalidation: {
+    create: ['polls.lists'],
+    update: ['polls.lists', 'polls.detail'],
+    cast: ['polls.results', 'polls.lists', 'polls.detail', 'wallet.wallets'],
+  },
+  optimisticUpdates: {
+    cast: {
+      type: 'wallet',
+      helper: 'updateWalletOptimistically',
+      communityIdParam: 'communityId',
+      walletAmountParam: 'data.walletAmount',
+    },
+  },
+  staleTime: {
+    list: 2 * 60 * 1000,
+    detail: 2 * 60 * 1000,
+    results: 1 * 60 * 1000,
+  },
+  endpoints: {
+    list: { method: 'getList', params: ['skip', 'limit'] },
+    detail: { method: 'getById', params: ['id'] },
+    cast: { method: 'cast', params: ['id', 'data', 'communityId'], custom: true },
+  },
+};
+```
+
+### Generated Hooks
+
+Generated hooks are in `src/lib/api/hooks/`:
+
+- `useCommunities.generated.ts` - Communities hooks
+- `usePolls.generated.ts` - Polls hooks (includes `useCastPoll` with optimistic updates)
+- `useComments.generated.ts` - Comments hooks
+- `usePublications.generated.ts` - Publications hooks
+
+### Using Generated Hooks
+
+```typescript
+// In your components
+import { useCommunities, useCommunity, useCreateCommunity } from '@/hooks/api/useCommunities';
+
+// List query
+const { data: communities } = useCommunities({ skip: 0, limit: 20 });
+
+// Detail query
+const { data: community } = useCommunity(id);
+
+// Create mutation
+const createMutation = useCreateCommunity();
+createMutation.mutate({ name: 'New Community' });
+```
+
+### Custom Hooks
+
+For hooks that can't be generated (e.g., `useSyncCommunities`), keep them in `src/hooks/api/` and re-export generated hooks:
+
+```typescript
+// src/hooks/api/useCommunities.ts
+import {
+  useCommunities as useCommunitiesGenerated,
+  useCommunity as useCommunityGenerated,
+  // ... other generated hooks
+} from "@/lib/api/hooks/useCommunities.generated";
+
+// Re-export generated hooks
+export const useCommunities = useCommunitiesGenerated;
+export const useCommunity = useCommunityGenerated;
+
+// Add custom hooks
+export const useSyncCommunities = () => {
+  // Custom implementation
+};
+```
+
 ## 🔄 Regenerating Code
 
 When the API changes:
 
 1. **Update API**: Modify controllers/DTOs with Swagger decorators
-2. **Regenerate**: Run `pnpm generate:api` (or use saved spec file)
+2. **Regenerate**: Run `pnpm generate:all` (or `pnpm generate:api && pnpm generate:hooks`)
 3. **Types Update**: Generated types automatically reflect changes
-4. **No Breaking Changes**: Existing hooks continue to work through wrappers
+4. **Hooks Update**: High-level hooks automatically reflect changes
+5. **No Breaking Changes**: Existing hooks continue to work through wrappers
 
 ## 📝 Build Integration
 
@@ -129,10 +247,14 @@ Code generation is integrated into the build process:
   "scripts": {
     "prebuild": "pnpm generate:api || echo 'Warning: API generation skipped'",
     "generate:api": "orval",
-    "generate:api:from-file": "OPENAPI_FILE=./api-spec.json pnpm generate:api"
+    "generate:api:from-file": "OPENAPI_FILE=./api-spec.json pnpm generate:api",
+    "generate:hooks": "tsx scripts/generate-hooks.ts",
+    "generate:all": "pnpm generate:api && pnpm generate:hooks"
   }
 }
 ```
+
+**Note**: The `prebuild` script only runs Orval. To generate hooks, run `pnpm generate:all` manually or add it to your CI/CD pipeline.
 
 For CI/CD, see `CI_CD_SETUP.md` for detailed integration options.
 

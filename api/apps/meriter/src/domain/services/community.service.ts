@@ -387,6 +387,10 @@ export class CommunityService {
       .lean() as any as Community[];
   }
 
+  async getCommunitiesCount(): Promise<number> {
+    return this.communityModel.countDocuments({});
+  }
+
   async getUserCommunities(userId: string): Promise<Community[]> {
     return this.communityModel
       .find({ members: userId })

@@ -38,3 +38,7 @@ next-env.d.ts
 # Generated API code (Orval)
 # Ignore Orval-generated directories and files, but keep custom wrapper files
 src/lib/api/generated
+
+# Generated React Query hooks
+# Ignore hook generator output files (*.generated.ts)
+src/lib/api/hooks/*.generated.ts

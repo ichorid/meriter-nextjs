@@ -31,3 +31,7 @@ export default defineConfig({
   },
 });
 
+// Note: After Orval generation, run `pnpm generate:hooks` to generate
+// high-level hooks with business logic (query keys, cache invalidation, etc.)
+// See: scripts/generate-hooks.ts and src/lib/api/hook-configs/
+

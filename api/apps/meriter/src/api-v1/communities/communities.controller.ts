@@ -73,12 +73,16 @@ export class CommunitiesController {
   @ApiOperation({ summary: 'Get list of communities' })
   @ApiQuery({ name: 'skip', required: false, description: 'Number of items to skip' })
   @ApiQuery({ name: 'limit', required: false, description: 'Number of items per page' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number' })
   @ApiResponse({ status: 200, description: 'List of communities' })
   async getCommunities(@Query() query: any) {
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
-    const result = await this.communityService.getAllCommunities(pagination.limit, skip);
-    return { data: result, total: result.length, skip, limit: pagination.limit };
+    const [result, total] = await Promise.all([
+      this.communityService.getAllCommunities(pagination.limit, skip),
+      this.communityService.getCommunitiesCount(),
+    ]);
+    return PaginationHelper.createResult(result, total, pagination);
   }
 
   @Get(':id')

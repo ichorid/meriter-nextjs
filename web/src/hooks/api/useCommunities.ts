@@ -1,117 +1,24 @@
 // Communities React Query hooks
+// Re-export generated hooks and add custom hooks
 import {
-    useQuery,
-    useMutation,
-    useQueryClient,
-    useInfiniteQuery,
-} from "@tanstack/react-query";
-import { communitiesApi } from "@/lib/api/wrappers/communities-api";
+    useCommunities as useCommunitiesGenerated,
+    useInfiniteCommunities as useInfiniteCommunitiesGenerated,
+    useCommunity as useCommunityGenerated,
+    useCreateCommunity as useCreateCommunityGenerated,
+    useUpdateCommunity as useUpdateCommunityGenerated,
+    useDeleteCommunity as useDeleteCommunityGenerated,
+} from "@/lib/api/hooks/useCommunities.generated";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { customInstance } from "@/lib/api/wrappers/mutator";
 import { queryKeys } from "@/lib/constants/queryKeys";
-import type { PaginatedResponse, Community } from "@/types/api-v1";
 
-// Local type definition
-interface CreateCommunityDto {
-    name: string;
-    description?: string;
-    avatarUrl?: string;
-    settings?: {
-        currencyNames?: { singular: string; plural: string; genitive: string };
-        dailyEmission?: number;
-        language?: "en" | "ru";
-    };
-    [key: string]: unknown;
-}
-
-interface UpdateCommunityDto {
-    name?: string;
-    description?: string;
-    avatarUrl?: string;
-    isActive?: boolean;
-    settings?: {
-        iconUrl?: string;
-        currencyNames?: { singular: string; plural: string; genitive: string };
-        dailyEmission?: number;
-        language?: "en" | "ru";
-    };
-    hashtags?: string[];
-    hashtagDescriptions?: Record<string, string>;
-    adminIds?: string[];
-    postingRules?: any;
-    votingRules?: any;
-    visibilityRules?: any;
-    meritRules?: any;
-    linkedCurrencies?: string[];
-    typeTag?: string;
-}
-
-export const useCommunities = () => {
-    return useQuery({
-        queryKey: queryKeys.communities.list({}),
-        queryFn: () => communitiesApi.getList(),
-    });
-};
-
-export const useInfiniteCommunities = (pageSize: number = 20) => {
-    return useInfiniteQuery({
-        queryKey: [...queryKeys.communities.lists(), "infinite", pageSize],
-        queryFn: ({ pageParam = 1 }: { pageParam: number }) => {
-            const skip = (pageParam - 1) * pageSize;
-            return communitiesApi.getList({
-                skip,
-                limit: pageSize,
-            });
-        },
-        getNextPageParam: (lastPage: PaginatedResponse<Community>) => {
-            if (!lastPage.meta?.pagination?.hasNext) {
-                return undefined;
-            }
-            return (lastPage.meta.pagination.page || 1) + 1;
-        },
-        initialPageParam: 1,
-    });
-};
-
-export const useCommunity = (id: string) => {
-    return useQuery({
-        queryKey: queryKeys.communities.detail(id),
-        queryFn: () => communitiesApi.getById(id),
-        enabled: !!id,
-    });
-};
-
-export const useCreateCommunity = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: (data: CreateCommunityDto) =>
-            communitiesApi.create(data),
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.communities.all,
-            });
-        },
-    });
-};
-
-export const useUpdateCommunity = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: ({
-            id,
-            data,
-        }: {
-            id: string;
-            data: Partial<UpdateCommunityDto>;
-        }) => communitiesApi.update(id, data),
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.communities.all,
-            });
-        },
-    });
-};
+// Re-export generated hooks
+export const useCommunities = useCommunitiesGenerated;
+export const useInfiniteCommunities = useInfiniteCommunitiesGenerated;
+export const useCommunity = useCommunityGenerated;
+export const useCreateCommunity = useCreateCommunityGenerated;
+export const useUpdateCommunity = useUpdateCommunityGenerated;
+export const useDeleteCommunity = useDeleteCommunityGenerated;
 
 export const useSyncCommunities = () => {
     const queryClient = useQueryClient();
