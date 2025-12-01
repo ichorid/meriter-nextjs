@@ -1,19 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { teamsApiV1 } from '@/lib/api/v1';
+import { teamsApi } from '@/lib/api/wrappers/teams-api';
+import { customInstance } from '@/lib/api/wrappers/mutator';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import type { Team } from '@/types/api-v1';
 
 export function useTeams() {
   return useQuery({
     queryKey: ['teams'],
-    queryFn: () => teamsApiV1.getTeams(),
+        queryFn: () => teamsApi.getList(),
   });
 }
 
 export function useTeam(id: string) {
   return useQuery({
     queryKey: ['teams', id],
-    queryFn: () => teamsApiV1.getTeam(id),
+        queryFn: () => teamsApi.getById(id),
     enabled: !!id,
   });
 }
@@ -27,7 +28,7 @@ export function useCreateTeam() {
       communityId: string;
       school?: string;
       metadata?: Record<string, any>;
-    }) => teamsApiV1.createTeam(data),
+    }) => teamsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] });
     },
@@ -42,7 +43,7 @@ export function useUpdateTeam() {
       name?: string;
       school?: string;
       metadata?: Record<string, any>;
-    }}) => teamsApiV1.updateTeam(id, data),
+    }}) => teamsApi.update(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['teams'] });
       queryClient.invalidateQueries({ queryKey: ['teams', variables.id] });
@@ -54,7 +55,7 @@ export function useDeleteTeam() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (id: string) => teamsApiV1.deleteTeam(id),
+        mutationFn: (id: string) => teamsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] });
     },
@@ -64,7 +65,7 @@ export function useDeleteTeam() {
 export function useTeamParticipants(id: string) {
   return useQuery({
     queryKey: ['teams', id, 'participants'],
-    queryFn: () => teamsApiV1.getTeamParticipants(id),
+        queryFn: () => customInstance({ url: `/api/v1/teams/${id}/participants`, method: 'GET' }),
     enabled: !!id,
   });
 }
@@ -74,7 +75,7 @@ export function useRemoveParticipant() {
   
   return useMutation({
     mutationFn: ({ teamId, userId }: { teamId: string; userId: string }) =>
-      teamsApiV1.removeParticipant(teamId, userId),
+      customInstance({ url: `/api/v1/teams/${teamId}/participants/${userId}`, method: 'DELETE' }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['teams', variables.teamId, 'participants'] });
       queryClient.invalidateQueries({ queryKey: ['teams', variables.teamId] });

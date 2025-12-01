@@ -10,6 +10,15 @@ import {
   Logger,
   BadRequestException,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiCookieAuth,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
 import { WalletService } from '../../domain/services/wallet.service';
@@ -22,8 +31,11 @@ import { ZodValidation } from '../../common/decorators/zod-validation.decorator'
 import { Community, CommunityDocument } from '../../domain/models/community/community.schema';
 import { User, UserDocument } from '../../domain/models/user/user.schema';
 
+@ApiTags('Wallets')
 @Controller('api/v1')
 @UseGuards(UserGuard)
+@ApiCookieAuth('jwt')
+@ApiBearerAuth()
 export class WalletsController {
   private readonly logger = new Logger(WalletsController.name);
 

@@ -11,6 +11,15 @@ import {
   UseGuards,
   Logger,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiCookieAuth,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { CommentService } from '../../domain/services/comment.service';
 import { UserService } from '../../domain/services/user.service';
 import { VoteService } from '../../domain/services/vote.service';
@@ -39,8 +48,11 @@ import {
 } from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 
+@ApiTags('Comments')
 @Controller('api/v1/comments')
 @UseGuards(UserGuard)
+@ApiCookieAuth('jwt')
+@ApiBearerAuth()
 export class CommentsController {
   private readonly logger = new Logger(CommentsController.name);
 
@@ -58,12 +70,18 @@ export class CommentsController {
   ) {}
 
   @Get()
+  @ApiOperation({ summary: 'Get list of comments' })
+  @ApiResponse({ status: 200, description: 'List of comments' })
   async getComments(@Query() query: any) {
     // For now, return empty array - this endpoint needs to be implemented based on business requirements
     return { data: [], total: 0, skip: 0, limit: 50 };
   }
 
   @Get(':id/details')
+  @ApiOperation({ summary: 'Get comment details with metadata' })
+  @ApiParam({ name: 'id', description: 'Comment ID' })
+  @ApiResponse({ status: 200, description: 'Comment details' })
+  @ApiResponse({ status: 404, description: 'Comment not found' })
   async getCommentDetails(@Param('id') id: string, @Req() req: any) {
     const { vote, snapshot, authorId } =
       await this.voteCommentResolver.resolve(id);

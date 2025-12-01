@@ -8,6 +8,14 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiCookieAuth,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { UserCommunityRoleService } from '../../domain/services/user-community-role.service';
 import { PermissionService } from '../../domain/services/permission.service';
 import { User } from '../../decorators/user.decorator';
@@ -21,8 +29,11 @@ const UpdateRoleDtoSchema = z.object({
   role: z.enum(['lead', 'participant', 'viewer']),
 });
 
+@ApiTags('User Community Roles')
 @Controller('api/v1')
 @UseGuards(UserGuard)
+@ApiCookieAuth('jwt')
+@ApiBearerAuth()
 export class UserCommunityRolesController {
   constructor(
     private userCommunityRoleService: UserCommunityRoleService,

@@ -1,6 +1,6 @@
 // Community Feed React Query hook
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { communitiesApiV1 } from '@/lib/api/v1';
+import { communitiesApi } from '@/lib/api/wrappers/communities-api';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import type { PaginatedResponse } from '@/types/api-v1';
 
@@ -30,7 +30,7 @@ export function useCommunityFeed(
   return useInfiniteQuery({
     queryKey: queryKeys.communities.feed(communityId, params),
     queryFn: ({ pageParam }: { pageParam: number }) => {
-      return communitiesApiV1.getCommunityFeed(communityId, {
+      return communitiesApi.getPublications(communityId, {
         page: pageParam,
         pageSize,
         sort,

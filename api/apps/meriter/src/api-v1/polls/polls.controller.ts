@@ -11,6 +11,15 @@ import {
   UseGuards,
   Logger,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiCookieAuth,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { PollService } from '../../domain/services/poll.service';
 import { PollCastService } from '../../domain/services/poll-cast.service';
 import { WalletService } from '../../domain/services/wallet.service';
@@ -30,8 +39,11 @@ import { formatDualLinks, escapeMarkdownV2 } from '../../common/helpers/telegram
 import { BOT_USERNAME, URL as WEB_BASE_URL } from '../../config';
 import { t } from '../../i18n';
 
+@ApiTags('Polls')
 @Controller('api/v1/polls')
 @UseGuards(UserGuard)
+@ApiCookieAuth('jwt')
+@ApiBearerAuth()
 export class PollsController {
   private readonly logger = new Logger(PollsController.name);
 

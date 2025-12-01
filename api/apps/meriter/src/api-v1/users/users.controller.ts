@@ -9,6 +9,15 @@ import {
   Logger,
   Query,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiCookieAuth,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { UserService } from '../../domain/services/user.service';
@@ -28,8 +37,11 @@ import { UserSettingsService } from '../../domain/services/user-settings.service
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 
+@ApiTags('Users')
 @Controller('api/v1/users')
 @UseGuards(UserGuard)
+@ApiCookieAuth('jwt')
+@ApiBearerAuth()
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
 

@@ -1,6 +1,12 @@
 import { Controller, Get, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
 
+@ApiTags('Config')
 @Controller('api/v1/config')
 export class ConfigController {
   private readonly logger = new Logger(ConfigController.name);
@@ -8,6 +14,9 @@ export class ConfigController {
   constructor(private readonly configService: ConfigService) {}
 
   @Get()
+  @ApiOperation({ summary: 'Get application configuration' })
+  @ApiResponse({ status: 200, description: 'Configuration retrieved successfully' })
+  @ApiResponse({ status: 500, description: 'Configuration error' })
   getConfig() {
     // Get BOT_USERNAME from environment
     const botUsername = process.env.BOT_USERNAME;

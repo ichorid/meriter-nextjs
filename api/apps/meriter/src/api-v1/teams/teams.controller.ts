@@ -10,6 +10,14 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiCookieAuth,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { TeamService } from '../../domain/services/team.service';
 import { PermissionService } from '../../domain/services/permission.service';
 import { User } from '../../decorators/user.decorator';
@@ -32,8 +40,11 @@ const UpdateTeamDtoSchema = z.object({
   metadata: z.record(z.string(), z.any()).optional(),
 });
 
+@ApiTags('Teams')
 @Controller('api/v1/teams')
 @UseGuards(UserGuard)
+@ApiCookieAuth('jwt')
+@ApiBearerAuth()
 export class TeamsController {
   constructor(
     private teamService: TeamService,

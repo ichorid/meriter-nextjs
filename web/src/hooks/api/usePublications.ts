@@ -5,7 +5,7 @@ import {
     useQueryClient,
     useInfiniteQuery,
 } from "@tanstack/react-query";
-import { publicationsApiV1, communitiesApiV1 } from "@/lib/api/v1";
+import { publicationsApi } from "@/lib/api/wrappers/publications-api";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import {
     useValidatedQuery,
@@ -17,6 +17,16 @@ import type {
     PaginatedResponse,
     CreatePublicationDto,
 } from "@/types/api-v1";
+
+// Import generated hooks wrappers
+import {
+  usePublicationsGenerated,
+  usePublicationGenerated,
+  useMyPublicationsGenerated,
+  useInfiniteMyPublicationsGenerated,
+  useCreatePublicationGenerated,
+  useDeletePublicationGenerated,
+} from './usePublications.generated-wrapper';
 
 interface ListQueryParams {
     skip?: number;
@@ -32,7 +42,7 @@ interface ListQueryParams {
 export function usePublications(params: ListQueryParams = {}) {
     return useQuery({
         queryKey: queryKeys.publications.list(params),
-        queryFn: () => publicationsApiV1.getPublications(params),
+        queryFn: () => publicationsApi.getList(params),
     });
 }
 
@@ -41,31 +51,7 @@ export function useMyPublications(
 ) {
     return useQuery({
         queryKey: queryKeys.publications.myPublications(params),
-        queryFn: async () => {
-            // If userId is provided, use the publications endpoint with authorId query param
-            if (params.userId) {
-                return publicationsApiV1.getPublications({
-                    skip: params.skip,
-                    limit: params.limit,
-                    userId: params.userId,
-                });
-            } else {
-                // Try to use /api/v1/users/me/publications endpoint (may not exist)
-                // Fallback: return empty array if no userId provided
-                try {
-                    return await publicationsApiV1.getMyPublications({
-                        skip: params.skip,
-                        limit: params.limit,
-                    });
-                } catch (error) {
-                    console.warn(
-                        "getMyPublications failed, returning empty array:",
-                        error
-                    );
-                    return [];
-                }
-            }
-        },
+        queryFn: () => publicationsApi.getMy(params),
         enabled: !!params.userId, // Only enable if userId is provided
     });
 }
@@ -83,7 +69,7 @@ export function useInfiniteMyPublications(
         ],
         queryFn: ({ pageParam = 1 }: { pageParam: number }) => {
             const skip = (pageParam - 1) * pageSize;
-            return publicationsApiV1.getPublications({
+            return publicationsApi.getList({
                 skip,
                 limit: pageSize,
                 userId,
@@ -107,7 +93,7 @@ export function useInfiniteMyPublications(
 export function usePublication(id: string) {
     return useValidatedQuery({
         queryKey: queryKeys.publications.detail(id),
-        queryFn: () => publicationsApiV1.getPublication(id),
+        queryFn: () => publicationsApi.getById(id),
         schema: PublicationSchema,
         context: `usePublication(${id})`,
         enabled: !!id,
@@ -126,7 +112,7 @@ export function useInfinitePublicationsByCommunity(
             params
         ),
         queryFn: ({ pageParam }: { pageParam: number }) => {
-            return communitiesApiV1.getCommunityPublications(communityId, {
+            return publicationsApi.getByCommunity(communityId, {
                 page: pageParam,
                 pageSize,
                 sort,
@@ -149,7 +135,7 @@ export function useCreatePublication() {
 
     return useValidatedMutation({
         mutationFn: (data: CreatePublicationDto) =>
-            publicationsApiV1.createPublication(data),
+            publicationsApi.create(data),
         inputSchema: CreatePublicationDtoSchema,
         outputSchema: PublicationSchema,
         context: "useCreatePublication",
@@ -165,7 +151,7 @@ export function useDeletePublication() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (id: string) => publicationsApiV1.deletePublication(id),
+        mutationFn: (id: string) => publicationsApi.delete(id),
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.publications.lists(),

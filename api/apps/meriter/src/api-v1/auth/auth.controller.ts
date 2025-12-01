@@ -9,6 +9,11 @@ import {
   Logger,
   ForbiddenException,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { UserGuard } from '../../user.guard';
@@ -31,6 +36,7 @@ interface TelegramWebAppData {
   initData: string;
 }
 
+@ApiTags('Auth')
 @Controller('api/v1/auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
@@ -40,6 +46,8 @@ export class AuthController {
   // Telegram authentication endpoints removed: Telegram is fully disabled in this project.
 
   @Post('logout')
+  @ApiOperation({ summary: 'Logout user' })
+  @ApiResponse({ status: 200, description: 'Logged out successfully' })
   async logout(@Res() res: any) {
     this.logger.log('User logout request');
 
@@ -55,6 +63,8 @@ export class AuthController {
   }
 
   @Post('clear-cookies')
+  @ApiOperation({ summary: 'Clear authentication cookies' })
+  @ApiResponse({ status: 200, description: 'Cookies cleared successfully' })
   async clearCookies(@Res() res: any) {
 
     // Clear all possible JWT cookie variants
@@ -71,6 +81,9 @@ export class AuthController {
   }
 
   @Post('fake')
+  @ApiOperation({ summary: 'Authenticate fake user (testing only)' })
+  @ApiResponse({ status: 200, description: 'Fake authentication successful' })
+  @ApiResponse({ status: 403, description: 'Fake data mode not enabled' })
   async authenticateFake(@Req() req: any, @Res() res: any) {
     try {
       // Check if fake data mode is enabled

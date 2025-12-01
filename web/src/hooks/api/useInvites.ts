@@ -1,18 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { invitesApiV1 } from '@/lib/api/v1';
+import { invitesApi } from '@/lib/api/wrappers/invites-api';
+import { customInstance } from '@/lib/api/wrappers/mutator';
 import type { Invite } from '@/types/api-v1';
 
 export function useInvites() {
   return useQuery({
     queryKey: ['invites'],
-    queryFn: () => invitesApiV1.getInvites(),
+        queryFn: () => invitesApi.getList(),
   });
 }
 
 export function useInviteByCode(code: string) {
   return useQuery({
     queryKey: ['invites', code],
-    queryFn: () => invitesApiV1.getInviteByCode(code),
+        queryFn: () => invitesApi.getById(code),
     enabled: !!code,
   });
 }
@@ -27,7 +28,7 @@ export function useCreateInvite() {
       communityId: string;
       teamId?: string;
       expiresAt?: string;
-    }) => invitesApiV1.createInvite(data),
+    }) => invitesApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invites'] });
     },
@@ -38,7 +39,7 @@ export function useInvite() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (code: string) => invitesApiV1.useInvite(code),
+        mutationFn: (code: string) => invitesApi.accept(code),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invites'] });
       queryClient.invalidateQueries({ queryKey: ['users', 'me'] });
@@ -50,7 +51,7 @@ export function useDeleteInvite() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (id: string) => invitesApiV1.deleteInvite(id),
+        mutationFn: (id: string) => invitesApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invites'] });
     },

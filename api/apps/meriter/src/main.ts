@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { MeriterModule } from './meriter.module';
 import * as cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
@@ -85,6 +86,25 @@ async function bootstrap() {
   );
 
   app.use(cookieParser());
+  
+  // Configure Swagger/OpenAPI
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Meriter API')
+    .setDescription('Meriter API Documentation')
+    .setVersion('1.0')
+    .addCookieAuth('jwt', {
+      type: 'apiKey',
+      in: 'cookie',
+      name: 'jwt',
+    })
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api', app, document, {
+    jsonDocumentUrl: '/api-json',
+  });
+  logger.log('Swagger documentation available at: http://localhost:8002/api');
+  logger.log('OpenAPI JSON available at: http://localhost:8002/api-json');
   
   const port = configService.get<number>('app.port');
   await app.listen(port);

@@ -5,7 +5,7 @@ import {
     useQueryClient,
     useInfiniteQuery,
 } from "@tanstack/react-query";
-import { pollsApiV1 } from "@/lib/api/v1";
+import { pollsApi } from "@/lib/api/wrappers/polls-api";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -69,7 +69,7 @@ export function usePolls(
 ) {
     return useQuery({
         queryKey: pollsKeys.list(params),
-        queryFn: () => pollsApiV1.getPolls(params),
+        queryFn: () => pollsApi.getList(params),
         staleTime: 2 * 60 * 1000, // 2 minutes
     });
 }
@@ -80,7 +80,7 @@ export function useInfiniteMyPolls(userId: string, pageSize: number = 20) {
         queryKey: [...pollsKeys.lists(), "infinite", userId, pageSize],
         queryFn: ({ pageParam = 1 }: { pageParam: number }) => {
             const skip = (pageParam - 1) * pageSize;
-            return pollsApiV1.getPolls({ skip, limit: pageSize, userId });
+            return pollsApi.getList({ skip, limit: pageSize, userId });
         },
         getNextPageParam: (lastPage: PaginatedResponse<Poll>) => {
             if (!lastPage.meta?.pagination?.hasNext) {
@@ -97,7 +97,7 @@ export function useInfiniteMyPolls(userId: string, pageSize: number = 20) {
 export function usePoll(id: string) {
     return useQuery({
         queryKey: pollsKeys.detail(id),
-        queryFn: () => pollsApiV1.getPoll(id),
+        queryFn: () => pollsApi.getById(id),
         staleTime: 2 * 60 * 1000, // 2 minutes
         enabled: !!id,
     });
@@ -107,7 +107,7 @@ export function usePoll(id: string) {
 export function usePollResults(id: string) {
     return useQuery({
         queryKey: pollsKeys.results(id),
-        queryFn: () => pollsApiV1.getPollResults(id),
+        queryFn: () => pollsApi.getResults(id),
         staleTime: 1 * 60 * 1000, // 1 minute
         enabled: !!id,
     });
@@ -118,7 +118,7 @@ export function useCreatePoll() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (data: PollCreate) => pollsApiV1.createPoll(data),
+        mutationFn: (data: PollCreate) => pollsApi.create(data),
         onSuccess: (newPoll) => {
             // Invalidate and refetch polls lists
             queryClient.invalidateQueries({ queryKey: pollsKeys.lists() });
@@ -147,7 +147,7 @@ export function useCastPoll() {
             data: CastPollRequest;
             communityId?: string;
         }) =>
-            pollsApiV1.castPoll(id, {
+            pollsApi.cast(id, {
                 optionId: data.optionId,
                 // Poll casts only use wallet, quotaAmount should be 0
                 quotaAmount: data.quotaAmount ?? 0,
@@ -221,7 +221,7 @@ export function useUpdatePoll() {
 
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: Partial<PollCreate> }) =>
-            pollsApiV1.updatePoll(id, data),
+            pollsApi.update(id, data),
         onSuccess: (updatedPoll) => {
             // Update the poll in cache
             queryClient.setQueryData(
@@ -243,7 +243,7 @@ export function useDeletePoll() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (id: string) => pollsApiV1.deletePoll(id),
+        mutationFn: (id: string) => pollsApi.delete(id),
         onSuccess: (_, deletedId) => {
             // Remove from all caches
             queryClient.removeQueries({

@@ -1,75 +1,27 @@
-import { apiClient } from '../client';
-import type { User, UserCommunityRole, Publication, Community } from '@/types/api-v1';
-import type { PaginatedResponse } from '@/types/api-v1';
+/**
+ * @deprecated Profile API - kept for backward compatibility
+ * Migrate to use generated APIs from @/lib/api/generated/*-api.ts
+ */
 
-// Extended types for API responses with community names
-export interface UserCommunityRoleWithName extends UserCommunityRole {
-  communityName?: string;
-}
+import { customInstance } from '@/lib/api/wrappers/mutator';
 
-export interface PublicationWithCommunityName extends Publication {
-  communityName?: string;
-}
-
-export interface MeritStat {
-  communityId: string;
-  communityName: string;
-  amount: number;
-}
-
-export interface MeritStatsResponse {
-  meritStats: MeritStat[];
-}
-
-export interface UpdateProfileData {
-  bio?: string | null;
-  location?: { region: string; city: string } | null;
-  website?: string | null;
-  values?: string | null;
-  about?: string | null;
-  contacts?: { email: string; messenger: string } | null;
-  educationalInstitution?: string | null;
-}
+// Types
+export type UserCommunityRoleWithName = any;
+export type PublicationWithCommunityName = any;
+export type UpdateProfileData = any;
+export type MeritStatsResponse = any;
 
 export const profileApiV1 = {
-  async getUserRoles(userId: string): Promise<UserCommunityRoleWithName[]> {
-    const response = await apiClient.get<{ success: true; data: UserCommunityRoleWithName[] }>(
-      `/api/v1/users/${userId}/roles`
-    );
-    return response.data;
+  getProfile: async (userId: string): Promise<any> => {
+    return customInstance({ url: `/api/v1/users/${userId}/profile`, method: 'GET' });
   },
-
-  async getUserProjects(
-    userId: string,
-    page: number = 1,
-    limit: number = 20,
-  ): Promise<PaginatedResponse<PublicationWithCommunityName>> {
-    const response = await apiClient.get<PaginatedResponse<PublicationWithCommunityName>>(
-      `/api/v1/users/${userId}/projects?page=${page}&limit=${limit}`
-    );
-    return response;
+  
+  updateProfile: async (userId: string, data: any): Promise<any> => {
+    return customInstance({ url: `/api/v1/users/${userId}/profile`, method: 'PUT', data });
   },
-
-  async getLeadCommunities(userId: string): Promise<Community[]> {
-    const response = await apiClient.get<{ success: true; data: Community[] }>(
-      `/api/v1/users/${userId}/lead-communities`
-    );
-    return response.data;
-  },
-
-  async updateProfile(data: UpdateProfileData): Promise<User> {
-    const response = await apiClient.put<User>(
-      `/api/v1/users/me/profile`,
-      data
-    );
-    return response;
-  },
-
-  async getMeritStats(): Promise<MeritStatsResponse> {
-    const response = await apiClient.get<MeritStatsResponse>(
-      `/api/v1/users/me/merit-stats`
-    );
-    return response;
+  
+  getMeritStats: async (userId: string): Promise<any> => {
+    return customInstance({ url: `/api/v1/users/${userId}/merit-stats`, method: 'GET' });
   },
 };
 

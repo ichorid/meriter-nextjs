@@ -5,12 +5,16 @@
     "license": "SEE LICENSE IN LICENSE",
     "scripts": {
         "dev": "next dev -p 8001",
+        "prebuild": "pnpm generate:api || echo 'Warning: API generation skipped - ensure API server is running or use OPENAPI_FILE'",
         "build": "next build",
         "start": "next start -p 8001",
         "test": "jest",
         "test:ci": "jest --ci",
         "test:watch": "jest --watch",
-        "validate-config": "node scripts/validate-config.js"
+        "validate-config": "node scripts/validate-config.js",
+        "generate:api": "orval",
+        "generate:api:watch": "orval --watch",
+        "generate:api:from-file": "OPENAPI_FILE=./api-spec.json pnpm generate:api"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.940.0",
@@ -95,6 +99,7 @@
         "jest": "^29.7.0",
         "jest-environment-jsdom": "^30.2.0",
         "mongodb-memory-server": "^10.3.0",
+        "orval": "^7.4.2",
         "patch-package": "^8.0.1",
         "postcss": "^8.5.6",
         "postinstall-postinstall": "^2.1.0",

@@ -5,7 +5,8 @@ import {
     useQueryClient,
     useInfiniteQuery,
 } from "@tanstack/react-query";
-import { commentsApiV1, usersApiV1 } from "@/lib/api/v1";
+import { commentsApi } from "@/lib/api/wrappers/comments-api";
+import { usersApi } from "@/lib/api/wrappers/users-api";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import { serializeQueryParams } from "@/lib/utils/queryKeys";
 import {
@@ -46,7 +47,7 @@ export const commentsKeys = {
 export function useComments(params: GetCommentsRequest = {}) {
     return useQuery({
         queryKey: commentsKeys.list(params),
-        queryFn: () => commentsApiV1.getComments(params),
+        queryFn: () => commentsApi.getList(params),
         staleTime: 2 * 60 * 1000, // 2 minutes
     });
 }
@@ -81,7 +82,7 @@ export function useCommentsByPublication(
             serializeQueryParams(params),
         ],
         queryFn: () =>
-            commentsApiV1.getPublicationComments(publicationId, queryParams),
+            commentsApi.getByPublication(publicationId, queryParams),
         staleTime: 2 * 60 * 1000, // 2 minutes
         enabled: !!publicationId,
     });
@@ -116,7 +117,7 @@ export function useCommentsByComment(
             ...commentsKeys.byComment(commentId),
             serializeQueryParams(params),
         ],
-        queryFn: () => commentsApiV1.getCommentReplies(commentId, queryParams),
+        queryFn: () => commentsApi.getReplies(commentId, queryParams),
         staleTime: 2 * 60 * 1000, // 2 minutes
         enabled: !!commentId,
     });
@@ -126,7 +127,7 @@ export function useCommentsByComment(
 export function useComment(id: string) {
     return useValidatedQuery({
         queryKey: commentsKeys.detail(id),
-        queryFn: () => commentsApiV1.getComment(id),
+        queryFn: () => commentsApi.getById(id),
         schema: CommentSchema,
         context: `useComment(${id})`,
         staleTime: 5 * 60 * 1000, // 5 minutes
@@ -138,7 +139,7 @@ export function useComment(id: string) {
 export function useCommentDetails(id: string) {
     return useQuery({
         queryKey: commentsKeys.detailData(id),
-        queryFn: () => commentsApiV1.getCommentDetails(id),
+        queryFn: () => commentsApi.getDetails(id),
         staleTime: 5 * 60 * 1000, // 5 minutes
         enabled: !!id,
     });
@@ -150,7 +151,7 @@ export function useCreateComment() {
 
     return useValidatedMutation({
         mutationFn: (data: CreateCommentDto) =>
-            commentsApiV1.createComment(data),
+            commentsApi.create(data),
         inputSchema: CreateCommentDtoSchema,
         outputSchema: CommentSchema,
         context: "useCreateComment",
@@ -184,7 +185,7 @@ export function useUpdateComment() {
         }: {
             id: string;
             data: Partial<CreateCommentDto>;
-        }) => commentsApiV1.updateComment(id, data),
+        }) => commentsApi.update(id, data),
         onSuccess: (updatedComment) => {
             // Update the comment in cache
             queryClient.setQueryData(
@@ -218,7 +219,7 @@ export function useDeleteComment() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (id: string) => commentsApiV1.deleteComment(id),
+        mutationFn: (id: string) => commentsApi.delete(id),
         onSuccess: (_, deletedId) => {
             // Remove from all caches
             queryClient.removeQueries({
@@ -239,7 +240,7 @@ export function useMyComments(
 ) {
     return useQuery({
         queryKey: queryKeys.comments.myComments(userId, params),
-        queryFn: () => usersApiV1.getUserComments(userId, params),
+        queryFn: () => usersApi.getComments(userId, params),
         staleTime: 2 * 60 * 1000, // 2 minutes
         enabled: !!userId,
     });
@@ -251,7 +252,7 @@ export function useInfiniteMyComments(userId: string, pageSize: number = 20) {
         queryKey: [...queryKeys.comments.my(userId), "infinite", pageSize],
         queryFn: ({ pageParam = 1 }: { pageParam: number }) => {
             const skip = (pageParam - 1) * pageSize;
-            return usersApiV1.getUserComments(userId, {
+            return usersApi.getComments(userId, {
                 skip,
                 limit: pageSize,
             });

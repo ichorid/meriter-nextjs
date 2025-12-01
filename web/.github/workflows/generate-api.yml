@@ -1,0 +1,83 @@
+name: Generate API Client
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run daily to ensure API client is up-to-date
+    - cron: '0 2 * * *'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'api/**'
+      - '.github/workflows/generate-api.yml'
+
+jobs:
+  generate-api:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      
+      - name: Install dependencies
+        run: |
+          cd api
+          pnpm install --frozen-lockfile
+          cd ../web
+          pnpm install --frozen-lockfile
+      
+      - name: Start API server
+        run: |
+          cd api
+          pnpm dev &
+          sleep 30
+        continue-on-error: true
+      
+      - name: Save OpenAPI spec
+        run: |
+          cd web
+          curl -f http://localhost:8002/api-json -o api-spec.json || echo "Server not ready, skipping generation"
+        continue-on-error: true
+      
+      - name: Generate API client
+        run: |
+          cd web
+          if [ -f api-spec.json ]; then
+            OPENAPI_FILE=./api-spec.json pnpm generate:api
+          else
+            echo "Skipping generation - API spec not available"
+          fi
+        continue-on-error: true
+      
+      - name: Check for changes
+        run: |
+          cd web
+          git diff --exit-code src/lib/api/generated/ || {
+            echo "Generated code has changed"
+            git status
+            exit 1
+          }
+        continue-on-error: true
+      
+      - name: Create PR if changes
+        if: failure() && github.event_name == 'schedule'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update generated API client'
+          title: 'Update Generated API Client'
+          body: 'Auto-generated API client has been updated based on latest OpenAPI spec.'
+          branch: update-generated-api-client
+
+

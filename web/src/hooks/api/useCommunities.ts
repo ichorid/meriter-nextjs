@@ -5,8 +5,8 @@ import {
     useQueryClient,
     useInfiniteQuery,
 } from "@tanstack/react-query";
-import { communitiesApiV1 } from "@/lib/api/v1";
-import { communitiesApiV1Enhanced } from "@/lib/api/v1";
+import { communitiesApi } from "@/lib/api/wrappers/communities-api";
+import { customInstance } from "@/lib/api/wrappers/mutator";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import type { PaginatedResponse, Community } from "@/types/api-v1";
 
@@ -48,7 +48,7 @@ interface UpdateCommunityDto {
 export const useCommunities = () => {
     return useQuery({
         queryKey: queryKeys.communities.list({}),
-        queryFn: () => communitiesApiV1.getCommunities(),
+        queryFn: () => communitiesApi.getList(),
     });
 };
 
@@ -57,7 +57,7 @@ export const useInfiniteCommunities = (pageSize: number = 20) => {
         queryKey: [...queryKeys.communities.lists(), "infinite", pageSize],
         queryFn: ({ pageParam = 1 }: { pageParam: number }) => {
             const skip = (pageParam - 1) * pageSize;
-            return communitiesApiV1.getCommunities({
+            return communitiesApi.getList({
                 skip,
                 limit: pageSize,
             });
@@ -75,7 +75,7 @@ export const useInfiniteCommunities = (pageSize: number = 20) => {
 export const useCommunity = (id: string) => {
     return useQuery({
         queryKey: queryKeys.communities.detail(id),
-        queryFn: () => communitiesApiV1.getCommunity(id),
+        queryFn: () => communitiesApi.getById(id),
         enabled: !!id,
     });
 };
@@ -85,7 +85,7 @@ export const useCreateCommunity = () => {
 
     return useMutation({
         mutationFn: (data: CreateCommunityDto) =>
-            communitiesApiV1.createCommunity(data),
+            communitiesApi.create(data),
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.communities.all,
@@ -104,7 +104,7 @@ export const useUpdateCommunity = () => {
         }: {
             id: string;
             data: Partial<UpdateCommunityDto>;
-        }) => communitiesApiV1.updateCommunity(id, data),
+        }) => communitiesApi.update(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.communities.all,
@@ -117,7 +117,7 @@ export const useSyncCommunities = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: () => communitiesApiV1Enhanced.syncCommunities(),
+        mutationFn: () => customInstance({ url: '/api/v1/communities/sync', method: 'POST' }),
         onSuccess: () => {
             // Invalidate wallets query since wallets are used to display communities on home page
             queryClient.invalidateQueries({
@@ -138,7 +138,7 @@ export const useSendCommunityMemo = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (communityId: string) =>
-            communitiesApiV1.sendUsageMemo(communityId),
+            customInstance({ url: `/api/v1/communities/${communityId}/memo`, method: 'POST' }),
         onSuccess: () => {
             // nothing to invalidate specifically; keep for consistency
             queryClient.invalidateQueries({

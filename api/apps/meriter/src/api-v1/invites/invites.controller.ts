@@ -10,6 +10,14 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiCookieAuth,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { InviteService } from '../../domain/services/invite.service';
 import { UserCommunityRoleService } from '../../domain/services/user-community-role.service';
 import { PermissionService } from '../../domain/services/permission.service';
@@ -43,8 +51,11 @@ const UseInviteDtoSchema = z.object({
   code: z.string().min(1),
 });
 
+@ApiTags('Invites')
 @Controller('api/v1/invites')
 @UseGuards(UserGuard)
+@ApiCookieAuth('jwt')
+@ApiBearerAuth()
 export class InvitesController {
   constructor(
     private inviteService: InviteService,

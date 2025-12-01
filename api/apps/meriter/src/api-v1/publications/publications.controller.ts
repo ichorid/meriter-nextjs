@@ -12,6 +12,15 @@ import {
   Logger,
 } from '@nestjs/common';
 import { NotFoundException } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiCookieAuth,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { PublicationService } from '../../domain/services/publication.service';
 import { UserService } from '../../domain/services/user.service';
 import { CommunityService } from '../../domain/services/community.service';
@@ -31,8 +40,11 @@ import {
 } from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 
+@ApiTags('Publications')
 @Controller('api/v1/publications')
 @UseGuards(UserGuard)
+@ApiCookieAuth('jwt')
+@ApiBearerAuth()
 export class PublicationsController {
   private readonly logger = new Logger(PublicationsController.name);
 
@@ -46,6 +58,9 @@ export class PublicationsController {
   ) {}
 
   @Post()
+  @ApiOperation({ summary: 'Create a new publication' })
+  @ApiResponse({ status: 201, description: 'Publication created successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions' })
   @ZodValidation(CreatePublicationDtoSchema)
   async createPublication(
     @User() user: AuthenticatedUser,
@@ -91,6 +106,10 @@ export class PublicationsController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get a publication by ID' })
+  @ApiParam({ name: 'id', description: 'Publication ID' })
+  @ApiResponse({ status: 200, description: 'Publication found' })
+  @ApiResponse({ status: 404, description: 'Publication not found' })
   async getPublication(@Param('id') id: string) {
     const publication = await this.publicationService.getPublication(id);
 
@@ -119,6 +138,15 @@ export class PublicationsController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'Get list of publications' })
+  @ApiQuery({ name: 'communityId', required: false, description: 'Filter by community ID' })
+  @ApiQuery({ name: 'authorId', required: false, description: 'Filter by author ID' })
+  @ApiQuery({ name: 'hashtag', required: false, description: 'Filter by hashtag' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Number of items per page' })
+  @ApiQuery({ name: 'skip', required: false, description: 'Number of items to skip' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number' })
+  @ApiQuery({ name: 'pageSize', required: false, description: 'Page size' })
+  @ApiResponse({ status: 200, description: 'List of publications' })
   async getPublications(
     @Query('communityId') communityId?: string,
     @Query('authorId') authorId?: string,
@@ -203,6 +231,11 @@ export class PublicationsController {
   }
 
   @Put(':id')
+  @ApiOperation({ summary: 'Update a publication' })
+  @ApiParam({ name: 'id', description: 'Publication ID' })
+  @ApiResponse({ status: 200, description: 'Publication updated successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Publication not found' })
   @ZodValidation(UpdatePublicationDtoSchema)
   async updatePublication(
     @User() user: AuthenticatedUser,
@@ -224,6 +257,10 @@ export class PublicationsController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Delete a publication' })
+  @ApiParam({ name: 'id', description: 'Publication ID' })
+  @ApiResponse({ status: 200, description: 'Publication deleted successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions' })
   async deletePublication(
     @User() user: AuthenticatedUser,
     @Param('id') id: string,
@@ -244,6 +281,10 @@ export class PublicationsController {
   }
 
   @Post(':id/vote')
+  @ApiOperation({ summary: 'Vote on a publication' })
+  @ApiParam({ name: 'id', description: 'Publication ID' })
+  @ApiResponse({ status: 200, description: 'Vote recorded successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions' })
   @ZodValidation(VoteDirectionDtoSchema)
   async voteOnPublication(
     @User() user: AuthenticatedUser,
@@ -267,6 +308,9 @@ export class PublicationsController {
   }
 
   @Post('fake-data')
+  @ApiOperation({ summary: 'Generate fake data for testing' })
+  @ApiResponse({ status: 200, description: 'Fake data generated successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden - fake data mode not enabled' })
   async generateFakeData(
     @User() user: AuthenticatedUser,
     @Body() body: { type: 'user' | 'beneficiary'; communityId?: string },

@@ -11,6 +11,15 @@ import {
   Logger,
   BadRequestException,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiCookieAuth,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { VoteService } from '../../domain/services/vote.service';
@@ -40,8 +49,11 @@ import {
   PublicationDocument,
 } from '../../domain/models/publication/publication.schema';
 
+@ApiTags('Votes')
 @Controller('api/v1')
 @UseGuards(UserGuard)
+@ApiCookieAuth('jwt')
+@ApiBearerAuth()
 export class VotesController {
   private readonly logger = new Logger(VotesController.name);
 

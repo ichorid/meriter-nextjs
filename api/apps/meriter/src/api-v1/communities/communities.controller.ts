@@ -12,6 +12,15 @@ import {
   Logger,
   ForbiddenException,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiCookieAuth,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { CommunityService } from '../../domain/services/community.service';
 import { PublicationService } from '../../domain/services/publication.service';
 import { UserService } from '../../domain/services/user.service';
@@ -30,8 +39,11 @@ import { formatDualLinks, escapeMarkdownV2 } from '../../common/helpers/telegram
 import { BOT_USERNAME, URL as WEB_BASE_URL } from '../../config';
 import { t } from '../../i18n';
 
+@ApiTags('Communities')
 @Controller('api/v1/communities')
 @UseGuards(UserGuard)
+@ApiCookieAuth('jwt')
+@ApiBearerAuth()
 export class CommunitiesController {
   private readonly logger = new Logger(CommunitiesController.name);
 
@@ -58,6 +70,10 @@ export class CommunitiesController {
 
 
   @Get()
+  @ApiOperation({ summary: 'Get list of communities' })
+  @ApiQuery({ name: 'skip', required: false, description: 'Number of items to skip' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Number of items per page' })
+  @ApiResponse({ status: 200, description: 'List of communities' })
   async getCommunities(@Query() query: any) {
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
@@ -66,6 +82,10 @@ export class CommunitiesController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get a community by ID' })
+  @ApiParam({ name: 'id', description: 'Community ID' })
+  @ApiResponse({ status: 200, description: 'Community found' })
+  @ApiResponse({ status: 404, description: 'Community not found' })
   async getCommunity(@Param('id') id: string, @Req() req: any): Promise<Community> {
     const community = await this.communityService.getCommunity(id);
     if (!community) {
