@@ -37,8 +37,4 @@ next-env.d.ts
 
 # Generated API code (Orval)
 # Ignore Orval-generated directories and files, but keep custom wrapper files
-src/lib/api/generated/*/
-src/lib/api/generated/meriterAPI.schemas.ts
-src/lib/api/generated/hooks-wrapper.ts
-src/lib/api/generated/invalidation-config.ts
-src/lib/api/generated/MIGRATION_GUIDE.md
+src/lib/api/generated
