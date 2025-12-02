@@ -6,8 +6,7 @@ RUN npm install -g pnpm@10.24.0
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Accept build arguments for Next.js public environment variables
-ARG NEXT_PUBLIC_DOMAIN
-ENV NEXT_PUBLIC_DOMAIN=${NEXT_PUBLIC_DOMAIN}
+# Note: Domain is detected at runtime from window.location, no build-time variable needed
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 

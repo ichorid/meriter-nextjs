@@ -15,10 +15,25 @@ import { z } from 'zod';
 /**
  * Derive application URL from DOMAIN
  * Protocol: http:// for localhost, https:// for production
+ * Uses runtime detection on client-side (allows one build for all environments)
  * Falls back to APP_URL for backward compatibility if DOMAIN is not set
- * REQUIRES: NEXT_PUBLIC_DOMAIN or DOMAIN environment variable must be set
+ * REQUIRES: DOMAIN environment variable on server-side (not needed on client)
  */
 function deriveAppUrl(): string {
+  // On client-side, use runtime detection from window.location
+  // This allows one build to work across multiple environments (dev, stage, prod)
+  if (typeof window !== 'undefined') {
+    // Try env var first (if set at build time for specific use cases)
+    const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
+    if (domain) {
+      const protocol = domain === 'localhost' ? 'http://' : 'https://';
+      return `${protocol}${domain}`;
+    }
+    // Runtime fallback: use current location (allows one build for all environments)
+    return `${window.location.protocol}//${window.location.host}`;
+  }
+  
+  // Server-side: require env var (for SSR and API routes)
   const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
   
   if (!domain) {
@@ -26,7 +41,7 @@ function deriveAppUrl(): string {
     if (process.env.APP_URL) {
       return process.env.APP_URL;
     }
-    throw new Error('NEXT_PUBLIC_DOMAIN (or DOMAIN) environment variable is required. Set NEXT_PUBLIC_DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).');
+    throw new Error('DOMAIN environment variable is required on server-side. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).');
   }
   
   // Use http:// for localhost, https:// for production
@@ -91,6 +106,35 @@ const env = envSchema.parse({
 // Derive app URL from DOMAIN
 const appUrl = deriveAppUrl();
 
+/**
+ * Get domain for configuration - validates that domain can be detected
+ * Throws error if domain is undefined when it shouldn't be
+ */
+function getDomainConfig(): string {
+  if (typeof window !== 'undefined') {
+    // Client-side: domain should always be available from window.location
+    const hostname = window.location?.hostname;
+    if (!hostname) {
+      throw new Error(
+        'Failed to detect domain: window.location.hostname is undefined. ' +
+        'This should not happen in a browser environment. Check your deployment configuration.'
+      );
+    }
+    return hostname;
+  }
+  
+  // Server-side: require DOMAIN env var (already validated by deriveAppUrl, but double-check)
+  const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
+  if (!domain) {
+    throw new Error(
+      'DOMAIN environment variable is required on server-side. ' +
+      'Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro). ' +
+      'This is required for proper cookie domain configuration and SSR.'
+    );
+  }
+  return domain;
+}
+
 function normalizeUrl(url?: string | null): string | undefined {
   if (!url) {
     return undefined;
@@ -113,7 +157,10 @@ export const config = {
     isProduction: env.NODE_ENV === 'production',
     isTest: env.NODE_ENV === 'test',
     url: appUrl,
-    domain: process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN || undefined,
+    // Domain is detected at runtime on client-side from window.location.hostname
+    // On server-side, it comes from DOMAIN env var
+    // Throws error if domain cannot be determined (fail-fast validation)
+    domain: getDomainConfig(),
   },
   
   // API
