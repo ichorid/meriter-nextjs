@@ -2,4 +2,5 @@
 alwaysApply: true
 ---
 
-After finishing a fix or a coding task, ALWAYS run all tests
+After finishing a fix or a coding task, ALWAYS run all tests.
+After finishing a plan that is supposed to produce the code in working state, and not intermediary, RUN THE TESTS
