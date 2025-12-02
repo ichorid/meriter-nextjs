@@ -22,9 +22,11 @@ export interface AppConfig {
  * Protocol: http:// for localhost, https:// for production
  * Falls back to APP_URL for backward compatibility if DOMAIN is not set
  * REQUIRES: DOMAIN environment variable must be set (validated by validation schema)
+ * Exception: In test environment, defaults to localhost for testing
  */
 function deriveAppUrl(): string {
   const domain = process.env.DOMAIN;
+  const nodeEnv = process.env.NODE_ENV || 'development';
   
   if (!domain) {
     // Backward compatibility: if APP_URL exists but DOMAIN doesn't, use APP_URL
@@ -32,6 +34,12 @@ function deriveAppUrl(): string {
     if (process.env.APP_URL) {
       return process.env.APP_URL;
     }
+    
+    // Allow default for test environment only
+    if (nodeEnv === 'test') {
+      return 'http://localhost';
+    }
+    
     throw new Error('DOMAIN environment variable is required. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).');
   }
   
