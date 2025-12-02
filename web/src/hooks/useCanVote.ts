@@ -56,6 +56,17 @@ export function useCanVote(
     // Superadmin always can vote
     if (userRole === 'superadmin') return true;
 
+    // Check if this is a team community (typeTag === 'team')
+    // In team communities, only team members can vote, and they can't vote for themselves
+    if (community.typeTag === 'team') {
+      // Cannot vote for own post in team community
+      if (isAuthor && authorId === user.id) {
+        return false;
+      }
+      // Note: Team membership check is handled by backend
+      // Frontend allows the vote attempt, backend will validate team membership
+    }
+
     // Get voting rules from community
     const rules = community.votingRules;
     if (!rules) {
@@ -73,21 +84,16 @@ export function useCanVote(
       return false;
     }
 
-    // Check if participants cannot vote for lead posts
-    if (rules.participantsCannotVoteForLead && userRole === 'participant' && authorId) {
-      // Need to check author's role - if we don't have it, we can't determine
-      // For now, allow it and let backend handle the check
-      // This could be optimized by fetching author's role, but that's expensive
-    }
-
-    // Additional check: For Good Deeds Marathon, Members (participants) cannot vote for Representative (lead) posts
-    if (
-      community.typeTag === 'marathon-of-good' &&
-      userRole === 'participant' &&
-      authorId
-    ) {
-      // Similar to above - would need author's role to check
-      // Let backend handle this check
+    // For participants outside team communities: check marathon/vision restrictions
+    // Note: Team-based checks (same team, different team) are handled by backend
+    // Frontend can only check community typeTag
+    if (userRole === 'participant' && community.typeTag !== 'team') {
+      // Cannot vote for participants from marathon/vision communities
+      // (Backend will handle the actual check based on author's role and team membership)
+      if (community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision') {
+        // Backend will validate if author is participant and block if so
+        // Frontend allows the attempt
+      }
     }
 
     return true;

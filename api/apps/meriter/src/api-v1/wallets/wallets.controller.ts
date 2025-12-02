@@ -14,6 +14,7 @@ import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
 import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
+import { PermissionService } from '../../domain/services/permission.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
@@ -40,6 +41,7 @@ export class WalletsController {
   constructor(
     private readonly walletsService: WalletService,
     private readonly communityService: CommunityService,
+    private readonly permissionService: PermissionService,
     @InjectModel(Community.name)
     private communityModel: Model<CommunityDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
@@ -227,6 +229,26 @@ export class WalletsController {
     }
 
     const dailyQuota = community.settings.dailyEmission;
+
+    // Check if user is a viewer - viewers don't get daily quota
+    const userRole = await this.permissionService.getUserRoleInCommunity(
+      actualUserId,
+      communityId,
+    );
+    
+    if (userRole === 'viewer') {
+      // Viewers have no quota but can still vote with wallet balance
+      const tomorrow = new Date();
+      tomorrow.setHours(0, 0, 0, 0);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      return {
+        dailyQuota: 0,
+        usedToday: 0,
+        remainingToday: 0,
+        resetAt: tomorrow.toISOString(),
+      };
+    }
 
     // Determine the start time for quota calculation
     // Use lastQuotaResetAt if set, otherwise use start of today

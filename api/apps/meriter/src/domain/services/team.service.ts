@@ -140,4 +140,39 @@ export class TeamService {
   async deleteTeam(id: string): Promise<void> {
     await this.teamModel.deleteOne({ id }).exec();
   }
+
+  /**
+   * Get team by community ID
+   */
+  async getTeamByCommunityId(communityId: string): Promise<TeamDocument | null> {
+    return this.teamModel.findOne({ communityId }).exec();
+  }
+
+  /**
+   * Check if user is a team member (lead or participant)
+   */
+  async isUserTeamMember(userId: string, teamId: string): Promise<boolean> {
+    const team = await this.getTeamById(teamId);
+    if (!team) return false;
+    return team.leadId === userId || team.participantIds.includes(userId);
+  }
+
+  /**
+   * Get user's team (by teamId or by participant membership)
+   */
+  async getUserTeam(userId: string): Promise<TeamDocument | null> {
+    // First check if user is a lead
+    const leadTeams = await this.getTeamsByLead(userId);
+    if (leadTeams.length > 0) {
+      return leadTeams[0]; // Return first team (assuming one team per user)
+    }
+
+    // Then check if user is a participant
+    const participantTeams = await this.getTeamsByParticipant(userId);
+    if (participantTeams.length > 0) {
+      return participantTeams[0]; // Return first team
+    }
+
+    return null;
+  }
 }

@@ -4,6 +4,7 @@ import { CommunityService } from './community.service';
 import { PublicationService } from './publication.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { CommentService } from './comment.service';
+import { TeamService } from './team.service';
 
 /**
  * PermissionService
@@ -19,6 +20,7 @@ export class PermissionService {
     private publicationService: PublicationService,
     private commentService: CommentService,
     private userCommunityRoleService: UserCommunityRoleService,
+    private teamService: TeamService,
   ) { }
 
   /**
@@ -90,6 +92,28 @@ export class PermissionService {
   }
 
   /**
+   * Check if publication is in a team community
+   */
+  private async isPublicationInTeamCommunity(publicationId: string): Promise<boolean> {
+    const publication = await this.publicationService.getPublication(publicationId);
+    if (!publication) return false;
+    
+    const communityId = publication.getCommunityId.getValue();
+    const team = await this.teamService.getTeamByCommunityId(communityId);
+    return team !== null;
+  }
+
+  /**
+   * Check if user is a team member of the team that owns the community
+   */
+  private async isUserTeamMember(userId: string, teamCommunityId: string): Promise<boolean> {
+    const team = await this.teamService.getTeamByCommunityId(teamCommunityId);
+    if (!team) return false;
+    
+    return team.leadId === userId || team.participantIds.includes(userId);
+  }
+
+  /**
    * Check if user can vote on a publication
    * Uses votingRules from community configuration
    */
@@ -98,22 +122,43 @@ export class PermissionService {
       await this.publicationService.getPublication(publicationId);
     if (!publication) return false;
 
+    const communityId = publication.getCommunityId.getValue();
+    const authorId = publication.getAuthorId.getValue();
+
     const userRole = await this.getUserRoleInCommunity(
       userId,
-      publication.getCommunityId.getValue(),
+      communityId,
     );
 
-    // Superadmin always can
-    if (userRole === 'superadmin') return true;
-
-    const community = await this.communityService.getCommunity(
-      publication.getCommunityId.getValue(),
-    );
+    const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
 
+    // Check if publication is in a team community
+    const isTeamCommunity = await this.isPublicationInTeamCommunity(publicationId);
+
+    if (isTeamCommunity) {
+      // Inside Team Communities: Only team members can vote, and they can vote for each other but not themselves
+      const isTeamMember = await this.isUserTeamMember(userId, communityId);
+      if (!isTeamMember) {
+        return false; // Non-team members cannot vote in team communities
+      }
+      
+      // Team members can vote for each other, but not themselves
+      if (authorId === userId) {
+        return false; // Cannot vote for own post in team community
+      }
+      
+      return true; // Team member voting for another team member
+    }
+
+    // Outside Team Communities: Apply regular voting rules
     const rules = community.votingRules;
     if (!rules) {
       // Fallback: if no rules configured, allow everyone (backward compatibility)
+      // But still check for own posts
+      if (authorId === userId) {
+        return false; // Cannot vote for own post by default
+      }
       return true;
     }
 
@@ -121,37 +166,44 @@ export class PermissionService {
     if (!rules.allowedRoles.includes(userRole as any)) return false;
 
     // Check if voting for own post is allowed
-    const authorId = publication.getAuthorId.getValue();
+    // Superadmin still cannot vote for own posts unless explicitly allowed
     if (authorId === userId && !rules.canVoteForOwnPosts) {
       return false;
     }
 
-    // Check if participants cannot vote for lead posts
-    // This is especially important for Good Deeds Marathon where Members cannot vote for Representative posts
-    if (rules.participantsCannotVoteForLead && userRole === 'participant') {
-      const authorRole = await this.getUserRoleInCommunity(
-        authorId,
-        publication.getCommunityId.getValue(),
-      );
-      if (authorRole === 'lead') {
-        return false;
+    // Superadmin can vote for anything except own posts (already checked above)
+    if (userRole === 'superadmin') return true;
+
+    // For participants: Check team-based restrictions
+    if (userRole === 'participant') {
+      const voter = await this.userService.getUserById(userId);
+      const author = await this.userService.getUserById(authorId);
+      
+      // Cannot vote for leads from same team
+      if (voter?.teamId && author?.teamId && voter.teamId === author.teamId) {
+        const authorRole = await this.getUserRoleInCommunity(
+          authorId,
+          communityId,
+        );
+        if (authorRole === 'lead') {
+          return false; // Cannot vote for lead from same team
+        }
+      }
+      
+      // Cannot vote for participants from marathon/vision communities
+      if (community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision') {
+        const authorRole = await this.getUserRoleInCommunity(
+          authorId,
+          communityId,
+        );
+        if (authorRole === 'participant') {
+          return false; // Cannot vote for participants from marathon/vision communities
+        }
       }
     }
 
-    // Additional check: For Good Deeds Marathon, Members (participants) cannot vote for Representative (lead) posts
-    // This is enforced even if participantsCannotVoteForLead is not explicitly set in rules
-    if (
-      community.typeTag === 'marathon-of-good' &&
-      userRole === 'participant'
-    ) {
-      const authorRole = await this.getUserRoleInCommunity(
-        authorId,
-        publication.getCommunityId.getValue(),
-      );
-      if (authorRole === 'lead') {
-        return false;
-      }
-    }
+    // For leads/superadmin: Allow voting except for own posts (already checked above)
+    // For viewers: Allow voting except for own posts (already checked above)
 
     return true;
   }

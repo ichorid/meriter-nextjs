@@ -21,6 +21,7 @@ import { UserService } from '../../domain/services/user.service';
 import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { PermissionService } from '../../domain/services/permission.service';
+import { TeamService } from '../../domain/services/team.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { ApiResponseHelper } from '../common/helpers/api-response.helper';
@@ -54,6 +55,7 @@ export class VotesController {
     private readonly userSettingsService: UserSettingsService,
     private readonly userUpdatesService: UserUpdatesService,
     private readonly permissionService: PermissionService,
+    private readonly teamService: TeamService,
     @InjectConnection() private readonly connection: Connection,
     @InjectModel(PublicationSchema.name)
     private readonly publicationModel: Model<PublicationDocument>,
@@ -173,6 +175,7 @@ export class VotesController {
 
   /**
    * Credit user wallet with automatic merit conversion for GDM Representatives
+   * Note: Team communities have isolated meritonomy - no conversion happens
    */
   private async creditUserWithConversion(
     userId: string,
@@ -183,6 +186,30 @@ export class VotesController {
     referenceId: string,
     description: string,
   ): Promise<void> {
+    // Check if this is a team community - if so, skip merit conversion (isolated meritonomy)
+    const team = await this.teamService.getTeamByCommunityId(communityId);
+    if (team !== null || community.typeTag === 'team') {
+      // Team community: credit only the team community wallet, no conversion
+      const currency = community.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+
+      await this.walletService.addTransaction(
+        userId,
+        communityId,
+        'credit',
+        amount,
+        'personal',
+        referenceType,
+        referenceId,
+        currency,
+        description,
+      );
+      return;
+    }
+
     // Check if this is Good Deeds Marathon and user is Representative
     let isGdmRepresentative = false;
     if (community.typeTag === 'marathon-of-good') {
@@ -478,23 +505,46 @@ export class VotesController {
       let errorMessage =
         'You do not have permission to vote on this publication';
 
+      const communityId = publication.getCommunityId.getValue();
+      const community = await this.communityService.getCommunity(communityId);
+      
+      // Check if publication is in a team community
+      const team = await this.teamService.getTeamByCommunityId(communityId);
+      const isTeamCommunity = team !== null;
+
       // Provide specific error messages
-      if (authorId === req.user.id) {
-        errorMessage = 'You cannot vote for your own post';
-      } else if (
-        userRole === 'participant' &&
-        authorRole === 'lead' &&
-        publication.getCommunityId.getValue()
-      ) {
-        const community = await this.communityService.getCommunity(
-          publication.getCommunityId.getValue(),
-        );
-        if (community?.typeTag === 'marathon-of-good') {
-          errorMessage =
-            'Members cannot vote for Representative posts in Good Deeds Marathon';
+      if (isTeamCommunity) {
+        // Team community specific errors
+        const isTeamMember = team && (team.leadId === req.user.id || team.participantIds.includes(req.user.id));
+        if (!isTeamMember) {
+          errorMessage = 'Only team members can vote in team communities';
+        } else if (authorId === req.user.id) {
+          errorMessage = 'You cannot vote for your own post';
         } else {
-          errorMessage =
-            'Participants cannot vote for Representative posts in this community';
+          errorMessage = 'You do not have permission to vote on this publication';
+        }
+      } else {
+        // Outside team community errors
+        if (authorId === req.user.id) {
+          errorMessage = 'You cannot vote for your own post';
+        } else if (userRole === 'participant') {
+          const voter = await this.userService.getUserById(req.user.id);
+          const author = await this.userService.getUserById(authorId);
+          
+          // Check if same team
+          if (voter?.teamId && author?.teamId && voter.teamId === author.teamId && authorRole === 'lead') {
+            errorMessage = 'You cannot vote for leads from your own team';
+          } else if (community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision') {
+            if (authorRole === 'participant') {
+              errorMessage = 'You cannot vote for participants from marathon/vision communities';
+            } else if (authorRole === 'lead') {
+              if (community.typeTag === 'marathon-of-good') {
+                errorMessage = 'Members cannot vote for Representative posts in Good Deeds Marathon';
+              } else {
+                errorMessage = 'Participants cannot vote for Representative posts in this community';
+              }
+            }
+          }
         }
       }
 
