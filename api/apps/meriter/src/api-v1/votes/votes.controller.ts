@@ -174,8 +174,9 @@ export class VotesController {
   }
 
   /**
-   * Credit user wallet with automatic merit conversion for GDM Representatives
+   * Credit user wallet with automatic merit conversion
    * Note: Team communities have isolated meritonomy - no conversion happens
+   * Note: Special groups (marathon-of-good, future-vision) skip merit awarding here
    */
   private async creditUserWithConversion(
     userId: string,
@@ -210,82 +211,36 @@ export class VotesController {
       return;
     }
 
-    // Check if this is Good Deeds Marathon and user is Representative
-    let isGdmRepresentative = false;
-    if (community.typeTag === 'marathon-of-good') {
-      const userRole = await this.permissionService.getUserRoleInCommunity(
-        userId,
-        communityId,
-      );
-      if (userRole === 'lead') {
-        isGdmRepresentative = true;
-      }
+    // Skip merit awarding for special groups (handled separately in awardMeritsToBeneficiary)
+    if (community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision') {
+      return;
     }
 
-    // If GDM Representative, credit ONLY Future Vision wallet
-    if (isGdmRepresentative) {
-      // Find Future Vision community
-      const futureVisionCommunity =
-        await this.communityService.getCommunityByTypeTag('future-vision');
+    // For other communities, credit the original community wallet
+    const currency = community.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
 
-      if (futureVisionCommunity) {
-        const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        };
-
-        // Credit Future Vision wallet (converted merits)
-        await this.walletService.addTransaction(
-          userId,
-          futureVisionCommunity.id,
-          'credit',
-          amount,
-          'personal',
-          'merit_transfer_gdm_to_fv',
-          referenceId,
-          fvCurrency,
-          `Converted merits from GDM: ${description}`,
-        );
-
-        this.logger.log(
-          `Awarded ${amount} converted merits to Representative ${userId} in Future Vision from GDM reference ${referenceId}`,
-        );
-      } else {
-        this.logger.warn(
-          `Future Vision community not found for merit conversion. Crediting GDM instead.`,
-        );
-        // Fallback: credit GDM if FV not found
-        isGdmRepresentative = false;
-      }
-    }
-
-    // If NOT GDM Representative (or fallback), credit the original community wallet
-    if (!isGdmRepresentative) {
-      const currency = community.settings?.currencyNames || {
-        singular: 'merit',
-        plural: 'merits',
-        genitive: 'merits',
-      };
-
-      await this.walletService.addTransaction(
-        userId,
-        communityId,
-        'credit',
-        amount,
-        'personal',
-        referenceType,
-        referenceId,
-        currency,
-        description,
-      );
-    }
+    await this.walletService.addTransaction(
+      userId,
+      communityId,
+      'credit',
+      amount,
+      'personal',
+      referenceType,
+      referenceId,
+      currency,
+      description,
+    );
   }
 
   /**
    * Award merits to beneficiary after voting
-   * For Good Deeds Marathon: awards to Representative's wallet in GDM
-   * Also implements shared merits: if GDM, also credits FV wallet (if user is Representative)
+   * For Marathon of Good: awards to beneficiary's Future Vision wallet
+   * For Future Vision: no merit awarding
+   * For other communities: normal merit awarding
    */
   private async awardMeritsToBeneficiary(
     publication: any,
@@ -298,6 +253,48 @@ export class VotesController {
       return;
     }
 
+    // If publication is in Future Vision, skip merit awarding
+    if (community.typeTag === 'future-vision') {
+      return;
+    }
+
+    // If publication is in Marathon of Good, credit Future Vision wallet
+    if (community.typeTag === 'marathon-of-good') {
+      const futureVisionCommunity =
+        await this.communityService.getCommunityByTypeTag('future-vision');
+
+      if (futureVisionCommunity) {
+        const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        };
+
+        // Credit Future Vision wallet directly
+        await this.walletService.addTransaction(
+          beneficiaryId,
+          futureVisionCommunity.id,
+          'credit',
+          amount,
+          'personal',
+          'merit_transfer_gdm_to_fv',
+          publication.getId.getValue(),
+          fvCurrency,
+          `Merits from vote on Marathon of Good publication ${publication.getId.getValue()}`,
+        );
+
+        this.logger.log(
+          `Awarded ${amount} merits to beneficiary ${beneficiaryId} in Future Vision from Marathon of Good publication ${publication.getId.getValue()}`,
+        );
+      } else {
+        this.logger.warn(
+          `Future Vision community not found. Skipping merit award for Marathon of Good publication ${publication.getId.getValue()}`,
+        );
+      }
+      return;
+    }
+
+    // For other communities, use normal merit awarding
     await this.creditUserWithConversion(
       beneficiaryId,
       communityId,
@@ -729,6 +726,20 @@ export class VotesController {
       );
     }
 
+    // Get community to check if withdrawals are allowed
+    const communityId = publication.getCommunityId.getValue();
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      throw new NotFoundError('Community', communityId);
+    }
+
+    // Prevent withdrawals in special groups
+    if (community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision') {
+      throw new BadRequestException(
+        'Withdrawals are not allowed in Marathon of Good and Future Vision communities',
+      );
+    }
+
     // Check balance
     const balance = publication.getScore;
     if (balance <= 0) {
@@ -739,13 +750,6 @@ export class VotesController {
     const beneficiaryId =
       publication.getBeneficiaryId?.getValue() ||
       publication.getAuthorId.getValue();
-    const communityId = publication.getCommunityId.getValue();
-
-    // Get community to get currency info
-    const community = await this.communityService.getCommunity(communityId);
-    if (!community) {
-      throw new NotFoundError('Community', communityId);
-    }
 
     // Get withdrawable amount (if amount specified, use it, otherwise withdraw all)
     const withdrawAmount = body.amount
@@ -813,6 +817,44 @@ export class VotesController {
       );
     }
 
+    // Trace back to original publication to check community typeTag
+    let originalPublicationId: string | null = null;
+    let currentVote = vote;
+    let depth = 0;
+    
+    // Traverse vote chain to find root publication
+    while (currentVote.targetType === 'vote' && depth < 20) {
+      const parentVote = await this.voteService.getVoteById(currentVote.targetId);
+      if (!parentVote) break;
+      currentVote = parentVote;
+      depth++;
+    }
+    
+    if (currentVote && currentVote.targetType === 'publication') {
+      originalPublicationId = currentVote.targetId;
+    }
+
+    // Get community to check if withdrawals are allowed
+    const communityId = vote.communityId;
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      throw new NotFoundError('Community', communityId);
+    }
+
+    // If we found the original publication, check its community
+    if (originalPublicationId) {
+      const originalPublication = await this.publicationService.getPublication(originalPublicationId);
+      if (originalPublication) {
+        const originalCommunityId = originalPublication.getCommunityId.getValue();
+        const originalCommunity = await this.communityService.getCommunity(originalCommunityId);
+        if (originalCommunity && (originalCommunity.typeTag === 'marathon-of-good' || originalCommunity.typeTag === 'future-vision')) {
+          throw new BadRequestException(
+            'Withdrawals are not allowed in Marathon of Good and Future Vision communities',
+          );
+        }
+      }
+    }
+
     // Get votes on this vote to calculate balance
     const votesOnVote = await this.voteService.getVotesOnVote(id);
     const balance = votesOnVote.reduce(
@@ -826,13 +868,6 @@ export class VotesController {
 
     // Get beneficiary (vote author)
     const beneficiaryId = vote.userId;
-    const communityId = vote.communityId;
-
-    // Get community to get currency info
-    const community = await this.communityService.getCommunity(communityId);
-    if (!community) {
-      throw new NotFoundError('Community', communityId);
-    }
 
     // Get withdrawable amount (if amount specified, use it, otherwise withdraw all)
     const withdrawAmount = body.amount

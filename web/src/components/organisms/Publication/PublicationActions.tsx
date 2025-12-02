@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl';
 import { getWalletBalance } from '@/lib/utils/wallet';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { useCanVote } from '@/hooks/useCanVote';
+import { useCommunity } from '@/hooks/api/useCommunities';
 
 // Local Publication type definition
 interface Publication {
@@ -111,8 +112,13 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const currentBalance = getWalletBalance(wallets, communityId);
   const maxTopUpAmount = Math.floor(10 * currentBalance) / 10;
 
+  // Get community info to check typeTag
+  const { data: community } = useCommunity(communityId || '');
+  const isSpecialGroup = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
+
   // Mutual exclusivity logic
-  const showWithdraw = (isAuthor && !hasBeneficiary) || isBeneficiary;
+  // Hide withdrawal for special groups (marathon-of-good and future-vision)
+  const showWithdraw = !isSpecialGroup && ((isAuthor && !hasBeneficiary) || isBeneficiary);
   const showVote = !isAuthor && !isBeneficiary;
   const showVoteForAuthor = isAuthor && hasBeneficiary;
 

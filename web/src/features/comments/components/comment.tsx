@@ -176,6 +176,9 @@ export const Comment: React.FC<CommentProps> = ({
         currentBalance,
     });
     
+    // Check if community is special group (withdrawals disabled)
+    const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
+    
     // Get currency icon from community info
     const currencyIcon = communityInfo?.settings?.iconUrl;
     
@@ -256,9 +259,9 @@ export const Comment: React.FC<CommentProps> = ({
                 }}
                 bottom={
                     // Comments cannot have beneficiaries, so logic is simpler:
-                    // - If author: show withdraw (if balance > 0)
+                    // - If author: show withdraw (if balance > 0) UNLESS special group
                     // - If !author: show vote
-                    isAuthor ? (
+                    isAuthor && !isSpecialGroup ? (
                         <BarWithdraw
                             balance={maxWithdrawAmount}
                             onWithdraw={() => {

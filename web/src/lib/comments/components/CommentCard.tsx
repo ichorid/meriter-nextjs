@@ -126,6 +126,9 @@ export function CommentCard({
   // Fetch community info
   const { data: communityInfo } = useCommunity(communityId || '');
   
+  // Check if community is special group (withdrawals disabled)
+  const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
+  
   const currentBalance =
     (Array.isArray(wallets) &&
       wallets.find((w) => w.communityId === communityId)?.balance) ||
@@ -306,7 +309,7 @@ export function CommentCard({
           }
         }}
         bottom={
-          isAuthor ? (
+          isAuthor && !isSpecialGroup ? (
             <BarWithdraw
               balance={maxWithdrawAmount}
               onWithdraw={() => {

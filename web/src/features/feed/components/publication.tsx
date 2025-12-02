@@ -112,11 +112,16 @@ export const Publication = ({
         wallets
     );
     
+    // Get community info to check typeTag
+    const { data: communityInfo } = useCommunity(communityId || '');
+    const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
+    
     // Mutual exclusivity logic:
     // Show withdraw if: (isAuthor && !hasBeneficiary) || isBeneficiary
+    // Hide withdrawal for special groups (marathon-of-good and future-vision)
     // Show vote if: !isAuthor && !isBeneficiary (or if isAuthor && hasBeneficiary - author can vote for beneficiary)
     // IMPORTANT: If user is beneficiary, NEVER show vote button (even if balance is 0)
-    const showWithdraw = (isAuthor && !hasBeneficiary) || isBeneficiary;
+    const showWithdraw = !isSpecialGroup && ((isAuthor && !hasBeneficiary) || isBeneficiary);
     const showVote = !isAuthor && !isBeneficiary;
     const showVoteForAuthor = isAuthor && hasBeneficiary; // Author can vote when there's a beneficiary
     const currentScore = currentPlus - currentMinus;
