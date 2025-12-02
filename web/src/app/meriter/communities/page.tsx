@@ -6,7 +6,6 @@ import { useTranslations } from 'next-intl';
 import { Users, Info } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useCommunitiesBatch } from '@/hooks/api/useCommunities';
-import { useUserRoles } from '@/hooks/api/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdvancedSearch, SearchParams } from '@/components/organisms/AdvancedSearch';
 import { InfoCard } from '@/components/ui/InfoCard';
@@ -17,19 +16,16 @@ import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 export default function CommunitiesPage() {
     const router = useRouter();
     const t = useTranslations('communities');
-    const { user } = useAuth();
+    const { user, isLoading: userLoading } = useAuth();
     
-    // Get user's community memberships
-    const { data: userRoles = [], isLoading: rolesLoading } = useUserRoles(user?.id || '');
-    
-    // Extract unique community IDs from user roles
+    // Extract unique community IDs from user's community memberships
     const communityIds = useMemo(() => {
+        if (!user?.communityMemberships) return [];
         return Array.from(new Set(
-            userRoles
-                .map(role => role.communityId)
+            user.communityMemberships
                 .filter((id): id is string => !!id)
         ));
-    }, [userRoles]);
+    }, [user?.communityMemberships]);
     
     // Batch fetch communities
     const { communities, isLoading: communitiesLoading } = useCommunitiesBatch(communityIds);
@@ -37,7 +33,7 @@ export default function CommunitiesPage() {
     const [searchQuery, setSearchQuery] = useState('');
 
     // Combined loading state
-    const isLoading = rolesLoading || communitiesLoading;
+    const isLoading = userLoading || communitiesLoading;
 
     // Filter communities based on search query
     const filteredCommunities = useMemo(() => {

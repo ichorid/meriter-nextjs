@@ -71,7 +71,7 @@ export const HomeFabMenu: React.FC = () => {
     }, [isOpen]);
 
     return (
-        <div className="fixed bottom-6 right-6 z-50" ref={menuRef}>
+        <div className="fixed bottom-20 right-6 z-[60] lg:bottom-6" ref={menuRef}>
             {/* Menu Items */}
             {isOpen && (
                 <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-xl shadow-xl border border-brand-border dark:border-base-300/50 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
