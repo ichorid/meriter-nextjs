@@ -12,6 +12,8 @@
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
+    "strict": true,
+    "isolatedModules": true,
     "paths": {
       "@meriter/shared-types": [
         "../../libs/shared-types/src"

@@ -101,23 +101,7 @@
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": [
-        "ts-jest",
-        {
-          "tsconfig": {
-            "skipLibCheck": true,
-            "strict": false,
-            "noUnusedLocals": false,
-            "noUnusedParameters": false,
-            "noImplicitAny": false,
-            "strictNullChecks": false,
-            "strictFunctionTypes": false,
-            "strictPropertyInitialization": false,
-            "noImplicitThis": false,
-            "alwaysStrict": false,
-            "isolatedModules": true
-          },
-          "diagnostics": false
-        }
+        "ts-jest"
       ]
     },
     "collectCoverageFrom": [
