@@ -4,11 +4,13 @@ import {
     useMutation,
     useQueryClient,
     useInfiniteQuery,
+    useQueries,
 } from "@tanstack/react-query";
 import { communitiesApiV1 } from "@/lib/api/v1";
 import { communitiesApiV1Enhanced } from "@/lib/api/v1";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import type { PaginatedResponse, Community } from "@/types/api-v1";
+import { useMemo } from "react";
 
 // Local type definition
 interface CreateCommunityDto {
@@ -80,6 +82,59 @@ export const useCommunity = (id: string) => {
         enabled: !!id && id !== "create",
     });
 };
+
+/**
+ * Fetch multiple communities in parallel using batched queries
+ * @param communityIds Array of community IDs to fetch
+ * @returns Object with queries array and communitiesMap for easy access
+ */
+export function useCommunitiesBatch(communityIds: string[]) {
+    // Memoize queries array to prevent infinite loops
+    // useQueries compares the queries array by reference, so we need stable references
+    // Use JSON.stringify to compare array contents instead of reference
+    const communityIdsKey = useMemo(() => JSON.stringify([...communityIds].sort()), [communityIds]);
+    
+    const queriesConfig = useMemo(() => {
+        return communityIds.map((communityId) => ({
+            queryKey: queryKeys.communities.detail(communityId),
+            queryFn: () => communitiesApiV1.getCommunity(communityId),
+            enabled: !!communityId && communityId !== "create",
+            staleTime: 5 * 60 * 1000, // 5 minutes
+        }));
+    }, [communityIdsKey]);
+
+    const queries = useQueries({
+        queries: queriesConfig,
+    });
+
+    // Map results to include communityId for easier access
+    const communitiesMap = new Map<string, Community>();
+    const communities: Community[] = [];
+    
+    queries.forEach((query, index) => {
+        const communityId = communityIds[index];
+        
+        // Only add to map if query has successful data (not error, not loading)
+        if (query.data && !query.error && communityId) {
+            communitiesMap.set(communityId, query.data);
+            communities.push(query.data);
+        }
+    });
+
+    // Determine loading state: true if any query is loading and we have IDs
+    const isLoading = communityIds.length > 0 && queries.some(query => query.isLoading);
+    
+    // Determine if all queries are done (either success or error)
+    const isFetched = queries.length === 0 || queries.every(query => query.isFetched);
+
+    return {
+        queries,
+        communitiesMap,
+        communities,
+        isLoading,
+        isFetched,
+    };
+}
 
 export const useCreateCommunity = () => {
     const queryClient = useQueryClient();
