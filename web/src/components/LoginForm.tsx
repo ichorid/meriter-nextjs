@@ -74,10 +74,22 @@ export function LoginForm({ className = '', enabledProviders }: LoginFormProps) 
 
   // Handle OAuth provider authentication
   const handleOAuthAuth = (providerId: string) => {
-    const params = new URLSearchParams();
-    if (returnTo) params.set('returnTo', returnTo);
-    if (inviteCode.trim()) params.set('invite', inviteCode.trim());
-    const oauthUrl = getOAuthUrl(providerId, params.toString() || undefined);
+    // Construct returnTo path with invite code as query parameter
+    // Always use /meriter/home as base path when invite code is present
+    let returnToPath = returnTo || '/meriter/home';
+    
+    // If invite code is present, ensure we redirect to /meriter/home with invite query param
+    if (inviteCode.trim()) {
+      const url = new URL('/meriter/home', window.location.origin);
+      url.searchParams.set('invite', inviteCode.trim());
+      // Preserve returnTo as a query param if it was specified and different
+      if (returnTo && returnTo !== '/meriter/home') {
+        url.searchParams.set('returnTo', returnTo);
+      }
+      returnToPath = url.pathname + url.search;
+    }
+    
+    const oauthUrl = getOAuthUrl(providerId, returnToPath);
     window.location.href = oauthUrl;
   };
 

@@ -45,15 +45,21 @@ export default function TeamManagementPage({
   const participants = participantsData?.participants || [];
 
   const handleCreateInvite = async () => {
-    if (!team || !inviteUserId.trim()) return;
+    if (!team) return;
 
     try {
-      const invite = await createInvite.mutateAsync({
-        targetUserId: inviteUserId.trim(),
+      const inviteData: any = {
         type: inviteType,
         communityId: team.communityId,
         teamId: team.id,
-      });
+      };
+
+      // Only include targetUserId if provided
+      if (inviteUserId.trim()) {
+        inviteData.targetUserId = inviteUserId.trim();
+      }
+
+      const invite = await createInvite.mutateAsync(inviteData);
 
       setInviteUserId('');
       setShowInviteModal(false);
@@ -247,7 +253,7 @@ export default function TeamManagementPage({
               <BrandButton
                 variant="primary"
                 onClick={handleCreateInvite}
-                disabled={!inviteUserId.trim() || createInvite.isPending}
+                disabled={createInvite.isPending}
                 isLoading={createInvite.isPending}
               >
                 {t('createInviteModal.create')}

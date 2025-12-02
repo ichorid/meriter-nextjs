@@ -48,7 +48,7 @@ export const SuperadminManagement = () => {
 
     return (
         <div className="space-y-4">
-            <h2 className="text-base font-semibold text-brand-text-primary">
+            <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
                 Superadmin Management
             </h2>
 
@@ -67,14 +67,14 @@ export const SuperadminManagement = () => {
 
             <div className="space-y-2 max-h-60 overflow-y-auto">
                 {users.map(user => (
-                    <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div key={user.id} className="flex items-center justify-between p-3 bg-base-200 rounded-lg">
                         <div className="flex items-center space-x-3">
                             {user.avatarUrl && (
                                 <img src={user.avatarUrl} alt={user.displayName} className="w-8 h-8 rounded-full" />
                             )}
                             <div>
-                                <p className="font-medium text-sm">{user.displayName}</p>
-                                <p className="text-xs text-gray-500">@{user.username}</p>
+                                <p className="font-medium text-sm text-base-content">{user.displayName}</p>
+                                <p className="text-xs text-base-content/60">@{user.username}</p>
                             </div>
                         </div>
                         <BrandButton
@@ -89,7 +89,7 @@ export const SuperadminManagement = () => {
             </div>
 
             {message && (
-                <p className={`text-sm ${message.includes('Failed') ? 'text-red-600' : 'text-green-600'}`}>
+                <p className={`text-sm ${message.includes('Failed') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                     {message}
                 </p>
             )}

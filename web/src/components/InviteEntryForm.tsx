@@ -12,9 +12,10 @@ import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 
 interface InviteEntryFormProps {
     className?: string;
+    inviteCode?: string; // Optional prop to override searchParams
 }
 
-export function InviteEntryForm({ className = '' }: InviteEntryFormProps) {
+export function InviteEntryForm({ className = '', inviteCode: inviteCodeProp }: InviteEntryFormProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const t = useTranslations('registration');
@@ -22,7 +23,7 @@ export function InviteEntryForm({ className = '' }: InviteEntryFormProps) {
 
     const { logout, isLoading: authLoading } = useAuth();
     const addToast = useToastStore((state) => state.addToast);
-    const [inviteCode, setInviteCode] = useState(searchParams?.get('invite') || '');
+    const [inviteCode, setInviteCode] = useState(inviteCodeProp || searchParams?.get('invite') || '');
     const [inviteError, setInviteError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 

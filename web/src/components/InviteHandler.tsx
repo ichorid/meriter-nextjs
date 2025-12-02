@@ -67,8 +67,21 @@ export function InviteHandler() {
           router.replace(newUrl.pathname + newUrl.search);
         } catch (error: any) {
           console.error('Failed to use invite:', error);
-          const errorMessage = error?.response?.data?.message || error?.message || t('errors.inviteUseFailed');
+          // Extract error message from various possible formats
+          const errorMessage = error?.response?.data?.error?.message || 
+                               error?.response?.data?.message || 
+                               error?.message || 
+                               t('errors.inviteUseFailed');
           addToast(errorMessage, 'error');
+          
+          // If the error indicates the invite is not for this user, remove invite from URL
+          // to prevent infinite retry loop
+          if (errorMessage.toLowerCase().includes('this invite is not for you') ||
+              errorMessage.toLowerCase().includes('invite is not for you')) {
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('invite');
+            router.replace(newUrl.pathname + newUrl.search);
+          }
         }
       };
 

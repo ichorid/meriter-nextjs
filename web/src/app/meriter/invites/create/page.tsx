@@ -45,10 +45,6 @@ export default function CreateInvitePage() {
       return;
     }
 
-    if (inviteType === 'lead-to-participant' && !targetUserId.trim()) {
-      return;
-    }
-
     // Calculate expiration date
     let expiresAt: string | undefined;
     if (expiresInDays && expiresInDays > 0) {
@@ -61,12 +57,18 @@ export default function CreateInvitePage() {
 
     for (const communityId of selectedCommunities) {
       try {
-        const invite = await createInvite.mutateAsync({
-          targetUserId: targetUserId.trim() || user?.id || '',
+        const inviteData: any = {
           type: inviteType,
           communityId,
           expiresAt,
-        });
+        };
+
+        // Only include targetUserId if provided
+        if (targetUserId.trim()) {
+          inviteData.targetUserId = targetUserId.trim();
+        }
+
+        const invite = await createInvite.mutateAsync(inviteData);
         invites.push({ code: invite.code, communityId });
       } catch (error) {
         console.error(`Failed to create invite for community ${communityId}:`, error);
@@ -189,7 +191,6 @@ export default function CreateInvitePage() {
                 onClick={handleCreateInvites}
                 disabled={
                   selectedCommunities.length === 0 ||
-                  (inviteType === 'lead-to-participant' && !targetUserId.trim()) ||
                   createInvite.isPending
                 }
                 isLoading={createInvite.isPending}

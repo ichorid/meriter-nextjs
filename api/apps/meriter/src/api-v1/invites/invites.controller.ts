@@ -31,19 +31,14 @@ import {
   UserDocument,
 } from '../../domain/models/user/user.schema';
 
-const CreateInviteDtoSchema = z
-  .object({
-    targetUserId: z.string().optional(), // Опционально, если указан targetUserName
-    targetUserName: z.string().optional(), // Опционально, если указан targetUserId
-    type: z.enum(['superadmin-to-lead', 'lead-to-participant']),
-    communityId: z.string().min(1),
-    teamId: z.string().optional(),
-    expiresAt: z.string().datetime().optional(),
-  })
-  .refine((data) => data.targetUserId || data.targetUserName, {
-    message: 'Either targetUserId or targetUserName must be provided',
-    path: ['targetUserId'],
-  });
+const CreateInviteDtoSchema = z.object({
+  targetUserId: z.string().optional(),
+  targetUserName: z.string().optional(),
+  type: z.enum(['superadmin-to-lead', 'lead-to-participant']),
+  communityId: z.string().min(1),
+  teamId: z.string().optional(),
+  expiresAt: z.string().datetime().optional(),
+});
 
 const UseInviteDtoSchema = z.object({
   code: z.string().min(1),

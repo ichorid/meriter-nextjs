@@ -272,25 +272,26 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
 
     const handleGenerateInvite = async () => {
         if (!communityId) return;
-        
-        // Check if either userId or userName is provided
-        if (!useUserName && !inviteTargetUserId.trim()) return;
-        if (useUserName && !inviteTargetUserName.trim()) return;
 
         try {
             const expiresAt = inviteExpiresInDays && inviteExpiresInDays > 0
                 ? new Date(Date.now() + inviteExpiresInDays * 24 * 60 * 60 * 1000).toISOString()
                 : undefined;
 
-            const invite = await createInvite.mutateAsync({
-                ...(useUserName 
-                    ? { targetUserName: inviteTargetUserName.trim() }
-                    : { targetUserId: inviteTargetUserId.trim() }
-                ),
+            const inviteData: any = {
                 type: inviteType,
                 communityId,
                 expiresAt,
-            });
+            };
+
+            // Only include targetUserId or targetUserName if provided
+            if (useUserName && inviteTargetUserName.trim()) {
+                inviteData.targetUserName = inviteTargetUserName.trim();
+            } else if (!useUserName && inviteTargetUserId.trim()) {
+                inviteData.targetUserId = inviteTargetUserId.trim();
+            }
+
+            const invite = await createInvite.mutateAsync(inviteData);
 
             setGeneratedInvite({ 
                 code: invite.code,
@@ -758,11 +759,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                                         variant="primary"
                                         size="lg"
                                         onClick={handleGenerateInvite}
-                                        disabled={
-                                            (!useUserName && !inviteTargetUserId.trim()) ||
-                                            (useUserName && !inviteTargetUserName.trim()) ||
-                                            createInvite.isPending
-                                        }
+                                        disabled={createInvite.isPending}
                                         isLoading={createInvite.isPending}
                                         fullWidth
                                     >

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Users, Info } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { useCommunitiesBatch } from '@/hooks/api/useCommunities';
+import { useCommunitiesBatch, useCommunities } from '@/hooks/api/useCommunities';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdvancedSearch, SearchParams } from '@/components/organisms/AdvancedSearch';
 import { InfoCard } from '@/components/ui/InfoCard';
@@ -18,22 +18,36 @@ export default function CommunitiesPage() {
     const t = useTranslations('communities');
     const { user, isLoading: userLoading } = useAuth();
     
-    // Extract unique community IDs from user's community memberships
+    // Check if user is superadmin
+    const isSuperadmin = user?.globalRole === 'superadmin';
+    
+    // For superadmin: fetch all communities
+    // For regular users: fetch only communities they're members of
+    const { data: allCommunitiesData, isLoading: allCommunitiesLoading } = useCommunities();
     const communityIds = useMemo(() => {
+        if (isSuperadmin) return []; // Not needed for superadmin
         if (!user?.communityMemberships) return [];
         return Array.from(new Set(
             user.communityMemberships
                 .filter((id): id is string => !!id)
         ));
-    }, [user?.communityMemberships]);
+    }, [isSuperadmin, user?.communityMemberships]);
     
-    // Batch fetch communities
-    const { communities, isLoading: communitiesLoading } = useCommunitiesBatch(communityIds);
+    // Batch fetch communities for regular users
+    const { communities: memberCommunities, isLoading: memberCommunitiesLoading } = useCommunitiesBatch(communityIds);
+    
+    // Determine which communities to use
+    const communities = useMemo(() => {
+        if (isSuperadmin) {
+            return allCommunitiesData?.data || [];
+        }
+        return memberCommunities;
+    }, [isSuperadmin, allCommunitiesData, memberCommunities]);
     
     const [searchQuery, setSearchQuery] = useState('');
 
     // Combined loading state
-    const isLoading = userLoading || communitiesLoading;
+    const isLoading = userLoading || (isSuperadmin ? allCommunitiesLoading : memberCommunitiesLoading);
 
     // Filter communities based on search query
     const filteredCommunities = useMemo(() => {
@@ -101,8 +115,11 @@ export default function CommunitiesPage() {
                             <Users className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
                             <p className="font-medium">No communities found</p>
                             {searchQuery && <p className="text-sm mt-1">Try adjusting your search</p>}
-                            {!searchQuery && communityIds.length === 0 && (
+                            {!searchQuery && !isSuperadmin && communityIds.length === 0 && (
                                 <p className="text-sm mt-1">You are not a member of any communities yet</p>
+                            )}
+                            {!searchQuery && isSuperadmin && communities.length === 0 && (
+                                <p className="text-sm mt-1">No communities found in the system</p>
                             )}
                         </div>
                     )}
