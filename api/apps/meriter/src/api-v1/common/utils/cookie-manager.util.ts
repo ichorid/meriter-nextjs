@@ -236,9 +236,9 @@ export class CookieManager {
     const cookieOptions: any = {
       httpOnly: true,
       secure: production,
-      // For localhost in dev, use 'none' to allow cross-port cookie sharing (8002 -> 8001)
-      // Browsers allow sameSite='none' with secure=false for localhost
-      sameSite: production ? 'none' : (domain === undefined || domain === 'localhost' ? 'none' : 'lax'),
+      // For localhost in dev, use 'lax' (sameSite='none' requires secure=true in modern browsers)
+      // 'lax' works fine for same-origin requests (Next.js rewrites proxy to same origin)
+      sameSite: production ? 'none' : 'lax',
       maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
       path: '/',
     };

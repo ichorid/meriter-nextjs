@@ -30,10 +30,9 @@ export function InviteEntryForm({ className = '', inviteCode: inviteCodeProp }: 
     const useInviteMutation = useInvite();
 
     const handleSubmit = async () => {
+        // If no invite code provided, allow user to proceed without it
         if (!inviteCode.trim()) {
-            const message = t('errors.inviteCodeRequired');
-            setInviteError(message);
-            addToast(message, 'warning');
+            router.push('/meriter/home');
             return;
         }
 
@@ -97,10 +96,10 @@ export function InviteEntryForm({ className = '', inviteCode: inviteCodeProp }: 
 
                         <BrandButton
                             onClick={handleSubmit}
-                            disabled={!inviteCode.trim() || isSubmitting || authLoading}
+                            disabled={isSubmitting || authLoading}
                             fullWidth
                         >
-                            {t('continue')}
+                            {inviteCode.trim() ? t('continue') : tCommon('skip') || 'Skip'}
                         </BrandButton>
                     </div>
                 </div>

@@ -96,12 +96,28 @@ const nextConfig = {
         ];
         
         // Define __DEV__ for React Native Web compatibility
-        config.plugins = config.plugins || [];
-        config.plugins.push(
-            new (require('webpack')).DefinePlugin({
-                __DEV__: JSON.stringify(process.env.NODE_ENV !== 'production'),
-            })
+        // Check if DefinePlugin already exists and merge, otherwise create new one
+        const webpack = require('webpack');
+        const existingDefinePlugin = config.plugins.find(
+            plugin => plugin && plugin.constructor && plugin.constructor.name === 'DefinePlugin'
         );
+        
+        if (existingDefinePlugin) {
+            // Merge __DEV__ into existing DefinePlugin
+            const existingDefinitions = existingDefinePlugin.definitions || {};
+            existingDefinePlugin.definitions = {
+                ...existingDefinitions,
+                __DEV__: JSON.stringify(process.env.NODE_ENV !== 'production'),
+            };
+        } else {
+            // Create new DefinePlugin if none exists
+            config.plugins = config.plugins || [];
+            config.plugins.push(
+                new webpack.DefinePlugin({
+                    __DEV__: JSON.stringify(process.env.NODE_ENV !== 'production'),
+                })
+            );
+        }
         
         // Use NormalModuleReplacementPlugin to replace problematic file with a patched version
         // This runs BEFORE any loaders, so we can intercept the file

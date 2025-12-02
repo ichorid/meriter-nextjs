@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { InviteEntryForm } from '@/components/InviteEntryForm';
 import { LoginForm } from '@/components/LoginForm';
 import { VersionDisplay } from '@/components/organisms';
 import { LoadingState } from '@/components/atoms/LoadingState';
@@ -83,36 +82,19 @@ export function AuthWrapper({ children, enabledProviders }: AuthWrapperProps) {
     return <>{children}</>;
   }
 
-  // Helper function to check if user needs invite - memoized
-  // Superadmins never need invites - they bypass the requirement
-  const checkNeedsInvite = useCallback((user: any): boolean => {
-    // Superadmins never need invites
-    if (user?.globalRole === 'superadmin') {
-      return false;
-    }
-    // Regular users need invite if they have no invite code and no community memberships
-    return user && !user.inviteCode && (!user.communityMemberships || user.communityMemberships.length === 0);
-  }, []);
-
-  // Memoize needsInvite calculation to avoid recalculating on every render
-  const needsInvite = useMemo(() => {
-    return checkNeedsInvite(user);
-  }, [checkNeedsInvite, userId, userGlobalRole, userInviteCode, userMembershipsCount]);
 
   // If authenticated and on login page, redirect to home
   useEffect(() => {
     if (isAuthenticated && pathname === '/meriter/login') {
       if (DEBUG_MODE) {
-        console.log('[AuthWrapper] Redirect check:', { isAuthenticated, pathname, needsInvite });
+        console.log('[AuthWrapper] Redirect check:', { isAuthenticated, pathname });
       }
-      if (!needsInvite) {
-        if (DEBUG_MODE) {
-          console.log('[AuthWrapper] Redirecting to /meriter/home');
-        }
-        router.push('/meriter/home');
+      if (DEBUG_MODE) {
+        console.log('[AuthWrapper] Redirecting to /meriter/home');
       }
+      router.push('/meriter/home');
     }
-  }, [isAuthenticated, pathname, router, needsInvite]);
+  }, [isAuthenticated, pathname, router]);
 
   // If loading, show loading state
   if (isLoading) {
@@ -135,22 +117,6 @@ export function AuthWrapper({ children, enabledProviders }: AuthWrapperProps) {
     );
   }
 
-  // If authenticated, check if user needs to enter invite
-  if (isAuthenticated && needsInvite) {
-    return (
-      <div className="min-h-screen bg-base-100 px-4 py-8">
-        <div className="flex justify-center">
-          <div className="w-full max-w-md">
-            <InviteEntryForm />
-            <div className="flex justify-center mt-8">
-              <VersionDisplay />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // If authenticated and fully registered (or on public route), show children
+  // If authenticated, show children (invite codes are now optional)
   return <>{children}</>;
 }
