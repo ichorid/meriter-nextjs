@@ -3,10 +3,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { CommunityAvatar } from '@/shared/components/community-avatar';
+import { Badge } from '@/components/atoms';
 import { useCommunity } from '@/hooks/api';
 import { useWallets } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
+import { useUserRoles } from '@/hooks/api/useProfile';
 
 export interface CommunityCardProps {
   communityId: string;
@@ -33,7 +35,16 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   quota,
 }) => {
   const { data: community } = useCommunity(communityId);
+  const { user } = useAuth();
+  const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const isActive = pathname?.includes(`/communities/${communityId}`);
+
+  // Check if user is a lead in this community
+  const isLead = React.useMemo(() => {
+    if (user?.globalRole === 'superadmin') return true;
+    const role = userRoles.find(r => r.communityId === communityId);
+    return role?.role === 'lead' || community?.adminIds?.includes(user?.id || '');
+  }, [user?.globalRole, user?.id, userRoles, communityId, community?.adminIds]);
 
   // Format balance and quota display
   const balance = wallet?.balance || 0;
@@ -80,8 +91,15 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
             />
           </div>
           <div className="flex-1 min-w-0">
-            <div className={`text-sm font-medium truncate ${isActive ? 'text-primary-content' : 'text-base-content dark:text-base-content'}`}>
-              {community.name}
+            <div className="flex items-center gap-1.5">
+              <div className={`text-sm font-medium truncate ${isActive ? 'text-primary-content' : 'text-base-content dark:text-base-content'}`}>
+                {community.name}
+              </div>
+              {isLead && (
+                <Badge variant="accent" size="xs">
+                  Lead
+                </Badge>
+              )}
             </div>
             <div className={`text-xs truncate flex items-center gap-1 ${isActive ? 'text-primary-content/80' : 'text-base-content/60 dark:text-base-content/60'}`}>
               {currencyIconUrl && (
@@ -98,7 +116,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   // Collapsed version (tablet/mobile - avatar only with compact metrics below)
   return (
     <Link href={`/meriter/communities/${communityId}`}>
-      <div className="w-12 flex flex-col items-center">
+      <div className="w-12 flex flex-col items-center relative">
         <div
           className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer ${
             isActive
@@ -113,6 +131,9 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
             needsSetup={community.needsSetup}
           />
         </div>
+        {isLead && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-accent border-2 border-base-200" title="Lead" />
+        )}
         <div className="mt-1 text-[10px] leading-none text-base-content/60 text-center truncate max-w-[48px] flex items-center justify-center gap-0.5">
           {currencyIconUrl && (
             <img src={currencyIconUrl} alt="Currency" className="w-2.5 h-2.5 inline-block" />

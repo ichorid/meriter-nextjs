@@ -345,3 +345,73 @@
 .animate-shake {
   animation: shake 0.5s ease-out;
 }
+
+/* Action button styling - Vote and Withdraw buttons */
+@layer components {
+  /* Base action button styles - Tailwind-based, matches BrandButton approach */
+  .btn-action {
+    @apply inline-flex items-center justify-center rounded-xl font-medium;
+    @apply transition-all duration-200;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+    @apply disabled:opacity-50 disabled:pointer-events-none;
+    @apply active:scale-95;
+  }
+
+  /* Outline variant - Light mode */
+  .btn-action-outline {
+    @apply border-2 bg-base-100 text-primary border-primary;
+    box-shadow: 0 2px 4px -1px rgba(37, 99, 235, 0.1), 0 1px 2px -1px rgba(37, 99, 235, 0.05);
+  }
+
+  .btn-action-outline:hover:not(:disabled) {
+    @apply bg-primary text-primary-content border-primary;
+    box-shadow: 0 6px 12px -2px rgba(37, 99, 235, 0.25), 0 4px 6px -1px rgba(37, 99, 235, 0.15);
+    transform: translateY(-1px);
+  }
+
+  .btn-action-outline:active:not(:disabled) {
+    background-color: rgba(37, 99, 235, 0.95);
+    box-shadow: 0 2px 4px -1px rgba(37, 99, 235, 0.2), 0 1px 2px -1px rgba(37, 99, 235, 0.1);
+    transform: translateY(0);
+  }
+
+  /* Outline variant - Dark mode */
+  [data-theme="dark"] .btn-action-outline {
+    @apply bg-base-200 text-primary border-primary;
+    box-shadow: 0 2px 4px -1px rgba(59, 130, 246, 0.2), 0 1px 2px -1px rgba(59, 130, 246, 0.1);
+  }
+
+  [data-theme="dark"] .btn-action-outline:hover:not(:disabled) {
+    @apply bg-primary text-primary-content border-primary;
+    box-shadow: 0 6px 12px -2px rgba(59, 130, 246, 0.35), 0 4px 6px -1px rgba(59, 130, 246, 0.25);
+    transform: translateY(-1px);
+  }
+
+  [data-theme="dark"] .btn-action-outline:active:not(:disabled) {
+    background-color: rgba(59, 130, 246, 0.95);
+    box-shadow: 0 2px 4px -1px rgba(59, 130, 246, 0.3), 0 1px 2px -1px rgba(59, 130, 246, 0.2);
+    transform: translateY(0);
+  }
+
+  /* Ghost/Disabled variant */
+  .btn-action.btn-ghost {
+    @apply bg-transparent border-2 border-base-300 text-base-content;
+    opacity: 0.5;
+    box-shadow: none;
+  }
+
+  [data-theme="dark"] .btn-action.btn-ghost {
+    border-color: rgba(166, 173, 187, 0.2);
+    opacity: 0.4;
+  }
+
+  .btn-action.btn-ghost:hover:not(:disabled) {
+    @apply bg-base-200 text-base-content;
+    opacity: 1;
+  }
+
+  [data-theme="dark"] .btn-action.btn-ghost:hover:not(:disabled) {
+    @apply bg-base-300 text-base-content;
+    opacity: 1;
+  }
+}

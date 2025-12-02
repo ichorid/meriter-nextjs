@@ -18,6 +18,7 @@ import { calculatePadding } from '../utils/connections';
 import { useCommentVoteDisplay } from '@/features/comments/hooks/useCommentVoteDisplay';
 import { useCommentRecipient } from '@/features/comments/hooks/useCommentRecipient';
 import { useCommentWithdrawal } from '@/features/comments/hooks/useCommentWithdrawal';
+import { useCanVote } from '@/hooks/useCanVote';
 
 interface CommentCardProps {
   node: TreeNode;
@@ -99,6 +100,19 @@ export function CommentCard({
   // Check if there's a beneficiary and it's different from the author
   const beneficiaryMeta = (originalComment.meta as any)?.beneficiary;
   const hasBeneficiary = beneficiaryMeta && beneficiaryMeta.id !== commentAuthorId;
+  const isBeneficiary = hasBeneficiary && myId === beneficiaryMeta?.id;
+  
+  // Check if user can vote on this comment based on community rules
+  const canVote = useCanVote(
+    node.id,
+    'comment',
+    communityId,
+    commentAuthorId,
+    isAuthor,
+    isBeneficiary,
+    hasBeneficiary,
+    false // Comments are not projects
+  );
   
   // Withdrawal state management
   const withdrawableBalance = originalComment.metrics?.score ?? 0;
@@ -347,13 +361,14 @@ export function CommentCard({
                 useUIStore.getState().openVotingPopup(commentIdToVoteOn, 'comment');
               }}
               isAuthor={isAuthor}
-              isBeneficiary={false}
-              hasBeneficiary={false}
+              isBeneficiary={isBeneficiary}
+              hasBeneficiary={hasBeneficiary}
               commentCount={node.children.length || replyComments?.length || 0}
               onCommentClick={() => {
                 // For tree navigation, clicking comment count navigates to show replies
                 onNavigate();
               }}
+              canVote={canVote}
             />
           )
         }

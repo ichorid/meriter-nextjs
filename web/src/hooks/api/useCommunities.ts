@@ -154,3 +154,25 @@ export const useSendCommunityMemo = () => {
         },
     });
 };
+
+export const useResetDailyQuota = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (communityId: string) =>
+            communitiesApiV1.resetDailyQuota(communityId),
+        onSuccess: (_, communityId) => {
+            // Invalidate community queries to refresh quota data
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.communities.detail(communityId),
+            });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.communities.all,
+            });
+            // Also invalidate quota-related queries
+            queryClient.invalidateQueries({
+                queryKey: ['community-quota'],
+            });
+        },
+    });
+};

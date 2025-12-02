@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWallets } from '@/hooks/api';
-import { Avatar } from '@/components/atoms';
+import { Avatar, Badge } from '@/components/atoms';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { VersionDisplay } from '@/components/organisms/VersionDisplay';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
+import { useUserRoles } from '@/hooks/api/useProfile';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
 
@@ -24,6 +25,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
   const { data: wallets = [], isLoading: walletsLoading } = useWallets();
+  const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const t = useTranslations('common');
 
   // Get unique community IDs from wallets
@@ -51,6 +53,31 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
     });
     return total;
   }, [quotasMap]);
+
+  // Determine user's highest role for display
+  const userRoleDisplay = React.useMemo(() => {
+    // Check global superadmin role first
+    if (user?.globalRole === 'superadmin') {
+      return { role: 'superadmin', label: 'Superadmin', variant: 'error' as const };
+    }
+    
+    // Check community roles (lead > participant > viewer)
+    const hasLead = userRoles.some(r => r.role === 'lead');
+    const hasParticipant = userRoles.some(r => r.role === 'participant');
+    const hasViewer = userRoles.some(r => r.role === 'viewer');
+    
+    if (hasLead) {
+      return { role: 'lead', label: 'Representative', variant: 'accent' as const };
+    }
+    if (hasParticipant) {
+      return { role: 'participant', label: 'Participant', variant: 'info' as const };
+    }
+    if (hasViewer) {
+      return { role: 'viewer', label: 'Viewer', variant: 'secondary' as const };
+    }
+    
+    return null;
+  }, [user?.globalRole, userRoles]);
 
   // Don't show sidebar on login page
   if (pathname?.includes('/login')) {
@@ -144,8 +171,15 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                   size="sm"
                 />
                 <div className="flex-1 ml-2 min-w-0">
-                  <div className="text-xs font-medium text-base-content truncate">
-                    {user.displayName || 'User'}
+                  <div className="flex items-center gap-1.5">
+                    <div className="text-xs font-medium text-base-content truncate">
+                      {user.displayName || 'User'}
+                    </div>
+                    {userRoleDisplay && (
+                      <Badge variant={userRoleDisplay.variant} size="xs">
+                        {userRoleDisplay.label}
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-[10px] text-base-content/70 mt-0.5">
                     <span>{t('dailyMerits')}: <span className="font-semibold text-brand-primary">{totalDailyQuota}</span></span>

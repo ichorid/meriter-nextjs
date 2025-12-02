@@ -115,6 +115,103 @@ export class CookieManager {
   }
 
   /**
+   * Clear any cookie with multiple attribute combinations to ensure all variants are removed
+   * @param response Express response object
+   * @param cookieName Name of the cookie to clear
+   * @param cookieDomain Cookie domain (optional)
+   * @param isProduction Whether running in production mode
+   */
+  static clearCookieVariants(
+    response: any,
+    cookieName: string,
+    cookieDomain?: string | undefined,
+    isProduction?: boolean
+  ): void {
+    const production = isProduction ?? process.env.NODE_ENV === 'production';
+    const domain = cookieDomain ?? this.getCookieDomain();
+    
+    const baseOptions = {
+      httpOnly: true,
+      secure: production,
+      sameSite: (production ? 'none' : 'lax') as 'none' | 'lax',
+      path: '/',
+    };
+    
+    // Derive all possible domain variants from cookie domain
+    const domainsToTry: (string | undefined)[] = [undefined]; // Always try no domain
+    
+    if (domain && domain !== 'localhost') {
+      domainsToTry.push(domain);
+      
+      // Add variant with leading dot if it doesn't have one
+      if (!domain.startsWith('.')) {
+        domainsToTry.push(`.${domain}`);
+      }
+      
+      // Add variant without leading dot if it has one
+      if (domain.startsWith('.')) {
+        domainsToTry.push(domain.substring(1));
+      }
+    }
+    
+    // Remove duplicates while preserving undefined
+    const uniqueDomains = Array.from(
+      new Set(domainsToTry.map(d => d ?? 'undefined'))
+    ).map(d => d === 'undefined' ? undefined : d);
+    
+    // Try different path combinations
+    const pathsToTry = ['/', '']; // Root path and no path
+    
+    for (const domainVariant of uniqueDomains) {
+      for (const path of pathsToTry) {
+        try {
+          // Method 1: clearCookie
+          response.clearCookie(cookieName, {
+            ...baseOptions,
+            domain: domainVariant,
+            path,
+          });
+          
+          // Method 2: Set cookie to empty with immediate expiry (more reliable)
+          response.cookie(cookieName, '', {
+            ...baseOptions,
+            domain: domainVariant,
+            path,
+            expires: new Date(0),
+            maxAge: 0,
+          });
+        } catch (error) {
+          // Ignore errors when clearing - some combinations may fail
+        }
+      }
+    }
+    
+    // Also try without httpOnly in case there's a non-httpOnly cookie
+    for (const domainVariant of uniqueDomains) {
+      for (const path of pathsToTry) {
+        try {
+          response.clearCookie(cookieName, {
+            secure: production,
+            sameSite: (production ? 'none' : 'lax') as 'none' | 'lax',
+            path,
+            domain: domainVariant,
+          });
+          response.cookie(cookieName, '', {
+            secure: production,
+            sameSite: (production ? 'none' : 'lax') as 'none' | 'lax',
+            path,
+            domain: domainVariant,
+            expires: new Date(0),
+            maxAge: 0,
+          });
+        } catch (error) {
+          // Ignore errors
+        }
+      }
+    }
+  }
+
+  /**
    * Set JWT cookie with proper domain and security settings
    * @param response Express response object
    * @param jwtToken JWT token string

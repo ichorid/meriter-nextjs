@@ -57,10 +57,24 @@ export class ApiClient {
             url.includes('/api/v1/auth/telegram/webapp');
 
           if (!isAuthEndpoint) {
-            // Clear JWT cookie and local storage using the centralized utility
+            // CRITICAL: Clear ALL cookies immediately before showing toast
+            // This prevents the endless login loop with stale cookies
             if (typeof document !== 'undefined') {
               clearAuthStorage();
+              
+              // Also immediately call server-side clearCookies() to clear HttpOnly cookies
+              // Use fire-and-forget pattern to avoid blocking the error flow
+              // Import authApiV1 lazily to avoid circular dependency
+              import('@/lib/api/v1').then(({ authApiV1 }) => {
+                authApiV1.clearCookies().catch(e => {
+                  // Silently fail - we've already cleared client-side cookies
+                  console.error('Failed to clear server cookies on 401:', e);
+                });
+              }).catch(() => {
+                // Silently fail if import fails
+              });
             }
+            
             // Invalidate React Query cache to remove stale auth data
             invalidateAuthQueries();
 

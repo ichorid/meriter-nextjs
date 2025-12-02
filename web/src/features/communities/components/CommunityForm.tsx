@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useQueryClient, useQueries } from '@tanstack/react-query';
-import { useCommunity, useUpdateCommunity, useCreateCommunity, useCommunityMembers, useRemoveCommunityMember } from '@/hooks/api';
+import { useCommunity, useUpdateCommunity, useCreateCommunity, useCommunityMembers, useRemoveCommunityMember, useResetDailyQuota } from '@/hooks/api';
 import type { CommunityMember } from '@/hooks/api/useCommunityMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
@@ -42,6 +42,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const { data: community, isLoading } = useCommunity(isEditMode ? communityId : '');
     const updateCommunity = useUpdateCommunity();
     const createCommunity = useCreateCommunity();
+    const resetDailyQuota = useResetDailyQuota();
 
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -312,6 +313,22 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
         }
     };
 
+    const handleResetDailyQuota = async () => {
+        if (!communityId) return;
+        
+        const confirmed = confirm(t('resetQuotaConfirm'));
+        if (!confirmed) return;
+
+        try {
+            await resetDailyQuota.mutateAsync(communityId);
+            addToast(t('resetQuotaSuccess'), 'success');
+        } catch (error) {
+            console.error('Failed to reset daily quota:', error);
+            const errorMessage = extractErrorMessage(error, t('resetQuotaError'));
+            addToast(errorMessage, 'error');
+        }
+    };
+
     if (isEditMode && isLoading) {
         return (
             <div className="flex justify-center items-center min-h-[400px]">
@@ -413,6 +430,23 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                                 fullWidth
                             />
                         </BrandFormControl>
+
+                        {isEditMode && isUserLead && (
+                            <BrandFormControl
+                                label={t('resetQuota')}
+                                helperText={t('resetQuotaDescription')}
+                            >
+                                <BrandButton
+                                    variant="outline"
+                                    size="md"
+                                    onClick={handleResetDailyQuota}
+                                    disabled={resetDailyQuota.isPending}
+                                    isLoading={resetDailyQuota.isPending}
+                                >
+                                    {resetDailyQuota.isPending ? t('saving') : t('resetQuota')}
+                                </BrandButton>
+                            </BrandFormControl>
+                        )}
 
                         <div>
                             <h3 className="text-base font-semibold text-brand-text-primary mb-3">

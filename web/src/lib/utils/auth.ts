@@ -41,48 +41,120 @@ function getCookieDomain(): string | undefined {
   return undefined;
 }
 
-export function clearJwtCookie(): void {
+/**
+ * Clears a single cookie with multiple attribute combinations to ensure all variants are removed
+ * @param cookieName Name of the cookie to clear
+ * @param cookieDomain Optional domain override
+ */
+function clearCookieVariants(cookieName: string, cookieDomain?: string | undefined): void {
   if (typeof document === 'undefined') return;
   
-  const cookieDomain = getCookieDomain();
+  const domain = cookieDomain ?? getCookieDomain();
   const isProduction = process.env.NODE_ENV === 'production';
   const expiry = 'Thu, 01 Jan 1970 00:00:00 GMT';
   
-  // Clear JWT cookie with same attributes used when setting it
-  const clearCookie = (domain?: string) => {
-    let cookieStr = `jwt=;expires=${expiry};path=/`;
-    if (domain) {
-      cookieStr += `;domain=${domain}`;
-    }
-    if (isProduction) {
-      cookieStr += `;secure;sameSite=none`;
-    } else {
-      cookieStr += `;sameSite=lax`;
-    }
-    document.cookie = cookieStr;
-  };
+  // Generate all domain variants to try
+  const domainsToTry: (string | undefined)[] = [undefined]; // Always try no domain
+  domainsToTry.push(window.location.hostname); // Current domain
   
-  // Try clearing with different domain combinations
-  clearCookie(); // No domain
-  clearCookie(window.location.hostname); // Current domain
-  
-  if (cookieDomain && cookieDomain !== window.location.hostname) {
-    clearCookie(cookieDomain); // Cookie domain if set
+  if (domain && domain !== 'localhost' && domain !== window.location.hostname) {
+    domainsToTry.push(domain);
     
     // Try variants with/without leading dot
-    if (!cookieDomain.startsWith('.')) {
-      clearCookie(`.${cookieDomain}`);
+    if (!domain.startsWith('.')) {
+      domainsToTry.push(`.${domain}`);
     }
-    if (cookieDomain.startsWith('.')) {
-      clearCookie(cookieDomain.substring(1));
+    if (domain.startsWith('.')) {
+      domainsToTry.push(domain.substring(1));
     }
   }
   
   // Try parent domain for subdomains
   if (window.location.hostname.includes('.')) {
     const parentDomain = '.' + window.location.hostname.split('.').slice(-2).join('.');
-    clearCookie(parentDomain);
+    if (!domainsToTry.includes(parentDomain)) {
+      domainsToTry.push(parentDomain);
+    }
   }
+  
+  // Try clearing with all combinations of attributes
+  const pathsToTry = ['/', '']; // Root path and no path
+  const sameSiteOptions = isProduction 
+    ? ['none', 'lax'] as const
+    : ['lax', 'none'] as const;
+  
+  for (const domainVariant of domainsToTry) {
+    for (const path of pathsToTry) {
+      for (const sameSite of sameSiteOptions) {
+        // Try with secure flag
+        let cookieStr = `${cookieName}=;expires=${expiry};path=${path}`;
+        if (domainVariant) {
+          cookieStr += `;domain=${domainVariant}`;
+        }
+        if (isProduction || sameSite === 'none') {
+          cookieStr += `;secure`;
+        }
+        cookieStr += `;sameSite=${sameSite}`;
+        document.cookie = cookieStr;
+        
+        // Also try without secure flag (for localhost/dev)
+        if (isProduction) {
+          cookieStr = `${cookieName}=;expires=${expiry};path=${path}`;
+          if (domainVariant) {
+            cookieStr += `;domain=${domainVariant}`;
+          }
+          cookieStr += `;sameSite=${sameSite}`;
+          document.cookie = cookieStr;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Clears ALL cookies from the browser
+ * Attempts to clear all cookies by reading document.cookie and clearing each one
+ * Also ensures JWT cookie variants are cleared
+ */
+export function clearAllCookies(): void {
+  if (typeof document === 'undefined') return;
+  
+  // Read all cookies from document.cookie
+  const cookies = document.cookie.split(';');
+  const cookieNames = new Set<string>();
+  
+  // Extract cookie names (cookies are in format "name=value" or just "name=")
+  for (const cookie of cookies) {
+    const trimmed = cookie.trim();
+    if (trimmed) {
+      const name = trimmed.split('=')[0].trim();
+      if (name) {
+        cookieNames.add(name);
+      }
+    }
+  }
+  
+  // Clear each cookie with multiple attribute combinations
+  const cookieDomain = getCookieDomain();
+  for (const cookieName of cookieNames) {
+    clearCookieVariants(cookieName, cookieDomain);
+  }
+  
+  // Also explicitly clear JWT cookie variants (in case it's HttpOnly and not in document.cookie)
+  clearCookieVariants('jwt', cookieDomain);
+  
+  // Clear known cookies that might be HttpOnly (they won't appear in document.cookie)
+  const knownCookies = ['jwt', 'fake_user_id', 'NEXT_LOCALE'];
+  for (const cookieName of knownCookies) {
+    clearCookieVariants(cookieName, cookieDomain);
+  }
+}
+
+export function clearJwtCookie(): void {
+  if (typeof document === 'undefined') return;
+  
+  const cookieDomain = getCookieDomain();
+  clearCookieVariants('jwt', cookieDomain);
 }
 
 /**
@@ -98,8 +170,8 @@ export function hasJwtCookie(): boolean {
 }
 
 export function clearAuthStorage(): void {
-  // Clear JWT cookie specifically
-  clearJwtCookie();
+  // Clear ALL cookies (not just JWT) to prevent login loops with stale cookies
+  clearAllCookies();
 
   // Clear localStorage and sessionStorage
   if (typeof localStorage !== 'undefined') {
@@ -132,4 +204,5 @@ export function handleAuthRedirect(returnTo?: string | null, fallbackUrl: string
   const redirectUrl = returnTo && returnTo !== '/meriter/login' ? returnTo : fallbackUrl;
   window.location.href = redirectUrl;
 }
+
 
