@@ -17,15 +17,35 @@
  * Falls back to APP_URL extraction for backward compatibility if DOMAIN is not set
  */
 function getCookieDomain(): string | undefined {
-  // Try NEXT_PUBLIC_DOMAIN first (set from root DOMAIN env var)
+  // On client-side, use current hostname for runtime detection
+  // This allows one build to work across multiple environments (dev, stage, prod)
+  // and ensures cookies are scoped to the exact domain where code is running
+  if (typeof window !== 'undefined') {
+    const hostname = window.location?.hostname;
+    
+    // Validate hostname is available (should always be present in browser)
+    if (!hostname) {
+      throw new Error(
+        'Failed to detect cookie domain: window.location.hostname is undefined. ' +
+        'This should not happen in a browser environment. Check your deployment configuration.'
+      );
+    }
+    
+    // For cookie clearing, use the exact hostname (no subdomain sharing)
+    // This ensures cookies are scoped to the exact domain (dev.meriter.pro, stage.meriter.pro, etc.)
+    // localhost doesn't need domain restriction
+    return hostname === 'localhost' ? undefined : hostname;
+  }
+  
+  // Server-side: require env vars (available during SSR)
+  // This is critical for proper cookie domain configuration
   const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
   
   if (domain) {
-    // localhost doesn't need domain restriction
     return domain === 'localhost' ? undefined : domain;
   }
   
-  // Backward compatibility: if APP_URL exists but DOMAIN doesn't, extract domain from APP_URL
+  // Backward compatibility: extract domain from APP_URL
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
   if (appUrl) {
     try {
@@ -33,12 +53,19 @@ function getCookieDomain(): string | undefined {
       const hostname = url.hostname.split(':')[0]; // Remove port if present
       return hostname === 'localhost' ? undefined : hostname;
     } catch (error) {
-      // If APP_URL is not a valid URL, return undefined
-      return undefined;
+      throw new Error(
+        'Failed to determine cookie domain: APP_URL is not a valid URL. ' +
+        'Set DOMAIN environment variable or provide a valid APP_URL.'
+      );
     }
   }
   
-  return undefined;
+  // Fail if domain cannot be determined on server-side
+  throw new Error(
+    'Failed to determine cookie domain: DOMAIN environment variable is required on server-side. ' +
+    'Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro). ' +
+    'This is required for proper cookie domain configuration during SSR.'
+  );
 }
 
 /**

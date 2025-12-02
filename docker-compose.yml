@@ -43,8 +43,7 @@ services:
     environment:
       - PORT=8001
       - NODE_ENV=production
-      # Pass DOMAIN as NEXT_PUBLIC_DOMAIN for client-side usage
-      - NEXT_PUBLIC_DOMAIN=${DOMAIN}
+      # Note: DOMAIN is detected at runtime from window.location, no need to pass NEXT_PUBLIC_DOMAIN
       # BOT_USERNAME must be set - passed from .env file or explicitly here
       # If not set, container will fail health checks
     # Security: Web port not exposed to host, only accessible through Caddy
