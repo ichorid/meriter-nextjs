@@ -89,7 +89,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   const paddingClass = isExpanded ? 'px-4' : 'px-2';
 
   return (
-    <aside className={`flex fixed lg:sticky left-0 top-0 h-screen ${widthClass} bg-base-200 border-r border-base-300 z-40 flex-col py-4 transition-all duration-300 ${className}`}>
+    <aside className={`flex fixed lg:sticky left-0 top-0 h-screen ${widthClass} bg-base-200 border-r border-base-300 z-40 flex-col py-4 pb-16 lg:pb-4 transition-all duration-300 ${className}`}>
       {/* Home Icon */}
       <div className={paddingClass}>
         <Link href={routes.home}>
