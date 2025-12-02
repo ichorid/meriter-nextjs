@@ -278,8 +278,8 @@ describe('Login Page Integration', () => {
 
       // Verify getOAuthUrl was called (component uses it to generate the URL)
       // The component calls getOAuthUrl and then sets window.location.href
-      // Second param can be undefined if no search params are present
-      expect(mockGetOAuthUrl).toHaveBeenCalledWith('google', undefined);
+      // When no search params are present, it defaults to '/meriter/home'
+      expect(mockGetOAuthUrl).toHaveBeenCalledWith('google', '/meriter/home');
     });
 
     it('should handle fake authentication when in fake data mode', async () => {
@@ -398,9 +398,10 @@ describe('Login Page Integration', () => {
     it('should include returnTo and invite code in OAuth URL', async () => {
       const user = userEvent.setup();
 
-      // Mock useSearchParams to return params
+      // Mock useSearchParams to return params with a different returnTo path
+      // so we can verify both returnTo and invite are included
       jest.spyOn(require('next/navigation'), 'useSearchParams').mockReturnValue(
-        new URLSearchParams('returnTo=/meriter/home&invite=TEST123')
+        new URLSearchParams('returnTo=/meriter/communities/123&invite=TEST123')
       );
 
       render(
@@ -417,8 +418,10 @@ describe('Login Page Integration', () => {
       expect(mockGetOAuthUrl).toHaveBeenCalled();
       const callArgs = mockGetOAuthUrl.mock.calls[0];
       if (callArgs && callArgs[1]) {
-        expect(callArgs[1]).toContain('returnTo');
+        // When invite code is present and returnTo is different from /meriter/home,
+        // the path will be /meriter/home?invite=TEST123&returnTo=/meriter/communities/123
         expect(callArgs[1]).toContain('invite');
+        expect(callArgs[1]).toContain('returnTo');
       }
     });
   });
