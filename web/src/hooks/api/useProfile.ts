@@ -1,6 +1,7 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { profileApiV1, type UserCommunityRoleWithName, type PublicationWithCommunityName, type UpdateProfileData, type MeritStatsResponse } from '@/lib/api/v1/profile';
 import type { PaginatedResponse, User } from '@/types/api-v1';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useUserRoles(userId: string) {
   return useQuery<UserCommunityRoleWithName[]>({
@@ -49,4 +50,21 @@ export function useMeritStats() {
     queryKey: ['profile', 'merit-stats'],
     queryFn: () => profileApiV1.getMeritStats(),
   });
+}
+
+/**
+ * Hook to check if the current user can create communities.
+ * Only organizers (superadmin) and leads (representatives) can create communities.
+ */
+export function useCanCreateCommunity() {
+  const { user } = useAuth();
+  const { data: userRoles } = useUserRoles(user?.id || '');
+
+  const canCreate = user?.globalRole === 'superadmin' || 
+    (userRoles?.some(role => role.role === 'lead') ?? false);
+
+  return {
+    canCreate,
+    isLoading: !user || (!!user?.id && userRoles === undefined),
+  };
 }

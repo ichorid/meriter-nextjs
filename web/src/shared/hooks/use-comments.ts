@@ -152,6 +152,12 @@ export const useComments = (
                     const absoluteAmount = Math.abs(delta);
                     const isUpvote = directionPlus;
                     
+                    // Enforce comment requirement for downvotes
+                    if (!isUpvote && !comment.trim()) {
+                        setError(t('reasonRequired'));
+                        return;
+                    }
+                    
                     // Calculate vote breakdown: quota vs wallet
                     // For upvotes: use quota first, then wallet
                     // For downvotes: use wallet only (quota cannot be used for downvotes)

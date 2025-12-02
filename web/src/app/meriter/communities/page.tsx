@@ -3,55 +3,50 @@
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Users } from 'lucide-react';
+import { Users, Info } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { useInfiniteCommunities } from '@/hooks/api/useCommunities';
+import { useCommunitiesBatch } from '@/hooks/api/useCommunities';
+import { useUserRoles } from '@/hooks/api/useProfile';
+import { useAuth } from '@/contexts/AuthContext';
 import { AdvancedSearch, SearchParams } from '@/components/organisms/AdvancedSearch';
 import { InfoCard } from '@/components/ui/InfoCard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
-import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { Loader2 } from 'lucide-react';
 
 export default function CommunitiesPage() {
     const router = useRouter();
     const t = useTranslations('communities');
-    const isMobile = useMediaQuery('(max-width: 640px)');
-    const pageSize = isMobile ? 10 : 20; // Меньше данных на mobile
+    const { user } = useAuth();
     
-    const {
-        data: communitiesData,
-        isLoading,
-        fetchNextPage,
-        hasNextPage,
-        isFetchingNextPage,
-    } = useInfiniteCommunities(pageSize);
+    // Get user's community memberships
+    const { data: userRoles = [], isLoading: rolesLoading } = useUserRoles(user?.id || '');
+    
+    // Extract unique community IDs from user roles
+    const communityIds = useMemo(() => {
+        return Array.from(new Set(
+            userRoles
+                .map(role => role.communityId)
+                .filter((id): id is string => !!id)
+        ));
+    }, [userRoles]);
+    
+    // Batch fetch communities
+    const { communities, isLoading: communitiesLoading } = useCommunitiesBatch(communityIds);
     
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Flatten communities from all pages
-    const allCommunities = useMemo(() => {
-        return (communitiesData?.pages ?? [])
-            .flatMap((page) => page.data || []);
-    }, [communitiesData?.pages]);
+    // Combined loading state
+    const isLoading = rolesLoading || communitiesLoading;
 
+    // Filter communities based on search query
     const filteredCommunities = useMemo(() => {
-        if (!searchQuery.trim()) return allCommunities;
-        return allCommunities.filter(community =>
+        if (!searchQuery.trim()) return communities;
+        return communities.filter(community =>
             community.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             community.description?.toLowerCase().includes(searchQuery.toLowerCase())
         );
-    }, [allCommunities, searchQuery]);
-
-    // Infinite scroll trigger
-    const observerTarget = useInfiniteScroll({
-        hasNextPage: hasNextPage ?? false,
-        fetchNextPage,
-        isFetchingNextPage,
-        threshold: 200,
-    });
+    }, [communities, searchQuery]);
 
     const handleSearch = (params: SearchParams) => {
         // Navigate to global search with filters
@@ -67,6 +62,14 @@ export default function CommunitiesPage() {
                 />
 
                 <div className="p-4 space-y-4">
+                    {/* Design-specified hint */}
+                    <div className="bg-info/10 border border-info/20 rounded-lg p-3 flex items-start gap-3">
+                        <Info className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-base-content/80">
+                            Хотите создать команду → пишите оргу, хотите вступить в команду → пишите её лидеру
+                        </p>
+                    </div>
+
                     <AdvancedSearch
                         onSearch={handleSearch}
                         initialQuery={searchQuery}
@@ -96,22 +99,15 @@ export default function CommunitiesPage() {
                                     onClick={() => router.push(`/meriter/communities/${community.id}`)}
                                 />
                             ))}
-                            
-                            {/* Infinite scroll trigger */}
-                            <div ref={observerTarget} className="h-4" />
-                            
-                            {/* Loading indicator */}
-                            {isFetchingNextPage && (
-                                <div className="flex justify-center py-4">
-                                    <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
-                                </div>
-                            )}
                         </div>
                     ) : (
                         <div className="text-center py-12 text-base-content/60">
                             <Users className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
                             <p className="font-medium">No communities found</p>
                             {searchQuery && <p className="text-sm mt-1">Try adjusting your search</p>}
+                            {!searchQuery && communityIds.length === 0 && (
+                                <p className="text-sm mt-1">You are not a member of any communities yet</p>
+                            )}
                         </div>
                     )}
                 </div>

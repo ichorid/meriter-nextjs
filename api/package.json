@@ -1,6 +1,6 @@
 {
   "name": "@meriter/api",
-  "version": "0.14.0",
+  "version": "0.14.2",
   "description": "",
   "author": "",
   "private": true,
@@ -127,6 +127,7 @@
     ],
     "coverageDirectory": "./coverage",
     "testEnvironment": "node",
+    "setupFiles": ["<rootDir>/jest.setup.js"],
     "roots": [
       "<rootDir>/apps/",
       "<rootDir>/libs/"

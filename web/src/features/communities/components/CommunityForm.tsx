@@ -5,7 +5,7 @@ import { useQueryClient, useQueries } from '@tanstack/react-query';
 import { useCommunity, useUpdateCommunity, useCreateCommunity, useCommunityMembers, useRemoveCommunityMember, useResetDailyQuota } from '@/hooks/api';
 import type { CommunityMember } from '@/hooks/api/useCommunityMembers';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUserRoles } from '@/hooks/api/useProfile';
+import { useUserRoles, useCanCreateCommunity } from '@/hooks/api/useProfile';
 import { useCreateInvite, useCommunityInvites } from '@/hooks/api/useInvites';
 import { useUserProfile } from '@/hooks/api/useUsers';
 import { usersApiV1 } from '@/lib/api/v1';
@@ -35,6 +35,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
 
     const { user } = useAuth();
     const { data: userRoles } = useUserRoles(user?.id || '');
+    const { canCreate: canCreateCommunity, isLoading: permissionLoading } = useCanCreateCommunity();
     const createInvite = useCreateInvite();
     const addToast = useToastStore((state) => state.addToast);
 
@@ -343,6 +344,35 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 <p className="text-brand-text-secondary">{t('communityNotFound')}</p>
             </div>
         );
+    }
+
+    // Guard: Check permission for create mode
+    if (!isEditMode) {
+        if (permissionLoading) {
+            return (
+                <div className="flex justify-center items-center min-h-[400px]">
+                    <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+                </div>
+            );
+        }
+
+        if (!canCreateCommunity) {
+            return (
+                <div className="p-4">
+                    <div className="max-w-2xl mx-auto">
+                        <PageHeader title={tCreate('title')} showBack={true} />
+                        <div className="mt-6 p-6 bg-base-200 rounded-lg border border-base-300">
+                            <p className="text-brand-text-primary text-lg font-medium mb-2">
+                                Access Restricted
+                            </p>
+                            <p className="text-brand-text-secondary">
+                                Only organizers and team leads can create communities. Contact an organizer if you want to create a team.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
     }
 
     const pageTitle = isEditMode
