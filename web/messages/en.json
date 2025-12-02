@@ -113,6 +113,7 @@
         "syncing": "Syncing...",
         "syncSuccess": "Found {count} communities!",
         "syncError": "Error syncing communities",
+        "inviteSection": "Invite Code",
         "account": "Account",
         "profile": "Profile",
         "preferences": "Preferences"
@@ -651,6 +652,7 @@
         "notFound": "User not found",
         "roles": "Roles in Communities",
         "projects": "Projects",
+        "inviteSection": "Invite Code",
         "noRoles": "No roles assigned",
         "noProjects": "No projects yet",
         "view": "View",

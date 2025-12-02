@@ -15,6 +15,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { Loader2 } from 'lucide-react';
 import { SuperadminManagement } from '@/components/settings/SuperadminManagement';
+import { InviteInput } from '@/components/molecules/InviteInput';
 
 const SettingsPage = () => {
     const router = useRouter();
@@ -143,6 +144,14 @@ const SettingsPage = () => {
                                 {syncMessage}
                             </p>
                         )}
+                    </div>
+
+                    {/* Invite Section */}
+                    <div className="space-y-3">
+                        <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
+                            {t('inviteSection')}
+                        </h2>
+                        <InviteInput />
                     </div>
 
                     {/* Development Section (Fake Data Mode) */}

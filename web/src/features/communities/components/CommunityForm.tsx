@@ -61,7 +61,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     // Invite generation state
     const [inviteTargetUserId, setInviteTargetUserId] = useState('');
     const [inviteTargetUserName, setInviteTargetUserName] = useState('');
-    const [useUserName, setUseUserName] = useState(false); // Toggle between User ID and User Name
+    const [useUserName, setUseUserName] = useState(true); // Toggle between User ID and User Name
     const [inviteExpiresInDays, setInviteExpiresInDays] = useState<number | ''>(30);
     const [inviteRole, setInviteRole] = useState<'lead' | 'participant'>('lead'); // Role selection for superadmin
     const [generatedInvite, setGeneratedInvite] = useState<{ 

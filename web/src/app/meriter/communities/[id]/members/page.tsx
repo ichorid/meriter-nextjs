@@ -35,7 +35,7 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [inviteTargetUserId, setInviteTargetUserId] = useState('');
     const [inviteTargetUserName, setInviteTargetUserName] = useState('');
-    const [useUserName, setUseUserName] = useState(false);
+    const [useUserName, setUseUserName] = useState(true);
     const [inviteExpiresInDays, setInviteExpiresInDays] = useState<number | ''>(30);
     const [inviteRole, setInviteRole] = useState<'lead' | 'participant'>('lead'); // Role selection for superadmin
     const [generatedInvite, setGeneratedInvite] = useState<{ 

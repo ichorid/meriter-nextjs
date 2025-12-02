@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInvite, useInviteByCode } from '@/hooks/api/useInvites';
 import { useTranslations } from 'next-intl';
@@ -14,6 +14,7 @@ import { useToastStore } from '@/shared/stores/toast.store';
 export function InviteHandler() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
   const useInviteMutation = useInvite();
   const inviteCode = searchParams?.get('invite');
@@ -24,15 +25,18 @@ export function InviteHandler() {
   const { data: invite, isLoading: inviteLoading } = useInviteByCode(inviteCode || '');
 
   useEffect(() => {
+    // Only process invite on the home page
+    if (pathname !== '/meriter/home') {
+      return;
+    }
+
     // Only process invite if user is authenticated and invite code is present
     if (isAuthenticated && user && inviteCode && invite && !inviteLoading) {
       // Check if invite is already used
       if (invite.isUsed) {
         addToast(t('errors.inviteAlreadyUsed'), 'warning');
-        // Remove invite from URL
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.delete('invite');
-        router.replace(newUrl.pathname + newUrl.search);
+        // Redirect to home page without invite parameter
+        router.replace('/meriter/home');
         return;
       }
 
@@ -41,10 +45,8 @@ export function InviteHandler() {
         const expiresAt = new Date(invite.expiresAt);
         if (expiresAt < new Date()) {
           addToast(t('errors.inviteExpired'), 'error');
-          // Remove invite from URL
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.delete('invite');
-          router.replace(newUrl.pathname + newUrl.search);
+          // Redirect to home page without invite parameter
+          router.replace('/meriter/home');
           return;
         }
       }
@@ -61,10 +63,8 @@ export function InviteHandler() {
             return;
           }
 
-          // Remove invite from URL
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.delete('invite');
-          router.replace(newUrl.pathname + newUrl.search);
+          // Redirect to home page without invite parameter
+          router.replace('/meriter/home');
         } catch (error: any) {
           console.error('Failed to use invite:', error);
           // Extract error message from various possible formats
@@ -74,20 +74,15 @@ export function InviteHandler() {
                                t('errors.inviteUseFailed');
           addToast(errorMessage, 'error');
           
-          // If the error indicates the invite is not for this user, remove invite from URL
-          // to prevent infinite retry loop
-          if (errorMessage.toLowerCase().includes('this invite is not for you') ||
-              errorMessage.toLowerCase().includes('invite is not for you')) {
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.delete('invite');
-            router.replace(newUrl.pathname + newUrl.search);
-          }
+          // Redirect to home page without invite parameter for all errors
+          // This prevents infinite retry loop
+          router.replace('/meriter/home');
         }
       };
 
       processInvite();
     }
-  }, [isAuthenticated, user, inviteCode, invite, inviteLoading, useInviteMutation, router, addToast, t]);
+  }, [isAuthenticated, user, inviteCode, invite, inviteLoading, useInviteMutation, router, addToast, t, pathname]);
 
   return null; // This component doesn't render anything
 }
