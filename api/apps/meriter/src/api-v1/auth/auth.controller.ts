@@ -55,14 +55,29 @@ export class AuthController {
   }
 
   @Post('clear-cookies')
-  async clearCookies(@Res() res: any) {
-
-    // Clear all possible JWT cookie variants
-    // This is useful for clearing old cookies with mismatched attributes
-    // before authentication attempts
+  async clearCookies(@Req() req: any, @Res() res: any) {
+    // Clear ALL cookies from the request, not just JWT variants
+    // This prevents login loops caused by stale cookies with mismatched attributes
     const cookieDomain = CookieManager.getCookieDomain();
     const isProduction = process.env.NODE_ENV === 'production';
-    CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+    
+    // Get all cookie names from the request
+    const cookieNames = new Set<string>();
+    if (req.cookies) {
+      Object.keys(req.cookies).forEach(name => cookieNames.add(name));
+    }
+    
+    // Always ensure JWT cookie is cleared (it might be HttpOnly and not visible in req.cookies)
+    cookieNames.add('jwt');
+    
+    // Also clear known cookies that might exist
+    const knownCookies = ['fake_user_id', 'NEXT_LOCALE'];
+    knownCookies.forEach(name => cookieNames.add(name));
+    
+    // Clear each cookie with all possible attribute combinations
+    for (const cookieName of cookieNames) {
+      CookieManager.clearCookieVariants(res, cookieName, cookieDomain, isProduction);
+    }
 
     return res.json({
       success: true,
