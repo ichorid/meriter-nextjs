@@ -17,6 +17,7 @@ import type { IPollData } from "@features/polls/types";
 import { useRouter } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import type { Publication as PublicationType } from '@/types/api-v1';
+import { useCanVote } from '@/hooks/useCanVote';
 
 export const Publication = ({
     minus,
@@ -119,6 +120,21 @@ export const Publication = ({
     const showVote = !isAuthor && !isBeneficiary;
     const showVoteForAuthor = isAuthor && hasBeneficiary; // Author can vote when there's a beneficiary
     const currentScore = currentPlus - currentMinus;
+    
+    // Check if this is a PROJECT post (no voting allowed)
+    const isProject = type === 'project' || (meta as any)?.isProject === true;
+    
+    // Check if user can vote based on community rules
+    const canVote = useCanVote(
+        postId,
+        'publication',
+        communityId,
+        authorId,
+        isAuthor,
+        isBeneficiary,
+        hasBeneficiary,
+        isProject
+    );
     
     // Withdrawal state management (for author's own posts)
     const [optimisticSum, setOptimisticSum] = useState(sum);
@@ -268,12 +284,13 @@ export const Publication = ({
                                     isBeneficiary={isBeneficiary}
                                     hasBeneficiary={hasBeneficiary}
                                     commentCount={!isDetailPage ? comments?.length || 0 : 0}
-                        onCommentClick={!isDetailPage ? () => {
-                            const routingCommunityId = communityInfo?.id || communityId;
-                            if (routingCommunityId && slug) {
-                                router.push(`/meriter/communities/${routingCommunityId}/posts/${slug}`);
-                            }
-                        } : undefined}
+                                    onCommentClick={!isDetailPage ? () => {
+                                        const routingCommunityId = communityInfo?.id || communityId;
+                                        if (routingCommunityId && slug) {
+                                            router.push(`/meriter/communities/${routingCommunityId}/posts/${slug}`);
+                                        }
+                                    } : undefined}
+                                    canVote={canVote}
                                 />
                             );
                         } else {

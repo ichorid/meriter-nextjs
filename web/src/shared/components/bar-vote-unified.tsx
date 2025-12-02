@@ -11,6 +11,7 @@ interface BarVoteUnifiedProps {
     hasBeneficiary?: boolean; // Whether the object has a beneficiary (different from author)
     commentCount?: number;
     onCommentClick?: () => void;
+    canVote?: boolean; // Whether user has permission to vote based on community rules
 }
 
 export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({ 
@@ -20,7 +21,8 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
     isBeneficiary = false,
     hasBeneficiary = false,
     commentCount = 0,
-    onCommentClick
+    onCommentClick,
+    canVote: canVoteProp
 }) => {
     const t = useTranslations('shared');
     const rawData = useSignal(initDataRaw);
@@ -45,7 +47,11 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
     // Mutual exclusivity: Vote and Withdraw are mutually exclusive
     // Can vote if: (NOT author AND NOT beneficiary) OR (IS author AND has beneficiary)
     // IMPORTANT: Never show vote button if user is beneficiary, regardless of other conditions
-    const canVote = (!isAuthor && !isBeneficiary) || (isAuthor && hasBeneficiary);
+    const mutualExclusivityCheck = (!isAuthor && !isBeneficiary) || (isAuthor && hasBeneficiary);
+    
+    // Combine mutual exclusivity check with permission check (community rules, roles, etc.)
+    // If canVoteProp is undefined, fall back to mutual exclusivity check only (backward compatibility)
+    const canVote = mutualExclusivityCheck && (canVoteProp !== undefined ? canVoteProp : true);
     
     // Cannot show withdraw button here - withdraw should be handled by separate BarWithdraw component
     // This component only shows vote button when appropriate
@@ -66,10 +72,16 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
                     {score}
                 </div>
                 
-                {canVote && (
+                {mutualExclusivityCheck && (
                     <button
-                        className="btn btn-primary btn-sm"
+                        className={`btn-action h-9 px-4 text-xs gap-2 ${
+                            !canVote 
+                                ? 'btn-ghost' 
+                                : 'btn-action-outline'
+                        }`}
                         onClick={handleVoteClick}
+                        disabled={!canVote}
+                        title={!canVote ? 'You do not have permission to vote on this content' : undefined}
                     >
                         {t('vote')}
                     </button>

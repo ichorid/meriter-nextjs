@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
 import { getWalletBalance } from '@/lib/utils/wallet';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
+import { useCanVote } from '@/hooks/useCanVote';
 
 // Local Publication type definition
 interface Publication {
@@ -117,6 +118,18 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
 
   const publicationId = getPublicationIdentifier(publication);
 
+  // Check if user can vote based on community rules
+  const canVote = useCanVote(
+    publicationId,
+    'publication',
+    communityId,
+    authorId,
+    isAuthor,
+    isBeneficiary,
+    hasBeneficiary,
+    isProject
+  );
+
   const handleVoteClick = () => {
     const mode = isProject ? 'wallet-only' : 'quota-only';
     useUIStore.getState().openVotingPopup(publicationId, 'publication', mode);
@@ -172,6 +185,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
             hasBeneficiary={hasBeneficiary}
             commentCount={publication.metrics?.commentCount || 0}
             onCommentClick={handleCommentToggle}
+            canVote={canVote}
           />
         ) : null}
       </div>

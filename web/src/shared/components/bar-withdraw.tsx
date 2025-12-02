@@ -59,10 +59,10 @@ export const BarWithdraw: React.FC<BarWithdrawProps> = ({
             </div>
             <div className="flex items-center gap-3 mt-4">
                 <button 
-                    className={`btn btn-sm gap-2 font-medium transition-all ${
+                    className={`btn-action h-9 px-4 text-xs gap-2 ${
                         isDisabled 
-                            ? 'btn-ghost btn-disabled' 
-                            : 'btn-outline btn-primary hover:btn-primary'
+                            ? 'btn-ghost' 
+                            : 'btn-action-outline'
                     }`}
                     disabled={isDisabled}
                     onClick={(e) => {
