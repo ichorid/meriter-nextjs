@@ -41,6 +41,7 @@ export interface CreateCommunityDto {
     };
     dailyEmission?: number;
   };
+  isPriority?: boolean;
 }
 
 export interface UpdateCommunityDto {

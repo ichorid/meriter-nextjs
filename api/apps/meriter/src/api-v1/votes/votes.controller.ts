@@ -146,18 +146,17 @@ export class VotesController {
       communityId,
     );
 
-    // Deduct from wallet: both quotaAmount and walletAmount are deducted from wallet balance
-    // Daily quota is now stored in wallet, so quotaAmount also needs to be deducted
-    const totalAmountToDeduct = quotaAmount + walletAmount;
-    if (totalAmountToDeduct > 0) {
+    // Deduct from wallet: only walletAmount is deducted from wallet balance
+    // quotaAmount is tracked separately via the vote system and does not affect wallet balance
+    if (walletAmount > 0) {
       const transactionType =
         targetType === 'publication' ? 'publication_vote' : 'vote_vote';
       await this.walletService.addTransaction(
         userId,
         communityId,
         'debit',
-        totalAmountToDeduct,
-        quotaAmount > 0 ? 'quota' : 'personal',
+        walletAmount,
+        'personal',
         transactionType,
         targetId,
         community.settings?.currencyNames || {
@@ -165,7 +164,7 @@ export class VotesController {
           plural: 'merits',
           genitive: 'merits',
         },
-        `Vote on ${targetType} ${targetId}${quotaAmount > 0 && walletAmount > 0 ? ` (quota: ${quotaAmount}, wallet: ${walletAmount})` : quotaAmount > 0 ? ` (quota: ${quotaAmount})` : ` (wallet: ${walletAmount})`}`,
+        `Vote on ${targetType} ${targetId}${quotaAmount > 0 && walletAmount > 0 ? ` (quota: ${quotaAmount}, wallet: ${walletAmount})` : ` (wallet: ${walletAmount})`}`,
       );
     }
 
@@ -339,11 +338,11 @@ export class VotesController {
     }
 
     // Validation: check wallet balance
-    // Since daily quota is now stored in wallet, both quotaAmount and walletAmount are deducted from wallet
-    // So we need to check that totalAmount doesn't exceed walletBalance
-    if (totalAmount > walletBalance) {
+    // Only walletAmount is deducted from wallet balance, quotaAmount is tracked separately
+    // So we only need to check that walletAmount doesn't exceed walletBalance
+    if (walletAmount > walletBalance) {
       throw new BadRequestException(
-        `Insufficient wallet balance. Available: ${walletBalance}, Requested: ${totalAmount} (quota: ${quotaAmount}, wallet: ${walletAmount})`,
+        `Insufficient wallet balance. Available: ${walletBalance}, Requested: ${walletAmount} (quota: ${quotaAmount}, wallet: ${walletAmount})`,
       );
     }
 

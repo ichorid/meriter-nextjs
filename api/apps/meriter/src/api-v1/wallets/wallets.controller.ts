@@ -236,52 +236,6 @@ export class WalletsController {
       ? new Date(community.lastQuotaResetAt)
       : today;
 
-    // Ensure wallet exists first to get walletId
-    const currency = community.settings?.currencyNames || {
-      singular: 'merit',
-      plural: 'merits',
-      genitive: 'merits',
-    };
-    const wallet = await this.walletsService.createOrGetWallet(
-      actualUserId,
-      community.id,
-      currency,
-    );
-
-    // Check if daily quota was already credited to wallet today
-    // Transactions store walletId, not userId/communityId
-    const lastDailyQuotaTransaction = await this.mongoose.db
-      .collection('transactions')
-      .findOne(
-        {
-          walletId: wallet.getId.getValue(),
-          referenceType: 'daily_quota',
-          type: 'deposit',
-          createdAt: { $gte: today },
-        },
-        { sort: { createdAt: -1 } },
-      );
-
-    // If daily quota not credited today, credit it to wallet
-    if (!lastDailyQuotaTransaction && dailyQuota > 0) {
-      // Credit daily quota to wallet
-      await this.walletsService.addTransaction(
-        actualUserId,
-        community.id,
-        'credit',
-        dailyQuota,
-        'quota',
-        'daily_quota',
-        `daily_quota_${today.toISOString().split('T')[0]}`,
-        currency,
-        `Daily quota for ${today.toISOString().split('T')[0]}`,
-      );
-
-      this.logger.log(
-        `Credited ${dailyQuota} daily quota to wallet for user ${actualUserId} in community ${community.id}`,
-      );
-    }
-
     // Query votes with amountQuota > 0 for this user in this community created after quotaStartTime
     // Use absolute value of amountQuota - both upvotes and downvotes consume quota
     const usedToday = await this.mongoose.db
