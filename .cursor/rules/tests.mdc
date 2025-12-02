@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+After finishing a fix or a coding task, ALWAYS run all tests
