@@ -355,6 +355,7 @@
             "help": "Help",
             "toAddPublication": "To add a publication here,",
             "writeMessageInChat": "write a message in the corporate chat",
+            "writeToLeaderInTeamChat": "write to the leader in the team chat",
             "filterByValues": "Filter publications by values:",
             "filterByTags": "Filter by tags:",
             "showAll": "Show All",

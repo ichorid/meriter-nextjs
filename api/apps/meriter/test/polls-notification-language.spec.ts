@@ -6,6 +6,7 @@ import { PollCastService } from '../src/domain/services/poll-cast.service';
 import { WalletService } from '../src/domain/services/wallet.service';
 import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
+import { PermissionService } from '../src/domain/services/permission.service';
 import { TgBotsService } from '../src/tg-bots/tg-bots.service';
 import { UserEnrichmentService } from '../src/api-v1/common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../src/api-v1/common/services/community-enrichment.service';
@@ -60,6 +61,10 @@ describe('PollsController - Notification Language', () => {
       getUser: jest.fn(),
     };
 
+    const mockPermissionService = {
+      canCreatePoll: jest.fn().mockResolvedValue(true),
+    };
+
     const mockTgBotsService = {
       tgSend: jest.fn(),
       getCommunityLanguageByChatId: jest.fn(),
@@ -87,6 +92,10 @@ describe('PollsController - Notification Language', () => {
         {
           provide: UserService,
           useValue: mockUserService,
+        },
+        {
+          provide: PermissionService,
+          useValue: mockPermissionService,
         },
         {
           provide: TgBotsService,

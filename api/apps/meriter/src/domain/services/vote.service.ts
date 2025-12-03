@@ -6,6 +6,7 @@ import { UserId } from '../value-objects';
 import { uid } from 'uid';
 import { PublicationService } from './publication.service';
 import { CommunityService } from './community.service';
+import { PermissionService } from './permission.service';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 
 @Injectable()
@@ -17,7 +18,8 @@ export class VoteService {
     @InjectConnection() private mongoose: Connection,
     @Inject(forwardRef(() => PublicationService)) private publicationService: PublicationService,
     private communityService: CommunityService,
-  ) { }
+    @Inject(forwardRef(() => PermissionService)) private permissionService: PermissionService,
+  ) {}
 
   /**
    * Get the effective beneficiary for a target (publication or vote)
@@ -110,12 +112,23 @@ export class VoteService {
     const isFutureVision = community?.typeTag === 'future-vision';
     const isSpecialGroup = isMarathonOfGood || isFutureVision;
 
+    // Check user role to enforce viewer restrictions (check BEFORE community-specific rules)
+    const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
+    
+    // Viewers can only vote with quota (no wallet voting) - check this first for clearer error messages
+    if (userRole === 'viewer' && amountWallet > 0) {
+      throw new BadRequestException(
+        'Viewers can only vote using daily quota, not wallet merits.',
+      );
+    }
+
     // Marathon of Good: Block wallet voting on publications/comments (quota only)
     // Future Vision: Block quota voting on publications/comments (wallet only)
     // Polls are handled separately and always use wallet
     // This check comes BEFORE postType validation to ensure it applies
+    // Note: Viewer check already happened above, so skip if viewer
     if (targetType === 'publication' || targetType === 'vote') {
-      if (isMarathonOfGood && amountWallet > 0) {
+      if (isMarathonOfGood && amountWallet > 0 && userRole !== 'viewer') {
         throw new BadRequestException(
           'Marathon of Good only allows quota voting on posts and comments. Please use daily quota to vote.',
         );

@@ -602,5 +602,99 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       expect(vote.amountQuota).toBe(0);
     });
   });
+
+  describe('Viewer Restrictions', () => {
+    let viewerUserId: string;
+    let viewerPubId: string;
+
+    beforeAll(async () => {
+      // Create a viewer user
+      viewerUserId = uid();
+      await userModel.create({
+        id: viewerUserId,
+        telegramId: `viewer_${viewerUserId}`,
+        authId: `viewer_${viewerUserId}`,
+        authProvider: 'telegram',
+        displayName: 'Viewer User',
+        username: 'vieweruser',
+        firstName: 'Viewer',
+        lastName: 'User',
+        avatarUrl: 'https://example.com/avatar_viewer.jpg',
+        communityMemberships: [],
+        communityTags: [],
+        profile: {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Create user community role for viewer in marathon-of-good
+      await userCommunityRoleModel.create({
+        id: uid(),
+        userId: viewerUserId,
+        communityId: marathonCommunityId,
+        role: 'viewer',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Create a publication by lead in marathon-of-good for viewer to vote on
+      viewerPubId = uid();
+      await publicationModel.create({
+        id: viewerPubId,
+        communityId: marathonCommunityId,
+        authorId: testUserId2, // Lead user
+        content: 'Publication for viewer to vote on',
+        type: 'text',
+        hashtags: ['marathon'],
+        postType: 'basic',
+        isProject: false,
+        metrics: {
+          upvotes: 0,
+          downvotes: 0,
+          score: 0,
+          commentCount: 0,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    });
+
+    it('should allow viewer to vote with quota in marathon-of-good', async () => {
+      (global as any).testUserId = viewerUserId;
+      
+      const response = await request(app.getHttpServer())
+        .post(`/api/v1/publications/${viewerPubId}/votes`)
+        .send({
+          quotaAmount: 5,
+          walletAmount: 0,
+          comment: 'Viewer quota vote',
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.vote.amountQuota).toBe(5);
+      expect(response.body.data.vote.amountWallet).toBe(0);
+    });
+
+    it('should reject viewer wallet voting in marathon-of-good', async () => {
+      (global as any).testUserId = viewerUserId;
+      
+      const response = await request(app.getHttpServer())
+        .post(`/api/v1/publications/${viewerPubId}/votes`)
+        .send({
+          quotaAmount: 0,
+          walletAmount: 10,
+          comment: 'Viewer wallet vote attempt',
+        })
+        .expect(400);
+
+      // Viewer check should happen first, but marathon-of-good check also applies
+      // Accept either error message as both indicate wallet voting is not allowed
+      expect(
+        response.body.message.includes('Viewers can only vote using daily quota') ||
+        response.body.message.includes('Marathon of Good only allows quota voting')
+      ).toBe(true);
+    });
+  });
 });
 

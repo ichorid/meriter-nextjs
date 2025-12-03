@@ -9,7 +9,7 @@ import { Avatar, Badge } from '@/components/atoms';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { VersionDisplay } from '@/components/organisms/VersionDisplay';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
-import { useUserRoles } from '@/hooks/api/useProfile';
+import { useUserRoles, useCanCreateCommunity } from '@/hooks/api/useProfile';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
 
@@ -26,6 +26,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   const { user, isAuthenticated } = useAuth();
   const { data: wallets = [], isLoading: walletsLoading } = useWallets();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
+  const { canCreate: canCreateCommunity } = useCanCreateCommunity();
   const t = useTranslations('common');
 
   // Get unique community IDs from wallets
@@ -137,7 +138,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
           })}
 
           {/* Create Community Button */}
-          {isAuthenticated && (
+          {isAuthenticated && canCreateCommunity && (
             <Link href="/meriter/communities/create">
               <button
                 className={`w-full rounded-lg flex items-center transition-colors border border-dashed border-base-300 hover:border-primary hover:text-primary text-base-content/50 ${isExpanded ? 'h-12 px-3 justify-start' : 'h-12 w-12 justify-center'

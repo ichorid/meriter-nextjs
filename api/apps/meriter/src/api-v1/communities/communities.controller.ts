@@ -152,6 +152,13 @@ export class CommunitiesController {
       this.logger.warn(`User has no id when creating community`);
     }
 
+    // Check if user is a viewer - viewers cannot create communities
+    const userRoles = await this.userCommunityRoleService.getUserRoles(req.user.id);
+    const hasViewerRole = userRoles.some(role => role.role === 'viewer');
+    if (hasViewerRole) {
+      throw new ForbiddenError('Viewer users cannot create communities');
+    }
+
     // Only superadmin can set isPriority
     const isSuperadmin = req.user.globalRole === 'superadmin';
     if (createDto.isPriority && !isSuperadmin) {

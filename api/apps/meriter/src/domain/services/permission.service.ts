@@ -81,6 +81,53 @@ export class PermissionService {
     // Check if role is allowed
     if (!rules.allowedRoles.includes(userRole as any)) return false;
 
+    // Participants cannot create posts/polls in special communities
+    const isSpecialCommunity = community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision';
+    if (userRole === 'participant' && isSpecialCommunity) {
+      return false;
+    }
+
+    const user = await this.userService.getUserById(userId);
+    if (!user) return false;
+
+    // Additional checks from configuration
+    if (rules.requiresTeamMembership && !user.teamId) return false;
+    if (rules.onlyTeamLead && userRole !== 'lead') return false;
+
+    return true;
+  }
+
+  /**
+   * Check if user can create polls in a community
+   * Uses postingRules from community configuration (same as publications)
+   */
+  async canCreatePoll(
+    userId: string,
+    communityId: string,
+  ): Promise<boolean> {
+    const userRole = await this.getUserRoleInCommunity(userId, communityId);
+
+    // Superadmin always can
+    if (userRole === 'superadmin') return true;
+
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) return false;
+
+    const rules = community.postingRules;
+    if (!rules) {
+      // Fallback: if no rules configured, allow admins (backward compatibility)
+      return community.adminIds?.includes(userId) || false;
+    }
+
+    // Check if role is allowed
+    if (!rules.allowedRoles.includes(userRole as any)) return false;
+
+    // Participants cannot create posts/polls in special communities
+    const isSpecialCommunity = community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision';
+    if (userRole === 'participant' && isSpecialCommunity) {
+      return false;
+    }
+
     const user = await this.userService.getUserById(userId);
     if (!user) return false;
 
@@ -174,6 +221,16 @@ export class PermissionService {
     // Superadmin can vote for anything except own posts (already checked above)
     if (userRole === 'superadmin') return true;
 
+    // For viewers: Only allow voting in marathon-of-good communities
+    // Check this before other role checks to ensure proper restriction
+    if (userRole === 'viewer') {
+      if (community.typeTag !== 'marathon-of-good') {
+        return false; // Viewers can only vote in marathon-of-good communities
+      }
+      // Viewers can vote in marathon-of-good (already checked own posts above)
+      return true;
+    }
+
     // For participants: Check team-based restrictions
     if (userRole === 'participant') {
       const voter = await this.userService.getUserById(userId);
@@ -202,9 +259,8 @@ export class PermissionService {
       }
     }
 
-    // For leads/superadmin: Allow voting except for own posts (already checked above)
-    // For viewers: Allow voting except for own posts (already checked above)
-
+    // For leads: Allow voting except for own posts (already checked above)
+    // For other roles: Allow voting if they passed the allowedRoles check
     return true;
   }
 

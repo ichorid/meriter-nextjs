@@ -17,6 +17,9 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { CommunityHero } from '@/components/organisms/Community/CommunityHero';
 import { Loader2 } from 'lucide-react';
+import { useCanCreatePost } from '@/hooks/useCanCreatePost';
+import { useUserRoles } from '@/hooks/api/useProfile';
+import { useTeam } from '@/hooks/api/useTeams';
 
 const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
@@ -125,6 +128,25 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     // Get wallet balance using standardized hook
     const { data: balance = 0 } = useWalletBalance(chatId);
+
+    // Get user roles and check if can create posts
+    const { data: userRoles = [] } = useUserRoles(user?.id || '');
+    const canCreatePost = useCanCreatePost(chatId);
+
+    // Get user's role in current community
+    const userRoleInCommunity = useMemo(() => {
+        if (user?.globalRole === 'superadmin') return 'superadmin';
+        const role = userRoles.find(r => r.communityId === chatId);
+        return role?.role || null;
+    }, [user?.globalRole, userRoles, chatId]);
+
+    // Check if community is special (marathon-of-good or future-vision)
+    const isSpecialCommunity = comms?.typeTag === 'marathon-of-good' || comms?.typeTag === 'future-vision';
+
+    // Get team and team community link for participants
+    const { data: team } = useTeam(user?.teamId || '');
+    const { data: teamCommunity } = useCommunity(team?.communityId || '');
+    const teamChatUrl = teamCommunity?.description;
 
     useEffect(() => {
         if (!userLoading && !isAuthenticated) {
@@ -241,12 +263,16 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                         />
                     )}
 
-                    {/* Error Messages */}
-                    {error === false && chatUrl && (
+                    {/* Banner for participants in special communities who cannot create posts */}
+                    {error === false && 
+                     userRoleInCommunity === 'participant' && 
+                     isSpecialCommunity && 
+                     !canCreatePost.canCreate && 
+                     teamChatUrl && (
                         <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-4 rounded-lg text-sm border border-blue-200 dark:border-blue-800/50">
                             {t('communities.toAddPublication')}{" "}
-                            <a href={chatUrl} className="underline font-medium hover:opacity-80 dark:text-blue-300">
-                                {t('communities.writeMessageInChat')}
+                            <a href={teamChatUrl} className="underline font-medium hover:opacity-80 dark:text-blue-300">
+                                {t('communities.writeToLeaderInTeamChat')}
                             </a>
                         </div>
                     )}

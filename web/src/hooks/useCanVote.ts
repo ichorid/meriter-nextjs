@@ -96,6 +96,15 @@ export function useCanVote(
       }
     }
 
+    // For viewers: Only allow voting in marathon-of-good communities
+    if (userRole === 'viewer') {
+      if (community.typeTag !== 'marathon-of-good') {
+        return false; // Viewers can only vote in marathon-of-good communities
+      }
+      // Viewers can vote in marathon-of-good (already checked own posts above)
+      return true;
+    }
+
     return true;
   }, [
     user?.id,

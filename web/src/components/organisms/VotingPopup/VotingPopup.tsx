@@ -11,6 +11,8 @@ import { useVoteOnPublicationWithComment, useVoteOnVote } from '@/hooks/api/useV
 import { BasePopup } from '../BasePopup/BasePopup';
 import { usePopupCommunityData } from '@/hooks/usePopupCommunityData';
 import { usePopupFormData } from '@/hooks/usePopupFormData';
+import { useUserRoles } from '@/hooks/api/useProfile';
+import { useCommunity } from '@/hooks/api';
 
 interface VotingPopupProps {
   communityId?: string;
@@ -30,14 +32,29 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     updateVotingFormData,
   } = useUIStore();
 
+  // Use shared hook for community data
+  const { targetCommunityId, currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
+
+  // Get user role to check if viewer
+  const { data: userRoles = [] } = useUserRoles(user?.id || '');
+  const { data: community } = useCommunity(targetCommunityId || '');
+  
+  // Check if user is a viewer
+  const isViewer = useMemo(() => {
+    if (!user?.id || !targetCommunityId || !community) return false;
+    if (user.globalRole === 'superadmin') return false;
+    const role = userRoles.find(r => r.communityId === targetCommunityId);
+    return role?.role === 'viewer';
+  }, [user?.id, user?.globalRole, userRoles, targetCommunityId, community]);
+
+  // Force quota-only mode for viewers
+  const effectiveVotingMode = isViewer ? 'quota-only' : votingMode;
+
   // Use mutation hooks for voting and commenting
   const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
   const voteOnVoteMutation = useVoteOnVote();
 
   const isOpen = !!activeVotingTarget && !!votingTargetType;
-
-  // Use shared hook for community data
-  const { targetCommunityId, currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
 
   // Get quota for the community
   const { quotasMap } = useCommunityQuotas(targetCommunityId ? [targetCommunityId] : []);
@@ -54,11 +71,11 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   const hasPoints = freePlusAmount > 0 || walletBalance > 0;
 
-  // Calculate maxPlus based on voting mode
+  // Calculate maxPlus based on effective voting mode (quota-only for viewers)
   let maxPlus = 0;
-  if (votingMode === 'wallet-only') {
+  if (effectiveVotingMode === 'wallet-only') {
     maxPlus = walletBalance || 0;
-  } else if (votingMode === 'quota-only') {
+  } else if (effectiveVotingMode === 'quota-only') {
     maxPlus = freePlusAmount;
   } else {
     maxPlus = freePlusAmount + (walletBalance || 0);
@@ -95,8 +112,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       };
     }
 
-    // Handle restricted modes
-    if (votingMode === 'wallet-only') {
+    // Handle restricted modes (use effectiveVotingMode to enforce quota-only for viewers)
+    if (effectiveVotingMode === 'wallet-only') {
       return {
         quotaAmount: 0,
         walletAmount: amount,
@@ -104,7 +121,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       };
     }
 
-    if (votingMode === 'quota-only') {
+    if (effectiveVotingMode === 'quota-only') {
       return {
         quotaAmount: Math.min(amount, quotaRemaining),
         walletAmount: 0,
@@ -121,7 +138,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       walletAmount,
       isSplit: walletAmount > 0,
     };
-  }, [formData.delta, quotaRemaining, votingMode]);
+  }, [formData.delta, quotaRemaining, effectiveVotingMode]);
 
   const handleClose = () => {
     closeVotingPopup();
@@ -151,10 +168,10 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     let walletAmount = 0;
 
     if (isUpvote) {
-      if (votingMode === 'wallet-only') {
+      if (effectiveVotingMode === 'wallet-only') {
         walletAmount = absoluteAmount;
         quotaAmount = 0;
-      } else if (votingMode === 'quota-only') {
+      } else if (effectiveVotingMode === 'quota-only') {
         quotaAmount = Math.min(absoluteAmount, quotaRemaining);
         walletAmount = 0;
       } else {
@@ -162,7 +179,11 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
         walletAmount = Math.max(0, absoluteAmount - quotaRemaining);
       }
     } else {
-      // Downvotes use wallet only
+      // Downvotes use wallet only (but viewers can't downvote since they can't use wallet)
+      if (isViewer) {
+        updateVotingFormData({ error: 'Viewers can only vote using daily quota. Downvotes require wallet merits.' });
+        return;
+      }
       walletAmount = absoluteAmount;
     }
 

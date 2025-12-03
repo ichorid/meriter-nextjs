@@ -488,14 +488,24 @@ describe('Voting Permissions', () => {
     });
 
     describe('Viewers', () => {
-      it('should allow viewer to vote for anything except own posts', async () => {
-        const canVote = await permissionService.canVote(viewerId, regularPubId);
+      it('should allow viewer to vote for leads in marathon-of-good community', async () => {
+        const canVote = await permissionService.canVote(viewerId, marathonPubId);
         expect(canVote).toBe(true);
+      });
+
+      it('should not allow viewer to vote in regular communities', async () => {
+        const canVote = await permissionService.canVote(viewerId, regularPubId);
+        expect(canVote).toBe(false);
+      });
+
+      it('should not allow viewer to vote in future-vision community', async () => {
+        const canVote = await permissionService.canVote(viewerId, visionPubId);
+        expect(canVote).toBe(false);
       });
 
       it('should not allow viewer to vote for own posts', async () => {
         const pub = await publicationService.createPublication(viewerId, {
-          communityId: regularCommunityId,
+          communityId: marathonCommunityId,
           content: 'Viewer publication',
           type: 'text',
         });

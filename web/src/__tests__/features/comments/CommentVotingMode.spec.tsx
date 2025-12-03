@@ -83,6 +83,7 @@ describe('Comment Voting Mode Restrictions', () => {
         wallets={[]}
         updateWalletBalance={jest.fn()}
         updateAll={jest.fn()}
+        activeCommentHook={[null, jest.fn()]}
       />
     );
 
@@ -114,6 +115,7 @@ describe('Comment Voting Mode Restrictions', () => {
         wallets={[]}
         updateWalletBalance={jest.fn()}
         updateAll={jest.fn()}
+        activeCommentHook={[null, jest.fn()]}
       />
     );
 
@@ -138,6 +140,7 @@ describe('Comment Voting Mode Restrictions', () => {
         wallets={[]}
         updateWalletBalance={jest.fn()}
         updateAll={jest.fn()}
+        activeCommentHook={[null, jest.fn()]}
       />
     );
 

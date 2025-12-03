@@ -78,23 +78,13 @@ export const HomeFabMenu: React.FC = () => {
                     <div className="py-1">
                         {!hasCommunities ? (
                             // No communities - show create community option only if user has permission
-                            canCreateCommunity ? (
+                            canCreateCommunity && (
                                 <button
                                     onClick={handleCreateCommunity}
                                     className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left"
                                 >
                                     <Users size={18} className="text-brand-primary" />
                                     <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">
-                                        {t('hero.actions.createCommunity') || 'Create Community'}
-                                    </span>
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={handleCreateCommunity}
-                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left"
-                                >
-                                    <Users size={18} className="text-brand-text-secondary dark:text-base-content/70" />
-                                    <span className="text-sm font-medium text-brand-text-secondary dark:text-base-content/70">
                                         {t('hero.actions.createCommunity') || 'Create Community'}
                                     </span>
                                 </button>

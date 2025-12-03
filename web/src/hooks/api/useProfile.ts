@@ -55,10 +55,22 @@ export function useMeritStats() {
 /**
  * Hook to check if the current user can create communities.
  * Only organizers (superadmin) and leads (representatives) can create communities.
+ * Viewers cannot create communities.
  */
 export function useCanCreateCommunity() {
   const { user } = useAuth();
   const { data: userRoles } = useUserRoles(user?.id || '');
+
+  // Check if user has viewer role in any community
+  const hasViewerRole = userRoles?.some(role => role.role === 'viewer') ?? false;
+  
+  // Viewers cannot create communities
+  if (hasViewerRole) {
+    return {
+      canCreate: false,
+      isLoading: !user || (!!user?.id && userRoles === undefined),
+    };
+  }
 
   const canCreate = user?.globalRole === 'superadmin' || 
     (userRoles?.some(role => role.role === 'lead') ?? false);

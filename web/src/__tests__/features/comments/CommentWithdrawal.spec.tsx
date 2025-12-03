@@ -75,6 +75,7 @@ describe('Comment Withdrawal - Special Groups', () => {
         wallets={[]}
         updateWalletBalance={jest.fn()}
         updateAll={jest.fn()}
+        activeCommentHook={[null, jest.fn()]}
       />
     );
 
@@ -101,6 +102,7 @@ describe('Comment Withdrawal - Special Groups', () => {
         wallets={[]}
         updateWalletBalance={jest.fn()}
         updateAll={jest.fn()}
+        activeCommentHook={[null, jest.fn()]}
       />
     );
 
@@ -127,6 +129,7 @@ describe('Comment Withdrawal - Special Groups', () => {
         wallets={[]}
         updateWalletBalance={jest.fn()}
         updateAll={jest.fn()}
+        activeCommentHook={[null, jest.fn()]}
       />
     );
 

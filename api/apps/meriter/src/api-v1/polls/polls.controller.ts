@@ -10,12 +10,14 @@ import {
   Req,
   UseGuards,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PollService } from '../../domain/services/poll.service';
 import { PollCastService } from '../../domain/services/poll-cast.service';
 import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { UserService } from '../../domain/services/user.service';
+import { PermissionService } from '../../domain/services/permission.service';
 import { UserEnrichmentService } from '../common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../common/services/community-enrichment.service';
 import { EntityMappers } from '../common/mappers/entity-mappers';
@@ -41,6 +43,7 @@ export class PollsController {
     private readonly walletService: WalletService,
     private readonly communityService: CommunityService,
     private readonly userService: UserService,
+    private readonly permissionService: PermissionService,
     private readonly userEnrichmentService: UserEnrichmentService,
     private readonly communityEnrichmentService: CommunityEnrichmentService,
   ) {}
@@ -116,6 +119,18 @@ export class PollsController {
     @Body() createDto: CreatePollDto,
     @Req() req: any,
   ) {
+    // Check permissions using PermissionService
+    const canCreate = await this.permissionService.canCreatePoll(
+      req.user.id,
+      createDto.communityId,
+    );
+
+    if (!canCreate) {
+      throw new ForbiddenException(
+        'You do not have permission to create polls in this community',
+      );
+    }
+
     // Transform API CreatePollDto to domain CreatePollDto
     const domainDto = {
       ...createDto,

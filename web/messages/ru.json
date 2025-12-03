@@ -352,6 +352,7 @@
             "help": "Помощь",
             "toAddPublication": "Чтобы добавить сюда публикацию,",
             "writeMessageInChat": "напишите сообщение в корпоративный чат",
+            "writeToLeaderInTeamChat": "пишите лидеру в чате команды",
             "filterByValues": "Фильтр публикаций по ценностям:",
             "filterByTags": "Фильтр по тегам:",
             "showAll": "Показать все",

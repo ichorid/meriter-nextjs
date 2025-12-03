@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { invitesApiV1 } from "@/lib/api/v1";
+import { queryKeys } from "@/lib/constants/queryKeys";
 import type { Invite } from "@/types/api-v1";
 
 export function useInvites() {
@@ -51,6 +52,14 @@ export function useInvite() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["invites"] });
             queryClient.invalidateQueries({ queryKey: ["users", "me"] });
+            // Invalidate communities queries to refresh communities list
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.communities.all,
+            });
+            // Invalidate wallets query since wallets are used to display communities on home page
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.wallet.wallets(),
+            });
         },
     });
 }

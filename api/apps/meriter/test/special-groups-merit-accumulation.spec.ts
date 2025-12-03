@@ -292,16 +292,34 @@ describe('Special Groups Merit Accumulation', () => {
     });
 
     it('should prevent withdrawal from publication in future-vision', async () => {
+      // Create wallet with balance for voter (Future Vision requires wallet voting)
+      await walletService.addTransaction(
+        voterId,
+        visionCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test_setup',
+        'test',
+        { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        'Test setup',
+      );
+
       // Add a vote to create balance using HTTP endpoint (wallet only for Future Vision)
       (global as any).testUserId = voterId;
-      await request(app.getHttpServer())
+      const voteResponse = await request(app.getHttpServer())
         .post(`/api/v1/publications/${visionPubId}/votes`)
         .send({
           quotaAmount: 0,
           walletAmount: 5,
           comment: 'Test comment',
-        })
-        .expect(201);
+        });
+      
+      if (voteResponse.status !== 201) {
+        console.error('Vote failed:', JSON.stringify(voteResponse.body, null, 2));
+        console.error('Status:', voteResponse.status);
+      }
+      expect(voteResponse.status).toBe(201);
 
       // Try to withdraw as author
       (global as any).testUserId = authorId;
@@ -447,15 +465,33 @@ describe('Special Groups Merit Accumulation', () => {
     it('should NOT credit any wallet when voting on future-vision publication', async () => {
       (global as any).testUserId = voterId;
 
+      // Create wallet with balance for voter (Future Vision requires wallet voting)
+      await walletService.addTransaction(
+        voterId,
+        visionCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test_setup',
+        'test',
+        { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        'Test setup',
+      );
+
       // Vote on future vision publication (wallet only for Future Vision)
-      await request(app.getHttpServer())
+      const voteResponse = await request(app.getHttpServer())
         .post(`/api/v1/publications/${visionPubId}/votes`)
         .send({
           quotaAmount: 0,
           walletAmount: 5,
           comment: 'Test vote',
-        })
-        .expect(201);
+        });
+      
+      if (voteResponse.status !== 201) {
+        console.error('Vote failed:', JSON.stringify(voteResponse.body, null, 2));
+        console.error('Status:', voteResponse.status);
+      }
+      expect(voteResponse.status).toBe(201);
 
       // Check that no wallet was credited
       const fvWallet = await walletModel.findOne({
