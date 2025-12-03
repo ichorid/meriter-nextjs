@@ -387,11 +387,11 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
   // Determine admin rights
   const isAdmin = Boolean(
     user?.globalRole === 'superadmin' ||
-    community.isAdmin ?? (
+    (community.isAdmin ?? (
       Array.isArray((community as any).adminIds) && user?.id
         ? (community as any).adminIds.includes(user.id)
         : false
-    )
+    ))
   );
 
   return (
