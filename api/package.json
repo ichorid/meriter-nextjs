@@ -111,6 +111,8 @@
     ],
     "coverageDirectory": "./coverage",
     "testEnvironment": "node",
+    "globalSetup": "<rootDir>/jest.global-setup.js",
+    "globalTeardown": "<rootDir>/jest.global-teardown.js",
     "setupFiles": ["<rootDir>/jest.setup.js"],
     "roots": [
       "<rootDir>/apps/",

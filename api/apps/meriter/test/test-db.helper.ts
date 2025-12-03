@@ -14,9 +14,12 @@ export class TestDatabaseHelper {
    * Start the in-memory MongoDB instance
    */
   async start(): Promise<string> {
-    this.mongod = await MongoMemoryServer.create();
-    const uri = this.mongod.getUri();
-    return uri;
+    if (!process.env.MONGO_URL) {
+      this.mongod = await MongoMemoryServer.create();
+      const uri = this.mongod.getUri();
+      return uri;
+    }
+    return process.env.MONGO_URL;
   }
 
   /**
