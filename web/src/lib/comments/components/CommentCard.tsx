@@ -309,26 +309,11 @@ export function CommentCard({
           }
         }}
         bottom={
-          isAuthor && !isSpecialGroup ? (
+          false ? ( // Withdrawals disabled - merits are automatically credited on upvote
             <BarWithdraw
               balance={maxWithdrawAmount}
               onWithdraw={() => {
-                // Vote-comments can't be withdrawn from (they're synthetic)
-                // Only allow withdrawal from actual comments
-                if (node.id.startsWith('vote_')) {
-                  const { useToastStore } = require('@/shared/stores/toast.store');
-                  useToastStore.getState().addToast(
-                    'Cannot withdraw from votes',
-                    'error'
-                  );
-                  return;
-                }
-                useUIStore.getState().openWithdrawPopup(
-                  node.id,
-                  'comment-withdraw',
-                  maxWithdrawAmount,
-                  maxTopUpAmount
-                );
+                // Withdrawals disabled
               }}
               onTopup={() => {
                 // Vote-comments can't be topped up (they're synthetic)

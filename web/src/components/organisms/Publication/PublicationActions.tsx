@@ -117,8 +117,9 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const isSpecialGroup = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
 
   // Mutual exclusivity logic
-  // Hide withdrawal for special groups (marathon-of-good and future-vision)
-  const showWithdraw = !isSpecialGroup && ((isAuthor && !hasBeneficiary) || isBeneficiary);
+  // Withdrawal feature is disabled - merits are automatically credited on upvote
+  // Topup functionality is still available through the voting popup
+  const showWithdraw = false; // Withdrawals disabled
   const showVote = !isAuthor && !isBeneficiary;
   const showVoteForAuthor = isAuthor && hasBeneficiary;
 

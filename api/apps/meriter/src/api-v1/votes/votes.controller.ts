@@ -708,87 +708,10 @@ export class VotesController {
     @Body() body: any,
     @Req() req: any,
   ) {
-    // Get the publication
-    const publication = await this.publicationService.getPublication(id);
-    if (!publication) {
-      throw new NotFoundError('Publication', id);
-    }
-
-    // Check if user can withdraw
-    const canWithdraw = await this.voteService.canUserWithdraw(
-      req.user.id,
-      'publication',
-      id,
-    );
-    if (!canWithdraw) {
-      throw new BadRequestException(
-        'You are not authorized to withdraw from this publication',
-      );
-    }
-
-    // Get community to check if withdrawals are allowed
-    const communityId = publication.getCommunityId.getValue();
-    const community = await this.communityService.getCommunity(communityId);
-    if (!community) {
-      throw new NotFoundError('Community', communityId);
-    }
-
-    // Prevent withdrawals in special groups
-    if (community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision') {
-      throw new BadRequestException(
-        'Withdrawals are not allowed in Marathon of Good and Future Vision communities',
-      );
-    }
-
-    // Check balance
-    const balance = publication.getScore;
-    if (balance <= 0) {
-      throw new BadRequestException('No balance available to withdraw');
-    }
-
-    // Get beneficiary (beneficiaryId if set, otherwise authorId)
-    const beneficiaryId =
-      publication.getBeneficiaryId?.getValue() ||
-      publication.getAuthorId.getValue();
-
-    // Get withdrawable amount (if amount specified, use it, otherwise withdraw all)
-    const withdrawAmount = body.amount
-      ? Math.min(body.amount, balance)
-      : balance;
-
-    if (withdrawAmount <= 0) {
-      throw new BadRequestException('Withdraw amount must be positive');
-    }
-
-    // Transfer to wallet using shared method with conversion logic
-    await this.creditUserWithConversion(
-      beneficiaryId,
-      communityId,
-      withdrawAmount,
-      community,
-      'publication_withdrawal',
-      id,
-      `Withdrawal from publication ${id}`,
-    );
-
-    // Update publication metrics
-    await this.publicationService.voteOnPublication(
-      id,
-      req.user.id,
-      withdrawAmount,
-      'down',
-    );
-
-    return ApiResponseHelper.successResponse(
-      {
-        amount: withdrawAmount,
-        balance: balance - withdrawAmount,
-        message: `Successfully withdrew ${withdrawAmount} from publication`,
-      },
-      {
-        timestamp: new Date().toISOString(),
-        requestId: req.headers['x-request-id'] || 'unknown',
-      },
+    // Withdrawal feature has been disabled
+    // Merits are now automatically credited to the beneficiary's wallet when publications receive upvotes
+    throw new BadRequestException(
+      'Withdrawal from publications is disabled. Merits are automatically credited to your wallet when your publication receives upvotes.',
     );
   }
 
@@ -799,106 +722,10 @@ export class VotesController {
     @Body() body: any,
     @Req() req: any,
   ) {
-    // Get the vote
-    const vote = await this.voteService.getVoteById(id);
-    if (!vote) {
-      throw new NotFoundError('Vote', id);
-    }
-
-    // Check if user can withdraw (must be the vote author)
-    const canWithdraw = await this.voteService.canUserWithdraw(
-      req.user.id,
-      'vote',
-      id,
-    );
-    if (!canWithdraw) {
-      throw new BadRequestException(
-        'You are not authorized to withdraw from this vote',
-      );
-    }
-
-    // Trace back to original publication to check community typeTag
-    let originalPublicationId: string | null = null;
-    let currentVote = vote;
-    let depth = 0;
-    
-    // Traverse vote chain to find root publication
-    while (currentVote.targetType === 'vote' && depth < 20) {
-      const parentVote = await this.voteService.getVoteById(currentVote.targetId);
-      if (!parentVote) break;
-      currentVote = parentVote;
-      depth++;
-    }
-    
-    if (currentVote && currentVote.targetType === 'publication') {
-      originalPublicationId = currentVote.targetId;
-    }
-
-    // Get community to check if withdrawals are allowed
-    const communityId = vote.communityId;
-    const community = await this.communityService.getCommunity(communityId);
-    if (!community) {
-      throw new NotFoundError('Community', communityId);
-    }
-
-    // If we found the original publication, check its community
-    if (originalPublicationId) {
-      const originalPublication = await this.publicationService.getPublication(originalPublicationId);
-      if (originalPublication) {
-        const originalCommunityId = originalPublication.getCommunityId.getValue();
-        const originalCommunity = await this.communityService.getCommunity(originalCommunityId);
-        if (originalCommunity && (originalCommunity.typeTag === 'marathon-of-good' || originalCommunity.typeTag === 'future-vision')) {
-          throw new BadRequestException(
-            'Withdrawals are not allowed in Marathon of Good and Future Vision communities',
-          );
-        }
-      }
-    }
-
-    // Get votes on this vote to calculate balance
-    const votesOnVote = await this.voteService.getVotesOnVote(id);
-    const balance = votesOnVote.reduce(
-      (sum, v) => sum + ((v.amountQuota || 0) + (v.amountWallet || 0)),
-      0,
-    );
-
-    if (balance <= 0) {
-      throw new BadRequestException('No balance available to withdraw');
-    }
-
-    // Get beneficiary (vote author)
-    const beneficiaryId = vote.userId;
-
-    // Get withdrawable amount (if amount specified, use it, otherwise withdraw all)
-    const withdrawAmount = body.amount
-      ? Math.min(body.amount, balance)
-      : balance;
-
-    if (withdrawAmount <= 0) {
-      throw new BadRequestException('Withdraw amount must be positive');
-    }
-
-    // Transfer to wallet using shared method with conversion logic
-    await this.creditUserWithConversion(
-      beneficiaryId,
-      communityId,
-      withdrawAmount,
-      community,
-      'vote_withdrawal',
-      id,
-      `Withdrawal from vote ${id}`,
-    );
-
-    return ApiResponseHelper.successResponse(
-      {
-        amount: withdrawAmount,
-        balance: balance - withdrawAmount,
-        message: `Successfully withdrew ${withdrawAmount} from vote`,
-      },
-      {
-        timestamp: new Date().toISOString(),
-        requestId: req.headers['x-request-id'] || 'unknown',
-      },
+    // Withdrawal feature has been disabled
+    // Merits are now automatically credited to the beneficiary's wallet when comments/votes receive upvotes
+    throw new BadRequestException(
+      'Withdrawal from comments/votes is disabled. Merits are automatically credited to your wallet when your content receives upvotes.',
     );
   }
 

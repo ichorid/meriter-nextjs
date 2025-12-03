@@ -288,7 +288,7 @@ describe('Special Groups Merit Accumulation', () => {
         .send({ amount: 5 })
         .expect(400);
 
-      expect(response.body.message).toContain('Withdrawals are not allowed');
+      expect(response.body.message).toContain('Withdrawal from publications is disabled');
     });
 
     it('should prevent withdrawal from publication in future-vision', async () => {
@@ -310,10 +310,10 @@ describe('Special Groups Merit Accumulation', () => {
         .send({ amount: 5 })
         .expect(400);
 
-      expect(response.body.message).toContain('Withdrawals are not allowed');
+      expect(response.body.message).toContain('Withdrawal from publications is disabled');
     });
 
-    it('should allow withdrawal from publication in regular community', async () => {
+    it('should prevent withdrawal from publication in regular community (withdrawals disabled)', async () => {
       // Add a vote to create balance using HTTP endpoint (which updates publication metrics)
       (global as any).testUserId = voterId;
       await request(app.getHttpServer())
@@ -325,17 +325,14 @@ describe('Special Groups Merit Accumulation', () => {
         })
         .expect(201);
 
-      // Withdraw as author
+      // Try to withdraw as author - should fail since withdrawals are disabled
       (global as any).testUserId = authorId;
       const withdrawResponse = await request(app.getHttpServer())
         .post(`/api/v1/publications/${regularPubId}/withdraw`)
-        .send({ amount: 5 });
+        .send({ amount: 5 })
+        .expect(400);
       
-      if (withdrawResponse.status !== 200 && withdrawResponse.status !== 201) {
-        console.error('Withdraw failed:', JSON.stringify(withdrawResponse.body, null, 2));
-        console.error('Status:', withdrawResponse.status);
-      }
-      expect([200, 201]).toContain(withdrawResponse.status);
+      expect(withdrawResponse.body.message).toContain('Withdrawal from publications is disabled');
     });
   });
 
