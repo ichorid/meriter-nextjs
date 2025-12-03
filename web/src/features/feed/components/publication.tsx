@@ -173,8 +173,7 @@ export const Publication = ({
         ? Math.floor(10 * currentBalance) / 10
         : 0;
     
-    // Community info - use communityId
-    const { data: communityInfo } = useCommunity(communityId || '');
+    // Community info already fetched above - reuse it
     const communityIdForRouting = communityInfo?.id || communityId;
     
     // Display title - use meta.author.name
