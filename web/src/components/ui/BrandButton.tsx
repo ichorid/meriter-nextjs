@@ -28,12 +28,12 @@ export const BrandButton = React.forwardRef<HTMLButtonElement, BrandButtonProps>
         },
         ref
     ) => {
-        const baseStyles = 'inline-flex items-center justify-center rounded-xl font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-white active:scale-95';
+        const baseStyles = 'inline-flex items-center justify-center rounded-md font-normal transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-white active:scale-95';
 
         const variants = {
             primary: 'bg-brand-primary text-white hover:bg-brand-primary/90 active:bg-brand-primary/95',
             secondary: 'bg-brand-secondary text-white hover:bg-brand-secondary/90 active:bg-brand-secondary/95',
-            outline: 'border border-brand-primary text-brand-primary hover:bg-brand-primary/10 active:bg-brand-primary/20 dark:border-brand-primary dark:text-brand-primary',
+            outline: 'border border-gray-900 text-gray-900 hover:bg-brand-primary/10 active:bg-brand-primary/20 dark:border-brand-primary dark:text-brand-primary',
             ghost: 'hover:bg-brand-surface text-brand-text-primary hover:text-brand-primary dark:text-base-content dark:hover:bg-brand-surface',
             link: 'text-brand-primary underline-offset-4 hover:underline',
         };

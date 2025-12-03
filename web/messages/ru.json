@@ -161,7 +161,8 @@
         "welcomeTitle": "Добро пожаловать в Meriter",
         "welcome": "Добро пожаловать в Meriter",
         "title": "Вход",
-        "subtitle": "Войдите в систему для доступа к аккаунту",
+        "siteTitle": "Meriter",
+        "subtitle": "Войдите в систему используя один из сервисов:",
         "signInWith": "Войти через {provider}",
         "redirecting": "Переход на главную...",
         "authenticating": "Авторизация...",
@@ -171,8 +172,15 @@
         "telegramWebApp": {
             "detected": "Обнаружено Telegram Web App, выполняется авторизация..."
         },
+        "noAuthenticationProviders": "Нет настроенных провайдеров авторизации. Пожалуйста, свяжитесь с администратором.",
         "telegramWidget": {
             "instructions": "Нажмите кнопку ниже для входа через Telegram"
+        },
+        "hint": {
+            "agreeToTerms": "Нажимая на кнопку и подтверждая вход в систему, я принимаю условия",
+            "termsOfService": "Условиями обслуживания",
+            "and": "и",
+            "personalData": "обработкой персональных данных"
         }
     },
     "polls": {

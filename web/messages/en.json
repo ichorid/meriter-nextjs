@@ -13,7 +13,8 @@
         "close": "Close",
         "confirm": "Confirm",
         "dailyMerits": "Daily",
-        "permanentMerits": "Permanent"
+        "permanentMerits": "Permanent",
+        "siteTitle": "Meriter"
     },
     "home": {
         "breadcrumb": "Home",
@@ -160,7 +161,8 @@
         "welcomeTitle": "Welcome to Meriter",
         "welcome": "Welcome to Meriter",
         "title": "Login",
-        "subtitle": "Sign in to access your account",
+        "siteTitle": "Meriter",
+        "subtitle": "Sign in using one of the services:",
         "signInWith": "Sign in with {provider}",
         "redirecting": "Redirecting to home...",
         "authenticating": "Authenticating...",
@@ -170,8 +172,15 @@
         "telegramWebApp": {
             "detected": "Telegram Web App detected, authenticating..."
         },
+        "noAuthenticationProviders": "No authentication providers configured. Please contact administrator.",
         "telegramWidget": {
             "instructions": "Click the button below to sign in with Telegram"
+        },
+        "hint": {
+            "agreeToTerms": "By clicking the button and confirming login, I agree to the",
+            "termsOfService": "Terms of Service",
+            "and": "and",
+            "personalData": "processing of personal data"
         }
     },
     "polls": {
