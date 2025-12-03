@@ -604,13 +604,8 @@ export class VotesController {
           } else if (community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision') {
             if (authorRole === 'participant') {
               errorMessage = 'You cannot vote for participants from marathon/vision communities';
-            } else if (authorRole === 'lead') {
-              if (community.typeTag === 'marathon-of-good') {
-                errorMessage = 'Members cannot vote for Representative posts in Good Deeds Marathon';
-              } else {
-                errorMessage = 'Participants cannot vote for Representative posts in this community';
-              }
             }
+            // Participants can vote for leads in marathon-of-good (except their own team lead, already checked above)
           }
         }
       }

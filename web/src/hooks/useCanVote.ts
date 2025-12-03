@@ -87,12 +87,15 @@ export function useCanVote(
     // For participants outside team communities: check marathon/vision restrictions
     // Note: Team-based checks (same team, different team) are handled by backend
     // Frontend can only check community typeTag
-    if (userRole === 'participant' && community.typeTag !== 'team') {
-      // Cannot vote for participants from marathon/vision communities
-      // (Backend will handle the actual check based on author's role and team membership)
-      if (community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision') {
-        // Backend will validate if author is participant and block if so
-        // Frontend allows the attempt
+    if (userRole === 'participant') {
+      // Participants can vote in marathon-of-good for leads (backend validates team membership)
+      // Participants cannot vote for participants in marathon/vision (backend will block)
+      if (community.typeTag === 'marathon-of-good') {
+        // Allow participants to vote - backend will validate:
+        // - Cannot vote for participants from marathon/vision communities
+        // - Cannot vote for leads from their own team
+        // - Can vote for leads from other teams
+        return true;
       }
     }
 
