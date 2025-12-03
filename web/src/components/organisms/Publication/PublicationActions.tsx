@@ -138,7 +138,14 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   );
 
   const handleVoteClick = () => {
-    const mode = isProject ? 'wallet-only' : 'quota-only';
+    let mode: 'standard' | 'wallet-only' | 'quota-only' = 'standard';
+    if (isProject) {
+      mode = 'wallet-only';
+    } else if (!isSpecialGroup) {
+      // Non-special groups can only vote with quota on regular posts
+      mode = 'quota-only';
+    }
+    // Special groups use 'standard' mode (default), allowing both quota and wallet
     useUIStore.getState().openVotingPopup(publicationId, 'publication', mode);
   };
 

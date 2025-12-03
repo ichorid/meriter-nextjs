@@ -316,6 +316,7 @@ export class VotesController {
     communityId: string,
     community: any,
     createDto: VoteWithCommentDto | any,
+    targetType?: 'publication' | 'vote',
   ): Promise<{
     quotaAmount: number;
     walletAmount: number;
@@ -334,6 +335,17 @@ export class VotesController {
     if (quotaAmount === 0 && walletAmount === 0) {
       throw new BadRequestException(
         'Cannot vote with zero quota and zero wallet amount',
+      );
+    }
+
+    // Check if community is a special group (marathon-of-good or future-vision)
+    const isSpecialGroup = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
+
+    // For non-special groups, reject wallet voting on publications/comments
+    // Polls are handled separately and always use wallet
+    if (!isSpecialGroup && walletAmount > 0 && targetType && (targetType === 'publication' || targetType === 'vote')) {
+      throw new BadRequestException(
+        'Voting with permanent wallet merits is only allowed in special groups (Marathon of Good and Future Vision). Please use daily quota to vote on posts and comments.',
       );
     }
 
@@ -434,6 +446,7 @@ export class VotesController {
         communityId,
         community,
         createDto,
+        targetType,
       );
 
     // Determine vote direction

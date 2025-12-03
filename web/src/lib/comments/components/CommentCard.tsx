@@ -346,7 +346,9 @@ export function CommentCard({
                 // If this is a vote-comment (ID starts with 'vote_'), pass the vote-comment ID
                 // The backend will handle creating the proper hierarchy
                 const commentIdToVoteOn = node.id; // Use the node ID directly (includes vote_ prefix if applicable)
-                useUIStore.getState().openVotingPopup(commentIdToVoteOn, 'comment');
+                // Non-special groups can only vote with quota on comments
+                const mode = isSpecialGroup ? 'standard' : 'quota-only';
+                useUIStore.getState().openVotingPopup(commentIdToVoteOn, 'comment', mode);
               }}
               isAuthor={isAuthor}
               isBeneficiary={isBeneficiary}

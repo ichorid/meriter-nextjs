@@ -5,6 +5,7 @@ import { Vote, VoteDocument } from '../models/vote/vote.schema';
 import { UserId } from '../value-objects';
 import { uid } from 'uid';
 import { PublicationService } from './publication.service';
+import { CommunityService } from './community.service';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class VoteService {
     @InjectModel(Vote.name) private voteModel: Model<VoteDocument>,
     @InjectConnection() private mongoose: Connection,
     @Inject(forwardRef(() => PublicationService)) private publicationService: PublicationService,
+    private communityService: CommunityService,
   ) { }
 
   /**
@@ -102,6 +104,19 @@ export class VoteService {
       throw new BadRequestException('Comment is required');
     }
 
+    // Check if community is a special group (marathon-of-good or future-vision)
+    const community = await this.communityService.getCommunity(communityId);
+    const isSpecialGroup = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
+
+    // For non-special groups, reject wallet voting on publications/comments
+    // Polls are handled separately and always use wallet
+    // This check comes BEFORE postType validation to ensure it applies
+    if (!isSpecialGroup && amountWallet > 0 && (targetType === 'publication' || targetType === 'vote')) {
+      throw new BadRequestException(
+        'Voting with permanent wallet merits is only allowed in special groups (Marathon of Good and Future Vision). Please use daily quota to vote on posts and comments.',
+      );
+    }
+
     // Enforce voting rules based on target type
     if (targetType === 'publication') {
       const publication = await this.publicationService.getPublication(targetId);
@@ -127,8 +142,10 @@ export class VoteService {
       }
 
       // Report (Good Deed) / Basic: Voting with Daily Quota only
+      // BUT: Special groups can use wallet voting even for basic posts
       // Assuming 'basic' implies Report/Good Deed context for now
-      if (postType === 'basic' && !isProject) {
+      if (postType === 'basic' && !isProject && !isSpecialGroup) {
+        // For non-special groups only, basic posts can only use quota
         if (amountWallet > 0) {
           throw new BadRequestException(
             'Reports (Good Deeds) can only be voted on with Daily Quota',

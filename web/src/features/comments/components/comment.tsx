@@ -287,7 +287,9 @@ export const Comment: React.FC<CommentProps> = ({
                         <BarVoteUnified
                             score={commentScore}
                             onVoteClick={() => {
-                                useUIStore.getState().openVotingPopup(_id, 'comment');
+                                // Non-special groups can only vote with quota on comments
+                                const mode = isSpecialGroup ? 'standard' : 'quota-only';
+                                useUIStore.getState().openVotingPopup(_id, 'comment', mode);
                             }}
                             isAuthor={isAuthor}
                             isBeneficiary={false}
