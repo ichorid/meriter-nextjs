@@ -106,15 +106,31 @@ export class VoteService {
 
     // Check if community is a special group (marathon-of-good or future-vision)
     const community = await this.communityService.getCommunity(communityId);
-    const isSpecialGroup = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
+    const isMarathonOfGood = community?.typeTag === 'marathon-of-good';
+    const isFutureVision = community?.typeTag === 'future-vision';
+    const isSpecialGroup = isMarathonOfGood || isFutureVision;
 
-    // For non-special groups, reject wallet voting on publications/comments
+    // Marathon of Good: Block wallet voting on publications/comments (quota only)
+    // Future Vision: Block quota voting on publications/comments (wallet only)
     // Polls are handled separately and always use wallet
     // This check comes BEFORE postType validation to ensure it applies
-    if (!isSpecialGroup && amountWallet > 0 && (targetType === 'publication' || targetType === 'vote')) {
-      throw new BadRequestException(
-        'Voting with permanent wallet merits is only allowed in special groups (Marathon of Good and Future Vision). Please use daily quota to vote on posts and comments.',
-      );
+    if (targetType === 'publication' || targetType === 'vote') {
+      if (isMarathonOfGood && amountWallet > 0) {
+        throw new BadRequestException(
+          'Marathon of Good only allows quota voting on posts and comments. Please use daily quota to vote.',
+        );
+      }
+      if (isFutureVision && amountQuota > 0) {
+        throw new BadRequestException(
+          'Future Vision only allows wallet voting on posts and comments. Please use wallet merits to vote.',
+        );
+      }
+      // For regular groups (non-special), reject wallet voting
+      if (!isSpecialGroup && amountWallet > 0) {
+        throw new BadRequestException(
+          'Voting with permanent wallet merits is only allowed in special groups (Marathon of Good and Future Vision). Please use daily quota to vote on posts and comments.',
+        );
+      }
     }
 
     // Enforce voting rules based on target type
@@ -142,7 +158,8 @@ export class VoteService {
       }
 
       // Report (Good Deed) / Basic: Voting with Daily Quota only
-      // BUT: Special groups can use wallet voting even for basic posts
+      // Marathon of Good: quota only (already enforced above)
+      // Future Vision: wallet only (already enforced above)
       // Assuming 'basic' implies Report/Good Deed context for now
       if (postType === 'basic' && !isProject && !isSpecialGroup) {
         // For non-special groups only, basic posts can only use quota
@@ -156,6 +173,18 @@ export class VoteService {
             'Reports require Daily Quota to vote',
           );
         }
+      }
+      // For Marathon of Good basic posts, ensure quota is used
+      if (postType === 'basic' && !isProject && isMarathonOfGood && amountQuota <= 0) {
+        throw new BadRequestException(
+          'Reports require Daily Quota to vote',
+        );
+      }
+      // For Future Vision basic posts, ensure wallet is used
+      if (postType === 'basic' && !isProject && isFutureVision && amountWallet <= 0) {
+        throw new BadRequestException(
+          'Reports require Wallet Merits to vote',
+        );
       }
     }
 

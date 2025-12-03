@@ -292,13 +292,13 @@ describe('Special Groups Merit Accumulation', () => {
     });
 
     it('should prevent withdrawal from publication in future-vision', async () => {
-      // Add a vote to create balance using HTTP endpoint
+      // Add a vote to create balance using HTTP endpoint (wallet only for Future Vision)
       (global as any).testUserId = voterId;
       await request(app.getHttpServer())
         .post(`/api/v1/publications/${visionPubId}/votes`)
         .send({
-          quotaAmount: 5,
-          walletAmount: 0,
+          quotaAmount: 0,
+          walletAmount: 5,
           comment: 'Test comment',
         })
         .expect(201);
@@ -447,12 +447,12 @@ describe('Special Groups Merit Accumulation', () => {
     it('should NOT credit any wallet when voting on future-vision publication', async () => {
       (global as any).testUserId = voterId;
 
-      // Vote on future vision publication
+      // Vote on future vision publication (wallet only for Future Vision)
       await request(app.getHttpServer())
         .post(`/api/v1/publications/${visionPubId}/votes`)
         .send({
-          quotaAmount: 5,
-          walletAmount: 0,
+          quotaAmount: 0,
+          walletAmount: 5,
           comment: 'Test vote',
         })
         .expect(201);

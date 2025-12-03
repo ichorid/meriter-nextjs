@@ -69,6 +69,11 @@ export class VotesController {
     communityId: string,
     community: any,
   ): Promise<number> {
+    // Future Vision has no quota - wallet voting only
+    if (community?.typeTag === 'future-vision') {
+      return 0;
+    }
+
     if (
       !community.settings?.dailyEmission ||
       typeof community.settings.dailyEmission !== 'number'
@@ -339,14 +344,30 @@ export class VotesController {
     }
 
     // Check if community is a special group (marathon-of-good or future-vision)
-    const isSpecialGroup = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
+    const isMarathonOfGood = community?.typeTag === 'marathon-of-good';
+    const isFutureVision = community?.typeTag === 'future-vision';
+    const isSpecialGroup = isMarathonOfGood || isFutureVision;
 
-    // For non-special groups, reject wallet voting on publications/comments
+    // Marathon of Good: Block wallet voting on publications/comments (quota only)
+    // Future Vision: Block quota voting on publications/comments (wallet only)
     // Polls are handled separately and always use wallet
-    if (!isSpecialGroup && walletAmount > 0 && targetType && (targetType === 'publication' || targetType === 'vote')) {
-      throw new BadRequestException(
-        'Voting with permanent wallet merits is only allowed in special groups (Marathon of Good and Future Vision). Please use daily quota to vote on posts and comments.',
-      );
+    if (targetType && (targetType === 'publication' || targetType === 'vote')) {
+      if (isMarathonOfGood && walletAmount > 0) {
+        throw new BadRequestException(
+          'Marathon of Good only allows quota voting on posts and comments. Please use daily quota to vote.',
+        );
+      }
+      if (isFutureVision && quotaAmount > 0) {
+        throw new BadRequestException(
+          'Future Vision only allows wallet voting on posts and comments. Please use wallet merits to vote.',
+        );
+      }
+      // For regular groups (non-special), reject wallet voting
+      if (!isSpecialGroup && walletAmount > 0) {
+        throw new BadRequestException(
+          'Voting with permanent wallet merits is only allowed in special groups (Marathon of Good and Future Vision). Please use daily quota to vote on posts and comments.',
+        );
+      }
     }
 
     // Validation: reject quota for downvotes (only check if explicitly downvote)

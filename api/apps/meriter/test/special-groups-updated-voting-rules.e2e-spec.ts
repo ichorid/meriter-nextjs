@@ -34,7 +34,7 @@ class AllowAllGuard implements CanActivate {
   }
 }
 
-describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
+describe('Special Groups Updated Voting Rules (e2e)', () => {
   jest.setTimeout(60000);
   
   let app: INestApplication;
@@ -56,18 +56,17 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
 
   let testUserId: string;
   let testUserId2: string;
-  let regularCommunityId: string;
   let marathonCommunityId: string;
   let visionCommunityId: string;
-  let regularPubId: string;
   let marathonPubId: string;
   let visionPubId: string;
-  let regularVoteId: string;
+  let marathonVoteId: string;
+  let visionVoteId: string;
 
   beforeAll(async () => {
     testDb = new TestDatabaseHelper();
     const uri = await testDb.start();
-    process.env.JWT_SECRET = 'test-jwt-secret-key-for-voting-tests';
+    process.env.JWT_SECRET = 'test-jwt-secret-key-for-updated-voting-rules';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MongooseModule.forRoot(uri), MeriterModule],
@@ -87,7 +86,6 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
     
     connection = app.get(getConnectionToken());
     
-    // Access models registered via MongooseModule.forFeature() using getModelToken
     communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
     userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
     publicationModel = app.get<Model<PublicationDocument>>(getModelToken(Publication.name));
@@ -132,37 +130,6 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
         updatedAt: new Date(),
       },
     ]);
-
-    // Create regular (non-special) community
-    regularCommunityId = uid();
-    await communityModel.create({
-      id: regularCommunityId,
-      name: 'Regular Community',
-      typeTag: 'custom',
-      administrators: [testUserId],
-      members: [testUserId, testUserId2],
-      settings: {
-        iconUrl: 'https://example.com/icon.png',
-        currencyNames: {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        dailyEmission: 10,
-      },
-      votingRules: {
-        allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-        canVoteForOwnPosts: false,
-        participantsCannotVoteForLead: false,
-        spendsMerits: true,
-        awardsMerits: true,
-      },
-      hashtags: ['test'],
-      hashtagDescriptions: {},
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
 
     // Create Marathon of Good community
     marathonCommunityId = uid();
@@ -231,20 +198,6 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
       {
         id: uid(),
         userId: testUserId,
-        communityId: regularCommunityId,
-        balance: 100,
-        currency: {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        lastUpdated: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: uid(),
-        userId: testUserId,
         communityId: marathonCommunityId,
         balance: 100,
         currency: {
@@ -273,26 +226,6 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
     ]);
 
     // Create publications
-    regularPubId = uid();
-    await publicationModel.create({
-      id: regularPubId,
-      communityId: regularCommunityId,
-      authorId: testUserId2,
-      content: 'Regular publication',
-      type: 'text',
-      hashtags: ['test'],
-      postType: 'basic',
-      isProject: false,
-      metrics: {
-        upvotes: 0,
-        downvotes: 0,
-        score: 0,
-        commentCount: 0,
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
     marathonPubId = uid();
     await publicationModel.create({
       id: marathonPubId,
@@ -333,21 +266,12 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
       updatedAt: new Date(),
     });
 
-    // Create user community roles to allow voting
-    // For marathon/vision communities, voters must be leads to vote
+    // Create user community roles
     const now = new Date();
     await userCommunityRoleModel.create([
       {
         id: uid(),
         userId: testUserId,
-        communityId: regularCommunityId,
-        role: 'participant',
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        id: uid(),
-        userId: testUserId,
         communityId: marathonCommunityId,
         role: 'lead', // Lead role required to vote in marathon/vision
         createdAt: now,
@@ -364,16 +288,8 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
       {
         id: uid(),
         userId: testUserId2,
-        communityId: regularCommunityId,
-        role: 'participant',
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        id: uid(),
-        userId: testUserId2,
         communityId: marathonCommunityId,
-        role: 'participant', // Author can be participant
+        role: 'lead', // Need lead role to vote on comments
         createdAt: now,
         updatedAt: now,
       },
@@ -381,7 +297,7 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
         id: uid(),
         userId: testUserId2,
         communityId: visionCommunityId,
-        role: 'participant', // Author can be participant
+        role: 'lead', // Need lead role to vote on comments
         createdAt: now,
         updatedAt: now,
       },
@@ -403,56 +319,12 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
     }
   });
 
-  describe('Non-Special Groups - Wallet Voting Restriction', () => {
-    it('should reject wallet voting on publications in non-special groups', async () => {
+  describe('Marathon of Good - Quota Only Voting', () => {
+    it('should allow quota voting on publications', async () => {
       (global as any).testUserId = testUserId;
       
       const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${regularPubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Test comment',
-        })
-        .expect(400);
-
-      expect(response.body.message).toContain('Voting with permanent wallet merits is only allowed in special groups');
-    });
-
-    it('should reject wallet voting on comments (votes) in non-special groups', async () => {
-      // Create initial vote with testUserId (voter, not author)
-      (global as any).testUserId = testUserId;
-      
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${regularPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'First vote',
-        })
-        .expect(201);
-
-      const voteId = voteResponse.body.data.vote.id;
-
-      // Now try to vote on the vote (comment) with wallet as testUserId2
-      (global as any).testUserId = testUserId2;
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/votes/${voteId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Reply vote',
-        })
-        .expect(400);
-
-      expect(response.body.message).toContain('Voting with permanent wallet merits is only allowed in special groups');
-    });
-
-    it('should allow quota-only voting on publications in non-special groups', async () => {
-      (global as any).testUserId = testUserId;
-      
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${regularPubId}/votes`)
+        .post(`/api/v1/publications/${marathonPubId}/votes`)
         .send({
           quotaAmount: 5,
           walletAmount: 0,
@@ -465,12 +337,12 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
       expect(response.body.data.vote.amountWallet).toBe(0);
     });
 
-    it('should allow quota-only voting on comments (votes) in non-special groups', async () => {
-      // Create initial vote with testUserId (voter, not author)
+    it('should allow quota voting on comments (votes)', async () => {
+      // Create initial vote with testUserId
       (global as any).testUserId = testUserId;
       
       const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${regularPubId}/votes`)
+        .post(`/api/v1/publications/${marathonPubId}/votes`)
         .send({
           quotaAmount: 5,
           walletAmount: 0,
@@ -479,8 +351,9 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
         .expect(201);
 
       const voteId = voteResponse.body.data.vote.id;
+      marathonVoteId = voteId;
 
-      // Now vote on the vote (comment) with quota only as testUserId2
+      // Now vote on the vote (comment) with quota only using testUserId2
       (global as any).testUserId = testUserId2;
       const response = await request(app.getHttpServer())
         .post(`/api/v1/votes/${voteId}/votes`)
@@ -495,10 +368,8 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
       expect(response.body.data.vote.amountQuota).toBe(3);
       expect(response.body.data.vote.amountWallet).toBe(0);
     });
-  });
 
-  describe('Special Groups - Updated Voting Rules', () => {
-    it('should reject wallet voting on publications in Marathon of Good (quota only)', async () => {
+    it('should reject wallet voting on publications', async () => {
       (global as any).testUserId = testUserId;
       
       const response = await request(app.getHttpServer())
@@ -513,7 +384,93 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
       expect(response.body.message).toContain('Marathon of Good only allows quota voting');
     });
 
-    it('should allow wallet voting on publications in Future Vision', async () => {
+    it('should reject wallet voting on comments (votes)', async () => {
+      // Create initial vote
+      (global as any).testUserId = testUserId;
+      
+      const voteResponse = await request(app.getHttpServer())
+        .post(`/api/v1/publications/${marathonPubId}/votes`)
+        .send({
+          quotaAmount: 5,
+          walletAmount: 0,
+          comment: 'First vote',
+        })
+        .expect(201);
+
+      const voteId = voteResponse.body.data.vote.id;
+
+      // Try to vote on the vote (comment) with wallet
+      const response = await request(app.getHttpServer())
+        .post(`/api/v1/votes/${voteId}/votes`)
+        .send({
+          quotaAmount: 0,
+          walletAmount: 10,
+          comment: 'Wallet vote attempt',
+        })
+        .expect(400);
+
+      expect(response.body.message).toContain('Marathon of Good only allows quota voting');
+    });
+  });
+
+  describe('Future Vision - Wallet Only Voting', () => {
+    it('should return 0 quota for Future Vision users', async () => {
+      (global as any).testUserId = testUserId;
+      
+      const response = await request(app.getHttpServer())
+        .get(`/api/v1/users/${testUserId}/quota?communityId=${visionCommunityId}`)
+        .expect(200);
+
+      expect(response.body.dailyQuota).toBe(0);
+      expect(response.body.remainingToday).toBe(0);
+      expect(response.body.usedToday).toBe(0);
+    });
+
+    it('should reject quota voting on publications', async () => {
+      (global as any).testUserId = testUserId;
+      
+      const response = await request(app.getHttpServer())
+        .post(`/api/v1/publications/${visionPubId}/votes`)
+        .send({
+          quotaAmount: 5,
+          walletAmount: 0,
+          comment: 'Quota vote attempt',
+        })
+        .expect(400);
+
+      expect(response.body.message).toContain('Future Vision only allows wallet voting');
+    });
+
+    it('should reject quota voting on comments (votes)', async () => {
+      // Create initial vote with wallet
+      (global as any).testUserId = testUserId;
+      
+      const voteResponse = await request(app.getHttpServer())
+        .post(`/api/v1/publications/${visionPubId}/votes`)
+        .send({
+          quotaAmount: 0,
+          walletAmount: 5,
+          comment: 'First vote',
+        })
+        .expect(201);
+
+      const voteId = voteResponse.body.data.vote.id;
+      visionVoteId = voteId;
+
+      // Try to vote on the vote (comment) with quota
+      const response = await request(app.getHttpServer())
+        .post(`/api/v1/votes/${voteId}/votes`)
+        .send({
+          quotaAmount: 3,
+          walletAmount: 0,
+          comment: 'Quota vote attempt',
+        })
+        .expect(400);
+
+      expect(response.body.message).toContain('Future Vision only allows wallet voting');
+    });
+
+    it('should allow wallet voting on publications', async () => {
       (global as any).testUserId = testUserId;
       
       const response = await request(app.getHttpServer())
@@ -527,39 +484,64 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.vote.amountWallet).toBe(10);
+      expect(response.body.data.vote.amountQuota).toBe(0);
     });
 
-    it('should reject combined quota and wallet voting in Marathon of Good', async () => {
+    it('should allow wallet voting on comments (votes)', async () => {
+      // Create initial vote with wallet
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
+      const voteResponse = await request(app.getHttpServer())
+        .post(`/api/v1/publications/${visionPubId}/votes`)
         .send({
-          quotaAmount: 5,
-          walletAmount: 10,
-          comment: 'Combined vote attempt',
+          quotaAmount: 0,
+          walletAmount: 5,
+          comment: 'First vote',
         })
-        .expect(400);
+        .expect(201);
 
-      expect(response.body.message).toContain('Marathon of Good only allows quota voting');
+      const voteId = voteResponse.body.data.vote.id;
+
+      // Vote on the vote (comment) with wallet using testUserId2
+      (global as any).testUserId = testUserId2;
+      // Need to create wallet for testUserId2 in vision community if it doesn't exist
+      const existingWallet = await walletModel.findOne({
+        userId: testUserId2,
+        communityId: visionCommunityId,
+      });
+      if (!existingWallet) {
+        await walletModel.create({
+          id: uid(),
+          userId: testUserId2,
+          communityId: visionCommunityId,
+          balance: 100,
+          currency: {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          },
+          lastUpdated: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+
+      const response = await request(app.getHttpServer())
+        .post(`/api/v1/votes/${voteId}/votes`)
+        .send({
+          quotaAmount: 0,
+          walletAmount: 3,
+          comment: 'Reply vote',
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.vote.amountWallet).toBe(3);
+      expect(response.body.data.vote.amountQuota).toBe(0);
     });
   });
 
   describe('VoteService Direct Tests', () => {
-    it('should reject wallet voting via VoteService.createVote for non-special groups', async () => {
-      await expect(
-        voteService.createVote(
-          testUserId,
-          'publication',
-          regularPubId,
-          0, // quotaAmount
-          10, // walletAmount
-          'Test comment',
-          regularCommunityId
-        )
-      ).rejects.toThrow('Voting with permanent wallet merits is only allowed in special groups');
-    });
-
     it('should reject wallet voting via VoteService.createVote for Marathon of Good', async () => {
       await expect(
         voteService.createVote(
@@ -572,6 +554,36 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
           marathonCommunityId
         )
       ).rejects.toThrow('Marathon of Good only allows quota voting');
+    });
+
+    it('should allow quota voting via VoteService.createVote for Marathon of Good', async () => {
+      const vote = await voteService.createVote(
+        testUserId,
+        'publication',
+        marathonPubId,
+        5, // quotaAmount
+        0, // walletAmount
+        'Test comment',
+        marathonCommunityId
+      );
+
+      expect(vote).toBeDefined();
+      expect(vote.amountQuota).toBe(5);
+      expect(vote.amountWallet).toBe(0);
+    });
+
+    it('should reject quota voting via VoteService.createVote for Future Vision', async () => {
+      await expect(
+        voteService.createVote(
+          testUserId,
+          'publication',
+          visionPubId,
+          5, // quotaAmount
+          0, // walletAmount
+          'Test comment',
+          visionCommunityId
+        )
+      ).rejects.toThrow('Future Vision only allows wallet voting');
     });
 
     it('should allow wallet voting via VoteService.createVote for Future Vision', async () => {
@@ -588,22 +600,6 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
       expect(vote).toBeDefined();
       expect(vote.amountWallet).toBe(10);
       expect(vote.amountQuota).toBe(0);
-    });
-
-    it('should allow quota-only voting via VoteService.createVote for non-special groups', async () => {
-      const vote = await voteService.createVote(
-        testUserId,
-        'publication',
-        regularPubId,
-        5, // quotaAmount
-        0, // walletAmount
-        'Test comment',
-        regularCommunityId
-      );
-
-      expect(vote).toBeDefined();
-      expect(vote.amountQuota).toBe(5);
-      expect(vote.amountWallet).toBe(0);
     });
   });
 });

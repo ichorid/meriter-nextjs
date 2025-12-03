@@ -231,13 +231,14 @@ export class WalletsController {
     const dailyQuota = community.settings.dailyEmission;
 
     // Check if user is a viewer - viewers don't get daily quota
+    // Future Vision communities don't use quota - wallet voting only
     const userRole = await this.permissionService.getUserRoleInCommunity(
       actualUserId,
       communityId,
     );
     
-    if (userRole === 'viewer') {
-      // Viewers have no quota but can still vote with wallet balance
+    if (userRole === 'viewer' || community.typeTag === 'future-vision') {
+      // Viewers and Future Vision users have no quota but can still vote with wallet balance
       const tomorrow = new Date();
       tomorrow.setHours(0, 0, 0, 0);
       tomorrow.setDate(tomorrow.getDate() + 1);
