@@ -62,11 +62,13 @@ export const CommunitySettingsSchema = z.object({
 });
 
 // Community rules schemas (настраиваемые правила)
+// requiresTeamMembership: requires membership in a team-type community (typeTag: 'team')
+// onlyTeamLead: only allows leads (representatives) to post
 export const PostingRulesSchema = z.object({
   allowedRoles: z.array(
     z.enum(["superadmin", "lead", "participant", "viewer"])
   ),
-  requiresTeamMembership: z.boolean().optional(),
+  requiresTeamMembership: z.boolean().optional(), // Requires membership in a team-type community
   onlyTeamLead: z.boolean().optional(),
   autoMembership: z.boolean().optional(),
 });
@@ -132,18 +134,7 @@ export const InviteSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   usedAt: z.string().datetime().optional(),
   expiresAt: z.string().datetime().optional(),
   isUsed: z.boolean().default(false), // Инвайты одноразовые
-  teamId: z.string().optional(),
   communityId: z.string(),
-});
-
-// Team schema
-export const TeamSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
-  name: z.string().min(1),
-  leadId: z.string(), // ID лида (пользователь с role='lead' в сообществе команды)
-  participantIds: z.array(z.string()).default([]), // ID участников (пользователи с role='participant')
-  communityId: z.string(), // ID внутренней группы команды
-  school: z.string().optional(), // Опциональное поле, используется только в контексте образовательных команд
-  metadata: z.record(z.string(), z.any()).optional(), // Опциональный объект для дополнительных данных команды
 });
 
 // Main entity schemas
@@ -159,7 +150,6 @@ export const UserSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   profile: UserProfileSchema.default({ isVerified: false }),
   meritStats: z.record(z.string(), z.number().int().min(0)).optional(), // Статистика меритов по коммьюнити (только для lead)
   inviteCode: z.string().optional(), // Код, использованный при регистрации
-  teamId: z.string().optional(), // ID команды, к которой принадлежит пользователь
   communityTags: z.array(z.string()).default([]),
   communityMemberships: z.array(z.string()).default([]),
 });
@@ -642,7 +632,6 @@ export const FeedItemSchema = z.discriminatedUnion("type", [
 export type User = z.infer<typeof UserSchema>;
 export type UserCommunityRole = z.infer<typeof UserCommunityRoleSchema>;
 export type Invite = z.infer<typeof InviteSchema>;
-export type Team = z.infer<typeof TeamSchema>;
 export type Community = z.infer<typeof CommunitySchema>;
 export type Publication = z.infer<typeof PublicationSchema>;
 export type Comment = z.infer<typeof CommentSchema>;
