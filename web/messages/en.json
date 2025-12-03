@@ -514,33 +514,6 @@
             "create": "Create"
         }
     },
-    "teams": {
-        "title": "Team Management",
-        "teamNotFound": "Team not found",
-        "teamInformation": "Team Information",
-        "name": "Name",
-        "school": "School",
-        "communityId": "Community ID",
-        "participants": "Participants",
-        "createInvite": "Create Invite",
-        "noParticipants": "No participants yet",
-        "activeInvites": "Active Invites",
-        "noActiveInvites": "No active invites",
-        "inviteCode": "Invite Code",
-        "type": "Type",
-        "target": "Target",
-        "used": "Used",
-        "createInviteModal": {
-            "title": "Create Invite",
-            "userId": "User ID",
-            "userIdPlaceholder": "Enter user ID",
-            "inviteType": "Invite Type",
-            "leadToParticipant": "Lead to Participant",
-            "superadminToLead": "Superadmin to Lead",
-            "cancel": "Cancel",
-            "create": "Create"
-        }
-    },
     "communities": {
         "other": "Other",
         "create": {

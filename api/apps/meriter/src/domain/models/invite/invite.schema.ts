@@ -50,9 +50,6 @@ export class Invite {
   @Prop({ required: true, default: false, index: true })
   isUsed: boolean; // Инвайты одноразовые
 
-  @Prop()
-  teamId?: string; // ID команды (для инвайтов участников)
-
   @Prop({ required: true, index: true })
   communityId: string; // Сообщество, в котором будет назначена роль
 

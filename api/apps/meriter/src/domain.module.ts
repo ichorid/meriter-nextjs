@@ -32,7 +32,6 @@ import {
   UserCommunityRoleSchema,
 } from './domain/models/user-community-role/user-community-role.schema';
 import { Invite, InviteSchema } from './domain/models/invite/invite.schema';
-import { Team, TeamSchema } from './domain/models/team/team.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -51,7 +50,6 @@ import { UserSettingsService } from './domain/services/user-settings.service';
 import { CommentService } from './domain/services/comment.service';
 import { UserCommunityRoleService } from './domain/services/user-community-role.service';
 import { InviteService } from './domain/services/invite.service';
-import { TeamService } from './domain/services/team.service';
 import { PermissionService } from './domain/services/permission.service';
 import { MeritService } from './domain/services/merit.service';
 
@@ -74,7 +72,6 @@ import { EventBus } from './domain/events/event-bus';
       { name: Comment.name, schema: CommentSchema },
       { name: UserCommunityRole.name, schema: UserCommunityRoleSchema },
       { name: Invite.name, schema: InviteSchema },
-      { name: Team.name, schema: TeamSchema },
     ]),
   ],
   providers: [
@@ -95,7 +92,6 @@ import { EventBus } from './domain/events/event-bus';
     CommentService,
     UserCommunityRoleService,
     InviteService,
-    TeamService,
     PermissionService,
     MeritService,
 
@@ -120,7 +116,6 @@ import { EventBus } from './domain/events/event-bus';
     CommentService,
     UserCommunityRoleService,
     InviteService,
-    TeamService,
     PermissionService,
     MeritService,
 

@@ -21,7 +21,7 @@ import { UserService } from '../../domain/services/user.service';
 import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { PermissionService } from '../../domain/services/permission.service';
-import { TeamService } from '../../domain/services/team.service';
+import { UserCommunityRoleService } from '../../domain/services/user-community-role.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { ApiResponseHelper } from '../common/helpers/api-response.helper';
@@ -55,7 +55,7 @@ export class VotesController {
     private readonly userSettingsService: UserSettingsService,
     private readonly userUpdatesService: UserUpdatesService,
     private readonly permissionService: PermissionService,
-    private readonly teamService: TeamService,
+    private readonly userCommunityRoleService: UserCommunityRoleService,
     @InjectConnection() private readonly connection: Connection,
     @InjectModel(PublicationSchema.name)
     private readonly publicationModel: Model<PublicationDocument>,
@@ -193,8 +193,7 @@ export class VotesController {
     description: string,
   ): Promise<void> {
     // Check if this is a team community - if so, skip merit conversion (isolated meritonomy)
-    const team = await this.teamService.getTeamByCommunityId(communityId);
-    if (team !== null || community.typeTag === 'team') {
+    if (community.typeTag === 'team') {
       // Team community: credit only the team community wallet, no conversion
       const currency = community.settings?.currencyNames || {
         singular: 'merit',
@@ -540,14 +539,13 @@ export class VotesController {
       const community = await this.communityService.getCommunity(communityId);
       
       // Check if publication is in a team community
-      const team = await this.teamService.getTeamByCommunityId(communityId);
-      const isTeamCommunity = team !== null;
+      const isTeamCommunity = community?.typeTag === 'team';
 
       // Provide specific error messages
       if (isTeamCommunity) {
         // Team community specific errors
-        const isTeamMember = team && (team.leadId === req.user.id || team.participantIds.includes(req.user.id));
-        if (!isTeamMember) {
+        const userRoleInTeam = await this.permissionService.getUserRoleInCommunity(req.user.id, communityId);
+        if (!userRoleInTeam) {
           errorMessage = 'Only team members can vote in team communities';
         } else if (authorId === req.user.id) {
           errorMessage = 'You cannot vote for your own post';
@@ -559,11 +557,31 @@ export class VotesController {
         if (authorId === req.user.id) {
           errorMessage = 'You cannot vote for your own post';
         } else if (userRole === 'participant') {
-          const voter = await this.userService.getUserById(req.user.id);
-          const author = await this.userService.getUserById(authorId);
+          // Check if voter and author share a team community
+          const voterRoles = await this.userCommunityRoleService.getUserRoles(req.user.id);
+          const authorRoles = await this.userCommunityRoleService.getUserRoles(authorId);
           
-          // Check if same team
-          if (voter?.teamId && author?.teamId && voter.teamId === author.teamId && authorRole === 'lead') {
+          // Find common team-type communities
+          const voterTeamCommunities = new Set<string>();
+          const authorTeamCommunities = new Set<string>();
+          
+          for (const role of voterRoles || []) {
+            const comm = await this.communityService.getCommunity(role.communityId);
+            if (comm?.typeTag === 'team') {
+              voterTeamCommunities.add(role.communityId);
+            }
+          }
+          
+          for (const role of authorRoles || []) {
+            const comm = await this.communityService.getCommunity(role.communityId);
+            if (comm?.typeTag === 'team') {
+              authorTeamCommunities.add(role.communityId);
+            }
+          }
+          
+          const sharedTeamCommunities = [...voterTeamCommunities].filter(id => authorTeamCommunities.has(id));
+          
+          if (sharedTeamCommunities.length > 0 && authorRole === 'lead') {
             errorMessage = 'You cannot vote for leads from your own team';
           } else if (community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision') {
             if (authorRole === 'participant') {

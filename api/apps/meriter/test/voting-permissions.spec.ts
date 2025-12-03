@@ -4,7 +4,6 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { PermissionService } from '../src/domain/services/permission.service';
-import { TeamService } from '../src/domain/services/team.service';
 import { PublicationService } from '../src/domain/services/publication.service';
 import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
@@ -14,7 +13,6 @@ import { getConnectionToken } from '@nestjs/mongoose';
 import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { User, UserDocument } from '../src/domain/models/user/user.schema';
 import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
-import { Team, TeamDocument } from '../src/domain/models/team/team.schema';
 import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 
@@ -40,7 +38,6 @@ describe('Voting Permissions', () => {
   let connection: Connection;
   
   let permissionService: PermissionService;
-  let teamService: TeamService;
   let publicationService: PublicationService;
   let communityService: CommunityService;
   let userService: UserService;
@@ -49,7 +46,6 @@ describe('Voting Permissions', () => {
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
-  let teamModel: Model<TeamDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   // Test user IDs
@@ -67,10 +63,6 @@ describe('Voting Permissions', () => {
   let regularCommunityId: string;
   let team1CommunityId: string;
   let team2CommunityId: string;
-
-  // Test team IDs
-  let team1Id: string;
-  let team2Id: string;
 
   // Test publication IDs
   let marathonPubId: string;
@@ -96,7 +88,6 @@ describe('Voting Permissions', () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     permissionService = app.get<PermissionService>(PermissionService);
-    teamService = app.get<TeamService>(TeamService);
     publicationService = app.get<PublicationService>(PublicationService);
     communityService = app.get<CommunityService>(CommunityService);
     userService = app.get<UserService>(UserService);
@@ -107,7 +98,6 @@ describe('Voting Permissions', () => {
     communityModel = connection.model<CommunityDocument>(Community.name);
     userModel = connection.model<UserDocument>(User.name);
     publicationModel = connection.model<PublicationDocument>(Publication.name);
-    teamModel = connection.model<TeamDocument>(Team.name);
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRole.name);
 
     // Drop telegramChatId index if it exists (legacy index from old schema)
@@ -131,9 +121,6 @@ describe('Voting Permissions', () => {
     regularCommunityId = uid();
     team1CommunityId = uid();
     team2CommunityId = uid();
-
-    team1Id = uid();
-    team2Id = uid();
 
     marathonPubId = uid();
     visionPubId = uid();
@@ -205,7 +192,6 @@ describe('Voting Permissions', () => {
         authProvider: 'telegram',
         authId: `tg-${participant1Id}`,
         displayName: 'Participant 1',
-        teamId: team1Id,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -214,7 +200,6 @@ describe('Voting Permissions', () => {
         authProvider: 'telegram',
         authId: `tg-${participant2Id}`,
         displayName: 'Participant 2',
-        teamId: team2Id,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -223,7 +208,6 @@ describe('Voting Permissions', () => {
         authProvider: 'telegram',
         authId: `tg-${lead1Id}`,
         displayName: 'Lead 1',
-        teamId: team1Id,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -232,7 +216,6 @@ describe('Voting Permissions', () => {
         authProvider: 'telegram',
         authId: `tg-${lead2Id}`,
         displayName: 'Lead 2',
-        teamId: team2Id,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -322,28 +305,6 @@ describe('Voting Permissions', () => {
           spendsMerits: true,
           awardsMerits: true,
         },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ]);
-
-    // Create teams
-    await teamModel.create([
-      {
-        id: team1Id,
-        name: 'Team 1',
-        leadId: lead1Id,
-        participantIds: [participant1Id],
-        communityId: team1CommunityId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: team2Id,
-        name: 'Team 2',
-        leadId: lead2Id,
-        participantIds: [participant2Id],
-        communityId: team2CommunityId,
         createdAt: new Date(),
         updatedAt: new Date(),
       },

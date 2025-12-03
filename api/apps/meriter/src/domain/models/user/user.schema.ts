@@ -91,9 +91,6 @@ export class User {
   @Prop()
   inviteCode?: string;
 
-  @Prop()
-  teamId?: string;
-
   @Prop({ type: [String], default: [] })
   communityTags: string[];
 

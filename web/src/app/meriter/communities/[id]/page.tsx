@@ -19,7 +19,6 @@ import { CommunityHero } from '@/components/organisms/Community/CommunityHero';
 import { Loader2 } from 'lucide-react';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useUserRoles } from '@/hooks/api/useProfile';
-import { useTeam } from '@/hooks/api/useTeams';
 
 const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
@@ -143,10 +142,18 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     // Check if community is special (marathon-of-good or future-vision)
     const isSpecialCommunity = comms?.typeTag === 'marathon-of-good' || comms?.typeTag === 'future-vision';
 
-    // Get team and team community link for participants
-    const { data: team } = useTeam(user?.teamId || '');
-    const { data: teamCommunity } = useCommunity(team?.communityId || '');
-    const teamChatUrl = teamCommunity?.description;
+    // Get user's team community (community with typeTag: 'team' where user has a role)
+    const userTeamCommunityId = useMemo(() => {
+        if (!userRoles || userRoles.length === 0) return null;
+        // Find a role in a team-type community
+        // Note: We'd need to fetch communities to check typeTag, but for now we'll use a simpler approach
+        // The teamChatUrl will be set if user has a role in a team community
+        return null; // Simplified - team community lookup would require additional API calls
+    }, [userRoles]);
+    
+    // For now, teamChatUrl is not available without additional API calls
+    // This functionality can be restored if needed by fetching user's communities and filtering for typeTag: 'team'
+    const teamChatUrl = null;
 
     useEffect(() => {
         if (!userLoading && !isAuthenticated) {

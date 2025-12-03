@@ -1442,7 +1442,6 @@ export const notificationsApiV1 = {
 };
 
 // Import new APIs
-import { teamsApiV1 } from "./teams";
 import { invitesApiV1 } from "./invites";
 import { profileApiV1 } from "./profile";
 
@@ -1456,7 +1455,6 @@ export const apiV1 = {
     votes: votesApiV1,
     polls: pollsApiV1,
     wallet: walletApiV1,
-    teams: teamsApiV1,
     invites: invitesApiV1,
     profile: profileApiV1,
     search: searchApiV1,
@@ -1464,4 +1462,4 @@ export const apiV1 = {
 };
 
 // Export individual APIs for convenience
-export { teamsApiV1, invitesApiV1, profileApiV1 };
+export { invitesApiV1, profileApiV1 };

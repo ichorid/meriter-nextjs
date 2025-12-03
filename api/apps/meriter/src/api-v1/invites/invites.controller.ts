@@ -9,12 +9,12 @@ import {
   ForbiddenException,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { InviteService } from '../../domain/services/invite.service';
 import { UserCommunityRoleService } from '../../domain/services/user-community-role.service';
 import { PermissionService } from '../../domain/services/permission.service';
 import { CommunityService } from '../../domain/services/community.service';
-import { TeamService } from '../../domain/services/team.service';
 import { UserService } from '../../domain/services/user.service';
 import { WalletService } from '../../domain/services/wallet.service';
 import { User } from '../../decorators/user.decorator';
@@ -36,7 +36,6 @@ const CreateInviteDtoSchema = z.object({
   targetUserName: z.string().optional(),
   type: z.enum(['superadmin-to-lead', 'lead-to-participant']),
   communityId: z.string().min(1),
-  teamId: z.string().optional(),
   expiresAt: z.string().datetime().optional(),
 });
 
@@ -47,12 +46,13 @@ const UseInviteDtoSchema = z.object({
 @Controller('api/v1/invites')
 @UseGuards(UserGuard)
 export class InvitesController {
+  private readonly logger = new Logger(InvitesController.name);
+
   constructor(
     private inviteService: InviteService,
     private userCommunityRoleService: UserCommunityRoleService,
     private permissionService: PermissionService,
     private communityService: CommunityService,
-    private teamService: TeamService,
     private userService: UserService,
     private walletService: WalletService,
     @InjectModel(UserModel.name) private userModel: Model<UserDocument>,
@@ -95,7 +95,7 @@ export class InvitesController {
       dto.targetUserId,
       dto.type,
       dto.communityId,
-      dto.teamId,
+      undefined, // teamId no longer used
       dto.expiresAt ? new Date(dto.expiresAt) : undefined,
       dto.targetUserName,
     );
@@ -218,11 +218,11 @@ export class InvitesController {
         currency,
       );
 
-      // 4. Auto-create Team Group when user becomes Representative
+      // 4. Auto-create Team Community when user becomes Representative
       const userData = await this.userService.getUserById(user.id);
       const teamName = `Team ${userData?.displayName || userData?.username || user.id}`;
 
-      // Create team group community
+      // Create team community
       const teamCommunity = await this.communityService.createCommunity({
         name: teamName,
         description: `Team group for ${userData?.displayName || 'Representative'}`,
@@ -230,9 +230,14 @@ export class InvitesController {
         adminIds: [user.id],
       });
 
-      // Add user to team community
+      // Add user to team community and assign lead role
       await this.communityService.addMember(teamCommunity.id, user.id);
       await this.userService.addCommunityMembership(user.id, teamCommunity.id);
+      await this.userCommunityRoleService.setRole(
+        user.id,
+        teamCommunity.id,
+        'lead',
+      );
 
       // Create wallet for user in team community
       const teamCurrency = teamCommunity.settings?.currencyNames || {
@@ -246,24 +251,59 @@ export class InvitesController {
         teamCurrency,
       );
 
-      // Create team record
-      const team = await this.teamService.createTeam(
-        teamName,
-        user.id,
-        teamCommunity.id,
-        userData?.profile?.educationalInstitution,
-      );
+      // 5. Add user as lead to marathon-of-good and future-vision communities
+      const specialCommunities = ['marathon-of-good', 'future-vision'];
+      for (const typeTag of specialCommunities) {
+        try {
+          const specialCommunity = await this.communityService.getCommunityByTypeTag(typeTag);
+          if (specialCommunity) {
+            // Set user as lead (with skipSync: true to prevent double-syncing since we handle both manually)
+            await this.userCommunityRoleService.setRole(
+              user.id,
+              specialCommunity.id,
+              'lead',
+              true, // skipSync to prevent recursion
+            );
 
-      // Update user with teamId
-      await this.userModel.updateOne(
-        { id: user.id },
-        { $set: { teamId: team.id, updatedAt: new Date() } },
-      );
+            // Add user to community (members list and memberships)
+            await this.communityService.addMember(specialCommunity.id, user.id);
+            await this.userService.addCommunityMembership(
+              user.id,
+              specialCommunity.id,
+            );
+
+            // Create wallet for user in special community
+            const specialCurrency = specialCommunity.settings?.currencyNames || {
+              singular: 'merit',
+              plural: 'merits',
+              genitive: 'merits',
+            };
+            await this.walletService.createOrGetWallet(
+              user.id,
+              specialCommunity.id,
+              specialCurrency,
+            );
+
+            this.logger.log(
+              `Added user ${user.id} as lead to ${typeTag} community ${specialCommunity.id}`,
+            );
+          } else {
+            this.logger.warn(
+              `${typeTag} community not found. User will be added to other communities but not to ${typeTag}.`,
+            );
+          }
+        } catch (error) {
+          // Log error but don't fail the invite process
+          this.logger.error(
+            `Failed to add user ${user.id} to ${typeTag} community: ${error.message}`,
+            error.stack,
+          );
+        }
+      }
 
       return ApiResponseHelper.successResponse({
         invite,
         teamGroupId: teamCommunity.id,
-        teamId: team.id,
         message: 'Invite used successfully. Team group created.',
       });
     } else if (invite.type === 'lead-to-participant') {
@@ -293,12 +333,53 @@ export class InvitesController {
         currency,
       );
 
-      // 4. Add user to team if teamId is provided
-      if (invite.teamId) {
-        const team = await this.teamService.getTeamById(invite.teamId);
-        if (team) {
-          await this.teamService.addParticipant(invite.teamId, user.id);
+      // 4. Add user to lead's team community if it exists
+      // Find team communities where the invite creator is a lead
+      const creatorTeamCommunities = await this.userCommunityRoleService.getCommunitiesByRole(
+        invite.createdBy,
+        'lead',
+      );
+      
+      // Filter to only team-type communities
+      let teamCommunityId: string | undefined;
+      for (const commId of creatorTeamCommunities) {
+        const comm = await this.communityService.getCommunity(commId);
+        if (comm?.typeTag === 'team') {
+          teamCommunityId = commId;
+          break; // Use first team community found
         }
+      }
+
+      // Add user to team community if found
+      if (teamCommunityId) {
+        await this.communityService.addMember(teamCommunityId, user.id);
+        await this.userService.addCommunityMembership(user.id, teamCommunityId);
+        await this.userCommunityRoleService.setRole(
+          user.id,
+          teamCommunityId,
+          'participant',
+        );
+        
+        // Create wallet for user in team community
+        const teamComm = await this.communityService.getCommunity(teamCommunityId);
+        if (teamComm) {
+          const teamCurrency = teamComm.settings?.currencyNames || {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          };
+          await this.walletService.createOrGetWallet(
+            user.id,
+            teamCommunityId,
+            teamCurrency,
+          );
+        }
+        
+        this.logger.log(`Added user ${user.id} to team community ${teamCommunityId}`);
+      } else {
+        this.logger.warn(
+          `No team community found for invite creator ${invite.createdBy}. User will be added to community but not to a team community.`,
+        );
       }
 
       return ApiResponseHelper.successResponse({

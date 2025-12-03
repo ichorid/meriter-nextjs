@@ -4,7 +4,6 @@ import { CommunityService } from './community.service';
 import { PublicationService } from './publication.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { CommentService } from './comment.service';
-import { TeamService } from './team.service';
 
 /**
  * PermissionService
@@ -20,7 +19,6 @@ export class PermissionService {
     private publicationService: PublicationService,
     private commentService: CommentService,
     private userCommunityRoleService: UserCommunityRoleService,
-    private teamService: TeamService,
   ) { }
 
   /**
@@ -87,11 +85,12 @@ export class PermissionService {
       return false;
     }
 
-    const user = await this.userService.getUserById(userId);
-    if (!user) return false;
-
     // Additional checks from configuration
-    if (rules.requiresTeamMembership && !user.teamId) return false;
+    if (rules.requiresTeamMembership) {
+      // Check if user has a role in any team-type community
+      const hasTeamMembership = await this.userHasTeamMembership(userId);
+      if (!hasTeamMembership) return false;
+    }
     if (rules.onlyTeamLead && userRole !== 'lead') return false;
 
     return true;
@@ -128,11 +127,12 @@ export class PermissionService {
       return false;
     }
 
-    const user = await this.userService.getUserById(userId);
-    if (!user) return false;
-
     // Additional checks from configuration
-    if (rules.requiresTeamMembership && !user.teamId) return false;
+    if (rules.requiresTeamMembership) {
+      // Check if user has a role in any team-type community
+      const hasTeamMembership = await this.userHasTeamMembership(userId);
+      if (!hasTeamMembership) return false;
+    }
     if (rules.onlyTeamLead && userRole !== 'lead') return false;
 
     return true;
@@ -146,18 +146,35 @@ export class PermissionService {
     if (!publication) return false;
     
     const communityId = publication.getCommunityId.getValue();
-    const team = await this.teamService.getTeamByCommunityId(communityId);
-    return team !== null;
+    const community = await this.communityService.getCommunity(communityId);
+    return community?.typeTag === 'team';
   }
 
   /**
-   * Check if user is a team member of the team that owns the community
+   * Check if user is a team member of the team community
    */
   private async isUserTeamMember(userId: string, teamCommunityId: string): Promise<boolean> {
-    const team = await this.teamService.getTeamByCommunityId(teamCommunityId);
-    if (!team) return false;
-    
-    return team.leadId === userId || team.participantIds.includes(userId);
+    const userRole = await this.getUserRoleInCommunity(userId, teamCommunityId);
+    // User is a team member if they have any role in the team community
+    return userRole !== null;
+  }
+
+  /**
+   * Check if user has membership in any team-type community
+   */
+  private async userHasTeamMembership(userId: string): Promise<boolean> {
+    // Get all team-type communities where user has a role
+    const userRoles = await this.userCommunityRoleService.getUserRoles(userId);
+    if (!userRoles || userRoles.length === 0) return false;
+
+    // Check if any of the communities are team-type
+    for (const role of userRoles) {
+      const community = await this.communityService.getCommunity(role.communityId);
+      if (community?.typeTag === 'team') {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -233,11 +250,32 @@ export class PermissionService {
 
     // For participants: Check team-based restrictions
     if (userRole === 'participant') {
-      const voter = await this.userService.getUserById(userId);
-      const author = await this.userService.getUserById(authorId);
+      // Check if voter and author are in the same team-type community
+      const voterRoles = await this.userCommunityRoleService.getUserRoles(userId);
+      const authorRoles = await this.userCommunityRoleService.getUserRoles(authorId);
       
-      // Cannot vote for leads from same team
-      if (voter?.teamId && author?.teamId && voter.teamId === author.teamId) {
+      // Find common team-type communities
+      const voterTeamCommunities = new Set<string>();
+      const authorTeamCommunities = new Set<string>();
+      
+      for (const role of voterRoles || []) {
+        const comm = await this.communityService.getCommunity(role.communityId);
+        if (comm?.typeTag === 'team') {
+          voterTeamCommunities.add(role.communityId);
+        }
+      }
+      
+      for (const role of authorRoles || []) {
+        const comm = await this.communityService.getCommunity(role.communityId);
+        if (comm?.typeTag === 'team') {
+          authorTeamCommunities.add(role.communityId);
+        }
+      }
+      
+      // Check if they share a team community
+      const sharedTeamCommunities = [...voterTeamCommunities].filter(id => authorTeamCommunities.has(id));
+      
+      if (sharedTeamCommunities.length > 0) {
         const authorRole = await this.getUserRoleInCommunity(
           authorId,
           communityId,
@@ -330,11 +368,8 @@ export class PermissionService {
 
     // Check team-only access
     if (rules.teamOnly) {
-      const user = await this.userService.getUserById(userId);
-      if (!user?.teamId) return false;
-
-      // Additional team membership check can be added here
-      // For now, just check if user has teamId
+      const hasTeamMembership = await this.userHasTeamMembership(userId);
+      if (!hasTeamMembership) return false;
     }
 
     return true;

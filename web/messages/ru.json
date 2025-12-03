@@ -511,33 +511,6 @@
             "create": "Создать"
         }
     },
-    "teams": {
-        "title": "Управление командой",
-        "teamNotFound": "Команда не найдена",
-        "teamInformation": "Информация о команде",
-        "name": "Название",
-        "school": "Школа",
-        "communityId": "ID сообщества",
-        "participants": "Участники",
-        "createInvite": "Создать приглашение",
-        "noParticipants": "Пока нет участников",
-        "activeInvites": "Активные приглашения",
-        "noActiveInvites": "Нет активных приглашений",
-        "inviteCode": "Код приглашения",
-        "type": "Тип",
-        "target": "Целевой пользователь",
-        "used": "Использовано",
-        "createInviteModal": {
-            "title": "Создать приглашение",
-            "userId": "ID пользователя",
-            "userIdPlaceholder": "Введите ID пользователя",
-            "inviteType": "Тип приглашения",
-            "leadToParticipant": "От лида к участнику",
-            "superadminToLead": "От суперадмина к лиду",
-            "cancel": "Отмена",
-            "create": "Создать"
-        }
-    },
     "communities": {
         "other": "Другое",
         "create": {

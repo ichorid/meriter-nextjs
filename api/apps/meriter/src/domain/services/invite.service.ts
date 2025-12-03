@@ -11,7 +11,7 @@ import { uid } from 'uid';
 /**
  * InviteService
  *
- * Service for managing invites to communities and teams.
+ * Service for managing invites to communities.
  * Invites are one-time use and tied to a specific user.
  */
 @Injectable()
@@ -29,7 +29,7 @@ export class InviteService {
     targetUserId: string | undefined,
     type: 'superadmin-to-lead' | 'lead-to-participant',
     communityId: string,
-    teamId?: string,
+    teamId?: string, // Deprecated: no longer used, kept for backward compatibility
     expiresAt?: Date,
     targetUserName?: string,
   ): Promise<Invite> {
@@ -44,7 +44,7 @@ export class InviteService {
       targetUserId,
       targetUserName,
       communityId,
-      teamId,
+      // teamId is deprecated and ignored
       expiresAt,
       isUsed: false,
       createdAt: new Date(),
