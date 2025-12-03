@@ -20,10 +20,9 @@ export class VoteTransactionCalculatorService {
     const voteAmountWallet = vote.amountWallet || 0;
     const voteAmount = voteAmountQuota + voteAmountWallet;
     
-    // If quotaAmount > 0, it's an upvote (quota can only be used for upvotes)
-    // If quotaAmount === 0, it could be a downvote (downvotes can only use wallet)
-    const isUpvote = voteAmountQuota > 0;
-    const isDownvote = voteAmountQuota === 0 && voteAmountWallet > 0;
+    // Use stored direction field instead of inferring from amounts
+    const isUpvote = vote.direction === 'up';
+    const isDownvote = vote.direction === 'down';
 
     return {
       amountTotal: voteAmount,

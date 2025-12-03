@@ -550,6 +550,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
           marathonPubId,
           0, // quotaAmount
           10, // walletAmount
+          'up', // direction
           'Test comment',
           marathonCommunityId
         )
@@ -563,6 +564,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         marathonPubId,
         5, // quotaAmount
         0, // walletAmount
+        'up', // direction
         'Test comment',
         marathonCommunityId
       );
@@ -570,6 +572,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       expect(vote).toBeDefined();
       expect(vote.amountQuota).toBe(5);
       expect(vote.amountWallet).toBe(0);
+      expect(vote.direction).toBe('up');
     });
 
     it('should reject quota voting via VoteService.createVote for Future Vision', async () => {
@@ -580,6 +583,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
           visionPubId,
           5, // quotaAmount
           0, // walletAmount
+          'up', // direction
           'Test comment',
           visionCommunityId
         )
@@ -593,6 +597,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         visionPubId,
         0, // quotaAmount
         10, // walletAmount
+        'up', // direction
         'Test comment',
         visionCommunityId
       );
@@ -600,6 +605,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       expect(vote).toBeDefined();
       expect(vote.amountWallet).toBe(10);
       expect(vote.amountQuota).toBe(0);
+      expect(vote.direction).toBe('up');
     });
   });
 
@@ -694,6 +700,153 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         response.body.message.includes('Viewers can only vote using daily quota') ||
         response.body.message.includes('Marathon of Good only allows quota voting')
       ).toBe(true);
+    });
+  });
+
+  describe('Future Vision Vote Direction Bug Fix', () => {
+    it('should store wallet-only votes as upvotes in Future Vision (not downvotes)', async () => {
+      (global as any).testUserId = testUserId;
+      
+      // Create a publication in Future Vision
+      const pubId = uid();
+      await publicationModel.create({
+        id: pubId,
+        communityId: visionCommunityId,
+        authorId: testUserId2,
+        content: 'Future Vision publication for direction test',
+        type: 'text',
+        hashtags: ['vision'],
+        postType: 'basic',
+        isProject: false,
+        metrics: {
+          upvotes: 0,
+          downvotes: 0,
+          score: 0,
+          commentCount: 0,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Vote with wallet-only (should be an upvote, not downvote)
+      const response = await request(app.getHttpServer())
+        .post(`/api/v1/publications/${pubId}/votes`)
+        .send({
+          quotaAmount: 0,
+          walletAmount: 10,
+          comment: 'Wallet-only upvote in Future Vision',
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      const vote = response.body.data.vote;
+      expect(vote.amountWallet).toBe(10);
+      expect(vote.amountQuota).toBe(0);
+      // The key fix: direction should be 'up', not 'down'
+      expect(vote.direction).toBe('up');
+
+      // Verify publication metrics were updated correctly (upvote increases score)
+      const publication = await publicationModel.findOne({ id: pubId }).lean();
+      expect(publication.metrics.upvotes).toBe(1);
+      expect(publication.metrics.downvotes).toBe(0);
+      expect(publication.metrics.score).toBe(10); // Score should increase, not decrease
+    });
+
+    it('should correctly count wallet-only votes as upvotes when fetching comment metrics', async () => {
+      (global as any).testUserId = testUserId;
+      
+      // Create a publication
+      const pubId = uid();
+      await publicationModel.create({
+        id: pubId,
+        communityId: visionCommunityId,
+        authorId: testUserId2,
+        content: 'Future Vision publication for comment metrics test',
+        type: 'text',
+        hashtags: ['vision'],
+        postType: 'basic',
+        isProject: false,
+        metrics: {
+          upvotes: 0,
+          downvotes: 0,
+          score: 0,
+          commentCount: 0,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Create a vote (comment) with wallet-only
+      const voteResponse = await request(app.getHttpServer())
+        .post(`/api/v1/publications/${pubId}/votes`)
+        .send({
+          quotaAmount: 0,
+          walletAmount: 5,
+          comment: 'Wallet-only vote comment',
+        })
+        .expect(201);
+
+      const voteId = voteResponse.body.data.vote.id;
+      expect(voteResponse.body.data.vote.direction).toBe('up');
+
+      // Fetch the comment and verify metrics
+      const commentResponse = await request(app.getHttpServer())
+        .get(`/api/v1/comments/${voteId}`)
+        .expect(200);
+
+      const comment = commentResponse.body.data;
+      // Metrics should show this as an upvote, not downvote
+      expect(comment.metrics.upvotes).toBeGreaterThanOrEqual(0);
+      expect(comment.metrics.downvotes).toBe(0);
+      // The vote should be counted as positive in the sum
+      expect(comment.sum).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should allow actual downvotes in Future Vision (wallet-only with negative amount)', async () => {
+      (global as any).testUserId = testUserId;
+      
+      const pubId = uid();
+      await publicationModel.create({
+        id: pubId,
+        communityId: visionCommunityId,
+        authorId: testUserId2,
+        content: 'Future Vision publication for downvote test',
+        type: 'text',
+        hashtags: ['vision'],
+        postType: 'basic',
+        isProject: false,
+        metrics: {
+          upvotes: 0,
+          downvotes: 0,
+          score: 0,
+          commentCount: 0,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Create a downvote using negative amount (wallet-only)
+      const response = await request(app.getHttpServer())
+        .post(`/api/v1/publications/${pubId}/votes`)
+        .send({
+          quotaAmount: 0,
+          walletAmount: 5,
+          amount: -5, // Negative amount indicates downvote
+          comment: 'Downvote in Future Vision',
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      const vote = response.body.data.vote;
+      expect(vote.amountWallet).toBe(5);
+      expect(vote.amountQuota).toBe(0);
+      expect(vote.direction).toBe('down');
+
+      // Verify publication metrics were updated correctly (downvote decreases score)
+      const publication = await publicationModel.findOne({ id: pubId }).lean();
+      expect(publication.metrics.upvotes).toBe(0);
+      expect(publication.metrics.downvotes).toBe(1);
+      expect(publication.metrics.score).toBe(-5); // Score should decrease
     });
   });
 });

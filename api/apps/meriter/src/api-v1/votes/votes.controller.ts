@@ -132,23 +132,24 @@ export class VotesController {
     targetId: string,
     quotaAmount: number,
     walletAmount: number,
-    isDownvote: boolean,
+    direction: 'up' | 'down',
     communityId: string,
     community: any,
     comment: string,
   ): Promise<any> {
     // Validate that quota is not used for downvotes
-    if (isDownvote && quotaAmount > 0) {
+    if (direction === 'down' && quotaAmount > 0) {
       throw new BadRequestException('Quota cannot be used for downvotes');
     }
 
-    // Create single vote with both amounts
+    // Create single vote with both amounts and explicit direction
     const vote = await this.voteService.createVote(
       userId,
       targetType,
       targetId,
       quotaAmount,
       walletAmount,
+      direction,
       comment,
       communityId,
     );
@@ -312,8 +313,8 @@ export class VotesController {
 
   /**
    * Validate and process quotaAmount and walletAmount
-   * Returns { quotaAmount, walletAmount, totalAmount, isDownvote }
-   * Note: Downvotes are determined by having quotaAmount === 0 and walletAmount > 0
+   * Returns { quotaAmount, walletAmount, totalAmount, direction }
+   * Direction is determined explicitly from user intent (signed amount) or inferred from amounts
    */
   private async validateAndProcessVoteAmounts(
     userId: string,
@@ -325,15 +326,36 @@ export class VotesController {
     quotaAmount: number;
     walletAmount: number;
     totalAmount: number;
-    isDownvote: boolean;
+    direction: 'up' | 'down';
   }> {
     const quotaAmount = createDto.quotaAmount ?? 0;
     const walletAmount = createDto.walletAmount ?? 0;
     const totalAmount = quotaAmount + walletAmount;
 
-    // Downvotes are indicated by quotaAmount === 0 and walletAmount > 0
-    // This is inferred from the fact that quota cannot be used for downvotes
-    const isDownvote = quotaAmount === 0 && walletAmount > 0;
+    // Determine vote direction explicitly
+    // 1. Check if there's a signed amount field (negative = downvote, positive = upvote)
+    // 2. Otherwise infer from amounts, but account for Future Vision groups
+    let direction: 'up' | 'down' = 'up';
+    
+    if (createDto.amount !== undefined && createDto.amount !== null) {
+      // Use signed amount if provided (negative = downvote)
+      direction = createDto.amount < 0 ? 'down' : 'up';
+    } else {
+      // Infer direction from amounts
+      // For Future Vision groups: wallet-only votes are upvotes (quota is blocked)
+      const isFutureVision = community?.typeTag === 'future-vision';
+      
+      if (isFutureVision) {
+        // In Future Vision, all votes are wallet-only, so they're upvotes by default
+        // Downvotes would still be wallet-only, but we need to distinguish them
+        // For now, assume wallet-only votes in Future Vision are upvotes
+        // (Downvotes would need explicit indication via signed amount)
+        direction = 'up';
+      } else {
+        // For other groups: quotaAmount > 0 means upvote, wallet-only means downvote
+        direction = quotaAmount > 0 ? 'up' : 'down';
+      }
+    }
 
     // Validation: reject double-zero votes
     if (quotaAmount === 0 && walletAmount === 0) {
@@ -369,10 +391,8 @@ export class VotesController {
       }
     }
 
-    // Validation: reject quota for downvotes (only check if explicitly downvote)
-    // Note: We determine downvote by quotaAmount === 0, so this check is redundant
-    // but kept for clarity
-    if (isDownvote && quotaAmount > 0) {
+    // Validation: reject quota for downvotes
+    if (direction === 'down' && quotaAmount > 0) {
       throw new BadRequestException(
         'Quota cannot be used for downvotes (negative votes)',
       );
@@ -402,7 +422,7 @@ export class VotesController {
       );
     }
 
-    return { quotaAmount, walletAmount, totalAmount, isDownvote };
+    return { quotaAmount, walletAmount, totalAmount, direction };
   }
 
   /**
@@ -460,7 +480,7 @@ export class VotesController {
     }
 
     // Validate and process vote amounts (quotaAmount + walletAmount)
-    const { quotaAmount, walletAmount, totalAmount, isDownvote } =
+    const { quotaAmount, walletAmount, totalAmount, direction } =
       await this.validateAndProcessVoteAmounts(
         req.user.id,
         communityId,
@@ -469,8 +489,6 @@ export class VotesController {
         targetType,
       );
 
-    // Determine vote direction
-    const direction: 'up' | 'down' = isDownvote ? 'down' : 'up';
     const absoluteAmount = Math.abs(totalAmount);
 
     // Create votes atomically: quota vote first, then wallet vote if needed
@@ -480,7 +498,7 @@ export class VotesController {
       targetId,
       quotaAmount,
       walletAmount,
-      isDownvote,
+      direction,
       communityId,
       community,
       comment,
@@ -718,8 +736,11 @@ export class VotesController {
         );
       } else if (sortField === 'score') {
         // Calculate score as sum of quota and wallet amounts
-        const scoreA = (a.amountQuota || 0) + (a.amountWallet || 0);
-        const scoreB = (b.amountQuota || 0) + (b.amountWallet || 0);
+        // Calculate score using stored direction field
+        const amountA = (a.amountQuota || 0) + (a.amountWallet || 0);
+        const amountB = (b.amountQuota || 0) + (b.amountWallet || 0);
+        const scoreA = a.direction === 'up' ? amountA : -amountA;
+        const scoreB = b.direction === 'up' ? amountB : -amountB;
         return (scoreA - scoreB) * sortOrder;
       }
       return 0;

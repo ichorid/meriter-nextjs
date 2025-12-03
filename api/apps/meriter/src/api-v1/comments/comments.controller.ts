@@ -96,21 +96,16 @@ export class CommentsController {
       );
     }
 
-    // Calculate comment metrics from votes
-    // Upvotes: quotaAmount > 0 (quota can only be used for upvotes)
-    // Downvotes: quotaAmount === 0 and amountWallet > 0 (downvotes can only use wallet)
-    const upvotes = commentVotes.filter((v) => (v.amountQuota || 0) > 0).length;
-    const downvotes = commentVotes.filter(
-      (v) => (v.amountQuota || 0) === 0 && (v.amountWallet || 0) > 0,
-    ).length;
+    // Calculate comment metrics from votes using stored direction field
+    const upvotes = commentVotes.filter((v) => v.direction === 'up').length;
+    const downvotes = commentVotes.filter((v) => v.direction === 'down').length;
     // Score: sum of upvote amounts minus sum of downvote amounts
     const score = commentVotes.reduce((sum, v) => {
       const quota = v.amountQuota || 0;
       const wallet = v.amountWallet || 0;
       const total = quota + wallet;
-      // If quota > 0, it's an upvote (add to score)
-      // If quota === 0, it's a downvote (subtract from score)
-      return sum + (quota > 0 ? total : -total);
+      // Use stored direction field to determine if vote is upvote or downvote
+      return sum + (v.direction === 'up' ? total : -total);
     }, 0);
 
     // Aggregated totals (avoid loading extra docs unnecessarily)
@@ -427,8 +422,11 @@ export class CommentsController {
         return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
       } else if (sortField === 'score') {
         // Calculate score as sum of quota and wallet amounts
-        const scoreA = (a.amountQuota || 0) + (a.amountWallet || 0);
-        const scoreB = (b.amountQuota || 0) + (b.amountWallet || 0);
+        // Calculate score using stored direction field
+        const amountA = (a.amountQuota || 0) + (a.amountWallet || 0);
+        const amountB = (b.amountQuota || 0) + (b.amountWallet || 0);
+        const scoreA = a.direction === 'up' ? amountA : -amountA;
+        const scoreB = b.direction === 'up' ? amountB : -amountB;
         return sortOrder === 'asc' ? scoreA - scoreB : scoreB - scoreA;
       }
       return 0;
@@ -463,12 +461,11 @@ export class CommentsController {
         const quota = r.amountQuota || 0;
         const wallet = r.amountWallet || 0;
         const total = quota + wallet;
-        return sum + (quota > 0 ? total : -total);
+        // Use stored direction field to determine if vote is upvote or downvote
+        return sum + (r.direction === 'up' ? total : -total);
       }, 0);
-      const upvotes = replies.filter((r) => (r.amountQuota || 0) > 0).length;
-      const downvotes = replies.filter(
-        (r) => (r.amountQuota || 0) === 0 && (r.amountWallet || 0) > 0,
-      ).length;
+      const upvotes = replies.filter((r) => r.direction === 'up').length;
+      const downvotes = replies.filter((r) => r.direction === 'down').length;
 
       return {
         ...baseComment,

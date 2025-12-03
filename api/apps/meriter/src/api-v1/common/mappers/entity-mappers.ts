@@ -168,8 +168,9 @@ export class EntityMappers {
       const voteAmountQuota = comment.amountQuota || 0;
       const voteAmountWallet = comment.amountWallet || 0;
       const voteAmount = voteAmountQuota + voteAmountWallet;
-      const isUpvote = voteAmountQuota > 0;
-      const isDownvote = voteAmountQuota === 0 && voteAmountWallet > 0;
+      // Use stored direction field instead of inferring from amounts
+      const isUpvote = comment.direction === 'up';
+      const isDownvote = comment.direction === 'down';
 
       return {
         ...baseComment,

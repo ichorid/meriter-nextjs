@@ -80,10 +80,11 @@ export class VoteService {
     targetId: string,
     amountQuota: number,
     amountWallet: number,
+    direction: 'up' | 'down',
     comment: string,
     communityId: string
   ): Promise<Vote> {
-    this.logger.log(`Creating vote: user=${userId}, target=${targetType}:${targetId}, amountQuota=${amountQuota}, amountWallet=${amountWallet}, communityId=${communityId}, comment=${comment.substring(0, 50)}...`);
+    this.logger.log(`Creating vote: user=${userId}, target=${targetType}:${targetId}, amountQuota=${amountQuota}, amountWallet=${amountWallet}, direction=${direction}, communityId=${communityId}, comment=${comment.substring(0, 50)}...`);
 
     // Validate that user can vote (mutual exclusivity check)
     const canVote = await this.canUserVote(userId, targetType, targetId);
@@ -204,7 +205,7 @@ export class VoteService {
     // Allow multiple votes on the same content - remove the duplicate check
     // Users can vote multiple times on the same publication/vote
 
-    // Create vote
+    // Create vote with explicit direction
     const voteArray = await this.voteModel.create([{
       id: uid(),
       targetType,
@@ -212,6 +213,7 @@ export class VoteService {
       userId,
       amountQuota,
       amountWallet,
+      direction,
       communityId,
       comment: comment.trim(),
       createdAt: new Date(),

@@ -245,6 +245,7 @@ export const VoteSchema = PolymorphicReferenceSchema.extend({
   userId: z.string(),
   amountQuota: z.number().int().min(0).default(0),
   amountWallet: z.number().int().min(0).default(0),
+  direction: z.enum(["up", "down"]), // Explicit vote direction: upvote or downvote
   communityId: z.string(),
   comment: z.string().max(5000), // Required comment text attached to vote
   createdAt: z.string().datetime(),
