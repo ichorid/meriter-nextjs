@@ -67,22 +67,46 @@ export class WalletsController {
       throw new NotFoundError('User', userId);
     }
 
-    const userCommunityIds = user.communityMemberships || [];
-    this.logger.log(
-      `User ${actualUserId} is member of ${userCommunityIds.length} communities`,
-    );
+    // Check if user is superadmin
+    const isSuperadmin = user.globalRole === 'superadmin';
 
-    // Get only active communities where user is a member
-    const userCommunities = await this.communityModel
-      .find({
-        id: { $in: userCommunityIds },
-        isActive: true,
-      })
-      .lean();
+    let userCommunities: any[];
 
-    this.logger.log(
-      `Found ${userCommunities.length} active communities for user ${actualUserId}`,
-    );
+    if (isSuperadmin) {
+      // Superadmin sees all active communities
+      this.logger.log(
+        `User ${actualUserId} is superadmin - fetching all active communities`,
+      );
+      const allCommunities = await this.communityService.getAllCommunities(
+        1000,
+        0,
+      );
+      // Filter to only active communities
+      userCommunities = allCommunities.filter(
+        (community) => community.isActive === true,
+      );
+      this.logger.log(
+        `Found ${userCommunities.length} active communities for superadmin ${actualUserId}`,
+      );
+    } else {
+      // Regular users only see communities they're members of
+      const userCommunityIds = user.communityMemberships || [];
+      this.logger.log(
+        `User ${actualUserId} is member of ${userCommunityIds.length} communities`,
+      );
+
+      // Get only active communities where user is a member
+      userCommunities = await this.communityModel
+        .find({
+          id: { $in: userCommunityIds },
+          isActive: true,
+        })
+        .lean();
+
+      this.logger.log(
+        `Found ${userCommunities.length} active communities for user ${actualUserId}`,
+      );
+    }
 
     // Create wallets for communities where user doesn't have one yet
     const walletPromises = userCommunities.map(async (community) => {

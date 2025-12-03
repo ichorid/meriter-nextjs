@@ -213,7 +213,7 @@ describe('Invites - Superadmin-to-Lead', () => {
       // Create superadmin-to-lead invite
       const invite = await inviteService.createInvite(
         superadminId,
-        newLeadId,
+        undefined,
         'superadmin-to-lead',
         targetCommunityId,
       );
@@ -341,7 +341,7 @@ describe('Invites - Superadmin-to-Lead', () => {
 
       const invite = await inviteService.createInvite(
         superadminId,
-        newLeadId,
+        undefined,
         'superadmin-to-lead',
         targetCommunityId,
       );
@@ -403,7 +403,7 @@ describe('Invites - Superadmin-to-Lead', () => {
 
       const invite = await inviteService.createInvite(
         superadminId,
-        newLeadId,
+        undefined,
         'superadmin-to-lead',
         targetCommunityId,
       );
@@ -444,7 +444,7 @@ describe('Invites - Superadmin-to-Lead', () => {
 
       const invite = await inviteService.createInvite(
         superadminId,
-        newLeadId,
+        undefined,
         'superadmin-to-lead',
         targetCommunityId,
       );

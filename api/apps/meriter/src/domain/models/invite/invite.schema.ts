@@ -5,7 +5,7 @@ import { Document } from 'mongoose';
  * Invite Mongoose Schema
  *
  * System for inviting users to communities and teams.
- * Invites are one-time use and tied to a specific user.
+ * Invites are one-time use and can be used by any authenticated user.
  *
  * Types:
  * - 'superadmin-to-lead' - Superadmin invites a lead (in translations: "superadmin-to-representative")
@@ -33,13 +33,13 @@ export class Invite {
   createdBy: string; // ID создателя (суперадмин или лид)
 
   @Prop({ index: true })
-  targetUserId?: string; // ID конкретного пользователя, для которого создан инвайт (опционально, если указан targetUserName)
+  targetUserId?: string; // Optional informational field - not enforced, invites work for anyone
 
   @Prop()
-  targetUserName?: string; // Имя нового пользователя (опционально, если указан targetUserId)
+  targetUserName?: string; // Optional informational field - not enforced, invites work for anyone
 
   @Prop({ index: true })
-  usedBy?: string; // ID пользователя, использовавшего код (должен совпадать с targetUserId)
+  usedBy?: string; // ID пользователя, использовавшего код
 
   @Prop()
   usedAt?: Date;

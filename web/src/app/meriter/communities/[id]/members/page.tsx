@@ -33,15 +33,10 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
     const createInvite = useCreateInvite();
 
     const [showInviteModal, setShowInviteModal] = useState(false);
-    const [inviteTargetUserId, setInviteTargetUserId] = useState('');
-    const [inviteTargetUserName, setInviteTargetUserName] = useState('');
-    const [useUserName, setUseUserName] = useState(true);
     const [inviteExpiresInDays, setInviteExpiresInDays] = useState<number | ''>(30);
     const [inviteRole, setInviteRole] = useState<'lead' | 'participant'>('lead'); // Role selection for superadmin
     const [generatedInvite, setGeneratedInvite] = useState<{ 
-        code: string; 
-        targetUserId?: string; 
-        targetUserName?: string;
+        code: string;
     } | null>(null);
     const [inviteCopied, setInviteCopied] = useState(false);
 
@@ -75,19 +70,10 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
                 expiresAt,
             };
 
-            // Only include targetUserId or targetUserName if provided
-            if (useUserName && inviteTargetUserName.trim()) {
-                inviteData.targetUserName = inviteTargetUserName.trim();
-            } else if (!useUserName && inviteTargetUserId.trim()) {
-                inviteData.targetUserId = inviteTargetUserId.trim();
-            }
-
             const invite = await createInvite.mutateAsync(inviteData);
 
             setGeneratedInvite({ 
                 code: invite.code,
-                targetUserId: invite.targetUserId,
-                targetUserName: invite.targetUserName,
             });
             setInviteCopied(false);
         } catch (error) {
@@ -239,67 +225,6 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
                             </p>
                         </div>
 
-                        <BrandFormControl helperText={tInvites('inviteModeHelp') || 'Choose whether to invite an existing user by ID or a new user by name'}>
-                            <div className="flex gap-2">
-                                <BrandButton
-                                    variant={!useUserName ? "primary" : "outline"}
-                                    onClick={() => {
-                                        setUseUserName(false);
-                                        setInviteTargetUserName('');
-                                    }}
-                                    size="sm"
-                                >
-                                    {tInvites('existingUser') || 'Existing User'}
-                                </BrandButton>
-                                <BrandButton
-                                    variant={useUserName ? "primary" : "outline"}
-                                    onClick={() => {
-                                        setUseUserName(true);
-                                        setInviteTargetUserId('');
-                                    }}
-                                    size="sm"
-                                >
-                                    {tInvites('newUser') || 'New User'}
-                                </BrandButton>
-                            </div>
-                        </BrandFormControl>
-
-                        {!useUserName ? (
-                            <BrandFormControl 
-                                label={tInvites('targetUserId')}
-                                helperText={isSuperadmin 
-                                    ? (inviteRole === 'lead' 
-                                        ? 'User ID who will become a Lead (Representative)'
-                                        : 'User ID who will become a Participant')
-                                    : 'User ID who will become a Participant'
-                                }
-                            >
-                                <BrandInput
-                                    value={inviteTargetUserId}
-                                    onChange={(e) => setInviteTargetUserId(e.target.value)}
-                                    placeholder={tInvites('targetUserIdPlaceholder')}
-                                    fullWidth
-                                />
-                            </BrandFormControl>
-                        ) : (
-                            <BrandFormControl 
-                                label={tInvites('targetUserName') || 'User Name'}
-                                helperText={isSuperadmin 
-                                    ? (inviteRole === 'lead' 
-                                        ? 'Name of the new user who will become a Lead (Representative)'
-                                        : 'Name of the new user who will become a Participant')
-                                    : 'Name of the new user who will become a Participant'
-                                }
-                            >
-                                <BrandInput
-                                    value={inviteTargetUserName}
-                                    onChange={(e) => setInviteTargetUserName(e.target.value)}
-                                    placeholder={tInvites('targetUserNamePlaceholder') || 'Enter user name'}
-                                    fullWidth
-                                />
-                            </BrandFormControl>
-                        )}
-
                         <BrandFormControl
                             label={tInvites('expiresInDays')}
                             helperText={tInvites('expiresInDaysHelp')}
@@ -334,11 +259,6 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
                                 </div>
                                 <div className="space-y-1">
                                     <p className="font-mono text-sm text-green-900 break-all">{generatedInvite.code}</p>
-                                    {(generatedInvite.targetUserName || generatedInvite.targetUserId) && (
-                                        <p className="text-xs text-green-700">
-                                            {tInvites('for') || 'For'}: {generatedInvite.targetUserName || generatedInvite.targetUserId}
-                                        </p>
-                                    )}
                                 </div>
                                 {inviteCopied && (
                                     <p className="text-xs text-green-600 mt-1">{tCommon('copied') || 'Copied!'}</p>

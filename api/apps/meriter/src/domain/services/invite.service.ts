@@ -12,7 +12,7 @@ import { uid } from 'uid';
  * InviteService
  *
  * Service for managing invites to communities.
- * Invites are one-time use and tied to a specific user.
+ * Invites are one-time use and can be used by any authenticated user.
  */
 @Injectable()
 export class InviteService {
@@ -101,12 +101,6 @@ export class InviteService {
 
     if (invite.isUsed) {
       throw new BadRequestException('Invite already used');
-    }
-
-    // Check if invite is for this user (only if targetUserId is specified)
-    // If targetUserName is specified, the invite can be used by anyone
-    if (invite.targetUserId && invite.targetUserId !== userId) {
-      throw new BadRequestException('This invite is not for you');
     }
 
     // Check expiration

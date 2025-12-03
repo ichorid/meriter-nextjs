@@ -160,26 +160,6 @@ export class InvitesController {
     @User() user: AuthenticatedUser,
     @Param('code') code: string,
   ) {
-    // Get invite first to check if it has targetUserName
-    const inviteDoc = await this.inviteService.getInviteByCode(code);
-    if (!inviteDoc) {
-      throw new NotFoundException('Invite not found');
-    }
-
-    // If invite has targetUserName, update user's displayName
-    if (inviteDoc.targetUserName) {
-      await this.userModel.updateOne(
-        { id: user.id },
-        {
-          $set: {
-            displayName: inviteDoc.targetUserName,
-            firstName: inviteDoc.targetUserName,
-            updatedAt: new Date(),
-          },
-        },
-      );
-    }
-
     const invite = await this.inviteService.useInvite(code, user.id);
 
     // Get community to access settings

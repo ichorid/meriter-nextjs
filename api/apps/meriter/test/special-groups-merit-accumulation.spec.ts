@@ -277,6 +277,7 @@ describe('Special Groups Merit Accumulation', () => {
         marathonPubId,
         5,
         0,
+        'up',
         'Test comment',
         marathonCommunityId
       );

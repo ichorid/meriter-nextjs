@@ -25,7 +25,6 @@ export default function CreateInvitePage() {
 
   const [selectedCommunities, setSelectedCommunities] = useState<string[]>([]);
   const [inviteType, setInviteType] = useState<'superadmin-to-lead' | 'lead-to-participant'>('lead-to-participant');
-  const [targetUserId, setTargetUserId] = useState('');
   const [expiresInDays, setExpiresInDays] = useState<number | ''>(30);
   const [generatedInvites, setGeneratedInvites] = useState<Array<{ code: string; communityId: string }>>([]);
 
@@ -62,11 +61,6 @@ export default function CreateInvitePage() {
           communityId,
           expiresAt,
         };
-
-        // Only include targetUserId if provided
-        if (targetUserId.trim()) {
-          inviteData.targetUserId = targetUserId.trim();
-        }
 
         const invite = await createInvite.mutateAsync(inviteData);
         invites.push({ code: invite.code, communityId });
@@ -110,17 +104,6 @@ export default function CreateInvitePage() {
                   fullWidth
                 />
               </BrandFormControl>
-
-              {inviteType === 'lead-to-participant' && (
-                <BrandFormControl label={t('targetUserId')}>
-                  <BrandInput
-                    value={targetUserId}
-                    onChange={(e) => setTargetUserId(e.target.value)}
-                    placeholder={t('targetUserIdPlaceholder')}
-                    fullWidth
-                  />
-                </BrandFormControl>
-              )}
 
               <BrandFormControl
                 label={t('expiresInDays')}

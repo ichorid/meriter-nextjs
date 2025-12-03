@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInvite, useInviteByCode } from '@/hooks/api/useInvites';
@@ -21,8 +21,28 @@ export function InviteHandler() {
   const t = useTranslations('registration');
   const addToast = useToastStore((state) => state.addToast);
 
+  // Track processed invite codes to prevent duplicate processing
+  const processedInvitesRef = useRef<Set<string>>(new Set());
+
+  // Disable query if invite has already been processed
+  const shouldQueryInvite = !!inviteCode && !processedInvitesRef.current.has(inviteCode);
+  
   // Check invite status before using
-  const { data: invite, isLoading: inviteLoading } = useInviteByCode(inviteCode || '');
+  const { data: invite, isLoading: inviteLoading } = useInviteByCode(
+    inviteCode || '',
+    { enabled: shouldQueryInvite }
+  );
+
+  // Helper function to remove invite parameter from URL
+  const removeInviteFromUrl = () => {
+    if (inviteCode && pathname === '/meriter/home' && searchParams?.get('invite')) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('invite');
+      const newSearch = params.toString();
+      const newUrl = newSearch ? `${pathname}?${newSearch}` : pathname;
+      router.replace(newUrl);
+    }
+  };
 
   useEffect(() => {
     // Only process invite on the home page
@@ -30,13 +50,30 @@ export function InviteHandler() {
       return;
     }
 
-    // Only process invite if user is authenticated and invite code is present
-    if (isAuthenticated && user && inviteCode && invite && !inviteLoading) {
+    // Early return if no invite code
+    if (!inviteCode) {
+      return;
+    }
+
+    // Early return if invite has already been processed
+    if (processedInvitesRef.current.has(inviteCode)) {
+      // Clean up URL if invite param is still present
+      if (searchParams?.get('invite')) {
+        removeInviteFromUrl();
+      }
+      return;
+    }
+
+    // Only process invite if user is authenticated and invite data is available
+    if (isAuthenticated && user && invite && !inviteLoading) {
       // Check if invite is already used
       if (invite.isUsed) {
+        // Mark as processed before showing toast to prevent duplicate processing
+        processedInvitesRef.current.add(inviteCode);
+        // Remove invite param from URL immediately
+        removeInviteFromUrl();
+        // Show toast only once
         addToast(t('errors.inviteAlreadyUsed'), 'warning');
-        // Redirect to home page without invite parameter
-        router.replace('/meriter/home');
         return;
       }
 
@@ -44,17 +81,26 @@ export function InviteHandler() {
       if (invite.expiresAt) {
         const expiresAt = new Date(invite.expiresAt);
         if (expiresAt < new Date()) {
+          // Mark as processed before showing toast
+          processedInvitesRef.current.add(inviteCode);
+          // Remove invite param from URL immediately
+          removeInviteFromUrl();
+          // Show toast only once
           addToast(t('errors.inviteExpired'), 'error');
-          // Redirect to home page without invite parameter
-          router.replace('/meriter/home');
           return;
         }
       }
+
+      // Mark as processing to prevent duplicate processing
+      processedInvitesRef.current.add(inviteCode);
 
       const processInvite = async () => {
         try {
           const response = await useInviteMutation.mutateAsync(inviteCode);
           addToast(t('inviteUsedSuccess'), 'success');
+
+          // Remove invite param from URL
+          removeInviteFromUrl();
 
           // Check for teamGroupId in response and redirect if present
           // The response is the data object itself, not wrapped in 'data' property
@@ -74,6 +120,9 @@ export function InviteHandler() {
                                t('errors.inviteUseFailed');
           addToast(errorMessage, 'error');
           
+          // Remove invite param from URL
+          removeInviteFromUrl();
+          
           // Redirect to home page without invite parameter for all errors
           // This prevents infinite retry loop
           router.replace('/meriter/home');
@@ -82,7 +131,7 @@ export function InviteHandler() {
 
       processInvite();
     }
-  }, [isAuthenticated, user, inviteCode, invite, inviteLoading, useInviteMutation, router, addToast, t, pathname]);
+  }, [isAuthenticated, user, inviteCode, invite, inviteLoading, useInviteMutation, router, addToast, t, pathname, searchParams]);
 
   return null; // This component doesn't render anything
 }
