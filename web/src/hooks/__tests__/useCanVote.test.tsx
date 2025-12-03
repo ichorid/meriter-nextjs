@@ -276,6 +276,36 @@ describe('useCanVote Hook', () => {
 
       expect(result.current).toBe(false);
     });
+
+    it('should allow participants to vote in marathon-of-good even when not in allowedRoles', () => {
+      const restrictedMarathonCommunity = {
+        ...mockMarathonCommunity,
+        votingRules: {
+          ...mockMarathonCommunity.votingRules,
+          allowedRoles: ['superadmin', 'lead'], // participant not in allowedRoles
+        },
+      };
+
+      mockUseCommunity.mockReturnValue({
+        data: restrictedMarathonCommunity,
+        isLoading: false,
+        error: null,
+      } as any);
+
+      mockUseUserRoles.mockReturnValue({
+        data: [{ communityId: 'marathon-community-123', role: 'participant' }],
+        isLoading: false,
+        error: null,
+      } as any);
+
+      const { result } = renderHook(
+        () => useCanVote('pub-123', 'publication', 'marathon-community-123', 'author-123', false, false, false, false),
+        { wrapper: createWrapper() }
+      );
+
+      // Participants should be able to vote in marathon-of-good regardless of allowedRoles
+      expect(result.current).toBe(true);
+    });
   });
 });
 

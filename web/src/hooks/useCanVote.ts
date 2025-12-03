@@ -74,6 +74,18 @@ export function useCanVote(
       return true;
     }
 
+    // For participants in marathon-of-good communities: allow voting regardless of allowedRoles
+    // This check must happen BEFORE the allowedRoles check to ensure participants can always vote
+    // Note: Team-based checks (same team, different team) are handled by backend
+    // Frontend can only check community typeTag
+    if (userRole === 'participant' && community.typeTag === 'marathon-of-good') {
+      // Allow participants to vote - backend will validate:
+      // - Cannot vote for participants from marathon/vision communities
+      // - Cannot vote for leads from their own team
+      // - Can vote for leads from other teams
+      return true;
+    }
+
     // Check if role is allowed
     if (!rules.allowedRoles.includes(userRole as any)) {
       return false;
@@ -82,21 +94,6 @@ export function useCanVote(
     // Check if voting for own post is allowed
     if (isAuthor && authorId === user.id && !rules.canVoteForOwnPosts) {
       return false;
-    }
-
-    // For participants outside team communities: check marathon/vision restrictions
-    // Note: Team-based checks (same team, different team) are handled by backend
-    // Frontend can only check community typeTag
-    if (userRole === 'participant') {
-      // Participants can vote in marathon-of-good for leads (backend validates team membership)
-      // Participants cannot vote for participants in marathon/vision (backend will block)
-      if (community.typeTag === 'marathon-of-good') {
-        // Allow participants to vote - backend will validate:
-        // - Cannot vote for participants from marathon/vision communities
-        // - Cannot vote for leads from their own team
-        // - Can vote for leads from other teams
-        return true;
-      }
     }
 
     // For viewers: Only allow voting in marathon-of-good communities
