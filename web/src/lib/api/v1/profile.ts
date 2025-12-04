@@ -22,13 +22,17 @@ export interface MeritStatsResponse {
 }
 
 export interface UpdateProfileData {
-  bio?: string | null;
-  location?: { region: string; city: string } | null;
-  website?: string | null;
-  values?: string | null;
-  about?: string | null;
-  contacts?: { email: string; messenger: string } | null;
-  educationalInstitution?: string | null;
+  displayName?: string;
+  avatarUrl?: string | null;
+  profile?: {
+    bio?: string | null;
+    location?: { region: string; city: string } | null;
+    website?: string | null;
+    values?: string | null;
+    about?: string | null;
+    contacts?: { email: string; messenger: string } | null;
+    educationalInstitution?: string | null;
+  };
 }
 
 export const profileApiV1 = {

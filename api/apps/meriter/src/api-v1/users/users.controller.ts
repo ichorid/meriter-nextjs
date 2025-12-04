@@ -476,6 +476,14 @@ export class UsersController {
 
     // Clean up null values - convert to undefined
     const profileData: any = {};
+    
+    // Top-level user fields
+    if (body.displayName !== undefined && body.displayName !== null)
+      profileData.displayName = body.displayName;
+    if (body.avatarUrl !== undefined && body.avatarUrl !== null)
+      profileData.avatarUrl = body.avatarUrl;
+    
+    // Profile sub-object fields
     if (body.bio !== undefined && body.bio !== null) profileData.bio = body.bio;
     if (body.location !== undefined && body.location !== null)
       profileData.location = body.location;
@@ -489,6 +497,24 @@ export class UsersController {
       profileData.contacts = body.contacts;
     if (body.educationalInstitution !== undefined && body.educationalInstitution !== null)
       profileData.educationalInstitution = body.educationalInstitution;
+    
+    // Handle nested profile object from frontend
+    if (body.profile) {
+      if (body.profile.bio !== undefined && body.profile.bio !== null)
+        profileData.bio = body.profile.bio;
+      if (body.profile.location !== undefined && body.profile.location !== null)
+        profileData.location = body.profile.location;
+      if (body.profile.website !== undefined && body.profile.website !== null)
+        profileData.website = body.profile.website;
+      if (body.profile.values !== undefined && body.profile.values !== null)
+        profileData.values = body.profile.values;
+      if (body.profile.about !== undefined && body.profile.about !== null)
+        profileData.about = body.profile.about;
+      if (body.profile.contacts !== undefined && body.profile.contacts !== null)
+        profileData.contacts = body.profile.contacts;
+      if (body.profile.educationalInstitution !== undefined && body.profile.educationalInstitution !== null)
+        profileData.educationalInstitution = body.profile.educationalInstitution;
+    }
 
     const updatedUser = await this.userService.updateProfile(
       userId,

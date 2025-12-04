@@ -345,12 +345,15 @@ export class UserService implements OnModuleInit {
   async updateProfile(
     userId: string,
     profileData: {
+      displayName?: string;
+      avatarUrl?: string;
       bio?: string;
       location?: { region: string; city: string };
       website?: string;
       values?: string;
       about?: string;
       contacts?: { email: string; messenger: string };
+      educationalInstitution?: string;
     },
   ): Promise<User> {
     const user = await this.userModel.findOne({ id: userId });
@@ -361,6 +364,14 @@ export class UserService implements OnModuleInit {
     const updateData: any = {
       updatedAt: new Date(),
     };
+
+    // Update top-level user fields
+    if (profileData.displayName !== undefined) {
+      updateData['displayName'] = profileData.displayName;
+    }
+    if (profileData.avatarUrl !== undefined) {
+      updateData['avatarUrl'] = profileData.avatarUrl;
+    }
 
     // Update profile fields using dot notation
     if (profileData.bio !== undefined) {
@@ -380,6 +391,9 @@ export class UserService implements OnModuleInit {
     }
     if (profileData.contacts !== undefined) {
       updateData['profile.contacts'] = profileData.contacts;
+    }
+    if (profileData.educationalInstitution !== undefined) {
+      updateData['profile.educationalInstitution'] = profileData.educationalInstitution;
     }
 
     await this.userModel.updateOne({ id: userId }, { $set: updateData });
