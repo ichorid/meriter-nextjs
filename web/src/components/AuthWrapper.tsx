@@ -119,7 +119,7 @@ export function AuthWrapper({ children, enabledProviders }: AuthWrapperProps) {
     // If not authenticated, show login page (regardless of route, unless it's a public API)
     if (!isAuthenticated && !pathname?.startsWith("/api")) {
         return (
-            <div className="min-h-screen bg-base-100 px-4 py-8 flex items-center justify-center flex-col min-h-screen">
+            <div className="min-h-screen bg-base-100 px-4 py-8 flex items-center justify-between flex-col min-h-screen">
                 <LoginForm enabledProviders={enabledProviders} />
                 <div className="flex justify-center mt-8">
                     <VersionDisplay />
