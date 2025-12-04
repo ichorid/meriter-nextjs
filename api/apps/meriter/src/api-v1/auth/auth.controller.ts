@@ -230,6 +230,20 @@ export class AuthController {
   }
 
   /**
+   * Build full web URL from relative path
+   */
+  private buildWebUrl(path: string): string {
+    if (!path.startsWith('/')) {
+      return path; // Already a full URL
+    }
+    const domain = process.env.DOMAIN || 'localhost';
+    const isDocker = process.env.NODE_ENV === 'production';
+    const protocol = domain === 'localhost' && !isDocker ? 'http' : (domain === 'localhost' ? 'http' : 'https');
+    const webPort = domain === 'localhost' ? ':8001' : '';
+    return `${protocol}://${domain}${webPort}${path}`;
+  }
+
+  /**
    * Shared handler for Google OAuth callback
    * Handles OAuth callback and extracts return_url from OAuth2 state parameter
    */
@@ -238,36 +252,9 @@ export class AuthController {
       this.logger.log('Google OAuth callback received');
 
       const code = req.query.code;
-      const state = req.query.state;
 
       if (!code) {
         throw new Error('Authorization code not provided');
-      }
-
-      // Extract return_url from OAuth2 state parameter (according to OAuth2 spec)
-      let returnTo = '/meriter/home';
-      try {
-        if (state) {
-          const stateData = JSON.parse(decodeURIComponent(state));
-          returnTo = stateData.returnTo || stateData.return_url || '/meriter/home';
-        }
-      } catch (e) {
-        this.logger.warn('Failed to parse state, using default returnTo');
-      }
-
-      // Normalize returnTo URL:
-      // - If it's a relative path (starts with /), it should go to web server
-      // - If it's a full URL, use it as-is
-      // - In Docker, web server is on port 8001, API is on 8002
-      // - In local dev, web is on 8001, API is on 8002
-      if (returnTo.startsWith('/')) {
-        // Relative path - redirect to web server
-        const domain = process.env.DOMAIN || 'localhost';
-        const isDocker = process.env.NODE_ENV === 'production';
-        const protocol = domain === 'localhost' && !isDocker ? 'http' : (domain === 'localhost' ? 'http' : 'https');
-        // Web server port: 8001 in local dev and local docker
-        const webPort = domain === 'localhost' ? ':8001' : '';
-        returnTo = `${protocol}://${domain}${webPort}${returnTo}`;
       }
 
       // Authenticate with Google using authorization code
@@ -275,26 +262,118 @@ export class AuthController {
 
       // Set JWT cookie
       const cookieDomain = CookieManager.getCookieDomain();
-      // Treat as production (Secure=true, SameSite=None) if explicitly production OR if accessed via HTTPS
-      // This is required for modern browsers to accept SameSite=None cookies on HTTPS dev domains (like .orb.local)
       const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
       const isProduction = process.env.NODE_ENV === 'production' || isSecure;
 
-      // Clear any existing JWT cookie first
       CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-
-      // Set new JWT cookie
-      // For localhost, cookie will be set without domain to allow sharing across ports (8002 -> 8001)
       CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
 
-      this.logger.log(`Google authentication successful, redirecting to: ${returnTo}`);
+      // New users go to welcome page, existing users go to home
+      const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/home';
+      const redirectUrl = this.buildWebUrl(redirectPath);
 
-      // Redirect to return_url from OAuth2 state parameter (full URL to web server)
-      res.redirect(returnTo);
+      this.logger.log(`Google authentication successful, isNewUser: ${result.isNewUser}, redirecting to: ${redirectUrl}`);
+      res.redirect(redirectUrl);
     } catch (error) {
       this.logger.error('Google OAuth callback error', error.stack);
-      // Redirect to login page with error
-      res.redirect(`/meriter/login?error=${encodeURIComponent(error.message || 'Authentication failed')}`);
+      res.redirect(this.buildWebUrl(`/meriter/login?error=${encodeURIComponent(error.message || 'Authentication failed')}`));
+    }
+  }
+
+  /**
+   * Yandex OAuth initiation endpoint
+   * Supports return_url via OAuth2 state parameter
+   */
+  @Get('yandex')
+  async yandexAuth(@Req() req: any, @Res() res: any) {
+    try {
+      this.logger.log('Yandex OAuth initiation request received');
+
+      const returnTo = req.query.returnTo || '/meriter/home';
+
+      // Check if Yandex OAuth is explicitly disabled
+      const enabled = process.env.OAUTH_YANDEX_ENABLED;
+      if (enabled === 'false' || enabled === '0') {
+        this.logger.error('Yandex OAuth is explicitly disabled via OAUTH_YANDEX_ENABLED');
+        throw new Error('Yandex OAuth is disabled');
+      }
+
+      const clientId = process.env.OAUTH_YANDEX_CLIENT_ID;
+      const callbackUrl = process.env.OAUTH_YANDEX_REDIRECT_URI
+        || process.env.OAUTH_YANDEX_CALLBACK_URL;
+
+      if (!clientId || !callbackUrl) {
+        const missing = [];
+        if (!clientId) missing.push('OAUTH_YANDEX_CLIENT_ID');
+        if (!callbackUrl) missing.push('OAUTH_YANDEX_REDIRECT_URI');
+        this.logger.error(`Yandex OAuth not configured. Missing: ${missing.join(', ')}`);
+        throw new Error(`Yandex OAuth not configured. Missing: ${missing.join(', ')}`);
+      }
+
+      const state = JSON.stringify({ returnTo, return_url: returnTo });
+
+      const yandexAuthUrl = `https://oauth.yandex.ru/authorize?` +
+        `client_id=${encodeURIComponent(clientId)}&` +
+        `redirect_uri=${encodeURIComponent(callbackUrl)}&` +
+        `response_type=code&` +
+        `state=${encodeURIComponent(state)}`;
+
+      this.logger.log(`Redirecting to Yandex OAuth with return_url: ${returnTo}`);
+      res.redirect(yandexAuthUrl);
+    } catch (error) {
+      this.logger.error('Yandex OAuth initiation error', error.stack);
+      throw new InternalServerError('Failed to initiate Yandex OAuth');
+    }
+  }
+
+  /**
+   * Yandex OAuth callback endpoint
+   */
+  @Get('yandex/callback')
+  async yandexCallback(@Req() req: any, @Res() res: any) {
+    return this.handleYandexCallback(req, res);
+  }
+
+  /**
+   * Alternative Yandex OAuth callback endpoint
+   * Matches OAUTH_YANDEX_CALLBACK_URL: /api/v1/auth/oauth/yandex/callback
+   */
+  @Get('oauth/yandex/callback')
+  async yandexCallbackOAuth(@Req() req: any, @Res() res: any) {
+    return this.handleYandexCallback(req, res);
+  }
+
+  /**
+   * Shared handler for Yandex OAuth callback
+   */
+  private async handleYandexCallback(@Req() req: any, @Res() res: any) {
+    try {
+      this.logger.log('Yandex OAuth callback received');
+
+      const code = req.query.code;
+
+      if (!code) {
+        throw new Error('Authorization code not provided');
+      }
+
+      const result = await this.authService.authenticateYandex(code);
+
+      const cookieDomain = CookieManager.getCookieDomain();
+      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+
+      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+
+      // New users go to welcome page, existing users go to home
+      const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/home';
+      const redirectUrl = this.buildWebUrl(redirectPath);
+
+      this.logger.log(`Yandex authentication successful, isNewUser: ${result.isNewUser}, redirecting to: ${redirectUrl}`);
+      res.redirect(redirectUrl);
+    } catch (error) {
+      this.logger.error('Yandex OAuth callback error', error.stack);
+      res.redirect(this.buildWebUrl(`/meriter/login?error=${encodeURIComponent(error.message || 'Authentication failed')}`));
     }
   }
 
