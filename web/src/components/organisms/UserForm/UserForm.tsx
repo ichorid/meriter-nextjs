@@ -64,6 +64,9 @@ export function UserForm({
     );
     const [errors, setErrors] = useState<Record<string, string>>({});
 
+    // Email is editable only if it wasn't provided initially
+    const isEmailEditable = !initialData?.contacts?.email;
+
     useEffect(() => {
         if (initialData) {
             setDisplayName(initialData.displayName || "");
@@ -116,9 +119,12 @@ export function UserForm({
             newErrors.website = t("errors.invalidUrl");
         }
 
-        // Email is read-only, but if it's somehow empty, it might be an issue depending on backend
-        if (!email.trim()) {
-            // newErrors.email = t('errors.required'); // Optional: enforce email presence
+        // Validate email if it's editable and user entered something
+        if (isEmailEditable && email.trim()) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.trim())) {
+                newErrors.email = t("errors.invalidEmail");
+            }
         }
 
         setErrors(newErrors);
@@ -250,13 +256,24 @@ export function UserForm({
                 </div>
 
                 <div className="mb-4">
-                    <BrandFormControl label={t("email")}>
+                    <BrandFormControl label={t("email")} error={errors.email}>
                         <BrandInput
                             type="email"
                             value={email}
-                            onChange={() => {}} // Read-only
-                            disabled
-                            className="bg-base-300 dark:bg-base-content/10 text-base-content/60"
+                            onChange={(e) =>
+                                isEmailEditable && setEmail(e.target.value)
+                            }
+                            disabled={!isEmailEditable}
+                            placeholder={
+                                isEmailEditable
+                                    ? t("emailPlaceholder")
+                                    : undefined
+                            }
+                            className={
+                                !isEmailEditable
+                                    ? "bg-base-300 dark:bg-base-content/10 text-base-content/60"
+                                    : ""
+                            }
                         />
                     </BrandFormControl>
                 </div>
