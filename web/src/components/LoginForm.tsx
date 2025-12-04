@@ -19,7 +19,7 @@ import { handleAuthRedirect } from '@/lib/utils/auth';
 import { getErrorMessage } from '@/lib/api/errors';
 import { isFakeDataMode } from '@/config';
 import { OAUTH_PROVIDERS, getOAuthUrl, type OAuthProvider } from '@/lib/utils/oauth-providers';
-import { BrandButton, BrandInput, BrandFormControl } from '@/components/ui';
+import { BrandButton, BrandInput, BrandFormControl, Logo } from '@/components/ui';
 import { useToastStore } from '@/shared/stores/toast.store';
 
 interface LoginFormProps {
@@ -104,20 +104,20 @@ export function LoginForm({ className = '', enabledProviders }: LoginFormProps) 
 
   return (
     <div className={`w-full max-w-md mx-auto ${className}`}>
-      <div className="bg-base-100 rounded-2xl shadow-sm border border-base-300 p-6 sm:p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-base-content">
-            {t('title')}
+      <div>
+        <div className="text-center mt-8 mb-24">
+          <h1 className="text-xl font-normal text-base-content flex justify-center items-center gap-4">
+            <Logo size={40} className="text-base-content" />
+            <span>{t('siteTitle')}</span>
           </h1>
-          {displayedProviders.length > 0 && !fakeDataMode && (
-            <p className="mt-2 text-sm text-base-content/70">
-              {t('subtitle')}
-            </p>
-          )}
+        </div>
+        <div className="mb-4">
+          <h2 className="text-2xl font-bold text-base-content text-left mb-6">{t('title')}</h2>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 mb-4">
           {/* Invite Code Input */}
+          {/* 
           <BrandFormControl
             label={tReg('inviteCodeLabel')}
             helperText={tReg('inviteDescription')}
@@ -130,6 +130,9 @@ export function LoginForm({ className = '', enabledProviders }: LoginFormProps) 
               autoComplete="off"
             />
           </BrandFormControl>
+          */}
+
+          <p className="text-sm text-base-content/70 mb-8">{t('subtitle')}</p>
 
           {isLoading && (
             <LoadingState text="Authenticating..." />
@@ -158,11 +161,10 @@ export function LoginForm({ className = '', enabledProviders }: LoginFormProps) 
                     <BrandButton
                       key={provider.id}
                       variant="outline"
-                      size="lg"
+                      size="md"
                       fullWidth
                       onClick={() => handleOAuthAuth(provider.id)}
                       disabled={isLoading}
-                      leftIcon={renderProviderIcon(provider)}
                       className="justify-start pl-6"
                     >
                       {t('signInWith', { provider: provider.name })}
@@ -170,14 +172,17 @@ export function LoginForm({ className = '', enabledProviders }: LoginFormProps) 
                   ))}
                 </div>
               ) : (
-                <div className="text-center p-4 bg-red-50 rounded-xl border border-red-100">
-                  <p className="text-sm text-red-600">
-                    No authentication providers configured. Please contact administrator.
+                <div className="text-center p-4 bg-error/10 rounded-xl border border-error/20">
+                  <p className="text-sm text-error">
+                    {t('noAuthenticationProviders')}
                   </p>
                 </div>
               )}
             </div>
           )}
+        </div>
+        <div className="mt-8 text-left text-sm text-base-content/70">
+          {t('hint.agreeToTerms')} <a href="#" className="font-medium text-base-content hover:text-brand-primary">{t('hint.termsOfService')}</a> {t('hint.and')} <a href="#" className="font-medium text-base-content hover:text-brand-primary">{t('hint.personalData')}</a>
         </div>
       </div>
     </div>

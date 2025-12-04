@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useHomeTabState, useHomeData, useHomeAuth } from './hooks';
 import {
@@ -14,10 +15,13 @@ import {
 import type { HomeTab } from './types';
 import { InviteHandler } from '@/components/InviteHandler';
 import { HomeFabMenu } from '@/components/molecules/FabMenu/HomeFabMenu';
+import { usePublication } from '@/hooks/api/usePublications';
 
 import { Loader2 } from 'lucide-react';
 
 export default function PageHome() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, userLoading, isAuthenticated } = useHomeAuth();
   const { currentTab, setCurrentTab, sortByTab, setSortByTab } = useHomeTabState();
   const {
@@ -48,6 +52,20 @@ export default function PageHome() {
   const [activeSlider, setActiveSlider] = useState<string | null>(null);
   const activeCommentHook = useState<string | null>(null);
 
+  // Get post ID from URL if present
+  const targetPostId = searchParams?.get('post');
+  
+  // Fetch publication data if post ID is in URL
+  const { data: targetPublication, isLoading: targetPublicationLoading } = usePublication(targetPostId || '');
+
+  // Redirect to community page when publication data is loaded
+  useEffect(() => {
+    if (targetPostId && targetPublication?.communityId) {
+      // Redirect to the community page with the post parameter
+      router.replace(`/meriter/communities/${targetPublication.communityId}?post=${targetPostId}`);
+    }
+  }, [targetPostId, targetPublication?.communityId, router]);
+
   // Handle updates redirect
   useEffect(() => {
     if (document.location.search.match('updates')) {
@@ -61,8 +79,8 @@ export default function PageHome() {
     setActiveWithdrawPost(null);
   }, [currentTab]);
 
-  // Show loading state during auth check
-  if (userLoading || !isAuthenticated) {
+  // Show loading state during auth check or while redirecting to post
+  if (userLoading || !isAuthenticated || (targetPostId && targetPublicationLoading)) {
     return (
       <AdaptiveLayout className="feed">
         <div className="flex flex-1 items-center justify-center h-64">
