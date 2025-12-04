@@ -114,6 +114,7 @@ export class AuthService {
   async authenticateGoogle(code: string): Promise<{
     user: User;
     hasPendingCommunities: boolean;
+    isNewUser: boolean;
     jwt: string;
   }> {
     this.logger.log('Authenticating with Google OAuth code');
@@ -125,8 +126,6 @@ export class AuthService {
       throw new Error('Google OAuth credentials not configured');
     }
 
-    // Get callback URL - must match the one used in googleAuth endpoint
-    // Support both OAUTH_GOOGLE_REDIRECT_URI and OAUTH_GOOGLE_CALLBACK_URL
     let callbackUrl =
       process.env.OAUTH_GOOGLE_REDIRECT_URI ||
       process.env.OAUTH_GOOGLE_CALLBACK_URL ||
@@ -144,13 +143,10 @@ export class AuthService {
           : domain === 'localhost'
             ? 'http'
             : 'https';
-      // In Docker, Caddy proxies /api/* to API, so no port needed
-      // In local dev, use port 8002 for direct API access
       const port = domain === 'localhost' && !isDocker ? ':8002' : '';
       callbackUrl = `${protocol}://${domain}${port}/api/v1/auth/google/callback`;
     }
 
-    // Exchange code for access token
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
@@ -178,7 +174,6 @@ export class AuthService {
       throw new Error('Access token not received from Google');
     }
 
-    // Get user info from Google
     const userInfoResponse = await fetch(
       'https://www.googleapis.com/oauth2/v2/userinfo',
       {
@@ -197,7 +192,6 @@ export class AuthService {
     const googleUser = await userInfoResponse.json();
     this.logger.log(`Google user info received: ${googleUser.email}`);
 
-    // Find or create user by googleId
     const googleId = googleUser.id;
     const email = googleUser.email;
     const firstName = googleUser.given_name || '';
@@ -206,45 +200,26 @@ export class AuthService {
       googleUser.name || `${firstName} ${lastName}`.trim() || email;
     const avatarUrl = googleUser.picture;
 
-    // Check if user exists by googleId (if schema supports it) or by email
-    // For now, we'll use a placeholder telegramId based on googleId
-    // TODO: Update schema to support googleId directly
-    // const telegramId = `google_${googleId}`;
+    // Check if user already exists
+    const existingUser = await this.userService.getUserByAuthId('google', googleId);
+    const isNewUser = !existingUser;
 
-    let user = await this.userService.getUserByAuthId('google', googleId);
-
-    if (!user) {
-      // Create new user
-      user = await this.userService.createOrUpdateUser({
-        authProvider: 'google',
-        authId: googleId,
-        username: email?.split('@')[0],
-        firstName,
-        lastName,
-        displayName,
-        avatarUrl,
-      });
-    } else {
-      // Update existing user
-      user = await this.userService.createOrUpdateUser({
-        authProvider: 'google',
-        authId: googleId,
-        username: email?.split('@')[0],
-        firstName,
-        lastName,
-        displayName,
-        avatarUrl,
-      });
-    }
+    const user = await this.userService.createOrUpdateUser({
+      authProvider: 'google',
+      authId: googleId,
+      username: email?.split('@')[0],
+      firstName,
+      lastName,
+      displayName,
+      avatarUrl,
+    });
 
     if (!user) {
       throw new Error('Failed to create or update user');
     }
 
-    // Ensure user is added to base communities
     await this.userService.ensureUserInBaseCommunities(user.id);
 
-    // Generate JWT
     const jwtSecret = this.configService.get<string>('jwt.secret');
     if (!jwtSecret) {
       this.logger.error(
@@ -264,11 +239,123 @@ export class AuthService {
       '365d',
     );
 
-    this.logger.log(`JWT generated for Google user ${email}`);
+    this.logger.log(`JWT generated for Google user ${email}, isNewUser: ${isNewUser}`);
 
     return {
       user: JwtService.mapUserToV1Format(user),
       hasPendingCommunities: (user.communityTags?.length || 0) > 0,
+      isNewUser,
+      jwt: jwtToken,
+    };
+  }
+
+  async authenticateYandex(code: string): Promise<{
+    user: User;
+    hasPendingCommunities: boolean;
+    isNewUser: boolean;
+    jwt: string;
+  }> {
+    this.logger.log('Authenticating with Yandex OAuth code');
+
+    const clientId = process.env.OAUTH_YANDEX_CLIENT_ID;
+    const clientSecret = process.env.OAUTH_YANDEX_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      throw new Error('Yandex OAuth credentials not configured');
+    }
+
+    const tokenResponse = await fetch('https://oauth.yandex.ru/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      this.logger.error(`Failed to exchange Yandex code for token: ${errorText}`);
+      throw new Error('Failed to exchange authorization code for token');
+    }
+
+    const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
+
+    if (!accessToken) {
+      throw new Error('Access token not received from Yandex');
+    }
+
+    const userInfoResponse = await fetch('https://login.yandex.ru/info?format=json', {
+      headers: {
+        'Authorization': `OAuth ${accessToken}`,
+      },
+    });
+
+    if (!userInfoResponse.ok) {
+      const errorText = await userInfoResponse.text();
+      this.logger.error(`Failed to get user info from Yandex: ${errorText}`);
+      throw new Error('Failed to get user information from Yandex');
+    }
+
+    const yandexUser = await userInfoResponse.json();
+    this.logger.log(`Yandex user info received: ${yandexUser.default_email || yandexUser.login}`);
+
+    const yandexId = yandexUser.id;
+    const email = yandexUser.default_email || `${yandexUser.login}@yandex.ru`;
+    const firstName = yandexUser.first_name || '';
+    const lastName = yandexUser.last_name || '';
+    const displayName = yandexUser.real_name || yandexUser.display_name || `${firstName} ${lastName}`.trim() || yandexUser.login;
+    const avatarUrl = yandexUser.default_avatar_id 
+      ? `https://avatars.yandex.net/get-yapic/${yandexUser.default_avatar_id}/islands-200`
+      : undefined;
+
+    // Check if user already exists
+    const existingUser = await this.userService.getUserByAuthId('yandex', yandexId);
+    const isNewUser = !existingUser;
+
+    const user = await this.userService.createOrUpdateUser({
+      authProvider: 'yandex',
+      authId: yandexId,
+      username: yandexUser.login || email?.split('@')[0],
+      firstName,
+      lastName,
+      displayName,
+      avatarUrl,
+    });
+
+    if (!user) {
+      throw new Error('Failed to create or update user');
+    }
+
+    await this.userService.ensureUserInBaseCommunities(user.id);
+
+    const jwtSecret = this.configService.get<string>('jwt.secret');
+    if (!jwtSecret) {
+      this.logger.error('JWT_SECRET is not configured. Cannot generate JWT token.');
+      throw new Error('JWT secret not configured');
+    }
+
+    const jwtToken = signJWT(
+      {
+        uid: user.id,
+        authProvider: 'yandex',
+        authId: yandexId,
+        communityTags: user.communityTags || [],
+      },
+      jwtSecret,
+      '365d',
+    );
+
+    this.logger.log(`JWT generated for Yandex user ${email}, isNewUser: ${isNewUser}`);
+
+    return {
+      user: JwtService.mapUserToV1Format(user),
+      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
+      isNewUser,
       jwt: jwtToken,
     };
   }

@@ -1,14 +1,10 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useTranslations } from 'next-intl';
-import {
-    BrandButton,
-    BrandInput,
-    BrandFormControl,
-} from '@/components/ui';
-import { Loader2 } from 'lucide-react';
-import { OSMAutocomplete } from '@/components/molecules/OSMAutocomplete';
+import React, { useState, useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
+import { BrandButton, BrandInput, BrandFormControl } from "@/components/ui";
+import { Loader2 } from "lucide-react";
+import { OSMAutocomplete } from "@/components/molecules/OSMAutocomplete";
 
 export interface UserFormData {
     displayName: string;
@@ -47,67 +43,77 @@ export function UserForm({
     showContacts = true,
     showEducation = true,
 }: UserFormProps) {
-    const t = useTranslations('profile');
+    const t = useTranslations("profile");
 
-    const [displayName, setDisplayName] = useState(initialData?.displayName || '');
-    const [avatarUrl, setAvatarUrl] = useState(initialData?.avatarUrl || '');
-    const [bio, setBio] = useState(initialData?.bio || '');
-    const [region, setRegion] = useState(initialData?.location?.region || '');
-    const [city, setCity] = useState(initialData?.location?.city || '');
-    const [website, setWebsite] = useState(initialData?.website || '');
-    const [values, setValues] = useState(initialData?.values || '');
-    const [about, setAbout] = useState(initialData?.about || '');
-    const [email, setEmail] = useState(initialData?.contacts?.email || '');
-    const [otherContacts, setOtherContacts] = useState(initialData?.contacts?.other || '');
-    const [educationalInstitution, setEducationalInstitution] = useState(initialData?.educationalInstitution || '');
+    const [displayName, setDisplayName] = useState(
+        initialData?.displayName || ""
+    );
+    const [avatarUrl, setAvatarUrl] = useState(initialData?.avatarUrl || "");
+    const [bio, setBio] = useState(initialData?.bio || "");
+    const [region, setRegion] = useState(initialData?.location?.region || "");
+    const [city, setCity] = useState(initialData?.location?.city || "");
+    const [website, setWebsite] = useState(initialData?.website || "");
+    const [values, setValues] = useState(initialData?.values || "");
+    const [about, setAbout] = useState(initialData?.about || "");
+    const [email, setEmail] = useState(initialData?.contacts?.email || "");
+    const [otherContacts, setOtherContacts] = useState(
+        initialData?.contacts?.other || ""
+    );
+    const [educationalInstitution, setEducationalInstitution] = useState(
+        initialData?.educationalInstitution || ""
+    );
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (initialData) {
-            setDisplayName(initialData.displayName || '');
-            setAvatarUrl(initialData.avatarUrl || '');
-            setBio(initialData.bio || '');
-            setRegion(initialData.location?.region || '');
-            setCity(initialData.location?.city || '');
-            setWebsite(initialData.website || '');
-            setValues(initialData.values || '');
-            setAbout(initialData.about || '');
-            setEmail(initialData.contacts?.email || '');
-            setOtherContacts(initialData.contacts?.other || '');
-            setEducationalInstitution(initialData.educationalInstitution || '');
+            setDisplayName(initialData.displayName || "");
+            setAvatarUrl(initialData.avatarUrl || "");
+            setBio(initialData.bio || "");
+            setRegion(initialData.location?.region || "");
+            setCity(initialData.location?.city || "");
+            setWebsite(initialData.website || "");
+            setValues(initialData.values || "");
+            setAbout(initialData.about || "");
+            setEmail(initialData.contacts?.email || "");
+            setOtherContacts(initialData.contacts?.other || "");
+            setEducationalInstitution(initialData.educationalInstitution || "");
         }
+        console.log(initialData);
     }, [initialData]);
 
     const validate = (): boolean => {
         const newErrors: Record<string, string> = {};
 
         if (!displayName.trim()) {
-            newErrors.displayName = t('errors.required');
+            newErrors.displayName = t("errors.required");
         }
         if (!region.trim()) {
-            newErrors.region = t('errors.required');
+            newErrors.region = t("errors.required");
         }
         if (!city.trim()) {
-            newErrors.city = t('errors.required');
+            newErrors.city = t("errors.required");
         }
         if (!values.trim()) {
-            newErrors.values = t('errors.required');
+            newErrors.values = t("errors.required");
         }
 
         if (bio.length > 1000) {
-            newErrors.bio = t('errors.bioTooLong', { max: 1000 });
+            newErrors.bio = t("errors.bioTooLong", { max: 1000 });
         }
         if (values.length > 1000) {
-            newErrors.values = t('errors.valuesTooLong', { max: 1000 });
+            newErrors.values = t("errors.valuesTooLong", { max: 1000 });
         }
         if (about.length > 1000) {
-            newErrors.about = t('errors.aboutTooLong', { max: 1000 });
+            newErrors.about = t("errors.aboutTooLong", { max: 1000 });
         }
         if (educationalInstitution.length > 200) {
-            newErrors.educationalInstitution = t('errors.educationalInstitutionTooLong', { max: 200 });
+            newErrors.educationalInstitution = t(
+                "errors.educationalInstitutionTooLong",
+                { max: 200 }
+            );
         }
         if (website && !isValidUrl(website)) {
-            newErrors.website = t('errors.invalidUrl');
+            newErrors.website = t("errors.invalidUrl");
         }
 
         // Email is read-only, but if it's somehow empty, it might be an issue depending on backend
@@ -157,17 +163,27 @@ export function UserForm({
     return (
         <div className="w-full max-w-full overflow-hidden space-y-6">
             <div className="mb-2">
-                <h2 className="text-2xl font-bold text-gray-900 text-left mb-6">{t('newProfile')}</h2>
-                <p className="text-sm text-gray-500 mb-8">{t('newProfileSubtitle')}</p>
+                <h2 className="text-2xl font-bold text-gray-900 text-left mb-6">
+                    {t("newProfile")}
+                </h2>
+                <p className="text-sm text-gray-500 mb-8">
+                    {t("newProfileSubtitle")}
+                </p>
             </div>
-            <div className="bg-gray-50 p-4 rounded-xl">
-                <div className="mb-2">
-                    <h3 className="font-bold text-base">{t('generalInformation')}</h3>
+            <div className="bg-gray-50 p-4 rounded-xl mb-4">
+                <div className="mb-6">
+                    <h3 className="font-bold text-base">
+                        {t("generalInformation")}
+                    </h3>
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="relative w-20 h-20 rounded-full overflow-hidden bg-base-200 border border-base-300 flex-shrink-0">
+                <div className="flex items-center gap-4 mb-2">
+                    <div className="relative w-20 h-20 rounded-full overflow-hidden bg-base-200 border border-base-300 flex-shrink-0 mb-4">
                         {avatarUrl ? (
-                            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                            <img
+                                src={avatarUrl}
+                                alt="Avatar"
+                                className="w-full h-full object-cover"
+                            />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center text-base-content/30">
                                 No Img
@@ -176,8 +192,8 @@ export function UserForm({
                     </div>
                     <div className="flex-1">
                         <BrandFormControl
-                            label={t('avatarUrl')}
-                            helperText={t('avatarUrlHelper')}
+                            label={t("avatarUrl")}
+                            helperText={t("avatarUrlHelper")}
                         >
                             <BrandInput
                                 value={avatarUrl}
@@ -189,153 +205,120 @@ export function UserForm({
                 </div>
 
                 <BrandFormControl
-                    label={t('displayName')}
+                    label={t("displayName")}
                     error={errors.displayName}
                     required
                 >
                     <BrandInput
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
-                        placeholder={t('displayNamePlaceholder')}
+                        placeholder={t("displayNamePlaceholder")}
                     />
                 </BrandFormControl>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-xl mb-4">
+                <div className="mb-6">
+                    <h3 className="font-bold text-base">
+                        {t("contactInformation")}
+                    </h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-3">
+                        <label className="block text-sm font-medium text-brand-text-primary dark:text-base-content">
+                            {t("region")} <span className="text-error">*</span>
+                        </label>
+                        <OSMAutocomplete
+                            value={region}
+                            onChange={setRegion}
+                            placeholder={t("regionPlaceholder")}
+                            type="state"
+                            error={errors.region}
+                        />
+                    </div>
+                    <div className="space-y-3">
+                        <label className="block text-sm font-medium text-brand-text-primary dark:text-base-content">
+                            {t("city")} <span className="text-error">*</span>
+                        </label>
+                        <OSMAutocomplete
+                            value={city}
+                            onChange={setCity}
+                            placeholder={t("cityPlaceholder")}
+                            type="city"
+                            error={errors.city}
+                        />
+                    </div>
+                </div>
 
+                <div className="mb-4">
+                    <BrandFormControl label={t("email")}>
+                        <BrandInput
+                            type="email"
+                            value={email}
+                            onChange={() => {}} // Read-only
+                            disabled
+                            className="bg-base-200 text-base-content/60"
+                        />
+                    </BrandFormControl>
+                </div>
+                <div>
+                    <BrandFormControl
+                        label={t("otherContacts")}
+                        helperText={t("otherContactsHelper")}
+                    >
+                        <textarea
+                            className="w-full px-4 py-2 border rounded-xl resize-none"
+                            value={otherContacts}
+                            onChange={(e) => setOtherContacts(e.target.value)}
+                            placeholder={t("otherContactsPlaceholder")}
+                            rows={3}
+                        />
+                    </BrandFormControl>
+                </div>
+            </div>
+            <div className="mb-2 bg-gray-50 p-4 rounded-xl">
+                <div className="mb-6">
+                    <h3 className="font-bold text-base">
+                        {t("aboutInformation")}
+                    </h3>
+                </div>
+
+                <div className="mb-2 text-sm text-base-content/70">
+                    {t("hint.about")}
+                </div>
                 <BrandFormControl
-                    label={t('bio')}
-                    helperText={`${bio.length}/1000 ${t('characters')}`}
-                    error={errors.bio}
+                    label={t("about")}
+                    helperText={`${about.length}/1000 ${t("characters")}`}
+                    error={errors.about}
+                    className="mb-4"
                 >
                     <textarea
                         className="w-full px-4 py-2 border rounded-xl resize-none"
-                        value={bio}
-                        onChange={(e) => setBio(e.target.value)}
-                        placeholder={t('bioPlaceholder')}
+                        value={about}
+                        onChange={(e) => setAbout(e.target.value)}
+                        placeholder={t("aboutPlaceholder")}
                         maxLength={1000}
                         rows={4}
                     />
                 </BrandFormControl>
-                <div className="bg-gray-50 p-4 rounded-xl">
-                    <div className="mb-2">
-                        <h3 className="font-bold text-base">{t('contactInformation')}</h3>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-3">
-                            <h3 className="font-bold text-base">{t('region')} <span className="text-error">*</span></h3>
-                            <OSMAutocomplete
-                                value={region}
-                                onChange={setRegion}
-                                placeholder={t('regionPlaceholder')}
-                                type="state"
-                                error={errors.region}
-                            />
-                        </div>
-                        <div className="space-y-3">
-                            <h3 className="font-bold text-base">{t('city')} <span className="text-error">*</span></h3>
-                            <OSMAutocomplete
-                                value={city}
-                                onChange={setCity}
-                                placeholder={t('cityPlaceholder')}
-                                type="city"
-                                error={errors.city}
-                            />
-                        </div>
-                    </div>
+
+                <div className="mb-2 text-sm text-base-content/70">
+                    {t("hint.values")}
                 </div>
-                <div className="mb-2 bg-gray-50 p-4 rounded-xl">
-                    <div className="mb-2">
-                        <h3 className="font-bold text-base">{t('aboutInformation')}</h3>
-                    </div>
-                    <BrandFormControl
-                        label={t('website')}
-                        error={errors.website}
-                    >
-                        <BrandInput
-                            type="url"
-                            value={website}
-                            onChange={(e) => setWebsite(e.target.value)}
-                            placeholder={t('websitePlaceholder')}
-                        />
-                    </BrandFormControl>
-
-
-                    <div className="mb-2">{t('hint.about')}</div>
-                    <BrandFormControl
-                        label={t('about')}
-                        helperText={`${about.length}/1000 ${t('characters')}`}
-                        error={errors.about}
-                    >
-                        <textarea
-                            className="w-full px-4 py-2 border rounded-xl resize-none"
-                            value={about}
-                            onChange={(e) => setAbout(e.target.value)}
-                            placeholder={t('aboutPlaceholder')}
-                            maxLength={1000}
-                            rows={4}
-                        />
-                    </BrandFormControl>
-
-                    <div className="mb-2">{t('hint.values')}</div>
-                    <BrandFormControl
-                        label={t('values')}
-                        helperText={`${values.length}/1000 ${t('characters')}`}
-                        error={errors.values}
-                        required
-                    >
-                        <textarea
-                            className="w-full px-4 py-2 border rounded-xl resize-none"
-                            value={values}
-                            onChange={(e) => setValues(e.target.value)}
-                            placeholder={t('valuesPlaceholder')}
-                            maxLength={1000}
-                            rows={4}
-                        />
-                    </BrandFormControl>
-
-                    {showEducation && (
-                        <BrandFormControl
-                            label={t('educationalInstitution')}
-                            helperText={t('educationalInstitutionHelper')}
-                            error={errors.educationalInstitution}
-                        >
-                            <BrandInput
-                                value={educationalInstitution}
-                                onChange={(e) => setEducationalInstitution(e.target.value)}
-                                placeholder={t('educationalInstitutionPlaceholder')}
-                                maxLength={200}
-                            />
-                        </BrandFormControl>
-                    )}
-
-                    {showContacts && (
-                        <div className="space-y-3">
-                            <h3 className="font-bold text-base">{t('contacts')}</h3>
-                            <BrandFormControl
-                                label={t('email')}
-                                helperText={t('emailReadOnly')}
-                            >
-                                <BrandInput
-                                    type="email"
-                                    value={email}
-                                    onChange={() => { }} // Read-only
-                                    disabled
-                                    className="bg-base-200 text-base-content/60"
-                                />
-                            </BrandFormControl>
-                            <BrandFormControl
-                                label={t('otherContacts')}
-                                helperText={t('otherContactsHelper')}
-                            >
-                                <textarea
-                                    className="w-full px-4 py-2 border rounded-xl resize-none"
-                                    value={otherContacts}
-                                    onChange={(e) => setOtherContacts(e.target.value)}
-                                    placeholder={t('otherContactsPlaceholder')}
-                                    rows={3}
-                                />
-                            </BrandFormControl>
-                        </div>
-                    )}
-                </div>
+                <BrandFormControl
+                    label={t("values")}
+                    helperText={`${values.length}/1000 ${t("characters")}`}
+                    error={errors.values}
+                    required
+                >
+                    <textarea
+                        className="w-full px-4 py-2 border rounded-xl resize-none"
+                        value={values}
+                        onChange={(e) => setValues(e.target.value)}
+                        placeholder={t("valuesPlaceholder")}
+                        maxLength={1000}
+                        rows={4}
+                    />
+                </BrandFormControl>
             </div>
 
             <div className="flex gap-4 justify-end">
@@ -344,19 +327,21 @@ export function UserForm({
                         variant="outline"
                         onClick={onCancel}
                         disabled={isSubmitting}
+                        size="sm"
                     >
-                        {t('cancel')}
+                        {t("cancel")}
                     </BrandButton>
                 )}
                 <BrandButton
                     onClick={handleSubmit}
                     disabled={isSubmitting}
                     isLoading={isSubmitting}
-                    leftIcon={isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}
+                    size="sm"
+                    variant="default"
                 >
-                    {isSubmitting ? t('saving') : (submitLabel || t('save'))}
+                    {isSubmitting ? t("saving") : submitLabel || t("save")}
                 </BrandButton>
             </div>
-        </div >
+        </div>
     );
 }

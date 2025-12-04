@@ -655,6 +655,18 @@
         }
     },
     "profile": {
+        "newUserDescription": "Пожалуйста, заполните свой профиль для продолжения.",
+        "generalInformation": "Основная информация",
+        "generalInformationSubtitle": "Пожалуйста, заполните следующую информацию для завершения вашего профиля.",
+        "aboutInformation": "О себе",
+        "avatarUrl": "URL аватара",
+        "avatarUrlPlaceholder": "https://example.com/avatar.png",
+        "avatarUrlHelper": "Добавьте URL аватара в ваш профиль",
+        "displayName": "Имя для отображения",
+        "displayNamePlaceholder": "Введите ваше имя для отображения",
+        "displayNameHelper": "Введите ваше имя для отображения",
+        "displayNameRequired": "Имя для отображения обязательно",
+        "outerContacts": "Другие контакты",
         "newProfile": "Новый пользователь",
         "newProfileSubtitle": "Поля отмеченные * обязательные. Пожалуйста не пропускайте их.",
         "title": "Профиль",
@@ -720,7 +732,6 @@
             "viewer": "Наблюдатель",
             "superadmin": "Суперадмин"
         },
-        "generalInformattion": "Основная информация",
         "contactInformattion": "Контакты",
         "aboutInformattion": "О себе",
         "hint": {

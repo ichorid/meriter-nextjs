@@ -659,6 +659,25 @@
         }
     },
     "profile": {
+        "newUserTitle": "New User Registration",
+        "completeRegistration": "Complete Registration",
+        "newUserDescription": "Please complete your profile to continue.",
+        "generalInformation": "General",
+        "generalInformationSubtitle": "Please fill in the following information to complete your profile.",
+        "aboutInformation": "About",
+        "avatarUrl": "Avatar URL",
+        "avatarUrlPlaceholder": "https://example.com/avatar.png",
+        "avatarUrlHelper": "Add an avatar URL to your profile",
+        "displayName": "Display Name",
+        "displayNamePlaceholder": "Enter your display name",
+        "displayNameHelper": "Enter your display name",
+        "displayNameRequired": "Display name is required",
+        "otherContacts": "Other Contacts",
+        "otherContactsPlaceholder": "Enter your other contacts",
+        "otherContactsHelper": "Enter your other contacts",
+        "otherContactsRequired": "Other contacts are required",
+        "otherContactsTooLong": "Other contacts must be no more than {max} characters",
+        "contactInformation": "Contacts",
         "newProfile": "New User",
         "newProfileSubtitle": "Fields marked with * are required. Please do not skip them.",
         "title": "Profile",
@@ -724,7 +743,6 @@
             "viewer": "Viewer",
             "superadmin": "Superadmin"
         },
-        "generalInformattion": "General",
         "contactInformattion": "Contacts",
         "aboutInformattion": "About",
         "hint": {
