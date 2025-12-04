@@ -222,7 +222,9 @@ describe('Login Page Integration', () => {
       expect(screen.getByText(/login\.title/i)).toBeInTheDocument();
     });
 
-    it('should render invite code input', () => {
+    // Note: Invite code input is currently disabled (commented out in LoginForm)
+    // This test is skipped until the feature is re-enabled
+    it.skip('should render invite code input', () => {
       render(
         <TestWrapper>
           <LoginForm />
@@ -249,7 +251,9 @@ describe('Login Page Integration', () => {
   });
 
   describe('LoginForm Interactions', () => {
-    it('should allow entering invite code', async () => {
+    // Note: Invite code input is currently disabled (commented out in LoginForm)
+    // This test is skipped until the feature is re-enabled
+    it.skip('should allow entering invite code', async () => {
       const user = userEvent.setup();
       render(
         <TestWrapper>
@@ -390,7 +394,8 @@ describe('Login Page Integration', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByText(/No authentication providers configured/i)).toBeInTheDocument();
+      // Component uses translation key login.noAuthenticationProviders
+      expect(screen.getByText(/login\.noAuthenticationProviders/i)).toBeInTheDocument();
     });
   });
 

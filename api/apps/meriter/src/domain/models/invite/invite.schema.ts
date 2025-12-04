@@ -19,26 +19,25 @@ export class Invite {
   @Prop({ required: true, unique: true })
   id: string;
 
-  @Prop({ required: true, unique: true, index: true })
+  @Prop({ required: true })
   code: string;
 
   @Prop({
     required: true,
     enum: ['superadmin-to-lead', 'lead-to-participant'],
-    index: true,
   })
   type: 'superadmin-to-lead' | 'lead-to-participant';
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   createdBy: string; // ID создателя (суперадмин или лид)
 
-  @Prop({ index: true })
+  @Prop()
   targetUserId?: string; // Optional informational field - not enforced, invites work for anyone
 
   @Prop()
   targetUserName?: string; // Optional informational field - not enforced, invites work for anyone
 
-  @Prop({ index: true })
+  @Prop()
   usedBy?: string; // ID пользователя, использовавшего код
 
   @Prop()
@@ -47,10 +46,10 @@ export class Invite {
   @Prop()
   expiresAt?: Date;
 
-  @Prop({ required: true, default: false, index: true })
+  @Prop({ required: true, default: false })
   isUsed: boolean; // Инвайты одноразовые
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   communityId: string; // Сообщество, в котором будет назначена роль
 
   @Prop({ required: true })
