@@ -45,6 +45,9 @@ export function useUpdateProfile() {
   });
 }
 
+// Alias for backwards compatibility
+export const useUpdateUser = useUpdateProfile;
+
 export function useMeritStats() {
   return useQuery<MeritStatsResponse>({
     queryKey: ['profile', 'merit-stats'],

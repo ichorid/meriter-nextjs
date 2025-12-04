@@ -13,7 +13,8 @@
         "close": "Close",
         "confirm": "Confirm",
         "dailyMerits": "Daily",
-        "permanentMerits": "Permanent"
+        "permanentMerits": "Permanent",
+        "siteTitle": "Meriter"
     },
     "home": {
         "breadcrumb": "Home",
@@ -157,10 +158,11 @@
         }
     },
     "login": {
-        "welcomeTitle": "Welcome to Meriter",
-        "welcome": "Welcome to Meriter",
+        "welcome": "Welcome!",
+        "welcomeSubtitle": "You're one step away from participating in an exciting event and we can't wait to meet you! Please introduce yourself and tell us about yourself by filling out your profile.",
         "title": "Login",
-        "subtitle": "Sign in to access your account",
+        "siteTitle": "Meriter",
+        "subtitle": "Sign in using one of the services:",
         "signInWith": "Sign in with {provider}",
         "redirecting": "Redirecting to home...",
         "authenticating": "Authenticating...",
@@ -170,9 +172,17 @@
         "telegramWebApp": {
             "detected": "Telegram Web App detected, authenticating..."
         },
+        "noAuthenticationProviders": "No authentication providers configured. Please contact administrator.",
         "telegramWidget": {
             "instructions": "Click the button below to sign in with Telegram"
-        }
+        },
+        "hint": {
+            "agreeToTerms": "By clicking the button and confirming login, I agree to the",
+            "termsOfService": "Terms of Service",
+            "and": "and",
+            "personalData": "processing of personal data"
+        },
+        "fillProfile": "Fill Profile"
     },
     "polls": {
         "createTitle": "Create Poll",
@@ -514,6 +524,33 @@
             "create": "Create"
         }
     },
+    "teams": {
+        "title": "Team Management",
+        "teamNotFound": "Team not found",
+        "teamInformation": "Team Information",
+        "name": "Name",
+        "school": "School",
+        "communityId": "Community ID",
+        "participants": "Participants",
+        "createInvite": "Create Invite",
+        "noParticipants": "No participants yet",
+        "activeInvites": "Active Invites",
+        "noActiveInvites": "No active invites",
+        "inviteCode": "Invite Code",
+        "type": "Type",
+        "target": "Target",
+        "used": "Used",
+        "createInviteModal": {
+            "title": "Create Invite",
+            "userId": "User ID",
+            "userIdPlaceholder": "Enter user ID",
+            "inviteType": "Invite Type",
+            "leadToParticipant": "Lead to Participant",
+            "superadminToLead": "Superadmin to Lead",
+            "cancel": "Cancel",
+            "create": "Create"
+        }
+    },
     "communities": {
         "other": "Other",
         "create": {
@@ -622,6 +659,8 @@
         }
     },
     "profile": {
+        "newProfile": "New User",
+        "newProfileSubtitle": "Fields marked with * are required. Please do not skip them.",
         "title": "Profile",
         "notFound": "User not found",
         "roles": "Roles in Communities",
@@ -684,6 +723,13 @@
             "participant": "Participant",
             "viewer": "Viewer",
             "superadmin": "Superadmin"
+        },
+        "generalInformattion": "General",
+        "contactInformattion": "Contacts",
+        "aboutInformattion": "About",
+        "hint": {
+            "about": "Here you can tell a little bit about yourself and what is important to you.",
+            "values": "Here should be description/explanation for the user about what exactly we mean by values."
         }
     },
     "invites": {

@@ -15,3 +15,4 @@ export * from "./Badge";
 export * from "./LoadingSkeleton";
 export * from "./PageTransition";
 export * from "./PullToRefresh";
+export * from "./Logo";
