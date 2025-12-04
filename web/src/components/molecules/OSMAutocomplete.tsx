@@ -1,15 +1,16 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { BrandInput } from '@/components/ui/BrandInput';
-import { Loader2, MapPin } from 'lucide-react';
-import { useDebounce } from '@/hooks/useDebounce';
+import React, { useState, useEffect, useRef } from "react";
+import { BrandInput } from "@/components/ui/BrandInput";
+import { Loader2, MapPin } from "lucide-react";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useLocale } from "next-intl";
 
 interface OSMAutocompleteProps {
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
-    type?: 'city' | 'state' | 'country' | 'any';
+    type?: "city" | "state" | "country" | "any";
     className?: string;
     error?: string;
 }
@@ -30,10 +31,12 @@ export function OSMAutocomplete({
     value,
     onChange,
     placeholder,
-    type = 'any',
+    type = "any",
     className,
     error,
 }: OSMAutocompleteProps) {
+    const locale = useLocale();
+    const inputId = React.useId();
     const [query, setQuery] = useState(value);
     const [results, setResults] = useState<NominatimResult[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -48,12 +51,16 @@ export function OSMAutocomplete({
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+            if (
+                wrapperRef.current &&
+                !wrapperRef.current.contains(event.target as Node)
+            ) {
                 setIsOpen(false);
             }
         };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener("mousedown", handleClickOutside);
+        return () =>
+            document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
     useEffect(() => {
@@ -66,26 +73,34 @@ export function OSMAutocomplete({
                 let q = debouncedQuery;
                 let params = `&q=${encodeURIComponent(q)}`;
 
-                if (type === 'city') {
+                if (type === "city") {
                     params = `&city=${encodeURIComponent(q)}`;
-                } else if (type === 'state') {
+                } else if (type === "state") {
                     params = `&state=${encodeURIComponent(q)}`;
                 }
 
                 const response = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json${params}&addressdetails=1&limit=5&accept-language=ru`
+                    `https://nominatim.openstreetmap.org/search?format=json${params}&addressdetails=1&limit=5&accept-language=${locale}`,
+                    {
+                        headers: {
+                            Accept: "application/json",
+                        },
+                    }
                 );
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
                 setResults(data);
             } catch (error) {
-                console.error('Error searching location:', error);
+                console.error("Error searching location:", error);
             } finally {
                 setIsLoading(false);
             }
         };
 
         searchLocation();
-    }, [debouncedQuery, type, isOpen]);
+    }, [debouncedQuery, type, isOpen, locale]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setQuery(e.target.value);
@@ -97,9 +112,14 @@ export function OSMAutocomplete({
         let selection = result.display_name;
 
         // Try to extract specific part based on type
-        if (type === 'city') {
-            selection = result.address.city || result.address.town || result.address.village || result.address.hamlet || selection;
-        } else if (type === 'state') {
+        if (type === "city") {
+            selection =
+                result.address.city ||
+                result.address.town ||
+                result.address.village ||
+                result.address.hamlet ||
+                selection;
+        } else if (type === "state") {
             selection = result.address.state || selection;
         }
 
@@ -116,7 +136,13 @@ export function OSMAutocomplete({
                 onChange={handleInputChange}
                 placeholder={placeholder}
                 onFocus={() => setIsOpen(true)}
-                rightIcon={isLoading ? <Loader2 className="w-4 h-4 animate-spin text-gray-400" /> : undefined}
+                autoComplete="one-time-code"
+                name={`osm-search-${inputId}`}
+                rightIcon={
+                    isLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-base-content/50" />
+                    ) : undefined
+                }
                 error={error}
             />
             {error && <p className="text-error text-xs mt-1">{error}</p>}
@@ -130,7 +156,9 @@ export function OSMAutocomplete({
                             onClick={() => handleSelectResult(result)}
                         >
                             <MapPin className="w-4 h-4 mt-0.5 text-brand-primary shrink-0" />
-                            <span className="truncate">{result.display_name}</span>
+                            <span className="truncate">
+                                {result.display_name}
+                            </span>
                         </button>
                     ))}
                 </div>

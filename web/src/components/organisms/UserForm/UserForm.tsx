@@ -163,21 +163,21 @@ export function UserForm({
     return (
         <div className="w-full max-w-full overflow-hidden space-y-6">
             <div className="mb-2">
-                <h2 className="text-2xl font-bold text-gray-900 text-left mb-6">
+                <h2 className="text-2xl font-bold text-base-content text-left mb-6">
                     {t("newProfile")}
                 </h2>
-                <p className="text-sm text-gray-500 mb-8">
+                <p className="text-sm text-base-content/70 mb-8">
                     {t("newProfileSubtitle")}
                 </p>
             </div>
-            <div className="bg-gray-50 p-4 rounded-xl mb-4">
+            <div className="bg-base-200 dark:bg-base-300/20 p-4 rounded-xl mb-4">
                 <div className="mb-6">
-                    <h3 className="font-bold text-base">
+                    <h3 className="font-bold text-base text-base-content">
                         {t("generalInformation")}
                     </h3>
                 </div>
                 <div className="flex items-center gap-4 mb-2">
-                    <div className="relative w-20 h-20 rounded-full overflow-hidden bg-base-200 border border-base-300 flex-shrink-0 mb-4">
+                    <div className="relative w-20 h-20 rounded-full overflow-hidden bg-base-300 dark:bg-base-content/10 border border-base-content/20 flex-shrink-0 mb-4">
                         {avatarUrl ? (
                             <img
                                 src={avatarUrl}
@@ -216,15 +216,15 @@ export function UserForm({
                     />
                 </BrandFormControl>
             </div>
-            <div className="bg-gray-50 p-4 rounded-xl mb-4">
+            <div className="bg-base-200 dark:bg-base-300/20 p-4 rounded-xl mb-4">
                 <div className="mb-6">
-                    <h3 className="font-bold text-base">
+                    <h3 className="font-bold text-base text-base-content">
                         {t("contactInformation")}
                     </h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div className="space-y-3">
-                        <label className="block text-sm font-medium text-brand-text-primary dark:text-base-content">
+                        <label className="block text-sm font-medium text-base-content">
                             {t("region")} <span className="text-error">*</span>
                         </label>
                         <OSMAutocomplete
@@ -236,7 +236,7 @@ export function UserForm({
                         />
                     </div>
                     <div className="space-y-3">
-                        <label className="block text-sm font-medium text-brand-text-primary dark:text-base-content">
+                        <label className="block text-sm font-medium text-base-content">
                             {t("city")} <span className="text-error">*</span>
                         </label>
                         <OSMAutocomplete
@@ -256,7 +256,7 @@ export function UserForm({
                             value={email}
                             onChange={() => {}} // Read-only
                             disabled
-                            className="bg-base-200 text-base-content/60"
+                            className="bg-base-300 dark:bg-base-content/10 text-base-content/60"
                         />
                     </BrandFormControl>
                 </div>
@@ -266,7 +266,7 @@ export function UserForm({
                         helperText={t("otherContactsHelper")}
                     >
                         <textarea
-                            className="w-full px-4 py-2 border rounded-xl resize-none"
+                            className="w-full px-4 py-2 bg-base-100 dark:bg-base-content/5 border border-base-content/20 rounded-xl resize-none text-base-content placeholder:text-base-content/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 focus:border-brand-primary"
                             value={otherContacts}
                             onChange={(e) => setOtherContacts(e.target.value)}
                             placeholder={t("otherContactsPlaceholder")}
@@ -275,9 +275,9 @@ export function UserForm({
                     </BrandFormControl>
                 </div>
             </div>
-            <div className="mb-2 bg-gray-50 p-4 rounded-xl">
+            <div className="mb-2 bg-base-200 dark:bg-base-300/20 p-4 rounded-xl">
                 <div className="mb-6">
-                    <h3 className="font-bold text-base">
+                    <h3 className="font-bold text-base text-base-content">
                         {t("aboutInformation")}
                     </h3>
                 </div>
@@ -290,9 +290,10 @@ export function UserForm({
                     helperText={`${about.length}/1000 ${t("characters")}`}
                     error={errors.about}
                     className="mb-4"
+                    required
                 >
                     <textarea
-                        className="w-full px-4 py-2 border rounded-xl resize-none"
+                        className="w-full px-4 py-2 bg-base-100 dark:bg-base-content/5 border border-base-content/20 rounded-xl resize-none text-base-content placeholder:text-base-content/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 focus:border-brand-primary"
                         value={about}
                         onChange={(e) => setAbout(e.target.value)}
                         placeholder={t("aboutPlaceholder")}
@@ -311,7 +312,7 @@ export function UserForm({
                     required
                 >
                     <textarea
-                        className="w-full px-4 py-2 border rounded-xl resize-none"
+                        className="w-full px-4 py-2 bg-base-100 dark:bg-base-content/5 border border-base-content/20 rounded-xl resize-none text-base-content placeholder:text-base-content/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 focus:border-brand-primary"
                         value={values}
                         onChange={(e) => setValues(e.target.value)}
                         placeholder={t("valuesPlaceholder")}

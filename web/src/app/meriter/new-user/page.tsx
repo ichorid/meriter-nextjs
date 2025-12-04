@@ -86,14 +86,8 @@ export default function NewUserPage() {
     }
 
     return (
-        <div className="p-4 space-y-6">
-            <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
-                <p className="mb-6 text-brand-text-secondary">
-                    {t("newUserDescription", {
-                        defaultMessage:
-                            "Please complete your profile to continue.",
-                    })}
-                </p>
+        <div className="min-h-screen bg-base-100 p-4 space-y-6">
+            <div className="max-w-2xl mx-auto">
                 <UserForm
                     initialData={initialData}
                     onSubmit={handleSubmit}
