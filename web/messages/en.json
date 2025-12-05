@@ -17,7 +17,10 @@
         "siteTitle": "Meriter",
         "add": "Add",
         "createCommunity": "Create Community",
-        "about": "About"
+        "about": "About",
+        "allCommunities": "All Communities",
+        "copy": "Copy",
+        "copied": "Copied!"
     },
     "home": {
         "breadcrumb": "Home",
@@ -34,7 +37,8 @@
                 "publications": "Publications",
                 "comments": "Comments",
                 "polls": "Polls",
-                "updates": "Updates"
+                "updates": "Updates",
+                "projects": "Projects"
             },
             "actions": {
                 "createPublication": "Create Publication",
@@ -758,6 +762,23 @@
         "useInvite": {
             "title": "Use Invite",
             "description": "Enter an invite code to join a community or upgrade your role"
+        },
+        "invites": {
+            "title": "Invite Generation",
+            "selectCommunity": "Select Community",
+            "community": "Community",
+            "inviteGenerated": "Invite generated successfully",
+            "inviteError": "Failed to generate invite",
+            "noExpiration": "No expiration",
+            "generatedInvites": "Generated Invites",
+            "used": "Used",
+            "expired": "Expired",
+            "active": "Active",
+            "type": "Type",
+            "superadminToLead": "Superadmin to Lead",
+            "leadToParticipant": "Lead to Participant",
+            "expires": "Expires",
+            "usedAt": "Used at"
         }
     },
     "invites": {

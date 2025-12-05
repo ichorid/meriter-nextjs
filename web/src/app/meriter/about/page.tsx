@@ -1,12 +1,45 @@
 'use client';
 
+import React, { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Users } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { VersionDisplay } from '@/components/organisms/VersionDisplay';
 import { useTranslations } from 'next-intl';
+import { useAllLeads } from '@/hooks/api/useUsers';
+import { InfoCard } from '@/components/ui/InfoCard';
+import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { SearchInput } from '@/components/molecules/SearchInput';
+import { routes } from '@/lib/constants/routes';
 
 const AboutPage = () => {
     const t = useTranslations('common');
+    const router = useRouter();
+    const [searchQuery, setSearchQuery] = useState('');
+    
+    // Fetch leads
+    const { data: leadsData, isLoading: leadsLoading } = useAllLeads({ pageSize: 100 });
+    const leads = leadsData?.data || [];
+    
+    // Filter leads based on search query
+    const filteredLeads = useMemo(() => {
+        if (!searchQuery.trim()) {
+            return leads;
+        }
+        
+        const query = searchQuery.toLowerCase();
+        return leads.filter((lead) => {
+            const displayName = (lead.displayName || '').toLowerCase();
+            const username = (lead.username || '').toLowerCase();
+            const bio = (lead.profile?.bio || '').toLowerCase();
+            
+            return displayName.includes(query) || 
+                   username.includes(query) || 
+                   bio.includes(query);
+        });
+    }, [leads, searchQuery]);
 
     return (
         <AdaptiveLayout>
@@ -33,6 +66,64 @@ const AboutPage = () => {
                             qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, 
                             consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
                         </p>
+                    </div>
+
+                    {/* Leads Section */}
+                    <div id="leads" className="pt-6 border-t border-base-300">
+                        <div className="flex items-center justify-between mb-3">
+                            <h2 className="text-lg font-semibold text-brand-text-primary">
+                                Leads
+                            </h2>
+                        </div>
+
+                        {leads.length > 0 && (
+                            <div className="mb-4">
+                                <SearchInput
+                                    placeholder="Search leads by name, username, or bio..."
+                                    value={searchQuery}
+                                    onSearch={setSearchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full"
+                                />
+                            </div>
+                        )}
+
+                        {leadsLoading ? (
+                            <div className="space-y-3">
+                                <CardSkeleton />
+                                <CardSkeleton />
+                                <CardSkeleton />
+                            </div>
+                        ) : filteredLeads.length > 0 ? (
+                            <div className="space-y-3">
+                                {filteredLeads.map((lead) => (
+                                    <InfoCard
+                                        key={lead.id}
+                                        title={lead.displayName || lead.username || 'Unknown User'}
+                                        subtitle={lead.profile?.bio || lead.username ? `@${lead.username}` : undefined}
+                                        icon={
+                                            <BrandAvatar
+                                                src={lead.avatarUrl}
+                                                fallback={lead.displayName || lead.username || 'User'}
+                                                size="sm"
+                                                className="bg-transparent"
+                                            />
+                                        }
+                                        onClick={() => router.push(routes.userProfile(lead.id))}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 text-base-content/60">
+                                <Users className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
+                                <p className="font-medium">
+                                    {searchQuery ? 'No leads found matching your search' : 'No leads found'}
+                                </p>
+                                <p className="text-sm mt-1">
+                                    {searchQuery ? 'Try a different search term' : 'No leads available'}
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     <div className="pt-6 border-t border-base-300">

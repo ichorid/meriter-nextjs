@@ -62,19 +62,18 @@ export const Publication = ({
     authorId,
     meta,
 }: any) => {
+    // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+    // This is required by React's Rules of Hooks
+    
     const t = useTranslations('feed');
+    const router = useRouter();
+    
     // Use internal IDs only - no legacy fallbacks
     const displayAuthorName = meta?.author?.name || 'Unknown';
     const displayChatName = meta?.origin?.telegramChatName || '';
     
-    if (!displayChatName && type !== 'poll') return null;
-    const router = useRouter();
-    
-    // Require communityId and authorId - fail gracefully if missing
-    if (!communityId || !authorId) {
-        console.warn('Publication missing required IDs:', { communityId, authorId });
-        return null;
-    }
+    // Create a unique identifier for this post (needed before useComments)
+    const postId = slug || _id;
     
     // Check if current user is the author - use internal IDs for comparison
     const isAuthor = myId === authorId;
@@ -85,10 +84,8 @@ export const Publication = ({
     // Check if current user is the beneficiary (but not the author)
     const isBeneficiary = hasBeneficiary && beneficiaryId === myId;
     
-    // Create a unique identifier for this post (needed before useComments)
-    const postId = slug || _id;
-    
     // Get comments data first (needed for currentPlus/currentMinus)
+    // Always call hooks even if we might return early - React requires consistent hook calls
     const {
         comments,
         showPlus,
@@ -108,23 +105,13 @@ export const Publication = ({
         minus,
         activeCommentHook,
         onlyPublication,
-        communityId,
+        communityId || '',
         wallets
     );
     
     // Get community info to check typeTag
     const { data: communityInfo } = useCommunity(communityId || '');
     const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
-    
-    // Mutual exclusivity logic:
-    // Withdrawal feature is disabled - merits are automatically credited on upvote
-    // Topup functionality is still available through the voting popup
-    // Show vote if: !isAuthor && !isBeneficiary (or if isAuthor && hasBeneficiary - author can vote for beneficiary)
-    // IMPORTANT: If user is beneficiary, NEVER show vote button (even if balance is 0)
-    const showWithdraw = false; // Withdrawals disabled
-    const showVote = !isAuthor && !isBeneficiary;
-    const showVoteForAuthor = isAuthor && hasBeneficiary; // Author can vote when there's a beneficiary
-    const currentScore = currentPlus - currentMinus;
     
     // Check if this is a PROJECT post (no voting allowed)
     const isProject = type === 'project' || (meta as any)?.isProject === true;
@@ -133,8 +120,8 @@ export const Publication = ({
     const canVote = useCanVote(
         postId,
         'publication',
-        communityId,
-        authorId,
+        communityId || '',
+        authorId || '',
         isAuthor,
         isBeneficiary,
         hasBeneficiary,
@@ -156,6 +143,27 @@ export const Publication = ({
         0;
     const [showselector, setShowselector] = useState(false);
     
+    // Additional hooks must be called before any conditional returns
+    useEffect(() => {
+        if (onlyPublication || isDetailPage) {
+            showPlus();
+            setShowComments(true);
+        }
+    }, [onlyPublication, isDetailPage, showPlus, setShowComments]);
+    
+    const [showDimensionsEditor, setShowDimensionsEditor] = useState(false);
+    
+    // NOW we can do conditional returns after all hooks are called
+    // Use internal IDs only - no legacy fallbacks
+    if (!displayChatName && type !== 'poll') return null;
+    
+    // Require communityId and authorId - fail gracefully if missing
+    if (!communityId || !authorId) {
+        console.warn('Publication missing required IDs:', { communityId, authorId });
+        return null;
+    }
+    
+    // Calculate derived values after early return checks
     // Rate conversion no longer needed with v1 API - currencies are normalized
     const rate = 1;
     
@@ -173,23 +181,25 @@ export const Publication = ({
         ? Math.floor(10 * currentBalance) / 10
         : 0;
     
+    // Mutual exclusivity logic:
+    // Withdrawal feature is disabled - merits are automatically credited on upvote
+    // Topup functionality is still available through the voting popup
+    // Show vote if: !isAuthor && !isBeneficiary (or if isAuthor && hasBeneficiary - author can vote for beneficiary)
+    // IMPORTANT: If user is beneficiary, NEVER show vote button (even if balance is 0)
+    const showWithdraw = false; // Withdrawals disabled
+    const showVote = !isAuthor && !isBeneficiary;
+    const showVoteForAuthor = isAuthor && hasBeneficiary; // Author can vote when there's a beneficiary
+    const currentScore = currentPlus - currentMinus;
+    
     // Community info already fetched above - reuse it
     const communityIdForRouting = communityInfo?.id || communityId;
     
     // Display title - use meta.author.name
     const displayTitle = displayAuthorName;
     
-    useEffect(() => {
-        if (onlyPublication || isDetailPage) {
-            showPlus();
-            setShowComments(true);
-        }
-    }, [onlyPublication, isDetailPage]);
-
     const publicationUnderReply = activeCommentHook[0] == slug;
     const nobodyUnderReply = activeCommentHook[0] === null;
     const commentUnderReply = activeCommentHook[0] && activeCommentHook[0] !== slug && activeCommentHook[0] !== null;
-    const [showDimensionsEditor, setShowDimensionsEditor] = useState(false);
     
     const tagsStr = [
         "#" + keyword,

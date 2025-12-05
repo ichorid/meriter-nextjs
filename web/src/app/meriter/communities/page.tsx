@@ -3,10 +3,8 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Users } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useCommunitiesBatch, useCommunities } from '@/hooks/api/useCommunities';
-import { useAllLeads } from '@/hooks/api/useUsers';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useWallets } from '@/hooks/api';
@@ -15,7 +13,8 @@ import { InfoCard } from '@/components/ui/InfoCard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
-import { routes } from '@/lib/constants/routes';
+import { InviteInput } from '@/components/molecules/InviteInput/InviteInput';
+import Link from 'next/link';
 
 export default function CommunitiesPage() {
     const router = useRouter();
@@ -53,10 +52,6 @@ export default function CommunitiesPage() {
         }
         return memberCommunities;
     }, [isSuperadmin, allCommunitiesData, memberCommunities]);
-    
-    // Fetch leads
-    const { data: leadsData, isLoading: leadsLoading } = useAllLeads({ pageSize: 100 });
-    const leads = leadsData?.data || [];
     
     // Group communities into special and non-special
     const { specialCommunities, userCommunities } = useMemo(() => {
@@ -163,6 +158,33 @@ export default function CommunitiesPage() {
                         </>
                     )}
 
+                    {/* Viewer Notification: Show when user has no non-special communities */}
+                    {userCommunities.length === 0 && (
+                        <>
+                            <div className="bg-info/10 border border-info/20 rounded-xl p-6">
+                                <div className="space-y-4">
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-brand-text-primary mb-2">
+                                            Join a Team
+                                        </h3>
+                                        <p className="text-sm text-brand-text-secondary">
+                                            To join a team, contact one of the{' '}
+                                            <Link 
+                                                href="/meriter/about#leads" 
+                                                className="text-info hover:text-info/80 underline font-medium"
+                                            >
+                                                leads
+                                            </Link>
+                                            {' '}for an invite.
+                                        </p>
+                                    </div>
+                                    <InviteInput />
+                                </div>
+                            </div>
+                            <div className="border-t border-base-300" />
+                        </>
+                    )}
+
                     {/* Section 2: User's Communities (hidden for viewers) */}
                     {!hasViewerRole && userCommunities.length > 0 && (
                         <>
@@ -201,48 +223,6 @@ export default function CommunitiesPage() {
                             <div className="border-t border-base-300" />
                         </>
                     )}
-
-                    {/* Section 3: Leads */}
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <h2 className="text-lg font-semibold text-brand-text-primary">
-                                Leads
-                            </h2>
-                        </div>
-
-                        {leadsLoading ? (
-                            <div className="space-y-3">
-                                <CardSkeleton />
-                                <CardSkeleton />
-                                <CardSkeleton />
-                            </div>
-                        ) : leads.length > 0 ? (
-                            <div className="space-y-3">
-                                {leads.map((lead) => (
-                                    <InfoCard
-                                        key={lead.id}
-                                        title={lead.displayName || lead.username || 'Unknown User'}
-                                        subtitle={lead.profile?.bio || lead.username ? `@${lead.username}` : undefined}
-                                        icon={
-                                            <BrandAvatar
-                                                src={lead.avatarUrl}
-                                                fallback={lead.displayName || lead.username || 'User'}
-                                                size="sm"
-                                                className="bg-transparent"
-                                            />
-                                        }
-                                        onClick={() => router.push(routes.userProfile(lead.id))}
-                                    />
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-12 text-base-content/60">
-                                <Users className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
-                                <p className="font-medium">No leads found</p>
-                                <p className="text-sm mt-1">No leads available</p>
-                            </div>
-                        )}
-                    </div>
                 </div>
             </div>
         </AdaptiveLayout>
