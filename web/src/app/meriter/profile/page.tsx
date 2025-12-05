@@ -9,7 +9,7 @@ import { useUserRoles, useUserProjects, useMeritStats, useLeadCommunities } from
 import { ProfileEditForm } from '@/components/organisms/Profile/ProfileEditForm';
 import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
 import { ProfileStats } from '@/components/organisms/Profile/ProfileStats';
-import { InviteInput } from '@/components/molecules/InviteInput';
+import { InviteGeneration } from '@/components/organisms/Profile/InviteGeneration';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { InfoCard } from '@/components/ui/InfoCard';
 import { BrandButton } from '@/components/ui/BrandButton';
@@ -157,16 +157,8 @@ export default function ProfilePage() {
           {/* Divider */}
           <div className="border-t border-brand-secondary/10" />
 
-          {/* Invite Section */}
-          <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="text-brand-primary bg-brand-primary/10 p-2 rounded-lg">
-                <UserPlus size={24} />
-              </div>
-              <h2 className="text-lg font-bold text-brand-text-primary">{t('inviteSection')}</h2>
-            </div>
-            <InviteInput />
-          </div>
+          {/* Invite Generation Section */}
+          <InviteGeneration />
 
           {/* Divider */}
           <div className="border-t border-brand-secondary/10" />

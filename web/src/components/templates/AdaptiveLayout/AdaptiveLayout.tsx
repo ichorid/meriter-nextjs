@@ -199,23 +199,11 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
     <div className={`min-h-screen flex ${className}`}>
       {/* Left Sidebar - Communities */}
       {/* Responsive behavior:
-          - Mobile small (< 640px): Hide when comments shown (very cramped), show avatar-only otherwise
-          - Mobile/Tablet (640px - lg): always avatar-only, fixed positioning
+          - Mobile/Tablet (< lg): Hidden when BottomNavigation is visible (same breakpoint)
           - Desktop lg-xl (1024-1279px): expanded when no comments, avatar when comments shown
           - Desktop xl+ (≥1280px): always expanded (prioritize full-size on broad windows)
       */}
-      {/* Mobile/Tablet (< lg): avatar-only, fixed positioning */}
-      {/* On small screens (< 640px), hide when comments shown to save space */}
-      {!showCommentsColumn && (
-        <div className="flex lg:hidden flex-shrink-0">
-          <VerticalSidebar isExpanded={false} />
-        </div>
-      )}
-      {showCommentsColumn && (
-        <div className="hidden sm:flex lg:hidden flex-shrink-0">
-          <VerticalSidebar isExpanded={false} />
-        </div>
-      )}
+      {/* Mobile/Tablet sidebar is hidden when BottomNavigation is shown (both use lg:hidden breakpoint) */}
       {/* Desktop lg-xl (1024-1279px): shrink to avatar when comments shown */}
       <div className="hidden lg:flex xl:hidden flex-shrink-0" style={{ width: sidebarExpandedDesktop ? '280px' : '72px' }}>
         <VerticalSidebar isExpanded={sidebarExpandedDesktop} />
@@ -227,14 +215,10 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
       {/* Main Content Area */}
       {/* Padding needed where sidebar is fixed:
-          - Mobile small (< 640px) with comments: No padding (sidebar hidden)
-          - Mobile/Tablet: 72px (avatar-only sidebar)
+          - Mobile/Tablet (< lg): No padding (sidebar hidden when BottomNavigation is visible)
           - Desktop: sidebar uses sticky positioning, takes natural space (no padding)
       */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${showCommentsColumn
-        ? 'pl-0 sm:pl-[72px] lg:pl-0' // No padding on small mobile when comments shown (sidebar hidden), 72px on larger mobile/tablet
-        : 'pl-[72px] lg:pl-0' // 72px on mobile/tablet, no padding on desktop
-        }`}>
+      <div className={`flex-1 flex flex-col transition-all duration-300 lg:pl-0`}>
         {/* Top Bar */}
         <ContextTopBar />
 
