@@ -188,14 +188,12 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     // Declare all state hooks unconditionally at the top level
-    const activeCommentHook = useState<string | null>(null);
+    const [activeCommentHook, setActiveCommentHook] = useState<string | null>(null);
     const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
-    // Early return AFTER all hooks have been called
-    if (!isAuthenticated) return null;
-
     // Filter publications by tag and search query
+    // This useMemo MUST be called before any conditional returns
     const filteredPublications = useMemo(() => {
         let filtered = publications;
 
@@ -239,6 +237,9 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         return filtered;
     }, [publications, selectedTag, searchQuery]);
 
+    // Early return AFTER all hooks have been called
+    if (!isAuthenticated) return null;
+
     return (
         <AdaptiveLayout
             className="feed"
@@ -246,7 +247,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             balance={balance}
             wallets={Array.isArray(wallets) ? wallets : []}
             myId={user?.id}
-            activeCommentHook={activeCommentHook}
+            activeCommentHook={[activeCommentHook, setActiveCommentHook]}
             activeSlider={activeSlider}
             setActiveSlider={setActiveSlider}
             activeWithdrawPost={activeWithdrawPost}

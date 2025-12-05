@@ -4,6 +4,7 @@ import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Users, User, Bell } from 'lucide-react';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
+import { VersionDisplay } from '@/components/organisms/VersionDisplay';
 
 export const BottomNavigation = () => {
     const pathname = usePathname();
@@ -66,6 +67,10 @@ export const BottomNavigation = () => {
                         </button>
                     );
                 })}
+            </div>
+            {/* Version Display at bottom */}
+            <div className="px-2 pb-1 pt-0.5 border-t border-base-300/50">
+                <VersionDisplay compact={true} className="justify-center" />
             </div>
         </div>
     );

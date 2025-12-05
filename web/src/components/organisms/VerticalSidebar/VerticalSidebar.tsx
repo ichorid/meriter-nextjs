@@ -259,6 +259,11 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
           )}
         </div>
       </div>
+
+      {/* Version Display at bottom */}
+      <div className={`${paddingClass} pt-2 border-t border-base-300 mt-auto`}>
+        <VersionDisplay compact={!isExpanded} className="justify-center" />
+      </div>
     </aside>
   );
 };
