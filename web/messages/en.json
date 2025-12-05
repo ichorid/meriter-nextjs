@@ -14,7 +14,9 @@
         "confirm": "Confirm",
         "dailyMerits": "Daily",
         "permanentMerits": "Permanent",
-        "siteTitle": "Meriter"
+        "siteTitle": "Meriter",
+        "add": "Add",
+        "createCommunity": "Create Community"
     },
     "home": {
         "breadcrumb": "Home",
@@ -375,7 +377,8 @@
             "byDate": "By Date",
             "byRating": "By Rating",
             "loadMore": "Load more",
-            "createPost": "Create Post"
+            "createPost": "Create Post",
+            "joinByInvite": "Or join by invite"
         },
         "communitySettings": {
             "title": "Community Settings",

@@ -18,6 +18,10 @@ export class UserSettings {
 
   @Prop()
   lastDailyDeliveredAt?: Date;
+
+  // Notification read status - ID of the last read notification
+  @Prop()
+  notificationsReadUpToId?: string;
 }
 
 export const UserSettingsSchema = SchemaFactory.createForClass(UserSettings);

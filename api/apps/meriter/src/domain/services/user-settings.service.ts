@@ -36,6 +36,15 @@ export class UserSettingsService {
   async markDailyDelivered(userId: string, at: Date): Promise<void> {
     await this.model.updateOne({ userId }, { $set: { lastDailyDeliveredAt: at } }, { upsert: true }).exec();
   }
+
+  async updateNotificationsReadUpToId(userId: string, notificationId: string): Promise<UserSettings> {
+    const updated = await this.model.findOneAndUpdate(
+      { userId },
+      { notificationsReadUpToId: notificationId },
+      { upsert: true, new: true },
+    ).lean<UserSettings>().exec();
+    return updated as UserSettings;
+  }
 }
 
 

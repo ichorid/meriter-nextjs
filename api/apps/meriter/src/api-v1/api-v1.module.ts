@@ -9,6 +9,7 @@ import { UsersModule } from './users/users.module';
 import { ApiV1ConfigModule } from './config/config.module';
 import { InvitesModule } from './invites/invites.module';
 import { UserCommunityRolesModule } from './user-community-roles/user-community-roles.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { UserCommunityRolesModule } from './user-community-roles/user-community-
     ApiV1ConfigModule,
     InvitesModule,
     UserCommunityRolesModule,
+    NotificationsModule,
   ],
 })
 export class ApiV1Module {}

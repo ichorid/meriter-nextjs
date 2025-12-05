@@ -8,7 +8,6 @@ import {
   PublicationsTab,
   CommentsTab,
   PollsTab,
-  UpdatesTab,
   PollCreateModal,
   HeroSection,
 } from './components';
@@ -40,8 +39,6 @@ export default function PageHome() {
     fetchNextPolls,
     hasNextPolls,
     isFetchingNextPolls,
-    updatesArray,
-    updatesLoading,
     wallets,
   } = useHomeData();
 
@@ -66,13 +63,6 @@ export default function PageHome() {
     }
   }, [targetPostId, targetPublication?.communityId, router]);
 
-  // Handle updates redirect
-  useEffect(() => {
-    if (document.location.search.match('updates')) {
-      setTimeout(() => (document.location.href = '#updates-frequency'), 500);
-      setTimeout(() => (document.location.href = '#updates-frequency'), 1000);
-    }
-  }, [wallets]);
 
   // Reset active withdraw slider when switching tabs
   useEffect(() => {
@@ -134,15 +124,6 @@ export default function PageHome() {
           />
         );
 
-      case 'updates':
-        return (
-          <UpdatesTab
-            updates={updatesArray}
-            isLoading={updatesLoading}
-            sortOrder={sortOrder}
-          />
-        );
-
       default:
         return null;
     }
@@ -172,13 +153,12 @@ export default function PageHome() {
             publications: myPublications.length,
             comments: myComments.length,
             polls: myPolls.length,
-            updates: updatesArray.length,
+            updates: 0,
           }}
           isLoading={
             publicationsLoading ||
             commentsLoading ||
-            pollsLoading ||
-            updatesLoading
+            pollsLoading
           }
         />
 

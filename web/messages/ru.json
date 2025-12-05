@@ -13,7 +13,9 @@
         "close": "Закрыть",
         "confirm": "Подтвердить",
         "dailyMerits": "Дневные",
-        "permanentMerits": "Постоянные"
+        "permanentMerits": "Постоянные",
+        "add": "Добавить",
+        "createCommunity": "Создать сообщество"
     },
     "home": {
         "breadcrumb": "Главная",
@@ -371,7 +373,8 @@
             "byDate": "По дате",
             "byRating": "По рейтингу",
             "loadMore": "Загрузить еще",
-            "createPost": "Создать пост"
+            "createPost": "Создать пост",
+            "joinByInvite": "Или присоединиться по приглашению"
         },
         "communitySettings": {
             "title": "Настройки сообщества",

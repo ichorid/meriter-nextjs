@@ -251,17 +251,6 @@ export const usersApiV1 = {
         return response.data;
     },
 
-    async getUpdates(
-        userId: string,
-        params: { skip?: number; limit?: number } = {}
-    ): Promise<PaginatedResponse<UpdateEvent>> {
-        const response = await apiClient.get<{
-            success: true;
-            data: PaginatedResponse<UpdateEvent>;
-        }>(`/api/v1/users/${userId}/updates`, { params });
-        return response.data;
-    },
-
     async searchUsers(query: string, limit: number = 20): Promise<User[]> {
         const response = await apiClient.get<{ success: true; data: User[] }>(
             "/api/v1/users/search",
@@ -1378,66 +1367,60 @@ export const notificationsApiV1 = {
             type?: string;
         } = {}
     ): Promise<PaginatedResponse<import("@/types/api-v1").Notification>> {
-        // Endpoint not implemented in backend - return empty response without making request
-        const { pageSize = 20 } = params;
-        return {
-            data: [],
-            meta: {
-                pagination: {
-                    page: 1,
-                    pageSize: pageSize,
-                    total: 0,
-                    totalPages: 0,
-                    hasNext: false,
-                    hasPrev: false,
-                },
-                timestamp: new Date().toISOString(),
-                requestId: "",
-            },
-        };
+        const queryParams: Record<string, string> = {};
+        if (params.page !== undefined) {
+            queryParams.page = params.page.toString();
+        }
+        if (params.pageSize !== undefined) {
+            queryParams.pageSize = params.pageSize.toString();
+        }
+        if (params.unreadOnly !== undefined) {
+            queryParams.unreadOnly = params.unreadOnly.toString();
+        }
+        if (params.type) {
+            queryParams.type = params.type;
+        }
+
+        const response = await apiClient.get<{
+            success: true;
+            data: PaginatedResponse<import("@/types/api-v1").Notification>;
+        }>("/api/v1/notifications", { params: queryParams });
+        return response.data;
     },
 
     async getUnreadCount(): Promise<number> {
-        // Endpoint not implemented in backend - return 0 without making request
-        return 0;
+        const response = await apiClient.get<{ success: true; data: number }>(
+            "/api/v1/notifications/unread-count"
+        );
+        return response.data;
     },
 
     async markAsRead(notificationId: string): Promise<void> {
-        // Endpoint not implemented - do nothing
-        return Promise.resolve();
+        await apiClient.post(`/api/v1/notifications/${notificationId}/read`);
     },
 
     async markAllAsRead(): Promise<void> {
-        // Endpoint not implemented - do nothing
-        return Promise.resolve();
+        await apiClient.post("/api/v1/notifications/read-all");
     },
 
     async deleteNotification(notificationId: string): Promise<void> {
-        // Endpoint not implemented - do nothing
-        return Promise.resolve();
+        await apiClient.delete(`/api/v1/notifications/${notificationId}`);
     },
 
     async getPreferences(): Promise<
         import("@/types/api-v1").NotificationPreferences
     > {
-        // Endpoint not implemented - return default preferences
-        return {
-            mentions: true,
-            replies: true,
-            votes: true,
-            invites: true,
-            comments: true,
-            publications: true,
-            polls: true,
-            system: true,
-        };
+        const response = await apiClient.get<{
+            success: true;
+            data: import("@/types/api-v1").NotificationPreferences;
+        }>("/api/v1/notifications/preferences");
+        return response.data;
     },
 
     async updatePreferences(
         preferences: Partial<import("@/types/api-v1").NotificationPreferences>
     ): Promise<void> {
-        // Endpoint not implemented - do nothing
-        return Promise.resolve();
+        await apiClient.put("/api/v1/notifications/preferences", preferences);
     },
 };
 

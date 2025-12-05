@@ -1,8 +1,7 @@
-import { useWallets, useUpdates } from "@/hooks/api";
+import { useWallets } from "@/hooks/api";
 import { useInfiniteMyPublications } from "@/hooks/api/usePublications";
 import { useInfiniteMyComments } from "@/hooks/api/useComments";
 import { useInfiniteMyPolls } from "@/hooks/api/usePolls";
-import { useInfiniteUpdates } from "@/hooks/api/useUpdates";
 import { useAuth } from "@/contexts/AuthContext";
 import { normalizeArray } from "../utils";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -37,15 +36,6 @@ export function useHomeData() {
         isFetchingNextPage: isFetchingNextPolls,
     } = useInfiniteMyPolls(user?.id || "", pageSize);
 
-    // Fetch transaction updates with infinite scroll
-    const {
-        data: updatesData,
-        isLoading: updatesLoading,
-        fetchNextPage: fetchNextUpdates,
-        hasNextPage: hasNextUpdates,
-        isFetchingNextPage: isFetchingNextUpdates,
-    } = useInfiniteUpdates(user?.id || "", pageSize);
-
     // Fetch user comments with infinite scroll
     const {
         data: commentsData,
@@ -74,12 +64,6 @@ export function useHomeData() {
         });
     }, [pollsData?.pages]);
 
-    const updatesArray = useMemo(() => {
-        return (updatesData?.pages ?? []).flatMap((page) => {
-            return page?.data || [];
-        });
-    }, [updatesData?.pages]);
-
     return {
         // Publications
         myPublications,
@@ -101,13 +85,6 @@ export function useHomeData() {
         fetchNextPolls,
         hasNextPolls,
         isFetchingNextPolls,
-
-        // Updates
-        updatesArray,
-        updatesLoading,
-        fetchNextUpdates,
-        hasNextUpdates,
-        isFetchingNextUpdates,
 
         // Wallets
         wallets: normalizeArray(wallets),

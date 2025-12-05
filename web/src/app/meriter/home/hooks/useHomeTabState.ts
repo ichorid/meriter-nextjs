@@ -10,7 +10,6 @@ export function useHomeTabState() {
     publications: 'recent',
     comments: 'recent',
     polls: 'recent',
-    updates: 'recent',
   });
 
   useEffect(() => {
@@ -24,8 +23,6 @@ export function useHomeTabState() {
         detectedTab = 'comments';
       } else if (hash.includes('polls')) {
         detectedTab = 'polls';
-      } else if (hash.includes('updates-frequency')) {
-        detectedTab = 'updates';
       } else {
         detectedTab = 'publications';
       }

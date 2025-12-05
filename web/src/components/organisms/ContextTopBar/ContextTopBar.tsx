@@ -68,15 +68,13 @@ const HomeTopBar: React.FC = () => {
   // Use the same hook as the page to sync state
   const { currentTab, setCurrentTab, sortByTab, setSortByTab } = useHomeTabState();
 
-  const handleTabClick = (tab: 'publications' | 'comments' | 'polls' | 'updates') => {
+  const handleTabClick = (tab: 'publications' | 'comments' | 'polls') => {
     setCurrentTab(tab);
     let hashPart = '';
     if (tab === 'comments') {
       hashPart = '#comments';
     } else if (tab === 'polls') {
       hashPart = '#polls';
-    } else if (tab === 'updates') {
-      hashPart = '#updates-frequency';
     }
     // For publications, hashPart stays empty (default)
 
@@ -107,8 +105,6 @@ const HomeTopBar: React.FC = () => {
       hashPart = '#comments';
     } else if (currentTab === 'polls') {
       hashPart = '#polls';
-    } else if (currentTab === 'updates') {
-      hashPart = '#updates-frequency';
     }
     // For publications tab, hashPart stays empty (default hash)
 
@@ -174,14 +170,6 @@ const HomeTopBar: React.FC = () => {
               >
                 {t('tabs.polls') || 'Polls'}
               </BrandButton>
-              <BrandButton
-                variant={currentTab === 'updates' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => handleTabClick('updates')}
-                className={currentTab !== 'updates' ? 'dark:text-base-content' : ''}
-              >
-                {t('tabs.updates') || 'Updates'}
-              </BrandButton>
             </div>
           ) : (
             <div className="flex-1">
@@ -192,7 +180,6 @@ const HomeTopBar: React.FC = () => {
                   { label: t('tabs.publications') || 'My Publications', value: 'publications' },
                   { label: t('tabs.comments') || 'My Comments', value: 'comments' },
                   { label: t('tabs.polls') || 'Polls', value: 'polls' },
-                  { label: t('tabs.updates') || 'Updates', value: 'updates' },
                 ]}
                 placeholder="Select tab"
                 fullWidth
