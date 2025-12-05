@@ -8,7 +8,8 @@ export const routes = {
     logout: "/meriter/logout",
 
     // Main
-    home: "/meriter/home",
+    home: "/meriter/home", // Deprecated - use profile instead
+    profile: "/meriter/profile",
     settings: "/meriter/settings",
 
     // Communities

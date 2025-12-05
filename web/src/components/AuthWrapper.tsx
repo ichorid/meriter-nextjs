@@ -105,9 +105,9 @@ export function AuthWrapper({ children, enabledProviders }: AuthWrapperProps) {
                 });
             }
             if (DEBUG_MODE) {
-                console.log("[AuthWrapper] Redirecting to /meriter/home");
+                console.log("[AuthWrapper] Redirecting to /meriter/profile");
             }
-            router.push("/meriter/home");
+            router.push("/meriter/profile");
         }
     }, [isAuthenticated, pathname, router]);
 

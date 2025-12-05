@@ -10,6 +10,8 @@ import { ProfileEditForm } from '@/components/organisms/Profile/ProfileEditForm'
 import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
 import { ProfileStats } from '@/components/organisms/Profile/ProfileStats';
 import { InviteGeneration } from '@/components/organisms/Profile/InviteGeneration';
+import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
+import { useProfileData } from '@/hooks/useProfileData';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { InfoCard } from '@/components/ui/InfoCard';
 import { BrandButton } from '@/components/ui/BrandButton';
@@ -26,6 +28,16 @@ export default function ProfilePage() {
 
   const { data: roles, isLoading: rolesLoading } = useUserRoles(user?.id || '');
   const { data: leadCommunities, isLoading: leadCommunitiesLoading } = useLeadCommunities(user?.id || '');
+  
+  // Get profile content data for cards
+  const {
+    myPublications,
+    publicationsLoading,
+    myComments,
+    commentsLoading,
+    myPolls,
+    pollsLoading,
+  } = useProfileData();
 
   const {
     data: projectsData,
@@ -153,6 +165,29 @@ export default function ProfilePage() {
               isLoading={meritStatsLoading}
             />
           )}
+
+          {/* Divider */}
+          <div className="border-t border-brand-secondary/10" />
+
+          {/* Content Cards (Publications, Comments, Polls) */}
+          <ProfileContentCards
+            userName={
+              user?.firstName && user?.lastName
+                ? `${user.firstName} ${user.lastName}`
+                : user?.firstName || user?.displayName || user?.username || undefined
+            }
+            userAvatar={user?.avatarUrl}
+            stats={{
+              publications: myPublications.length,
+              comments: myComments.length,
+              polls: myPolls.length,
+            }}
+            isLoading={
+              publicationsLoading ||
+              commentsLoading ||
+              pollsLoading
+            }
+          />
 
           {/* Divider */}
           <div className="border-t border-brand-secondary/10" />

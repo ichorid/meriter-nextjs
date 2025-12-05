@@ -282,8 +282,8 @@ describe('Login Page Integration', () => {
 
       // Verify getOAuthUrl was called (component uses it to generate the URL)
       // The component calls getOAuthUrl and then sets window.location.href
-      // When no search params are present, it defaults to '/meriter/home'
-      expect(mockGetOAuthUrl).toHaveBeenCalledWith('google', '/meriter/home');
+      // When no search params are present, it defaults to '/meriter/profile'
+      expect(mockGetOAuthUrl).toHaveBeenCalledWith('google', '/meriter/profile');
     });
 
     it('should handle fake authentication when in fake data mode', async () => {
@@ -423,8 +423,8 @@ describe('Login Page Integration', () => {
       expect(mockGetOAuthUrl).toHaveBeenCalled();
       const callArgs = mockGetOAuthUrl.mock.calls[0];
       if (callArgs && callArgs[1]) {
-        // When invite code is present and returnTo is different from /meriter/home,
-        // the path will be /meriter/home?invite=TEST123&returnTo=/meriter/communities/123
+        // When invite code is present and returnTo is different from /meriter/profile,
+        // the path will be /meriter/profile?invite=TEST123&returnTo=/meriter/communities/123
         expect(callArgs[1]).toContain('invite');
         expect(callArgs[1]).toContain('returnTo');
       }

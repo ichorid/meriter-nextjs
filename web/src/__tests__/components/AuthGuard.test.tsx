@@ -102,7 +102,7 @@ describe('AuthGuard', () => {
       // Mock window.location.pathname
       Object.defineProperty(window, 'location', {
         value: {
-          pathname: '/meriter/home',
+          pathname: '/meriter/profile',
         },
         writable: true,
       });
@@ -156,7 +156,7 @@ describe('AuthGuard', () => {
 
       Object.defineProperty(window, 'location', {
         value: {
-          pathname: '/meriter/home',
+          pathname: '/meriter/profile',
         },
         writable: true,
       });

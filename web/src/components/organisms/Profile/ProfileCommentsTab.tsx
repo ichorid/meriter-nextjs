@@ -2,14 +2,14 @@ import { useTranslations } from 'next-intl';
 import { Comment } from '@/features/comments/components/comment';
 import { EmptyState } from '@/components/organisms/EmptyState/EmptyState';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
-import { sortItems, generateKey } from '../utils';
-import type { SortOrder } from '../types';
+import { sortItems, generateKey } from '@/lib/utils/profileContent';
+import type { SortOrder } from '@/hooks/useProfileTabState';
 import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
-interface CommentsTabProps {
+interface ProfileCommentsTabProps {
   comments: any[];
   isLoading: boolean;
   sortOrder: SortOrder;
@@ -20,7 +20,7 @@ interface CommentsTabProps {
   isFetchingNextPage?: boolean;
 }
 
-export function CommentsTab({
+export function ProfileCommentsTab({
   comments,
   isLoading,
   sortOrder,
@@ -29,7 +29,7 @@ export function CommentsTab({
   fetchNextPage,
   hasNextPage = false,
   isFetchingNextPage = false,
-}: CommentsTabProps) {
+}: ProfileCommentsTabProps) {
   const t = useTranslations('home');
   const queryClient = useQueryClient();
   const activeCommentHook = useState<string | null>(null);

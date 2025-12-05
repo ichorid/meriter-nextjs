@@ -3,17 +3,18 @@ import { useInfiniteMyPublications } from "@/hooks/api/usePublications";
 import { useInfiniteMyComments } from "@/hooks/api/useComments";
 import { useInfiniteMyPolls } from "@/hooks/api/usePolls";
 import { useAuth } from "@/contexts/AuthContext";
-import { normalizeArray } from "../utils";
+import { normalizeArray } from "@/lib/utils/profileContent";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useMemo } from "react";
 
 /**
- * Hook to fetch all home page data with infinite scroll support
+ * Hook to fetch all profile page data with infinite scroll support
+ * (moved from useHomeData)
  */
-export function useHomeData() {
+export function useProfileData() {
     const { user } = useAuth();
     const isMobile = useMediaQuery("(max-width: 640px)");
-    const pageSize = isMobile ? 10 : 20; // Меньше данных на mobile
+    const pageSize = isMobile ? 10 : 20;
 
     // Fetch wallets
     const { data: wallets = [], isLoading: walletsLoading } = useWallets();
@@ -91,3 +92,4 @@ export function useHomeData() {
         walletsLoading,
     };
 }
+

@@ -91,19 +91,48 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 
   return (
     <aside className={`flex fixed lg:sticky left-0 top-0 h-screen ${widthClass} bg-base-200 border-r border-base-300 z-40 flex-col py-4 pb-16 lg:pb-4 transition-all duration-300 ${className}`}>
-      {/* Home Icon */}
+      {/* Profile Card (replaces Home button) */}
       <div className={paddingClass}>
-        <Link href={routes.home}>
+        <Link href={routes.profile}>
           <button
-            className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} h-12 rounded-lg flex items-center transition-colors mb-2 ${pathname === routes.home
+            className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 ${pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
               ? 'bg-primary text-primary-content'
               : 'hover:bg-base-300 text-base-content'
               }`}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            {isExpanded && <span className="ml-2 text-sm font-medium">Home</span>}
+            {isExpanded && user ? (
+              <div className="flex items-center w-full">
+                <Avatar
+                  src={user.avatarUrl}
+                  alt={user.displayName || 'User'}
+                  size="sm"
+                />
+                <div className="flex-1 ml-2 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <div className="text-xs font-medium text-base-content truncate">
+                      {user.displayName || 'User'}
+                    </div>
+                    {userRoleDisplay && (
+                      <Badge variant={userRoleDisplay.variant} size="xs">
+                        {userRoleDisplay.label}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-base-content/70 mt-0.5">
+                    <span>{t('dailyMerits')}: <span className="font-semibold text-brand-primary">{totalDailyQuota}</span></span>
+                    <span className="text-base-content/40">|</span>
+                    <span>{t('permanentMerits')}: <span className="font-semibold text-brand-primary">{totalWalletBalance}</span></span>
+                  </div>
+                </div>
+                <svg className="w-5 h-5 ml-auto flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            )}
           </button>
         </Link>
       </div>

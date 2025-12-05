@@ -46,7 +46,7 @@ export function useDeepLinkHandler(
       }
     }
     
-    let redirectPath = '/meriter/home'; // default
+    let redirectPath = '/meriter/profile'; // default
     
     // Handle deep link navigation based on startapp parameter
     if (startapp === 'publication' && id) {
@@ -72,7 +72,7 @@ export function useDeepLinkHandler(
       // This will be handled by a special poll redirect page
       redirectPath = `/meriter/polls/${id}`;
     } else if (startapp === 'updates') {
-      redirectPath = '/meriter/home?updates=true';
+      redirectPath = '/meriter/profile?updates=true';
     } else if (returnTo) {
       redirectPath = returnTo;
     }

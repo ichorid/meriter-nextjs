@@ -1,29 +1,31 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { FileText, MessageSquare, BarChart3, TrendingUp } from 'lucide-react';
+import { FileText, MessageSquare, BarChart3 } from 'lucide-react';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { routes } from '@/lib/constants/routes';
 
-interface HeroSectionProps {
+interface ProfileContentCardsProps {
   userName?: string;
   userAvatar?: string | null;
   stats: {
     publications: number;
     comments: number;
     polls: number;
-    updates: number;
   };
   isLoading?: boolean;
 }
 
-export function HeroSection({
+export function ProfileContentCards({
   userName,
   userAvatar,
   stats,
   isLoading = false,
-}: HeroSectionProps) {
+}: ProfileContentCardsProps) {
   const t = useTranslations('home');
+  const router = useRouter();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -42,6 +44,7 @@ export function HeroSection({
       icon: FileText,
       color: 'text-blue-600 dark:text-blue-400',
       bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+      route: `${routes.profile}/publications`,
     },
     {
       label: t('hero.stats.comments'),
@@ -49,6 +52,7 @@ export function HeroSection({
       icon: MessageSquare,
       color: 'text-green-600 dark:text-green-400',
       bgColor: 'bg-green-50 dark:bg-green-900/20',
+      route: `${routes.profile}/comments`,
     },
     {
       label: t('hero.stats.polls'),
@@ -56,15 +60,13 @@ export function HeroSection({
       icon: BarChart3,
       color: 'text-purple-600 dark:text-purple-400',
       bgColor: 'bg-purple-50 dark:bg-purple-900/20',
-    },
-    {
-      label: t('hero.stats.updates'),
-      value: stats.updates,
-      icon: TrendingUp,
-      color: 'text-orange-600 dark:text-orange-400',
-      bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+      route: `${routes.profile}/polls`,
     },
   ];
+
+  const handleCardClick = (route: string) => {
+    router.push(route);
+  };
 
   return (
     <div className="bg-gradient-to-br from-brand-primary/5 via-base-100 to-brand-secondary/5 rounded-2xl p-6 mb-6 border border-base-300 dark:border-base-content/20">
@@ -89,13 +91,14 @@ export function HeroSection({
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <div
+            <button
               key={index}
-              className={`${stat.bgColor} rounded-xl p-4 border border-base-100/50 transition-all hover:shadow-md`}
+              onClick={() => handleCardClick(stat.route)}
+              className={`${stat.bgColor} rounded-xl p-4 border border-base-100/50 transition-all hover:shadow-md hover:scale-105 cursor-pointer text-left`}
             >
               <div className="flex items-center justify-between mb-2">
                 <Icon className={`${stat.color} w-5 h-5`} />
@@ -106,7 +109,7 @@ export function HeroSection({
               <p className="text-xs text-base-content/70 dark:text-base-content/70 font-medium">
                 {stat.label}
               </p>
-            </div>
+            </button>
           );
         })}
       </div>

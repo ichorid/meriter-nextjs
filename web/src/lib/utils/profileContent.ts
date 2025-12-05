@@ -1,4 +1,4 @@
-import type { HomeTab, SortOrder } from './types';
+export type SortOrder = 'recent' | 'voted';
 
 /**
  * Sort items by date or score
@@ -40,18 +40,5 @@ export function generateKey(id: string | number | object | undefined, index: num
  */
 export function normalizeArray<T>(data: T[] | null | undefined): T[] {
   return Array.isArray(data) ? data : [];
-}
-
-/**
- * Normalize PaginatedResponse data to array
- */
-export function normalizePaginatedData<T>(data: { data?: T[] } | T[] | null | undefined): T[] {
-  if (Array.isArray(data)) {
-    return data;
-  }
-  if (data && typeof data === 'object' && 'data' in data && Array.isArray(data.data)) {
-    return data.data;
-  }
-  return [];
 }
 

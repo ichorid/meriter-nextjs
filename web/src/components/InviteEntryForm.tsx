@@ -32,7 +32,7 @@ export function InviteEntryForm({ className = '', inviteCode: inviteCodeProp }: 
     const handleSubmit = async () => {
         // If no invite code provided, allow user to proceed without it
         if (!inviteCode.trim()) {
-            router.push('/meriter/home');
+            router.push('/meriter/profile');
             return;
         }
 
@@ -42,7 +42,7 @@ export function InviteEntryForm({ className = '', inviteCode: inviteCodeProp }: 
         try {
             await useInviteMutation.mutateAsync(inviteCode.trim());
             addToast(t('success'), 'success');
-            router.push('/meriter/home');
+            router.push('/meriter/profile');
         } catch (error: any) {
             console.error('Failed to use invite:', error);
             const errorMessage = extractErrorMessage(error, t('errors.invalidInviteCode'));

@@ -91,7 +91,7 @@ export const OAUTH_PROVIDERS: OAuthProvider[] = [
  * Получает URL для авторизации через провайдер
  */
 export function getOAuthUrl(providerId: string, returnTo?: string): string {
-  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/meriter/home';
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/meriter/profile';
   
   // Parse returnTo if it contains query parameters
   let returnPath: string = currentPath;

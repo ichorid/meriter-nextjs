@@ -44,7 +44,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
   }, [quotasMap]);
   
   const navLinks = [
-    { href: routes.home, label: 'Home', icon: 'home' },
+    { href: routes.profile, label: 'Profile', icon: 'home' },
     { href: routes.communities, label: 'Communities', icon: 'group' },
     { href: routes.polls, label: 'Polls', icon: 'poll' },
     { href: routes.wallet, label: 'Wallet', icon: 'account_balance_wallet' },
@@ -77,7 +77,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
       <div className="px-4">
         <div className="flex items-center justify-between w-full">
           {/* Logo/Brand */}
-          <Link href={routes.home} className="btn btn-ghost normal-case text-xl">
+          <Link href={routes.profile} className="btn btn-ghost normal-case text-xl">
             Meriter
           </Link>
           

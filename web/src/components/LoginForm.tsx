@@ -71,7 +71,7 @@ export function LoginForm({
     const handleFakeAuth = async () => {
         try {
             await authenticateFakeUser();
-            handleAuthRedirect(null, "/meriter/home");
+            handleAuthRedirect(null, "/meriter/profile");
         } catch (error: unknown) {
             const message = getErrorMessage(error);
             console.error("❌ Fake authentication failed:", error);
@@ -83,15 +83,15 @@ export function LoginForm({
     // Handle OAuth provider authentication
     const handleOAuthAuth = (providerId: string) => {
         // Construct returnTo path with invite code as query parameter
-        // Always use /meriter/home as base path when invite code is present
-        let returnToPath = returnTo || "/meriter/home";
+        // Always use /meriter/profile as base path when invite code is present
+        let returnToPath = returnTo || "/meriter/profile";
 
-        // If invite code is present, ensure we redirect to /meriter/home with invite query param
+        // If invite code is present, ensure we redirect to /meriter/profile with invite query param
         if (inviteCode.trim()) {
-            const url = new URL("/meriter/home", window.location.origin);
+            const url = new URL("/meriter/profile", window.location.origin);
             url.searchParams.set("invite", inviteCode.trim());
             // Preserve returnTo as a query param if it was specified and different
-            if (returnTo && returnTo !== "/meriter/home") {
+            if (returnTo && returnTo !== "/meriter/profile") {
                 url.searchParams.set("returnTo", returnTo);
             }
             returnToPath = url.pathname + url.search;

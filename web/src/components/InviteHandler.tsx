@@ -35,7 +35,7 @@ export function InviteHandler() {
 
   // Helper function to remove invite parameter from URL
   const removeInviteFromUrl = () => {
-    if (inviteCode && pathname === '/meriter/home' && searchParams?.get('invite')) {
+    if (inviteCode && pathname === '/meriter/profile' && searchParams?.get('invite')) {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('invite');
       const newSearch = params.toString();
@@ -45,8 +45,8 @@ export function InviteHandler() {
   };
 
   useEffect(() => {
-    // Only process invite on the home page
-    if (pathname !== '/meriter/home') {
+    // Only process invite on the profile page
+    if (pathname !== '/meriter/profile') {
       return;
     }
 
@@ -109,8 +109,8 @@ export function InviteHandler() {
             return;
           }
 
-          // Redirect to home page without invite parameter
-          router.replace('/meriter/home');
+          // Redirect to profile page without invite parameter
+          router.replace('/meriter/profile');
         } catch (error: any) {
           console.error('Failed to use invite:', error);
           // Extract error message from various possible formats
@@ -123,9 +123,9 @@ export function InviteHandler() {
           // Remove invite param from URL
           removeInviteFromUrl();
           
-          // Redirect to home page without invite parameter for all errors
+          // Redirect to profile page without invite parameter for all errors
           // This prevents infinite retry loop
-          router.replace('/meriter/home');
+          router.replace('/meriter/profile');
         }
       };
 

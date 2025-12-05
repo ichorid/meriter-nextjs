@@ -13,8 +13,8 @@ import { BrandSelect } from '@/components/ui/BrandSelect';
 import { BrandInput } from '@/components/ui/BrandInput';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
 import { Clock, TrendingUp, Loader2, Search, X } from 'lucide-react';
-import { useHomeTabState } from '@/app/meriter/home/hooks';
-import type { TabSortState } from '@/app/meriter/home/types';
+import { useProfileTabState } from '@/hooks/useProfileTabState';
+import type { TabSortState } from '@/hooks/useProfileTabState';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 export interface ContextTopBarProps {
@@ -30,7 +30,8 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
   }
 
   // Determine which content to show based on route
-  const isHomePage = pathname === '/meriter/home';
+  const isProfileMainPage = pathname === '/meriter/profile';
+  const isProfileSubPage = pathname?.startsWith('/meriter/profile/');
   const isSettingsPage = pathname === '/meriter/settings';
   const isCommunityPage = pathname?.match(/\/meriter\/communities\/([^\/]+)$/);
   const isPostDetailPage = pathname?.match(/\/meriter\/communities\/([^\/]+)\/posts\/(.+)/);
@@ -45,8 +46,13 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
     return <CommunityTopBar communityId={communityId} />;
   }
 
-  if (isHomePage) {
-    return <HomeTopBar />;
+  // Only show ProfileTopBar on sub-pages (publications, comments, polls), not on main profile page
+  if (isProfileSubPage) {
+    return <ProfileTopBar />;
+  }
+
+  if (isProfileMainPage) {
+    return null; // Main profile page doesn't need top bar
   }
 
   if (isSettingsPage) {
@@ -57,37 +63,46 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
   return null;
 };
 
-// Home Top Bar with Tabs
-const HomeTopBar: React.FC = () => {
+// Profile Top Bar with Tabs
+const ProfileTopBar: React.FC = () => {
   const t = useTranslations('home');
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const isMobile = !useMediaQuery('(min-width: 768px)');
   const [showSearchModal, setShowSearchModal] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
 
-  // Use the same hook as the page to sync state
-  const { currentTab, setCurrentTab, sortByTab, setSortByTab } = useHomeTabState();
+  // Determine current tab from pathname
+  const currentTab = pathname?.includes('/profile/comments') 
+    ? 'comments' 
+    : pathname?.includes('/profile/polls') 
+    ? 'polls' 
+    : 'publications';
+  
+  const { sortByTab, setSortByTab } = useProfileTabState();
+  
+  // Sync sort from URL params
+  React.useEffect(() => {
+    const sortParam = searchParams?.get('sort');
+    if (sortParam === 'voted' || sortParam === 'recent') {
+      setSortByTab((prev) => ({
+        ...prev,
+        [currentTab]: sortParam,
+      }));
+    }
+  }, [searchParams, currentTab, setSortByTab]);
 
   const handleTabClick = (tab: 'publications' | 'comments' | 'polls') => {
-    setCurrentTab(tab);
-    let hashPart = '';
-    if (tab === 'comments') {
-      hashPart = '#comments';
-    } else if (tab === 'polls') {
-      hashPart = '#polls';
-    }
-    // For publications, hashPart stays empty (default)
-
+    const basePath = '/meriter/profile';
+    const tabPath = tab === 'publications' ? basePath : `${basePath}/${tab}`;
+    
     // Use the stored sort preference for this tab
     const urlParams = new URLSearchParams();
     urlParams.set('sort', sortByTab[tab]);
-
-    // Set hash: for publications, use empty hash with sort params, for others use hashPart with sort
-    if (tab === 'publications') {
-      window.location.hash = urlParams.toString() ? `?${urlParams.toString()}` : '';
-    } else {
-      window.location.hash = `${hashPart}?${urlParams.toString()}`;
-    }
+    
+    const queryString = urlParams.toString();
+    router.push(queryString ? `${tabPath}?${queryString}` : tabPath);
   };
 
   const handleSortClick = (sort: 'recent' | 'voted') => {
@@ -97,23 +112,13 @@ const HomeTopBar: React.FC = () => {
       [currentTab]: sort,
     }));
 
+    const basePath = '/meriter/profile';
+    const tabPath = currentTab === 'publications' ? basePath : `${basePath}/${currentTab}`;
+    
     const urlParams = new URLSearchParams();
     urlParams.set('sort', sort);
-
-    let hashPart = '';
-    if (currentTab === 'comments') {
-      hashPart = '#comments';
-    } else if (currentTab === 'polls') {
-      hashPart = '#polls';
-    }
-    // For publications tab, hashPart stays empty (default hash)
-
-    // Set hash: for publications, use empty hash with sort params, for others use hashPart with sort
-    if (currentTab === 'publications') {
-      window.location.hash = urlParams.toString() ? `?${urlParams.toString()}` : '';
-    } else {
-      window.location.hash = `${hashPart}?${urlParams.toString()}`;
-    }
+    
+    router.push(`${tabPath}?${urlParams.toString()}`);
   };
 
   const handleSearch = (value: string) => {

@@ -17,12 +17,12 @@ export function middleware(request: NextRequest) {
             return NextResponse.redirect(loginUrl);
         }
 
-        // Check for JWT cookie - if exists, redirect to home, otherwise to login
+        // Check for JWT cookie - if exists, redirect to profile, otherwise to login
         // AuthWrapper will handle showing login page if 401 occurs
         const jwtCookie = request.cookies.get("jwt");
         if (jwtCookie) {
-            const homeUrl = new URL("/meriter/home", request.url);
-            return NextResponse.redirect(homeUrl);
+            const profileUrl = new URL("/meriter/profile", request.url);
+            return NextResponse.redirect(profileUrl);
         } else {
             // No JWT cookie - redirect to login, AuthWrapper will handle 401 from /me
             const loginUrl = new URL("/meriter/login", request.url);
@@ -52,9 +52,14 @@ export function middleware(request: NextRequest) {
     }
 
     // Handle backward compatibility redirects
-    // Redirect old /meriter/balance to new /meriter/home
+    // Redirect old /meriter/balance to new /meriter/profile
     if (pathname === "/meriter/balance") {
-        return NextResponse.redirect(new URL("/meriter/home", request.url));
+        return NextResponse.redirect(new URL("/meriter/profile", request.url));
+    }
+
+    // Redirect old /meriter/home to new /meriter/profile
+    if (pathname === "/meriter/home") {
+        return NextResponse.redirect(new URL("/meriter/profile", request.url));
     }
 
     // Redirect old /meriter/c/[id] to new /meriter/communities/[id]
@@ -70,7 +75,6 @@ export function middleware(request: NextRequest) {
     // Only redirect if it's not a known static route
     const knownStaticRoutes = [
         "/meriter/login",
-        "/meriter/home",
         "/meriter/communities",
         "/meriter/spaces",
         "/meriter/settings",

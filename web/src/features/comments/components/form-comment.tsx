@@ -86,7 +86,7 @@ export const FormComment: React.FC<FormCommentProps> = ({
                     </svg>
                     <div className="flex-1">
                         <div className="font-medium">{t('downvoteRequiresBalance')}</div>
-                        <Link href="/meriter/home" className="link link-primary">
+                        <Link href="/meriter/profile" className="link link-primary">
                             {t('withdrawToBalance')}
                         </Link>
                     </div>
@@ -102,7 +102,7 @@ export const FormComment: React.FC<FormCommentProps> = ({
                     </svg>
                     <div className="flex-1">
                         <div className="font-medium">{t('insufficientPoints')}</div>
-                        <Link href="/meriter/home" className="link link-primary">
+                        <Link href="/meriter/profile" className="link link-primary">
                             {t('addToBalance')}
                         </Link>
                     </div>

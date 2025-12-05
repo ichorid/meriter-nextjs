@@ -54,7 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="flex flex-col sm:flex-row gap-3 w-full">
               <Button 
                 variant="primary" 
-                onClick={() => window.location.href = '/meriter/home'}
+                onClick={() => window.location.href = '/meriter/profile'}
               >
                 Go Home
               </Button>

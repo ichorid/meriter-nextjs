@@ -2,13 +2,13 @@ import { useTranslations } from 'next-intl';
 import { PublicationCardComponent as PublicationCard } from '@/components/organisms/Publication';
 import { EmptyState } from '@/components/organisms/EmptyState/EmptyState';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
-import { sortItems, generateKey } from '../utils';
-import type { SortOrder } from '../types';
+import { sortItems, generateKey } from '@/lib/utils/profileContent';
+import type { SortOrder } from '@/hooks/useProfileTabState';
 import { Loader2 } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
-interface PublicationsTabProps {
-  publications: any[];
+interface ProfilePollsTabProps {
+  polls: any[];
   isLoading: boolean;
   wallets: any[];
   sortOrder: SortOrder;
@@ -17,15 +17,15 @@ interface PublicationsTabProps {
   isFetchingNextPage?: boolean;
 }
 
-export function PublicationsTab({
-  publications,
+export function ProfilePollsTab({
+  polls,
   isLoading,
   wallets,
   sortOrder,
   fetchNextPage,
   hasNextPage = false,
   isFetchingNextPage = false,
-}: PublicationsTabProps) {
+}: ProfilePollsTabProps) {
   const t = useTranslations('home');
 
   // Infinite scroll trigger
@@ -46,30 +46,25 @@ export function PublicationsTab({
     );
   }
 
-  if (publications.length === 0) {
+  if (polls.length === 0) {
     return (
       <EmptyState
-        title={t('empty.publications.title') || 'No Publications'}
+        title={t('empty.polls.title') || 'No Polls'}
         message={
-          t('empty.publications.message') ||
-          "You haven't created any publications yet."
+          t('empty.polls.message') || "You haven't created any polls yet."
         }
       />
     );
   }
 
-  const filteredPublications = publications.filter(
-    (p) => p && (p.content || p.type === 'poll' || p.title)
-  );
-
   return (
     <div className="space-y-4 bg-base-100 dark:bg-base-100">
-      {sortItems(filteredPublications, sortOrder).map((p, index) => {
-        const key = generateKey(p?.id, index, 'pub');
+      {sortItems(polls, sortOrder).map((poll: any, index: number) => {
+        const key = generateKey(poll?.id, index, 'poll');
         return (
           <PublicationCard
             key={key}
-            publication={p}
+            publication={poll}
             wallets={wallets}
             showCommunityAvatar={true}
           />

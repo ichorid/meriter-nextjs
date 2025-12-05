@@ -34,7 +34,7 @@ const mockUseBotConfig = useBotConfig as jest.MockedFunction<typeof useBotConfig
 
 // Mock Next.js navigation and search params using consolidated utilities
 const { mockPush } = mockNextRouter();
-mockNextSearchParams({ returnTo: '/meriter/home' });
+mockNextSearchParams({ returnTo: '/meriter/profile' });
 
 describe('LoginForm', () => {
   beforeEach(() => {
@@ -169,7 +169,7 @@ describe('LoginForm', () => {
 
       await testUtils.waitFor(100);
 
-      expect(mockPush).toHaveBeenCalledWith('/meriter/home');
+      expect(mockPush).toHaveBeenCalledWith('/meriter/profile');
     });
   });
 

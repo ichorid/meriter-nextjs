@@ -21,7 +21,7 @@ export default function InvitePage({ params }: InvitePageProps) {
         // If authenticated, redirect to home with invite query parameter
         // InviteHandler on home page will process it automatically
         if (!isLoading && isAuthenticated && inviteCode) {
-            router.replace(`/meriter/home?invite=${encodeURIComponent(inviteCode)}`);
+            router.replace(`/meriter/profile?invite=${encodeURIComponent(inviteCode)}`);
         }
     }, [isAuthenticated, isLoading, inviteCode, router]);
 

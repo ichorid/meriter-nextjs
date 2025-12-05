@@ -64,7 +64,7 @@ export default function NewUserPage() {
             });
 
             addToast(t("saved"), "success");
-            router.push("/meriter/home");
+            router.push("/meriter/profile");
         } catch (error: any) {
             addToast(error?.message || t("error"), "error");
         }

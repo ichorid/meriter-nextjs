@@ -14,8 +14,8 @@ export const BottomNavigation = () => {
         {
             name: 'Home',
             icon: Home,
-            path: '/meriter/home',
-            isActive: (path: string) => path === '/meriter/home' || path === '/',
+            path: '/meriter/profile',
+            isActive: (path: string) => path === '/meriter/profile' || path.startsWith('/meriter/profile/'),
         },
         {
             name: 'Communities',
