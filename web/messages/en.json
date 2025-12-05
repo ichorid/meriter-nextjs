@@ -16,7 +16,8 @@
         "permanentMerits": "Permanent",
         "siteTitle": "Meriter",
         "add": "Add",
-        "createCommunity": "Create Community"
+        "createCommunity": "Create Community",
+        "about": "About"
     },
     "home": {
         "breadcrumb": "Home",
@@ -751,6 +752,10 @@
         "hint": {
             "about": "Here you can tell a little bit about yourself and what is important to you.",
             "values": "Here should be description/explanation for the user about what exactly we mean by values."
+        },
+        "useInvite": {
+            "title": "Use Invite",
+            "description": "Enter an invite code to join a community or upgrade your role"
         }
     },
     "invites": {

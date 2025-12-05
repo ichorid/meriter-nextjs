@@ -269,6 +269,16 @@ export const usersApiV1 = {
         );
         return response.data;
     },
+
+    async getAllLeads(
+        params: { skip?: number; limit?: number; page?: number; pageSize?: number } = {}
+    ): Promise<PaginatedResponse<User>> {
+        const response = await apiClient.get<{
+            success: true;
+            data: PaginatedResponse<User>;
+        }>("/api/v1/users/leads", { params });
+        return response.data;
+    },
 };
 
 // Communities API

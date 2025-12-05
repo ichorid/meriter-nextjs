@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApiV1 } from '@/lib/api/v1';
 import { queryKeys } from '@/lib/constants/queryKeys';
-import type { User } from '@/types/api-v1';
+import type { User, PaginatedResponse } from '@/types/api-v1';
 
 export const useUserProfile = (userId: string) => {
   return useQuery({
@@ -10,6 +10,13 @@ export const useUserProfile = (userId: string) => {
     enabled: !!userId, // userId is now expected to be internal ID
   });
 };
+
+export function useAllLeads(params: { page?: number; pageSize?: number } = {}) {
+  return useQuery<PaginatedResponse<User>>({
+    queryKey: [...queryKeys.users.all, 'leads', params],
+    queryFn: () => usersApiV1.getAllLeads(params),
+  });
+}
 
 export function useUpdatesFrequency() {
   return useQuery({

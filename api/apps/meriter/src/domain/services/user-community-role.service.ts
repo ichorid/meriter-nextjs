@@ -195,4 +195,20 @@ export class UserCommunityRoleService {
 
     return roles.map((r) => r.communityId);
   }
+
+  /**
+   * Get all users with a specific role across all communities
+   * Returns unique user IDs that have the specified role in at least one community
+   */
+  async getAllUsersByRole(
+    role: 'lead' | 'participant' | 'viewer',
+  ): Promise<string[]> {
+    const userIds = await this.userCommunityRoleModel
+      .distinct('userId', {
+        role,
+      })
+      .exec();
+
+    return userIds;
+  }
 }

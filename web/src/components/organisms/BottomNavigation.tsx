@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Users, User, Bell } from 'lucide-react';
+import { Users, User, Bell, Info } from 'lucide-react';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
-import { VersionDisplay } from '@/components/organisms/VersionDisplay';
+import { routes } from '@/lib/constants/routes';
 
 export const BottomNavigation = () => {
     const pathname = usePathname();
@@ -30,6 +30,12 @@ export const BottomNavigation = () => {
             icon: User,
             path: '/meriter/profile',
             isActive: (path: string) => path.startsWith('/meriter/profile'),
+        },
+        {
+            name: 'About',
+            icon: Info,
+            path: routes.about,
+            isActive: (path: string) => path === routes.about,
         },
     ];
 
@@ -67,10 +73,6 @@ export const BottomNavigation = () => {
                         </button>
                     );
                 })}
-            </div>
-            {/* Version Display at bottom */}
-            <div className="px-2 pb-1 pt-0.5 border-t border-base-300/50">
-                <VersionDisplay compact={true} className="justify-center" />
             </div>
         </div>
     );

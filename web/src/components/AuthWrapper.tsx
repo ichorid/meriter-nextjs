@@ -4,7 +4,6 @@ import React, { useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoginForm } from "@/components/LoginForm";
-import { VersionDisplay } from "@/components/organisms";
 import { LoadingState } from "@/components/atoms/LoadingState";
 
 interface AuthWrapperProps {
@@ -121,9 +120,6 @@ export function AuthWrapper({ children, enabledProviders }: AuthWrapperProps) {
         return (
             <div className="min-h-screen bg-base-100 px-4 py-8 flex items-center justify-between flex-col min-h-screen">
                 <LoginForm enabledProviders={enabledProviders} />
-                <div className="flex justify-center mt-8">
-                    <VersionDisplay />
-                </div>
             </div>
         );
     }

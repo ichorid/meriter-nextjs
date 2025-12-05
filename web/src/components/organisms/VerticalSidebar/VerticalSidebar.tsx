@@ -3,11 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Info } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWallets } from '@/hooks/api';
 import { Avatar, Badge } from '@/components/atoms';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
-import { VersionDisplay } from '@/components/organisms/VersionDisplay';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { useUserRoles, useCanCreateCommunity } from '@/hooks/api/useProfile';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
@@ -260,9 +260,25 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         </div>
       </div>
 
-      {/* Version Display at bottom */}
+      {/* About Button at bottom */}
       <div className={`${paddingClass} pt-2 border-t border-base-300 mt-auto`}>
-        <VersionDisplay compact={!isExpanded} className="justify-center" />
+        <Link href={routes.about}>
+          <button
+            className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors ${pathname === routes.about
+              ? 'bg-primary text-primary-content'
+              : 'hover:bg-base-300 text-base-content'
+              }`}
+          >
+            {isExpanded ? (
+              <div className="flex items-center w-full">
+                <Info className="w-5 h-5" />
+                <span className="ml-2 text-sm font-medium">{t('about')}</span>
+              </div>
+            ) : (
+              <Info className="w-6 h-6" />
+            )}
+          </button>
+        </Link>
       </div>
     </aside>
   );

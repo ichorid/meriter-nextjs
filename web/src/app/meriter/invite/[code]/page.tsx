@@ -4,7 +4,6 @@ import { useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { InviteEntryForm } from '@/components/InviteEntryForm';
-import { VersionDisplay } from '@/components/organisms';
 import { LoadingState } from '@/components/atoms/LoadingState';
 
 interface InvitePageProps {
@@ -48,9 +47,6 @@ export default function InvitePage({ params }: InvitePageProps) {
         <div className="min-h-screen bg-base-100 px-4 py-8 flex items-center justify-center">
             <div className="w-full max-w-md">
                 <InviteEntryForm inviteCode={inviteCode} />
-                <div className="mt-8 flex justify-center">
-                    <VersionDisplay />
-                </div>
             </div>
         </div>
     );
