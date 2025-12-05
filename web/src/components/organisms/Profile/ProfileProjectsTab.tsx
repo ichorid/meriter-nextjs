@@ -7,8 +7,8 @@ import type { SortOrder } from '@/hooks/useProfileTabState';
 import { Loader2 } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
-interface ProfilePublicationsTabProps {
-  publications: any[];
+interface ProfileProjectsTabProps {
+  projects: any[];
   isLoading: boolean;
   wallets: any[];
   sortOrder: SortOrder;
@@ -17,15 +17,15 @@ interface ProfilePublicationsTabProps {
   isFetchingNextPage?: boolean;
 }
 
-export function ProfilePublicationsTab({
-  publications,
+export function ProfileProjectsTab({
+  projects,
   isLoading,
   wallets,
   sortOrder,
   fetchNextPage,
   hasNextPage = false,
   isFetchingNextPage = false,
-}: ProfilePublicationsTabProps) {
+}: ProfileProjectsTabProps) {
   const t = useTranslations('home');
 
   // Infinite scroll trigger
@@ -46,34 +46,26 @@ export function ProfilePublicationsTab({
     );
   }
 
-  if (publications.length === 0) {
+  if (projects.length === 0) {
     return (
       <EmptyState
-        title={t('empty.publications.title') || 'No Publications'}
+        title={t('empty.projects.title') || 'No Projects'}
         message={
-          t('empty.publications.message') ||
-          "You haven't created any publications yet."
+          t('empty.projects.message') ||
+          "You haven't created any projects yet."
         }
       />
     );
   }
 
-  const filteredPublications = publications.filter(
-    (p) => {
-      // Filter out projects: exclude items where isProject is true or postType is 'project'
-      const isProject = p.isProject === true || p.postType === 'project';
-      return p && !isProject && (p.content || p.type === 'poll' || p.title);
-    }
-  );
-
   return (
     <div className="space-y-4 bg-base-100 dark:bg-base-100">
-      {sortItems(filteredPublications, sortOrder).map((p, index) => {
-        const key = generateKey(p?.id, index, 'pub');
+      {sortItems(projects, sortOrder).map((project: any, index: number) => {
+        const key = generateKey(project?.id, index, 'project');
         return (
           <PublicationCard
             key={key}
-            publication={p}
+            publication={project}
             wallets={wallets}
             showCommunityAvatar={true}
           />

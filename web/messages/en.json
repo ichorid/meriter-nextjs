@@ -112,6 +112,7 @@
         "themeToggle": "Toggle theme:",
         "updatesFrequency": "Telegram bot notification frequency",
         "communities": "Communities",
+        "allCommunities": "All Communities",
         "communitiesDescription": "Update your community list by checking membership in Telegram groups",
         "syncCommunities": "Sync Communities",
         "syncing": "Syncing...",
@@ -741,6 +742,7 @@
             "invalidUrl": "Invalid URL",
             "invalidEmail": "Invalid email address"
         },
+        "role": "Role",
         "roleTypes": {
             "lead": "Lead",
             "participant": "Participant",

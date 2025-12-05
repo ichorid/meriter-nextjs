@@ -4,6 +4,8 @@ import React from 'react';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { Edit } from 'lucide-react';
 import { BrandButton } from '@/components/ui/BrandButton';
+import { Badge } from '@/components/atoms/Badge/Badge';
+import { useTranslations } from 'next-intl';
 
 import type { User } from '@/types/api-v1';
 
@@ -11,7 +13,6 @@ interface ProfileHeroProps {
   user: User | null | undefined;
   stats?: {
     projects: number;
-    roles: number;
     merits: number;
   };
   onEdit?: () => void;
@@ -20,6 +21,8 @@ interface ProfileHeroProps {
 }
 
 export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles = [] }: ProfileHeroProps) {
+  const t = useTranslations('profile');
+  
   if (!user) return null;
 
   const displayName = user.displayName || user.username || 'User';
@@ -39,6 +42,31 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
   // Check if user is Representative (lead) or Organizer (superadmin) - show contacts
   const showContacts = user.globalRole === 'superadmin' || 
     userRoles.some(r => r.role === 'lead');
+
+  // Determine role type for display (same logic as VerticalSidebar)
+  const userRoleDisplay = React.useMemo(() => {
+    // Check global superadmin role first
+    if (user.globalRole === 'superadmin') {
+      return { role: 'superadmin', label: t('roleTypes.superadmin') || 'Superadmin', variant: 'error' as const };
+    }
+    
+    // Check community roles (lead > participant > viewer)
+    const hasLead = userRoles.some(r => r.role === 'lead');
+    const hasParticipant = userRoles.some(r => r.role === 'participant');
+    const hasViewer = userRoles.some(r => r.role === 'viewer');
+    
+    if (hasLead) {
+      return { role: 'lead', label: 'Representative', variant: 'accent' as const };
+    }
+    if (hasParticipant) {
+      return { role: 'participant', label: t('roleTypes.participant') || 'Participant', variant: 'info' as const };
+    }
+    if (hasViewer) {
+      return { role: 'viewer', label: t('roleTypes.viewer') || 'Viewer', variant: 'secondary' as const };
+    }
+    
+    return null;
+  }, [user?.globalRole, userRoles, t]);
 
   return (
     <div className="relative bg-base-100 rounded-xl overflow-hidden border border-brand-secondary/10 shadow-sm">
@@ -171,34 +199,14 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
           )}
         </div>
 
-        {/* Quick Stats */}
-        {stats && (
+        {/* Role Type Indicator */}
+        {userRoleDisplay && (
           <div className="mt-6 pt-6 border-t border-brand-secondary/10">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-brand-text-primary">
-                  {stats.projects}
-                </div>
-                <div className="text-xs text-brand-text-secondary mt-1">
-                  Projects
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-brand-text-primary">
-                  {stats.roles}
-                </div>
-                <div className="text-xs text-brand-text-secondary mt-1">
-                  Roles
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-brand-text-primary">
-                  {stats.merits}
-                </div>
-                <div className="text-xs text-brand-text-secondary mt-1">
-                  Merits
-                </div>
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-brand-text-secondary">{t('role') || 'Role'}:</span>
+              <Badge variant={userRoleDisplay.variant} size="md">
+                {userRoleDisplay.label}
+              </Badge>
             </div>
           </div>
         )}

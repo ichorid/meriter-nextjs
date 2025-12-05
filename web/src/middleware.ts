@@ -86,6 +86,7 @@ export function middleware(request: NextRequest) {
         "/meriter/invite",
         "/meriter/invites",
         "/meriter/teams",
+        "/meriter/about",
     ];
 
     if (

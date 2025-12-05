@@ -27,7 +27,7 @@ class AllowAllGuard implements CanActivate {
       displayName: 'Test User',
       username: 'testuser',
       communityTags: [],
-      globalRole: 'superadmin', // Set as superadmin for creating invites
+      globalRole: (global as any).testUserGlobalRole || 'superadmin', // Set as superadmin for creating invites
     };
     return true;
   }
@@ -482,6 +482,277 @@ describe('Invites - Superadmin-to-Lead', () => {
       });
       expect(visionRole).toBeNull();
     });
+  });
+});
+
+describe('Invites - Role Restrictions', () => {
+  jest.setTimeout(60000);
+
+  let app: INestApplication;
+  let testDb: TestDatabaseHelper;
+  let connection: Connection;
+
+  let inviteService: InviteService;
+  let communityService: CommunityService;
+  let userService: UserService;
+  let userCommunityRoleService: UserCommunityRoleService;
+
+  let communityModel: Model<CommunityDocument>;
+  let userModel: Model<UserDocument>;
+  let inviteModel: Model<InviteDocument>;
+  let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
+
+  let superadminId: string;
+  let leadId: string;
+  let participantId: string;
+  let viewerId: string;
+  let communityId: string;
+  let teamCommunityId: string;
+
+  beforeAll(async () => {
+    testDb = new TestDatabaseHelper();
+    const mongoUri = await testDb.start();
+    process.env.MONGO_URL = mongoUri;
+    process.env.JWT_SECRET = 'test-jwt-secret-key-for-invites';
+
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [MeriterModule],
+    })
+      .overrideGuard(UserGuard)
+      .useClass(AllowAllGuard)
+      .compile();
+
+    app = moduleFixture.createNestApplication();
+    await app.init();
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    inviteService = app.get<InviteService>(InviteService);
+    communityService = app.get<CommunityService>(CommunityService);
+    userService = app.get<UserService>(UserService);
+    userCommunityRoleService = app.get<UserCommunityRoleService>(
+      UserCommunityRoleService,
+    );
+
+    connection = app.get<Connection>(getConnectionToken());
+    communityModel = connection.model('Community');
+    userModel = connection.model('User');
+    inviteModel = connection.model('Invite');
+    userCommunityRoleModel = connection.model('UserCommunityRole');
+
+    superadminId = uid();
+    leadId = uid();
+    participantId = uid();
+    viewerId = uid();
+    communityId = uid();
+    teamCommunityId = uid();
+  });
+
+  beforeEach(async () => {
+    await communityModel.deleteMany({});
+    await userModel.deleteMany({});
+    await inviteModel.deleteMany({});
+    await userCommunityRoleModel.deleteMany({});
+
+    // Create superadmin user
+    await userModel.create({
+      id: superadminId,
+      authProvider: 'telegram',
+      authId: `tg-${superadminId}`,
+      displayName: 'Superadmin',
+      globalRole: 'superadmin',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Create lead user
+    await userModel.create({
+      id: leadId,
+      authProvider: 'telegram',
+      authId: `tg-${leadId}`,
+      displayName: 'Lead User',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Create participant user
+    await userModel.create({
+      id: participantId,
+      authProvider: 'telegram',
+      authId: `tg-${participantId}`,
+      displayName: 'Participant User',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Create viewer user
+    await userModel.create({
+      id: viewerId,
+      authProvider: 'telegram',
+      authId: `tg-${viewerId}`,
+      displayName: 'Viewer User',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Create community
+    await communityModel.create({
+      id: communityId,
+      name: 'Test Community',
+      typeTag: 'custom',
+      adminIds: [superadminId],
+      members: [],
+      settings: {
+        dailyEmission: 10,
+        currencyNames: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Create team community
+    await communityModel.create({
+      id: teamCommunityId,
+      name: 'Team Community',
+      typeTag: 'team',
+      adminIds: [leadId],
+      members: [],
+      settings: {
+        dailyEmission: 10,
+        currencyNames: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Assign roles
+    await userCommunityRoleService.setRole(leadId, communityId, 'lead');
+    await userCommunityRoleService.setRole(participantId, communityId, 'participant');
+    await userCommunityRoleService.setRole(viewerId, communityId, 'viewer');
+  });
+
+  afterAll(async () => {
+    if (app) {
+      await app.close();
+    }
+    if (testDb) {
+      await testDb.stop();
+    }
+  });
+
+  it('should allow superadmin to create invites', async () => {
+    (global as any).testUserId = superadminId;
+    (global as any).testUserGlobalRole = 'superadmin';
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/invites')
+      .send({
+        type: 'superadmin-to-lead',
+        communityId: communityId,
+      })
+      .expect(201);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.data).toBeDefined();
+    expect(response.body.data.type).toBe('superadmin-to-lead');
+  });
+
+  it('should allow lead to create lead-to-participant invites', async () => {
+    (global as any).testUserId = leadId;
+    (global as any).testUserGlobalRole = undefined;
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/invites')
+      .send({
+        type: 'lead-to-participant',
+        communityId: teamCommunityId,
+      })
+      .expect(201);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.data).toBeDefined();
+    expect(response.body.data.type).toBe('lead-to-participant');
+  });
+
+  it('should block participant from creating invites', async () => {
+    (global as any).testUserId = participantId;
+    (global as any).testUserGlobalRole = undefined;
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/invites')
+      .send({
+        type: 'lead-to-participant',
+        communityId: communityId,
+      })
+      .expect(403);
+
+    // Check response structure - ForbiddenException may return different formats
+    const message = response.body.message || response.body.error?.message || '';
+    // Either error message indicates the user is blocked (my new check or the existing check)
+    expect(
+      message.includes('Only superadmin and leads can create invites') ||
+      message.includes('Only lead or superadmin can create lead-to-participant invites')
+    ).toBe(true);
+  });
+
+  it('should block viewer from creating invites', async () => {
+    (global as any).testUserId = viewerId;
+    (global as any).testUserGlobalRole = undefined;
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/invites')
+      .send({
+        type: 'lead-to-participant',
+        communityId: communityId,
+      })
+      .expect(403);
+
+    // Check response structure - ForbiddenException may return different formats
+    const message = response.body.message || response.body.error?.message || '';
+    // Either error message indicates the user is blocked (my new check or the existing check)
+    expect(
+      message.includes('Only superadmin and leads can create invites') ||
+      message.includes('Only lead or superadmin can create lead-to-participant invites')
+    ).toBe(true);
+  });
+
+  it('should allow user with both participant and lead roles to create invites', async () => {
+    // Create a user with both participant and lead roles
+    const mixedRoleUserId = uid();
+    await userModel.create({
+      id: mixedRoleUserId,
+      authProvider: 'telegram',
+      authId: `tg-${mixedRoleUserId}`,
+      displayName: 'Mixed Role User',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Assign both roles
+    await userCommunityRoleService.setRole(mixedRoleUserId, communityId, 'participant');
+    await userCommunityRoleService.setRole(mixedRoleUserId, teamCommunityId, 'lead');
+
+    (global as any).testUserId = mixedRoleUserId;
+    (global as any).testUserGlobalRole = undefined;
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/invites')
+      .send({
+        type: 'lead-to-participant',
+        communityId: teamCommunityId,
+      })
+      .expect(201);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.data).toBeDefined();
   });
 });
 

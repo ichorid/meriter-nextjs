@@ -76,6 +76,8 @@ const ProfileTopBar: React.FC = () => {
     ? 'comments' 
     : pathname?.includes('/profile/polls') 
     ? 'polls' 
+    : pathname?.includes('/profile/projects')
+    ? 'projects'
     : 'publications';
   
   const { sortByTab, setSortByTab } = useProfileTabState();

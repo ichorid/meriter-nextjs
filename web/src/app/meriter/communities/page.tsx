@@ -9,6 +9,8 @@ import { useCommunitiesBatch, useCommunities } from '@/hooks/api/useCommunities'
 import { useAllLeads } from '@/hooks/api/useUsers';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
+import { useWallets } from '@/hooks/api';
+import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { AdvancedSearch, SearchParams } from '@/components/organisms/AdvancedSearch';
 import { InfoCard } from '@/components/ui/InfoCard';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -76,6 +78,48 @@ export default function CommunitiesPage() {
             userCommunities: userComms,
         };
     }, [allCommunities]);
+
+    // Get all community IDs for fetching wallets and quotas
+    const allCommunityIds = useMemo(() => {
+        return Array.from(new Set([
+            ...specialCommunities.map(c => c.id),
+            ...userCommunities.map(c => c.id),
+        ]));
+    }, [specialCommunities, userCommunities]);
+
+    // Fetch wallets and quotas
+    const { data: wallets = [], isLoading: walletsLoading } = useWallets();
+    const { quotasMap } = useCommunityQuotas(allCommunityIds);
+
+    // Create a map of communityId -> wallet for quick lookup
+    const walletsMap = useMemo(() => {
+        const map = new Map<string, typeof wallets[0]>();
+        wallets.forEach((wallet: any) => {
+            if (wallet?.communityId) {
+                map.set(wallet.communityId, wallet);
+            }
+        });
+        return map;
+    }, [wallets]);
+
+    // Helper function to render merits/quota indicator
+    const renderMeritsQuota = (community: typeof allCommunities[0]) => {
+        const wallet = walletsMap.get(community.id);
+        const quota = quotasMap.get(community.id);
+        const balance = wallet?.balance || 0;
+        const remainingQuota = quota?.remainingToday || 0;
+        const currencyIconUrl = community.settings?.iconUrl;
+
+        // Always show the indicator, even if both are 0 (for consistency)
+        return (
+            <div className="text-xs truncate flex items-center gap-1 text-brand-text-secondary">
+                {currencyIconUrl && (
+                    <img src={currencyIconUrl} alt="Currency" className="w-3 h-3 inline-block" />
+                )}
+                <span>{balance}+{remainingQuota}</span>
+            </div>
+        );
+    };
     
     // Search state for leads
     const [searchQuery, setSearchQuery] = useState('');
@@ -128,6 +172,7 @@ export default function CommunitiesPage() {
                                                     className="bg-transparent"
                                                 />
                                             }
+                                            rightElement={renderMeritsQuota(community)}
                                             onClick={() => router.push(`/meriter/communities/${community.id}`)}
                                         />
                                     ))}
@@ -165,6 +210,7 @@ export default function CommunitiesPage() {
                                                         className="bg-transparent"
                                                     />
                                                 }
+                                                rightElement={renderMeritsQuota(community)}
                                                 onClick={() => router.push(`/meriter/communities/${community.id}`)}
                                             />
                                         ))}

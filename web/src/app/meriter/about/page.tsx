@@ -16,20 +16,22 @@ const AboutPage = () => {
                 <div className="p-4 space-y-6">
                     <div className="space-y-4">
                         <h2 className="text-xl font-semibold text-brand-text-primary dark:text-base-content">
-                            About Meriter
+                            About
                         </h2>
                         <p className="text-base text-brand-text-secondary dark:text-base-content/80">
-                            Meriter is a platform designed to facilitate community engagement and merit-based recognition.
-                            This application enables users to participate in communities, create publications, engage in discussions,
-                            and recognize valuable contributions through a merit system.
+                            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+                            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. 
+                            Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
                         </p>
                         <p className="text-base text-brand-text-secondary dark:text-base-content/80">
-                            The platform supports various features including community management, publication creation,
-                            comment threads, polling, and a wallet system for tracking merits and contributions.
+                            Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. 
+                            Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, 
+                            totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
                         </p>
                         <p className="text-base text-brand-text-secondary dark:text-base-content/80">
-                            For more information about using Meriter, please refer to the community documentation
-                            or contact your community administrator.
+                            Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos 
+                            qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, 
+                            consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
                         </p>
                     </div>
 

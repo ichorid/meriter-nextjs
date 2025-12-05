@@ -38,15 +38,14 @@ export function InviteGeneration() {
   const isLead = useMemo(() => {
     return userRoles.some(r => r.role === 'lead') || leadCommunities.length > 0;
   }, [userRoles, leadCommunities]);
-  const isParticipant = useMemo(() => {
-    return userRoles.some(r => r.role === 'participant') && !isLead && !isSuperadmin;
-  }, [userRoles, isLead, isSuperadmin]);
-  const isViewer = useMemo(() => {
-    return userRoles.some(r => r.role === 'viewer') && !isLead && !isSuperadmin && !isParticipant;
-  }, [userRoles, isLead, isSuperadmin, isParticipant]);
+  
+  // Check if user has any lead role (either from userRoles or leadCommunities)
+  const hasLeadRole = useMemo(() => {
+    return isSuperadmin || isLead;
+  }, [isSuperadmin, isLead]);
 
-  // Hide component for participants and viewers
-  if (isParticipant || isViewer) {
+  // Hide component completely for participants and viewers (only show for superadmin and leads)
+  if (!hasLeadRole) {
     return null;
   }
 

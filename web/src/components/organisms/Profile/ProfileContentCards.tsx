@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { FileText, MessageSquare, BarChart3 } from 'lucide-react';
+import { FileText, MessageSquare, BarChart3, Briefcase } from 'lucide-react';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { routes } from '@/lib/constants/routes';
 
@@ -14,6 +14,7 @@ interface ProfileContentCardsProps {
     publications: number;
     comments: number;
     polls: number;
+    projects: number;
   };
   isLoading?: boolean;
 }
@@ -62,6 +63,14 @@ export function ProfileContentCards({
       bgColor: 'bg-purple-50 dark:bg-purple-900/20',
       route: `${routes.profile}/polls`,
     },
+    {
+      label: t('hero.stats.projects'),
+      value: stats.projects,
+      icon: Briefcase,
+      color: 'text-orange-600 dark:text-orange-400',
+      bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+      route: `${routes.profile}/projects`,
+    },
   ];
 
   const handleCardClick = (route: string) => {
@@ -91,7 +100,7 @@ export function ProfileContentCards({
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (

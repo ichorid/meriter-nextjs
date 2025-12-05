@@ -3,14 +3,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Info } from 'lucide-react';
+import { Info, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useWallets } from '@/hooks/api';
 import { Avatar, Badge } from '@/components/atoms';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
-import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
-import { useUserRoles, useCanCreateCommunity } from '@/hooks/api/useProfile';
+import { useUserRoles } from '@/hooks/api/useProfile';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
+import { useUserMeritsBalance } from '@/hooks/useUserMeritsBalance';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
 
@@ -25,37 +24,12 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 }) => {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
-  const { data: wallets = [], isLoading: walletsLoading } = useWallets();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
-  const { canCreate: canCreateCommunity } = useCanCreateCommunity();
   const { data: unreadCount = 0 } = useUnreadCount();
   const t = useTranslations('common');
 
-  // Get unique community IDs from wallets
-  const communityIds = React.useMemo(() => {
-    return Array.from(new Set(
-      wallets
-        .filter((w: any) => w?.communityId)
-        .map((w: any) => w.communityId)
-    ));
-  }, [wallets]);
-
-  // Fetch quotas for all communities in parallel
-  const { quotasMap } = useCommunityQuotas(communityIds);
-  
-  // Calculate total wallet balance (permanent merits)
-  const totalWalletBalance = React.useMemo(() => {
-    return wallets.reduce((sum, wallet) => sum + (wallet.balance || 0), 0);
-  }, [wallets]);
-  
-  // Calculate total daily quota (daily merits)
-  const totalDailyQuota = React.useMemo(() => {
-    let total = 0;
-    quotasMap.forEach((quota) => {
-      total += quota.remainingToday || 0;
-    });
-    return total;
-  }, [quotasMap]);
+  // Calculate total merits balance and get related data
+  const { totalWalletBalance, totalDailyQuota, communityIds, quotasMap, wallets, walletsLoading } = useUserMeritsBalance();
 
   // Determine user's highest role for display
   const userRoleDisplay = React.useMemo(() => {
@@ -124,18 +98,18 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                     ? 'text-primary-content/70'
                     : 'text-base-content/70'
                   }`}>
-                    <span>{t('dailyMerits')}: <span className={`font-semibold ${pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
-                      ? 'text-primary-content'
-                      : 'text-brand-primary'
-                    }`}>{totalDailyQuota}</span></span>
-                    <span className={pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
-                      ? 'text-primary-content/40'
-                      : 'text-base-content/40'
-                    }>|</span>
                     <span>{t('permanentMerits')}: <span className={`font-semibold ${pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
                       ? 'text-primary-content'
                       : 'text-brand-primary'
                     }`}>{totalWalletBalance}</span></span>
+                    <span className={pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
+                      ? 'text-primary-content/40'
+                      : 'text-base-content/40'
+                    }>|</span>
+                    <span>{t('dailyMerits')}: <span className={`font-semibold ${pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
+                      ? 'text-primary-content'
+                      : 'text-brand-primary'
+                    }`}>{totalDailyQuota}</span></span>
                   </div>
                 </div>
                 <svg className="w-5 h-5 ml-auto flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,6 +180,29 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         </div>
       )}
 
+      {/* All Communities Button */}
+      {isAuthenticated && (
+        <div className={paddingClass}>
+          <Link href={routes.communities}>
+            <button
+              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 ${pathname === routes.communities
+                ? 'bg-primary text-primary-content'
+                : 'hover:bg-base-300 text-base-content'
+                }`}
+            >
+              {isExpanded ? (
+                <div className="flex items-center w-full">
+                  <Users className="w-5 h-5" />
+                  <span className="ml-2 text-sm font-medium">{t('allCommunities')}</span>
+                </div>
+              ) : (
+                <Users className="w-6 h-6" />
+              )}
+            </button>
+          </Link>
+        </div>
+      )}
+
       {/* Separator */}
       {isAuthenticated && (
         <div className={`${paddingClass} mb-2`}>
@@ -242,21 +239,6 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
             );
           })}
 
-          {/* Create Community Button */}
-          {isAuthenticated && canCreateCommunity && (
-            <Link href="/meriter/communities/create">
-              <button
-                className={`w-full rounded-lg flex items-center transition-colors border border-dashed border-base-300 hover:border-primary hover:text-primary text-base-content/50 ${isExpanded ? 'h-12 px-3 justify-start' : 'h-12 w-12 justify-center'
-                  }`}
-                title="Create Community"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                {isExpanded && <span className="ml-2 text-sm font-medium">Create Community</span>}
-              </button>
-            </Link>
-          )}
         </div>
       </div>
 

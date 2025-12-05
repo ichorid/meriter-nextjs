@@ -111,12 +111,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
                     <Avatar src={user.avatarUrl} alt={user.displayName} size="sm" />
                     <div className="hidden md:flex flex-col items-start text-xs">
                       <div className="flex items-center gap-1">
-                        <span className="text-brand-text-secondary">{t('dailyMerits')}:</span>
-                        <span className="font-semibold text-brand-primary">{totalDailyQuota}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
                         <span className="text-brand-text-secondary">{t('permanentMerits')}:</span>
                         <span className="font-semibold text-brand-primary">{totalWalletBalance}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-brand-text-secondary">{t('dailyMerits')}:</span>
+                        <span className="font-semibold text-brand-primary">{totalDailyQuota}</span>
                       </div>
                     </div>
                   </div>

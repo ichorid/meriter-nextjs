@@ -68,6 +68,22 @@ export class InvitesController {
     @User() user: AuthenticatedUser,
     @Body() dto: z.infer<typeof CreateInviteDtoSchema>,
   ) {
+    // Check if user is superadmin or has any lead role
+    // Block participants and viewers from creating invites
+    if (user.globalRole !== 'superadmin') {
+      // Get all user roles across all communities
+      const allUserRoles = await this.userCommunityRoleService.getUserRoles(user.id);
+      
+      // Check if user has at least one lead role
+      const hasLeadRole = allUserRoles.some(role => role.role === 'lead');
+      
+      if (!hasLeadRole) {
+        throw new ForbiddenException(
+          'Only superadmin and leads can create invites. Participants and viewers are not allowed to create invites.',
+        );
+      }
+    }
+
     const userRole = await this.permissionService.getUserRoleInCommunity(
       user.id,
       dto.communityId,

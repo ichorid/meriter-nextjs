@@ -112,6 +112,7 @@
         "themeToggle": "Переключение темы:",
         "updatesFrequency": "Частота уведомлений бота Telegram",
         "communities": "Сообщества",
+        "allCommunities": "Все сообщества",
         "communitiesDescription": "Обновите список ваших сообществ, проверив членство в Telegram группах",
         "syncCommunities": "Обновить сообщества",
         "syncing": "Обновление...",
@@ -730,6 +731,7 @@
             "invalidUrl": "Неверный формат URL",
             "invalidEmail": "Неверный формат email"
         },
+        "role": "Роль",
         "roleTypes": {
             "lead": "Лид",
             "participant": "Участник",

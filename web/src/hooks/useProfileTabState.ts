@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 
-export type ProfileTab = 'publications' | 'comments' | 'polls';
+export type ProfileTab = 'publications' | 'comments' | 'polls' | 'projects';
 export type SortOrder = 'recent' | 'voted';
 
 export interface TabSortState {
   publications: SortOrder;
   comments: SortOrder;
   polls: SortOrder;
+  projects: SortOrder;
 }
 
 /**
@@ -21,6 +22,7 @@ export function useProfileTabState() {
     publications: 'recent',
     comments: 'recent',
     polls: 'recent',
+    projects: 'recent',
   });
 
   useEffect(() => {
@@ -29,6 +31,8 @@ export function useProfileTabState() {
       setCurrentTab('comments');
     } else if (pathname?.includes('/profile/polls')) {
       setCurrentTab('polls');
+    } else if (pathname?.includes('/profile/projects')) {
+      setCurrentTab('projects');
     } else if (pathname?.includes('/profile/publications')) {
       setCurrentTab('publications');
     } else {

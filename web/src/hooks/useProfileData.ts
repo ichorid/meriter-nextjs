@@ -46,10 +46,13 @@ export function useProfileData() {
         isFetchingNextPage: isFetchingNextComments,
     } = useInfiniteMyComments(user?.id || "", pageSize);
 
-    // Flatten data from all pages
+    // Flatten data from all pages and filter out projects
     const myPublications = useMemo(() => {
         return (publicationsData?.pages ?? []).flatMap((page) => {
             return Array.isArray(page) ? page : [];
+        }).filter((pub: any) => {
+            // Filter out projects: exclude items where isProject is true or postType is 'project'
+            return !pub.isProject && pub.postType !== 'project';
         });
     }, [publicationsData?.pages]);
 
