@@ -9,10 +9,9 @@ import { useTranslations } from 'next-intl';
 import { isFakeDataMode } from '@/config';
 import { publicationsApiV1 } from '@/lib/api/v1';
 import { BrandButton } from '@/components/ui/BrandButton';
-import { BrandSelect } from '@/components/ui/BrandSelect';
 import { BrandInput } from '@/components/ui/BrandInput';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
-import { Clock, TrendingUp, Loader2, Search, X } from 'lucide-react';
+import { Clock, TrendingUp, Loader2, Search, X, ArrowLeft } from 'lucide-react';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import type { TabSortState } from '@/hooks/useProfileTabState';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -69,7 +68,6 @@ const ProfileTopBar: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const isMobile = !useMediaQuery('(min-width: 768px)');
   const [showSearchModal, setShowSearchModal] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
 
@@ -93,16 +91,8 @@ const ProfileTopBar: React.FC = () => {
     }
   }, [searchParams, currentTab, setSortByTab]);
 
-  const handleTabClick = (tab: 'publications' | 'comments' | 'polls') => {
-    const basePath = '/meriter/profile';
-    const tabPath = tab === 'publications' ? basePath : `${basePath}/${tab}`;
-    
-    // Use the stored sort preference for this tab
-    const urlParams = new URLSearchParams();
-    urlParams.set('sort', sortByTab[tab]);
-    
-    const queryString = urlParams.toString();
-    router.push(queryString ? `${tabPath}?${queryString}` : tabPath);
+  const handleBackClick = () => {
+    router.push('/meriter/profile');
   };
 
   const handleSortClick = (sort: 'recent' | 'voted') => {
@@ -137,6 +127,17 @@ const ProfileTopBar: React.FC = () => {
     <div>
       <div className="sticky top-0 z-30 h-16 bg-base-100 border-b border-brand-border px-4 py-2">
         <div className="flex items-center justify-between h-full gap-4">
+          {/* Back Button */}
+          <BrandButton
+            variant="ghost"
+            size="sm"
+            onClick={handleBackClick}
+            aria-label="Back to profile"
+            className="px-2"
+          >
+            <ArrowLeft size={18} />
+          </BrandButton>
+
           {/* Search Button */}
           <BrandButton
             variant="ghost"
@@ -148,49 +149,8 @@ const ProfileTopBar: React.FC = () => {
             <Search size={18} />
           </BrandButton>
 
-          {/* Tabs: buttons on md+, dropdown on mobile */}
-          {!isMobile ? (
-            <div className="flex flex-1 justify-center gap-2">
-              <BrandButton
-                variant={currentTab === 'publications' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => handleTabClick('publications')}
-                className={currentTab !== 'publications' ? 'dark:text-base-content' : ''}
-              >
-                {t('tabs.publications') || 'My Publications'}
-              </BrandButton>
-              <BrandButton
-                variant={currentTab === 'comments' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => handleTabClick('comments')}
-                className={currentTab !== 'comments' ? 'dark:text-base-content' : ''}
-              >
-                {t('tabs.comments') || 'My Comments'}
-              </BrandButton>
-              <BrandButton
-                variant={currentTab === 'polls' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => handleTabClick('polls')}
-                className={currentTab !== 'polls' ? 'dark:text-base-content' : ''}
-              >
-                {t('tabs.polls') || 'Polls'}
-              </BrandButton>
-            </div>
-          ) : (
-            <div className="flex-1">
-              <BrandSelect
-                value={currentTab}
-                onChange={(value) => handleTabClick(value as any)}
-                options={[
-                  { label: t('tabs.publications') || 'My Publications', value: 'publications' },
-                  { label: t('tabs.comments') || 'My Comments', value: 'comments' },
-                  { label: t('tabs.polls') || 'Polls', value: 'polls' },
-                ]}
-                placeholder="Select tab"
-                fullWidth
-              />
-            </div>
-          )}
+          {/* Spacer */}
+          <div className="flex-1" />
 
           {/* Sort Toggle - contextual to active tab */}
           <div className="flex gap-1 bg-brand-surface p-1 rounded-md border border-brand-border">

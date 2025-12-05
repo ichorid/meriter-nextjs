@@ -15,7 +15,9 @@ import { useProfileData } from '@/hooks/useProfileData';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { InfoCard } from '@/components/ui/InfoCard';
 import { BrandButton } from '@/components/ui/BrandButton';
-import { Briefcase, Users, Edit, Loader2, UserPlus } from 'lucide-react';
+import { routes } from '@/lib/constants/routes';
+import Link from 'next/link';
+import { Briefcase, Users, Loader2, UserPlus, Settings } from 'lucide-react';
 
 type SortOption = 'recent' | 'oldest' | 'title';
 
@@ -122,16 +124,16 @@ export default function ProfilePage() {
           title={t('title')}
           showBack={true}
           rightAction={
-            !isEditing ? (
+            <Link href={routes.settings}>
               <BrandButton
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsEditing(true)}
-                leftIcon={<Edit size={16} />}
+                className="px-2"
+                aria-label="Settings"
               >
-                {t('edit')}
+                <Settings size={18} />
               </BrandButton>
-            ) : null
+            </Link>
           }
         />
 

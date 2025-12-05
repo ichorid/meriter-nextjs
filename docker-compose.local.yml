@@ -3,8 +3,8 @@ services:
     image: mongo:8
     container_name: meriter-mongodb
     restart: unless-stopped
-    ports:
-      - "27017:27017"
+    # Port mapping removed - MongoDB only needs internal network access
+    # External access not needed for local development
     volumes:
       - mongodb_data:/data/db
     networks:

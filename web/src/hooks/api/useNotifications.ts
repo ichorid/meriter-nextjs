@@ -51,13 +51,9 @@ export function useInfiniteNotifications(
 }
 
 export function useUnreadCount() {
-    // Notifications endpoints are not implemented in backend yet
-    // Return disabled query that always returns 0 without making requests
     return useQuery({
-        queryKey: ["notifications", "unread-count"],
-        queryFn: async () => 0,
-        enabled: false, // Disable the query - don't make any requests
-        refetchInterval: false, // Don't poll
+        queryKey: queryKeys.notifications.unreadCount(),
+        queryFn: () => notificationsApiV1.getUnreadCount(),
         retry: false,
         retryOnMount: false,
         throwOnError: false,

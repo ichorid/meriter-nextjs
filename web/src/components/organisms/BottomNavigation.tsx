@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Users, User, Bell } from 'lucide-react';
+import { Users, User, Bell } from 'lucide-react';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 
 export const BottomNavigation = () => {
@@ -11,12 +11,6 @@ export const BottomNavigation = () => {
     const { data: unreadCount = 0 } = useUnreadCount();
 
     const tabs = [
-        {
-            name: 'Home',
-            icon: Home,
-            path: '/meriter/profile',
-            isActive: (path: string) => path === '/meriter/profile' || path.startsWith('/meriter/profile/'),
-        },
         {
             name: 'Communities',
             icon: Users,

@@ -11,6 +11,7 @@ export const routes = {
     home: "/meriter/home", // Deprecated - use profile instead
     profile: "/meriter/profile",
     settings: "/meriter/settings",
+    notifications: "/meriter/notifications",
 
     // Communities
     communities: "/meriter/communities",
