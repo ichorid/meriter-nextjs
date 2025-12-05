@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Users } from 'lucide-react';
@@ -11,7 +11,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useWallets } from '@/hooks/api';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
-import { AdvancedSearch, SearchParams } from '@/components/organisms/AdvancedSearch';
 import { InfoCard } from '@/components/ui/InfoCard';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
@@ -121,26 +120,8 @@ export default function CommunitiesPage() {
         );
     };
     
-    // Search state for leads
-    const [searchQuery, setSearchQuery] = useState('');
-    
-    // Filter leads based on search query
-    const filteredLeads = useMemo(() => {
-        if (!searchQuery.trim()) return leads;
-        const query = searchQuery.toLowerCase();
-        return leads.filter(lead =>
-            lead.displayName?.toLowerCase().includes(query) ||
-            lead.username?.toLowerCase().includes(query) ||
-            lead.profile?.bio?.toLowerCase().includes(query)
-        );
-    }, [leads, searchQuery]);
-    
     // Combined loading state
     const isLoading = userLoading || (isSuperadmin ? allCommunitiesLoading : memberCommunitiesLoading);
-    
-    const handleSearch = (params: SearchParams) => {
-        setSearchQuery(params.query || '');
-    };
 
     return (
         <AdaptiveLayout>
@@ -228,14 +209,6 @@ export default function CommunitiesPage() {
                                 Leads
                             </h2>
                         </div>
-                        
-                        {/* Search component - only for leads section */}
-                        <div className="mb-4">
-                            <AdvancedSearch
-                                onSearch={handleSearch}
-                                initialQuery={searchQuery}
-                            />
-                        </div>
 
                         {leadsLoading ? (
                             <div className="space-y-3">
@@ -243,9 +216,9 @@ export default function CommunitiesPage() {
                                 <CardSkeleton />
                                 <CardSkeleton />
                             </div>
-                        ) : filteredLeads.length > 0 ? (
+                        ) : leads.length > 0 ? (
                             <div className="space-y-3">
-                                {filteredLeads.map((lead) => (
+                                {leads.map((lead) => (
                                     <InfoCard
                                         key={lead.id}
                                         title={lead.displayName || lead.username || 'Unknown User'}
@@ -266,8 +239,7 @@ export default function CommunitiesPage() {
                             <div className="text-center py-12 text-base-content/60">
                                 <Users className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
                                 <p className="font-medium">No leads found</p>
-                                {searchQuery && <p className="text-sm mt-1">Try adjusting your search</p>}
-                                {!searchQuery && <p className="text-sm mt-1">No leads available</p>}
+                                <p className="text-sm mt-1">No leads available</p>
                             </div>
                         )}
                     </div>
