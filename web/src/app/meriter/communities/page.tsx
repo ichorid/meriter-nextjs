@@ -67,6 +67,11 @@ export default function CommunitiesPage() {
     // Combined loading state
     const isLoading = userLoading || (isSuperadmin ? allCommunitiesLoading : memberCommunitiesLoading);
 
+    // Handle popup close - ensure no navigation happens
+    const handleClosePopup = () => {
+        setShowPopup(false);
+    };
+
     // Filter communities based on search query
     const filteredCommunities = useMemo(() => {
         if (!searchQuery.trim()) return communities;
@@ -82,8 +87,8 @@ export default function CommunitiesPage() {
     };
 
     const handleCreateCommunity = () => {
-        router.push('/meriter/communities/create');
         setShowPopup(false);
+        router.push('/meriter/communities/create');
     };
 
     return (
@@ -162,7 +167,7 @@ export default function CommunitiesPage() {
             {/* Add Community Popup */}
             <BottomActionSheet
                 isOpen={showPopup}
-                onClose={() => setShowPopup(false)}
+                onClose={handleClosePopup}
                 title={tCommon('add') || 'Add Community'}
             >
                 <div className="space-y-6">
