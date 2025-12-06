@@ -141,20 +141,18 @@ export function LoginForm({
 
             <div className="space-y-4 mb-4">
                 {/* Invite Code Input */}
-                {/* 
-          <BrandFormControl
-            label={tReg('inviteCodeLabel')}
-            helperText={tReg('inviteDescription')}
-          >
-            <BrandInput
-              value={inviteCode}
-              onChange={(e) => setInviteCode(e.target.value)}
-              placeholder={tReg('inviteCodePlaceholder')}
-              autoCapitalize="none"
-              autoComplete="off"
-            />
-          </BrandFormControl>
-          */}
+                <BrandFormControl
+                    label={tReg('inviteCodeLabel')}
+                    helperText={tReg('inviteDescription')}
+                >
+                    <BrandInput
+                        value={inviteCode}
+                        onChange={(e) => setInviteCode(e.target.value)}
+                        placeholder={tReg('inviteCodePlaceholder')}
+                        autoCapitalize="none"
+                        autoComplete="off"
+                    />
+                </BrandFormControl>
 
                 <p className="text-sm text-base-content/70 mb-8">
                     {t("subtitle")}
