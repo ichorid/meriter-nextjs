@@ -70,6 +70,14 @@ export class PermissionService {
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
 
+    // Special handling for marathon-of-good and future-vision communities
+    const isSpecialCommunity =
+      community.typeTag === 'marathon-of-good' ||
+      community.typeTag === 'future-vision';
+    if (isSpecialCommunity && userRole === 'participant') {
+      return true;
+    }
+
     const rules = community.postingRules;
     if (!rules) {
       // Fallback: if no rules configured, allow admins (backward compatibility)
@@ -105,6 +113,14 @@ export class PermissionService {
 
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
+
+    // Special handling for marathon-of-good and future-vision communities
+    const isSpecialCommunity =
+      community.typeTag === 'marathon-of-good' ||
+      community.typeTag === 'future-vision';
+    if (isSpecialCommunity && userRole === 'participant') {
+      return true;
+    }
 
     const rules = community.postingRules;
     if (!rules) {

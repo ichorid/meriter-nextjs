@@ -193,18 +193,18 @@ export class CommunityService {
     if (dto.typeTag === 'marathon-of-good') {
       // Voting: Members cannot vote for Representative posts
       defaultVotingRules.participantsCannotVoteForLead = true;
-      // Posting: Only Representatives (leads) can post
-      defaultPostingRules.allowedRoles = ['superadmin', 'lead'];
-      defaultPostingRules.onlyTeamLead = true;
+      // Posting: Representatives (leads) and Participants can post
+      defaultPostingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
+      defaultPostingRules.onlyTeamLead = false;
     }
 
     // Special rules for "Future Vision"
     if (dto.typeTag === 'future-vision') {
       // Voting: Representatives CAN vote for own posts (exception)
       defaultVotingRules.canVoteForOwnPosts = true;
-      // Posting: Only Representatives (leads) can post
-      defaultPostingRules.allowedRoles = ['superadmin', 'lead'];
-      defaultPostingRules.onlyTeamLead = true;
+      // Posting: Representatives (leads) and Participants can post
+      defaultPostingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
+      defaultPostingRules.onlyTeamLead = false;
     }
 
     // Special rules for "Team"
