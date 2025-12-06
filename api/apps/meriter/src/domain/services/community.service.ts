@@ -189,6 +189,19 @@ export class CommunityService {
       autoMembership: false,
     };
 
+    // Set default merit rules (quota recipients)
+    const defaultMeritRules = {
+      dailyQuota: 100,
+      quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'] as (
+        | 'superadmin'
+        | 'lead'
+        | 'participant'
+        | 'viewer'
+      )[],
+      canEarn: true,
+      canSpend: true,
+    };
+
     // Special rules for "Marathon of Good"
     if (dto.typeTag === 'marathon-of-good') {
       // Voting: Members cannot vote for Representative posts
@@ -196,6 +209,8 @@ export class CommunityService {
       // Posting: Representatives (leads) and Participants can post
       defaultPostingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
       defaultPostingRules.onlyTeamLead = false;
+      // Merit rules: Viewers get daily quota
+      defaultMeritRules.quotaRecipients = ['superadmin', 'lead', 'participant', 'viewer'];
     }
 
     // Special rules for "Future Vision"
@@ -205,6 +220,8 @@ export class CommunityService {
       // Posting: Representatives (leads) and Participants can post
       defaultPostingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
       defaultPostingRules.onlyTeamLead = false;
+      // Merit rules: Viewers do NOT get daily quota (wallet voting only)
+      defaultMeritRules.quotaRecipients = ['superadmin', 'lead', 'participant'];
     }
 
     // Special rules for "Team"
@@ -214,6 +231,8 @@ export class CommunityService {
       defaultPostingRules.requiresTeamMembership = true;
       // Voting: Team Members can vote
       defaultVotingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
+      // Merit rules: Viewers do NOT get daily quota in team groups
+      defaultMeritRules.quotaRecipients = ['superadmin', 'lead', 'participant'];
     }
 
     const community = {
@@ -245,17 +264,7 @@ export class CommunityService {
         isHidden: false,
         teamOnly: false,
       },
-      meritRules: {
-        dailyQuota: 100,
-        quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'] as (
-          | 'superadmin'
-          | 'lead'
-          | 'participant'
-          | 'viewer'
-        )[],
-        canEarn: true,
-        canSpend: true,
-      },
+      meritRules: defaultMeritRules,
       hashtags: [],
       hashtagDescriptions: {},
       isActive: true, // Default to active

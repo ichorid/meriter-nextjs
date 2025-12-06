@@ -82,10 +82,40 @@ export async function migrateCommunities(connection: Connection): Promise<void> 
         needsUpdate = true;
       }
 
+      // Determine correct quotaRecipients based on typeTag
+      const typeTag = community.typeTag;
+      let expectedQuotaRecipients: string[] = ['superadmin', 'lead', 'participant', 'viewer'];
+      
+      if (typeTag === 'marathon-of-good') {
+        // Marathon-of-Good: Viewers should get quota
+        expectedQuotaRecipients = ['superadmin', 'lead', 'participant', 'viewer'];
+      } else if (typeTag === 'future-vision') {
+        // Future Vision: Viewers should NOT get quota
+        expectedQuotaRecipients = ['superadmin', 'lead', 'participant'];
+      } else if (typeTag === 'team') {
+        // Team: Viewers should NOT get quota
+        expectedQuotaRecipients = ['superadmin', 'lead', 'participant'];
+      }
+
       // Add meritRules if not exists
       if (!community.meritRules) {
-        updateFields.meritRules = defaultMeritRules;
+        updateFields.meritRules = {
+          ...defaultMeritRules,
+          quotaRecipients: expectedQuotaRecipients,
+        };
         needsUpdate = true;
+      } else {
+        // Fix quotaRecipients for existing communities based on typeTag
+        const currentQuotaRecipients = community.meritRules.quotaRecipients || [];
+        const quotaRecipientsMatch = 
+          currentQuotaRecipients.length === expectedQuotaRecipients.length &&
+          currentQuotaRecipients.every(role => expectedQuotaRecipients.includes(role));
+
+        if (!quotaRecipientsMatch) {
+          updateFields['meritRules.quotaRecipients'] = expectedQuotaRecipients;
+          needsUpdate = true;
+          console.log(`Updating quotaRecipients for ${typeTag || 'unknown'} community: ${community.id || community._id} to ${JSON.stringify(expectedQuotaRecipients)}`);
+        }
       }
 
       if (needsUpdate) {
