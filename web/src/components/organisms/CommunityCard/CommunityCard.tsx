@@ -39,11 +39,30 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const isActive = pathname?.includes(`/communities/${communityId}`);
 
-  // Check if user is a lead in this community
-  const isLead = React.useMemo(() => {
-    if (user?.globalRole === 'superadmin') return true;
+  // Determine user's role per community for badge display
+  const userRoleBadge = React.useMemo(() => {
+    // Check global superadmin role first
+    if (user?.globalRole === 'superadmin') {
+      return { role: 'superadmin', label: 'Superadmin', variant: 'error' as const };
+    }
+    
+    // Find role in userRoles array matching the communityId
     const role = userRoles.find(r => r.communityId === communityId);
-    return role?.role === 'lead' || community?.adminIds?.includes(user?.id || '');
+    
+    // Only show badge for lead, participant, and superadmin (not viewer)
+    if (role?.role === 'lead') {
+      return { role: 'lead', label: 'Lead', variant: 'accent' as const };
+    }
+    if (role?.role === 'participant') {
+      return { role: 'participant', label: 'Participant', variant: 'info' as const };
+    }
+    
+    // Fallback: check if user is in adminIds (legacy support)
+    if (community?.adminIds?.includes(user?.id || '')) {
+      return { role: 'lead', label: 'Lead', variant: 'accent' as const };
+    }
+    
+    return null;
   }, [user?.globalRole, user?.id, userRoles, communityId, community?.adminIds]);
 
   // Format balance and quota display
@@ -95,9 +114,9 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
               <div className={`text-sm font-medium truncate ${isActive ? 'text-primary-content' : 'text-base-content dark:text-base-content'}`}>
                 {community.name}
               </div>
-              {isLead && (
-                <Badge variant="accent" size="xs">
-                  Lead
+              {userRoleBadge && (
+                <Badge variant={userRoleBadge.variant} size="xs">
+                  {userRoleBadge.label}
                 </Badge>
               )}
             </div>
@@ -131,8 +150,15 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
             needsSetup={community.needsSetup}
           />
         </div>
-        {isLead && (
-          <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-accent border-2 border-base-200" title="Lead" />
+        {userRoleBadge && (
+          <div 
+            className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-base-200 ${
+              userRoleBadge.variant === 'error' ? 'bg-error' :
+              userRoleBadge.variant === 'accent' ? 'bg-accent' :
+              userRoleBadge.variant === 'info' ? 'bg-info' : 'bg-accent'
+            }`} 
+            title={userRoleBadge.label} 
+          />
         )}
         <div className="mt-1 text-[10px] leading-none text-base-content/60 text-center truncate max-w-[48px] flex items-center justify-center gap-0.5">
           {currencyIconUrl && (

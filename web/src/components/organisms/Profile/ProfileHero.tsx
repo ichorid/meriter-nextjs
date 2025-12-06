@@ -23,30 +23,10 @@ interface ProfileHeroProps {
 export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles = [] }: ProfileHeroProps) {
   const t = useTranslations('profile');
   
-  if (!user) return null;
-
-  const displayName = user.displayName || user.username || 'User';
-  const avatarUrl = user.avatarUrl;
-  const bio = user.profile?.bio;
-  const location = user.profile?.location;
-  const website = user.profile?.website;
-  const values = user.profile?.values;
-  const about = user.profile?.about;
-  const educationalInstitution = user.profile?.educationalInstitution;
-  const contacts = user.profile?.contacts;
-
-  // Check if user is Representative (lead) or Member (participant) - show educationalInstitution
-  const isRepresentativeOrMember = user.globalRole === 'superadmin' || 
-    userRoles.some(r => r.role === 'lead' || r.role === 'participant');
-
-  // Check if user is Representative (lead) or Organizer (superadmin) - show contacts
-  const showContacts = user.globalRole === 'superadmin' || 
-    userRoles.some(r => r.role === 'lead');
-
   // Determine role type for display (same logic as VerticalSidebar)
   const userRoleDisplay = React.useMemo(() => {
     // Check global superadmin role first
-    if (user.globalRole === 'superadmin') {
+    if (user?.globalRole === 'superadmin') {
       return { role: 'superadmin', label: t('roleTypes.superadmin') || 'Superadmin', variant: 'error' as const };
     }
     
@@ -67,6 +47,26 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
     
     return null;
   }, [user?.globalRole, userRoles, t]);
+
+  if (!user) return null;
+
+  const displayName = user.displayName || user.username || 'User';
+  const avatarUrl = user.avatarUrl;
+  const bio = user.profile?.bio;
+  const location = user.profile?.location;
+  const website = user.profile?.website;
+  const values = user.profile?.values;
+  const about = user.profile?.about;
+  const educationalInstitution = user.profile?.educationalInstitution;
+  const contacts = user.profile?.contacts;
+
+  // Check if user is Representative (lead) or Member (participant) - show educationalInstitution
+  const isRepresentativeOrMember = user.globalRole === 'superadmin' || 
+    userRoles.some(r => r.role === 'lead' || r.role === 'participant');
+
+  // Check if user is Representative (lead) or Organizer (superadmin) - show contacts
+  const showContacts = user.globalRole === 'superadmin' || 
+    userRoles.some(r => r.role === 'lead');
 
   return (
     <div className="relative bg-base-100 rounded-xl overflow-hidden border border-brand-secondary/10 shadow-sm">

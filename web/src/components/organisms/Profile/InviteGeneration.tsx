@@ -44,11 +44,6 @@ export function InviteGeneration() {
     return isSuperadmin || isLead;
   }, [isSuperadmin, isLead]);
 
-  // Hide component completely for participants and viewers (only show for superadmin and leads)
-  if (!hasLeadRole) {
-    return null;
-  }
-
   // Set default community for lead (first team community) - auto-select
   useEffect(() => {
     if (isLead && !isSuperadmin && leadCommunities.length > 0) {
@@ -145,6 +140,11 @@ export function InviteGeneration() {
       return comm?.name || communityId;
     }
   };
+
+  // Hide component completely for participants and viewers (only show for superadmin and leads)
+  if (!hasLeadRole) {
+    return null;
+  }
 
   return (
     <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">

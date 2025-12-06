@@ -96,6 +96,27 @@ export default function CommunitiesPage() {
         return map;
     }, [wallets]);
 
+    // Helper function to determine user role per community for badge display
+    const getUserRoleBadge = (communityId: string): string | null => {
+        // Check global superadmin role first
+        if (user?.globalRole === 'superadmin') {
+            return 'Superadmin';
+        }
+        
+        // Find role in userRoles array matching the communityId
+        const role = userRoles?.find(r => r.communityId === communityId);
+        
+        // Only show badge for lead, participant, and superadmin (not viewer)
+        if (role?.role === 'lead') {
+            return 'Lead';
+        }
+        if (role?.role === 'participant') {
+            return 'Participant';
+        }
+        
+        return null;
+    };
+
     // Helper function to render merits/quota indicator
     const renderMeritsQuota = (community: typeof allCommunities[0]) => {
         const wallet = walletsMap.get(community.id);
@@ -135,23 +156,27 @@ export default function CommunitiesPage() {
                                     Special Communities
                                 </h2>
                                 <div className="space-y-3">
-                                    {specialCommunities.map((community) => (
-                                        <InfoCard
-                                            key={community.id}
-                                            title={community.name}
-                                            subtitle={community.description}
-                                            icon={
-                                                <BrandAvatar
-                                                    src={community.avatarUrl}
-                                                    fallback={community.name}
-                                                    size="sm"
-                                                    className="bg-transparent"
-                                                />
-                                            }
-                                            rightElement={renderMeritsQuota(community)}
-                                            onClick={() => router.push(`/meriter/communities/${community.id}`)}
-                                        />
-                                    ))}
+                                    {specialCommunities.map((community) => {
+                                        const badgeText = getUserRoleBadge(community.id);
+                                        return (
+                                            <InfoCard
+                                                key={community.id}
+                                                title={community.name}
+                                                subtitle={community.description}
+                                                icon={
+                                                    <BrandAvatar
+                                                        src={community.avatarUrl}
+                                                        fallback={community.name}
+                                                        size="sm"
+                                                        className="bg-transparent"
+                                                    />
+                                                }
+                                                rightElement={renderMeritsQuota(community)}
+                                                badges={badgeText ? [badgeText] : undefined}
+                                                onClick={() => router.push(`/meriter/communities/${community.id}`)}
+                                            />
+                                        );
+                                    })}
                                 </div>
                             </div>
                             <div className="border-t border-base-300" />
@@ -200,23 +225,27 @@ export default function CommunitiesPage() {
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
-                                        {userCommunities.map((community) => (
-                                            <InfoCard
-                                                key={community.id}
-                                                title={community.name}
-                                                subtitle={community.description}
-                                                icon={
-                                                    <BrandAvatar
-                                                        src={community.avatarUrl}
-                                                        fallback={community.name}
-                                                        size="sm"
-                                                        className="bg-transparent"
-                                                    />
-                                                }
-                                                rightElement={renderMeritsQuota(community)}
-                                                onClick={() => router.push(`/meriter/communities/${community.id}`)}
-                                            />
-                                        ))}
+                                        {userCommunities.map((community) => {
+                                            const badgeText = getUserRoleBadge(community.id);
+                                            return (
+                                                <InfoCard
+                                                    key={community.id}
+                                                    title={community.name}
+                                                    subtitle={community.description}
+                                                    icon={
+                                                        <BrandAvatar
+                                                            src={community.avatarUrl}
+                                                            fallback={community.name}
+                                                            size="sm"
+                                                            className="bg-transparent"
+                                                        />
+                                                    }
+                                                    rightElement={renderMeritsQuota(community)}
+                                                    badges={badgeText ? [badgeText] : undefined}
+                                                    onClick={() => router.push(`/meriter/communities/${community.id}`)}
+                                                />
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>

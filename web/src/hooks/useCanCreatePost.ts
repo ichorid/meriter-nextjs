@@ -5,7 +5,8 @@ import { useCommunity } from './api';
 
 /**
  * Hook to check if user can create posts/polls in a community
- * Checks community posting rules and user roles (lead or superadmin only)
+ * Checks community posting rules and user roles.
+ * Participants can create posts in marathon-of-good and future-vision communities.
  */
 export function useCanCreatePost(communityId?: string): {
   canCreate: boolean;
@@ -110,6 +111,20 @@ export function useCanCreatePost(communityId?: string): {
     // Check if participant or viewer can create based on postingRules
     if (userRole === 'participant' || userRole === 'viewer') {
       const rules = community.postingRules;
+      
+      // Special handling for marathon-of-good and future-vision communities
+      // According to MARATHON_OF_GOOD.md, participants can post in these communities
+      const isSpecialCommunity = community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision';
+      
+      if (userRole === 'participant' && isSpecialCommunity) {
+        // Participants can always post in marathon-of-good and future-vision
+        // This matches the documented behavior in MARATHON_OF_GOOD.md
+        return {
+          canCreate: true,
+          isLoading: false,
+        };
+      }
+      
       if (!rules) {
         // If no posting rules configured, don't allow (backward compatibility)
         return {
