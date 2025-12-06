@@ -25,6 +25,8 @@ import { VoteCommentResolverService } from '../common/services/vote-comment-reso
 import { CommentEnrichmentService } from '../common/services/comment-enrichment.service';
 import { VoteTransactionCalculatorService } from '../common/services/vote-transaction-calculator.service';
 import { UserGuard } from '../../user.guard';
+import { PermissionGuard } from '../../permission.guard';
+import { RequirePermission } from '../../common/decorators/permission.decorator';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { ApiResponseHelper } from '../common/helpers/api-response.helper';
 import {
@@ -40,7 +42,7 @@ import {
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 
 @Controller('api/v1/comments')
-@UseGuards(UserGuard)
+@UseGuards(UserGuard, PermissionGuard)
 export class CommentsController {
   private readonly logger = new Logger(CommentsController.name);
 
@@ -279,39 +281,19 @@ export class CommentsController {
 
   @Put(':id')
   @ZodValidation(UpdateCommentDtoSchema)
+  @RequirePermission('edit', 'comment')
   async updateComment(
     @Param('id') id: string,
     @Body() updateDto: any,
     @Req() req: any,
   ): Promise<Comment> {
-    // Check permissions using PermissionService
-    const canEdit = await this.permissionService.canEditComment(
-      req.user.id,
-      id,
-    );
-    if (!canEdit) {
-      throw new ForbiddenError(
-        'You do not have permission to edit this comment',
-      );
-    }
-
     // Update functionality not implemented yet
     throw new Error('Update comment functionality not implemented');
   }
 
   @Delete(':id')
+  @RequirePermission('delete', 'comment')
   async deleteComment(@Param('id') id: string, @Req() req: any) {
-    // Check permissions using PermissionService
-    const canDelete = await this.permissionService.canDeleteComment(
-      req.user.id,
-      id,
-    );
-    if (!canDelete) {
-      throw new ForbiddenError(
-        'You do not have permission to delete this comment',
-      );
-    }
-
     await this.commentsService.deleteComment(id, req.user.id);
     return ApiResponseHelper.successMessage('Comment deleted successfully');
   }

@@ -15,13 +15,14 @@ import { NotFoundException } from '@nestjs/common';
 import { PublicationService } from '../../domain/services/publication.service';
 import { UserService } from '../../domain/services/user.service';
 import { CommunityService } from '../../domain/services/community.service';
-import { PermissionService } from '../../domain/services/permission.service';
 import { UserEnrichmentService } from '../common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../common/services/community-enrichment.service';
 import { EntityMappers } from '../common/mappers/entity-mappers';
 import { ApiResponseHelper } from '../common/helpers/api-response.helper';
 import { User } from '../../decorators/user.decorator';
 import { UserGuard } from '../../user.guard';
+import { PermissionGuard } from '../../permission.guard';
+import { RequirePermission } from '../../common/decorators/permission.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
 import {
   CreatePublicationDto,
@@ -32,7 +33,7 @@ import {
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 
 @Controller('api/v1/publications')
-@UseGuards(UserGuard)
+@UseGuards(UserGuard, PermissionGuard)
 export class PublicationsController {
   private readonly logger = new Logger(PublicationsController.name);
 
@@ -40,29 +41,17 @@ export class PublicationsController {
     private publicationService: PublicationService,
     private userService: UserService,
     private communityService: CommunityService,
-    private permissionService: PermissionService,
     private userEnrichmentService: UserEnrichmentService,
     private communityEnrichmentService: CommunityEnrichmentService,
   ) {}
 
   @Post()
   @ZodValidation(CreatePublicationDtoSchema)
+  @RequirePermission('create', 'publication')
   async createPublication(
     @User() user: AuthenticatedUser,
     @Body() dto: CreatePublicationDto,
   ) {
-    // Check permissions using PermissionService
-    const canCreate = await this.permissionService.canCreatePublication(
-      user.id,
-      dto.communityId,
-    );
-
-    if (!canCreate) {
-      throw new ForbiddenException(
-        'You do not have permission to create publications in this community',
-      );
-    }
-
     const publication = await this.publicationService.createPublication(
       user.id,
       dto,
@@ -204,60 +193,33 @@ export class PublicationsController {
 
   @Put(':id')
   @ZodValidation(UpdatePublicationDtoSchema)
+  @RequirePermission('edit', 'publication')
   async updatePublication(
     @User() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() updates: any,
   ) {
-    // Check permissions using PermissionService
-    const canEdit = await this.permissionService.canEditPublication(
-      user.id,
-      id,
-    );
-    if (!canEdit) {
-      throw new ForbiddenException(
-        'You do not have permission to edit this publication',
-      );
-    }
-
     return this.publicationService.updatePublication(id, user.id, updates);
   }
 
   @Delete(':id')
+  @RequirePermission('delete', 'publication')
   async deletePublication(
     @User() user: AuthenticatedUser,
     @Param('id') id: string,
   ) {
-    // Check permissions using PermissionService
-    const canDelete = await this.permissionService.canDeletePublication(
-      user.id,
-      id,
-    );
-    if (!canDelete) {
-      throw new ForbiddenException(
-        'You do not have permission to delete this publication',
-      );
-    }
-
     await this.publicationService.deletePublication(id, user.id);
     return { success: true };
   }
 
   @Post(':id/vote')
   @ZodValidation(VoteDirectionDtoSchema)
+  @RequirePermission('vote', 'publication')
   async voteOnPublication(
     @User() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() dto: any,
   ) {
-    // Check permissions using PermissionService
-    const canVote = await this.permissionService.canVote(user.id, id);
-    if (!canVote) {
-      throw new ForbiddenException(
-        'You do not have permission to vote on this publication',
-      );
-    }
-
     return this.publicationService.voteOnPublication(
       id,
       user.id,

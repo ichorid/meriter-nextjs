@@ -254,15 +254,20 @@ export class WalletsController {
 
     const dailyQuota = community.settings.dailyEmission;
 
-    // Check if user is a viewer - viewers don't get daily quota
+    // Check if user is a viewer - viewers don't get daily quota EXCEPT in marathon-of-good
     // Future Vision communities don't use quota - wallet voting only
     const userRole = await this.permissionService.getUserRoleInCommunity(
       actualUserId,
       communityId,
     );
     
-    if (userRole === 'viewer' || community.typeTag === 'future-vision') {
-      // Viewers and Future Vision users have no quota but can still vote with wallet balance
+    // Viewers get zero quota in all communities EXCEPT marathon-of-good (where they can vote with quota)
+    // Future Vision communities don't use quota regardless of role
+    if (
+      (userRole === 'viewer' && community.typeTag !== 'marathon-of-good') ||
+      community.typeTag === 'future-vision'
+    ) {
+      // Viewers (except in marathon-of-good) and Future Vision users have no quota
       const tomorrow = new Date();
       tomorrow.setHours(0, 0, 0, 0);
       tomorrow.setDate(tomorrow.getDate() + 1);

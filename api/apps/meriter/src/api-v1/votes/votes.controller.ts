@@ -20,9 +20,10 @@ import { PublicationService } from '../../domain/services/publication.service';
 import { UserService } from '../../domain/services/user.service';
 import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
-import { PermissionService } from '../../domain/services/permission.service';
 import { UserCommunityRoleService } from '../../domain/services/user-community-role.service';
 import { UserGuard } from '../../user.guard';
+import { PermissionGuard } from '../../permission.guard';
+import { RequirePermission } from '../../common/decorators/permission.decorator';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { ApiResponseHelper } from '../common/helpers/api-response.helper';
 import {
@@ -42,7 +43,7 @@ import {
 } from '../../domain/models/publication/publication.schema';
 
 @Controller('api/v1')
-@UseGuards(UserGuard)
+@UseGuards(UserGuard, PermissionGuard)
 export class VotesController {
   private readonly logger = new Logger(VotesController.name);
 
@@ -54,7 +55,6 @@ export class VotesController {
     private readonly communityService: CommunityService,
     private readonly userSettingsService: UserSettingsService,
     private readonly userUpdatesService: UserUpdatesService,
-    private readonly permissionService: PermissionService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     @InjectConnection() private readonly connection: Connection,
     @InjectModel(PublicationSchema.name)
@@ -495,6 +495,7 @@ export class VotesController {
 
   @Post('publications/:id/votes')
   @ZodValidation(VoteWithCommentDtoSchema)
+  @RequirePermission('vote', 'publication')
   async votePublication(
     @Param('id') id: string,
     @Body() createDto: VoteWithCommentDto,
@@ -520,83 +521,6 @@ export class VotesController {
     const publication = await this.publicationService.getPublication(id);
     if (!publication) {
       throw new NotFoundError('Publication', id);
-    }
-
-    // Check permissions using PermissionService
-    const canVote = await this.permissionService.canVote(req.user.id, id);
-    if (!canVote) {
-      // Get more specific error message
-      const authorId = publication.getAuthorId.getValue();
-      const userRole = await this.permissionService.getUserRoleInCommunity(
-        req.user.id,
-        publication.getCommunityId.getValue(),
-      );
-      const authorRole = await this.permissionService.getUserRoleInCommunity(
-        authorId,
-        publication.getCommunityId.getValue(),
-      );
-
-      let errorMessage =
-        'You do not have permission to vote on this publication';
-
-      const communityId = publication.getCommunityId.getValue();
-      const community = await this.communityService.getCommunity(communityId);
-      
-      // Check if publication is in a team community
-      const isTeamCommunity = community?.typeTag === 'team';
-
-      // Provide specific error messages
-      if (isTeamCommunity) {
-        // Team community specific errors
-        const userRoleInTeam = await this.permissionService.getUserRoleInCommunity(req.user.id, communityId);
-        if (!userRoleInTeam) {
-          errorMessage = 'Only team members can vote in team communities';
-        } else if (authorId === req.user.id) {
-          errorMessage = 'You cannot vote for your own post';
-        } else {
-          errorMessage = 'You do not have permission to vote on this publication';
-        }
-      } else {
-        // Outside team community errors
-        if (authorId === req.user.id) {
-          errorMessage = 'You cannot vote for your own post';
-        } else if (userRole === 'participant') {
-          // Check if voter and author share a team community
-          const voterRoles = await this.userCommunityRoleService.getUserRoles(req.user.id);
-          const authorRoles = await this.userCommunityRoleService.getUserRoles(authorId);
-          
-          // Find common team-type communities
-          const voterTeamCommunities = new Set<string>();
-          const authorTeamCommunities = new Set<string>();
-          
-          for (const role of voterRoles || []) {
-            const comm = await this.communityService.getCommunity(role.communityId);
-            if (comm?.typeTag === 'team') {
-              voterTeamCommunities.add(role.communityId);
-            }
-          }
-          
-          for (const role of authorRoles || []) {
-            const comm = await this.communityService.getCommunity(role.communityId);
-            if (comm?.typeTag === 'team') {
-              authorTeamCommunities.add(role.communityId);
-            }
-          }
-          
-          const sharedTeamCommunities = [...voterTeamCommunities].filter(id => authorTeamCommunities.has(id));
-          
-          if (sharedTeamCommunities.length > 0 && authorRole === 'lead') {
-            errorMessage = 'You cannot vote for leads from your own team';
-          } else if (community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision') {
-            if (authorRole === 'participant') {
-              errorMessage = 'You cannot vote for participants from marathon/vision communities';
-            }
-            // Participants can vote for leads in marathon-of-good (except their own team lead, already checked above)
-          }
-        }
-      }
-
-      throw new BadRequestException(errorMessage);
     }
 
     const { vote, communityId, direction, absoluteAmount } =

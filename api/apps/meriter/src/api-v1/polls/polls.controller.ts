@@ -17,12 +17,13 @@ import { PollCastService } from '../../domain/services/poll-cast.service';
 import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { UserService } from '../../domain/services/user.service';
-import { PermissionService } from '../../domain/services/permission.service';
 import { UserEnrichmentService } from '../common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../common/services/community-enrichment.service';
 import { EntityMappers } from '../common/mappers/entity-mappers';
 import { Wallet } from '../../domain/aggregates/wallet/wallet.entity';
 import { UserGuard } from '../../user.guard';
+import { PermissionGuard } from '../../permission.guard';
+import { RequirePermission } from '../../common/decorators/permission.decorator';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { ApiResponseHelper } from '../common/helpers/api-response.helper';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../common/exceptions/api.exceptions';
@@ -33,7 +34,7 @@ import { BOT_USERNAME, URL as WEB_BASE_URL } from '../../config';
 import { t } from '../../i18n';
 
 @Controller('api/v1/polls')
-@UseGuards(UserGuard)
+@UseGuards(UserGuard, PermissionGuard)
 export class PollsController {
   private readonly logger = new Logger(PollsController.name);
 
@@ -43,7 +44,6 @@ export class PollsController {
     private readonly walletService: WalletService,
     private readonly communityService: CommunityService,
     private readonly userService: UserService,
-    private readonly permissionService: PermissionService,
     private readonly userEnrichmentService: UserEnrichmentService,
     private readonly communityEnrichmentService: CommunityEnrichmentService,
   ) {}
@@ -115,22 +115,11 @@ export class PollsController {
 
   @Post()
   @ZodValidation(CreatePollDtoSchema as any)
+  @RequirePermission('create', 'poll')
   async createPoll(
     @Body() createDto: CreatePollDto,
     @Req() req: any,
   ) {
-    // Check permissions using PermissionService
-    const canCreate = await this.permissionService.canCreatePoll(
-      req.user.id,
-      createDto.communityId,
-    );
-
-    if (!canCreate) {
-      throw new ForbiddenException(
-        'You do not have permission to create polls in this community',
-      );
-    }
-
     // Transform API CreatePollDto to domain CreatePollDto
     // Service handles string->Date conversion
     const domainDto = createDto;
