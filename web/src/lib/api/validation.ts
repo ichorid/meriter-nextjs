@@ -1,4 +1,4 @@
-import { ZodSchema, ZodError } from "zod";
+import { ZodSchema, ZodError, ZodTypeAny } from "zod";
 
 /**
  * Validation error with context
@@ -17,14 +17,15 @@ export class ValidationError extends Error {
 /**
  * Validates data against a Zod schema and returns typed data
  * Throws ValidationError if validation fails
+ * Uses ZodTypeAny to avoid deep type instantiation issues
  */
 export function validateData<T>(
-    schema: ZodSchema<T>,
+    schema: ZodTypeAny,
     data: unknown,
     context?: string
 ): T {
     try {
-        return schema.parse(data);
+        return schema.parse(data) as T;
     } catch (error) {
         if (error instanceof ZodError) {
             throw new ValidationError(
@@ -40,24 +41,26 @@ export function validateData<T>(
 /**
  * Safely validates data against a Zod schema
  * Returns { success: true, data } or { success: false, error }
+ * Uses ZodTypeAny to avoid deep type instantiation issues
  */
 export function safeValidateData<T>(
-    schema: ZodSchema<T>,
+    schema: ZodTypeAny,
     data: unknown,
     context?: string
 ): { success: true; data: T } | { success: false; error: ZodError } {
     const result = schema.safeParse(data);
     if (result.success) {
-        return result;
+        return { success: true, data: result.data as T };
     }
     return { success: false, error: result.error };
 }
 
 /**
  * Validates paginated response data
+ * Uses ZodTypeAny to avoid deep type instantiation issues
  */
 export function validatePaginatedResponse<T>(
-    schema: ZodSchema<T>,
+    schema: ZodTypeAny,
     response: unknown,
     context?: string
 ): { data: T[]; meta: any } {
@@ -90,7 +93,7 @@ export function validatePaginatedResponse<T>(
 
     // Validate each item in the array
     const validatedData = responseObj.data.map((item, index) =>
-        validateData(schema, item, `${context || "item"}[${index}]`)
+        validateData<T>(schema, item, `${context || "item"}[${index}]`)
     );
 
     return {
@@ -101,9 +104,10 @@ export function validatePaginatedResponse<T>(
 
 /**
  * Validates API response with success/data wrapper
+ * Uses ZodTypeAny to avoid deep type instantiation issues
  */
 export function validateApiResponse<T>(
-    schema: ZodSchema<T>,
+    schema: ZodTypeAny,
     response: unknown,
     context?: string
 ): T {
@@ -144,5 +148,5 @@ export function validateApiResponse<T>(
         });
     }
 
-    return validateData(schema, responseObj.data, context);
+    return validateData<T>(schema, responseObj.data, context);
 }

@@ -88,14 +88,15 @@ export function useCommentsByComment(
 
 // Get single comment
 export function useComment(id: string) {
+    // Workaround for TypeScript's "Type instantiation is excessively deep" error
     return useValidatedQuery({
         queryKey: commentsKeys.detail(id),
         queryFn: () => commentsApiV1.getComment(id),
-        schema: CommentSchema,
+        schema: CommentSchema as any,
         context: `useComment(${id})`,
         staleTime: STALE_TIME.LONG,
         enabled: !!id,
-    });
+    } as any);
 }
 
 // Get comment details (with all metadata for popup)
@@ -109,10 +110,11 @@ export function useCommentDetails(id: string) {
 }
 
 // Create comment
+// Workaround for TypeScript's "Type instantiation is excessively deep" error
 export const useCreateComment = createMutation<Comment, CreateCommentDto>({
     mutationFn: (data) => commentsApiV1.createComment(data),
-    inputSchema: CreateCommentDtoSchema,
-    outputSchema: CommentSchema,
+    inputSchema: CreateCommentDtoSchema as any,
+    outputSchema: CommentSchema as any,
     validationContext: "useCreateComment",
     errorContext: "Create comment error",
     invalidations: {
@@ -125,7 +127,7 @@ export const useCreateComment = createMutation<Comment, CreateCommentDto>({
         queryKey: (result) => commentsKeys.detail(result.id),
         data: (result) => result,
     },
-});
+} as any);
 
 // Update comment
 export const useUpdateComment = createMutation<

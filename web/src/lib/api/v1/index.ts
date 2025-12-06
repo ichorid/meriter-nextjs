@@ -76,6 +76,15 @@ export const authApiV1 = {
         }>("/api/v1/auth/fake", {});
         return handleAuthResponse<AuthResult>(response);
     },
+
+    async authenticateFakeSuperadmin(): Promise<AuthResult> {
+        const response = await apiClient.postRaw<{
+            success: boolean;
+            data: AuthResult;
+            error?: string;
+        }>("/api/v1/auth/fake/superadmin", {});
+        return handleAuthResponse<AuthResult>(response);
+    },
 };
 
 // Users API
@@ -703,7 +712,8 @@ export const commentsApiV1 = {
             "/api/v1/comments",
             data
         );
-        return validateApiResponse(CommentSchema, response, "createComment");
+        // Workaround for TypeScript's "Type instantiation is excessively deep" error
+        return validateApiResponse(CommentSchema as any, response, "createComment");
     },
 
     async updateComment(
@@ -998,7 +1008,8 @@ export const pollsApiV1 = {
         const response = await apiClient.get<{ success: true; data: Poll }>(
             `/api/v1/polls/${id}`
         );
-        return validateApiResponse(PollSchema, response, "getPoll");
+        // Workaround for TypeScript's "Type instantiation is excessively deep" error
+        return validateApiResponse(PollSchema as any, response, "getPoll");
     },
 
     async createPoll(data: CreatePollDto): Promise<Poll> {
@@ -1006,7 +1017,8 @@ export const pollsApiV1 = {
             "/api/v1/polls",
             data
         );
-        return validateApiResponse(PollSchema, response, "createPoll");
+        // Workaround for TypeScript's "Type instantiation is excessively deep" error
+        return validateApiResponse(PollSchema as any, response, "createPoll");
     },
 
     async updatePoll(id: string, data: Partial<CreatePollDto>): Promise<Poll> {
@@ -1014,7 +1026,8 @@ export const pollsApiV1 = {
             `/api/v1/polls/${id}`,
             data
         );
-        return validateApiResponse(PollSchema, response, "updatePoll");
+        // Workaround for TypeScript's "Type instantiation is excessively deep" error
+        return validateApiResponse(PollSchema as any, response, "updatePoll");
     },
 
     async deletePoll(id: string): Promise<void> {

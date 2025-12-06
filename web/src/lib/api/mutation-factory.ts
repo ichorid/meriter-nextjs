@@ -5,7 +5,7 @@
  */
 
 import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
-import { ZodSchema } from 'zod';
+import { z, ZodTypeAny } from 'zod';
 import {
     invalidateWallet,
     invalidatePublications,
@@ -54,7 +54,13 @@ export interface InvalidationConfig {
     };
 }
 
-export interface MutationConfig<TData, TVariables, TError = Error> {
+export interface MutationConfig<
+    TData = any,
+    TVariables = any,
+    TError = Error,
+    TInputSchema extends ZodTypeAny | undefined = undefined,
+    TOutputSchema extends ZodTypeAny | undefined = undefined
+> {
     mutationFn: (variables: TVariables) => Promise<TData>;
     invalidations?: InvalidationConfig;
     errorContext?: string;
@@ -67,9 +73,9 @@ export interface MutationConfig<TData, TVariables, TError = Error> {
     removeQuery?: {
         queryKey: (variables: TVariables) => readonly unknown[];
     };
-    // Validation options
-    inputSchema?: ZodSchema<TVariables>;
-    outputSchema?: ZodSchema<TData>;
+    // Validation options - using ZodTypeAny to avoid deep type instantiation
+    inputSchema?: TInputSchema;
+    outputSchema?: TOutputSchema;
     validationContext?: string;
 }
 
@@ -178,14 +184,19 @@ function applyInvalidations(
 /**
  * Create a mutation hook with standardized patterns
  * Supports both validated and non-validated mutations
+ * Avoids deep type instantiation by using any types and avoiding UseMutationOptions
  */
-export function createMutation<TData, TVariables, TError = Error>(
-    config: MutationConfig<TData, TVariables, TError>
+export function createMutation<
+    TData = any,
+    TVariables = any,
+    TError = Error
+>(
+    config: MutationConfig<TData, TVariables, TError, ZodTypeAny | undefined, ZodTypeAny | undefined>
 ) {
     return function useMutationHook() {
         const queryClient = useQueryClient();
 
-        const mutationOptions: UseMutationOptions<TData, TError, TVariables> = {
+        const mutationOptions: any = {
             mutationFn: config.mutationFn,
             onSuccess: (result, variables) => {
                 // Apply automatic invalidations
@@ -232,7 +243,7 @@ export function createMutation<TData, TVariables, TError = Error>(
                 inputSchema: config.inputSchema,
                 outputSchema: config.outputSchema!,
                 context: config.validationContext || config.errorContext,
-            });
+            } as any);
         }
 
         // Use standard mutation

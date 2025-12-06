@@ -16,7 +16,7 @@ import { authApiV1 } from '@/lib/api/v1';
 import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMe, useFakeAuth, useLogout } from '@/hooks/api/useAuth';
+import { useMe, useFakeAuth, useFakeSuperadminAuth, useLogout } from '@/hooks/api/useAuth';
 import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
 import { clearAuthStorage, redirectToLogin, clearJwtCookie } from '@/lib/utils/auth';
 import { useToastStore } from '@/shared/stores/toast.store';
@@ -29,6 +29,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   authenticateFakeUser: () => Promise<void>;
+  authenticateFakeSuperadmin: () => Promise<void>;
   logout: () => Promise<void>;
   handleDeepLink: (router: Router, searchParams: ParsedUrlQuery, startParam?: string) => void;
   authError: string | null;
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const { data: user, isLoading: userLoading, error: userError } = useMe();
   const fakeAuthMutation = useFakeAuth();
+  const fakeSuperadminAuthMutation = useFakeSuperadminAuth();
   const logoutMutation = useLogout();
 
   const { handleDeepLink } = useDeepLinkHandler(router as unknown as Router, null, undefined);
@@ -88,6 +90,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsAuthenticating(false);
     }
   }, [fakeAuthMutation]);
+
+  const authenticateFakeSuperadmin = useCallback(async () => {
+    try {
+      setIsAuthenticating(true);
+      setAuthError(null);
+      // Clear any existing JWT cookies before authentication to ensure clean state
+      clearJwtCookie();
+      await fakeSuperadminAuthMutation.mutateAsync();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Authentication failed';
+      setAuthError(message);
+      throw error;
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }, [fakeSuperadminAuthMutation]);
 
   const logout = useCallback(async () => {
     try {
@@ -165,6 +183,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading,
     isAuthenticated,
     authenticateFakeUser,
+    authenticateFakeSuperadmin,
     logout,
     handleDeepLink,
     authError,
@@ -174,6 +193,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading,
     isAuthenticated,
     authenticateFakeUser,
+    authenticateFakeSuperadmin,
     logout,
     handleDeepLink,
     authError,

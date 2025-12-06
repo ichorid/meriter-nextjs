@@ -71,7 +71,7 @@ export class AuthController {
     cookieNames.add('jwt');
     
     // Also clear known cookies that might exist
-    const knownCookies = ['fake_user_id', 'NEXT_LOCALE'];
+    const knownCookies = ['fake_user_id', 'fake_superadmin_id', 'NEXT_LOCALE'];
     knownCookies.forEach(name => cookieNames.add(name));
     
     // Clear each cookie with all possible attribute combinations
@@ -152,6 +152,73 @@ export class AuthController {
     }
   }
 
+  @Post('fake/superadmin')
+  async authenticateFakeSuperadmin(@Req() req: any, @Res() res: any) {
+    try {
+      // Check if fake data mode is enabled
+      if (process.env.FAKE_DATA_MODE !== 'true') {
+        throw new ForbiddenException('Fake data mode is not enabled');
+      }
+
+      this.logger.log('Fake superadmin authentication request received');
+
+      // Get or generate a session-specific fake superadmin user ID
+      // Check for existing fake_superadmin_id cookie (session-specific)
+      let fakeUserId = req.cookies?.fake_superadmin_id;
+
+      // If no cookie exists, generate a new unique fake superadmin user ID
+      if (!fakeUserId) {
+        // Generate a unique ID: fake_superadmin_<timestamp>_<random>
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(2, 9);
+        fakeUserId = `fake_superadmin_${timestamp}_${random}`;
+        this.logger.log(`Generated new fake superadmin user ID: ${fakeUserId}`);
+      } else {
+        this.logger.log(`Reusing existing fake superadmin user ID: ${fakeUserId}`);
+      }
+
+      const result = await this.authService.authenticateFakeSuperadmin(fakeUserId);
+
+      // Set JWT cookie with proper domain for Caddy reverse proxy
+      const cookieDomain = CookieManager.getCookieDomain();
+      // Treat as production (Secure=true, SameSite=None) if explicitly production OR if accessed via HTTPS
+      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+
+      // Clear any existing JWT cookie first to ensure clean state
+      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+
+      // Set new JWT cookie
+      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+
+      // Set fake_superadmin_id cookie (session cookie - expires when browser closes)
+      res.cookie('fake_superadmin_id', fakeUserId, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        // No maxAge - this makes it a session cookie that expires when browser closes
+        path: '/',
+        domain: cookieDomain,
+      });
+
+      this.logger.log('Fake superadmin authentication successful, sending response');
+
+      return res.json({
+        success: true,
+        data: {
+          user: result.user,
+          hasPendingCommunities: result.hasPendingCommunities,
+        },
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      this.logger.error('Fake superadmin authentication error', error.stack);
+      throw new UnauthorizedError('Fake superadmin authentication failed');
+    }
+  }
+
   /**
    * Google OAuth initiation endpoint
    * Uses Passport Google strategy according to NestJS documentation
@@ -163,7 +230,7 @@ export class AuthController {
       this.logger.log('Google OAuth initiation request received');
 
       // Get return_url from query params (where to redirect after auth)
-      const returnTo = req.query.returnTo || '/meriter/home';
+      const returnTo = req.query.returnTo || '/meriter/profile';
 
       // Check if Google OAuth is explicitly disabled
       const enabled = process.env.OAUTH_GOOGLE_ENABLED;
@@ -268,8 +335,8 @@ export class AuthController {
       CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
       CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
 
-      // New users go to welcome page, existing users go to home
-      const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/home';
+      // New users go to welcome page, existing users go to profile
+      const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/profile';
       const redirectUrl = this.buildWebUrl(redirectPath);
 
       this.logger.log(`Google authentication successful, isNewUser: ${result.isNewUser}, redirecting to: ${redirectUrl}`);
@@ -289,7 +356,7 @@ export class AuthController {
     try {
       this.logger.log('Yandex OAuth initiation request received');
 
-      const returnTo = req.query.returnTo || '/meriter/home';
+      const returnTo = req.query.returnTo || '/meriter/profile';
 
       // Check if Yandex OAuth is explicitly disabled
       const enabled = process.env.OAUTH_YANDEX_ENABLED;
@@ -365,8 +432,8 @@ export class AuthController {
       CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
       CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
 
-      // New users go to welcome page, existing users go to home
-      const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/home';
+      // New users go to welcome page, existing users go to profile
+      const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/profile';
       const redirectUrl = this.buildWebUrl(redirectPath);
 
       this.logger.log(`Yandex authentication successful, isNewUser: ${result.isNewUser}, redirecting to: ${redirectUrl}`);

@@ -266,7 +266,7 @@ export interface GetPollsResponse extends PaginatedResponse<Poll> {}
 // These are type aliases for convenience - actual types come from shared-types
 export type CreatePublicationRequest = CreatePublicationDto;
 export type CreateCommentRequest = CreateCommentDto;
-import { VoteWithCommentDto } from "@meriter/shared-types";
+// VoteWithCommentDto is already imported at the top, no need to re-import
 export type CreateVoteRequest = VoteWithCommentDto;
 export type CreatePollRequest = CreatePollDto;
 export type CreatePollCastRequest = CreatePollCastDto;

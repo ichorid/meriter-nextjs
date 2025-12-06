@@ -111,6 +111,85 @@ export class AuthService {
     };
   }
 
+  async authenticateFakeSuperadmin(fakeUserId?: string): Promise<{
+    user: User;
+    hasPendingCommunities: boolean;
+    jwt: string;
+  }> {
+    if (!this.isFakeDataMode()) {
+      throw new Error('Fake data mode is not enabled');
+    }
+
+    const authId =
+      fakeUserId ||
+      `fake_superadmin_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    this.logger.log(`Creating or updating fake superadmin user ${authId}...`);
+
+    // Generate username and display name from the fake user ID
+    const sessionNumber = fakeUserId
+      ? fakeUserId.split('_').pop()?.substring(0, 6) || 'admin'
+      : 'admin';
+    const username = `fakesuperadmin_${sessionNumber}`;
+    const displayName = `Fake Superadmin ${sessionNumber}`;
+
+    const user = await this.userService.createOrUpdateUser({
+      authProvider: 'fake',
+      authId,
+      username,
+      firstName: 'Fake',
+      lastName: 'Superadmin',
+      displayName,
+      avatarUrl: undefined,
+    });
+
+    if (!user) {
+      throw new Error('Failed to create fake superadmin user');
+    }
+
+    // Set globalRole to superadmin
+    await this.userService.updateGlobalRole(user.id, 'superadmin');
+
+    // Re-fetch user to get updated role
+    const updatedUser = await this.userService.getUser(user.id);
+    if (!updatedUser) {
+      throw new Error('Failed to retrieve fake superadmin user');
+    }
+
+    this.logger.log(`Fake superadmin user ${authId} created/updated successfully with superadmin role`);
+
+    // Ensure user is added to base communities
+    await this.userService.ensureUserInBaseCommunities(updatedUser.id);
+
+    // Generate JWT
+    const jwtSecret = this.configService.get<string>('jwt.secret');
+    if (!jwtSecret) {
+      this.logger.error(
+        'JWT_SECRET is not configured. Cannot generate JWT token.',
+      );
+      throw new Error('JWT secret not configured');
+    }
+
+    const jwtToken = signJWT(
+      {
+        uid: updatedUser.id,
+        authProvider: 'fake',
+        authId,
+        communityTags: updatedUser.communityTags || [],
+      },
+      jwtSecret,
+      '365d',
+    );
+
+    this.logger.log(`JWT generated for fake superadmin user ${authId}`);
+
+    return {
+      user: JwtService.mapUserToV1Format(updatedUser),
+      hasPendingCommunities: (updatedUser.communityTags?.length || 0) > 0,
+      jwt: jwtToken,
+    };
+  }
+
   async authenticateGoogle(code: string): Promise<{
     user: User;
     hasPendingCommunities: boolean;

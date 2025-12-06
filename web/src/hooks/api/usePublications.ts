@@ -99,13 +99,15 @@ export function useInfiniteMyPublications(
 }
 
 export function usePublication(id: string) {
+    // Workaround for TypeScript's "Type instantiation is excessively deep" error
+    // with complex Zod schemas. We cast the schema to any to avoid deep type checking.
     return useValidatedQuery({
         queryKey: queryKeys.publications.detail(id),
         queryFn: () => publicationsApiV1.getPublication(id),
-        schema: PublicationSchema,
+        schema: PublicationSchema as any,
         context: `usePublication(${id})`,
         enabled: !!id,
-    });
+    } as any);
 }
 
 export function useInfinitePublicationsByCommunity(
@@ -133,10 +135,12 @@ export function useInfinitePublicationsByCommunity(
     });
 }
 
+// Workaround for TypeScript's "Type instantiation is excessively deep" error
+// with complex Zod schemas. We cast schemas to any to avoid deep type checking.
 export const useCreatePublication = createMutation({
     mutationFn: (data: CreatePublicationDto) => publicationsApiV1.createPublication(data),
-    inputSchema: CreatePublicationDtoSchema,
-    outputSchema: PublicationSchema,
+    inputSchema: CreatePublicationDtoSchema as any,
+    outputSchema: PublicationSchema as any,
     validationContext: "useCreatePublication",
     errorContext: "Create publication error",
     invalidations: {
@@ -149,7 +153,7 @@ export const useCreatePublication = createMutation({
             detail: (_result: any, variables: CreatePublicationDto) => variables.communityId,
         },
     },
-});
+} as any);
 
 export const useDeletePublication = createMutation({
     mutationFn: (id: string) => publicationsApiV1.deletePublication(id),

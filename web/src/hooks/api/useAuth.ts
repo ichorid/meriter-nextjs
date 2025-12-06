@@ -47,6 +47,20 @@ export const useFakeAuth = () => {
   });
 };
 
+export const useFakeSuperadminAuth = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: () => authApiV1.authenticateFakeSuperadmin(),
+    onSuccess: () => {
+      // Invalidate queries but don't refetch immediately
+      // Let the redirect and page reload handle the refetch
+      // This ensures cookies are properly set before refetching
+      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all, refetchType: 'none' });
+    },
+  });
+};
+
 export const useLogout = () => {
   const queryClient = useQueryClient();
   

@@ -60,6 +60,10 @@ export function useInvite() {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.wallet.wallets(),
             });
+            // Invalidate profile queries to refresh user roles and lead communities
+            // This is important when a user becomes a lead after using an invite
+            queryClient.invalidateQueries({ queryKey: ["profile"] });
+            queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
         },
     });
 }

@@ -46,7 +46,7 @@ export function LoginForm({
     const tReg = useTranslations("registration");
     const fakeDataMode = isFakeDataMode();
 
-    const { authenticateFakeUser, isLoading, authError, setAuthError } =
+    const { authenticateFakeUser, authenticateFakeSuperadmin, isLoading, authError, setAuthError } =
         useAuth();
     const addToast = useToastStore((state) => state.addToast);
 
@@ -75,6 +75,19 @@ export function LoginForm({
         } catch (error: unknown) {
             const message = getErrorMessage(error);
             console.error("❌ Fake authentication failed:", error);
+            setAuthError(message);
+            addToast(message, "error");
+        }
+    };
+
+    // Handle fake superadmin authentication
+    const handleFakeSuperadminAuth = async () => {
+        try {
+            await authenticateFakeSuperadmin();
+            handleAuthRedirect(null, "/meriter/profile");
+        } catch (error: unknown) {
+            const message = getErrorMessage(error);
+            console.error("❌ Fake superadmin authentication failed:", error);
             setAuthError(message);
             addToast(message, "error");
         }
@@ -164,6 +177,16 @@ export function LoginForm({
                                     disabled={isLoading}
                                 >
                                     Fake Login
+                                </BrandButton>
+                                <BrandButton
+                                    variant="outline"
+                                    size="lg"
+                                    fullWidth
+                                    onClick={handleFakeSuperadminAuth}
+                                    disabled={isLoading}
+                                    className="border-primary text-primary hover:bg-primary hover:text-primary-content"
+                                >
+                                    Superadmin Login
                                 </BrandButton>
                             </div>
                         ) : displayedProviders.length > 0 ? (
