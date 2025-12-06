@@ -49,22 +49,9 @@ export function InviteGeneration() {
     return null;
   }
 
-  // Get marathon-of-good community for superadmin
-  const marathonCommunity = useMemo(() => {
-    if (!communitiesData?.data) return null;
-    return communitiesData.data.find(c => c.typeTag === 'marathon-of-good') || communitiesData.data[0] || null;
-  }, [communitiesData]);
-
-  // Set default community for superadmin
+  // Set default community for lead (first team community) - auto-select
   useEffect(() => {
-    if (isSuperadmin && marathonCommunity && !selectedCommunityId) {
-      setSelectedCommunityId(marathonCommunity.id);
-    }
-  }, [isSuperadmin, marathonCommunity, selectedCommunityId]);
-
-  // Set default community for lead (first team community)
-  useEffect(() => {
-    if (isLead && !isSuperadmin && leadCommunities.length > 0 && !selectedCommunityId) {
+    if (isLead && !isSuperadmin && leadCommunities.length > 0) {
       // Filter to only team communities
       const teamCommunities = leadCommunities.filter(c => c.typeTag === 'team');
       if (teamCommunities.length > 0) {
@@ -73,27 +60,25 @@ export function InviteGeneration() {
         setSelectedCommunityId(leadCommunities[0].id);
       }
     }
-  }, [isLead, isSuperadmin, leadCommunities, selectedCommunityId]);
+  }, [isLead, isSuperadmin, leadCommunities]);
 
   // Determine invite type
   const inviteType = isSuperadmin ? 'superadmin-to-lead' : 'lead-to-participant';
 
-  // Get available communities for selection
+  // Get available communities for selection (only for lead - superadmin doesn't need selection)
   const availableCommunities = useMemo(() => {
     if (isSuperadmin) {
-      // For superadmin, show marathon-of-good if available, otherwise first community
-      if (marathonCommunity) {
-        return [marathonCommunity];
-      }
-      return communitiesData?.data?.slice(0, 1) || [];
+      // Superadmin doesn't need to select a community
+      return [];
     } else {
       // For lead, show their team communities
       return leadCommunities.filter(c => c.typeTag === 'team');
     }
-  }, [isSuperadmin, marathonCommunity, communitiesData, leadCommunities]);
+  }, [isSuperadmin, leadCommunities]);
 
   const handleGenerateInvite = async () => {
-    if (!selectedCommunityId) {
+    // For lead, communityId is required (auto-selected from their team)
+    if (!isSuperadmin && !selectedCommunityId) {
       addToast(t('selectCommunity') || 'Please select a community', 'warning');
       return;
     }
@@ -105,7 +90,7 @@ export function InviteGeneration() {
 
       const inviteData: any = {
         type: inviteType,
-        communityId: selectedCommunityId,
+        ...(selectedCommunityId && { communityId: selectedCommunityId }), // Only include communityId if provided (for leads)
         expiresAt,
       };
 
@@ -145,7 +130,13 @@ export function InviteGeneration() {
   };
 
   // Get community name by ID
-  const getCommunityName = (communityId: string) => {
+  const getCommunityName = (communityId?: string) => {
+    if (!communityId) {
+      // For superadmin-to-lead invites, communityId is not set (auto-assigned)
+      return inviteType === 'superadmin-to-lead' 
+        ? (t('autoAssigned') || 'Auto-assigned (Marathon-of-Good & Future-Vision)')
+        : (t('notSet') || 'Not set');
+    }
     if (isSuperadmin && communitiesData?.data) {
       const comm = communitiesData.data.find(c => c.id === communityId);
       return comm?.name || communityId;
@@ -182,7 +173,7 @@ export function InviteGeneration() {
           </div>
         )}
 
-        {availableCommunities.length > 1 && (
+        {!isSuperadmin && availableCommunities.length > 1 && (
           <BrandFormControl
             label={t('selectCommunity') || 'Select Community'}
           >
@@ -198,7 +189,7 @@ export function InviteGeneration() {
           </BrandFormControl>
         )}
 
-        {availableCommunities.length === 1 && (
+        {!isSuperadmin && availableCommunities.length === 1 && selectedCommunityId && (
           <div className="text-sm text-brand-text-secondary">
             {t('community') || 'Community'}: <span className="font-medium">{availableCommunities[0].name}</span>
           </div>
@@ -252,7 +243,7 @@ export function InviteGeneration() {
         <BrandButton
           variant="primary"
           onClick={handleGenerateInvite}
-          disabled={!selectedCommunityId || createInvite.isPending}
+          disabled={(!isSuperadmin && !selectedCommunityId) || createInvite.isPending}
           isLoading={createInvite.isPending}
           fullWidth
         >

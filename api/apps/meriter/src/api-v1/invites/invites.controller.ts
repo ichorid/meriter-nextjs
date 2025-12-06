@@ -35,7 +35,7 @@ const CreateInviteDtoSchema = z.object({
   targetUserId: z.string().optional(),
   targetUserName: z.string().optional(),
   type: z.enum(['superadmin-to-lead', 'lead-to-participant']),
-  communityId: z.string().min(1),
+  communityId: z.string().optional(), // Optional: for superadmin-to-lead not needed, for lead-to-participant auto-detected from lead's team
   expiresAt: z.string().datetime().optional(),
 });
 
@@ -68,41 +68,54 @@ export class InvitesController {
     @User() user: AuthenticatedUser,
     @Body() dto: z.infer<typeof CreateInviteDtoSchema>,
   ) {
-    // Check if user is superadmin or has any lead role
-    // Block participants and viewers from creating invites
-    if (user.globalRole !== 'superadmin') {
-      // Get all user roles across all communities
-      const allUserRoles = await this.userCommunityRoleService.getUserRoles(user.id);
-      
-      // Check if user has at least one lead role
-      const hasLeadRole = allUserRoles.some(role => role.role === 'lead');
-      
-      if (!hasLeadRole) {
-        throw new ForbiddenException(
-          'Only superadmin and leads can create invites. Participants and viewers are not allowed to create invites.',
-        );
-      }
-    }
-
-    const userRole = await this.permissionService.getUserRoleInCommunity(
-      user.id,
-      dto.communityId,
-    );
+    let finalCommunityId = dto.communityId;
 
     // Check permissions based on invite type
     if (dto.type === 'superadmin-to-lead') {
       // Only superadmin can create superadmin-to-lead invites
-      if (userRole !== 'superadmin') {
+      if (user.globalRole !== 'superadmin') {
         throw new ForbiddenException(
           'Only superadmin can create superadmin-to-lead invites',
         );
       }
+      // For superadmin-to-lead, communityId is not needed (will be determined when invite is used)
+      // Leave it undefined
+      finalCommunityId = finalCommunityId || undefined;
     } else if (dto.type === 'lead-to-participant') {
       // Lead or superadmin can create lead-to-participant invites
-      if (userRole !== 'lead' && userRole !== 'superadmin') {
-        throw new ForbiddenException(
-          'Only lead or superadmin can create lead-to-participant invites',
+      // If communityId not provided, auto-detect from lead's team communities
+      if (!finalCommunityId) {
+        // Find lead's team communities
+        const leadTeamCommunities = await this.userCommunityRoleService.getCommunitiesByRole(
+          user.id,
+          'lead',
         );
+        
+        // Filter to only team-type communities
+        for (const commId of leadTeamCommunities) {
+          const comm = await this.communityService.getCommunity(commId);
+          if (comm?.typeTag === 'team') {
+            finalCommunityId = commId;
+            break;
+          }
+        }
+
+        if (!finalCommunityId) {
+          throw new BadRequestException(
+            'No team community found for lead. Lead must have a team community to create invites.',
+          );
+        }
+      } else {
+        // Verify user has lead role in the specified community
+        const userRole = await this.permissionService.getUserRoleInCommunity(
+          user.id,
+          finalCommunityId,
+        );
+        if (userRole !== 'lead' && user.globalRole !== 'superadmin') {
+          throw new ForbiddenException(
+            'Only lead or superadmin can create lead-to-participant invites',
+          );
+        }
       }
     }
 
@@ -110,7 +123,7 @@ export class InvitesController {
       user.id,
       dto.targetUserId,
       dto.type,
-      dto.communityId,
+      finalCommunityId,
       undefined, // teamId no longer used
       dto.expiresAt ? new Date(dto.expiresAt) : undefined,
       dto.targetUserName,
@@ -178,86 +191,23 @@ export class InvitesController {
   ) {
     const invite = await this.inviteService.useInvite(code, user.id);
 
-    // Get community to access settings
-    const community = await this.communityService.getCommunity(
-      invite.communityId,
-    );
-    if (!community) {
-      throw new NotFoundException('Community not found');
-    }
-
     // Assign role based on invite type
     if (invite.type === 'superadmin-to-lead') {
-      // 1. Set role
-      await this.userCommunityRoleService.setRole(
-        user.id,
-        invite.communityId,
-        'lead',
-      );
+      // Superadmin invite: User becomes Participant in Marathon-of-Good and Future-Vision,
+      // and gets a team group created where they become Lead
+      // Note: invite.communityId may be empty for superadmin invites (not needed)
 
-      // 2. Add user to community (members list and memberships)
-      await this.communityService.addMember(invite.communityId, user.id);
-      await this.userService.addCommunityMembership(
-        user.id,
-        invite.communityId,
-      );
-
-      // 3. Create wallet for user in community
-      const currency = community.settings?.currencyNames || {
-        singular: 'merit',
-        plural: 'merits',
-        genitive: 'merits',
-      };
-      await this.walletService.createOrGetWallet(
-        user.id,
-        invite.communityId,
-        currency,
-      );
-
-      // 4. Auto-create Team Community when user becomes Representative
-      const userData = await this.userService.getUserById(user.id);
-      const teamName = `Team ${userData?.displayName || userData?.username || user.id}`;
-
-      // Create team community
-      const teamCommunity = await this.communityService.createCommunity({
-        name: teamName,
-        description: `Team group for ${userData?.displayName || 'Representative'}`,
-        typeTag: 'team',
-        adminIds: [user.id],
-      });
-
-      // Add user to team community and assign lead role
-      await this.communityService.addMember(teamCommunity.id, user.id);
-      await this.userService.addCommunityMembership(user.id, teamCommunity.id);
-      await this.userCommunityRoleService.setRole(
-        user.id,
-        teamCommunity.id,
-        'lead',
-      );
-
-      // Create wallet for user in team community
-      const teamCurrency = teamCommunity.settings?.currencyNames || {
-        singular: 'merit',
-        plural: 'merits',
-        genitive: 'merits',
-      };
-      await this.walletService.createOrGetWallet(
-        user.id,
-        teamCommunity.id,
-        teamCurrency,
-      );
-
-      // 5. Add user as lead to marathon-of-good and future-vision communities
+      // 1. Add user as participant to marathon-of-good and future-vision communities
       const specialCommunities = ['marathon-of-good', 'future-vision'];
       for (const typeTag of specialCommunities) {
         try {
           const specialCommunity = await this.communityService.getCommunityByTypeTag(typeTag);
           if (specialCommunity) {
-            // Set user as lead (with skipSync: true to prevent double-syncing since we handle both manually)
+            // Set user as participant (with skipSync: true to prevent double-syncing since we handle both manually)
             await this.userCommunityRoleService.setRole(
               user.id,
               specialCommunity.id,
-              'lead',
+              'participant',
               true, // skipSync to prevent recursion
             );
 
@@ -281,7 +231,7 @@ export class InvitesController {
             );
 
             this.logger.log(
-              `Added user ${user.id} as lead to ${typeTag} community ${specialCommunity.id}`,
+              `Added user ${user.id} as participant to ${typeTag} community ${specialCommunity.id}`,
             );
           } else {
             this.logger.warn(
@@ -297,13 +247,72 @@ export class InvitesController {
         }
       }
 
+      // 2. Auto-create Team Community where user becomes Lead
+      const userData = await this.userService.getUserById(user.id);
+      const teamName = `Team ${userData?.displayName || userData?.username || user.id}`;
+
+      // Create team community
+      const teamCommunity = await this.communityService.createCommunity({
+        name: teamName,
+        description: `Team group for ${userData?.displayName || 'Representative'}`,
+        typeTag: 'team',
+        adminIds: [user.id],
+        visibilityRules: {
+          visibleToRoles: ['superadmin', 'lead', 'participant'], // Viewers cannot see Team groups (R:n)
+          isHidden: false,
+          teamOnly: false,
+        },
+      });
+
+      // Add user to team community and assign lead role
+      await this.communityService.addMember(teamCommunity.id, user.id);
+      await this.userService.addCommunityMembership(user.id, teamCommunity.id);
+      await this.userCommunityRoleService.setRole(
+        user.id,
+        teamCommunity.id,
+        'lead',
+      );
+
+      // Create wallet for user in team community
+      const teamCurrency = teamCommunity.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+      await this.walletService.createOrGetWallet(
+        user.id,
+        teamCommunity.id,
+        teamCurrency,
+      );
+
       return ApiResponseHelper.successResponse({
         invite,
         teamGroupId: teamCommunity.id,
         message: 'Invite used successfully. Team group created.',
       });
     } else if (invite.type === 'lead-to-participant') {
-      // 1. Set role
+      // Lead invite: User becomes Participant in the lead's team/group
+      // invite.communityId should be the lead's team community (auto-detected when invite was created)
+
+      if (!invite.communityId) {
+        throw new BadRequestException(
+          'Invalid invite: communityId is required for lead-to-participant invites',
+        );
+      }
+
+      const teamCommunity = await this.communityService.getCommunity(invite.communityId);
+      if (!teamCommunity) {
+        throw new NotFoundException('Team community not found');
+      }
+
+      // Verify this is actually a team community
+      if (teamCommunity.typeTag !== 'team') {
+        throw new BadRequestException(
+          'Invalid invite: community must be a team community',
+        );
+      }
+
+      // 1. Set role as participant in the lead's team community
       await this.userCommunityRoleService.setRole(
         user.id,
         invite.communityId,
@@ -317,8 +326,8 @@ export class InvitesController {
         invite.communityId,
       );
 
-      // 3. Create wallet for user in community
-      const currency = community.settings?.currencyNames || {
+      // 3. Create wallet for user in team community
+      const currency = teamCommunity.settings?.currencyNames || {
         singular: 'merit',
         plural: 'merits',
         genitive: 'merits',
@@ -329,53 +338,58 @@ export class InvitesController {
         currency,
       );
 
-      // 4. Add user to lead's team community if it exists
-      // Find team communities where the invite creator is a lead
-      const creatorTeamCommunities = await this.userCommunityRoleService.getCommunitiesByRole(
-        invite.createdBy,
-        'lead',
+      this.logger.log(
+        `Added user ${user.id} as participant to lead's team community ${invite.communityId}`,
       );
-      
-      // Filter to only team-type communities
-      let teamCommunityId: string | undefined;
-      for (const commId of creatorTeamCommunities) {
-        const comm = await this.communityService.getCommunity(commId);
-        if (comm?.typeTag === 'team') {
-          teamCommunityId = commId;
-          break; // Use first team community found
-        }
-      }
 
-      // Add user to team community if found
-      if (teamCommunityId) {
-        await this.communityService.addMember(teamCommunityId, user.id);
-        await this.userService.addCommunityMembership(user.id, teamCommunityId);
-        await this.userCommunityRoleService.setRole(
-          user.id,
-          teamCommunityId,
-          'participant',
-        );
-        
-        // Create wallet for user in team community
-        const teamComm = await this.communityService.getCommunity(teamCommunityId);
-        if (teamComm) {
-          const teamCurrency = teamComm.settings?.currencyNames || {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          };
-          await this.walletService.createOrGetWallet(
-            user.id,
-            teamCommunityId,
-            teamCurrency,
+      // 4. Add user as viewer to marathon-of-good and future-vision communities
+      const specialCommunities = ['marathon-of-good', 'future-vision'];
+      for (const typeTag of specialCommunities) {
+        try {
+          const specialCommunity = await this.communityService.getCommunityByTypeTag(typeTag);
+          if (specialCommunity) {
+            // Set user as viewer (with skipSync: true to prevent double-syncing since we handle both manually)
+            await this.userCommunityRoleService.setRole(
+              user.id,
+              specialCommunity.id,
+              'viewer',
+              true, // skipSync to prevent recursion
+            );
+
+            // Add user to community (members list and memberships)
+            await this.communityService.addMember(specialCommunity.id, user.id);
+            await this.userService.addCommunityMembership(
+              user.id,
+              specialCommunity.id,
+            );
+
+            // Create wallet for user in special community (viewers need wallets for quota voting)
+            const specialCurrency = specialCommunity.settings?.currencyNames || {
+              singular: 'merit',
+              plural: 'merits',
+              genitive: 'merits',
+            };
+            await this.walletService.createOrGetWallet(
+              user.id,
+              specialCommunity.id,
+              specialCurrency,
+            );
+
+            this.logger.log(
+              `Added user ${user.id} as viewer to ${typeTag} community ${specialCommunity.id}`,
+            );
+          } else {
+            this.logger.warn(
+              `${typeTag} community not found. User will be added to other communities but not to ${typeTag}.`,
+            );
+          }
+        } catch (error) {
+          // Log error but don't fail the invite process
+          this.logger.error(
+            `Failed to add user ${user.id} to ${typeTag} community: ${error.message}`,
+            error.stack,
           );
         }
-        
-        this.logger.log(`Added user ${user.id} to team community ${teamCommunityId}`);
-      } else {
-        this.logger.warn(
-          `No team community found for invite creator ${invite.createdBy}. User will be added to community but not to a team community.`,
-        );
       }
 
       return ApiResponseHelper.successResponse({

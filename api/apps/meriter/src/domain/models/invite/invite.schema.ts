@@ -49,8 +49,8 @@ export class Invite {
   @Prop({ required: true, default: false })
   isUsed: boolean; // Инвайты одноразовые
 
-  @Prop({ required: true })
-  communityId: string; // Сообщество, в котором будет назначена роль
+  @Prop()
+  communityId?: string; // Сообщество, в котором будет назначена роль (optional for superadmin-to-lead invites)
 
   @Prop({ required: true })
   createdAt: Date;

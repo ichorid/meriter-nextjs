@@ -206,46 +206,33 @@ describe('Invites - Superadmin-to-Lead', () => {
       });
     });
 
-    it('should add user as lead to target, team, marathon-of-good, and future-vision communities', async () => {
+    it('should add user as participant to marathon-of-good and future-vision, and create team where user is lead', async () => {
       // Set test user ID for the guard
-      (global as any).testUserId = newLeadId;
+      (global as any).testUserId = superadminId;
+      (global as any).testUserGlobalRole = 'superadmin';
 
-      // Create superadmin-to-lead invite
-      const invite = await inviteService.createInvite(
-        superadminId,
-        undefined,
-        'superadmin-to-lead',
-        targetCommunityId,
-      );
+      // Create superadmin-to-lead invite without communityId
+      const createResponse = await request(app.getHttpServer())
+        .post('/api/v1/invites')
+        .send({
+          type: 'superadmin-to-lead',
+          // No communityId - new behavior
+        })
+        .expect(201);
+
+      const inviteCode = createResponse.body.data.code;
+
+      // Use the invite as newLeadId
+      (global as any).testUserId = newLeadId;
+      (global as any).testUserGlobalRole = undefined;
 
       // Use the invite via HTTP endpoint
       const response = await request(app.getHttpServer())
-        .post(`/api/v1/invites/${invite.code}/use`)
+        .post(`/api/v1/invites/${inviteCode}/use`)
         .expect(201);
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.message).toContain('Team group created');
-
-      // Verify user is lead in target community
-      const targetRole = await userCommunityRoleService.getRole(
-        newLeadId,
-        targetCommunityId,
-      );
-      expect(targetRole).toBeDefined();
-      expect(targetRole?.role).toBe('lead');
-
-      // Verify user is member of target community
-      const targetCommunity = await communityService.getCommunity(
-        targetCommunityId,
-      );
-      expect(targetCommunity?.members).toContain(newLeadId);
-
-      // Verify wallet exists in target community
-      const targetWallet = await walletModel.findOne({
-        userId: newLeadId,
-        communityId: targetCommunityId,
-      });
-      expect(targetWallet).toBeDefined();
 
       // Find team community (created automatically)
       const teamCommunities = await communityModel.find({
@@ -270,13 +257,13 @@ describe('Invites - Superadmin-to-Lead', () => {
       });
       expect(teamWallet).toBeDefined();
 
-      // Verify user is lead in marathon-of-good
+      // Verify user is participant in marathon-of-good (new behavior)
       const marathonRole = await userCommunityRoleService.getRole(
         newLeadId,
         marathonCommunityId,
       );
       expect(marathonRole).toBeDefined();
-      expect(marathonRole?.role).toBe('lead');
+      expect(marathonRole?.role).toBe('participant');
 
       // Verify user is member of marathon-of-good
       const marathonCommunity = await communityService.getCommunity(
@@ -291,13 +278,13 @@ describe('Invites - Superadmin-to-Lead', () => {
       });
       expect(marathonWallet).toBeDefined();
 
-      // Verify user is lead in future-vision
+      // Verify user is participant in future-vision (new behavior)
       const visionRole = await userCommunityRoleService.getRole(
         newLeadId,
         visionCommunityId,
       );
       expect(visionRole).toBeDefined();
-      expect(visionRole?.role).toBe('lead');
+      expect(visionRole?.role).toBe('participant');
 
       // Verify user is member of future-vision
       const visionCommunity = await communityService.getCommunity(
@@ -336,36 +323,35 @@ describe('Invites - Superadmin-to-Lead', () => {
       });
     });
 
-    it('should still succeed and add user as lead to future-vision', async () => {
-      (global as any).testUserId = newLeadId;
+    it('should still succeed and add user as participant to future-vision', async () => {
+      (global as any).testUserId = superadminId;
+      (global as any).testUserGlobalRole = 'superadmin';
 
-      const invite = await inviteService.createInvite(
-        superadminId,
-        undefined,
-        'superadmin-to-lead',
-        targetCommunityId,
-      );
+      const createResponse = await request(app.getHttpServer())
+        .post('/api/v1/invites')
+        .send({
+          type: 'superadmin-to-lead',
+        })
+        .expect(201);
+
+      const inviteCode = createResponse.body.data.code;
+
+      (global as any).testUserId = newLeadId;
+      (global as any).testUserGlobalRole = undefined;
 
       const response = await request(app.getHttpServer())
-        .post(`/api/v1/invites/${invite.code}/use`)
+        .post(`/api/v1/invites/${inviteCode}/use`)
         .expect(201);
 
       expect(response.body.success).toBe(true);
 
-      // Verify user is lead in target community
-      const targetRole = await userCommunityRoleService.getRole(
-        newLeadId,
-        targetCommunityId,
-      );
-      expect(targetRole?.role).toBe('lead');
-
-      // Verify user is lead in future-vision (should exist)
+      // Verify user is participant in future-vision (new behavior)
       const visionRole = await userCommunityRoleService.getRole(
         newLeadId,
         visionCommunityId,
       );
       expect(visionRole).toBeDefined();
-      expect(visionRole?.role).toBe('lead');
+      expect(visionRole?.role).toBe('participant');
 
       // Verify marathon-of-good role does not exist
       const marathonRole = await userCommunityRoleModel.findOne({
@@ -398,36 +384,35 @@ describe('Invites - Superadmin-to-Lead', () => {
       });
     });
 
-    it('should still succeed and add user as lead to marathon-of-good', async () => {
-      (global as any).testUserId = newLeadId;
+    it('should still succeed and add user as participant to marathon-of-good', async () => {
+      (global as any).testUserId = superadminId;
+      (global as any).testUserGlobalRole = 'superadmin';
 
-      const invite = await inviteService.createInvite(
-        superadminId,
-        undefined,
-        'superadmin-to-lead',
-        targetCommunityId,
-      );
+      const createResponse = await request(app.getHttpServer())
+        .post('/api/v1/invites')
+        .send({
+          type: 'superadmin-to-lead',
+        })
+        .expect(201);
+
+      const inviteCode = createResponse.body.data.code;
+
+      (global as any).testUserId = newLeadId;
+      (global as any).testUserGlobalRole = undefined;
 
       const response = await request(app.getHttpServer())
-        .post(`/api/v1/invites/${invite.code}/use`)
+        .post(`/api/v1/invites/${inviteCode}/use`)
         .expect(201);
 
       expect(response.body.success).toBe(true);
 
-      // Verify user is lead in target community
-      const targetRole = await userCommunityRoleService.getRole(
-        newLeadId,
-        targetCommunityId,
-      );
-      expect(targetRole?.role).toBe('lead');
-
-      // Verify user is lead in marathon-of-good (should exist)
+      // Verify user is participant in marathon-of-good (new behavior)
       const marathonRole = await userCommunityRoleService.getRole(
         newLeadId,
         marathonCommunityId,
       );
       expect(marathonRole).toBeDefined();
-      expect(marathonRole?.role).toBe('lead');
+      expect(marathonRole?.role).toBe('participant');
 
       // Verify future-vision role does not exist
       const visionRole = await userCommunityRoleModel.findOne({
@@ -439,28 +424,27 @@ describe('Invites - Superadmin-to-Lead', () => {
   });
 
   describe('Edge case - both special communities do not exist', () => {
-    it('should still succeed with only target and team communities', async () => {
-      (global as any).testUserId = newLeadId;
+    it('should still succeed with only team community when special communities do not exist', async () => {
+      (global as any).testUserId = superadminId;
+      (global as any).testUserGlobalRole = 'superadmin';
 
-      const invite = await inviteService.createInvite(
-        superadminId,
-        undefined,
-        'superadmin-to-lead',
-        targetCommunityId,
-      );
+      const createResponse = await request(app.getHttpServer())
+        .post('/api/v1/invites')
+        .send({
+          type: 'superadmin-to-lead',
+        })
+        .expect(201);
+
+      const inviteCode = createResponse.body.data.code;
+
+      (global as any).testUserId = newLeadId;
+      (global as any).testUserGlobalRole = undefined;
 
       const response = await request(app.getHttpServer())
-        .post(`/api/v1/invites/${invite.code}/use`)
+        .post(`/api/v1/invites/${inviteCode}/use`)
         .expect(201);
 
       expect(response.body.success).toBe(true);
-
-      // Verify user is lead in target community
-      const targetRole = await userCommunityRoleService.getRole(
-        newLeadId,
-        targetCommunityId,
-      );
-      expect(targetRole?.role).toBe('lead');
 
       // Verify team community was created
       const teamCommunities = await communityModel.find({
@@ -469,7 +453,7 @@ describe('Invites - Superadmin-to-Lead', () => {
       });
       expect(teamCommunities.length).toBeGreaterThan(0);
 
-      // Verify no roles exist for special communities
+      // Verify no roles exist for special communities (they don't exist)
       const marathonRole = await userCommunityRoleModel.findOne({
         userId: newLeadId,
         communityId: marathonCommunityId,
@@ -682,46 +666,36 @@ describe('Invites - Role Restrictions', () => {
     expect(response.body.data.type).toBe('lead-to-participant');
   });
 
-  it('should block participant from creating invites', async () => {
+  it('should block participant from creating invites when they have no team community', async () => {
     (global as any).testUserId = participantId;
     (global as any).testUserGlobalRole = undefined;
 
+    // Try to create invite without team community - should fail
     const response = await request(app.getHttpServer())
       .post('/api/v1/invites')
       .send({
         type: 'lead-to-participant',
-        communityId: communityId,
+        // No communityId - will try to auto-detect but participant has no team
       })
-      .expect(403);
+      .expect(400); // BadRequest for no team community
 
-    // Check response structure - ForbiddenException may return different formats
-    const message = response.body.message || response.body.error?.message || '';
-    // Either error message indicates the user is blocked (my new check or the existing check)
-    expect(
-      message.includes('Only superadmin and leads can create invites') ||
-      message.includes('Only lead or superadmin can create lead-to-participant invites')
-    ).toBe(true);
+    expect(response.body.message).toContain('No team community found');
   });
 
-  it('should block viewer from creating invites', async () => {
+  it('should block viewer from creating invites when they have no team community', async () => {
     (global as any).testUserId = viewerId;
     (global as any).testUserGlobalRole = undefined;
 
+    // Try to create invite without team community - should fail
     const response = await request(app.getHttpServer())
       .post('/api/v1/invites')
       .send({
         type: 'lead-to-participant',
-        communityId: communityId,
+        // No communityId - will try to auto-detect but viewer has no team
       })
-      .expect(403);
+      .expect(400); // BadRequest for no team community
 
-    // Check response structure - ForbiddenException may return different formats
-    const message = response.body.message || response.body.error?.message || '';
-    // Either error message indicates the user is blocked (my new check or the existing check)
-    expect(
-      message.includes('Only superadmin and leads can create invites') ||
-      message.includes('Only lead or superadmin can create lead-to-participant invites')
-    ).toBe(true);
+    expect(response.body.message).toContain('No team community found');
   });
 
   it('should allow user with both participant and lead roles to create invites', async () => {

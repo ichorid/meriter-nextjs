@@ -28,7 +28,7 @@ export class InviteService {
     createdBy: string,
     targetUserId: string | undefined,
     type: 'superadmin-to-lead' | 'lead-to-participant',
-    communityId: string,
+    communityId: string | undefined, // Optional: not needed for superadmin-to-lead invites
     teamId?: string, // Deprecated: no longer used, kept for backward compatibility
     expiresAt?: Date,
     targetUserName?: string,

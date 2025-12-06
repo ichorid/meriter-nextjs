@@ -287,8 +287,21 @@ export const Comment: React.FC<CommentProps> = ({
                         <BarVoteUnified
                             score={commentScore}
                             onVoteClick={() => {
-                                // Non-special groups can only vote with quota on comments
-                                const mode = isSpecialGroup ? 'standard' : 'quota-only';
+                                // Set voting mode based on community type
+                                let mode: 'standard' | 'wallet-only' | 'quota-only' = 'quota-only';
+                                if (communityInfo?.typeTag === 'future-vision') {
+                                    // Future Vision: wallet-only (M), no quota (Q)
+                                    mode = 'wallet-only';
+                                } else if (communityInfo?.typeTag === 'marathon-of-good') {
+                                    // Marathon-of-Good: quota-only (Q), no wallet (M)
+                                    mode = 'quota-only';
+                                } else if (communityInfo?.typeTag === 'team') {
+                                    // Team groups: quota-only (Q), no wallet (M)
+                                    mode = 'quota-only';
+                                } else {
+                                    // Non-special groups: quota-only
+                                    mode = 'quota-only';
+                                }
                                 useUIStore.getState().openVotingPopup(_id, 'comment', mode);
                             }}
                             isAuthor={isAuthor}

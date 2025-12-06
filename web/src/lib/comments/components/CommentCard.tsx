@@ -346,8 +346,21 @@ export function CommentCard({
                 // If this is a vote-comment (ID starts with 'vote_'), pass the vote-comment ID
                 // The backend will handle creating the proper hierarchy
                 const commentIdToVoteOn = node.id; // Use the node ID directly (includes vote_ prefix if applicable)
-                // Non-special groups can only vote with quota on comments
-                const mode = isSpecialGroup ? 'standard' : 'quota-only';
+                // Set voting mode based on community type
+                let mode: 'standard' | 'wallet-only' | 'quota-only' = 'quota-only';
+                if (communityInfo?.typeTag === 'future-vision') {
+                  // Future Vision: wallet-only (M), no quota (Q)
+                  mode = 'wallet-only';
+                } else if (communityInfo?.typeTag === 'marathon-of-good') {
+                  // Marathon-of-Good: quota-only (Q), no wallet (M)
+                  mode = 'quota-only';
+                } else if (communityInfo?.typeTag === 'team') {
+                  // Team groups: quota-only (Q), no wallet (M)
+                  mode = 'quota-only';
+                } else {
+                  // Non-special groups: quota-only
+                  mode = 'quota-only';
+                }
                 useUIStore.getState().openVotingPopup(commentIdToVoteOn, 'comment', mode);
               }}
               isAuthor={isAuthor}

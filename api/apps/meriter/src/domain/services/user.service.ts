@@ -19,6 +19,7 @@ import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.hel
 import { uid } from 'uid';
 import { CommunityService } from './community.service';
 import { WalletService } from './wallet.service';
+import { UserCommunityRoleService } from './user-community-role.service';
 
 export interface CreateUserDto {
   authProvider: string;
@@ -46,6 +47,8 @@ export class UserService implements OnModuleInit {
     private communityService: CommunityService,
     @Inject(forwardRef(() => WalletService))
     private walletService: WalletService,
+    @Inject(forwardRef(() => UserCommunityRoleService))
+    private userCommunityRoleService: UserCommunityRoleService,
   ) { }
 
   async onModuleInit() {
@@ -219,11 +222,31 @@ export class UserService implements OnModuleInit {
     if (needsToJoinFV) {
       this.logger.log(`Adding user ${userId} to Future Vision`);
       try {
-        // 1. Add user to community's members list
+        // 1. Check if user has any role in this community
+        const existingRole = await this.userCommunityRoleService.getRole(
+          userId,
+          futureVision.id,
+        );
+        
+        // 2. Add user to community's members list
         await this.communityService.addMember(futureVision.id, userId);
-        // 2. Add community to user's memberships
+        // 3. Add community to user's memberships
         await this.addCommunityMembership(userId, futureVision.id);
-        // 3. Create wallet for user in community
+        
+        // 4. Assign viewer role if user has no role (joining without invite)
+        if (!existingRole) {
+          await this.userCommunityRoleService.setRole(
+            userId,
+            futureVision.id,
+            'viewer',
+            true, // skipSync to prevent recursion
+          );
+          this.logger.log(
+            `Assigned viewer role to user ${userId} in Future Vision (no invite)`,
+          );
+        }
+        
+        // 5. Create wallet for user in community
         const currency = futureVision.settings?.currencyNames || {
           singular: 'merit',
           plural: 'merits',
@@ -246,11 +269,31 @@ export class UserService implements OnModuleInit {
     if (needsToJoinMG) {
       this.logger.log(`Adding user ${userId} to Marathon of Good`);
       try {
-        // 1. Add user to community's members list
+        // 1. Check if user has any role in this community
+        const existingRole = await this.userCommunityRoleService.getRole(
+          userId,
+          marathonOfGood.id,
+        );
+        
+        // 2. Add user to community's members list
         await this.communityService.addMember(marathonOfGood.id, userId);
-        // 2. Add community to user's memberships
+        // 3. Add community to user's memberships
         await this.addCommunityMembership(userId, marathonOfGood.id);
-        // 3. Create wallet for user in community
+        
+        // 4. Assign viewer role if user has no role (joining without invite)
+        if (!existingRole) {
+          await this.userCommunityRoleService.setRole(
+            userId,
+            marathonOfGood.id,
+            'viewer',
+            true, // skipSync to prevent recursion
+          );
+          this.logger.log(
+            `Assigned viewer role to user ${userId} in Marathon of Good (no invite)`,
+          );
+        }
+        
+        // 5. Create wallet for user in community
         const currency = marathonOfGood.settings?.currencyNames || {
           singular: 'merit',
           plural: 'merits',

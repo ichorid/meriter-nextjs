@@ -107,11 +107,35 @@ export function useCanCreatePost(communityId?: string): {
       };
     }
 
-    // User is participant or viewer, or has no role - cannot create
+    // Check if participant or viewer can create based on postingRules
+    if (userRole === 'participant' || userRole === 'viewer') {
+      const rules = community.postingRules;
+      if (!rules) {
+        // If no posting rules configured, don't allow (backward compatibility)
+        return {
+          canCreate: false,
+          isLoading: false,
+          reason: 'Only team leads and organizers can create posts and polls',
+        };
+      }
+      if (rules.allowedRoles.includes(userRole)) {
+        return {
+          canCreate: true,
+          isLoading: false,
+        };
+      }
+      return {
+        canCreate: false,
+        isLoading: false,
+        reason: `${userRole === 'participant' ? 'Participants' : 'Viewers'} are not allowed to create content in this community`,
+      };
+    }
+
+    // User has no role - cannot create
     return {
       canCreate: false,
       isLoading: false,
-      reason: 'Only team leads and organizers can create posts and polls',
+      reason: 'You must be a member of this community to create content',
     };
   }, [
     user?.id,

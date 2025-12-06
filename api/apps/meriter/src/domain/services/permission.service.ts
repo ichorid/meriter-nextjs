@@ -79,12 +79,6 @@ export class PermissionService {
     // Check if role is allowed
     if (!rules.allowedRoles.includes(userRole as any)) return false;
 
-    // Participants cannot create posts/polls in special communities
-    const isSpecialCommunity = community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision';
-    if (userRole === 'participant' && isSpecialCommunity) {
-      return false;
-    }
-
     // Additional checks from configuration
     if (rules.requiresTeamMembership) {
       // Check if user has a role in any team-type community
@@ -120,12 +114,6 @@ export class PermissionService {
 
     // Check if role is allowed
     if (!rules.allowedRoles.includes(userRole as any)) return false;
-
-    // Participants cannot create posts/polls in special communities
-    const isSpecialCommunity = community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision';
-    if (userRole === 'participant' && isSpecialCommunity) {
-      return false;
-    }
 
     // Additional checks from configuration
     if (rules.requiresTeamMembership) {
@@ -350,9 +338,18 @@ export class PermissionService {
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
 
+    // Special handling for Team groups: viewers cannot see them (R:n)
+    if (community.typeTag === 'team' && userRole === 'viewer') {
+      return false;
+    }
+
     const rules = community.visibilityRules;
     if (!rules) {
       // Fallback: if no rules configured, check if user is member (backward compatibility)
+      // For Team groups without rules, exclude viewers
+      if (community.typeTag === 'team' && userRole === 'viewer') {
+        return false;
+      }
       return (
         community.members?.includes(userId) ||
         community.adminIds?.includes(userId) ||

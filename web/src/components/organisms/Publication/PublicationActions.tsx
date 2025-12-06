@@ -141,11 +141,19 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     let mode: 'standard' | 'wallet-only' | 'quota-only' = 'standard';
     if (isProject) {
       mode = 'wallet-only';
-    } else if (!isSpecialGroup) {
+    } else if (community?.typeTag === 'future-vision') {
+      // Future Vision: wallet-only (M), no quota (Q)
+      mode = 'wallet-only';
+    } else if (community?.typeTag === 'marathon-of-good') {
+      // Marathon-of-Good: quota-only (Q), no wallet (M)
+      mode = 'quota-only';
+    } else if (community?.typeTag === 'team') {
+      // Team groups: quota-only (Q), no wallet (M)
+      mode = 'quota-only';
+    } else {
       // Non-special groups can only vote with quota on regular posts
       mode = 'quota-only';
     }
-    // Special groups use 'standard' mode (default), allowing both quota and wallet
     useUIStore.getState().openVotingPopup(publicationId, 'publication', mode);
   };
 

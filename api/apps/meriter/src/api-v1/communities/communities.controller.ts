@@ -73,16 +73,71 @@ export class CommunitiesController {
   }
 
   @Get()
-  async getCommunities(@Query() query: any) {
+  async getCommunities(
+    @Query() query: any,
+    @User() user: AuthenticatedUser,
+  ) {
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
-    const result = await this.communityService.getAllCommunities(
-      pagination.limit,
-      skip,
+
+    // Superadmins can see all communities
+    if (user.globalRole === 'superadmin') {
+      const result = await this.communityService.getAllCommunities(
+        pagination.limit,
+        skip,
+      );
+      return {
+        data: result,
+        total: result.length,
+        skip,
+        limit: pagination.limit,
+      };
+    }
+
+    // Non-superadmins (leads, participants, viewers) can only see communities where they have a role
+    const userRoles = await this.userCommunityRoleService.getUserRoles(user.id);
+    const userCommunityIds = userRoles.map((role) => role.communityId);
+
+    if (userCommunityIds.length === 0) {
+      // User has no roles in any community
+      return {
+        data: [],
+        total: 0,
+        skip,
+        limit: pagination.limit,
+      };
+    }
+
+    // Fetch communities where user has a role
+    const allUserCommunities = await Promise.all(
+      userCommunityIds.map((communityId) =>
+        this.communityService.getCommunity(communityId),
+      ),
     );
+
+    // Filter out nulls (in case a community was deleted but role still exists)
+    const validCommunities = allUserCommunities.filter(
+      (community) => community !== null,
+    ) as Community[];
+
+    // Sort by priority and creation date
+    validCommunities.sort((a, b) => {
+      if (a.isPriority && !b.isPriority) return -1;
+      if (!a.isPriority && b.isPriority) return 1;
+      return (
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    });
+
+    // Apply pagination
+    const paginatedResult = validCommunities.slice(
+      skip,
+      skip + pagination.limit,
+    );
+
     return {
-      data: result,
-      total: result.length,
+      data: paginatedResult,
+      total: validCommunities.length,
       skip,
       limit: pagination.limit,
     };
