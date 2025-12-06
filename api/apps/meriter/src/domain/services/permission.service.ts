@@ -282,17 +282,6 @@ export class PermissionService {
           return false; // Cannot vote for lead from same team
         }
       }
-      
-      // Cannot vote for participants from marathon/vision communities
-      if (community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision') {
-        const authorRole = await this.getUserRoleInCommunity(
-          authorId,
-          communityId,
-        );
-        if (authorRole === 'participant') {
-          return false; // Cannot vote for participants from marathon/vision communities
-        }
-      }
     }
 
     // For leads: Allow voting except for own posts (already checked above)

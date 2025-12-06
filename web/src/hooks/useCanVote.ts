@@ -77,9 +77,9 @@ export function useCanVote(
     // Frontend can only check community typeTag
     if (userRole === 'participant' && community.typeTag === 'marathon-of-good') {
       // Allow participants to vote - backend will validate:
-      // - Cannot vote for participants from marathon/vision communities
       // - Cannot vote for leads from their own team
       // - Can vote for leads from other teams
+      // - Can vote for participants (per MARATHON_OF_GOOD.md)
       return true;
     }
 

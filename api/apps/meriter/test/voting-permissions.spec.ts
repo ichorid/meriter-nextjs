@@ -395,7 +395,7 @@ describe('Voting Permissions', () => {
         expect(canVote).toBe(true);
       });
 
-      it('should not allow participant to vote for participant from marathon community', async () => {
+      it('should allow participant to vote for participant from marathon community', async () => {
         // Create publication by participant2 in marathon community
         const pub = await publicationService.createPublication(participant2Id, {
           communityId: marathonCommunityId,
@@ -404,12 +404,19 @@ describe('Voting Permissions', () => {
         });
 
         const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
-        expect(canVote).toBe(false);
+        expect(canVote).toBe(true);
       });
 
-      it('should not allow participant to vote for participant from vision community', async () => {
-        const canVote = await permissionService.canVote(participant1Id, visionPubId);
-        expect(canVote).toBe(false);
+      it('should allow participant to vote for participant from vision community', async () => {
+        // Create publication by participant2 in vision community
+        const pub = await publicationService.createPublication(participant2Id, {
+          communityId: visionCommunityId,
+          content: 'Vision participant publication',
+          type: 'text',
+        });
+
+        const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
+        expect(canVote).toBe(true);
       });
     });
 
