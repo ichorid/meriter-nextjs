@@ -85,7 +85,7 @@ export class PermissionService {
     }
 
     // Check if role is allowed
-    if (!rules.allowedRoles.includes(userRole as any)) return false;
+    if (!userRole || !rules.allowedRoles.includes(userRole)) return false;
 
     // Additional checks from configuration
     if (rules.requiresTeamMembership) {
@@ -129,7 +129,7 @@ export class PermissionService {
     }
 
     // Check if role is allowed
-    if (!rules.allowedRoles.includes(userRole as any)) return false;
+    if (!userRole || !rules.allowedRoles.includes(userRole)) return false;
 
     // Additional checks from configuration
     if (rules.requiresTeamMembership) {
@@ -231,7 +231,7 @@ export class PermissionService {
     }
 
     // Check if role is allowed
-    if (!rules.allowedRoles.includes(userRole as any)) return false;
+    if (!userRole || !rules.allowedRoles.includes(userRole)) return false;
 
     // Check if voting for own post is allowed
     // Superadmin still cannot vote for own posts unless explicitly allowed
@@ -335,7 +335,7 @@ export class PermissionService {
       return true;
     }
 
-    return rules.allowedRoles.includes(userRole as any);
+    return userRole ? rules.allowedRoles.includes(userRole) : false;
   }
 
   /**
@@ -377,7 +377,7 @@ export class PermissionService {
     if (rules.isHidden) return false;
 
     // Check if role can see
-    if (!rules.visibleToRoles.includes(userRole as any)) return false;
+    if (!userRole || !rules.visibleToRoles.includes(userRole)) return false;
 
     // Check team-only access
     if (rules.teamOnly) {

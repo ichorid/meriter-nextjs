@@ -82,15 +82,15 @@ export class CommunitiesController {
 
     // Superadmins can see all communities
     if (user.globalRole === 'superadmin') {
-      const result = await this.communityService.getAllCommunities(
-        pagination.limit,
+    const result = await this.communityService.getAllCommunities(
+        pagination.limit || 20,
         skip,
       );
       return {
         data: result,
         total: result.length,
         skip,
-        limit: pagination.limit,
+        limit: pagination.limit || 20,
       };
     }
 
@@ -104,7 +104,7 @@ export class CommunitiesController {
         data: [],
         total: 0,
         skip,
-        limit: pagination.limit,
+        limit: pagination.limit || 20,
       };
     }
 
@@ -118,7 +118,7 @@ export class CommunitiesController {
     // Filter out nulls (in case a community was deleted but role still exists)
     const validCommunities = allUserCommunities.filter(
       (community) => community !== null,
-    ) as Community[];
+    ) as unknown as Community[];
 
     // Sort by priority and creation date
     validCommunities.sort((a, b) => {
@@ -132,14 +132,14 @@ export class CommunitiesController {
     // Apply pagination
     const paginatedResult = validCommunities.slice(
       skip,
-      skip + pagination.limit,
+      skip + (pagination.limit || 20),
     );
 
     return {
       data: paginatedResult,
       total: validCommunities.length,
       skip,
-      limit: pagination.limit,
+      limit: pagination.limit || 20,
     };
   }
 
@@ -177,13 +177,13 @@ export class CommunitiesController {
     return {
       ...community,
       // Normalize adminIds from legacy fields if necessary
-      adminIds: (community as any).adminIds || [],
+      adminIds: community.adminIds || [],
       // Ensure settings.language is provided to match type expectations
       settings: {
         currencyNames: community.settings?.currencyNames,
         dailyEmission: community.settings?.dailyEmission as number,
         iconUrl: community.settings?.iconUrl,
-        language: (community.settings as any)?.language ?? 'en',
+        language: community.settings?.language ?? 'en',
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
@@ -192,11 +192,11 @@ export class CommunitiesController {
       needsSetup,
       createdAt: community.createdAt.toISOString(),
       updatedAt: community.updatedAt.toISOString(),
-    } as any;
+    };
   }
 
   @Post()
-  @ZodValidation(CreateCommunityDtoSchema)
+  @ZodValidation(CreateCommunityDtoSchema as any)
   async createCommunity(
     @Body() createDto: any,
     @Req() req: any,
@@ -275,7 +275,7 @@ export class CommunitiesController {
         currencyNames: community.settings?.currencyNames,
         dailyEmission: community.settings?.dailyEmission as number,
         iconUrl: community.settings?.iconUrl,
-        language: (community.settings as any)?.language ?? 'en',
+        language: community.settings?.language ?? 'en',
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
@@ -284,11 +284,11 @@ export class CommunitiesController {
       needsSetup,
       createdAt: community.createdAt.toISOString(),
       updatedAt: community.updatedAt.toISOString(),
-    } as any;
+    };
   }
 
   @Put(':id')
-  @ZodValidation(UpdateCommunityDtoSchema)
+  @ZodValidation(UpdateCommunityDtoSchema as any)
   async updateCommunity(
     @Param('id') id: string,
     @Body() updateDto: UpdateCommunityDto,
@@ -343,7 +343,7 @@ export class CommunitiesController {
         currencyNames: community.settings?.currencyNames,
         dailyEmission: community.settings?.dailyEmission as number,
         iconUrl: community.settings?.iconUrl,
-        language: (community.settings as any)?.language ?? 'en',
+        language: community.settings?.language ?? 'en',
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
@@ -352,7 +352,7 @@ export class CommunitiesController {
       needsSetup,
       createdAt: community.createdAt.toISOString(),
       updatedAt: community.updatedAt.toISOString(),
-    } as any;
+    };
   }
 
   @Delete(':id')
@@ -391,7 +391,7 @@ export class CommunitiesController {
       throw new NotFoundError('Community', id);
     }
 
-    const lang = ((community.settings as any)?.language as 'en' | 'ru') || 'en';
+    const lang = (community.settings?.language as 'en' | 'ru') || 'en';
 
     const dualLinksCommunity = formatDualLinks(
       'community',

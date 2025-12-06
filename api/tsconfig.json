@@ -12,6 +12,7 @@
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
+    "maxNodeModuleJsDepth": 0,
     "strict": true,
     "isolatedModules": true,
     "paths": {

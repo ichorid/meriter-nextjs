@@ -115,7 +115,11 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                 {community.name}
               </div>
               {userRoleBadge && (
-                <Badge variant={userRoleBadge.variant} size="xs">
+                <Badge 
+                  variant={userRoleBadge.variant} 
+                  size="xs"
+                  className={isActive ? 'bg-primary-content/20 text-primary-content border border-primary-content/30' : ''}
+                >
                   {userRoleBadge.label}
                 </Badge>
               )}

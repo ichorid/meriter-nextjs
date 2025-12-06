@@ -74,11 +74,11 @@ export class PollsController {
       // Transform domain Polls to API format with enriched metadata
       const apiPolls = result.map(poll => EntityMappers.mapPollToApi(poll, usersMap, communitiesMap));
       
-    return ApiResponseHelper.successResponse({ data: apiPolls, total: apiPolls.length, skip, limit: pagination.limit });
+    return ApiResponseHelper.successResponse({ data: apiPolls, total: apiPolls.length, skip, limit: pagination.limit || 20 });
     }
     
     // Default behavior: return empty array for now
-    return ApiResponseHelper.successResponse({ data: [], total: 0, skip: 0, limit: pagination.limit });
+    return ApiResponseHelper.successResponse({ data: [], total: 0, skip: 0, limit: pagination.limit || 20 });
   }
 
   @Get(':id')
@@ -114,7 +114,7 @@ export class PollsController {
   }
 
   @Post()
-  @ZodValidation(CreatePollDtoSchema)
+  @ZodValidation(CreatePollDtoSchema as any)
   async createPoll(
     @Body() createDto: CreatePollDto,
     @Req() req: any,
@@ -132,10 +132,8 @@ export class PollsController {
     }
 
     // Transform API CreatePollDto to domain CreatePollDto
-    const domainDto = {
-      ...createDto,
-      expiresAt: new Date(createDto.expiresAt),
-    } as any;
+    // Service handles string->Date conversion
+    const domainDto = createDto;
     
     const poll = await this.pollsService.createPoll(req.user.id, domainDto);
     const snapshot = poll.toSnapshot();
@@ -156,7 +154,7 @@ export class PollsController {
   }
 
   @Put(':id')
-  @ZodValidation(UpdatePollDtoSchema)
+  @ZodValidation(UpdatePollDtoSchema as any)
   async updatePoll(
     @Param('id') id: string,
     @Body() updateDto: any,
@@ -182,7 +180,7 @@ export class PollsController {
   }
 
   @Post(':id/casts')
-  @ZodValidation(CreatePollCastDtoSchema)
+  @ZodValidation(CreatePollCastDtoSchema as any)
   async castPoll(
     @Param('id') id: string,
     @Body() createDto: CreatePollCastDto,
@@ -330,7 +328,7 @@ export class PollsController {
         data: apiPolls, 
         total: result.length, 
         skip, 
-        limit: pagination.limit 
+        limit: pagination.limit || 20 
       } 
     };
   }

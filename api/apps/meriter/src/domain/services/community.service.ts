@@ -79,12 +79,12 @@ export class CommunityService {
   async getCommunity(communityId: string): Promise<Community | null> {
     // Query by internal ID only
     const doc = await this.communityModel.findOne({ id: communityId }).lean();
-    return doc as any as Community;
+    return (doc as unknown) as Community;
   }
 
   async getCommunityByTypeTag(typeTag: string): Promise<Community | null> {
     const doc = await this.communityModel.findOne({ typeTag }).lean();
-    return doc as any as Community;
+    return (doc as unknown) as Community;
   }
 
   async onModuleInit() {
@@ -328,7 +328,7 @@ export class CommunityService {
       throw new NotFoundException('Community not found');
     }
 
-    return updatedCommunity as any as Community;
+    return (updatedCommunity as unknown) as Community;
   }
 
   async deleteCommunity(communityId: string): Promise<void> {
@@ -388,21 +388,21 @@ export class CommunityService {
       .limit(limit)
       .skip(skip)
       .sort({ isPriority: -1, createdAt: -1 }) // Приоритетные сообщества сначала, затем по дате создания
-      .lean() as any as Community[];
+      .lean() as unknown as Community[];
   }
 
   async getUserCommunities(userId: string): Promise<Community[]> {
     return this.communityModel
       .find({ members: userId })
       .sort({ isPriority: -1, createdAt: -1 }) // Приоритетные сообщества сначала, затем по дате создания
-      .lean() as any as Community[];
+      .lean() as unknown as Community[];
   }
 
   async getUserManagedCommunities(userId: string): Promise<Community[]> {
     return this.communityModel
       .find({ adminIds: userId })
       .sort({ createdAt: -1 })
-      .lean() as any as Community[];
+      .lean() as unknown as Community[];
   }
 
   async addHashtag(communityId: string, hashtag: string): Promise<Community> {
