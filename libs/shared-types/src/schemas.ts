@@ -177,8 +177,6 @@ export const CommunitySchema = IdentifiableSchema.merge(
   name: z.string().min(1),
   description: z.string().optional(),
   avatarUrl: z.string().url().optional(),
-  // IDs of administrators (internal User IDs) - УСТАРЕВШЕЕ, использовать UserCommunityRole
-  adminIds: z.array(z.string()).default([]),
   members: z.array(z.string()).default([]), // УСТАРЕВШЕЕ, использовать UserCommunityRole
   // НОВОЕ: Метка типа (опциональная, только для удобства)
   typeTag: z
@@ -421,7 +419,6 @@ export const UpdateCommunityDtoSchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional(),
   avatarUrl: z.string().optional(),
-  adminIds: z.array(z.string()).optional(),
   hashtags: z.array(z.string()).optional(),
   hashtagDescriptions: z.record(z.string(), z.string()).optional(),
   settings: CommunitySettingsSchema.partial().optional(),
