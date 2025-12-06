@@ -332,29 +332,20 @@ export class VotesController {
     const walletAmount = createDto.walletAmount ?? 0;
     const totalAmount = quotaAmount + walletAmount;
 
-    // Determine vote direction explicitly
-    // 1. Check if there's a signed amount field (negative = downvote, positive = upvote)
-    // 2. Otherwise infer from amounts, but account for Future Vision groups
+    // Check if community is a special group (marathon-of-good or future-vision)
+    const isMarathonOfGood = community?.typeTag === 'marathon-of-good';
+    const isFutureVision = community?.typeTag === 'future-vision';
+    const isSpecialGroup = isMarathonOfGood || isFutureVision;
+
+    // Determine vote direction from amounts
+    // For Future Vision groups: wallet-only votes are upvotes (quota is blocked)
     let direction: 'up' | 'down' = 'up';
-    
-    if (createDto.amount !== undefined && createDto.amount !== null) {
-      // Use signed amount if provided (negative = downvote)
-      direction = createDto.amount < 0 ? 'down' : 'up';
+    if (isFutureVision) {
+      // In Future Vision, all votes are wallet-only, so they're upvotes by default
+      direction = 'up';
     } else {
-      // Infer direction from amounts
-      // For Future Vision groups: wallet-only votes are upvotes (quota is blocked)
-      const isFutureVision = community?.typeTag === 'future-vision';
-      
-      if (isFutureVision) {
-        // In Future Vision, all votes are wallet-only, so they're upvotes by default
-        // Downvotes would still be wallet-only, but we need to distinguish them
-        // For now, assume wallet-only votes in Future Vision are upvotes
-        // (Downvotes would need explicit indication via signed amount)
-        direction = 'up';
-      } else {
-        // For other groups: quotaAmount > 0 means upvote, wallet-only means downvote
-        direction = quotaAmount > 0 ? 'up' : 'down';
-      }
+      // For other groups: quotaAmount > 0 means upvote, wallet-only means downvote
+      direction = quotaAmount > 0 ? 'up' : 'down';
     }
 
     // Validation: reject double-zero votes
@@ -363,11 +354,6 @@ export class VotesController {
         'Cannot vote with zero quota and zero wallet amount',
       );
     }
-
-    // Check if community is a special group (marathon-of-good or future-vision)
-    const isMarathonOfGood = community?.typeTag === 'marathon-of-good';
-    const isFutureVision = community?.typeTag === 'future-vision';
-    const isSpecialGroup = isMarathonOfGood || isFutureVision;
 
     // Marathon of Good: Block wallet voting on publications/comments (quota only)
     // Future Vision: Block quota voting on publications/comments (wallet only)
@@ -797,15 +783,4 @@ export class VotesController {
     );
   }
 
-  @Post('publications/:id/vote-with-comment')
-  @ZodValidation(VoteWithCommentDtoSchema)
-  async votePublicationWithComment(
-    @Param('id') id: string,
-    @Body() body: any,
-    @Req() req: any,
-  ) {
-    // This endpoint is now redundant since votePublication requires comment
-    // But keeping for backward compatibility - redirect to votePublication logic
-    return this.votePublication(id, body, req);
-  }
 }

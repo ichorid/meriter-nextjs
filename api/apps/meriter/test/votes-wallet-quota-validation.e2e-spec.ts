@@ -331,8 +331,8 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
         .expect(201);
 
       expect(response.body.data.vote).toBeDefined();
-      expect(response.body.data.vote.amount).toBe(20);
-      expect(response.body.data.vote.sourceType).toBe('personal');
+      expect(response.body.data.vote.amountWallet).toBe(20);
+      expect(response.body.data.vote.amountQuota).toBe(0);
     });
 
     it('should accept valid combined quota + wallet vote', async () => {
@@ -349,18 +349,18 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
         .expect(201);
 
       expect(response.body.data.vote).toBeDefined();
-      // Should create two votes: one quota and one wallet
-      // The response should have the quota vote
-      expect(response.body.data.vote.sourceType).toBe('quota');
+      // Should create a single vote with both quota and wallet amounts
+      expect(response.body.data.vote.amountQuota).toBe(7);
+      expect(response.body.data.vote.amountWallet).toBe(3);
       
-      // Verify both votes were created
+      // Verify the vote was created with both amounts
       const votes = await voteModel.find({ 
         userId: testUserId, 
         targetId: testPublicationId 
       }).lean();
-      expect(votes.length).toBe(2);
-      expect(votes.some(v => v.sourceType === 'quota' && v.amount === 7)).toBe(true);
-      expect(votes.some(v => v.sourceType === 'personal' && v.amount === 3)).toBe(true);
+      expect(votes.length).toBe(1);
+      expect(votes[0].amountQuota).toBe(7);
+      expect(votes[0].amountWallet).toBe(3);
     });
 
     it('should properly deduct quota and wallet when both provided', async () => {
@@ -432,41 +432,6 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
     });
   });
 
-  describe('Backward Compatibility', () => {
-    it('should accept old format with amount + sourceType', async () => {
-      // Set global testUserId for AllowAllGuard to use
-      (global as any).testUserId = testUserId;
-      
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          amount: 5,
-          sourceType: 'quota',
-        })
-        .expect(201);
-
-      expect(response.body.data.vote).toBeDefined();
-      expect(response.body.data.vote.amount).toBe(5);
-    });
-
-    it('should accept old format with amount + sourceType for wallet', async () => {
-      // Set global testUserId for AllowAllGuard to use
-      (global as any).testUserId = testUserId;
-      
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          amount: 10,
-          sourceType: 'personal',
-        })
-        .expect(201);
-
-      expect(response.body.data.vote).toBeDefined();
-      expect(response.body.data.vote.amount).toBe(10);
-      expect(response.body.data.vote.sourceType).toBe('personal');
-    });
-  });
-
   describe('Comment Voting Validation', () => {
     let testCommentId: string;
 
@@ -524,7 +489,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       (global as any).testUserId = testUserId;
       
       const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/vote-with-comment`)
+        .post(`/api/v1/publications/${testPublicationId}/votes`)
         .send({
           quotaAmount: 0,
           walletAmount: 0,
@@ -540,7 +505,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       (global as any).testUserId = testUserId;
       
       const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/vote-with-comment`)
+        .post(`/api/v1/publications/${testPublicationId}/votes`)
         .send({
           quotaAmount: 4,
           walletAmount: 2,

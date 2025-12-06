@@ -48,7 +48,7 @@ describe('Polls E2E (create and cast)', () => {
     expect(poll?.id).toBeDefined();
 
     const optionId = poll.options[0].id || poll.options[0]._id || poll.options[0].text; // be tolerant
-    const castDto = { optionId, amount: 1, sourceType: 'personal' };
+    const castDto = { optionId, walletAmount: 1, quotaAmount: 0 };
     const castRes = await request(app.getHttpServer())
       .post(`/api/v1/polls/${poll.id}/casts`)
       .send(castDto)

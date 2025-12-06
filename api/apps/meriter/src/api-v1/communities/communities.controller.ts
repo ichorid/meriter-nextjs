@@ -18,6 +18,7 @@ import { UserService } from '../../domain/services/user.service';
 import { CommunityFeedService } from '../../domain/services/community-feed.service';
 import { WalletService } from '../../domain/services/wallet.service';
 import { UserCommunityRoleService } from '../../domain/services/user-community-role.service';
+import { PermissionService } from '../../domain/services/permission.service';
 import { UserGuard } from '../../user.guard';
 import { User } from '../../decorators/user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
@@ -55,6 +56,7 @@ export class CommunitiesController {
     private readonly communityFeedService: CommunityFeedService,
     private readonly walletService: WalletService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
+    private readonly permissionService: PermissionService,
   ) {}
 
   /**
@@ -368,9 +370,19 @@ export class CommunitiesController {
 
   @Post(':id/reset-quota')
   async resetDailyQuota(@Param('id') id: string, @Req() req: any) {
-    const isAdmin = await this.communityService.isUserAdmin(id, req.user.id);
-    if (!isAdmin) {
-      throw new ForbiddenError('Only administrators can reset daily quota');
+    // Check if user is superadmin (can reset quota in any community)
+    const isSuperadmin = req.user.globalRole === 'superadmin';
+    
+    // Check if user has lead role in this community
+    const userRole = await this.permissionService.getUserRoleInCommunity(
+      req.user.id,
+      id,
+    );
+    const isLead = userRole === 'lead';
+
+    // Only superadmin or lead can reset daily quota
+    if (!isSuperadmin && !isLead) {
+      throw new ForbiddenError('Only leads and superadmins can reset daily quota');
     }
 
     const { resetAt } = await this.communityService.resetDailyQuota(id);

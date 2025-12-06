@@ -4,6 +4,8 @@ import {
   NotFoundException,
   BadRequestException,
   OnModuleInit,
+  forwardRef,
+  Inject,
 } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
@@ -16,6 +18,8 @@ import { CommunityId, UserId } from '../value-objects';
 import { EventBus } from '../events/event-bus';
 import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
 import { uid } from 'uid';
+import { UserService } from './user.service';
+import { UserCommunityRoleService } from './user-community-role.service';
 
 export interface CreateCommunityDto {
   name: string;
@@ -74,6 +78,10 @@ export class CommunityService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
+    @Inject(forwardRef(() => UserService))
+    private userService: UserService,
+    @Inject(forwardRef(() => UserCommunityRoleService))
+    private userCommunityRoleService: UserCommunityRoleService,
   ) {}
 
   async getCommunity(communityId: string): Promise<Community | null> {
@@ -369,6 +377,19 @@ export class CommunityService {
   }
 
   async isUserAdmin(communityId: string, userId: string): Promise<boolean> {
+    // 1. Check global superadmin role
+    const user = await this.userService.getUserById(userId);
+    if (user?.globalRole === 'superadmin') {
+      return true;
+    }
+
+    // 2. Check lead role in community
+    const userRole = await this.userCommunityRoleService.getRole(userId, communityId);
+    if (userRole?.role === 'lead') {
+      return true;
+    }
+
+    // 3. Check adminIds (existing logic)
     const community = await this.communityModel
       .findOne({
         id: communityId,

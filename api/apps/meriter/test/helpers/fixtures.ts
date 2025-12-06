@@ -78,12 +78,24 @@ export function createTestComment(targetType: 'publication' | 'comment', targetI
  * Create test vote fixtures
  */
 export function createTestVote(targetType: 'publication' | 'comment', targetId: string, amount: number, sourceType: 'personal' | 'quota' = 'personal'): CreateVoteDto {
-  return {
-    targetType,
-    targetId,
-    amount,
-    sourceType,
-  } as any;
+  // Convert old format (amount + sourceType) to new format (quotaAmount/walletAmount)
+  if (sourceType === 'quota') {
+    return {
+      targetType,
+      targetId,
+      quotaAmount: amount,
+      walletAmount: 0,
+      comment: 'Test vote',
+    } as any;
+  } else {
+    return {
+      targetType,
+      targetId,
+      quotaAmount: 0,
+      walletAmount: amount,
+      comment: 'Test vote',
+    } as any;
+  }
 }
 
 /**

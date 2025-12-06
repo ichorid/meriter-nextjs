@@ -19,9 +19,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./apps/meriter/test/jest-e2e.json --forceExit",
-    "migrate": "ts-node -r tsconfig-paths/register apps/meriter/src/migrations/run-all-migrations.ts",
-    "migration:set-priority-communities": "ts-node -r tsconfig-paths/register apps/meriter/src/migrations/set-priority-communities.ts"
+    "test:e2e": "jest --config ./apps/meriter/test/jest-e2e.json --forceExit"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.940.0",
