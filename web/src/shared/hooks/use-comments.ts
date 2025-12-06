@@ -180,15 +180,6 @@ export const useComments = (
                             targetId: transactionId,
                             quotaAmount: quotaAmount > 0 ? quotaAmount : undefined,
                             walletAmount: walletAmount > 0 ? walletAmount : undefined,
-                            // For backward compatibility, also send amount if only one source is used
-                            ...(quotaAmount > 0 && walletAmount === 0 ? {
-                                amount: isUpvote ? quotaAmount : -quotaAmount,
-                                sourceType: 'quota' as const,
-                            } : {}),
-                            ...(walletAmount > 0 && quotaAmount === 0 ? {
-                                amount: isUpvote ? walletAmount : -walletAmount,
-                                sourceType: 'personal' as const,
-                            } : {}),
                         },
                         communityId,
                     });

@@ -175,6 +175,11 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
         return role?.role === 'lead' || community?.adminIds?.includes(user.id);
     }, [communityId, user?.id, userRoles, community?.adminIds]);
 
+    // Check if user can reset quota (superadmin OR lead role)
+    const canResetQuota = useMemo(() => {
+        return isSuperadmin || isUserLead;
+    }, [isSuperadmin, isUserLead]);
+
     // Superadmin can create invites for leads or participants in any community
     // Lead can create invites for participants in their community
 
@@ -399,7 +404,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                             />
                         </BrandFormControl>
 
-                        {isEditMode && isUserLead && (
+                        {isEditMode && canResetQuota && (
                             <BrandFormControl
                                 label={t('resetQuota')}
                                 helperText={t('resetQuotaDescription')}

@@ -255,8 +255,6 @@ describe('usePublication Hook', () => {
       expect(mockMutateAsync).toHaveBeenCalledWith({
         publicationId: 'pub-123',
         data: {
-          amount: -1,
-          sourceType: 'personal',
           comment: 'Bad post!',
           quotaAmount: undefined,
           walletAmount: 1,
@@ -323,8 +321,6 @@ describe('usePublication Hook', () => {
       expect(mockMutateAsync).toHaveBeenCalledWith({
         publicationId: 'pub-123',
         data: {
-          amount: 1,
-          sourceType: 'quota',
           comment: 'Great post!',
           quotaAmount: 1,
           walletAmount: undefined,

@@ -916,11 +916,8 @@ export const votesApiV1 = {
             comment?: string;
         }
     ): Promise<{ vote: Vote; comment?: Comment }> {
-        const response = await apiClient.post<{
-            success: true;
-            data: { vote: Vote; comment?: Comment };
-        }>(`/api/v1/publications/${publicationId}/vote-with-comment`, data);
-        return response.data;
+        // Use the regular vote endpoint (vote-with-comment endpoint was removed)
+        return this.voteOnPublication(publicationId, data);
     },
 
     async withdrawFromPublication(
