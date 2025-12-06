@@ -1,16 +1,12 @@
 // Publications React Query hooks with Zod validation
 import {
     useQuery,
-    useMutation,
-    useQueryClient,
     useInfiniteQuery,
 } from "@tanstack/react-query";
 import { publicationsApiV1, communitiesApiV1 } from "@/lib/api/v1";
 import { queryKeys } from "@/lib/constants/queryKeys";
-import {
-    useValidatedQuery,
-    useValidatedMutation,
-} from "@/lib/api/validated-query";
+import { useValidatedQuery } from "@/lib/api/validated-query";
+import { createMutation } from "@/lib/api/mutation-factory";
 import {
     PublicationSchema,
     CreatePublicationDtoSchema,
@@ -20,6 +16,10 @@ import type {
     PaginatedResponse,
     CreatePublicationDto,
 } from "@/types/api-v1";
+import {
+    createGetNextPageParam,
+    createArrayGetNextPageParam,
+} from "@/lib/utils/pagination-utils";
 
 interface ListQueryParams {
     skip?: number;
@@ -92,16 +92,7 @@ export function useInfiniteMyPublications(
                 userId,
             });
         },
-        getNextPageParam: (lastPage: Publication[]) => {
-            // If we got less than pageSize, we're done
-            if (lastPage.length < pageSize) {
-                return undefined;
-            }
-            // Otherwise, return next page number
-            const currentPage =
-                Math.floor((lastPage.length || 0) / pageSize) + 1;
-            return currentPage + 1;
-        },
+        getNextPageParam: createArrayGetNextPageParam<Publication>(pageSize),
         initialPageParam: 1,
         enabled: !!userId,
     });
@@ -136,58 +127,36 @@ export function useInfinitePublicationsByCommunity(
                 order,
             });
         },
-        getNextPageParam: (lastPage: PaginatedResponse<Publication>) => {
-            if (!lastPage.meta?.pagination?.hasNext) {
-                return undefined;
-            }
-            return (lastPage.meta.pagination.page || 1) + 1;
-        },
+        getNextPageParam: createGetNextPageParam<Publication>(),
         initialPageParam: 1,
         enabled: !!communityId, // Ensure query only runs when communityId is available
     });
 }
 
-export function useCreatePublication() {
-    const queryClient = useQueryClient();
-
-    return useValidatedMutation({
-        mutationFn: (data: CreatePublicationDto) =>
-            publicationsApiV1.createPublication(data),
-        inputSchema: CreatePublicationDtoSchema,
-        outputSchema: PublicationSchema,
-        context: "useCreatePublication",
-        onSuccess: (_, variables) => {
-            // Invalidate publications lists
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.publications.lists(),
-                exact: false,
-            });
-            // Invalidate community feed for the specific community
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.communities.feed(variables.communityId),
-                exact: false,
-            });
-            // Also invalidate all community feeds to ensure consistency
-            queryClient.invalidateQueries({
-                queryKey: [
-                    ...queryKeys.communities.detail(variables.communityId),
-                    "feed",
-                ],
-                exact: false,
-            });
+export const useCreatePublication = createMutation({
+    mutationFn: (data: CreatePublicationDto) => publicationsApiV1.createPublication(data),
+    inputSchema: CreatePublicationDtoSchema,
+    outputSchema: PublicationSchema,
+    validationContext: "useCreatePublication",
+    errorContext: "Create publication error",
+    invalidations: {
+        publications: {
+            lists: true,
+            exact: false,
         },
-    });
-}
-
-export function useDeletePublication() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: (id: string) => publicationsApiV1.deletePublication(id),
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.publications.lists(),
-            });
+        communities: {
+            feed: true,
+            detail: (_result: any, variables: CreatePublicationDto) => variables.communityId,
         },
-    });
-}
+    },
+});
+
+export const useDeletePublication = createMutation({
+    mutationFn: (id: string) => publicationsApiV1.deletePublication(id),
+    errorContext: "Delete publication error",
+    invalidations: {
+        publications: {
+            lists: true,
+        },
+    },
+});

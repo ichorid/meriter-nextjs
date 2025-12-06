@@ -1,7 +1,9 @@
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { profileApiV1, type UserCommunityRoleWithName, type PublicationWithCommunityName, type UpdateProfileData, type MeritStatsResponse } from '@/lib/api/v1/profile';
 import type { PaginatedResponse, User } from '@/types/api-v1';
 import { useAuth } from '@/contexts/AuthContext';
+import { createGetNextPageParam } from '@/lib/utils/pagination-utils';
+import { createMutation } from '@/lib/api/mutation-factory';
 
 export function useUserRoles(userId: string) {
   return useQuery<UserCommunityRoleWithName[]>({
@@ -15,11 +17,7 @@ export function useUserProjects(userId: string, pageSize: number = 20) {
   return useInfiniteQuery<PaginatedResponse<PublicationWithCommunityName>>({
     queryKey: ['profile', 'projects', userId, pageSize],
     queryFn: ({ pageParam = 1 }) => profileApiV1.getUserProjects(userId, pageParam as number, pageSize),
-    getNextPageParam: (lastPage) => {
-      const currentPage = lastPage.meta?.pagination?.page || 1;
-      const totalPages = lastPage.meta?.pagination?.totalPages || 1;
-      return currentPage < totalPages ? currentPage + 1 : undefined;
-    },
+    getNextPageParam: createGetNextPageParam<PublicationWithCommunityName>(),
     initialPageParam: 1,
     enabled: !!userId,
   });
@@ -33,17 +31,16 @@ export function useLeadCommunities(userId: string) {
   });
 }
 
-export function useUpdateProfile() {
-  const queryClient = useQueryClient();
-  return useMutation<User, Error, UpdateProfileData>({
+export const useUpdateProfile = createMutation<User, UpdateProfileData>({
     mutationFn: (data) => profileApiV1.updateProfile(data),
-    onSuccess: () => {
-      // Invalidate user queries to refetch updated data
-      queryClient.invalidateQueries({ queryKey: ['user'] });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    errorContext: "Update profile error",
+    onSuccess: (_result, _variables, queryClient) => {
+        // Invalidate user queries to refetch updated data
+        queryClient.invalidateQueries({ queryKey: ['user'] });
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+        queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
     },
-  });
-}
+});
 
 // Alias for backwards compatibility
 export const useUpdateUser = useUpdateProfile;

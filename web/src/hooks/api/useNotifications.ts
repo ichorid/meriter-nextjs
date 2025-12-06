@@ -1,8 +1,10 @@
 // Notifications React Query hooks
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { notificationsApiV1 } from "@/lib/api/v1";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import type { Notification, NotificationPreferences, PaginatedResponse } from "@/types/api-v1";
+import { createGetNextPageParam } from "@/lib/utils/pagination-utils";
+import { createMutation } from "@/lib/api/mutation-factory";
 
 interface GetNotificationsParams {
     page?: number;
@@ -13,7 +15,7 @@ interface GetNotificationsParams {
 
 export function useNotifications(params: GetNotificationsParams = {}) {
     return useQuery({
-        queryKey: ["notifications", params],
+        queryKey: queryKeys.notifications.list(params),
         queryFn: () => notificationsApiV1.getNotifications(params),
         refetchInterval: 30000, // Poll every 30 seconds for real-time updates
         retry: false, // Don't retry on 404
@@ -36,12 +38,7 @@ export function useInfiniteNotifications(
                 type: params.type,
             });
         },
-        getNextPageParam: (lastPage: PaginatedResponse<Notification>) => {
-            if (!lastPage.meta?.pagination?.hasNext) {
-                return undefined;
-            }
-            return (lastPage.meta.pagination.page || 1) + 1;
-        },
+        getNextPageParam: createGetNextPageParam<Notification>(),
         initialPageParam: 1,
         refetchInterval: 30000, // Poll every 30 seconds for real-time updates
         retry: false, // Don't retry on 404
@@ -62,56 +59,44 @@ export function useUnreadCount() {
 
 export function useNotificationPreferences() {
     return useQuery({
-        queryKey: ["notifications", "preferences"],
+        queryKey: queryKeys.notifications.preferences(),
         queryFn: () => notificationsApiV1.getPreferences(),
     });
 }
 
-export function useMarkAsRead() {
-    const queryClient = useQueryClient();
+export const useMarkAsRead = createMutation<void, string>({
+    mutationFn: (notificationId) => notificationsApiV1.markAsRead(notificationId),
+    errorContext: "Mark as read error",
+    invalidations: {
+        notifications: true,
+    },
+});
 
-    return useMutation({
-        mutationFn: (notificationId: string) =>
-            notificationsApiV1.markAsRead(notificationId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["notifications"] });
-        },
-    });
-}
+export const useMarkAllAsRead = createMutation<void, void>({
+    mutationFn: () => notificationsApiV1.markAllAsRead(),
+    errorContext: "Mark all as read error",
+    invalidations: {
+        notifications: true,
+    },
+});
 
-export function useMarkAllAsRead() {
-    const queryClient = useQueryClient();
+export const useDeleteNotification = createMutation<void, string>({
+    mutationFn: (notificationId) => notificationsApiV1.deleteNotification(notificationId),
+    errorContext: "Delete notification error",
+    invalidations: {
+        notifications: true,
+    },
+});
 
-    return useMutation({
-        mutationFn: () => notificationsApiV1.markAllAsRead(),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["notifications"] });
-        },
-    });
-}
-
-export function useDeleteNotification() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: (notificationId: string) =>
-            notificationsApiV1.deleteNotification(notificationId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["notifications"] });
-        },
-    });
-}
-
-export function useUpdatePreferences() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: (preferences: Partial<NotificationPreferences>) =>
-            notificationsApiV1.updatePreferences(preferences),
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: ["notifications", "preferences"],
-            });
-        },
-    });
-}
+export const useUpdatePreferences = createMutation<
+    NotificationPreferences,
+    Partial<NotificationPreferences>
+>({
+    mutationFn: (preferences) => notificationsApiV1.updatePreferences(preferences),
+    errorContext: "Update preferences error",
+    onSuccess: (_result, _variables, queryClient) => {
+        queryClient.invalidateQueries({
+            queryKey: queryKeys.notifications.preferences(),
+        });
+    },
+});

@@ -63,10 +63,16 @@ export const queryKeys = {
     comments: {
         all: ["comments"] as const,
         lists: () => [...queryKeys.comments.all, "list"] as const,
-        list: (targetType: string, targetId: string) =>
-            [...queryKeys.comments.lists(), targetType, targetId] as const,
+        list: (params: Record<string, any>) =>
+            [...queryKeys.comments.lists(), serializeQueryParams(params)] as const,
         details: () => [...queryKeys.comments.all, "detail"] as const,
         detail: (id: string) => [...queryKeys.comments.details(), id] as const,
+        detailData: (id: string) =>
+            [...queryKeys.comments.detail(id), "details"] as const,
+        byPublication: (publicationId: string) =>
+            [...queryKeys.comments.all, "publication", publicationId] as const,
+        byComment: (commentId: string) =>
+            [...queryKeys.comments.all, "comment", commentId] as const,
         my: (userId: string) =>
             [...queryKeys.comments.all, "my", userId] as const,
         myComments: (userId: string, params: Record<string, any>) =>

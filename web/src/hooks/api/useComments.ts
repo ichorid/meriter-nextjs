@@ -1,23 +1,21 @@
 // Comments React Query hooks
 import {
     useQuery,
-    useMutation,
-    useQueryClient,
     useInfiniteQuery,
 } from "@tanstack/react-query";
 import { commentsApiV1, usersApiV1 } from "@/lib/api/v1";
 import { queryKeys } from "@/lib/constants/queryKeys";
+import { STALE_TIME } from "@/lib/constants/query-config";
 import { serializeQueryParams } from "@/lib/utils/queryKeys";
-import {
-    useValidatedQuery,
-    useValidatedMutation,
-} from "@/lib/api/validated-query";
+import { useValidatedQuery } from "@/lib/api/validated-query";
+import { createMutation } from "@/lib/api/mutation-factory";
 import { CommentSchema, CreateCommentDtoSchema } from "@/types/api-v1/schemas";
 import type {
     Comment,
     CreateCommentDto,
     PaginatedResponse,
 } from "@/types/api-v1";
+import { createGetNextPageParam, createPaginationParams } from "@/lib/utils/pagination-utils";
 
 interface GetCommentsRequest {
     skip?: number;
@@ -26,28 +24,16 @@ interface GetCommentsRequest {
     userId?: string;
 }
 
-// Query keys
-export const commentsKeys = {
-    all: ["comments"] as const,
-    lists: () => [...commentsKeys.all, "list"] as const,
-    list: (params: GetCommentsRequest) =>
-        [...commentsKeys.lists(), serializeQueryParams(params)] as const,
-    details: () => [...commentsKeys.all, "detail"] as const,
-    detail: (id: string) => [...commentsKeys.details(), id] as const,
-    detailData: (id: string) =>
-        [...commentsKeys.detail(id), "details"] as const,
-    byPublication: (publicationId: string) =>
-        [...commentsKeys.all, "publication", publicationId] as const,
-    byComment: (commentId: string) =>
-        [...commentsKeys.all, "comment", commentId] as const,
-} as const;
+// Re-export commentsKeys for backwards compatibility during migration
+// TODO: Remove this export once all references are updated to use queryKeys.comments
+export const commentsKeys = queryKeys.comments;
 
 // Get comments with pagination
 export function useComments(params: GetCommentsRequest = {}) {
     return useQuery({
         queryKey: commentsKeys.list(params),
         queryFn: () => commentsApiV1.getComments(params),
-        staleTime: 2 * 60 * 1000, // 2 minutes
+        staleTime: STALE_TIME.MEDIUM,
     });
 }
 
@@ -62,18 +48,7 @@ export function useCommentsByPublication(
     } = {}
 ) {
     // Convert page/pageSize to skip/limit for API consistency
-    const queryParams: {
-        skip?: number;
-        limit?: number;
-        sort?: string;
-        order?: string;
-    } = {};
-    if (params.page !== undefined && params.pageSize !== undefined) {
-        queryParams.skip = (params.page - 1) * params.pageSize;
-        queryParams.limit = params.pageSize;
-    }
-    if (params.sort) queryParams.sort = params.sort;
-    if (params.order) queryParams.order = params.order;
+    const queryParams = createPaginationParams(params);
 
     return useQuery({
         queryKey: [
@@ -82,7 +57,7 @@ export function useCommentsByPublication(
         ],
         queryFn: () =>
             commentsApiV1.getPublicationComments(publicationId, queryParams),
-        staleTime: 2 * 60 * 1000, // 2 minutes
+        staleTime: STALE_TIME.MEDIUM,
         enabled: !!publicationId,
     });
 }
@@ -98,18 +73,7 @@ export function useCommentsByComment(
     } = {}
 ) {
     // Convert page/pageSize to skip/limit for API consistency
-    const queryParams: {
-        skip?: number;
-        limit?: number;
-        sort?: string;
-        order?: string;
-    } = {};
-    if (params.page !== undefined && params.pageSize !== undefined) {
-        queryParams.skip = (params.page - 1) * params.pageSize;
-        queryParams.limit = params.pageSize;
-    }
-    if (params.sort) queryParams.sort = params.sort;
-    if (params.order) queryParams.order = params.order;
+    const queryParams = createPaginationParams(params);
 
     return useQuery({
         queryKey: [
@@ -117,7 +81,7 @@ export function useCommentsByComment(
             serializeQueryParams(params),
         ],
         queryFn: () => commentsApiV1.getCommentReplies(commentId, queryParams),
-        staleTime: 2 * 60 * 1000, // 2 minutes
+        staleTime: STALE_TIME.MEDIUM,
         enabled: !!commentId,
     });
 }
@@ -129,7 +93,7 @@ export function useComment(id: string) {
         queryFn: () => commentsApiV1.getComment(id),
         schema: CommentSchema,
         context: `useComment(${id})`,
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: STALE_TIME.LONG,
         enabled: !!id,
     });
 }
@@ -139,98 +103,66 @@ export function useCommentDetails(id: string) {
     return useQuery({
         queryKey: commentsKeys.detailData(id),
         queryFn: () => commentsApiV1.getCommentDetails(id),
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: STALE_TIME.LONG,
         enabled: !!id,
     });
 }
 
 // Create comment
-export function useCreateComment() {
-    const queryClient = useQueryClient();
-
-    return useValidatedMutation({
-        mutationFn: (data: CreateCommentDto) =>
-            commentsApiV1.createComment(data),
-        inputSchema: CreateCommentDtoSchema,
-        outputSchema: CommentSchema,
-        context: "useCreateComment",
-        onSuccess: (newComment) => {
-            // Invalidate all comments queries to ensure the new comment appears everywhere
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.comments.all,
-                exact: false,
-            });
-
-            // Update the detail cache with the new comment
-            queryClient.setQueryData(
-                commentsKeys.detail(newComment.id),
-                newComment
-            );
+export const useCreateComment = createMutation<Comment, CreateCommentDto>({
+    mutationFn: (data) => commentsApiV1.createComment(data),
+    inputSchema: CreateCommentDtoSchema,
+    outputSchema: CommentSchema,
+    validationContext: "useCreateComment",
+    errorContext: "Create comment error",
+    invalidations: {
+        comments: {
+            lists: true,
+            exact: false,
         },
-        onError: (error) => {
-            console.error("Create comment error:", error);
-        },
-    });
-}
+    },
+    setQueryData: {
+        queryKey: (result) => commentsKeys.detail(result.id),
+        data: (result) => result,
+    },
+});
 
 // Update comment
-export function useUpdateComment() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: ({
-            id,
-            data,
-        }: {
-            id: string;
-            data: Partial<CreateCommentDto>;
-        }) => commentsApiV1.updateComment(id, data),
-        onSuccess: (updatedComment) => {
-            // Update the comment in cache
-            queryClient.setQueryData(
-                commentsKeys.detail(updatedComment.id),
-                updatedComment
-            );
-
-            // Invalidate lists to ensure consistency
-            queryClient.invalidateQueries({ queryKey: commentsKeys.lists() });
-
-            if (updatedComment.targetType === "publication") {
-                queryClient.invalidateQueries({
-                    queryKey: commentsKeys.byPublication(
-                        updatedComment.targetId
-                    ),
-                });
-            } else if (updatedComment.targetType === "comment") {
-                queryClient.invalidateQueries({
-                    queryKey: commentsKeys.byComment(updatedComment.targetId),
-                });
-            }
+export const useUpdateComment = createMutation<
+    Comment,
+    { id: string; data: Partial<CreateCommentDto> }
+>({
+    mutationFn: ({ id, data }) => commentsApiV1.updateComment(id, data),
+    errorContext: "Update comment error",
+    invalidations: {
+        comments: {
+            lists: true,
+            detail: (result) => result.id,
+            byPublication: (result) =>
+                result.targetType === "publication" ? result.targetId : undefined,
+            byComment: (result) =>
+                result.targetType === "comment" ? result.targetId : undefined,
         },
-        onError: (error) => {
-            console.error("Update comment error:", error);
-        },
-    });
-}
+    },
+    setQueryData: {
+        queryKey: (result) => commentsKeys.detail(result.id),
+        data: (result) => result,
+    },
+});
 
 // Delete comment
-export function useDeleteComment() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: (id: string) => commentsApiV1.deleteComment(id),
-        onSuccess: (_, deletedId) => {
-            // Remove from all caches
-            queryClient.removeQueries({
-                queryKey: commentsKeys.detail(deletedId),
-            });
-            queryClient.invalidateQueries({ queryKey: commentsKeys.lists() });
+export const useDeleteComment = createMutation<void, string>({
+    mutationFn: (id) => commentsApiV1.deleteComment(id),
+    errorContext: "Delete comment error",
+    invalidations: {
+        comments: {
+            lists: true,
         },
-        onError: (error) => {
-            console.error("Delete comment error:", error);
-        },
-    });
-}
+    },
+    removeQuery: {
+        queryKey: (deletedId) => commentsKeys.detail(deletedId),
+    },
+});
 
 // Get user's comments
 export function useMyComments(
@@ -240,7 +172,7 @@ export function useMyComments(
     return useQuery({
         queryKey: queryKeys.comments.myComments(userId, params),
         queryFn: () => usersApiV1.getUserComments(userId, params),
-        staleTime: 2 * 60 * 1000, // 2 minutes
+        staleTime: STALE_TIME.MEDIUM,
         enabled: !!userId,
     });
 }
@@ -256,12 +188,7 @@ export function useInfiniteMyComments(userId: string, pageSize: number = 20) {
                 limit: pageSize,
             });
         },
-        getNextPageParam: (lastPage: PaginatedResponse<Comment>) => {
-            if (!lastPage.meta?.pagination?.hasNext) {
-                return undefined;
-            }
-            return (lastPage.meta.pagination.page || 1) + 1;
-        },
+        getNextPageParam: createGetNextPageParam<Comment>(),
         initialPageParam: 1,
         enabled: !!userId,
     });

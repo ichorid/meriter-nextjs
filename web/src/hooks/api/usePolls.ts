@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { pollsApiV1 } from "@/lib/api/v1";
 import { queryKeys } from "@/lib/constants/queryKeys";
+import { STALE_TIME } from "@/lib/constants/query-config";
 import { useAuth } from "@/contexts/AuthContext";
 import {
     updateWalletOptimistically,
@@ -14,6 +15,8 @@ import {
     type OptimisticUpdateContext,
 } from "./useVotes.helpers";
 import type { PaginatedResponse, Poll } from "@/types/api-v1";
+import { createGetNextPageParam } from "@/lib/utils/pagination-utils";
+import { createMutation } from "@/lib/api/mutation-factory";
 
 // Local type definitions (only for types not in shared-types)
 interface PollOption {
@@ -52,42 +55,26 @@ interface CastPollRequest {
     walletAmount?: number;
 }
 
-// Query keys
-export const pollsKeys = {
-    all: ["polls"] as const,
-    lists: () => [...pollsKeys.all, "list"] as const,
-    list: (params: { skip?: number; limit?: number; userId?: string }) =>
-        [...pollsKeys.lists(), params] as const,
-    details: () => [...pollsKeys.all, "detail"] as const,
-    detail: (id: string) => [...pollsKeys.details(), id] as const,
-    results: (id: string) => [...pollsKeys.all, "results", id] as const,
-} as const;
-
 // Get polls with pagination
 export function usePolls(
     params: { skip?: number; limit?: number; userId?: string } = {}
 ) {
     return useQuery({
-        queryKey: pollsKeys.list(params),
+        queryKey: queryKeys.polls.list(params),
         queryFn: () => pollsApiV1.getPolls(params),
-        staleTime: 2 * 60 * 1000, // 2 minutes
+        staleTime: STALE_TIME.MEDIUM,
     });
 }
 
 // Infinite query for user's polls
 export function useInfiniteMyPolls(userId: string, pageSize: number = 20) {
     return useInfiniteQuery({
-        queryKey: [...pollsKeys.lists(), "infinite", userId, pageSize],
+        queryKey: [...queryKeys.polls.lists(), "infinite", userId, pageSize],
         queryFn: ({ pageParam = 1 }: { pageParam: number }) => {
             const skip = (pageParam - 1) * pageSize;
             return pollsApiV1.getPolls({ skip, limit: pageSize, userId });
         },
-        getNextPageParam: (lastPage: PaginatedResponse<Poll>) => {
-            if (!lastPage.meta?.pagination?.hasNext) {
-                return undefined;
-            }
-            return (lastPage.meta.pagination.page || 1) + 1;
-        },
+        getNextPageParam: createGetNextPageParam<Poll>(),
         initialPageParam: 1,
         enabled: !!userId,
     });
@@ -96,9 +83,9 @@ export function useInfiniteMyPolls(userId: string, pageSize: number = 20) {
 // Get single poll
 export function usePoll(id: string) {
     return useQuery({
-        queryKey: pollsKeys.detail(id),
+        queryKey: queryKeys.polls.detail(id),
         queryFn: () => pollsApiV1.getPoll(id),
-        staleTime: 2 * 60 * 1000, // 2 minutes
+        staleTime: STALE_TIME.MEDIUM,
         enabled: !!id,
     });
 }
@@ -106,31 +93,27 @@ export function usePoll(id: string) {
 // Get poll results
 export function usePollResults(id: string) {
     return useQuery({
-        queryKey: pollsKeys.results(id),
+        queryKey: [...queryKeys.polls.all, "results", id],
         queryFn: () => pollsApiV1.getPollResults(id),
-        staleTime: 1 * 60 * 1000, // 1 minute
+        staleTime: STALE_TIME.SHORT,
         enabled: !!id,
     });
 }
 
 // Create poll
-export function useCreatePoll() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: (data: PollCreate) => pollsApiV1.createPoll(data),
-        onSuccess: (newPoll) => {
-            // Invalidate and refetch polls lists
-            queryClient.invalidateQueries({ queryKey: pollsKeys.lists() });
-
-            // Add the new poll to cache
-            queryClient.setQueryData(pollsKeys.detail(newPoll.id), newPoll);
+export const useCreatePoll = createMutation<Poll, PollCreate>({
+    mutationFn: (data) => pollsApiV1.createPoll(data),
+    errorContext: "Create poll error",
+    invalidations: {
+        polls: {
+            lists: true,
         },
-        onError: (error) => {
-            console.error("Create poll error:", error);
-        },
-    });
-}
+    },
+    setQueryData: {
+        queryKey: (result) => queryKeys.polls.detail(result.id),
+        data: (result) => result,
+    },
+});
 
 // Cast poll
 export function useCastPoll() {
@@ -181,13 +164,13 @@ export function useCastPoll() {
         },
         onSuccess: (result, { id }) => {
             // Invalidate poll results to get updated cast counts
-            queryClient.invalidateQueries({ queryKey: pollsKeys.results(id) });
+            queryClient.invalidateQueries({ queryKey: [...queryKeys.polls.all, "results", id] });
 
             // Invalidate polls list to ensure consistency
-            queryClient.invalidateQueries({ queryKey: pollsKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.polls.lists() });
 
             // Invalidate the specific poll to refetch with updated data
-            queryClient.invalidateQueries({ queryKey: pollsKeys.detail(id) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.polls.detail(id) });
 
             // Invalidate wallet queries to ensure balance is up to date
             queryClient.invalidateQueries({
@@ -216,46 +199,41 @@ export function useCastPoll() {
 }
 
 // Update poll
-export function useUpdatePoll() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: Partial<PollCreate> }) =>
-            pollsApiV1.updatePoll(id, data),
-        onSuccess: (updatedPoll) => {
-            // Update the poll in cache
-            queryClient.setQueryData(
-                pollsKeys.detail(updatedPoll.id),
-                updatedPoll
-            );
-
-            // Invalidate lists to ensure consistency
-            queryClient.invalidateQueries({ queryKey: pollsKeys.lists() });
+export const useUpdatePoll = createMutation<
+    Poll,
+    { id: string; data: Partial<PollCreate> }
+>({
+    mutationFn: ({ id, data }) => pollsApiV1.updatePoll(id, data),
+    errorContext: "Update poll error",
+    invalidations: {
+        polls: {
+            lists: true,
+            detail: (result) => result.id,
         },
-        onError: (error) => {
-            console.error("Update poll error:", error);
-        },
-    });
-}
+    },
+    setQueryData: {
+        queryKey: (result) => queryKeys.polls.detail(result.id),
+        data: (result) => result,
+    },
+});
 
 // Delete poll
-export function useDeletePoll() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: (id: string) => pollsApiV1.deletePoll(id),
-        onSuccess: (_, deletedId) => {
-            // Remove from all caches
-            queryClient.removeQueries({
-                queryKey: pollsKeys.detail(deletedId),
-            });
-            queryClient.removeQueries({
-                queryKey: pollsKeys.results(deletedId),
-            });
-            queryClient.invalidateQueries({ queryKey: pollsKeys.lists() });
+export const useDeletePoll = createMutation<void, string>({
+    mutationFn: (id) => pollsApiV1.deletePoll(id),
+    errorContext: "Delete poll error",
+    invalidations: {
+        polls: {
+            lists: true,
+            results: (_, deletedId) => deletedId,
         },
-        onError: (error) => {
-            console.error("Delete poll error:", error);
-        },
-    });
-}
+    },
+    onSuccess: (_result, deletedId, queryClient) => {
+        // Remove from all caches
+        queryClient.removeQueries({
+            queryKey: queryKeys.polls.detail(deletedId),
+        });
+        queryClient.removeQueries({
+            queryKey: [...queryKeys.polls.all, "results", deletedId],
+        });
+    },
+});

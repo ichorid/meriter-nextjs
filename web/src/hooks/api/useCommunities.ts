@@ -1,16 +1,16 @@
 // Communities React Query hooks
 import {
     useQuery,
-    useMutation,
-    useQueryClient,
     useInfiniteQuery,
-    useQueries,
 } from "@tanstack/react-query";
 import { communitiesApiV1 } from "@/lib/api/v1";
 import { communitiesApiV1Enhanced } from "@/lib/api/v1";
 import { queryKeys } from "@/lib/constants/queryKeys";
+import { STALE_TIME } from "@/lib/constants/query-config";
 import type { PaginatedResponse, Community } from "@/types/api-v1";
-import { useMemo } from "react";
+import { createGetNextPageParam } from "@/lib/utils/pagination-utils";
+import { createMutation } from "@/lib/api/mutation-factory";
+import { useBatchQueries } from "./useBatchQueries";
 
 // Local type definition
 interface CreateCommunityDto {
@@ -65,12 +65,7 @@ export const useInfiniteCommunities = (pageSize: number = 20) => {
                 limit: pageSize,
             });
         },
-        getNextPageParam: (lastPage: PaginatedResponse<Community>) => {
-            if (!lastPage.meta?.pagination?.hasNext) {
-                return undefined;
-            }
-            return (lastPage.meta.pagination.page || 1) + 1;
-        },
+        getNextPageParam: createGetNextPageParam<Community>(),
         initialPageParam: 1,
     });
 };
@@ -89,145 +84,95 @@ export const useCommunity = (id: string) => {
  * @returns Object with queries array and communitiesMap for easy access
  */
 export function useCommunitiesBatch(communityIds: string[]) {
-    // Memoize queries array to prevent infinite loops
-    // useQueries compares the queries array by reference, so we need stable references
-    // Use JSON.stringify to compare array contents instead of reference
-    const communityIdsKey = useMemo(() => JSON.stringify([...communityIds].sort()), [communityIds]);
-    
-    const queriesConfig = useMemo(() => {
-        return communityIds.map((communityId) => ({
-            queryKey: queryKeys.communities.detail(communityId),
-            queryFn: () => communitiesApiV1.getCommunity(communityId),
-            enabled: !!communityId && communityId !== "create",
-            staleTime: 5 * 60 * 1000, // 5 minutes
-        }));
-    }, [communityIdsKey]);
-
-    const queries = useQueries({
-        queries: queriesConfig,
+    const result = useBatchQueries<Community, string>({
+        ids: communityIds,
+        queryKey: (id) => queryKeys.communities.detail(id),
+        queryFn: (id) => communitiesApiV1.getCommunity(id),
+        enabled: (id) => !!id && id !== "create",
+        staleTime: STALE_TIME.LONG,
     });
-
-    // Map results to include communityId for easier access
-    const communitiesMap = new Map<string, Community>();
-    const communities: Community[] = [];
-    
-    queries.forEach((query, index) => {
-        const communityId = communityIds[index];
-        
-        // Only add to map if query has successful data (not error, not loading)
-        if (query.data && !query.error && communityId) {
-            communitiesMap.set(communityId, query.data);
-            communities.push(query.data);
-        }
-    });
-
-    // Determine loading state: true if any query is loading and we have IDs
-    const isLoading = communityIds.length > 0 && queries.some(query => query.isLoading);
-    
-    // Determine if all queries are done (either success or error)
-    const isFetched = queries.length === 0 || queries.every(query => query.isFetched);
 
     return {
-        queries,
-        communitiesMap,
-        communities,
-        isLoading,
-        isFetched,
+        queries: result.queries,
+        communitiesMap: result.dataMap,
+        communities: result.dataArray,
+        isLoading: result.isLoading,
+        isFetched: result.isFetched,
     };
 }
 
-export const useCreateCommunity = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: (data: CreateCommunityDto) =>
-            communitiesApiV1.createCommunity(data),
-        onSuccess: () => {
-            // Invalidate all communities queries (including infinite queries)
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.communities.all,
-                exact: false,
-            });
-            // Also invalidate wallets since they're used to display communities
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.wallet.wallets(),
-            });
+export const useCreateCommunity = createMutation<Community, CreateCommunityDto>({
+    mutationFn: (data) => communitiesApiV1.createCommunity(data),
+    errorContext: "Create community error",
+    invalidations: {
+        communities: {
+            lists: true,
+            exact: false,
         },
-    });
-};
-
-export const useUpdateCommunity = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: ({
-            id,
-            data,
-        }: {
-            id: string;
-            data: Partial<UpdateCommunityDto>;
-        }) => communitiesApiV1.updateCommunity(id, data),
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.communities.all,
-            });
+        wallet: {
+            includeBalance: false,
         },
-    });
-};
+    },
+});
 
-export const useSyncCommunities = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: () => communitiesApiV1Enhanced.syncCommunities(),
-        onSuccess: () => {
-            // Invalidate wallets query since wallets are used to display communities on home page
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.wallet.wallets(),
-            });
-            // Invalidate user communities query if any hook uses it
-            queryClient.invalidateQueries({ queryKey: ["user-communities"] });
-            // Invalidate user query to refresh user data
-            queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() });
+export const useUpdateCommunity = createMutation<
+    Community,
+    { id: string; data: Partial<UpdateCommunityDto> }
+>({
+    mutationFn: ({ id, data }) => communitiesApiV1.updateCommunity(id, data),
+    errorContext: "Update community error",
+    invalidations: {
+        communities: {
+            lists: true,
+            detail: (_, variables) => variables.id,
         },
-        onError: (error) => {
-            console.error("Sync communities error:", error);
-        },
-    });
-};
+    },
+});
 
-export const useSendCommunityMemo = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (communityId: string) =>
-            communitiesApiV1.sendUsageMemo(communityId),
-        onSuccess: () => {
-            // nothing to invalidate specifically; keep for consistency
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.communities.all,
-            });
+export const useSyncCommunities = createMutation<void, void>({
+    mutationFn: () => communitiesApiV1Enhanced.syncCommunities(),
+    errorContext: "Sync communities error",
+    invalidations: {
+        wallet: {
+            includeBalance: false,
         },
-    });
-};
-
-export const useResetDailyQuota = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: (communityId: string) =>
-            communitiesApiV1.resetDailyQuota(communityId),
-        onSuccess: (_, communityId) => {
-            // Invalidate community queries to refresh quota data
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.communities.detail(communityId),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.communities.all,
-            });
-            // Also invalidate quota-related queries
-            queryClient.invalidateQueries({
-                queryKey: ['community-quota'],
-            });
+        communities: {
+            lists: true,
         },
-    });
-};
+    },
+    onSuccess: (_result, _variables, queryClient) => {
+        // Invalidate user communities query if any hook uses it
+        queryClient.invalidateQueries({ queryKey: ["user-communities"] });
+        // Invalidate user query to refresh user data
+        queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() });
+    },
+});
+
+export const useSendCommunityMemo = createMutation<void, string>({
+    mutationFn: (communityId) => communitiesApiV1.sendUsageMemo(communityId),
+    errorContext: "Send community memo error",
+    invalidations: {
+        communities: {
+            lists: true,
+            exact: false,
+        },
+    },
+});
+
+export const useResetDailyQuota = createMutation<void, string>({
+    mutationFn: (communityId) => communitiesApiV1.resetDailyQuota(communityId),
+    errorContext: "Reset daily quota error",
+    invalidations: {
+        communities: {
+            lists: true,
+            detail: (_result, communityId) => communityId,
+        },
+        quota: {
+            communityId: (_result, communityId) => communityId,
+        },
+    },
+    onSuccess: (_result, communityId, queryClient) => {
+        // Invalidate quota-related queries
+        queryClient.invalidateQueries({ queryKey: ['community-quota'] });
+    },
+});

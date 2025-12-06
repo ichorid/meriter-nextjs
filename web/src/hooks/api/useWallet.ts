@@ -1,8 +1,10 @@
 // Wallet React Query hooks
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { walletApiV1 } from '@/lib/api/v1';
 import { queryKeys } from '@/lib/constants/queryKeys';
+import { STALE_TIME } from '@/lib/constants/query-config';
 import type { PaginatedResponse } from '@/types/api-v1';
+import { createMutation } from '@/lib/api/mutation-factory';
 
 // Import types from shared-types (single source of truth)
 import type { Wallet, Transaction } from '@meriter/shared-types';
@@ -21,7 +23,7 @@ export function useWallets() {
   return useQuery({
     queryKey: queryKeys.wallet.wallets(),
     queryFn: () => walletApiV1.getWallets(),
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: STALE_TIME.MEDIUM,
   });
 }
 
@@ -30,7 +32,7 @@ export function useWalletBalance(communityId?: string) {
   return useQuery({
     queryKey: queryKeys.wallet.balance(communityId),
     queryFn: () => walletApiV1.getBalance(communityId!),
-    staleTime: 1 * 60 * 1000, // 1 minute
+    staleTime: STALE_TIME.SHORT,
     enabled: !!communityId,
   });
 }
@@ -40,7 +42,7 @@ export function useFreeBalance(communityId?: string) {
   return useQuery({
     queryKey: queryKeys.wallet.freeBalance(communityId),
     queryFn: () => walletApiV1.getFreeBalance(communityId!),
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 30 * 1000, // 30 seconds - keep as-is since it's very short-lived
     enabled: !!communityId,
   });
 }
@@ -54,7 +56,7 @@ export function useMyTransactions(params: {
   return useQuery({
     queryKey: queryKeys.wallet.myTransactions(params),
     queryFn: () => walletApiV1.getTransactions(params),
-    staleTime: 1 * 60 * 1000, // 1 minute
+    staleTime: STALE_TIME.SHORT,
   });
 }
 
@@ -63,7 +65,7 @@ export function useTransactionUpdates() {
   return useQuery({
     queryKey: queryKeys.wallet.updates(),
     queryFn: () => walletApiV1.getTransactionUpdates(),
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 30 * 1000, // 30 seconds - keep as-is since it's very short-lived
   });
 }
 
@@ -77,7 +79,7 @@ export function useTransactions(params: {
   return useQuery({
     queryKey: queryKeys.wallet.transactionsList(params),
     queryFn: () => walletApiV1.getAllTransactions(params),
-    staleTime: 1 * 60 * 1000, // 1 minute
+    staleTime: STALE_TIME.SHORT,
   });
 }
 
@@ -91,7 +93,7 @@ export function useWallet(communityId?: string) {
       return wallets.find(w => w.communityId === communityId) || null;
     },
     enabled: !!communityId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: STALE_TIME.MEDIUM,
   });
 }
 
@@ -136,6 +138,7 @@ export function useWalletController() {
   };
 
   const invalidate = (communityId?: string) => {
+    // Use direct invalidations for controller to avoid circular dependency
     queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
     if (communityId) {
       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance(communityId) });
@@ -181,44 +184,35 @@ export function useWalletController() {
 // }
 
 // Withdraw funds
-export function useWithdraw() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (data: WithdrawRequest) => walletApiV1.withdraw(data.communityId, data),
-    onSuccess: (result) => {
-      // Invalidate wallet-related queries
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.transactions() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.myTransactions({}) });
+export const useWithdraw = createMutation<void, WithdrawRequest>({
+    mutationFn: (data) => walletApiV1.withdraw(data.communityId, data),
+    errorContext: "Withdraw error",
+    invalidations: {
+        wallet: {
+            communityId: (_result, variables) => variables.communityId,
+            includeBalance: true,
+            includeTransactions: true,
+        },
     },
-    onError: (error) => {
-      console.error('Withdraw error:', error);
-    },
-  });
-}
+});
 
 // Transfer funds
-export function useTransfer() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (data: {
-      amount: number;
-      toUserId: string;
-      communityId: string;
-      description?: string;
-    }) => walletApiV1.transfer(data.communityId, data),
-    onSuccess: () => {
-      // Invalidate wallet-related queries
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.transactions() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.myTransactions({}) });
+export const useTransfer = createMutation<
+    void,
+    {
+        amount: number;
+        toUserId: string;
+        communityId: string;
+        description?: string;
+    }
+>({
+    mutationFn: (data) => walletApiV1.transfer(data.communityId, data),
+    errorContext: "Transfer error",
+    invalidations: {
+        wallet: {
+            communityId: (_result, variables) => variables.communityId,
+            includeBalance: true,
+            includeTransactions: true,
+        },
     },
-    onError: (error) => {
-      console.error('Transfer error:', error);
-    },
-  });
-}
+});
