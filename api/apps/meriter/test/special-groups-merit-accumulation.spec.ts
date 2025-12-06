@@ -448,14 +448,265 @@ describe('Special Groups Merit Accumulation', () => {
         })
         .expect(201);
 
+      // Get the Future Vision community that was actually used by the code
+      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
+      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
+
       // Check that Future Vision wallet was credited to beneficiary
       const fvWallet = await walletModel.findOne({
         userId: beneficiaryId,
-        communityId: visionCommunityId,
+        communityId: fvCommunityId,
       });
 
       expect(fvWallet).toBeTruthy();
       expect(fvWallet?.balance).toBe(5);
+    });
+
+    it('should NOT credit marathon-of-good wallet when voting on marathon publication (comprehensive check)', async () => {
+      // Create a new publication for this test to avoid conflicts
+      const newMarathonPub = await publicationService.createPublication(authorId, {
+        communityId: marathonCommunityId,
+        content: 'Test publication for comprehensive check',
+        type: 'text',
+        hashtags: ['test'],
+      });
+      const newMarathonPubId = newMarathonPub.getId.getValue();
+
+      (global as any).testUserId = voterId;
+
+      // Clear any existing wallets/transactions for this test
+      await walletModel.deleteMany({ userId: authorId, communityId: marathonCommunityId });
+      await transactionModel.deleteMany({ userId: authorId, referenceId: newMarathonPubId });
+
+      // Vote on marathon publication
+      await request(app.getHttpServer())
+        .post(`/api/v1/publications/${newMarathonPubId}/votes`)
+        .send({
+          quotaAmount: 10,
+          walletAmount: 0,
+          comment: 'Test vote',
+        })
+        .expect(201);
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Check that Marathon of Good wallet was NOT credited (should be 0 or not exist)
+      const gdmWallet = await walletModel.findOne({
+        userId: authorId,
+        communityId: marathonCommunityId,
+      });
+
+      if (gdmWallet) {
+        expect(gdmWallet.balance).toBe(0);
+      }
+
+      // Verify no transactions were created for marathon-of-good community
+      const gdmTransactions = await transactionModel.find({
+        userId: authorId,
+        communityId: marathonCommunityId,
+        type: 'credit',
+      });
+
+      expect(gdmTransactions.length).toBe(0);
+
+      // Verify Future Vision wallet WAS credited
+      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
+      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
+      const fvWallet = await walletModel.findOne({
+        userId: authorId,
+        communityId: fvCommunityId,
+      });
+
+      expect(fvWallet).toBeTruthy();
+      expect(fvWallet?.balance).toBeGreaterThanOrEqual(10);
+    });
+
+    it('should NOT credit any other groups when voting on marathon publication', async () => {
+      // Create another test community to verify no credits go there
+      const otherCommunityId = uid();
+      await communityModel.create({
+        id: otherCommunityId,
+        name: 'Other Community',
+        typeTag: 'custom',
+        members: [authorId, voterId],
+        settings: {
+          dailyEmission: 10,
+          currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        },
+        votingRules: {
+          allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
+          canVoteForOwnPosts: false,
+          participantsCannotVoteForLead: false,
+          spendsMerits: true,
+          awardsMerits: true,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Clear any existing wallets/transactions for this community
+      await walletModel.deleteMany({ userId: authorId, communityId: otherCommunityId });
+      await transactionModel.deleteMany({ userId: authorId, communityId: otherCommunityId });
+
+      (global as any).testUserId = voterId;
+
+      // Vote on marathon publication
+      await request(app.getHttpServer())
+        .post(`/api/v1/publications/${marathonPubId}/votes`)
+        .send({
+          quotaAmount: 10,
+          walletAmount: 0,
+          comment: 'Test vote',
+        })
+        .expect(201);
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Get the Future Vision community that was actually used
+      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
+      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
+
+      // Verify Future Vision wallet was credited
+      const fvWallet = await walletModel.findOne({
+        userId: authorId,
+        communityId: fvCommunityId,
+      });
+      expect(fvWallet).toBeTruthy();
+      expect(fvWallet?.balance).toBeGreaterThan(0);
+
+      // Verify NO credits went to the other community
+      const otherWallet = await walletModel.findOne({
+        userId: authorId,
+        communityId: otherCommunityId,
+      });
+
+      if (otherWallet) {
+        expect(otherWallet.balance).toBe(0);
+      }
+
+      // Verify no transactions were created for the other community
+      const otherTransactions = await transactionModel.find({
+        userId: authorId,
+        communityId: otherCommunityId,
+        type: 'credit',
+      });
+
+      expect(otherTransactions.length).toBe(0);
+
+      // Verify marathon-of-good also has no credits
+      const gdmWallet = await walletModel.findOne({
+        userId: authorId,
+        communityId: marathonCommunityId,
+      });
+
+      if (gdmWallet) {
+        expect(gdmWallet.balance).toBe(0);
+      }
+    });
+
+    it('should only credit Future Vision wallet when multiple users vote on marathon publication', async () => {
+      // Create a new publication for this test
+      const newMarathonPub = await publicationService.createPublication(authorId, {
+        communityId: marathonCommunityId,
+        content: 'Test publication for multiple voters',
+        type: 'text',
+        hashtags: ['test'],
+      });
+      const newMarathonPubId = newMarathonPub.getId.getValue();
+
+      // Create a second voter
+      const voter2Id = uid();
+      await userModel.create({
+        id: voter2Id,
+        authProvider: 'telegram',
+        authId: `tg-${voter2Id}`,
+        displayName: 'Voter 2',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await userCommunityRoleModel.create({
+        id: uid(),
+        userId: voter2Id,
+        communityId: marathonCommunityId,
+        role: 'lead',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Clear existing wallets for this test
+      await walletModel.deleteMany({ userId: authorId });
+      await transactionModel.deleteMany({ userId: authorId, referenceId: newMarathonPubId });
+
+      // Get the Future Vision community that will be used
+      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
+      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
+
+      // First voter votes
+      (global as any).testUserId = voterId;
+      await request(app.getHttpServer())
+        .post(`/api/v1/publications/${newMarathonPubId}/votes`)
+        .send({
+          quotaAmount: 5,
+          walletAmount: 0,
+          comment: 'Vote from voter 1',
+        })
+        .expect(201);
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Second voter votes
+      (global as any).testUserId = voter2Id;
+      await request(app.getHttpServer())
+        .post(`/api/v1/publications/${newMarathonPubId}/votes`)
+        .send({
+          quotaAmount: 7,
+          walletAmount: 0,
+          comment: 'Vote from voter 2',
+        })
+        .expect(201);
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Verify Future Vision wallet has the correct total (5 + 7 = 12)
+      const fvWallet = await walletModel.findOne({
+        userId: authorId,
+        communityId: fvCommunityId,
+      });
+
+      expect(fvWallet).toBeTruthy();
+      expect(fvWallet?.balance).toBe(12);
+
+      // Verify marathon-of-good wallet has NO credits
+      const gdmWallet = await walletModel.findOne({
+        userId: authorId,
+        communityId: marathonCommunityId,
+      });
+
+      if (gdmWallet) {
+        expect(gdmWallet.balance).toBe(0);
+      }
+
+      // Verify all transactions are for Future Vision, not marathon-of-good
+      const fvTransactions = await transactionModel.find({
+        walletId: fvWallet.id,
+        referenceType: 'merit_transfer_gdm_to_fv',
+        referenceId: newMarathonPubId,
+      });
+
+      expect(fvTransactions.length).toBe(2);
+      const amounts = fvTransactions.map(t => t.amount).sort((a, b) => a - b);
+      expect(amounts).toEqual([5, 7]);
+
+      // Verify no transactions for marathon-of-good
+      const gdmTransactions = await transactionModel.find({
+        userId: authorId,
+        communityId: marathonCommunityId,
+        type: 'credit',
+        referenceId: newMarathonPubId,
+      });
+
+      expect(gdmTransactions.length).toBe(0);
     });
   });
 

@@ -217,6 +217,8 @@ export class VotesController {
     }
 
     // Skip merit awarding for special groups (handled separately in awardMeritsToBeneficiary)
+    // CRITICAL: For marathon-of-good, merits are credited to Future Vision wallet in awardMeritsToBeneficiary
+    // This early return ensures NO credits go to marathon-of-good wallet from this method
     if (community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision') {
       return;
     }
@@ -243,9 +245,16 @@ export class VotesController {
 
   /**
    * Award merits to beneficiary after voting
-   * For Marathon of Good: awards to beneficiary's Future Vision wallet
-   * For Future Vision: no merit awarding
-   * For other communities: normal merit awarding
+   * 
+   * IMPORTANT: For Marathon of Good publications:
+   * - Permanent merits MUST be credited ONLY to Future Vision wallet
+   * - NO merits should be credited to Marathon of Good wallet
+   * - NO merits should be credited to any other groups
+   * 
+   * Rules:
+   * - Marathon of Good: awards to beneficiary's Future Vision wallet ONLY
+   * - Future Vision: no merit awarding
+   * - Other communities: normal merit awarding
    */
   private async awardMeritsToBeneficiary(
     publication: any,
@@ -263,7 +272,8 @@ export class VotesController {
       return;
     }
 
-    // If publication is in Marathon of Good, credit Future Vision wallet
+    // If publication is in Marathon of Good, credit Future Vision wallet ONLY
+    // CRITICAL: This early return ensures NO credits go to marathon-of-good or any other groups
     if (community.typeTag === 'marathon-of-good') {
       const futureVisionCommunity =
         await this.communityService.getCommunityByTypeTag('future-vision');
@@ -275,10 +285,11 @@ export class VotesController {
           genitive: 'merits',
         };
 
-        // Credit Future Vision wallet directly
+        // Credit Future Vision wallet directly - this is the ONLY wallet that should receive credits
+        // for marathon-of-good upvotes. NO credits should go to marathon-of-good wallet.
         await this.walletService.addTransaction(
           beneficiaryId,
-          futureVisionCommunity.id,
+          futureVisionCommunity.id, // Future Vision community ID - NOT marathon-of-good
           'credit',
           amount,
           'personal',
@@ -289,17 +300,20 @@ export class VotesController {
         );
 
         this.logger.log(
-          `Awarded ${amount} merits to beneficiary ${beneficiaryId} in Future Vision from Marathon of Good publication ${publication.getId.getValue()}`,
+          `Awarded ${amount} merits to beneficiary ${beneficiaryId} in Future Vision (community: ${futureVisionCommunity.id}) from Marathon of Good publication ${publication.getId.getValue()}. NO credits to marathon-of-good.`,
         );
       } else {
         this.logger.warn(
           `Future Vision community not found. Skipping merit award for Marathon of Good publication ${publication.getId.getValue()}`,
         );
       }
+      // CRITICAL: Early return prevents any fall-through to creditUserWithConversion
+      // This ensures NO credits go to marathon-of-good wallet
       return;
     }
 
-    // For other communities, use normal merit awarding
+    // For other communities (not marathon-of-good, not future-vision), use normal merit awarding
+    // This will credit the original community wallet
     await this.creditUserWithConversion(
       beneficiaryId,
       communityId,
