@@ -292,9 +292,9 @@ export class NotificationsController {
       // Build URL
       let url: string | undefined;
       if (update.communityId && update.publicationId) {
-        url = `/meriter/communities/${update.communityId}/posts/${update.publicationId}`;
+        url = `/meriter/communities/${update.communityId}?post=${update.publicationId}`;
         if (update.targetType === 'comment' && update.targetId) {
-          url += `?highlight=${update.targetId}`;
+          url += `&highlight=${update.targetId}`;
         }
       }
 

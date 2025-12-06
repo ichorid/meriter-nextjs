@@ -70,6 +70,12 @@ export const useMarkAsRead = createMutation<void, string>({
     invalidations: {
         notifications: true,
     },
+    onSuccess: (_result, _variables, queryClient) => {
+        // Explicitly refetch unread count to ensure immediate update
+        queryClient.refetchQueries({
+            queryKey: queryKeys.notifications.unreadCount(),
+        });
+    },
 });
 
 export const useMarkAllAsRead = createMutation<void, void>({
@@ -78,6 +84,12 @@ export const useMarkAllAsRead = createMutation<void, void>({
     invalidations: {
         notifications: true,
     },
+    onSuccess: (_result, _variables, queryClient) => {
+        // Explicitly refetch unread count to ensure immediate update
+        queryClient.refetchQueries({
+            queryKey: queryKeys.notifications.unreadCount(),
+        });
+    },
 });
 
 export const useDeleteNotification = createMutation<void, string>({
@@ -85,6 +97,12 @@ export const useDeleteNotification = createMutation<void, string>({
     errorContext: "Delete notification error",
     invalidations: {
         notifications: true,
+    },
+    onSuccess: (_result, _variables, queryClient) => {
+        // Explicitly refetch unread count in case deleted notification was unread
+        queryClient.refetchQueries({
+            queryKey: queryKeys.notifications.unreadCount(),
+        });
     },
 });
 

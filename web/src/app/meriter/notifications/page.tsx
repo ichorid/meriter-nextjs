@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Bell, Check, CheckCheck, Trash2, Filter, Settings } from 'lucide-react';
+import { Bell, Check, CheckCheck, Filter, Settings } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BrandButton } from '@/components/ui/BrandButton';
@@ -19,7 +19,6 @@ import {
   useInfiniteNotifications,
   useMarkAsRead, 
   useMarkAllAsRead, 
-  useDeleteNotification,
   useNotificationPreferences,
   useUpdatePreferences as useUpdatePrefs,
 } from '@/hooks/api/useNotifications';
@@ -30,6 +29,7 @@ export default function NotificationsPage() {
   const t = useTranslations('notifications');
   const [filter, setFilter] = useState<'all' | 'unread' | NotificationType>('all');
   const [showPreferences, setShowPreferences] = useState(false);
+  const isAutoFetchingRef = useRef(false);
 
   const isMobile = useMediaQuery('(max-width: 640px)');
   const pageSize = isMobile ? 15 : 30; // Меньше данных на mobile
@@ -40,6 +40,7 @@ export default function NotificationsPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    refetch,
   } = useInfiniteNotifications(
     {
       unreadOnly: filter === 'unread',
@@ -50,7 +51,62 @@ export default function NotificationsPage() {
 
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
-  const deleteNotification = useDeleteNotification();
+
+  // Helper function to recursively fetch all remaining pages
+  const fetchAllRemainingPages = React.useCallback(async () => {
+    if (isAutoFetchingRef.current || isFetchingNextPage) {
+      return;
+    }
+
+    isAutoFetchingRef.current = true;
+    
+    try {
+      // Keep fetching while there are more pages
+      let attempts = 0;
+      const maxAttempts = 100; // Safety limit
+      
+      while (attempts < maxAttempts) {
+        // Check current state - wait if currently fetching
+        if (isFetchingNextPage) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          continue;
+        }
+        
+        // Check if there's a next page
+        if (!hasNextPage) {
+          break;
+        }
+        
+        // Fetch the next page
+        await fetchNextPage();
+        attempts++;
+        
+        // Wait for the fetch to complete before checking again
+        await new Promise(resolve => setTimeout(resolve, 400));
+      }
+    } finally {
+      isAutoFetchingRef.current = false;
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Watch for when mutations succeed and auto-fetch remaining pages after refetch
+  useEffect(() => {
+    const mutationSucceeded = markAsRead.isSuccess || markAllAsRead.isSuccess;
+    
+    if (mutationSucceeded && !isAutoFetchingRef.current) {
+      // First refetch the infinite query to get fresh data
+      refetch().then(() => {
+        // After refetch completes, wait a bit then fetch all remaining pages
+        setTimeout(() => {
+          fetchAllRemainingPages();
+        }, 500);
+      });
+      
+      // Reset mutation success flags
+      if (markAsRead.isSuccess) markAsRead.reset();
+      if (markAllAsRead.isSuccess) markAllAsRead.reset();
+    }
+  }, [markAsRead.isSuccess, markAllAsRead.isSuccess, refetch, fetchAllRemainingPages, markAsRead, markAllAsRead]);
 
   // Flatten notifications from all pages
   const notifications = useMemo(() => {
@@ -79,11 +135,6 @@ export default function NotificationsPage() {
 
   const handleMarkAllAsRead = () => {
     markAllAsRead.mutate();
-  };
-
-  const handleDelete = (e: React.MouseEvent, notificationId: string) => {
-    e.stopPropagation();
-    deleteNotification.mutate(notificationId);
   };
 
   const getNotificationIcon = (type: NotificationType) => {
@@ -241,13 +292,6 @@ export default function NotificationsPage() {
                             <Check size={16} className="text-base-content/60" />
                           </button>
                         )}
-                        <button
-                          onClick={(e) => handleDelete(e, notification.id)}
-                          className="p-1 hover:bg-red-50 rounded-full transition-colors"
-                          aria-label="Delete"
-                        >
-                          <Trash2 size={16} className="text-base-content/60 hover:text-error" />
-                        </button>
                       </div>
                     }
                     onClick={() => handleNotificationClick(notification)}
