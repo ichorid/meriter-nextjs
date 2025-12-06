@@ -147,7 +147,6 @@ describe('Voting Permissions', () => {
         id: marathonCommunityId,
         name: 'Marathon of Good',
         typeTag: 'marathon-of-good',
-        adminIds: [],
         members: [],
         settings: {
           dailyEmission: 10,
@@ -167,7 +166,6 @@ describe('Voting Permissions', () => {
         id: visionCommunityId,
         name: 'Future Vision',
         typeTag: 'future-vision',
-        adminIds: [],
         members: [],
         settings: {
           dailyEmission: 10,
@@ -252,7 +250,6 @@ describe('Voting Permissions', () => {
         id: regularCommunityId,
         name: 'Regular Community',
         typeTag: 'custom',
-        adminIds: [],
         members: [],
         settings: {
           dailyEmission: 10,
@@ -272,7 +269,6 @@ describe('Voting Permissions', () => {
         id: team1CommunityId,
         name: 'Team 1 Community',
         typeTag: 'team',
-        adminIds: [lead1Id],
         members: [],
         settings: {
           dailyEmission: 10,
@@ -292,7 +288,6 @@ describe('Voting Permissions', () => {
         id: team2CommunityId,
         name: 'Team 2 Community',
         typeTag: 'team',
-        adminIds: [lead2Id],
         members: [],
         settings: {
           dailyEmission: 10,

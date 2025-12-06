@@ -157,7 +157,6 @@ describe('Communities Visibility Filtering', () => {
       id: community1Id,
       name: 'Lead 1 Team',
       typeTag: 'team',
-      adminIds: [lead1Id],
       members: [lead1Id],
       settings: {
         dailyEmission: 10,
@@ -175,7 +174,6 @@ describe('Communities Visibility Filtering', () => {
       id: community2Id,
       name: 'Lead 2 Team',
       typeTag: 'team',
-      adminIds: [lead2Id],
       members: [lead2Id],
       settings: {
         dailyEmission: 10,
@@ -193,7 +191,6 @@ describe('Communities Visibility Filtering', () => {
       id: community3Id,
       name: 'Other Team',
       typeTag: 'team',
-      adminIds: [],
       members: [],
       settings: {
         dailyEmission: 10,
@@ -211,7 +208,6 @@ describe('Communities Visibility Filtering', () => {
       id: marathonCommunityId,
       name: 'Marathon of Good',
       typeTag: 'marathon-of-good',
-      adminIds: [],
       members: [],
       settings: {
         dailyEmission: 10,

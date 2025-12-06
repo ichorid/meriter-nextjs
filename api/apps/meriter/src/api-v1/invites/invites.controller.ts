@@ -256,7 +256,6 @@ export class InvitesController {
         name: teamName,
         description: `Team group for ${userData?.displayName || 'Representative'}`,
         typeTag: 'team',
-        adminIds: [user.id],
         visibilityRules: {
           visibleToRoles: ['superadmin', 'lead', 'participant'], // Viewers cannot see Team groups (R:n)
           isHidden: false,

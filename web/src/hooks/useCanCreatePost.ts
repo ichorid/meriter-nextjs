@@ -55,9 +55,6 @@ export function useCanCreatePost(communityId?: string): {
       const role = userRoles.find(r => r.communityId === communityId);
       if (role?.role) {
         userRole = role.role as 'lead' | 'participant' | 'viewer';
-      } else if (community.adminIds?.includes(user.id)) {
-        // Fallback: Check if user is in community adminIds (Legacy/Owner)
-        userRole = 'lead';
       }
     }
 

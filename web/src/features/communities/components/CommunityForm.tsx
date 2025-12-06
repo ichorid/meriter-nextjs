@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useQueryClient, useQueries } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCommunity, useUpdateCommunity, useCreateCommunity, useCommunityMembers, useRemoveCommunityMember, useResetDailyQuota } from '@/hooks/api';
 import type { CommunityMember } from '@/hooks/api/useCommunityMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles, useCanCreateCommunity } from '@/hooks/api/useProfile';
 import { useCommunityInvites } from '@/hooks/api/useInvites';
 import { useUserProfile } from '@/hooks/api/useUsers';
-import { usersApiV1 } from '@/lib/api/v1';
-import { queryKeys } from '@/lib/constants/queryKeys';
 import { HashtagInput } from '@/shared/components/HashtagInput';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BrandButton } from '@/components/ui/BrandButton';
@@ -52,8 +50,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const [dailyEmission, setDailyEmission] = useState('100');
     const [language, setLanguage] = useState<'en' | 'ru'>('en');
     const [hashtags, setHashtags] = useState<string[]>([]);
-    const [adminIds, setAdminIds] = useState<string[]>([]);
-    const [newAdminId, setNewAdminId] = useState('');
     const [isPriority, setIsPriority] = useState(false);
     
 
@@ -68,45 +64,9 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             setDailyEmission(String(community.settings?.dailyEmission || 100));
             setLanguage((community.settings?.language as 'en' | 'ru') || 'en');
             setHashtags(community.hashtags || []);
-            setAdminIds((community as any).adminIds || []);
             setIsPriority((community as any).isPriority || false);
         }
     }, [community, isEditMode]);
-
-    // Load admin user profiles (after adminIds is set)
-    const adminQueries = useQueries({
-        queries: adminIds.map((adminId) => ({
-            queryKey: queryKeys.users.profile(adminId),
-            queryFn: () => usersApiV1.getUser(adminId),
-            enabled: !!adminId && isEditMode,
-        })),
-    });
-
-    // Create a map of adminId -> user data
-    const adminUsersMap = useMemo(() => {
-        const map = new Map<string, { name: string; id: string }>();
-        adminIds.forEach((adminId, index) => {
-            const userData = adminQueries[index]?.data;
-            if (userData) {
-                const displayName = userData.displayName || userData.firstName || userData.username || adminId;
-                map.set(adminId, { name: displayName, id: adminId });
-            } else {
-                map.set(adminId, { name: adminId, id: adminId });
-            }
-        });
-        return map;
-    }, [adminIds, adminQueries]);
-
-    const handleAddAdmin = () => {
-        if (newAdminId && !adminIds.includes(newAdminId)) {
-            setAdminIds([...adminIds, newAdminId]);
-            setNewAdminId('');
-        }
-    };
-
-    const handleRemoveAdmin = (id: string) => {
-        setAdminIds(adminIds.filter(adminId => adminId !== id));
-    };
 
     const handleGenerateAvatar = () => {
         const seed = encodeURIComponent(name || 'community');
@@ -130,7 +90,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                     dailyEmission: parseInt(dailyEmission, 10),
                     language,
                 },
-                ...(isEditMode && { adminIds }),
             };
 
             if (isEditMode) {
@@ -171,9 +130,8 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const isUserLead = useMemo(() => {
         if (!communityId || !user?.id || !userRoles) return false;
         const role = userRoles.find(r => r.communityId === communityId);
-        // User is lead if they have 'lead' role OR are in adminIds
-        return role?.role === 'lead' || community?.adminIds?.includes(user.id);
-    }, [communityId, user?.id, userRoles, community?.adminIds]);
+        return role?.role === 'lead';
+    }, [communityId, user?.id, userRoles]);
 
     // Check if user can reset quota (superadmin OR lead role)
     const canResetQuota = useMemo(() => {
@@ -470,62 +428,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
 
                 {isEditMode && (
                     <>
-                        <div className="border-t border-base-300 pt-6">
-                            <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
-                                {t('administrators')}
-                            </h2>
-
-                            <div className="space-y-2 mb-4">
-                                {adminIds.map((adminId) => {
-                                    const adminUser = adminUsersMap.get(adminId);
-                                    const isLoading = adminQueries[adminIds.indexOf(adminId)]?.isLoading;
-                                    const displayName = adminUser?.name || adminId;
-                                    
-                                    return (
-                                        <div
-                                            key={adminId}
-                                            className="flex items-center justify-between p-3 border border-base-300 rounded-lg"
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                {isLoading && <Loader2 className="w-4 h-4 animate-spin text-brand-text-secondary" />}
-                                                <p className="text-sm text-brand-text-primary">
-                                                    {displayName} <span className="text-brand-text-secondary">({adminId})</span>
-                                                </p>
-                                            </div>
-                                            <BrandButton
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleRemoveAdmin(adminId)}
-                                            >
-                                                <X size={16} />
-                                            </BrandButton>
-                                        </div>
-                                    );
-                                })}
-                                {adminIds.length === 0 && (
-                                    <p className="text-sm text-brand-text-secondary">{t('noAdmins')}</p>
-                                )}
-                            </div>
-
-                            <BrandFormControl label={t('addAdmin')}>
-                                <div className="flex gap-2">
-                                    <BrandInput
-                                        value={newAdminId}
-                                        onChange={(e) => setNewAdminId(e.target.value)}
-                                        placeholder={t('addAdminPlaceholder')}
-                                        fullWidth
-                                    />
-                                    <BrandButton
-                                        variant="primary"
-                                        onClick={handleAddAdmin}
-                                        disabled={!newAdminId}
-                                    >
-                                        {t('add')}
-                                    </BrandButton>
-                                </div>
-                            </BrandFormControl>
-                        </div>
-
                         {isSuperadmin && (
                             <div className="border-t border-gray-200 pt-6">
                                 <h2 className="text-lg font-semibold text-brand-text-primary mb-4">

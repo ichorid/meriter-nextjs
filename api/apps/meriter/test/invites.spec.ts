@@ -141,7 +141,6 @@ describe('Invites - Superadmin-to-Lead', () => {
       id: targetCommunityId,
       name: 'Target Community',
       typeTag: 'custom',
-      adminIds: [superadminId],
       members: [],
       settings: {
         dailyEmission: 10,
@@ -172,7 +171,6 @@ describe('Invites - Superadmin-to-Lead', () => {
         id: marathonCommunityId,
         name: 'Marathon of Good',
         typeTag: 'marathon-of-good',
-        adminIds: [],
         members: [],
         settings: {
           dailyEmission: 10,
@@ -191,7 +189,6 @@ describe('Invites - Superadmin-to-Lead', () => {
         id: visionCommunityId,
         name: 'Future Vision',
         typeTag: 'future-vision',
-        adminIds: [],
         members: [],
         settings: {
           dailyEmission: 10,
@@ -234,10 +231,11 @@ describe('Invites - Superadmin-to-Lead', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data.message).toContain('Team group created');
 
-      // Find team community (created automatically)
+      // Find team community (created automatically) - use UserCommunityRole to find communities where user is lead
+      const leadRoles = await userCommunityRoleService.getCommunitiesByRole(newLeadId, 'lead');
       const teamCommunities = await communityModel.find({
         typeTag: 'team',
-        adminIds: newLeadId,
+        id: { $in: leadRoles },
       });
       expect(teamCommunities.length).toBeGreaterThan(0);
       const teamCommunity = teamCommunities[0];
@@ -308,7 +306,6 @@ describe('Invites - Superadmin-to-Lead', () => {
         id: visionCommunityId,
         name: 'Future Vision',
         typeTag: 'future-vision',
-        adminIds: [],
         members: [],
         settings: {
           dailyEmission: 10,
@@ -369,7 +366,6 @@ describe('Invites - Superadmin-to-Lead', () => {
         id: marathonCommunityId,
         name: 'Marathon of Good',
         typeTag: 'marathon-of-good',
-        adminIds: [],
         members: [],
         settings: {
           dailyEmission: 10,
@@ -449,7 +445,7 @@ describe('Invites - Superadmin-to-Lead', () => {
       // Verify team community was created
       const teamCommunities = await communityModel.find({
         typeTag: 'team',
-        adminIds: newLeadId,
+        id: { $in: await userCommunityRoleService.getCommunitiesByRole(newLeadId, 'lead') },
       });
       expect(teamCommunities.length).toBeGreaterThan(0);
 
@@ -584,7 +580,6 @@ describe('Invites - Role Restrictions', () => {
       id: communityId,
       name: 'Test Community',
       typeTag: 'custom',
-      adminIds: [superadminId],
       members: [],
       settings: {
         dailyEmission: 10,
@@ -603,7 +598,6 @@ describe('Invites - Role Restrictions', () => {
       id: teamCommunityId,
       name: 'Team Community',
       typeTag: 'team',
-      adminIds: [leadId],
       members: [],
       settings: {
         dailyEmission: 10,

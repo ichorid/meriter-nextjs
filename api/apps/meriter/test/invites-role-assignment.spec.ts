@@ -161,7 +161,6 @@ describe('Invites - New Role Assignment Logic', () => {
       id: marathonCommunityId,
       name: 'Marathon of Good',
       typeTag: 'marathon-of-good',
-      adminIds: [],
       members: [],
       settings: {
         dailyEmission: 10,
@@ -180,7 +179,6 @@ describe('Invites - New Role Assignment Logic', () => {
       id: visionCommunityId,
       name: 'Future Vision',
       typeTag: 'future-vision',
-      adminIds: [],
       members: [],
       settings: {
         dailyEmission: 10,
@@ -199,7 +197,6 @@ describe('Invites - New Role Assignment Logic', () => {
       id: leadTeamCommunityId,
       name: 'Lead Team',
       typeTag: 'team',
-      adminIds: [leadId],
       members: [leadId],
       settings: {
         dailyEmission: 10,
@@ -347,7 +344,6 @@ describe('Invites - New Role Assignment Logic', () => {
       const teamCommunity = await communityService.getCommunity(teamCommunityId);
       expect(teamCommunity).toBeDefined();
       expect(teamCommunity?.typeTag).toBe('team');
-      expect(teamCommunity?.adminIds).toContain(newLeadId);
       expect(teamCommunity?.name).toContain('New Lead');
 
       // Verify user is lead in team community

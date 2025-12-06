@@ -139,7 +139,6 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
       id: regularCommunityId,
       name: 'Regular Community',
       typeTag: 'custom',
-      administrators: [testUserId],
       members: [testUserId, testUserId2],
       settings: {
         iconUrl: 'https://example.com/icon.png',
@@ -170,7 +169,6 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
       id: marathonCommunityId,
       name: 'Marathon of Good',
       typeTag: 'marathon-of-good',
-      administrators: [testUserId],
       members: [testUserId, testUserId2],
       settings: {
         iconUrl: 'https://example.com/icon.png',
@@ -201,7 +199,6 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
       id: visionCommunityId,
       name: 'Future Vision',
       typeTag: 'future-vision',
-      administrators: [testUserId],
       members: [testUserId, testUserId2],
       settings: {
         iconUrl: 'https://example.com/icon.png',

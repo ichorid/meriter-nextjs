@@ -45,12 +45,6 @@ export class PermissionService {
       return userRole.role;
     }
 
-    // 3. Fallback: Check if user is in community adminIds (Legacy/Owner)
-    const community = await this.communityService.getCommunity(communityId);
-    if (community?.adminIds?.includes(userId)) {
-      return 'lead';
-    }
-
     return null;
   }
 
@@ -80,8 +74,8 @@ export class PermissionService {
 
     const rules = community.postingRules;
     if (!rules) {
-      // Fallback: if no rules configured, allow admins (backward compatibility)
-      return community.adminIds?.includes(userId) || false;
+      // If no rules configured, deny by default
+      return false;
     }
 
     // Check if role is allowed
@@ -124,8 +118,8 @@ export class PermissionService {
 
     const rules = community.postingRules;
     if (!rules) {
-      // Fallback: if no rules configured, allow admins (backward compatibility)
-      return community.adminIds?.includes(userId) || false;
+      // If no rules configured, deny by default
+      return false;
     }
 
     // Check if role is allowed
@@ -368,7 +362,6 @@ export class PermissionService {
       }
       return (
         community.members?.includes(userId) ||
-        community.adminIds?.includes(userId) ||
         false
       );
     }

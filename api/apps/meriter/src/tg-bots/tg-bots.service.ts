@@ -21,6 +21,7 @@ import Axios from "axios";
 import { User, UserDocument } from "../domain/models/user/user.schema";
 import { Publication, PublicationDocument } from "../domain/models/publication/publication.schema";
 import { Community, CommunityDocument } from "../domain/models/community/community.schema";
+import { UserCommunityRoleService } from "../domain/services/user-community-role.service";
 
 import * as config from "../config";
 
@@ -42,6 +43,7 @@ export class TgBotsService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Publication.name) private publicationModel: Model<PublicationDocument>,
     @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
+    private userCommunityRoleService: UserCommunityRoleService,
   ) {
     // S3 is completely optional - only initialize if fully configured
     const s3Endpoint = process.env.S3_ENDPOINT;
@@ -297,7 +299,6 @@ export class TgBotsService {
         name: title,
         description: description || '',
         avatarUrl: chatAvatarUrl,
-        adminIds: admins.map((a) => String(a.id)),
         members: [],
         settings: {
           iconUrl: chatAvatarUrl,
@@ -327,6 +328,31 @@ export class TgBotsService {
 
       this.logger.log(`✅ Community ${chatId} ${existingCommunity ? 'UPDATED' : 'CREATED'} successfully`);
       this.logger.log(`📝 Community administrators: [${admins.map(a => String(a.id)).join(', ')}]`);
+
+      // Set Telegram admins as 'lead' roles
+      const communityId = r.id;
+      this.logger.log(`🔧 Setting Telegram admins as lead roles for community ${communityId}`);
+      const rolePromises = admins.map(async (admin) => {
+        try {
+          const telegramAuthId = String(admin.id);
+          // Find internal user by Telegram authId
+          const user = await this.userModel.findOne({
+            authProvider: 'telegram',
+            authId: telegramAuthId,
+          }).lean();
+          
+          if (user) {
+            await this.userCommunityRoleService.setRole(user.id, communityId, 'lead');
+            this.logger.log(`✅ Set user ${user.id} (Telegram ${telegramAuthId}) as lead in community ${communityId}`);
+          } else {
+            this.logger.warn(`⚠️  User not found for Telegram authId ${telegramAuthId}, skipping role assignment`);
+          }
+        } catch (error) {
+          this.logger.warn(`⚠️  Failed to set lead role for admin ${admin.id}:`, error.message);
+        }
+      });
+      await Promise.all(rolePromises);
+      this.logger.log(`✅ Completed setting lead roles for ${admins.length} admin(s)`);
 
       // Re-validate admin memberships when bot is re-added
       this.logger.log(`🔄 Re-validating admin memberships for ${admins.length} admin(s)`);

@@ -28,10 +28,6 @@ export class Community {
   @Prop()
   avatarUrl?: string;
 
-  // IDs of administrators (internal User IDs)
-  @Prop({ type: [String], default: [] })
-  adminIds: string[];
-
   @Prop({ type: [String], default: [] })
   members: string[]; // УСТАРЕВШЕЕ, использовать UserCommunityRole
 
@@ -209,5 +205,4 @@ export const CommunitySchema = SchemaFactory.createForClass(Community);
 // Add indexes for common queries
 // Note: id index is already created by @Prop({ unique: true }) decorator
 
-CommunitySchema.index({ adminIds: 1 });
 CommunitySchema.index({ isActive: 1 });

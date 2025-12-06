@@ -28,7 +28,6 @@ export function createTestCommunity(overrides: Partial<CreateCommunityDto> = {})
     name: `Test Community ${uid()}`,
     description: 'A test community',
     avatarUrl: `https://example.com/community/${uid()}.jpg`,
-    administrators: [],
     members: [],
     hashtags: ['test', 'example'],
     hashtagDescriptions: {

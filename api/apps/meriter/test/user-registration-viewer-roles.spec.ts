@@ -96,7 +96,6 @@ describe('User Registration - Viewer Role Assignment', () => {
       id: marathonCommunityId,
       name: 'Marathon of Good',
       typeTag: 'marathon-of-good',
-      adminIds: [],
       members: [],
       settings: {
         dailyEmission: 10,
@@ -114,7 +113,6 @@ describe('User Registration - Viewer Role Assignment', () => {
       id: visionCommunityId,
       name: 'Future Vision',
       typeTag: 'future-vision',
-      adminIds: [],
       members: [],
       settings: {
         dailyEmission: 10,

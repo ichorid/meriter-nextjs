@@ -129,7 +129,6 @@ describe('Comment Details Endpoint E2E Tests', () => {
     await communityModel.create({
       id: testCommunityId,
       name: 'Test Community',
-      administrators: [testUserId],
       members: [testUserId, testUserId2, testUserId3],
       settings: {
         iconUrl: 'https://example.com/icon.png',

@@ -178,8 +178,6 @@ export class CommunitiesController {
 
     return {
       ...community,
-      // Normalize adminIds from legacy fields if necessary
-      adminIds: community.adminIds || [],
       // Ensure settings.language is provided to match type expectations
       settings: {
         currencyNames: community.settings?.currencyNames,
@@ -189,7 +187,7 @@ export class CommunitiesController {
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
-      ),
+      ) || {},
       isAdmin: await this.communityService.isUserAdmin(id, req.user.id),
       needsSetup,
       createdAt: community.createdAt.toISOString(),
@@ -222,15 +220,14 @@ export class CommunitiesController {
       throw new ForbiddenError('Only superadmin can set community priority');
     }
 
-    const communityDtoWithAdmin = {
+    const communityDto = {
       ...createDto,
-      adminIds: [adminId].filter(Boolean),
       // Remove isPriority if user is not superadmin
       ...(isSuperadmin ? { isPriority: createDto.isPriority } : {}),
     };
 
     const community = await this.communityService.createCommunity(
-      communityDtoWithAdmin,
+      communityDto,
     );
 
     // Add creator as member and update memberships
@@ -266,13 +263,6 @@ export class CommunitiesController {
     return {
       ...community,
       avatarUrl: community.avatarUrl,
-      adminIds:
-        (community as any).adminIds ||
-        (community as any).adminAuthIds ||
-        (community as any).adminsTG ||
-        (community as any).administratorsTg ||
-        (community as any).administrators ||
-        [],
       settings: {
         currencyNames: community.settings?.currencyNames,
         dailyEmission: community.settings?.dailyEmission as number,
@@ -281,7 +271,7 @@ export class CommunitiesController {
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
-      ),
+      ) || {},
       isAdmin: true, // Creator is admin
       needsSetup,
       createdAt: community.createdAt.toISOString(),
@@ -334,13 +324,6 @@ export class CommunitiesController {
     return {
       ...community,
       avatarUrl: community.avatarUrl,
-      adminIds:
-        (community as any).adminIds ||
-        (community as any).adminAuthIds ||
-        (community as any).adminsTG ||
-        (community as any).administratorsTg ||
-        (community as any).administrators ||
-        [],
       settings: {
         currencyNames: community.settings?.currencyNames,
         dailyEmission: community.settings?.dailyEmission as number,
@@ -349,7 +332,7 @@ export class CommunitiesController {
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
-      ),
+      ) || {},
       isAdmin: await this.communityService.isUserAdmin(id, req.user.id),
       needsSetup,
       createdAt: community.createdAt.toISOString(),
@@ -471,7 +454,6 @@ export class CommunitiesController {
     const testCommunity = await this.communityService.createCommunity({
       name: `Test Community ${Date.now()}`,
       description: 'Test community for fake data',
-      adminIds: [user.id],
     });
 
     this.logger.log(`Created fake community: ${testCommunity.id}`);
@@ -479,6 +461,13 @@ export class CommunitiesController {
     // Add user to the community
     // 1. Add user to community's members list
     await this.communityService.addMember(testCommunity.id, user.id);
+    
+    // 2. Set user as lead role
+    await this.userCommunityRoleService.setRole(
+      user.id,
+      testCommunity.id,
+      'lead',
+    );
 
     // 2. Add community to user's memberships
     if (!user.authId) {
@@ -513,7 +502,6 @@ export class CommunitiesController {
       success: true,
       data: {
         ...testCommunity,
-        adminIds: (testCommunity as any).adminIds || [],
         isAdmin: true,
       },
     };

@@ -34,8 +34,6 @@ export interface CreateCommunityDto {
     | 'volunteer'
     | 'corporate'
     | 'custom';
-  // Internal User IDs
-  adminIds: string[];
   settings?: {
     iconUrl?: string;
     currencyNames?: {
@@ -52,8 +50,6 @@ export interface UpdateCommunityDto {
   name?: string;
   description?: string;
   avatarUrl?: string;
-  // Internal User IDs
-  adminIds?: string[];
   hashtags?: string[];
   hashtagDescriptions?: Record<string, string>;
   settings?: {
@@ -102,12 +98,6 @@ export class CommunityService {
   private async ensureBaseCommunities() {
     this.logger.log('Checking base communities...');
 
-    // Try to find a superadmin to assign as admin
-    const superadmin = await this.userModel
-      .findOne({ globalRole: 'superadmin' })
-      .lean();
-    const adminIds = superadmin ? [superadmin.id] : [];
-
     // 1. Future Vision
     const futureVision = await this.getCommunityByTypeTag('future-vision');
     if (!futureVision) {
@@ -117,7 +107,6 @@ export class CommunityService {
           name: 'Образ Будущего',
           description: 'Группа для публикации и обсуждения образов будущего.',
           typeTag: 'future-vision',
-          adminIds,
           settings: {
             currencyNames: {
               singular: 'merit',
@@ -141,7 +130,6 @@ export class CommunityService {
           name: 'Марафон Добра',
           description: 'Группа для отчетов о добрых делах.',
           typeTag: 'marathon-of-good',
-          adminIds,
           settings: {
             currencyNames: {
               singular: 'merit',
@@ -249,7 +237,6 @@ export class CommunityService {
       description: dto.description,
       avatarUrl: dto.avatarUrl,
       typeTag: dto.typeTag,
-      adminIds: dto.adminIds,
       members: [],
       settings: {
         iconUrl: dto.settings?.iconUrl,
@@ -299,7 +286,6 @@ export class CommunityService {
     if (dto.name !== undefined) updateData.name = dto.name;
     if (dto.description !== undefined) updateData.description = dto.description;
     if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
-    if (dto.adminIds !== undefined) updateData.adminIds = dto.adminIds;
     if (dto.hashtags !== undefined) updateData.hashtags = dto.hashtags;
     if (dto.hashtagDescriptions !== undefined) {
       updateData.hashtagDescriptions = dto.hashtagDescriptions;
@@ -389,14 +375,7 @@ export class CommunityService {
       return true;
     }
 
-    // 3. Check adminIds (existing logic)
-    const community = await this.communityModel
-      .findOne({
-        id: communityId,
-        adminIds: userId,
-      })
-      .lean();
-    return community !== null;
+    return false;
   }
 
   async isUserMember(communityId: string, userId: string): Promise<boolean> {
@@ -429,8 +408,19 @@ export class CommunityService {
   }
 
   async getUserManagedCommunities(userId: string): Promise<Community[]> {
+    // Get all community IDs where user has 'lead' role
+    const communityIds = await this.userCommunityRoleService.getCommunitiesByRole(
+      userId,
+      'lead',
+    );
+
+    if (communityIds.length === 0) {
+      return [];
+    }
+
+    // Fetch communities by IDs
     return this.communityModel
-      .find({ adminIds: userId })
+      .find({ id: { $in: communityIds } })
       .sort({ createdAt: -1 })
       .lean() as unknown as Community[];
   }

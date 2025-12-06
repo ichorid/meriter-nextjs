@@ -135,7 +135,6 @@ describe('Quota Wallet Separation (e2e)', () => {
       id: testCommunityId,
       name: 'Test Community',
       telegramChatId: `chat_${testCommunityId}_${Date.now()}`,
-      adminIds: [testUserId],
       members: [testUserId],
       settings: {
         iconUrl: 'https://example.com/icon.png',

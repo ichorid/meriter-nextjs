@@ -134,7 +134,6 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
     await communityModel.create({
       id: testCommunityId,
       name: 'Test Community',
-      administrators: [testUserId],
       members: [testUserId, testUserId2],
       settings: {
         iconUrl: 'https://example.com/icon.png',

@@ -119,7 +119,6 @@ describe('Posting Permissions', () => {
         id: marathonCommunityId,
         name: 'Marathon of Good',
         typeTag: 'marathon-of-good',
-        adminIds: [],
         members: [],
         postingRules: {
             // Even if we restrict roles here, participants should be allowed by override
@@ -134,7 +133,6 @@ describe('Posting Permissions', () => {
         id: visionCommunityId,
         name: 'Future Vision',
         typeTag: 'future-vision',
-        adminIds: [],
         members: [],
         postingRules: {
             // Even if we restrict roles here, participants should be allowed by override
@@ -149,7 +147,6 @@ describe('Posting Permissions', () => {
         id: regularCommunityId,
         name: 'Regular Community',
         typeTag: 'custom',
-        adminIds: [],
         members: [],
         postingRules: {
           allowedRoles: ['superadmin', 'lead', 'participant'],
@@ -163,7 +160,6 @@ describe('Posting Permissions', () => {
         id: restrictedCommunityId,
         name: 'Restricted Community',
         typeTag: 'custom',
-        adminIds: [],
         members: [],
         postingRules: {
           allowedRoles: ['lead'],

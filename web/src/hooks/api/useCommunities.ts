@@ -39,7 +39,6 @@ interface UpdateCommunityDto {
     };
     hashtags?: string[];
     hashtagDescriptions?: Record<string, string>;
-    adminIds?: string[];
     postingRules?: any;
     votingRules?: any;
     visibilityRules?: any;

@@ -158,7 +158,6 @@ describe('Special Groups Merit Accumulation', () => {
         id: marathonCommunityId,
         name: 'Marathon of Good',
         typeTag: 'marathon-of-good',
-        adminIds: [],
         members: [authorId, voterId, beneficiaryId],
         settings: {
           dailyEmission: 10,
@@ -178,7 +177,6 @@ describe('Special Groups Merit Accumulation', () => {
         id: visionCommunityId,
         name: 'Future Vision',
         typeTag: 'future-vision',
-        adminIds: [],
         members: [authorId, voterId, beneficiaryId],
         settings: {
           dailyEmission: 10,
@@ -198,7 +196,6 @@ describe('Special Groups Merit Accumulation', () => {
         id: regularCommunityId,
         name: 'Regular Community',
         typeTag: 'custom',
-        adminIds: [],
         members: [authorId, voterId, beneficiaryId],
         settings: {
           dailyEmission: 10,

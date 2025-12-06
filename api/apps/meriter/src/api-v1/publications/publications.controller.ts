@@ -300,7 +300,6 @@ export class PublicationsController {
         const testCommunity = await this.communityService.createCommunity({
           name: 'Test Community',
           description: 'Test community for fake data',
-          adminIds: [],
         });
         communityId = testCommunity.id;
         community = testCommunity;

@@ -57,13 +57,8 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
       return { role: 'participant', label: 'Participant', variant: 'info' as const };
     }
     
-    // Fallback: check if user is in adminIds (legacy support)
-    if (community?.adminIds?.includes(user?.id || '')) {
-      return { role: 'lead', label: 'Lead', variant: 'accent' as const };
-    }
-    
     return null;
-  }, [user?.globalRole, user?.id, userRoles, communityId, community?.adminIds]);
+  }, [user?.globalRole, user?.id, userRoles, communityId]);
 
   // Format balance and quota display
   const balance = wallet?.balance || 0;

@@ -6,6 +6,7 @@ import { MeriterModule } from '../src/meriter.module';
 import { WalletService } from '../src/domain/services/wallet.service';
 import { CommunityService } from '../src/domain/services/community.service';
 import { VoteService } from '../src/domain/services/vote.service';
+import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -42,6 +43,7 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
   let communityService: CommunityService;
   let walletService: WalletService;
   let voteService: VoteService;
+  let userCommunityRoleService: UserCommunityRoleService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -74,6 +76,7 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
     communityService = app.get<CommunityService>(CommunityService);
     walletService = app.get<WalletService>(WalletService);
     voteService = app.get<VoteService>(VoteService);
+    userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     
     connection = app.get(getConnectionToken());
     
@@ -139,7 +142,6 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
       id: testCommunityId,
       name: 'Test Community',
       telegramChatId: `chat_${testCommunityId}_${Date.now()}`, // Unique for each test run
-      adminIds: [testUserId], // Use adminIds instead of administrators
       members: [testUserId],
       settings: {
         iconUrl: 'https://example.com/icon.png',
@@ -157,6 +159,9 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+
+    // Set test user as lead role in the community
+    await userCommunityRoleService.setRole(testUserId, testCommunityId, 'lead');
 
     // Create test publication (by different author so user can vote)
     await publicationModel.create({
