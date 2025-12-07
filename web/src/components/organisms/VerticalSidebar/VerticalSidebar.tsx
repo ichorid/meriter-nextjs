@@ -1,14 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Info, Users } from 'lucide-react';
+import { Info, Users, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar } from '@/components/atoms';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { useUserMeritsBalance } from '@/hooks/useUserMeritsBalance';
+import { useCommunity } from '@/hooks/api/useCommunities';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
 
@@ -28,6 +29,16 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 
   // Calculate total merits balance and get related data
   const { totalWalletBalance, totalDailyQuota, communityIds, quotasMap, wallets, walletsLoading } = useUserMeritsBalance();
+  
+  // Get first community ID for currency icon
+  const firstCommunityId = useMemo(() => {
+    const walletWithCommunity = wallets.find((w: any) => w?.communityId);
+    return walletWithCommunity?.communityId;
+  }, [wallets]);
+  
+  // Fetch first community to get currency icon
+  const { data: firstCommunity } = useCommunity(firstCommunityId || '');
+  const currencyIconUrl = firstCommunity?.settings?.iconUrl;
 
   // Don't show sidebar on login page
   if (pathname?.includes('/login')) {
@@ -144,18 +155,30 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                     ? 'text-primary-content/70'
                     : 'text-base-content/70'
                   }`}>
-                    <span>{t('permanentMerits')}: <span className={`font-semibold ${pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
-                      ? 'text-primary-content'
-                      : 'text-brand-primary'
-                    }`}>{totalWalletBalance}</span></span>
+                    <span className="flex items-center gap-1">
+                      {currencyIconUrl && (
+                        <img 
+                          src={currencyIconUrl} 
+                          alt="Currency" 
+                          className="w-3 h-3 flex-shrink-0" 
+                        />
+                      )}
+                      <span>{t('permanentMerits')}: <span className={`font-semibold ${pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
+                        ? 'text-primary-content'
+                        : 'text-brand-primary'
+                      }`}>{totalWalletBalance}</span></span>
+                    </span>
                     <span className={pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
                       ? 'text-primary-content/40'
                       : 'text-base-content/40'
                     }>|</span>
-                    <span>{t('dailyMerits')}: <span className={`font-semibold ${pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
-                      ? 'text-primary-content'
-                      : 'text-brand-primary'
-                    }`}>{totalDailyQuota}</span></span>
+                    <span className="flex items-center gap-1">
+                      <Zap className="w-3 h-3 flex-shrink-0" />
+                      <span>{t('dailyMerits')}: <span className={`font-semibold ${pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
+                        ? 'text-primary-content'
+                        : 'text-brand-primary'
+                      }`}>{totalDailyQuota}</span></span>
+                    </span>
                   </div>
                 </div>
                 <svg className="w-5 h-5 ml-auto flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

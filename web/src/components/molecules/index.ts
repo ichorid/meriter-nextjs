@@ -6,4 +6,5 @@ export * from './SearchInput';
 export * from './VoteIndicator';
 export { CommentForm } from './CommentForm';
 export * from './Breadcrumbs';
+export * from './WalletChip';
 
