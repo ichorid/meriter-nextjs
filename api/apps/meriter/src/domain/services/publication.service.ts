@@ -17,7 +17,7 @@ import {
   CommunityId,
   PublicationContent,
 } from '../value-objects';
-import { PublicationCreatedEvent, PublicationVotedEvent } from '../events';
+import { PublicationCreatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { PublicationDocument as IPublicationDocument } from '../../common/interfaces/publication-document.interface';
 
@@ -185,11 +185,6 @@ export class PublicationService {
     await this.publicationModel.updateOne(
       { id: publication.getId.getValue() },
       { $set: publication.toSnapshot() },
-    );
-
-    // Publish event
-    await this.eventBus.publish(
-      new PublicationVotedEvent(publicationId, userId, amount, direction),
     );
 
     return publication;

@@ -225,7 +225,10 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 pathname={pathname}
                 isExpanded={isExpanded}
                 wallet={wallet ? { balance: wallet.balance || 0, communityId } : undefined}
-                quota={quota && typeof quota.remainingToday === 'number' ? { remainingToday: quota.remainingToday } : undefined}
+                quota={quota && typeof quota.remainingToday === 'number' ? { 
+                  remainingToday: quota.remainingToday,
+                  dailyQuota: quota.dailyQuota ?? 0
+                } : undefined}
               />
             );
           })}

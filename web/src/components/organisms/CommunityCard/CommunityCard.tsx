@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { Zap } from 'lucide-react';
 import { CommunityAvatar } from '@/shared/components/community-avatar';
 import { Badge } from '@/components/atoms';
 import { useCommunity } from '@/hooks/api';
@@ -21,12 +22,14 @@ export interface CommunityCardProps {
   };
   quota?: {
     remainingToday: number;
+    dailyQuota: number;
   };
 }
 
 /**
  * Community card component that displays community info horizontally
- * Shows: avatar, title, and balance/quota in emoji: X+Y format
+ * Shows: avatar, title, and balance/quota in a vertical box format
+ * with separate rows for wallet balance (merit icon) and quota (lightning icon)
  */
 export const CommunityCard: React.FC<CommunityCardProps> = ({
   communityId,
@@ -65,6 +68,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   // Format balance and quota display
   const balance = wallet?.balance || 0;
   const remainingQuota = quota?.remainingToday || 0;
+  const dailyQuota = quota?.dailyQuota || 0;
 
   // Show a placeholder while loading or if community fetch fails
   if (!community) {
@@ -121,11 +125,19 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                 </Badge>
               )}
             </div>
-            <div className={`text-xs truncate flex items-center gap-1 ${isActive ? 'text-primary-content/80' : 'text-base-content/60 dark:text-base-content/60'}`}>
-              {currencyIconUrl && (
-                <img src={currencyIconUrl} alt="Currency" className="w-3 h-3 inline-block" />
-              )}
-              <span>{balance}+{remainingQuota}</span>
+            <div className={`mt-1.5 p-2 rounded border flex flex-col gap-1 ${isActive ? 'bg-primary/10 border-primary-content/20' : 'bg-base-200 border-base-300'}`}>
+              <div className={`text-xs flex items-center gap-1.5 ${isActive ? 'text-primary-content/90' : 'text-base-content/70'}`}>
+                {currencyIconUrl && (
+                  <img src={currencyIconUrl} alt="Currency" className="w-3 h-3 flex-shrink-0" />
+                )}
+                <span className="flex-shrink-0">:</span>
+                <span className="font-medium">{balance}</span>
+              </div>
+              <div className={`text-xs flex items-center gap-1.5 ${isActive ? 'text-primary-content/90' : 'text-base-content/70'}`}>
+                <Zap className="w-3 h-3 flex-shrink-0" />
+                <span className="flex-shrink-0">:</span>
+                <span className="font-medium">{remainingQuota} / {dailyQuota}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -161,11 +173,19 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
             title={userRoleBadge.label} 
           />
         )}
-        <div className="mt-1 text-[10px] leading-none text-base-content/60 text-center truncate max-w-[48px] flex items-center justify-center gap-0.5">
-          {currencyIconUrl && (
-            <img src={currencyIconUrl} alt="Currency" className="w-2.5 h-2.5 inline-block" />
-          )}
-          <span>{balance}+{remainingQuota}</span>
+        <div className="mt-1 p-1 rounded border bg-base-200 border-base-300 flex flex-col gap-0.5 max-w-[48px]">
+          <div className="text-[9px] leading-tight text-base-content/70 flex items-center gap-0.5 justify-center">
+            {currencyIconUrl && (
+              <img src={currencyIconUrl} alt="Currency" className="w-2 h-2 flex-shrink-0" />
+            )}
+            <span className="flex-shrink-0">:</span>
+            <span className="font-medium truncate">{balance}</span>
+          </div>
+          <div className="text-[9px] leading-tight text-base-content/70 flex items-center gap-0.5 justify-center">
+            <Zap className="w-2 h-2 flex-shrink-0" />
+            <span className="flex-shrink-0">:</span>
+            <span className="font-medium truncate">{remainingQuota}/{dailyQuota}</span>
+          </div>
         </div>
       </div>
     </Link>
