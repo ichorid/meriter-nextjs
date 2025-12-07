@@ -1,31 +1,27 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { usePathname } from 'next/navigation';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useCommunitiesBatch, useCommunities } from '@/hooks/api/useCommunities';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useWallets } from '@/hooks/api';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
-import { InfoCard } from '@/components/ui/InfoCard';
+import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { InviteInput } from '@/components/molecules/InviteInput/InviteInput';
 import Link from 'next/link';
 
 export default function CommunitiesPage() {
-    const router = useRouter();
-    const t = useTranslations('communities');
-    const tProfile = useTranslations('profile');
+    const pathname = usePathname();
     const { user, isLoading: userLoading } = useAuth();
     
     // Check if user is superadmin
     const isSuperadmin = user?.globalRole === 'superadmin';
     
-    // Check if user has viewer role
+    // Check if user has viewer role (CommunityCard handles badge display internally)
     const { data: userRoles } = useUserRoles(user?.id || '');
     const hasViewerRole = useMemo(() => {
         return userRoles?.some(role => role.role === 'viewer') ?? false;
@@ -83,7 +79,7 @@ export default function CommunitiesPage() {
     }, [specialCommunities, userCommunities]);
 
     // Fetch wallets and quotas
-    const { data: wallets = [], isLoading: walletsLoading } = useWallets();
+    const { data: wallets = [] } = useWallets();
     const { quotasMap } = useCommunityQuotas(allCommunityIds);
 
     // Create a map of communityId -> wallet for quick lookup
@@ -97,46 +93,6 @@ export default function CommunitiesPage() {
         return map;
     }, [wallets]);
 
-    // Helper function to determine user role per community for badge display
-    const getUserRoleBadge = (communityId: string): string | null => {
-        // Check global superadmin role first
-        if (user?.globalRole === 'superadmin') {
-            return tProfile('roleTypes.superadmin');
-        }
-        
-        // Find role in userRoles array matching the communityId
-        const role = userRoles?.find(r => r.communityId === communityId);
-        
-        // Only show badge for lead, participant, and superadmin (not viewer)
-        if (role?.role === 'lead') {
-            return tProfile('roleTypes.lead');
-        }
-        if (role?.role === 'participant') {
-            return tProfile('roleTypes.participant');
-        }
-        
-        return null;
-    };
-
-    // Helper function to render merits/quota indicator
-    const renderMeritsQuota = (community: typeof allCommunities[0]) => {
-        const wallet = walletsMap.get(community.id);
-        const quota = quotasMap.get(community.id);
-        const balance = wallet?.balance || 0;
-        const remainingQuota = quota?.remainingToday || 0;
-        const currencyIconUrl = community.settings?.iconUrl;
-
-        // Always show the indicator, even if both are 0 (for consistency)
-        return (
-            <div className="text-xs flex items-center gap-1 text-brand-text-secondary flex-shrink-0 min-w-0">
-                {currencyIconUrl && (
-                    <img src={currencyIconUrl} alt="Currency" className="w-3 h-3 inline-block flex-shrink-0" />
-                )}
-                <span className="whitespace-nowrap">{balance}+{remainingQuota}</span>
-            </div>
-        );
-    };
-    
     // Combined loading state
     const isLoading = userLoading || (isSuperadmin ? allCommunitiesLoading : memberCommunitiesLoading);
 
@@ -158,23 +114,19 @@ export default function CommunitiesPage() {
                                 </h2>
                                 <div className="space-y-3">
                                     {specialCommunities.map((community) => {
-                                        const badgeText = getUserRoleBadge(community.id);
+                                        const wallet = walletsMap.get(community.id);
+                                        const quota = quotasMap.get(community.id);
                                         return (
-                                            <InfoCard
+                                            <CommunityCard
                                                 key={community.id}
-                                                title={community.name}
-                                                subtitle={community.description}
-                                                icon={
-                                                    <BrandAvatar
-                                                        src={community.avatarUrl}
-                                                        fallback={community.name}
-                                                        size="sm"
-                                                        className="bg-transparent"
-                                                    />
-                                                }
-                                                rightElement={renderMeritsQuota(community)}
-                                                badges={badgeText ? [badgeText] : undefined}
-                                                onClick={() => router.push(`/meriter/communities/${community.id}`)}
+                                                communityId={community.id}
+                                                pathname={pathname}
+                                                isExpanded={true}
+                                                wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                                                quota={quota && typeof quota.remainingToday === 'number' ? { 
+                                                    remainingToday: quota.remainingToday,
+                                                    dailyQuota: quota.dailyQuota ?? 0
+                                                } : undefined}
                                             />
                                         );
                                     })}
@@ -227,23 +179,19 @@ export default function CommunitiesPage() {
                                 ) : (
                                     <div className="space-y-3">
                                         {userCommunities.map((community) => {
-                                            const badgeText = getUserRoleBadge(community.id);
+                                            const wallet = walletsMap.get(community.id);
+                                            const quota = quotasMap.get(community.id);
                                             return (
-                                                <InfoCard
+                                                <CommunityCard
                                                     key={community.id}
-                                                    title={community.name}
-                                                    subtitle={community.description}
-                                                    icon={
-                                                        <BrandAvatar
-                                                            src={community.avatarUrl}
-                                                            fallback={community.name}
-                                                            size="sm"
-                                                            className="bg-transparent"
-                                                        />
-                                                    }
-                                                    rightElement={renderMeritsQuota(community)}
-                                                    badges={badgeText ? [badgeText] : undefined}
-                                                    onClick={() => router.push(`/meriter/communities/${community.id}`)}
+                                                    communityId={community.id}
+                                                    pathname={pathname}
+                                                    isExpanded={true}
+                                                    wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                                                    quota={quota && typeof quota.remainingToday === 'number' ? { 
+                                                        remainingToday: quota.remainingToday,
+                                                        dailyQuota: quota.dailyQuota ?? 0
+                                                    } : undefined}
                                                 />
                                             );
                                         })}

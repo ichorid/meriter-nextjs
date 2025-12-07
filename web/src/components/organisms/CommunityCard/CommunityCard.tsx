@@ -5,10 +5,9 @@ import Link from 'next/link';
 import { Zap } from 'lucide-react';
 import { CommunityAvatar } from '@/shared/components/community-avatar';
 import { Badge } from '@/components/atoms';
+import { WalletQuotaBlock } from '@/components/molecules/WalletQuotaBlock';
 import { useCommunity } from '@/hooks/api';
-import { useWallets } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useTranslations } from 'next-intl';
 
@@ -27,9 +26,12 @@ export interface CommunityCardProps {
 }
 
 /**
- * Community card component that displays community info horizontally
- * Shows: avatar, title, and balance/quota in a vertical box format
- * with separate rows for wallet balance (merit icon) and quota (lightning icon)
+ * Community card component that displays community info
+ * Layout (expanded):
+ * - Row 1: Community title
+ * - Row 2: Avatar | Role badge | WalletQuotaBlock (right-aligned)
+ * - Row 3: Community description
+ * Used in both the left sidebar and the communities page
  */
 export const CommunityCard: React.FC<CommunityCardProps> = ({
   communityId,
@@ -91,55 +93,60 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   // Get currency icon from community settings (stored as data URL or image URL)
   const currencyIconUrl = community.settings?.iconUrl;
 
-  // Expanded version (desktop)
+  // Expanded version (desktop) - matches target layout:
+  // Row 1: Community title
+  // Row 2: Avatar | Role badge | WalletQuotaBlock (right-aligned)
+  // Row 3: Community description
   if (isExpanded) {
     return (
       <Link href={`/meriter/communities/${communityId}`}>
         <div
-          className={`w-full rounded-lg p-3 flex items-center gap-3 cursor-pointer transition-all ${
+          className={`w-full rounded-lg p-3 flex flex-col gap-2 cursor-pointer transition-all ${
             isActive
               ? 'bg-primary text-primary-content'
               : 'bg-base-100 hover:bg-base-200 border border-base-300'
           }`}
         >
-          <div className="flex-shrink-0">
-            <CommunityAvatar
-              avatarUrl={community.avatarUrl}
-              communityName={community.name}
-              size={40}
-              needsSetup={community.needsSetup}
+          {/* Row 1: Community title */}
+          <div className={`text-sm font-medium truncate ${isActive ? 'text-primary-content' : 'text-base-content'}`}>
+            {community.name}
+          </div>
+
+          {/* Row 2: Avatar | Role badge | WalletQuotaBlock (right-aligned) */}
+          <div className="flex items-center gap-2">
+            <div className="flex-shrink-0">
+              <CommunityAvatar
+                avatarUrl={community.avatarUrl}
+                communityName={community.name}
+                size={32}
+                needsSetup={community.needsSetup}
+              />
+            </div>
+            {userRoleBadge && (
+              <Badge 
+                variant={userRoleBadge.variant} 
+                size="xs"
+                className={isActive ? 'bg-primary-content/20 text-primary-content border border-primary-content/30' : ''}
+              >
+                {userRoleBadge.label}
+              </Badge>
+            )}
+            <div className="flex-1" />
+            <WalletQuotaBlock
+              balance={balance}
+              remainingQuota={remainingQuota}
+              dailyQuota={dailyQuota}
+              currencyIconUrl={currencyIconUrl}
+              className={isActive ? 'text-primary-content/90' : ''}
             />
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <div className={`text-sm font-medium truncate ${isActive ? 'text-primary-content' : 'text-base-content dark:text-base-content'}`}>
-                {community.name}
-              </div>
-              {userRoleBadge && (
-                <Badge 
-                  variant={userRoleBadge.variant} 
-                  size="xs"
-                  className={isActive ? 'bg-primary-content/20 text-primary-content border border-primary-content/30' : ''}
-                >
-                  {userRoleBadge.label}
-                </Badge>
-              )}
+
+          {/* Row 3: Community description */}
+          {community.description && (
+            <div className={`text-xs truncate ${isActive ? 'text-primary-content/80' : 'text-base-content/70'}`}>
+              {community.description}
             </div>
-            <div className={`mt-1.5 p-2 rounded border flex flex-col gap-1 ${isActive ? 'bg-primary/10 border-primary-content/20' : 'bg-base-200 border-base-300'}`}>
-              <div className={`text-xs flex items-center gap-1.5 ${isActive ? 'text-primary-content/90' : 'text-base-content/70'}`}>
-                {currencyIconUrl && (
-                  <img src={currencyIconUrl} alt="Currency" className="w-3 h-3 flex-shrink-0" />
-                )}
-                <span className="flex-shrink-0">:</span>
-                <span className="font-medium">{balance}</span>
-              </div>
-              <div className={`text-xs flex items-center gap-1.5 ${isActive ? 'text-primary-content/90' : 'text-base-content/70'}`}>
-                <Zap className="w-3 h-3 flex-shrink-0" />
-                <span className="flex-shrink-0">:</span>
-                <span className="font-medium">{remainingQuota} / {dailyQuota}</span>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </Link>
     );

@@ -96,7 +96,7 @@ export const BottomNavigation = () => {
                     balance={totalWalletBalance}
                     quota={totalDailyQuota}
                     currencyIconUrl={currencyIconUrl}
-                    onClick={() => router.push(routes.wallet)}
+                    onClick={() => router.push(routes.communities)}
                     className="bottom-12"
                 />
             </div>
