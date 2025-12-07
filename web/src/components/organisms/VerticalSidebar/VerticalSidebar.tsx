@@ -35,7 +35,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   const userRoleDisplay = React.useMemo(() => {
     // Check global superadmin role first
     if (user?.globalRole === 'superadmin') {
-      return { role: 'superadmin', label: 'Superadmin', variant: 'error' as const };
+      return { role: 'superadmin', label: t('superadmin'), variant: 'error' as const };
     }
     
     // Check community roles (lead > participant > viewer)
@@ -44,17 +44,17 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
     const hasViewer = userRoles.some(r => r.role === 'viewer');
     
     if (hasLead) {
-      return { role: 'lead', label: 'Representative', variant: 'accent' as const };
+      return { role: 'lead', label: t('representative'), variant: 'accent' as const };
     }
     if (hasParticipant) {
-      return { role: 'participant', label: 'Participant', variant: 'info' as const };
+      return { role: 'participant', label: t('participant'), variant: 'info' as const };
     }
     if (hasViewer) {
-      return { role: 'viewer', label: 'Viewer', variant: 'secondary' as const };
+      return { role: 'viewer', label: t('viewer'), variant: 'secondary' as const };
     }
     
     return null;
-  }, [user?.globalRole, userRoles]);
+  }, [user?.globalRole, userRoles, t]);
 
   // Don't show sidebar on login page
   if (pathname?.includes('/login')) {
@@ -150,7 +150,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                       </span>
                     )}
                   </div>
-                  <span className="ml-2 text-sm font-medium">Notifications</span>
+                  <span className="ml-2 text-sm font-medium">{t('notifications')}</span>
                   {unreadCount > 0 && (
                     <span className={`ml-auto text-xs font-semibold ${pathname === routes.notifications
                       ? 'text-primary-content'
@@ -215,12 +215,12 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         <div className={isExpanded ? 'space-y-2' : 'space-y-[12.8px]'}>
           {isAuthenticated && !walletsLoading && communityIds.length === 0 && wallets.length > 0 && (
             <div className="text-xs text-base-content/50 px-2">
-              No communities found in wallets
+              {t('noCommunitiesFound')}
             </div>
           )}
           {isAuthenticated && walletsLoading && (
             <div className="text-xs text-base-content/50 px-2">
-              Loading communities...
+              {t('loadingCommunities')}
             </div>
           )}
           {isAuthenticated && communityIds.map((communityId: string) => {

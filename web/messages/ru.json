@@ -16,7 +16,15 @@
         "permanentMerits": "Постоянные",
         "add": "Добавить",
         "createCommunity": "Создать сообщество",
-        "about": "О приложении"
+        "about": "О приложении",
+        "allCommunities": "Все сообщества",
+        "notifications": "Уведомления",
+        "superadmin": "Суперадмин",
+        "representative": "Представитель",
+        "participant": "Участник",
+        "viewer": "Наблюдатель",
+        "noCommunitiesFound": "Сообщества не найдены в кошельках",
+        "loadingCommunities": "Загрузка сообществ..."
     },
     "home": {
         "breadcrumb": "Главная",
@@ -121,7 +129,19 @@
         "inviteSection": "Код приглашения",
         "account": "Аккаунт",
         "profile": "Профиль",
-        "preferences": "Настройки"
+        "preferences": "Настройки",
+        "development": "Разработка",
+        "creating": "Создание...",
+        "createFakeCommunity": "Создать тестовое сообщество",
+        "adding": "Добавление...",
+        "addUserToAllCommunities": "Добавить этого пользователя во все сообщества",
+        "fakeCommunityCreated": "Сообщество успешно создано: {name}",
+        "fakeCommunityFailed": "Не удалось создать тестовое сообщество",
+        "addToAllSuccess": "Успешно добавлено в {added} сообществ ({skipped} уже были участниками)",
+        "addToAllPartial": "Добавлено в {added} сообществ, пропущено {skipped}. Произошло {errors} ошибок.",
+        "addToAllFailed": "Не удалось добавить пользователя во все сообщества",
+        "languageEnglish": "English",
+        "languageRussian": "Русский"
     },
     "wallet": {
         "balance": "Баланс",
@@ -172,6 +192,9 @@
         "authenticating": "Авторизация...",
         "discoveringCommunities": "Поиск ваших сообществ...",
         "authError": "Ошибка авторизации",
+        "fakeDataModeEnabled": "Режим тестовых данных включен",
+        "fakeLogin": "Тестовый вход",
+        "superadminLogin": "Вход суперадмина",
         "connectionError": "Ошибка подключения к серверу: {message}",
         "telegramWebApp": {
             "detected": "Обнаружено Telegram Web App, выполняется авторизация..."

@@ -37,8 +37,8 @@ export function LanguageSelector() {
                 onChange={changeLanguage}
                 options={[
                     { label: t('languageAuto'), value: 'auto' },
-                    { label: 'English', value: 'en' },
-                    { label: 'Русский', value: 'ru' },
+                    { label: t('languageEnglish'), value: 'en' },
+                    { label: t('languageRussian'), value: 'ru' },
                 ]}
                 placeholder={t('languageAuto')}
                 fullWidth

@@ -471,7 +471,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                                     return (
                                         <div
                                             key={member.id}
-                                            className={`flex items-center justify-between p-3 bg-white border border-brand-secondary/10 rounded-lg shadow-sm hover:shadow-md transition-shadow ${isPendingInvite ? 'opacity-75' : ''}`}
+                                            className={`flex items-center justify-between p-3 bg-base-100 border border-brand-secondary/10 rounded-lg shadow-sm hover:shadow-md transition-shadow ${isPendingInvite ? 'opacity-75' : ''}`}
                                         >
                                             <div className="flex items-center space-x-3 flex-1">
                                                 <BrandAvatar

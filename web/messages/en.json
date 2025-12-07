@@ -20,7 +20,14 @@
         "about": "About",
         "allCommunities": "All Communities",
         "copy": "Copy",
-        "copied": "Copied!"
+        "copied": "Copied!",
+        "notifications": "Notifications",
+        "superadmin": "Superadmin",
+        "representative": "Representative",
+        "participant": "Participant",
+        "viewer": "Viewer",
+        "noCommunitiesFound": "No communities found in wallets",
+        "loadingCommunities": "Loading communities..."
     },
     "home": {
         "breadcrumb": "Home",
@@ -125,7 +132,19 @@
         "inviteSection": "Invite Code",
         "account": "Account",
         "profile": "Profile",
-        "preferences": "Preferences"
+        "preferences": "Preferences",
+        "development": "Development",
+        "creating": "Creating...",
+        "createFakeCommunity": "Create Fake Community",
+        "adding": "Adding...",
+        "addUserToAllCommunities": "Add This User to All Communities",
+        "fakeCommunityCreated": "Successfully created community: {name}",
+        "fakeCommunityFailed": "Failed to create fake community",
+        "addToAllSuccess": "Successfully added to {added} communities ({skipped} already members)",
+        "addToAllPartial": "Added to {added} communities, skipped {skipped}. {errors} errors occurred.",
+        "addToAllFailed": "Failed to add user to all communities",
+        "languageEnglish": "English",
+        "languageRussian": "Русский"
     },
     "wallet": {
         "balance": "Balance",
@@ -176,6 +195,9 @@
         "authenticating": "Authenticating...",
         "discoveringCommunities": "Discovering your communities...",
         "authError": "Authentication error",
+        "fakeDataModeEnabled": "Fake Data Mode Enabled",
+        "fakeLogin": "Fake Login",
+        "superadminLogin": "Superadmin Login",
         "connectionError": "Server connection error: {message}",
         "telegramWebApp": {
             "detected": "Telegram Web App detected, authenticating..."

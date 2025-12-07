@@ -37,8 +37,8 @@ export const InfoCard: React.FC<InfoCardProps> = ({
     return (
         <Component
             className={`
-        w-full flex flex-col bg-brand-surface border border-brand-secondary/10 rounded-xl
-        transition-all duration-200
+        w-full max-w-full flex flex-col bg-brand-surface border border-brand-secondary/10 rounded-xl
+        transition-all duration-200 overflow-hidden
         ${onClick ? 'cursor-pointer hover:bg-brand-secondary/5 hover:shadow-md active:bg-brand-secondary/10 text-left' : 'hover:shadow-md'}
         ${paddingClass}
         ${className}
@@ -53,19 +53,19 @@ export const InfoCard: React.FC<InfoCardProps> = ({
             )}
 
             {/* Main Content */}
-            <div className="flex items-center flex-1">
+            <div className="flex items-center flex-1 min-w-0">
                 {icon && (
                     <div className="mr-4 text-brand-primary bg-brand-primary/10 p-2 rounded-lg flex-shrink-0">
                         {icon}
                     </div>
                 )}
 
-                <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-brand-text-primary truncate">
+                <div className="flex-1 min-w-0 overflow-hidden">
+                    <h3 className="text-sm font-semibold text-brand-text-primary break-words">
                         {title}
                     </h3>
                     {subtitle && (
-                        <p className="text-xs text-brand-text-secondary mt-0.5 truncate">
+                        <p className="text-xs text-brand-text-secondary mt-0.5 break-words">
                             {subtitle}
                         </p>
                     )}
@@ -76,7 +76,7 @@ export const InfoCard: React.FC<InfoCardProps> = ({
                             {badges.map((badge, index) => (
                                 <span
                                     key={index}
-                                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-brand-primary/10 text-brand-primary"
+                                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-brand-primary/10 text-brand-primary break-words"
                                 >
                                     {badge}
                                 </span>

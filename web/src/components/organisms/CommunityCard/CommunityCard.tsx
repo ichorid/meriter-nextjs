@@ -9,6 +9,7 @@ import { useWallets } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { useUserRoles } from '@/hooks/api/useProfile';
+import { useTranslations } from 'next-intl';
 
 export interface CommunityCardProps {
   communityId: string;
@@ -37,13 +38,14 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const { data: community } = useCommunity(communityId);
   const { user } = useAuth();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
+  const t = useTranslations('common');
   const isActive = pathname?.includes(`/communities/${communityId}`);
 
   // Determine user's role per community for badge display
   const userRoleBadge = React.useMemo(() => {
     // Check global superadmin role first
     if (user?.globalRole === 'superadmin') {
-      return { role: 'superadmin', label: 'Superadmin', variant: 'error' as const };
+      return { role: 'superadmin', label: t('superadmin'), variant: 'error' as const };
     }
     
     // Find role in userRoles array matching the communityId
@@ -51,14 +53,14 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     
     // Only show badge for lead, participant, and superadmin (not viewer)
     if (role?.role === 'lead') {
-      return { role: 'lead', label: 'Lead', variant: 'accent' as const };
+      return { role: 'lead', label: t('representative'), variant: 'accent' as const };
     }
     if (role?.role === 'participant') {
-      return { role: 'participant', label: 'Participant', variant: 'info' as const };
+      return { role: 'participant', label: t('participant'), variant: 'info' as const };
     }
     
     return null;
-  }, [user?.globalRole, user?.id, userRoles, communityId]);
+  }, [user?.globalRole, user?.id, userRoles, communityId, t]);
 
   // Format balance and quota display
   const balance = wallet?.balance || 0;

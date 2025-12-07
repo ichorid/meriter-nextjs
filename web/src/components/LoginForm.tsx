@@ -158,14 +158,14 @@ export function LoginForm({
                     {t("subtitle")}
                 </p>
 
-                {isLoading && <LoadingState text="Authenticating..." />}
+                {isLoading && <LoadingState text={t("authenticating")} />}
 
                 {!isLoading && (
                     <div className="space-y-4">
                         {fakeDataMode ? (
                             <div className="space-y-4 text-center">
                                 <p className="text-sm text-base-content bg-warning/10 p-2 rounded-lg border border-warning/20">
-                                    Fake Data Mode Enabled
+                                    {t("fakeDataModeEnabled")}
                                 </p>
                                 <BrandButton
                                     variant="primary"
@@ -174,7 +174,7 @@ export function LoginForm({
                                     onClick={handleFakeAuth}
                                     disabled={isLoading}
                                 >
-                                    Fake Login
+                                    {t("fakeLogin")}
                                 </BrandButton>
                                 <BrandButton
                                     variant="outline"
@@ -184,7 +184,7 @@ export function LoginForm({
                                     disabled={isLoading}
                                     className="border-primary text-primary hover:bg-primary hover:text-primary-content"
                                 >
-                                    Superadmin Login
+                                    {t("superadminLogin")}
                                 </BrandButton>
                             </div>
                         ) : displayedProviders.length > 0 ? (

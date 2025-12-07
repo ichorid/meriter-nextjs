@@ -22,12 +22,13 @@ interface ProfileHeroProps {
 
 export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles = [] }: ProfileHeroProps) {
   const t = useTranslations('profile');
+  const tCommon = useTranslations('common');
   
   // Determine role type for display (same logic as VerticalSidebar)
   const userRoleDisplay = React.useMemo(() => {
     // Check global superadmin role first
     if (user?.globalRole === 'superadmin') {
-      return { role: 'superadmin', label: t('roleTypes.superadmin') || 'Superadmin', variant: 'error' as const };
+      return { role: 'superadmin', label: tCommon('superadmin'), variant: 'error' as const };
     }
     
     // Check community roles (lead > participant > viewer)
@@ -36,17 +37,17 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
     const hasViewer = userRoles.some(r => r.role === 'viewer');
     
     if (hasLead) {
-      return { role: 'lead', label: 'Representative', variant: 'accent' as const };
+      return { role: 'lead', label: tCommon('representative'), variant: 'accent' as const };
     }
     if (hasParticipant) {
-      return { role: 'participant', label: t('roleTypes.participant') || 'Participant', variant: 'info' as const };
+      return { role: 'participant', label: tCommon('participant'), variant: 'info' as const };
     }
     if (hasViewer) {
-      return { role: 'viewer', label: t('roleTypes.viewer') || 'Viewer', variant: 'secondary' as const };
+      return { role: 'viewer', label: tCommon('viewer'), variant: 'secondary' as const };
     }
     
     return null;
-  }, [user?.globalRole, userRoles, t]);
+  }, [user?.globalRole, userRoles, t, tCommon]);
 
   if (!user) return null;
 

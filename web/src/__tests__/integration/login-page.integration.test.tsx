@@ -43,6 +43,10 @@ const mockMessages = {
     welcome: 'Welcome',
     subtitle: 'Sign in to continue',
     signInWith: 'Sign in with {{provider}}',
+    fakeDataModeEnabled: 'Fake Data Mode Enabled',
+    fakeLogin: 'Fake Login',
+    superadminLogin: 'Superadmin Login',
+    authenticating: 'Authenticating...',
   },
   registration: {
     inviteCodeLabel: 'Invite Code',
@@ -310,8 +314,8 @@ describe('Login Page Integration', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByText(/Fake Data Mode Enabled/i)).toBeInTheDocument();
-      const fakeLoginButton = screen.getByText(/Fake Login/i);
+      expect(screen.getByText(/login\.fakeDataModeEnabled/i)).toBeInTheDocument();
+      const fakeLoginButton = screen.getByText(/login\.fakeLogin/i);
       await user.click(fakeLoginButton);
 
       await waitFor(() => {
@@ -367,7 +371,7 @@ describe('Login Page Integration', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByText(/Authenticating.../i)).toBeInTheDocument();
+      expect(screen.getByText(/login\.authenticating/i)).toBeInTheDocument();
     });
   });
 

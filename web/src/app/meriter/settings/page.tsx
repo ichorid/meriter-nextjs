@@ -53,13 +53,13 @@ const SettingsPage = () => {
         setFakeCommunityMessage('');
         try {
             const community = await communitiesApiV1.createFakeCommunity();
-            setFakeCommunityMessage(`Successfully created community: ${community.name}`);
+            setFakeCommunityMessage(t('fakeCommunityCreated', { name: community.name }));
             setTimeout(() => {
                 router.push(`/meriter/communities/${community.id}`);
             }, 1000);
         } catch (error) {
             console.error('Create fake community error:', error);
-            setFakeCommunityMessage('Failed to create fake community');
+            setFakeCommunityMessage(t('fakeCommunityFailed'));
             setTimeout(() => setFakeCommunityMessage(''), 3000);
         } finally {
             setCreatingFakeCommunity(false);
@@ -72,9 +72,9 @@ const SettingsPage = () => {
         try {
             const result = await communitiesApiV1.addUserToAllCommunities();
             if (result.errors && result.errors.length > 0) {
-                setAddToAllMessage(`Added to ${result.added} communities, skipped ${result.skipped}. ${result.errors.length} errors occurred.`);
+                setAddToAllMessage(t('addToAllPartial', { added: result.added, skipped: result.skipped, errors: result.errors.length }));
             } else {
-                setAddToAllMessage(`Successfully added to ${result.added} communities (${result.skipped} already members)`);
+                setAddToAllMessage(t('addToAllSuccess', { added: result.added, skipped: result.skipped }));
             }
             setTimeout(() => setAddToAllMessage(''), 5000);
             setTimeout(() => {
@@ -82,7 +82,7 @@ const SettingsPage = () => {
             }, 2000);
         } catch (error) {
             console.error('Add to all communities error:', error);
-            setAddToAllMessage('Failed to add user to all communities');
+            setAddToAllMessage(t('addToAllFailed'));
             setTimeout(() => setAddToAllMessage(''), 3000);
         } finally {
             setAddingToAllCommunities(false);
@@ -158,7 +158,7 @@ const SettingsPage = () => {
                     {fakeDataMode && (
                         <div className="space-y-3">
                             <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
-                                Development
+                                {t('development')}
                             </h2>
                             <div className="space-y-2">
                                 <BrandButton
@@ -169,7 +169,7 @@ const SettingsPage = () => {
                                     disabled={creatingFakeCommunity || addingToAllCommunities}
                                     fullWidth
                                 >
-                                    {creatingFakeCommunity ? 'Creating...' : 'Create Fake Community'}
+                                    {creatingFakeCommunity ? t('creating') : t('createFakeCommunity')}
                                 </BrandButton>
                                 <BrandButton
                                     variant="outline"
@@ -179,7 +179,7 @@ const SettingsPage = () => {
                                     disabled={creatingFakeCommunity || addingToAllCommunities}
                                     fullWidth
                                 >
-                                    {addingToAllCommunities ? 'Adding...' : 'Add This User to All Communities'}
+                                    {addingToAllCommunities ? t('adding') : t('addUserToAllCommunities')}
                                 </BrandButton>
                                 {fakeCommunityMessage && (
                                     <p className={`text-sm ${fakeCommunityMessage.includes('Failed') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>

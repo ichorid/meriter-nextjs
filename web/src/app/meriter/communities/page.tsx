@@ -19,6 +19,7 @@ import Link from 'next/link';
 export default function CommunitiesPage() {
     const router = useRouter();
     const t = useTranslations('communities');
+    const tProfile = useTranslations('profile');
     const { user, isLoading: userLoading } = useAuth();
     
     // Check if user is superadmin
@@ -100,7 +101,7 @@ export default function CommunitiesPage() {
     const getUserRoleBadge = (communityId: string): string | null => {
         // Check global superadmin role first
         if (user?.globalRole === 'superadmin') {
-            return 'Superadmin';
+            return tProfile('roleTypes.superadmin');
         }
         
         // Find role in userRoles array matching the communityId
@@ -108,10 +109,10 @@ export default function CommunitiesPage() {
         
         // Only show badge for lead, participant, and superadmin (not viewer)
         if (role?.role === 'lead') {
-            return 'Lead';
+            return tProfile('roleTypes.lead');
         }
         if (role?.role === 'participant') {
-            return 'Participant';
+            return tProfile('roleTypes.participant');
         }
         
         return null;
@@ -127,11 +128,11 @@ export default function CommunitiesPage() {
 
         // Always show the indicator, even if both are 0 (for consistency)
         return (
-            <div className="text-xs truncate flex items-center gap-1 text-brand-text-secondary">
+            <div className="text-xs flex items-center gap-1 text-brand-text-secondary flex-shrink-0 min-w-0">
                 {currencyIconUrl && (
-                    <img src={currencyIconUrl} alt="Currency" className="w-3 h-3 inline-block" />
+                    <img src={currencyIconUrl} alt="Currency" className="w-3 h-3 inline-block flex-shrink-0" />
                 )}
-                <span>{balance}+{remainingQuota}</span>
+                <span className="whitespace-nowrap">{balance}+{remainingQuota}</span>
             </div>
         );
     };
@@ -141,13 +142,13 @@ export default function CommunitiesPage() {
 
     return (
         <AdaptiveLayout>
-            <div className="flex flex-col min-h-screen bg-base-100">
+            <div className="flex flex-col min-h-screen bg-base-100 overflow-x-hidden max-w-full">
                 <PageHeader
                     title="Communities"
                     showBack={false}
                 />
 
-                <div className="p-4 space-y-6">
+                <div className="p-4 space-y-6 max-w-full overflow-x-hidden">
                     {/* Section 1: Special Communities */}
                     {specialCommunities.length > 0 && (
                         <>
