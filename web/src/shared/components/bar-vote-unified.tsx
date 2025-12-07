@@ -54,7 +54,7 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
     const canVote = mutualExclusivityCheck && (canVoteProp !== undefined ? canVoteProp : true);
     
     // Cannot show withdraw button here - withdraw should be handled by separate BarWithdraw component
-    // This component only shows vote button when appropriate
+    // This component always shows the vote button and score counter, but disables the button when user cannot vote
 
     return (
         <div className="grid grid-cols-[1fr_140px] gap-4 px-5 py-2.5">
@@ -72,20 +72,18 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
                     {score}
                 </div>
                 
-                {mutualExclusivityCheck && (
-                    <button
-                        className={`btn-action h-9 px-4 text-xs gap-2 ${
-                            !canVote 
-                                ? 'btn-ghost' 
-                                : 'btn-action-outline'
-                        }`}
-                        onClick={handleVoteClick}
-                        disabled={!canVote}
-                        title={!canVote ? 'You do not have permission to vote on this content' : undefined}
-                    >
-                        {t('vote')}
-                    </button>
-                )}
+                <button
+                    className={`btn-action h-9 px-4 text-xs gap-2 ${
+                        !canVote 
+                            ? 'btn-ghost' 
+                            : 'btn-action-outline'
+                    }`}
+                    onClick={handleVoteClick}
+                    disabled={!canVote}
+                    title={!canVote ? 'You do not have permission to vote on this content' : undefined}
+                >
+                    {t('vote')}
+                </button>
             </div>
         </div>
     );

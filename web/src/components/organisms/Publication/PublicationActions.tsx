@@ -198,7 +198,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
             commentCount={publication.metrics?.commentCount || 0}
             onCommentClick={handleCommentToggle}
           />
-        ) : (showVote || showVoteForAuthor) ? (
+        ) : (
           <BarVoteUnified
             score={currentScore}
             onVoteClick={handleVoteClick}
@@ -209,7 +209,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
             onCommentClick={handleCommentToggle}
             canVote={canVote}
           />
-        ) : null}
+        )}
       </div>
     </div>
   );

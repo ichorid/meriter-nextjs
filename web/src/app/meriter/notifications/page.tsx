@@ -22,14 +22,18 @@ import {
   useNotificationPreferences,
   useUpdatePreferences as useUpdatePrefs,
 } from '@/hooks/api/useNotifications';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/constants/queryKeys';
 import type { NotificationType } from '@/types/api-v1';
 
 export default function NotificationsPage() {
   const router = useRouter();
   const t = useTranslations('notifications');
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'unread' | NotificationType>('all');
   const [showPreferences, setShowPreferences] = useState(false);
   const isAutoFetchingRef = useRef(false);
+  const hasRefetchedOnLoadRef = useRef(false);
 
   const isMobile = useMediaQuery('(max-width: 640px)');
   const pageSize = isMobile ? 15 : 30; // Меньше данных на mobile
@@ -88,6 +92,19 @@ export default function NotificationsPage() {
       isAutoFetchingRef.current = false;
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Refetch unread count when initial notifications fetch completes
+  // This ensures the indicator updates immediately after backend auto-marks notifications as read
+  useEffect(() => {
+    if (!isLoading && notificationsData && !hasRefetchedOnLoadRef.current) {
+      // Initial load completed - backend has auto-marked notifications as read
+      // Refetch unread count to update the indicator immediately
+      queryClient.refetchQueries({
+        queryKey: queryKeys.notifications.unreadCount(),
+      });
+      hasRefetchedOnLoadRef.current = true;
+    }
+  }, [isLoading, notificationsData, queryClient]);
 
   // Watch for when mutations succeed and auto-fetch remaining pages after refetch
   useEffect(() => {

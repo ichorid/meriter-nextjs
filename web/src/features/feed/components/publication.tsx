@@ -287,7 +287,7 @@ export const Publication = ({
                         } : undefined}
                                 />
                             );
-                        } else if (showVote || showVoteForAuthor) {
+                        } else {
                             return (
                                 <BarVoteUnified
                                     score={currentScore}
@@ -307,8 +307,6 @@ export const Publication = ({
                                     canVote={canVote}
                                 />
                             );
-                        } else {
-                            return null;
                         }
                     })()
                 }
