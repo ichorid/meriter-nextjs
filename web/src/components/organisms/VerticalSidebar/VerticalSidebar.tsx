@@ -5,9 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Info, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Avatar, Badge } from '@/components/atoms';
+import { Avatar } from '@/components/atoms';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
-import { useUserRoles } from '@/hooks/api/useProfile';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { useUserMeritsBalance } from '@/hooks/useUserMeritsBalance';
 import { routes } from '@/lib/constants/routes';
@@ -24,37 +23,11 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 }) => {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
-  const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const { data: unreadCount = 0 } = useUnreadCount();
   const t = useTranslations('common');
 
   // Calculate total merits balance and get related data
   const { totalWalletBalance, totalDailyQuota, communityIds, quotasMap, wallets, walletsLoading } = useUserMeritsBalance();
-
-  // Determine user's highest role for display
-  const userRoleDisplay = React.useMemo(() => {
-    // Check global superadmin role first
-    if (user?.globalRole === 'superadmin') {
-      return { role: 'superadmin', label: t('superadmin'), variant: 'error' as const };
-    }
-    
-    // Check community roles (lead > participant > viewer)
-    const hasLead = userRoles.some(r => r.role === 'lead');
-    const hasParticipant = userRoles.some(r => r.role === 'participant');
-    const hasViewer = userRoles.some(r => r.role === 'viewer');
-    
-    if (hasLead) {
-      return { role: 'lead', label: t('representative'), variant: 'accent' as const };
-    }
-    if (hasParticipant) {
-      return { role: 'participant', label: t('participant'), variant: 'info' as const };
-    }
-    if (hasViewer) {
-      return { role: 'viewer', label: t('viewer'), variant: 'secondary' as const };
-    }
-    
-    return null;
-  }, [user?.globalRole, userRoles, t]);
 
   // Don't show sidebar on login page
   if (pathname?.includes('/login')) {
@@ -166,11 +139,6 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                     <div className="text-xs font-medium text-base-content truncate">
                       {user.displayName || 'User'}
                     </div>
-                    {userRoleDisplay && (
-                      <Badge variant={userRoleDisplay.variant} size="xs">
-                        {userRoleDisplay.label}
-                      </Badge>
-                    )}
                   </div>
                   <div className={`flex items-center gap-2 text-[10px] mt-0.5 ${pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
                     ? 'text-primary-content/70'

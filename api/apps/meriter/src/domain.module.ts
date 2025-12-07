@@ -32,6 +32,10 @@ import {
   UserCommunityRoleSchema,
 } from './domain/models/user-community-role/user-community-role.schema';
 import { Invite, InviteSchema } from './domain/models/invite/invite.schema';
+import {
+  Notification,
+  NotificationSchema,
+} from './domain/models/notification/notification.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -52,6 +56,8 @@ import { UserCommunityRoleService } from './domain/services/user-community-role.
 import { InviteService } from './domain/services/invite.service';
 import { PermissionService } from './domain/services/permission.service';
 import { MeritService } from './domain/services/merit.service';
+import { NotificationService } from './domain/services/notification.service';
+import { NotificationHandlersService } from './domain/services/notification-handlers.service';
 
 // Import event bus
 import { EventBus } from './domain/events/event-bus';
@@ -72,6 +78,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: Comment.name, schema: CommentSchema },
       { name: UserCommunityRole.name, schema: UserCommunityRoleSchema },
       { name: Invite.name, schema: InviteSchema },
+      { name: Notification.name, schema: NotificationSchema },
     ]),
   ],
   providers: [
@@ -94,6 +101,8 @@ import { EventBus } from './domain/events/event-bus';
     InviteService,
     PermissionService,
     MeritService,
+    NotificationService,
+    NotificationHandlersService,
 
     // Event bus
     EventBus,
@@ -118,6 +127,8 @@ import { EventBus } from './domain/events/event-bus';
     InviteService,
     PermissionService,
     MeritService,
+    NotificationService,
+    NotificationHandlersService,
 
     // Export event bus
     EventBus,

@@ -19,6 +19,7 @@ import { CommunityFeedService } from '../../domain/services/community-feed.servi
 import { WalletService } from '../../domain/services/wallet.service';
 import { UserCommunityRoleService } from '../../domain/services/user-community-role.service';
 import { PermissionService } from '../../domain/services/permission.service';
+import { QuotaResetService } from '../../domain/services/quota-reset.service';
 import { UserGuard } from '../../user.guard';
 import { User } from '../../decorators/user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
@@ -57,6 +58,7 @@ export class CommunitiesController {
     private readonly walletService: WalletService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly permissionService: PermissionService,
+    private readonly quotaResetService: QuotaResetService,
   ) {}
 
   /**
@@ -368,9 +370,10 @@ export class CommunitiesController {
       throw new ForbiddenError('Only leads and superadmins can reset daily quota');
     }
 
-    const { resetAt } = await this.communityService.resetDailyQuota(id);
+    const { resetAt, notificationsCreated } = await this.quotaResetService.resetQuotaForCommunity(id);
     return ApiResponseHelper.successResponse({
       resetAt: resetAt.toISOString(),
+      notificationsCreated,
     });
   }
 

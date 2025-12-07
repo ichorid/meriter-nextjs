@@ -6,6 +6,7 @@ import { ApiV1CommonModule } from '../common/common.module';
 @Module({
   imports: [DomainModule, ApiV1CommonModule],
   controllers: [NotificationsController],
+  // NotificationService and NotificationHandlersService are already exported from DomainModule
 })
 export class NotificationsModule {}
 

@@ -12,6 +12,7 @@ import { validationSchema } from './config/validation.schema';
 
 import { UpdatesConductorsService } from './updates-conductors/updates-conductors.service';
 import { UpdatesConductorsModule } from './updates-conductors/updates-conductors.module';
+import { QuotaResetModule } from './domain/services/quota-reset.module';
 
 // Import the new domain module
 import { DomainModule } from './domain.module';
@@ -31,6 +32,7 @@ import { DomainModule } from './domain.module';
     ApiV1Module,
     DomainModule, // Domain layer with domain services
     UpdatesConductorsModule,
+    QuotaResetModule,
   ],
   controllers: [MeriterController],
   providers: [MeriterService],

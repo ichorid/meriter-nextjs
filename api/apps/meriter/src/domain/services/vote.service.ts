@@ -8,6 +8,8 @@ import { PublicationService } from './publication.service';
 import { CommunityService } from './community.service';
 import { PermissionService } from './permission.service';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
+import { EventBus } from '../events/event-bus';
+import { PublicationVotedEvent, CommentVotedEvent } from '../events';
 
 @Injectable()
 export class VoteService {
@@ -19,6 +21,7 @@ export class VoteService {
     @Inject(forwardRef(() => PublicationService)) private publicationService: PublicationService,
     private communityService: CommunityService,
     @Inject(forwardRef(() => PermissionService)) private permissionService: PermissionService,
+    private eventBus: EventBus,
   ) {}
 
   /**
@@ -219,8 +222,23 @@ export class VoteService {
       createdAt: new Date(),
     }]);
 
-    this.logger.log(`Vote created successfully: ${voteArray[0].id}`);
-    return voteArray[0];
+    const vote = voteArray[0];
+    this.logger.log(`Vote created successfully: ${vote.id}`);
+
+    // Publish domain event for notifications
+    const totalAmount = amountQuota + amountWallet;
+    if (targetType === 'publication') {
+      await this.eventBus.publish(
+        new PublicationVotedEvent(targetId, userId, totalAmount, direction),
+      );
+    } else {
+      // Vote on vote = comment vote
+      await this.eventBus.publish(
+        new CommentVotedEvent(vote.id, userId, totalAmount, direction),
+      );
+    }
+
+    return vote;
   }
 
   async removeVote(userId: string, targetType: 'publication' | 'vote', targetId: string): Promise<boolean> {
