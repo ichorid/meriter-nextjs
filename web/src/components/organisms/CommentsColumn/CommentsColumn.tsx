@@ -95,10 +95,10 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
   }, [comments]);
 
   return (
-    <div className="h-full flex flex-col bg-base-100 border-l border-base-300">
+    <div className="h-full flex flex-col bg-base-100 border-l border-base-300 overflow-x-hidden max-w-full">
       {/* Header with close/back button and sort toggle */}
       <div className="border-b border-base-300 bg-base-200">
-        <div className="flex items-center gap-2 p-4">
+        <div className="flex items-center gap-2 p-4 max-w-full overflow-x-hidden">
           {(showBackButton || onBack) ? (
             <>
               <BrandButton
@@ -145,7 +145,7 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
       </div>
 
       {/* Comments list with tree navigation */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 max-w-full">
         {commentTree.length > 0 ? (
           <CommentsList 
             roots={commentTree}

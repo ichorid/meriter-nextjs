@@ -58,15 +58,15 @@ export const CardCommentVote = ({
     };
     
     return (
-    <div className="mb-4">
+    <div className="mb-4 max-w-full overflow-hidden">
         <div 
             className={classList(
-                "card bg-base-100 shadow-md dark:border dark:border-base-content/20 rounded-xl overflow-hidden",
+                "card bg-base-100 shadow-md dark:border dark:border-base-content/20 rounded-xl overflow-hidden max-w-full",
                 (onDetailsClick || onClick) && "cursor-pointer hover:shadow-lg transition-shadow"
             )}
             onClick={handleCardClick}
         >
-            <div className="flex">
+            <div className="flex min-w-0">
                 <div 
                     className={classList(
                         "font-bold text-center py-2 px-3 min-w-[3rem] flex flex-col items-center justify-center gap-1",
@@ -86,10 +86,10 @@ export const CardCommentVote = ({
                         <span>{rate}</span>
                     </div>
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                     <div className="p-4">
-                        <div className="flex gap-2 mb-2 items-start">
-                            <div className="flex gap-2 flex-1">
+                        <div className="flex gap-2 mb-2 items-start min-w-0">
+                            <div className="flex gap-2 flex-1 min-w-0">
                                 <Avatar
                                     src={avatarUrl}
                                     alt={title}
@@ -97,9 +97,9 @@ export const CardCommentVote = ({
                                     size={32}
                                     onError={onAvatarUrlNotFound}
                                 />
-                                <div className="info">
-                                    <div className="text-xs font-medium">{title}</div>
-                                    <div className="text-[10px] opacity-60">{subtitle}</div>
+                                <div className="info min-w-0 flex-1">
+                                    <div className="text-xs font-medium break-words">{title}</div>
+                                    <div className="text-[10px] opacity-60 break-words">{subtitle}</div>
                                 </div>
                             </div>
                             {showCommunityAvatar && communityName && (
@@ -119,18 +119,18 @@ export const CardCommentVote = ({
                                 </div>
                             )}
                         </div>
-                        <div className="content text-sm mb-2">{content}</div>
+                        <div className="content text-sm mb-2 break-words">{content}</div>
                         {/* Beneficiary information */}
                         {beneficiaryName && (
-                            <div className="flex items-center gap-2 mb-2 text-xs opacity-70">
-                                <span>to:</span>
+                            <div className="flex items-center gap-2 mb-2 text-xs opacity-70 min-w-0">
+                                <span className="flex-shrink-0">to:</span>
                                 <Avatar
                                     src={beneficiaryAvatarUrl}
                                     alt={beneficiaryName}
                                     name={beneficiaryName}
                                     size={16}
                                 />
-                                <span>{beneficiaryName}</span>
+                                <span className="break-words min-w-0">{beneficiaryName}</span>
                             </div>
                         )}
                         <div className="bottom" onClick={(e) => e.stopPropagation()}>{bottom}</div>

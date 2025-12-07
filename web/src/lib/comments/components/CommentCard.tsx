@@ -207,7 +207,7 @@ export function CommentCard({
   
   return (
     <div 
-      className="relative"
+      className="relative max-w-full overflow-hidden"
       style={{ paddingLeft: `${paddingLeft}px` }}
     >
       {/* Connection lines */}
@@ -253,7 +253,7 @@ export function CommentCard({
 
       <div
         className={classList(
-          "comment-vote-wrapper transition-all duration-300 mb-4 relative z-10",
+          "comment-vote-wrapper transition-all duration-300 mb-4 relative z-10 max-w-full overflow-hidden",
           { 'ring-2 ring-warning': isChainMode },
           commentUnderReply ? "scale-100 opacity-100" : 
           activeSlider && activeSlider !== node.id ? "scale-95 opacity-60" : "scale-100 opacity-100",

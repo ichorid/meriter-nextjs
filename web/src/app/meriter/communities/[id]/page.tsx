@@ -253,13 +253,13 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
         >
-            <div className="flex flex-col min-h-screen bg-base-100">
+            <div className="flex flex-col min-h-screen bg-base-100 overflow-x-hidden max-w-full">
                 <PageHeader
                     title={comms?.name || 'Community'}
                     showBack={true}
                 />
 
-                <div className="p-4 space-y-6">
+                <div className="p-4 space-y-6 max-w-full overflow-x-hidden">
                     {/* Community Hero Section */}
                     {comms && (
                         <CommunityHero

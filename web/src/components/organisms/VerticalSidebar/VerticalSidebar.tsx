@@ -67,6 +67,84 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 
   return (
     <aside className={`flex fixed lg:sticky left-0 top-0 h-screen ${widthClass} bg-base-200 border-r border-base-300 z-40 flex-col py-4 pb-16 lg:pb-4 transition-all duration-300 ${className}`}>
+      {/* All Communities Button */}
+      {isAuthenticated && (
+        <div className={paddingClass}>
+          <Link href={routes.communities}>
+            <button
+              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 ${pathname === routes.communities
+                ? 'bg-primary text-primary-content'
+                : 'hover:bg-base-300 text-base-content'
+                }`}
+            >
+              {isExpanded ? (
+                <div className="flex items-center w-full">
+                  <Users className="w-5 h-5" />
+                  <span className="ml-2 text-sm font-medium">{t('allCommunities')}</span>
+                </div>
+              ) : (
+                <Users className="w-6 h-6" />
+              )}
+            </button>
+          </Link>
+        </div>
+      )}
+
+      {/* Notifications Button */}
+      {isAuthenticated && (
+        <div className={paddingClass}>
+          <Link href={routes.notifications}>
+            <button
+              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 relative ${pathname === routes.notifications
+                ? 'bg-primary text-primary-content'
+                : 'hover:bg-base-300 text-base-content'
+                }`}
+            >
+              {isExpanded ? (
+                <div className="flex items-center w-full">
+                  <div className="relative">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    {unreadCount > 0 && (
+                      <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full text-[10px] font-semibold ${pathname === routes.notifications
+                        ? 'bg-primary-content text-primary'
+                        : 'bg-error text-error-content'
+                        }`}>
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="ml-2 text-sm font-medium">{t('notifications')}</span>
+                  {unreadCount > 0 && (
+                    <span className={`ml-auto text-xs font-semibold ${pathname === routes.notifications
+                      ? 'text-primary-content'
+                      : 'text-error'
+                      }`}>
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="relative">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {unreadCount > 0 && (
+                    <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full text-[10px] font-semibold ${pathname === routes.notifications
+                      ? 'bg-primary-content text-primary'
+                      : 'bg-error text-error-content'
+                      }`}>
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </div>
+              )}
+            </button>
+          </Link>
+        </div>
+      )}
+
       {/* Profile Card (replaces Home button) */}
       <div className={paddingClass}>
         <Link href={routes.profile}>
@@ -125,78 +203,23 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         </Link>
       </div>
 
-      {/* Notifications Button */}
+      {/* About Button */}
       {isAuthenticated && (
         <div className={paddingClass}>
-          <Link href={routes.notifications}>
+          <Link href={routes.about}>
             <button
-              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 relative ${pathname === routes.notifications
+              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 ${pathname === routes.about
                 ? 'bg-primary text-primary-content'
                 : 'hover:bg-base-300 text-base-content'
                 }`}
             >
               {isExpanded ? (
                 <div className="flex items-center w-full">
-                  <div className="relative">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
-                    {unreadCount > 0 && (
-                      <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full text-[10px] font-semibold ${pathname === routes.notifications
-                        ? 'bg-primary-content text-primary'
-                        : 'bg-error text-error-content'
-                        }`}>
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                      </span>
-                    )}
-                  </div>
-                  <span className="ml-2 text-sm font-medium">{t('notifications')}</span>
-                  {unreadCount > 0 && (
-                    <span className={`ml-auto text-xs font-semibold ${pathname === routes.notifications
-                      ? 'text-primary-content'
-                      : 'text-error'
-                      }`}>
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
+                  <Info className="w-5 h-5" />
+                  <span className="ml-2 text-sm font-medium">{t('about')}</span>
                 </div>
               ) : (
-                <div className="relative">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  {unreadCount > 0 && (
-                    <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full text-[10px] font-semibold ${pathname === routes.notifications
-                      ? 'bg-primary-content text-primary'
-                      : 'bg-error text-error-content'
-                      }`}>
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
-                </div>
-              )}
-            </button>
-          </Link>
-        </div>
-      )}
-
-      {/* All Communities Button */}
-      {isAuthenticated && (
-        <div className={paddingClass}>
-          <Link href={routes.communities}>
-            <button
-              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 ${pathname === routes.communities
-                ? 'bg-primary text-primary-content'
-                : 'hover:bg-base-300 text-base-content'
-                }`}
-            >
-              {isExpanded ? (
-                <div className="flex items-center w-full">
-                  <Users className="w-5 h-5" />
-                  <span className="ml-2 text-sm font-medium">{t('allCommunities')}</span>
-                </div>
-              ) : (
-                <Users className="w-6 h-6" />
+                <Info className="w-6 h-6" />
               )}
             </button>
           </Link>
@@ -240,27 +263,6 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
           })}
 
         </div>
-      </div>
-
-      {/* About Button at bottom */}
-      <div className={`${paddingClass} pt-2 border-t border-base-300 mt-auto`}>
-        <Link href={routes.about}>
-          <button
-            className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors ${pathname === routes.about
-              ? 'bg-primary text-primary-content'
-              : 'hover:bg-base-300 text-base-content'
-              }`}
-          >
-            {isExpanded ? (
-              <div className="flex items-center w-full">
-                <Info className="w-5 h-5" />
-                <span className="ml-2 text-sm font-medium">{t('about')}</span>
-              </div>
-            ) : (
-              <Info className="w-6 h-6" />
-            )}
-          </button>
-        </Link>
       </div>
     </aside>
   );

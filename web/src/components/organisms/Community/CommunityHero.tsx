@@ -22,7 +22,7 @@ export function CommunityHero({ community, stats }: CommunityHeroProps) {
   const { name, description, avatarUrl } = community;
 
   return (
-    <div className="relative bg-base-100 rounded-xl overflow-hidden border border-brand-secondary/10 shadow-sm">
+    <div className="relative bg-base-100 rounded-xl overflow-hidden max-w-full border border-brand-secondary/10 shadow-sm">
       {/* Cover Image Section */}
       <div className="relative h-32 bg-gradient-to-r from-brand-primary/20 via-brand-primary/10 to-brand-secondary/10">
         <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/30 to-transparent" />
@@ -45,14 +45,14 @@ export function CommunityHero({ community, stats }: CommunityHeroProps) {
         {/* Community Info */}
         <div className="mt-4 space-y-2">
           <div>
-            <h1 className="text-2xl font-bold text-brand-text-primary dark:text-base-content">
+            <h1 className="text-2xl font-bold text-brand-text-primary dark:text-base-content break-words">
               {name}
             </h1>
           </div>
 
           {/* Description */}
           {description && (
-            <p className="text-sm text-brand-text-primary dark:text-base-content leading-relaxed">
+            <p className="text-sm text-brand-text-primary dark:text-base-content leading-relaxed break-words">
               {description}
             </p>
           )}
