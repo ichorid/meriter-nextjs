@@ -9,6 +9,7 @@ import { useUserRoles, useCanCreateCommunity } from '@/hooks/api/useProfile';
 import { useCommunityInvites } from '@/hooks/api/useInvites';
 import { useUserProfile } from '@/hooks/api/useUsers';
 import { HashtagInput } from '@/shared/components/HashtagInput';
+import { IconPicker } from '@/shared/components/iconpicker';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandInput } from '@/components/ui/BrandInput';
@@ -51,6 +52,9 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const [language, setLanguage] = useState<'en' | 'ru'>('en');
     const [hashtags, setHashtags] = useState<string[]>([]);
     const [isPriority, setIsPriority] = useState(false);
+    // Default icon is "thanks" emoji (🙏)
+    const defaultIconUrl = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">${encodeURIComponent('🙏')}</text></svg>`;
+    const [iconUrl, setIconUrl] = useState(defaultIconUrl);
     
 
     useEffect(() => {
@@ -65,6 +69,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             setLanguage((community.settings?.language as 'en' | 'ru') || 'en');
             setHashtags(community.hashtags || []);
             setIsPriority((community as any).isPriority || false);
+            setIconUrl(community.settings?.iconUrl || defaultIconUrl);
         }
     }, [community, isEditMode]);
 
@@ -82,6 +87,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 avatarUrl: avatarUrl || undefined,
                 hashtags,
                 settings: {
+                    iconUrl: iconUrl || defaultIconUrl,
                     currencyNames: {
                         singular: currencySingular,
                         plural: currencyPlural,
@@ -407,6 +413,17 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                                 />
                             </BrandFormControl>
                         </div>
+
+                        <BrandFormControl
+                            label={t('currencyIcon')}
+                            helperText={t('selectIcon')}
+                        >
+                            <IconPicker
+                                icon={iconUrl}
+                                cta={t('selectIcon')}
+                                setIcon={setIconUrl}
+                            />
+                        </BrandFormControl>
                     </div>
                 </div>
 
