@@ -232,7 +232,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
               }`}
             style={showCommentsColumn && isDesktop ? { marginRight: 'var(--right-column-width)' } : undefined}
           >
-            <main className="px-4 py-6 pb-20 lg:pb-6 max-w-[calc(100vw-73px)] bg-base-100 dark:bg-base-100">
+            <main className="px-4 py-6 pb-20 lg:pb-6 bg-base-100 dark:bg-base-100">
               {children}
             </main>
           </div>
