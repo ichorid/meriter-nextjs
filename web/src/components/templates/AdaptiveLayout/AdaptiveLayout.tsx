@@ -64,7 +64,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   // - < lg: Avatar-only
   const sidebarExpandedDesktop = !showCommentsColumn;
 
-  // Calculate minimum required width: sidebar(280) + comments(400) + content(min ~600) = ~1280px
+  // Calculate minimum required width: sidebar(336) + comments(400) + content(min ~600) = ~1336px
   // Below xl (1280px), shrink sidebar when comments shown
 
   // Resizable right column state management
@@ -208,11 +208,11 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
       */}
       {/* Mobile/Tablet sidebar is hidden when BottomNavigation is shown (both use lg:hidden breakpoint) */}
       {/* Desktop lg-xl (1024-1279px): shrink to avatar when comments shown */}
-      <div className="hidden lg:flex xl:hidden flex-shrink-0" style={{ width: sidebarExpandedDesktop ? '280px' : '72px' }}>
+      <div className="hidden lg:flex xl:hidden flex-shrink-0" style={{ width: sidebarExpandedDesktop ? '336px' : '72px' }}>
         <VerticalSidebar isExpanded={sidebarExpandedDesktop} />
       </div>
       {/* Desktop xl+ (≥1280px): always expanded (default, broad windows) */}
-      <div className="hidden xl:flex flex-shrink-0 w-[280px]">
+      <div className="hidden xl:flex flex-shrink-0 w-[336px]">
         <VerticalSidebar isExpanded={true} />
       </div>
 

@@ -20,6 +20,7 @@ export const CommunityMembersFab: React.FC<CommunityMembersFabProps> = ({ commun
     
     const [isOpen, setIsOpen] = useState(false);
     const fabRef = useRef<HTMLDivElement>(null);
+    const popupRef = useRef<HTMLDivElement>(null);
 
     // Check if user has invite creation permissions
     const isSuperadmin = user?.globalRole === 'superadmin';
@@ -33,9 +34,12 @@ export const CommunityMembersFab: React.FC<CommunityMembersFabProps> = ({ commun
     // Close menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (fabRef.current && !fabRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
+            const target = event.target as Node;
+            // Don't close if click is inside FAB or popup
+            if (fabRef.current?.contains(target) || popupRef.current?.contains(target)) {
+                return;
             }
+            setIsOpen(false);
         };
 
         if (isOpen) {
@@ -81,6 +85,7 @@ export const CommunityMembersFab: React.FC<CommunityMembersFabProps> = ({ commun
             </div>
 
             <InviteCreationPopup
+                ref={popupRef}
                 isOpen={isOpen}
                 onClose={() => setIsOpen(false)}
                 communityId={communityId}

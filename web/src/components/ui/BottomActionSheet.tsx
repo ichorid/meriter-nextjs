@@ -11,12 +11,12 @@ interface BottomActionSheetProps {
     children: React.ReactNode;
 }
 
-export const BottomActionSheet: React.FC<BottomActionSheetProps> = ({
+export const BottomActionSheet = React.forwardRef<HTMLDivElement, BottomActionSheetProps>(({
     isOpen,
     onClose,
     title,
     children,
-}) => {
+}, ref) => {
     const [mounted, setMounted] = useState(false);
     const [visible, setVisible] = useState(false);
 
@@ -48,6 +48,7 @@ export const BottomActionSheet: React.FC<BottomActionSheetProps> = ({
 
     const content = (
         <div
+            ref={ref}
             className={`
                 fixed inset-0 z-[100] flex items-end justify-center sm:items-center
                 transition-opacity duration-300
@@ -100,4 +101,6 @@ export const BottomActionSheet: React.FC<BottomActionSheetProps> = ({
     );
 
     return createPortal(content, document.body);
-};
+});
+
+BottomActionSheet.displayName = 'BottomActionSheet';

@@ -18,11 +18,11 @@ interface InviteCreationPopupProps {
     communityId?: string;
 }
 
-export const InviteCreationPopup: React.FC<InviteCreationPopupProps> = ({
+export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreationPopupProps>(({
     isOpen,
     onClose,
     communityId,
-}) => {
+}, ref) => {
     const t = useTranslations('profile.invites');
     const tInvites = useTranslations('invites.create');
     const { user } = useAuth();
@@ -158,6 +158,7 @@ export const InviteCreationPopup: React.FC<InviteCreationPopupProps> = ({
 
     return (
         <BottomActionSheet
+            ref={ref}
             isOpen={isOpen}
             onClose={onClose}
             title={t('title')}
@@ -223,4 +224,6 @@ export const InviteCreationPopup: React.FC<InviteCreationPopupProps> = ({
             </div>
         </BottomActionSheet>
     );
-};
+});
+
+InviteCreationPopup.displayName = 'InviteCreationPopup';
