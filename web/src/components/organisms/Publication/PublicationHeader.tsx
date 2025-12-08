@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Edit } from 'lucide-react';
 import { Avatar, Badge } from '@/components/atoms';
 import { Badge as BrandBadge } from '@/components/ui/Badge';
-import { BrandButton } from '@/components/atoms';
+import { BrandButton } from '@/components/ui/BrandButton';
 import { dateVerbose } from '@shared/lib/date';
 import { useAuth } from '@/contexts/AuthContext';
 
