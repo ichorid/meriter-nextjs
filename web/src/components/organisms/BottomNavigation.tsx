@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Users, User, Bell, Info } from 'lucide-react';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
-import { useUserMeritsBalance } from '@/hooks/useUserMeritsBalance';
-import { useCommunity } from '@/hooks/api/useCommunities';
-import { WalletChip } from '@/components/molecules/WalletChip';
+import { useMarathonOfGoodQuota } from '@/hooks/useMarathonOfGoodQuota';
+import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
 import { routes } from '@/lib/constants/routes';
 
 export const BottomNavigation = () => {
@@ -14,18 +13,8 @@ export const BottomNavigation = () => {
     const router = useRouter();
     const { data: unreadCount = 0 } = useUnreadCount();
     
-    // Calculate total merits balance (permanent and daily)
-    const { totalWalletBalance, totalDailyQuota, wallets } = useUserMeritsBalance();
-    
-    // Get first community ID for currency icon
-    const firstCommunityId = useMemo(() => {
-        const walletWithCommunity = wallets.find((w: any) => w?.communityId);
-        return walletWithCommunity?.communityId;
-    }, [wallets]);
-    
-    // Fetch first community to get currency icon
-    const { data: firstCommunity } = useCommunity(firstCommunityId || '');
-    const currencyIconUrl = firstCommunity?.settings?.iconUrl;
+    // Get marathon-of-good quota
+    const { remaining, max, isLoading } = useMarathonOfGoodQuota();
 
     const tabs = [
         {
@@ -90,15 +79,16 @@ export const BottomNavigation = () => {
                     );
                 })}
                 
-                {/* Wallet Chip - centered overlay, 50% overlap with nav bar, 50% protruding upward */}
-                {/* Nav bar height is 64px (h-16), chip height is ~32px, so bottom = 64 - 16 = 48px */}
-                <WalletChip
-                    balance={totalWalletBalance}
-                    quota={totalDailyQuota}
-                    currencyIconUrl={currencyIconUrl}
-                    onClick={() => router.push(routes.communities)}
-                    className="bottom-12"
-                />
+                {/* Daily Quota Ring - centered overlay, 50% overlap with nav bar, 50% protruding upward */}
+                {/* Nav bar height is 64px (h-16), ring height is ~30px, so bottom = 64 - 15 = 49px */}
+                {!isLoading && max > 0 && (
+                    <DailyQuotaRing
+                        remaining={remaining}
+                        max={max}
+                        onClick={() => router.push(routes.communities)}
+                        className="absolute left-1/2 -translate-x-1/2 bottom-12 z-[100]"
+                    />
+                )}
             </div>
         </div>
     );

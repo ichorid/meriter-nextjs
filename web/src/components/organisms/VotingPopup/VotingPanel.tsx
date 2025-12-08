@@ -64,32 +64,32 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     return Math.min(100, (amount / max) * 100);
   }, [amount, max]);
 
-  // Styling for the slider
+  // Styling for the slider - using CSS variables for theme support
   const railStyle = { 
-    backgroundColor: '#D5D4D4', 
+    backgroundColor: 'var(--base-300)', 
     height: 6, 
     borderRadius: 8 
   };
   
   const handleStyle = {
-    backgroundColor: '#020202',
+    backgroundColor: 'var(--base-content)',
     border: 'none',
     height: 20,
     width: 20,
     marginTop: -7,
     opacity: 1,
-    boxShadow: '-2px 2px 8px rgba(38, 38, 38, 0.2)',
+    boxShadow: '-2px 2px 8px rgba(0, 0, 0, 0.2)',
     borderRadius: '9999px',
   };
 
   return (
     <div 
-      className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-[336px] bg-white rounded-t-[8px] flex flex-col gap-5 shadow-xl z-50 h-[523px]"
+      className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-[336px] bg-base-100 rounded-t-[8px] flex flex-col gap-5 shadow-xl z-50 h-[523px]"
       style={{ padding: '16px 16px 20px' }}
     >
       {/* Title */}
       <h2 
-        className="text-[#020202] font-bold leading-[41px] tracking-[0.374px]"
+        className="text-base-content font-bold leading-[41px] tracking-[0.374px]"
         style={{ 
           width: '304px',
           height: '41px',
@@ -103,7 +103,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
 
       {/* Description */}
       <p 
-        className="text-[#020202] leading-[120%] flex items-center"
+        className="text-base-content leading-[120%] flex items-center"
         style={{ 
           width: '304px',
           height: '36px',
@@ -118,7 +118,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
       {/* Limit / Quota Indicator */}
       <div className="flex flex-col gap-[5px]" style={{ width: '304px', height: '40px' }}>
         <div 
-          className="text-[#757575]"
+          className="text-base-content opacity-60"
           style={{ 
             fontSize: '12px',
             fontFamily: 'Roboto, sans-serif',
@@ -130,17 +130,16 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
           {t('dailyLimit') || 'Daily limit'}
         </div>
         <div 
-          className="relative flex items-center justify-center overflow-hidden"
+          className="relative flex items-center justify-center overflow-hidden bg-base-200"
           style={{ 
             width: '304px',
             height: '40px',
-            backgroundColor: '#E0E0E0',
           }}
         >
           {/* Filled indicator - shows used quota */}
           {amount > 0 && (
             <div 
-              className="absolute left-0 top-0 bottom-0 bg-[#020202] opacity-30"
+              className="absolute left-0 top-0 bottom-0 bg-base-content opacity-30"
               style={{ 
                 width: `${Math.min(100, ((absAmount / Math.max(quotaRemaining + absAmount, 1)) * 100))}%`,
                 zIndex: 2,
@@ -149,7 +148,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
           )}
           
           <span 
-            className="relative z-10 text-[#020202]"
+            className="relative z-10 text-base-content"
             style={{ 
               fontSize: '12px',
               fontFamily: 'Roboto, sans-serif',
@@ -167,7 +166,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
       <div className="relative" style={{ width: '304px', height: '58px' }}>
         {/* Value Indicator - positioned above slider */}
         <div 
-          className="absolute flex items-center"
+          className="absolute flex items-center text-base-content"
           style={{ 
             left: `${sliderValuePosition}%`,
             top: '0px',
@@ -176,7 +175,6 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             fontFamily: 'Roboto, sans-serif',
             fontWeight: 500,
             lineHeight: '120%',
-            color: '#020202',
           }}
         >
           {absAmount}
@@ -194,13 +192,12 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         >
           {/* Custom track visualization */}
           <div 
-            className="absolute"
+            className="absolute bg-base-300"
             style={{ 
               height: 6,
               top: '9px',
               left: 0,
               right: 0,
-              backgroundColor: '#D5D4D4',
               borderRadius: 8,
             }}
           />
@@ -208,13 +205,12 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
           {/* Filled track for positive values */}
           {amount > 0 && (
             <div 
-              className="absolute"
+              className="absolute bg-base-content"
               style={{ 
                 height: 6,
                 top: '9px',
                 left: 0,
                 width: `${filledTrackWidth}%`,
-                backgroundColor: '#020202',
                 borderRadius: 8,
                 zIndex: 1,
               }}
@@ -236,7 +232,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
       {/* Downvote Warning / Explanation */}
       {!isPositive && (
         <div 
-          className="text-[#020202] leading-[120%] flex items-center"
+          className="text-base-content leading-[120%] flex items-center"
           style={{ 
             width: '304px',
             height: '54px',
@@ -252,7 +248,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
       {/* Comment Input */}
       <div className="flex flex-col gap-1" style={{ width: '304px', height: '98px' }}>
         <label 
-          className="text-[#757575]"
+          className="text-base-content opacity-60"
           style={{ 
             fontSize: '12px',
             fontFamily: 'Roboto, sans-serif',
@@ -264,7 +260,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
           {t('explanationDetails') || 'Explanations, details and descriptions'}
         </label>
         <div 
-          className="bg-white border border-[#020202] rounded-[8px]"
+          className="bg-base-100 border border-base-content rounded-[8px]"
           style={{ 
             width: '304px',
             height: '80px',
@@ -275,7 +271,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
           <textarea 
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            className="w-full h-full resize-none outline-none text-[#020202] placeholder-[#020202]"
+            className="w-full h-full resize-none outline-none text-base-content placeholder:text-base-content placeholder:opacity-50"
             style={{ 
               fontSize: '15px',
               fontFamily: 'Roboto, sans-serif',
@@ -291,13 +287,12 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
       <button
         onClick={() => onSubmit(isPositive)}
         className={classList(
-          "flex justify-center items-center border border-[#020202] rounded-[8px]",
+          "flex justify-center items-center border border-base-content rounded-[8px] bg-base-content",
           (amount === 0 || (!isPositive && !comment.trim())) ? "opacity-50 cursor-not-allowed" : ""
         )}
         style={{ 
           width: '304px',
           height: '40px',
-          backgroundColor: '#020202',
           padding: '11px 15px',
           gap: '10px',
           boxSizing: 'border-box',
@@ -305,7 +300,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         disabled={amount === 0 || (!isPositive && !comment.trim())}
       >
         <span 
-          className="text-white text-center leading-[120%]"
+          className="text-base-100 text-center leading-[120%]"
           style={{ 
             fontSize: '15px',
             fontFamily: 'Roboto, sans-serif',
