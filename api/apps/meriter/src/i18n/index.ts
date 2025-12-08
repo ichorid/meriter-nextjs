@@ -26,12 +26,8 @@ export class CommunityLanguageResolver {
   constructor(@InjectModel(Community.name) private communityModel: Model<CommunityDocument>) { }
 
   async getLanguageByChatId(chatId: string): Promise<Lang> {
-    const cached = communityLangCache.get(chatId);
-    if (cached) return cached;
-    const community = null;
-    const lang: Lang = (community?.settings as any)?.language || 'en';
-    communityLangCache.set(chatId, lang);
-    return lang;
+    // Always return default language since community lookup by chatId is no longer supported
+    return 'en';
   }
 
   setLanguageForChat(chatId: string, lang: Lang) {
