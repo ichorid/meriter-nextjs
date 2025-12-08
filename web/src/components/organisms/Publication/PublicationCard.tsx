@@ -81,32 +81,30 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   if (isPoll && pollData) {
     const pollItem = publication as PollFeedItem;
     return (
-      <div className="bg-base-100 rounded-xl p-6 shadow-md border border-base-300 dark:border-base-content/20 hover:shadow-lg transition-shadow duration-200">
-        <div>
-          <PublicationHeader
-            publication={{
-              id: pollItem.id,
-              slug: undefined,
-              createdAt: pollItem.createdAt,
-              meta: pollItem.meta,
-            }}
-            showCommunityAvatar={showCommunityAvatar}
-            className="mb-4"
-          />
-          
-          <PollCasting
-            pollData={pollData}
-            pollId={pollItem.id}
-            userCast={userCast}
-            userCastSummary={userCastSummary}
-            balance={pollBalance}
-            onCastSuccess={() => {
-              // Mutations handle query invalidation automatically
-            }}
-            communityId={pollItem.communityId}
-            initiallyExpanded={false}
-          />
-        </div>
+      <div className="bg-base-100 rounded-2xl p-5 border border-base-content/5 hover:border-base-content/10 transition-all duration-200">
+        <PublicationHeader
+          publication={{
+            id: pollItem.id,
+            slug: undefined,
+            createdAt: pollItem.createdAt,
+            meta: pollItem.meta,
+          }}
+          showCommunityAvatar={showCommunityAvatar}
+          className="mb-4"
+        />
+        
+        <PollCasting
+          pollData={pollData}
+          pollId={pollItem.id}
+          userCast={userCast}
+          userCastSummary={userCastSummary}
+          balance={pollBalance}
+          onCastSuccess={() => {
+            // Mutations handle query invalidation automatically
+          }}
+          communityId={pollItem.communityId}
+          initiallyExpanded={false}
+        />
       </div>
     );
   }
@@ -132,10 +130,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   
   return (
     <Pressable onPress={handleCardClick}>
-      <div 
-        className="bg-base-100 rounded-xl p-6 shadow-md border border-base-300 dark:border-base-content/20 overflow-hidden hover:shadow-lg transition-shadow duration-200"
-      >
-      <div>
+      <article className="bg-base-100 rounded-2xl p-5 border border-base-content/5 hover:border-base-content/10 transition-all duration-200">
         <PublicationHeader
           publication={{
             id: pubItem.id,
@@ -146,7 +141,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             isProject: (pubItem as any).isProject,
           }}
           showCommunityAvatar={showCommunityAvatar}
-          className="mb-4"
+          className="mb-3"
         />
         
         <PublicationContent
@@ -159,7 +154,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             isProject: (pubItem as any).isProject,
             meta: transformedMeta,
           }}
-          className="mb-6"
+          className="mb-4"
         />
         
         <PublicationActions
@@ -187,8 +182,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           wallets={wallets}
           // maxMinus is calculated in PublicationActions using quota data
         />
-      </div>
-    </div>
+      </article>
     </Pressable>
   );
 };

@@ -24,7 +24,11 @@
         "participant": "Участник",
         "viewer": "Наблюдатель",
         "noCommunitiesFound": "Сообщества не найдены в кошельках",
-        "loadingCommunities": "Загрузка сообществ..."
+        "loadingCommunities": "Загрузка сообществ...",
+        "search": "Поиск",
+        "open": "Открыть",
+        "comingSoon": "Скоро",
+        "noPermission": "У вас нет разрешения на выполнение этого действия"
     },
     "home": {
         "breadcrumb": "Главная",
@@ -683,6 +687,7 @@
         }
     },
     "profile": {
+        "activity": "Активность",
         "newUserDescription": "Пожалуйста, заполните свой профиль для продолжения.",
         "generalInformation": "Основная информация",
         "generalInformationSubtitle": "Пожалуйста, заполните следующую информацию для завершения вашего профиля.",

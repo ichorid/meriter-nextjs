@@ -60,55 +60,49 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   } : null;
 
   return (
-    <div className={`flex items-start justify-between ${className}`}>
-      <div className="flex items-start gap-3">
-        <div className="flex items-start sm:items-center gap-2 flex-col sm:flex-row">
-          <Avatar src={author.photoUrl} alt={author.name} size="md" />
-          <div className="flex flex-col">
-            <span className="font-medium text-base-content">{author.name}</span>
-            {author.username && <span className="text-sm text-base-content/60">@{author.username}</span>}
+    <div className={`flex items-start justify-between gap-3 ${className}`}>
+      {/* Author Info */}
+      <div className="flex items-center gap-3 min-w-0">
+        <Avatar src={author.photoUrl} alt={author.name} size="md" />
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-sm text-base-content truncate">{author.name}</span>
+            {beneficiary && (
+              <>
+                <span className="text-xs text-base-content/30">→</span>
+                <span className="font-medium text-sm text-base-content/70 truncate">{beneficiary.name}</span>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-0.5">
+            {author.username && (
+              <span className="text-xs text-base-content/40">@{author.username}</span>
+            )}
+            <span className="text-xs text-base-content/30">·</span>
+            <span className="text-xs text-base-content/40">
+              {dateVerbose(new Date(publication.createdAt))}
+            </span>
           </div>
         </div>
-        
-        {beneficiary && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-base-content/60">→</span>
-            <div className="flex items-center gap-2">
-              <Avatar src={beneficiary.photoUrl} alt={beneficiary.name} size="sm" />
-              <div className="flex flex-col">
-                <span className="font-medium text-sm text-base-content">{beneficiary.name}</span>
-                {beneficiary.username && <span className="text-xs text-base-content/60">@{beneficiary.username}</span>}
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {showCommunityAvatar && publication.meta?.origin?.telegramChatName && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-base-content/60">in</span>
-            <Badge variant="info" size="sm">
-              {publication.meta?.origin?.telegramChatName}
-            </Badge>
-          </div>
-        )}
       </div>
       
-      <div className="flex flex-col items-end gap-1">
-        <span className="text-xs text-base-content/60">
-          {dateVerbose(new Date(publication.createdAt))}
-        </span>
-        <div className="flex items-center gap-2">
-          {(publication as any).postType === 'project' || (publication as any).isProject ? (
-            <BrandBadge variant="warning" size="sm">
-              PROJECT
-            </BrandBadge>
-          ) : null}
-          {publication.meta?.hashtagName && (
-            <Badge variant="primary" size="sm">
-              #{publication.meta?.hashtagName}
-            </Badge>
-          )}
-        </div>
+      {/* Tags & Badges */}
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        {(publication as any).postType === 'project' || (publication as any).isProject ? (
+          <BrandBadge variant="warning" size="sm">
+            PROJECT
+          </BrandBadge>
+        ) : null}
+        {publication.meta?.hashtagName && (
+          <Badge variant="primary" size="sm">
+            #{publication.meta?.hashtagName}
+          </Badge>
+        )}
+        {showCommunityAvatar && publication.meta?.origin?.telegramChatName && (
+          <Badge variant="info" size="sm">
+            {publication.meta?.origin?.telegramChatName}
+          </Badge>
+        )}
       </div>
     </div>
   );

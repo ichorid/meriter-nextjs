@@ -57,26 +57,35 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
     // This component always shows the vote button and score counter, but disables the button when user cannot vote
 
     return (
-        <div className="grid grid-cols-[1fr_140px] gap-4 px-5 py-2.5">
-            {commentCount > 0 && (
-                <div className="flex items-center gap-2 mt-4">
-                    <div className="cursor-pointer flex items-center gap-2" onClick={handleCommentClick}>
-                        <img className="w-6 h-6 opacity-30" src={"/meriter/comment.svg"} alt="Comments" />
-                        <span className="text-sm opacity-50">{commentCount}</span>
-                    </div>
-                </div>
-            )}
+        <div className="flex items-center justify-between pt-3 border-t border-base-content/5">
+            {/* Comments */}
+            <div className="flex items-center gap-4">
+                {commentCount > 0 && (
+                    <button 
+                        className="flex items-center gap-1.5 text-base-content/40 hover:text-base-content/60 transition-colors"
+                        onClick={handleCommentClick}
+                    >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        <span className="text-xs font-medium">{commentCount}</span>
+                    </button>
+                )}
+            </div>
             
-            <div className="flex items-center gap-3 mt-4">
-                <div className={`text-2xl font-bold ${score > 0 ? "text-success" : score < 0 ? "text-error" : "text-secondary"}`}>
-                    {score}
-                </div>
+            {/* Score & Vote */}
+            <div className="flex items-center gap-3">
+                <span className={`text-lg font-semibold tabular-nums ${
+                    score > 0 ? "text-success" : score < 0 ? "text-error" : "text-base-content/40"
+                }`}>
+                    {score > 0 ? '+' : ''}{score}
+                </span>
                 
                 <button
-                    className={`btn-action h-9 px-4 text-xs gap-2 ${
+                    className={`h-8 px-4 text-xs font-medium rounded-lg transition-all ${
                         !canVote 
-                            ? 'btn-ghost' 
-                            : 'btn-action-outline'
+                            ? 'bg-base-content/5 text-base-content/30 cursor-not-allowed' 
+                            : 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
                     }`}
                     onClick={handleVoteClick}
                     disabled={!canVote}

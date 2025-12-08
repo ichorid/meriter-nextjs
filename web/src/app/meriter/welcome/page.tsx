@@ -14,8 +14,8 @@ export default function WelcomePage() {
 
     if (authLoading) {
         return (
-            <div className="min-h-screen bg-base-100 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+            <div className="min-h-svh bg-base-100 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-base-content/50" />
             </div>
         );
     }
@@ -26,25 +26,38 @@ export default function WelcomePage() {
     }
 
     return (
-        <div className="min-h-screen bg-base-100 flex flex-col items-center justify-center p-4">
-            <div className="w-full max-w-md text-center flex flex-col items-center justify-between min-h-[calc(100svh-32px)]">
-                <div>
-                    <div className="flex justify-center mb-8 mt-8">
-                        <Logo size={64} className="text-base-content" />
+        <div className="h-svh bg-base-100 flex flex-col">
+            {/* Fixed Header */}
+            <header className="sticky top-0 z-10 px-6 pt-6 pb-4 bg-base-100">
+                <div className="w-full max-w-md mx-auto">
+                    <div className="flex items-center gap-3">
+                        <Logo size={36} className="text-base-content" />
+                        <span className="text-lg font-medium text-base-content">
+                            Meriter
+                        </span>
                     </div>
-                    <div>
-                        <h1 className="text-3xl text-left font-bold text-base-content mb-4">
+                </div>
+            </header>
+
+            {/* Scrollable Main Content */}
+            <main className="flex-1 overflow-y-auto px-6">
+                <div className="w-full max-w-md mx-auto py-8">
+                    <div className="space-y-4">
+                        <h1 className="text-2xl font-semibold text-base-content leading-tight">
                             {t("welcome")}
                         </h1>
-                        <p className="text-base-content/70 text-left mb-8">
+                        <p className="text-base text-base-content/60 leading-relaxed">
                             {t("welcomeSubtitle")}
                         </p>
                     </div>
                 </div>
+            </main>
 
-                <div>
+            {/* Fixed Footer */}
+            <footer className="sticky bottom-0 z-10 px-6 pt-4 pb-6 bg-base-100 border-t border-base-content/5">
+                <div className="w-full max-w-md mx-auto">
                     <BrandButton
-                        size="sm"
+                        size="lg"
                         variant="default"
                         fullWidth
                         onClick={() => router.push("/meriter/new-user")}
@@ -52,7 +65,7 @@ export default function WelcomePage() {
                         {t("fillProfile")}
                     </BrandButton>
                 </div>
-            </div>
+            </footer>
         </div>
     );
 }

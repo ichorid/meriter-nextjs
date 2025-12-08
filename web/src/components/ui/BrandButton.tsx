@@ -28,21 +28,27 @@ export const BrandButton = React.forwardRef<HTMLButtonElement, BrandButtonProps>
         },
         ref
     ) => {
-        const baseStyles = 'inline-flex items-center justify-center rounded-md font-normal transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-white dark:ring-offset-base-100 active:scale-95';
+        const baseStyles = `
+            inline-flex items-center justify-center rounded-xl font-medium 
+            transition-all duration-200 
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-base-content/20 focus-visible:ring-offset-2 focus-visible:ring-offset-base-100
+            disabled:opacity-50 disabled:pointer-events-none 
+            active:scale-[0.98]
+        `;
 
         const variants = {
-            default: 'bg-base-content text-base-100 hover:bg-brand-primary dark:bg-base-content dark:text-base-100',
-            primary: 'bg-brand-primary text-white hover:bg-brand-primary/90 active:bg-brand-primary/95',
-            secondary: 'bg-brand-secondary text-white hover:bg-brand-secondary/90 active:bg-brand-secondary/95',
-            outline: 'border border-base-content text-base-content hover:bg-brand-primary/10 active:bg-brand-primary/20 dark:border-base-content/50 dark:text-base-content dark:hover:bg-brand-primary/20',
-            ghost: 'hover:bg-brand-surface text-base-content hover:text-brand-primary dark:text-base-content dark:hover:bg-brand-surface',
-            link: 'text-brand-primary underline-offset-4 hover:underline',
+            default: 'bg-base-content text-base-100 hover:bg-base-content/90',
+            primary: 'bg-primary text-primary-content hover:bg-primary/90',
+            secondary: 'bg-secondary text-secondary-content hover:bg-secondary/90',
+            outline: 'border border-base-content/20 text-base-content hover:bg-base-content/5 hover:border-base-content/30',
+            ghost: 'text-base-content hover:bg-base-content/5',
+            link: 'text-base-content/70 underline-offset-4 hover:underline hover:text-base-content',
         };
 
         const sizes = {
-            sm: 'h-9 px-3 text-xs',
-            md: 'h-11 px-4 py-2 text-sm',
-            lg: 'h-14 px-8 text-base',
+            sm: 'h-9 px-4 text-xs',
+            md: 'h-11 px-5 text-sm',
+            lg: 'h-12 px-6 text-base',
         };
 
         const widthStyles = fullWidth ? 'w-full' : '';
@@ -51,12 +57,12 @@ export const BrandButton = React.forwardRef<HTMLButtonElement, BrandButtonProps>
             <button
                 ref={ref}
                 className={`
-          ${baseStyles}
-          ${variants[variant]}
-          ${sizes[size]}
-          ${widthStyles}
-          ${className}
-        `}
+                    ${baseStyles}
+                    ${variants[variant]}
+                    ${sizes[size]}
+                    ${widthStyles}
+                    ${className}
+                `}
                 disabled={disabled || isLoading}
                 {...props}
             >

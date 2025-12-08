@@ -58,10 +58,10 @@ export const CardCommentVote = ({
     };
     
     return (
-    <div className="mb-4 max-w-full overflow-hidden">
+    <div className="mb-4 w-full overflow-hidden">
         <div 
             className={classList(
-                "card bg-base-100 shadow-md dark:border dark:border-base-content/20 rounded-xl overflow-hidden max-w-full",
+                "card bg-base-100 shadow-md dark:border dark:border-base-content/20 rounded-xl overflow-hidden w-full",
                 (onDetailsClick || onClick) && "cursor-pointer hover:shadow-lg transition-shadow"
             )}
             onClick={handleCardClick}

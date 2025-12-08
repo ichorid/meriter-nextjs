@@ -48,14 +48,14 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
             communityId={communityId}
             myId={user?.id}
         >
-            <div className="flex flex-col min-h-screen bg-base-100">
+            <div className="flex flex-col h-full bg-base-100 overflow-hidden">
                 <PageHeader
                     title={t('members.title')}
                     showBack={true}
                     onBack={() => router.push(routes.community(communityId))}
                 />
 
-                <div className="p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
                     {membersLoading ? (
                         <div className="flex justify-center py-8">
                             <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />

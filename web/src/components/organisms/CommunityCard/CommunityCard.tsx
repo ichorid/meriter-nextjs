@@ -93,86 +93,84 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   // Get currency icon from community settings (stored as data URL or image URL)
   const currencyIconUrl = community.settings?.iconUrl;
 
-  // Expanded version (desktop) - matches target layout:
-  // Row 1: Community title
-  // Row 2: Avatar | Role badge | WalletQuotaBlock (right-aligned)
-  // Row 3: Community description
+  // Expanded version (desktop)
   if (isExpanded) {
     return (
       <Link href={`/meriter/communities/${communityId}`}>
         <div
-          className={`w-full rounded-lg p-3 flex flex-col gap-2 cursor-pointer transition-all ${
+          className={`w-full rounded-xl p-4 flex flex-col gap-3 cursor-pointer transition-all duration-200 ${
             isActive
-              ? 'bg-primary text-primary-content'
-              : 'bg-base-100 hover:bg-base-200 border border-base-300'
+              ? 'bg-base-content text-base-100'
+              : 'bg-base-100 hover:bg-base-200/50 border border-base-content/5'
           }`}
         >
-          {/* Row 1: Community title */}
-          <div className={`text-sm font-medium truncate ${isActive ? 'text-primary-content' : 'text-base-content'}`}>
-            {community.name}
+          {/* Row 1: Avatar + Title */}
+          <div className="flex items-center gap-3">
+            <CommunityAvatar
+              avatarUrl={community.avatarUrl}
+              communityName={community.name}
+              size={40}
+              needsSetup={community.needsSetup}
+            />
+            <div className="flex-1 min-w-0">
+              <div className={`text-sm font-medium truncate ${isActive ? 'text-base-100' : 'text-base-content'}`}>
+                {community.name}
+              </div>
+              {community.description && (
+                <div className={`text-xs truncate mt-1 ${isActive ? 'text-base-100/60' : 'text-base-content/50'}`}>
+                  {community.description}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Row 2: Avatar | Role badge | WalletQuotaBlock (right-aligned) */}
-          <div className="flex items-center gap-2">
-            <div className="flex-shrink-0">
-              <CommunityAvatar
-                avatarUrl={community.avatarUrl}
-                communityName={community.name}
-                size={32}
-                needsSetup={community.needsSetup}
-              />
-            </div>
-            {userRoleBadge && (
+          {/* Row 2: Role badge + Wallet/Quota */}
+          <div className="flex items-center justify-between gap-2 pt-1">
+            {userRoleBadge ? (
               <Badge 
                 variant={userRoleBadge.variant} 
                 size="xs"
-                className={isActive ? 'bg-primary-content/20 text-primary-content border border-primary-content/30' : ''}
+                className={isActive ? 'bg-base-100/20 text-base-100 border-base-100/20' : ''}
               >
                 {userRoleBadge.label}
               </Badge>
+            ) : (
+              <div />
             )}
-            <div className="flex-1" />
             <WalletQuotaBlock
               balance={balance}
               remainingQuota={remainingQuota}
               dailyQuota={dailyQuota}
               currencyIconUrl={currencyIconUrl}
-              className={isActive ? 'text-primary-content/90' : ''}
+              className={isActive ? 'text-base-100/80' : ''}
             />
           </div>
-
-          {/* Row 3: Community description */}
-          {community.description && (
-            <div className={`text-xs truncate ${isActive ? 'text-primary-content/80' : 'text-base-content/70'}`}>
-              {community.description}
-            </div>
-          )}
         </div>
       </Link>
     );
   }
 
-  // Collapsed version (tablet/mobile - avatar only with compact metrics below)
+  // Collapsed version (tablet/mobile)
   return (
     <Link href={`/meriter/communities/${communityId}`}>
-      <div className="w-12 flex flex-col items-center relative">
+      <div className="flex flex-col items-center relative py-1">
         <div
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+          className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer overflow-hidden ${
             isActive
-              ? 'ring-2 ring-primary ring-offset-2 ring-offset-base-200'
-              : 'hover:ring-2 hover:ring-base-content/20'
+              ? 'ring-2 ring-base-content ring-offset-2 ring-offset-base-100'
+              : 'hover:ring-2 hover:ring-base-content/10'
           }`}
         >
           <CommunityAvatar
             avatarUrl={community.avatarUrl}
             communityName={community.name}
-            size={48}
+            size={44}
             needsSetup={community.needsSetup}
           />
         </div>
         {userRoleBadge && (
           <div 
-            className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-base-200 ${
+            className={`absolute top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-base-100 ${
               userRoleBadge.variant === 'error' ? 'bg-error' :
               userRoleBadge.variant === 'accent' ? 'bg-accent' :
               userRoleBadge.variant === 'info' ? 'bg-info' : 'bg-accent'
@@ -180,18 +178,16 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
             title={userRoleBadge.label} 
           />
         )}
-        <div className="mt-1 p-1 rounded border bg-base-200 border-base-300 flex flex-col gap-0.5 max-w-[48px]">
-          <div className="text-[9px] leading-tight text-base-content/70 flex items-center gap-0.5 justify-center">
+        <div className="mt-2 px-1.5 py-1 rounded-lg bg-base-200/50 flex flex-col gap-1">
+          <div className="text-[9px] leading-none text-base-content/50 flex items-center gap-0.5 justify-center">
             {currencyIconUrl && (
-              <img src={currencyIconUrl} alt="Currency" className="w-2 h-2 flex-shrink-0" />
+              <img src={currencyIconUrl} alt="" className="w-2 h-2 flex-shrink-0 opacity-60" />
             )}
-            <span className="flex-shrink-0">:</span>
-            <span className="font-medium truncate">{balance}</span>
+            <span className="font-medium text-base-content/70">{balance}</span>
           </div>
-          <div className="text-[9px] leading-tight text-base-content/70 flex items-center gap-0.5 justify-center">
-            <Zap className="w-2 h-2 flex-shrink-0" />
-            <span className="flex-shrink-0">:</span>
-            <span className="font-medium truncate">{remainingQuota}/{dailyQuota}</span>
+          <div className="text-[9px] leading-none text-base-content/50 flex items-center gap-0.5 justify-center">
+            <Zap className="w-2 h-2 flex-shrink-0 opacity-60" />
+            <span className="font-medium text-base-content/70">{remainingQuota}/{dailyQuota}</span>
           </div>
         </div>
       </div>

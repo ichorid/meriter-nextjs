@@ -22,37 +22,29 @@ export function CommunityHero({ community, stats }: CommunityHeroProps) {
   const { name, description, avatarUrl } = community;
 
   return (
-    <div className="relative bg-base-100 rounded-xl overflow-hidden max-w-full border border-brand-secondary/10 shadow-sm">
-      {/* Cover Image Section */}
-      <div className="relative h-32 bg-gradient-to-r from-brand-primary/20 via-brand-primary/10 to-brand-secondary/10">
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/30 to-transparent" />
-      </div>
+    <div className="relative bg-base-100 rounded-2xl overflow-hidden border border-base-content/5">
+      {/* Cover Section - reduced height */}
+      <div className="relative h-20 bg-gradient-to-br from-base-content/5 via-base-content/3 to-transparent" />
 
       {/* Community Content */}
-      <div className="relative px-4 pb-6 pt-2">
-        {/* Avatar Section */}
-        <div className="flex items-end justify-between -mt-16 mb-4">
-          <div className="relative">
-            <BrandAvatar
-              src={avatarUrl}
-              fallback={name}
-              size="xl"
-              className="border-4 border-base-100 shadow-lg bg-base-100"
-            />
-          </div>
+      <div className="relative px-5 pb-5">
+        {/* Avatar Section - positioned to overlap cover */}
+        <div className="-mt-8 mb-3">
+          <BrandAvatar
+            src={avatarUrl}
+            fallback={name}
+            size="lg"
+            className="border-4 border-base-100 shadow-md bg-base-200"
+          />
         </div>
 
         {/* Community Info */}
-        <div className="mt-4 space-y-2">
-          <div>
-            <h1 className="text-2xl font-bold text-brand-text-primary dark:text-base-content break-words">
-              {name}
-            </h1>
-          </div>
-
-          {/* Description */}
+        <div className="space-y-1.5">
+          <h1 className="text-xl font-semibold text-base-content break-words">
+            {name}
+          </h1>
           {description && (
-            <p className="text-sm text-brand-text-primary dark:text-base-content leading-relaxed break-words">
+            <p className="text-sm text-base-content/60 leading-relaxed break-words">
               {description}
             </p>
           )}
@@ -60,53 +52,48 @@ export function CommunityHero({ community, stats }: CommunityHeroProps) {
 
         {/* Quick Stats */}
         {stats && (
-          <div className="mt-6 pt-6 border-t border-brand-secondary/10">
+          <div className="mt-5 pt-4 border-t border-base-content/5">
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <FileText size={18} className="text-brand-text-secondary dark:text-base-content/70 mr-1" />
-                </div>
-                <div className="text-2xl font-bold text-brand-text-primary dark:text-base-content">
+                <FileText size={16} className="text-base-content/40 mx-auto mb-1" />
+                <div className="text-lg font-semibold text-base-content">
                   {stats.publications}
                 </div>
-                <div className="text-xs text-brand-text-secondary dark:text-base-content/70 mt-1">
+                <div className="text-xs text-base-content/50">
                   Publications
                 </div>
               </div>
               {stats.members !== undefined && (
                 <a
                   href={`/meriter/communities/${community.id}/members`}
-                  className="text-center hover:bg-brand-secondary/5 rounded-lg p-1 transition-colors cursor-pointer block"
+                  className="text-center hover:bg-base-content/5 rounded-lg p-2 -m-2 transition-colors"
                 >
-                  <div className="flex items-center justify-center mb-1">
-                    <Users size={18} className="text-brand-text-secondary dark:text-base-content/70 mr-1" />
-                  </div>
-                  <div className="text-2xl font-bold text-brand-text-primary dark:text-base-content">
+                  <Users size={16} className="text-base-content/40 mx-auto mb-1" />
+                  <div className="text-lg font-semibold text-base-content">
                     {stats.members}
                   </div>
-                  <div className="text-xs text-brand-text-secondary dark:text-base-content/70 mt-1">
+                  <div className="text-xs text-base-content/50">
                     Members
                   </div>
                 </a>
               )}
               {stats.activity !== undefined ? (
                 <div className="text-center">
-                  <div className="flex items-center justify-center mb-1">
-                    <TrendingUp size={18} className="text-brand-text-secondary dark:text-base-content/70 mr-1" />
-                  </div>
-                  <div className="text-2xl font-bold text-brand-text-primary dark:text-base-content">
+                  <TrendingUp size={16} className="text-base-content/40 mx-auto mb-1" />
+                  <div className="text-lg font-semibold text-base-content">
                     {stats.activity}
                   </div>
-                  <div className="text-xs text-brand-text-secondary dark:text-base-content/70 mt-1">
+                  <div className="text-xs text-base-content/50">
                     Activity
                   </div>
                 </div>
               ) : (
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-brand-text-primary dark:text-base-content">
-                    -
+                  <TrendingUp size={16} className="text-base-content/40 mx-auto mb-1" />
+                  <div className="text-lg font-semibold text-base-content/30">
+                    —
                   </div>
-                  <div className="text-xs text-brand-text-secondary dark:text-base-content/70 mt-1">
+                  <div className="text-xs text-base-content/50">
                     Activity
                   </div>
                 </div>

@@ -224,9 +224,9 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         </div>
       )}
 
-      <div className={`flex-1 overflow-y-auto w-full ${paddingClass} py-2`}>
+      <div className={`flex-1 overflow-y-auto w-full ${paddingClass} py-4`}>
         {/* Community Cards or Avatars */}
-        <div className={isExpanded ? 'space-y-2' : 'space-y-[12.8px]'}>
+        <div className={isExpanded ? 'space-y-4' : 'space-y-5'}>
           {isAuthenticated && !walletsLoading && communityIds.length === 0 && wallets.length > 0 && (
             <div className="text-xs text-base-content/50 px-2">
               {t('noCommunitiesFound')}

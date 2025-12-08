@@ -9,7 +9,6 @@ import { useUserRoles } from '@/hooks/api/useProfile';
 import { useWallets } from '@/hooks/api';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { InviteInput } from '@/components/molecules/InviteInput/InviteInput';
 import Link from 'next/link';
@@ -97,111 +96,104 @@ export default function CommunitiesPage() {
     const isLoading = userLoading || (isSuperadmin ? allCommunitiesLoading : memberCommunitiesLoading);
 
     return (
-        <AdaptiveLayout>
-            <div className="flex flex-col min-h-screen bg-base-100 overflow-x-hidden max-w-full">
-                <PageHeader
-                    title="Communities"
-                    showBack={false}
-                />
+        <AdaptiveLayout
+            stickyHeader={
+                <header className="px-4 pt-4 pb-3 border-b border-base-content/10">
+                    <h1 className="text-xl font-semibold text-base-content">
+                        Communities
+                    </h1>
+                </header>
+            }
+        >
+            {/* Content */}
+            <div>
+                {/* Section 1: Special Communities */}
+                {specialCommunities.length > 0 && (
+                    <section className="mb-10">
+                        <h2 className="text-sm font-medium text-base-content/60 uppercase tracking-wide mb-4">
+                            Special Communities
+                        </h2>
+                        <div className="flex flex-col gap-4">
+                            {specialCommunities.map((community) => {
+                                const wallet = walletsMap.get(community.id);
+                                const quota = quotasMap.get(community.id);
+                                return (
+                                    <CommunityCard
+                                        key={community.id}
+                                        communityId={community.id}
+                                        pathname={pathname}
+                                        isExpanded={true}
+                                        wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                                        quota={quota && typeof quota.remainingToday === 'number' ? { 
+                                            remainingToday: quota.remainingToday,
+                                            dailyQuota: quota.dailyQuota ?? 0
+                                        } : undefined}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </section>
+                )}
 
-                <div className="p-4 space-y-6 max-w-full overflow-x-hidden">
-                    {/* Section 1: Special Communities */}
-                    {specialCommunities.length > 0 && (
-                        <>
+                {/* Viewer Notification: Show when user has no non-special communities */}
+                {userCommunities.length === 0 && (
+                    <section className="bg-base-200/50 border border-base-content/5 rounded-2xl p-6 mb-10">
+                        <div className="flex flex-col gap-4">
                             <div>
-                                <h2 className="text-lg font-semibold text-brand-text-primary mb-3">
-                                    Special Communities
-                                </h2>
-                                <div className="space-y-3">
-                                    {specialCommunities.map((community) => {
-                                        const wallet = walletsMap.get(community.id);
-                                        const quota = quotasMap.get(community.id);
-                                        return (
-                                            <CommunityCard
-                                                key={community.id}
-                                                communityId={community.id}
-                                                pathname={pathname}
-                                                isExpanded={true}
-                                                wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
-                                                quota={quota && typeof quota.remainingToday === 'number' ? { 
-                                                    remainingToday: quota.remainingToday,
-                                                    dailyQuota: quota.dailyQuota ?? 0
-                                                } : undefined}
-                                            />
-                                        );
-                                    })}
-                                </div>
+                                <h3 className="text-lg font-semibold text-base-content mb-2">
+                                    Join a Team
+                                </h3>
+                                <p className="text-sm text-base-content/60">
+                                    To join a team, contact one of the{' '}
+                                    <Link 
+                                        href="/meriter/about#leads" 
+                                        className="text-base-content/80 hover:text-base-content underline font-medium"
+                                    >
+                                        leads
+                                    </Link>
+                                    {' '}for an invite.
+                                </p>
                             </div>
-                            <div className="border-t border-base-300" />
-                        </>
-                    )}
+                            <InviteInput />
+                        </div>
+                    </section>
+                )}
 
-                    {/* Viewer Notification: Show when user has no non-special communities */}
-                    {userCommunities.length === 0 && (
-                        <>
-                            <div className="bg-info/10 border border-info/20 rounded-xl p-6">
-                                <div className="space-y-4">
-                                    <div>
-                                        <h3 className="text-lg font-semibold text-brand-text-primary mb-2">
-                                            Join a Team
-                                        </h3>
-                                        <p className="text-sm text-brand-text-secondary">
-                                            To join a team, contact one of the{' '}
-                                            <Link 
-                                                href="/meriter/about#leads" 
-                                                className="text-info hover:text-info/80 underline font-medium"
-                                            >
-                                                leads
-                                            </Link>
-                                            {' '}for an invite.
-                                        </p>
-                                    </div>
-                                    <InviteInput />
-                                </div>
+                {/* Section 2: User's Communities (hidden for viewers) */}
+                {!hasViewerRole && userCommunities.length > 0 && (
+                    <section>
+                        <h2 className="text-sm font-medium text-base-content/60 uppercase tracking-wide mb-4">
+                            Your Communities
+                        </h2>
+                        {isLoading ? (
+                            <div className="flex flex-col gap-4">
+                                <CardSkeleton />
+                                <CardSkeleton />
+                                <CardSkeleton />
                             </div>
-                            <div className="border-t border-base-300" />
-                        </>
-                    )}
-
-                    {/* Section 2: User's Communities (hidden for viewers) */}
-                    {!hasViewerRole && userCommunities.length > 0 && (
-                        <>
-                            <div>
-                                <h2 className="text-lg font-semibold text-brand-text-primary mb-3">
-                                    Your Communities
-                                </h2>
-                                {isLoading ? (
-                                    <div className="space-y-3">
-                                        <CardSkeleton />
-                                        <CardSkeleton />
-                                        <CardSkeleton />
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {userCommunities.map((community) => {
-                                            const wallet = walletsMap.get(community.id);
-                                            const quota = quotasMap.get(community.id);
-                                            return (
-                                                <CommunityCard
-                                                    key={community.id}
-                                                    communityId={community.id}
-                                                    pathname={pathname}
-                                                    isExpanded={true}
-                                                    wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
-                                                    quota={quota && typeof quota.remainingToday === 'number' ? { 
-                                                        remainingToday: quota.remainingToday,
-                                                        dailyQuota: quota.dailyQuota ?? 0
-                                                    } : undefined}
-                                                />
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                        ) : (
+                            <div className="flex flex-col gap-4">
+                                {userCommunities.map((community) => {
+                                    const wallet = walletsMap.get(community.id);
+                                    const quota = quotasMap.get(community.id);
+                                    return (
+                                        <CommunityCard
+                                            key={community.id}
+                                            communityId={community.id}
+                                            pathname={pathname}
+                                            isExpanded={true}
+                                            wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                                            quota={quota && typeof quota.remainingToday === 'number' ? { 
+                                                remainingToday: quota.remainingToday,
+                                                dailyQuota: quota.dailyQuota ?? 0
+                                            } : undefined}
+                                        />
+                                    );
+                                })}
                             </div>
-                            <div className="border-t border-base-300" />
-                        </>
-                    )}
-                </div>
+                        )}
+                    </section>
+                )}
             </div>
         </AdaptiveLayout>
     );

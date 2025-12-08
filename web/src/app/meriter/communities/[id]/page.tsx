@@ -13,10 +13,9 @@ import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { routes } from '@/lib/constants/routes';
 import type { FeedItem } from '@meriter/shared-types';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { BrandButton } from '@/components/ui/BrandButton';
-import { CommunityHero } from '@/components/organisms/Community/CommunityHero';
-import { Loader2 } from 'lucide-react';
+import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { Loader2, FileText } from 'lucide-react';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useUserRoles } from '@/hooks/api/useProfile';
 
@@ -253,73 +252,77 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
         >
-            <div className="flex flex-col min-h-screen bg-base-100 overflow-x-hidden max-w-full">
-                <PageHeader
-                    title={comms?.name || 'Community'}
-                    showBack={true}
-                />
+            {/* Community Info - Compact */}
+            {comms && (
+                <div className="flex items-start gap-4 mb-6">
+                    <BrandAvatar
+                        src={comms.avatarUrl}
+                        fallback={comms.name}
+                        size="lg"
+                        className="shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                        {comms.description && (
+                            <p className="text-sm text-base-content/70 leading-relaxed mb-3">
+                                {comms.description}
+                            </p>
+                        )}
+                        <div className="flex items-center gap-4 text-sm">
+                            <div className="flex items-center gap-1.5 text-base-content/60">
+                                <FileText size={14} />
+                                <span className="font-medium text-base-content">{filteredPublications.length}</span>
+                                <span>publications</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-                <div className="p-4 space-y-6 max-w-full overflow-x-hidden">
-                    {/* Community Hero Section */}
-                    {comms && (
-                        <CommunityHero
-                            community={comms}
-                            stats={{
-                                publications: filteredPublications.length,
-                                // members и activity можно добавить когда будет API
-                            }}
-                        />
-                    )}
+            {/* Banners */}
+            {error === false && 
+             userRoleInCommunity === 'participant' && 
+             isSpecialCommunity && 
+             !canCreatePost.canCreate && 
+             teamChatUrl && (
+                <div className="bg-info/10 text-base-content p-4 rounded-xl text-sm border border-info/20 mb-4">
+                    {t('communities.toAddPublication')}{" "}
+                    <a href={teamChatUrl} className="underline font-medium hover:opacity-80">
+                        {t('communities.writeToLeaderInTeamChat')}
+                    </a>
+                </div>
+            )}
+            {error === true && (
+                <div className="bg-error/10 text-error p-4 rounded-xl text-sm border border-error/20 text-center mb-4">
+                    {t('communities.noAccess')}
+                </div>
+            )}
 
-                    {/* Banner for participants in special communities who cannot create posts */}
-                    {error === false && 
-                     userRoleInCommunity === 'participant' && 
-                     isSpecialCommunity && 
-                     !canCreatePost.canCreate && 
-                     teamChatUrl && (
-                        <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-4 rounded-lg text-sm border border-blue-200 dark:border-blue-800/50">
-                            {t('communities.toAddPublication')}{" "}
-                            <a href={teamChatUrl} className="underline font-medium hover:opacity-80 dark:text-blue-300">
-                                {t('communities.writeToLeaderInTeamChat')}
+            {/* Setup banner */}
+            {comms?.needsSetup && (
+                <div className={`p-4 rounded-xl border mb-4 ${comms?.isAdmin ? "bg-warning/10 text-base-content border-warning/20" : "bg-info/10 text-base-content border-info/20"}`}>
+                    {comms?.isAdmin ? (
+                        <span>
+                            {tCommunities('unconfigured.banner.adminPrefix')}{' '}
+                            <a
+                                href={routes.communitySettings(chatId)}
+                                className="underline font-semibold hover:opacity-80"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    router.push(routes.communitySettings(chatId));
+                                }}
+                            >
+                                {tCommunities('unconfigured.banner.adminLink')}
                             </a>
-                        </div>
+                            {' '}{tCommunities('unconfigured.banner.adminSuffix')}
+                        </span>
+                    ) : (
+                        <span>{tCommunities('unconfigured.banner.user')}</span>
                     )}
-                    {error === true && (
-                        <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-4 rounded-lg text-sm border border-red-200 dark:border-red-800/50 text-center">
-                            {t('communities.noAccess')}
-                        </div>
-                    )}
+                </div>
+            )}
 
-                    {/* Setup banner */}
-                    {comms?.needsSetup && (
-                        <div className={`p-4 rounded-lg border ${comms?.isAdmin ? "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/50" : "bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800/50"}`}>
-                            {comms?.isAdmin ? (
-                                <span>
-                                    {tCommunities('unconfigured.banner.adminPrefix')}{' '}
-                                    <a
-                                        href={routes.communitySettings(chatId)}
-                                        className="underline font-semibold hover:opacity-80 dark:text-yellow-300"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            router.push(routes.communitySettings(chatId));
-                                        }}
-                                    >
-                                        {tCommunities('unconfigured.banner.adminLink')}
-                                    </a>
-                                    {' '}{tCommunities('unconfigured.banner.adminSuffix')}
-                                </span>
-                            ) : (
-                                <span>{tCommunities('unconfigured.banner.user')}</span>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Divider before feed */}
-                    {(error === false || filteredPublications.length > 0) && (
-                        <div className="border-t border-brand-secondary/10" />
-                    )}
-
-                    <div className="space-y-4">
+            {/* Publications Feed */}
+            <div className="space-y-4">
                         {isAuthenticated &&
                             filteredPublications
                                 .filter((p: FeedItem) => {
@@ -372,8 +375,6 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                             </BrandButton>
                         )}
                     </div>
-                </div>
-            </div>
             <FabMenu communityId={chatId} />
         </AdaptiveLayout>
     );

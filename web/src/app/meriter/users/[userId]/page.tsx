@@ -23,9 +23,9 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
   if (isLoading) {
     return (
       <AdaptiveLayout>
-        <div className="flex flex-col min-h-screen bg-base-100">
+        <div className="flex flex-col h-full bg-base-100 overflow-hidden">
           <PageHeader title="User Profile" showBack={true} />
-          <div className="p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
             <CardSkeleton />
             <CardSkeleton />
           </div>
@@ -37,9 +37,9 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
   if (error || !user) {
     return (
       <AdaptiveLayout>
-        <div className="flex flex-col min-h-screen bg-base-100">
+        <div className="flex flex-col h-full bg-base-100 overflow-hidden">
           <PageHeader title="User Profile" showBack={true} />
-          <div className="p-4">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
             <div className="text-center py-12 text-base-content/60">
               <UserIcon className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
               <p className="font-medium">User not found</p>
@@ -56,10 +56,10 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
 
   return (
     <AdaptiveLayout>
-      <div className="flex flex-col min-h-screen bg-base-100">
+      <div className="flex flex-col h-full bg-base-100 overflow-hidden">
         <PageHeader title="User Profile" showBack={true} />
 
-        <div className="p-4 space-y-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6">
           {/* Profile Header */}
           <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
             <div className="flex items-start gap-4">

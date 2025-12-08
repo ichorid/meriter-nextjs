@@ -1,22 +1,23 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { AdaptiveLayout } from "@/components/templates/AdaptiveLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateUser } from "@/hooks/api/useProfile";
 import { UserForm, UserFormData } from "@/components/organisms/UserForm";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { Logo, BrandButton } from "@/components/ui";
 import { Loader2 } from "lucide-react";
 import { useToastStore } from "@/shared/stores/toast.store";
 
 export default function NewUserPage() {
     const t = useTranslations("profile");
+    const tLogin = useTranslations("login");
     const router = useRouter();
     const { user, isLoading: authLoading } = useAuth();
     const { mutateAsync: updateUser, isPending: isUpdating } = useUpdateUser();
     const addToast = useToastStore((state) => state.addToast);
+    const formRef = useRef<{ submit: () => void }>(null);
 
     const initialData: Partial<UserFormData> = useMemo(() => {
         if (!user) return {};
@@ -70,13 +71,15 @@ export default function NewUserPage() {
         }
     };
 
+    const handleFooterSubmit = () => {
+        formRef.current?.submit();
+    };
+
     if (authLoading) {
         return (
-            <AdaptiveLayout>
-                <div className="flex justify-center items-center min-h-[400px]">
-                    <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
-                </div>
-            </AdaptiveLayout>
+            <div className="h-svh bg-base-100 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-base-content/50" />
+            </div>
         );
     }
 
@@ -86,19 +89,63 @@ export default function NewUserPage() {
     }
 
     return (
-        <div className="min-h-screen bg-base-100 p-4 space-y-6">
-            <div className="max-w-2xl mx-auto">
-                <UserForm
-                    initialData={initialData}
-                    onSubmit={handleSubmit}
-                    isSubmitting={isUpdating}
-                    submitLabel={t("completeRegistration", {
-                        defaultMessage: "Complete Registration",
-                    })}
-                    showContacts={true}
-                    showEducation={true}
-                />
-            </div>
+        <div className="h-svh bg-base-100 flex flex-col">
+            {/* Fixed Header */}
+            <header className="sticky top-0 z-10 px-6 pt-6 pb-4 bg-base-100 border-b border-base-content/5">
+                <div className="w-full max-w-2xl mx-auto">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Logo size={32} className="text-base-content" />
+                            <span className="text-base font-medium text-base-content">
+                                Meriter
+                            </span>
+                        </div>
+                    </div>
+                    {/* Title in header */}
+                    <div className="mt-4">
+                        <h1 className="text-xl font-semibold text-base-content">
+                            {t("newProfile")}
+                        </h1>
+                        <p className="text-sm text-base-content/60 mt-1">
+                            {t("newProfileSubtitle")}
+                        </p>
+                    </div>
+                </div>
+            </header>
+
+            {/* Scrollable Form Content */}
+            <main className="flex-1 overflow-y-auto">
+                <div className="w-full max-w-2xl mx-auto px-6 py-6">
+                    <UserForm
+                        initialData={initialData}
+                        onSubmit={handleSubmit}
+                        isSubmitting={isUpdating}
+                        showContacts={true}
+                        showEducation={true}
+                        hideHeader={true}
+                        hideFooter={true}
+                        formRef={formRef}
+                    />
+                </div>
+            </main>
+
+            {/* Fixed Footer */}
+            <footer className="sticky bottom-0 z-10 px-6 pt-4 pb-6 bg-base-100 border-t border-base-content/5">
+                <div className="w-full max-w-2xl mx-auto">
+                    <BrandButton
+                        size="lg"
+                        variant="default"
+                        fullWidth
+                        onClick={handleFooterSubmit}
+                        isLoading={isUpdating}
+                        disabled={isUpdating}
+                    >
+                        {t("completeRegistration", {
+                            defaultMessage: "Complete Registration",
+                        })}
+                    </BrandButton>
+                </div>
+            </footer>
         </div>
     );
 }

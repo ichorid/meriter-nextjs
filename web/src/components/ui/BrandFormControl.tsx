@@ -20,19 +20,19 @@ export const BrandFormControl: React.FC<BrandFormControlProps> = ({
     className = '',
 }) => {
     return (
-        <div className={`space-y-1.5 ${className}`}>
+        <div className={`space-y-2 ${className}`}>
             {label && (
-                <label className="block text-sm font-medium text-brand-text-primary dark:text-base-content">
+                <label className="block text-sm font-medium text-base-content">
                     {label}
-                    {required && <span className="text-red-500 ml-1">*</span>}
+                    {required && <span className="text-error ml-1">*</span>}
                 </label>
             )}
             {children}
             {helperText && !error && (
-                <p className="text-xs text-brand-text-secondary dark:text-base-content/70">{helperText}</p>
+                <p className="text-xs text-base-content/50">{helperText}</p>
             )}
             {error && (
-                <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+                <p className="text-xs text-error">{error}</p>
             )}
         </div>
     );

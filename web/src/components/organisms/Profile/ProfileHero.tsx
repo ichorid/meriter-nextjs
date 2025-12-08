@@ -70,71 +70,69 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
     userRoles.some(r => r.role === 'lead');
 
   return (
-    <div className="relative bg-base-100 rounded-xl overflow-hidden border border-brand-secondary/10 shadow-sm">
-      {/* Cover Image Section */}
-      <div className="relative h-32 bg-gradient-to-r from-brand-primary/20 via-brand-primary/10 to-brand-secondary/10">
-        {/* Optional: Add cover image here when available */}
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/30 to-transparent" />
-        
-        {/* Edit button overlay */}
+    <div className="relative bg-base-100 rounded-2xl overflow-hidden border border-base-content/5">
+      {/* Cover Section */}
+      <div className="relative h-24 bg-gradient-to-br from-base-content/5 via-base-content/3 to-transparent">
+        {/* Edit button */}
         {showEdit && onEdit && (
-          <div className="absolute top-4 right-4">
+          <div className="absolute top-3 right-3">
             <BrandButton
               variant="ghost"
               size="sm"
               onClick={onEdit}
-              className="bg-base-100/90 backdrop-blur-sm hover:bg-base-100 text-brand-text-primary"
+              className="bg-base-100/80 backdrop-blur-sm hover:bg-base-100 text-base-content/70 h-8 px-3"
             >
-              <Edit size={16} className="mr-2" />
-              Edit
+              <Edit size={14} className="mr-1.5" />
+              <span className="text-xs">Edit</span>
             </BrandButton>
           </div>
         )}
       </div>
 
       {/* Profile Content */}
-      <div className="relative px-4 pb-6 pt-2">
-        {/* Avatar Section */}
-        <div className="flex items-end justify-between -mt-16 mb-4">
-          <div className="relative">
-            <div className="relative">
-              <BrandAvatar
-                src={avatarUrl}
-                fallback={displayName}
-                size="xl"
-                className="border-4 border-base-100 shadow-lg bg-base-100"
-              />
-              {/* Status Badge */}
-              <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 border-4 border-white rounded-full" />
-            </div>
+      <div className="relative px-5 pb-5">
+        {/* Avatar */}
+        <div className="-mt-10 mb-4">
+          <div className="relative inline-block">
+            <BrandAvatar
+              src={avatarUrl}
+              fallback={displayName}
+              size="xl"
+              className="border-4 border-base-100 shadow-md bg-base-200"
+            />
+            {/* Online indicator */}
+            <div className="absolute bottom-1 right-1 w-4 h-4 bg-success border-2 border-base-100 rounded-full" />
           </div>
         </div>
 
-        {/* User Info */}
-        <div className="mt-4 space-y-2">
-          <div>
-            <h1 className="text-2xl font-bold text-brand-text-primary">
-              {displayName}
-            </h1>
-            {user.username && (
-              <p className="text-sm text-brand-text-secondary mt-1">
-                @{user.username}
-              </p>
-            )}
-          </div>
+        {/* Name & Username */}
+        <div className="mb-4">
+          <h1 className="text-xl font-semibold text-base-content">
+            {displayName}
+          </h1>
+          {user.username && (
+            <p className="text-sm text-base-content/50 mt-0.5">
+              @{user.username}
+            </p>
+          )}
+        </div>
 
+        {/* Info Sections */}
+        <div className="space-y-4">
           {/* Bio */}
           {bio && (
-            <p className="text-sm text-brand-text-primary leading-relaxed">
+            <p className="text-sm text-base-content/80 leading-relaxed">
               {bio}
             </p>
           )}
 
           {/* Values */}
           {values && (
-            <div className="mt-2">
-              <p className="text-xs font-semibold text-brand-text-secondary mb-1">Values</p>
-              <p className="text-sm text-brand-text-primary leading-relaxed">
+            <div>
+              <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide mb-1">
+                Values
+              </p>
+              <p className="text-sm text-base-content/70 leading-relaxed">
                 {values}
               </p>
             </div>
@@ -142,70 +140,79 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
 
           {/* About */}
           {about && (
-            <div className="mt-2">
-              <p className="text-xs font-semibold text-brand-text-secondary mb-1">About</p>
-              <p className="text-sm text-brand-text-primary leading-relaxed">
+            <div>
+              <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide mb-1">
+                About
+              </p>
+              <p className="text-sm text-base-content/70 leading-relaxed">
                 {about}
               </p>
             </div>
           )}
 
-          {/* Educational Institution - only for Representative and Member */}
+          {/* Educational Institution */}
           {isRepresentativeOrMember && educationalInstitution && (
-            <div className="mt-2">
-              <p className="text-xs font-semibold text-brand-text-secondary mb-1">Educational Institution</p>
-              <p className="text-sm text-brand-text-primary">
+            <div>
+              <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide mb-1">
+                Education
+              </p>
+              <p className="text-sm text-base-content/70">
                 {educationalInstitution}
               </p>
             </div>
           )}
 
           {/* Location & Website */}
-          <div className="flex flex-wrap gap-4 text-sm text-brand-text-secondary mt-2">
-            {location?.city && location?.region && (
-              <span>
-                {location.city}, {location.region}
-              </span>
-            )}
-            {website && (
-              <a
-                href={website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-brand-primary hover:underline"
-              >
-                {website.replace(/^https?:\/\//, '')}
-              </a>
-            )}
-          </div>
+          {(location?.city || website) && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-base-content/50">
+              {location?.city && location?.region && (
+                <span className="flex items-center gap-1">
+                  <span className="text-base-content/30">📍</span>
+                  {location.city}, {location.region}
+                </span>
+              )}
+              {website && (
+                <a
+                  href={website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-base-content/60 hover:text-base-content transition-colors"
+                >
+                  {website.replace(/^https?:\/\//, '')}
+                </a>
+              )}
+            </div>
+          )}
 
-          {/* Contacts - only for Representative and Organizer */}
+          {/* Contacts */}
           {showContacts && contacts && (contacts.email || contacts.messenger) && (
-            <div className="mt-3 pt-3 border-t border-brand-secondary/10">
-              <p className="text-xs font-semibold text-brand-text-secondary mb-2">Contacts</p>
-              <div className="flex flex-wrap gap-4 text-sm text-brand-text-secondary">
+            <div className="pt-4 border-t border-base-content/5">
+              <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide mb-2">
+                Contacts
+              </p>
+              <div className="flex flex-wrap gap-3 text-sm">
                 {contacts.email && (
                   <a
                     href={`mailto:${contacts.email}`}
-                    className="text-brand-primary hover:underline"
+                    className="text-base-content/60 hover:text-base-content transition-colors"
                   >
                     {contacts.email}
                   </a>
                 )}
                 {contacts.messenger && (
-                  <span>{contacts.messenger}</span>
+                  <span className="text-base-content/50">{contacts.messenger}</span>
                 )}
               </div>
             </div>
           )}
         </div>
 
-        {/* Role Type Indicator */}
+        {/* Role Badge */}
         {userRoleDisplay && (
-          <div className="mt-6 pt-6 border-t border-brand-secondary/10">
+          <div className="mt-5 pt-4 border-t border-base-content/5">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-brand-text-secondary">{t('role') || 'Role'}:</span>
-              <Badge variant={userRoleDisplay.variant} size="md">
+              <span className="text-xs text-base-content/40">{t('role') || 'Role'}</span>
+              <Badge variant={userRoleDisplay.variant} size="sm">
                 {userRoleDisplay.label}
               </Badge>
             </div>

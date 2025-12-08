@@ -61,26 +61,26 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
 
     return (
         <>
-            <div
+            <header
                 className={`
-          sticky top-0 z-20 w-full bg-brand-surface/80 dark:bg-base-100 backdrop-blur-md border-b border-brand-secondary/10 dark:border-base-300/50
-          flex items-center justify-between px-4 h-14
-          ${className}
-        `}
+                    sticky top-0 z-20 bg-base-100/95 backdrop-blur-md border-b border-base-content/10
+                    flex items-center justify-between px-4 h-14 flex-shrink-0 w-full
+                    ${className}
+                `}
             >
                 <div className="flex items-center flex-1 min-w-0">
                     {showBack && (
                         <BrandButton
                             variant="ghost"
                             size="sm"
-                            className="mr-2 -ml-2 px-2 dark:text-base-content"
+                            className="mr-2 -ml-2 px-2"
                             onClick={handleBack}
                             aria-label="Go back"
                         >
-                            <ArrowLeft size={20} className="dark:text-base-content" />
+                            <ArrowLeft size={20} className="text-base-content" />
                         </BrandButton>
                     )}
-                    <h1 className="text-lg font-bold text-brand-text-primary dark:text-base-content truncate">
+                    <h1 className="text-lg font-semibold text-base-content truncate">
                         {title}
                     </h1>
                 </div>
@@ -94,7 +94,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                             onClick={() => setShowSearchModal(true)}
                             aria-label={t('search') || 'Search'}
                         >
-                            <Search size={18} />
+                            <Search size={18} className="text-base-content/70" />
                         </BrandButton>
                     )}
 
@@ -104,7 +104,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                         </div>
                     )}
                 </div>
-            </div>
+            </header>
 
             {/* Search Modal Portal */}
             {showSearch && (

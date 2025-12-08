@@ -99,13 +99,13 @@ export default function SearchResultsPage() {
 
   return (
     <AdaptiveLayout>
-      <div className="flex flex-col min-h-screen bg-base-100">
+      <div className="flex flex-col h-full bg-base-100 overflow-hidden">
         <PageHeader
           title={t('results.title') || 'Search Results'}
           showBack={true}
         />
 
-        <div className="p-4 space-y-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6">
           {/* Search Input */}
           <AdvancedSearch
             onSearch={handleSearch}

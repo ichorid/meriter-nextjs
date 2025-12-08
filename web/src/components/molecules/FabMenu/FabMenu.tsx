@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Plus, FileText, BarChart2, FolderKanban, FileSpreadsheet, Info } from 'lucide-react';
+import { Plus, FileText, BarChart2, FolderKanban, FileSpreadsheet, Info, X } from 'lucide-react';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useToastStore } from '@/shared/stores/toast.store';
 
@@ -14,15 +14,29 @@ interface FabMenuProps {
 export const FabMenu = ({ communityId }: FabMenuProps) => {
     const router = useRouter();
     const t = useTranslations('pages.communities');
+    const tCommon = useTranslations('common');
     const { canCreate, isLoading: permissionLoading, reason } = useCanCreatePost(communityId);
     const addToast = useToastStore((state) => state.addToast);
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
+    // Check if any modal/sheet is open to hide FAB
+    const [isHidden, setIsHidden] = useState(false);
+
+    useEffect(() => {
+        // Check for open modals/sheets by looking at body overflow
+        const observer = new MutationObserver(() => {
+            const hasModal = document.body.style.overflow === 'hidden';
+            setIsHidden(hasModal);
+        });
+        observer.observe(document.body, { attributes: true, attributeFilter: ['style'] });
+        return () => observer.disconnect();
+    }, []);
+
     const handleCreatePost = () => {
         if (!canCreate) {
             addToast(
-                reason || 'Only team leads and organizers can create posts.',
+                reason || t('noPermission'),
                 'info'
             );
             setIsOpen(false);
@@ -35,24 +49,13 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
     const handleCreatePoll = () => {
         if (!canCreate) {
             addToast(
-                reason || 'Only team leads and organizers can create polls.',
+                reason || t('noPermission'),
                 'info'
             );
             setIsOpen(false);
             return;
         }
         router.push(`/meriter/communities/${communityId}/create-poll`);
-        setIsOpen(false);
-    };
-
-    // Placeholders for future features
-    const handleCreateProject = () => {
-        console.log('Create Project clicked');
-        setIsOpen(false);
-    };
-
-    const handleCreateReport = () => {
-        console.log('Create Report clicked');
         setIsOpen(false);
     };
 
@@ -73,54 +76,63 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
         };
     }, [isOpen]);
 
+    // Hide FAB when modal is open
+    if (isHidden && !isOpen) {
+        return null;
+    }
+
     return (
-        <div className="fixed bottom-20 right-6 z-[60] lg:bottom-6" ref={menuRef}>
+        <div className="fixed bottom-20 right-4 z-[60] lg:bottom-6 lg:right-6" ref={menuRef}>
             {/* Menu Items */}
             {isOpen && !permissionLoading && (
-                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-xl shadow-xl border border-brand-border dark:border-base-300/50 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
-                    <div className="py-1">
+                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-2xl shadow-2xl border border-base-content/10 overflow-hidden">
+                    <div className="py-2">
                         {canCreate ? (
                             <>
                                 <button
                                     onClick={handleCreatePost}
-                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left"
+                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-base-content/5 transition-colors text-left"
                                 >
-                                    <FileText size={18} className="text-brand-primary" />
-                                    <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">{t('createPost')}</span>
+                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <FileText size={16} className="text-primary" />
+                                    </div>
+                                    <span className="text-sm font-medium text-base-content">{t('createPost')}</span>
                                 </button>
                                 <button
                                     onClick={handleCreatePoll}
-                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left"
+                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-base-content/5 transition-colors text-left"
                                 >
-                                    <BarChart2 size={18} className="text-brand-primary" />
-                                    <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">{t('createPoll')}</span>
+                                    <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
+                                        <BarChart2 size={16} className="text-secondary" />
+                                    </div>
+                                    <span className="text-sm font-medium text-base-content">{t('createPoll')}</span>
                                 </button>
                             </>
                         ) : (
                             <>
-                                {/* Show disabled buttons with notice */}
                                 <button
-                                    onClick={handleCreatePost}
                                     disabled
-                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left opacity-50 cursor-not-allowed"
+                                    className="w-full px-4 py-3 flex items-center gap-3 text-left opacity-40 cursor-not-allowed"
                                 >
-                                    <FileText size={18} className="text-brand-text-secondary dark:text-base-content/70" />
-                                    <span className="text-sm font-medium text-brand-text-secondary dark:text-base-content/70">{t('createPost')}</span>
+                                    <div className="w-8 h-8 rounded-full bg-base-content/5 flex items-center justify-center">
+                                        <FileText size={16} className="text-base-content/50" />
+                                    </div>
+                                    <span className="text-sm font-medium text-base-content/50">{t('createPost')}</span>
                                 </button>
                                 <button
-                                    onClick={handleCreatePoll}
                                     disabled
-                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left opacity-50 cursor-not-allowed"
+                                    className="w-full px-4 py-3 flex items-center gap-3 text-left opacity-40 cursor-not-allowed"
                                 >
-                                    <BarChart2 size={18} className="text-brand-text-secondary dark:text-base-content/70" />
-                                    <span className="text-sm font-medium text-brand-text-secondary dark:text-base-content/70">{t('createPoll')}</span>
+                                    <div className="w-8 h-8 rounded-full bg-base-content/5 flex items-center justify-center">
+                                        <BarChart2 size={16} className="text-base-content/50" />
+                                    </div>
+                                    <span className="text-sm font-medium text-base-content/50">{t('createPoll')}</span>
                                 </button>
-                                {/* Inline notice explaining why action is unavailable */}
                                 {reason && (
-                                    <div className="px-4 py-3 border-t border-brand-border dark:border-base-300/50 bg-info/10">
+                                    <div className="mx-3 mt-2 p-3 rounded-xl bg-base-200/50">
                                         <div className="flex items-start gap-2">
-                                            <Info size={16} className="text-info flex-shrink-0 mt-0.5" />
-                                            <p className="text-xs text-base-content/70 leading-relaxed">
+                                            <Info size={14} className="text-base-content/50 flex-shrink-0 mt-0.5" />
+                                            <p className="text-xs text-base-content/60 leading-relaxed">
                                                 {reason}
                                             </p>
                                         </div>
@@ -128,19 +140,17 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
                                 )}
                             </>
                         )}
+
+                        {/* Divider */}
+                        <div className="my-2 mx-4 border-t border-base-content/5" />
+
+                        {/* Coming soon items */}
                         <button
-                            onClick={handleCreateProject}
-                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left opacity-50 cursor-not-allowed"
+                            disabled
+                            className="w-full px-4 py-2.5 flex items-center gap-3 text-left opacity-30 cursor-not-allowed"
                         >
-                            <FolderKanban size={18} className="text-brand-text-secondary dark:text-base-content/70" />
-                            <span className="text-sm font-medium text-brand-text-secondary dark:text-base-content/70">Project (Coming Soon)</span>
-                        </button>
-                        <button
-                            onClick={handleCreateReport}
-                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left opacity-50 cursor-not-allowed"
-                        >
-                            <FileSpreadsheet size={18} className="text-brand-text-secondary dark:text-base-content/70" />
-                            <span className="text-sm font-medium text-brand-text-secondary dark:text-base-content/70">Report (Coming Soon)</span>
+                            <FolderKanban size={16} className="text-base-content/50" />
+                            <span className="text-xs text-base-content/50">{tCommon('comingSoon')}</span>
                         </button>
                     </div>
                 </div>
@@ -149,13 +159,17 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
             {/* FAB Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-all duration-200 ${isOpen
-                        ? 'bg-brand-text-primary text-white rotate-45'
-                        : 'bg-brand-primary text-white hover:bg-brand-primary/90 hover:scale-105'
-                    }`}
-                aria-label={isOpen ? "Close menu" : "Open menu"}
+                className={`
+                    flex items-center justify-center w-14 h-14 rounded-full shadow-lg 
+                    transition-all duration-200 
+                    ${isOpen
+                        ? 'bg-base-content text-base-100 rotate-45'
+                        : 'bg-base-content text-base-100 hover:scale-105 active:scale-95'
+                    }
+                `}
+                aria-label={isOpen ? tCommon('close') : tCommon('open')}
             >
-                <Plus size={28} />
+                <Plus size={24} strokeWidth={2.5} />
             </button>
         </div>
     );

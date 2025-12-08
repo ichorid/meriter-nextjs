@@ -27,7 +27,11 @@
         "participant": "Participant",
         "viewer": "Viewer",
         "noCommunitiesFound": "No communities found in wallets",
-        "loadingCommunities": "Loading communities..."
+        "loadingCommunities": "Loading communities...",
+        "search": "Search",
+        "open": "Open",
+        "comingSoon": "Coming soon",
+        "noPermission": "You don't have permission to perform this action"
     },
     "home": {
         "breadcrumb": "Home",
@@ -690,6 +694,7 @@
         }
     },
     "profile": {
+        "activity": "Activity",
         "newUserTitle": "New User Registration",
         "completeRegistration": "Complete Registration",
         "newUserDescription": "Please complete your profile to continue.",

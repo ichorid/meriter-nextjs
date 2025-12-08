@@ -23,6 +23,8 @@ export interface AdaptiveLayoutProps {
   setActiveSlider?: (id: string | null) => void;
   activeWithdrawPost?: string | null;
   setActiveWithdrawPost?: (id: string | null) => void;
+  /** Sticky header that stays at top of scroll area */
+  stickyHeader?: React.ReactNode;
 }
 
 /**
@@ -44,6 +46,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   setActiveSlider = () => { },
   activeWithdrawPost,
   setActiveWithdrawPost = () => { },
+  stickyHeader,
 }) => {
   const searchParams = useSearchParams();
   const selectedPostSlug = searchParams?.get('post');
@@ -196,7 +199,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   }, []);
 
   return (
-    <div className={`min-h-screen flex ${className}`}>
+    <div className={`h-screen max-h-screen flex overflow-hidden ${className}`}>
       {/* Left Sidebar - Communities */}
       {/* Responsive behavior:
           - Mobile/Tablet (< lg): Hidden when BottomNavigation is visible (same breakpoint)
@@ -218,21 +221,27 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
           - Mobile/Tablet (< lg): No padding (sidebar hidden when BottomNavigation is visible)
           - Desktop: sidebar uses sticky positioning, takes natural space (no padding)
       */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 lg:pl-0`}>
+      <div className={`flex-1 flex flex-col transition-all duration-300 lg:pl-0 min-w-0 overflow-hidden`}>
         {/* Top Bar */}
         <ContextTopBar />
 
         {/* Content Wrapper - Flex container for posts and comments */}
-        <div className="flex-1 flex relative">
+        <div className="flex-1 flex relative overflow-hidden">
           {/* Center Column - Posts */}
           <div
-            className={`transition-all duration-300 flex-1 sm:max-w-2xl lg:max-w-4xl ${showCommentsColumn
+            className={`transition-all duration-300 flex-1 min-w-0 overflow-y-auto overflow-x-hidden sm:max-w-2xl lg:max-w-4xl ${showCommentsColumn
               ? '' // Make room for comments column when shown via margin
               : 'mx-auto' // Center content when comments hidden
               }`}
             style={showCommentsColumn && isDesktop ? { marginRight: 'var(--right-column-width)' } : undefined}
           >
-            <main className="px-4 py-6 pb-20 lg:pb-6 bg-base-100 dark:bg-base-100">
+            {/* Sticky Header - rendered outside main for proper sticky behavior */}
+            {stickyHeader && (
+              <div className="sticky top-0 z-20 bg-base-100">
+                {stickyHeader}
+              </div>
+            )}
+            <main className="px-4 py-6 pb-20 lg:pb-6 bg-base-100 max-w-full">
               {children}
             </main>
           </div>
@@ -260,7 +269,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
           {/* Right Column - Comments (Desktop only) */}
           {showCommentsColumn && (
             <div
-              className={`hidden lg:block absolute right-0 top-0 bottom-0 bg-base-100 border-l border-base-300 z-20 ${isDragging ? 'transition-none' : 'transition-all duration-300'
+              className={`hidden lg:flex lg:flex-col absolute right-0 top-0 bottom-0 bg-base-100 border-l border-base-300 z-20 overflow-hidden ${isDragging ? 'transition-none' : 'transition-all duration-300'
                 }`}
               style={{ width: 'var(--right-column-width)' }}
             >
@@ -289,7 +298,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
       {/* Mobile Comments Drawer */}
       {showComments && selectedPostSlug && communityId && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-base-100">
+        <div className="lg:hidden fixed inset-0 z-50 bg-base-100 flex flex-col overflow-hidden">
           <CommentsColumn
             {...createCommentsColumnProps(
               selectedPostSlug,

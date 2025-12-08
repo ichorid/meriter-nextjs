@@ -56,8 +56,8 @@ export const BottomNavigation = () => {
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 pb-[env(safe-area-inset-bottom)] z-50 lg:hidden max-w-full overflow-x-hidden">
-            <div className="h-16 flex items-center justify-around px-2 py-1 max-w-full relative">
+        <div className="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 pb-[env(safe-area-inset-bottom)] z-40 lg:hidden w-full" style={{ maxWidth: '100vw' }}>
+            <div className="h-16 flex items-center justify-around px-2 py-1 w-full relative">
                 {tabs.map((tab) => {
                     const active = tab.isActive(pathname || '');
                     const Icon = tab.icon;
