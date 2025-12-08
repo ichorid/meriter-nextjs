@@ -38,7 +38,6 @@ export const UserProfileSchema = z.object({
   location: UserLocationSchema.optional(), // Регион и населенный пункт из OSM API
   website: z.string().url().optional().or(z.literal("")),
   isVerified: z.boolean().default(false),
-  values: z.string().max(1000).optional(), // Ценности, до 1000 символов (required for all users)
   about: z.string().max(1000).optional(), // "О себе", до 1000 символов
   contacts: UserContactsSchema.optional(), // Публикуются только для superadmin и lead
   educationalInstitution: z.string().max(200).optional(), // Educational institution (required for Member and Representative)
@@ -49,7 +48,6 @@ const ProfileFieldsSchema = z.object({
   bio: z.string().max(1000).optional().nullable(),
   location: UserLocationSchema.optional().nullable(),
   website: z.string().url().optional().nullable().or(z.literal("")),
-  values: z.string().max(1000).optional().nullable(),
   about: z.string().max(1000).optional().nullable(),
   contacts: UserContactsSchema.optional().nullable(),
   educationalInstitution: z.string().max(200).optional().nullable(),
@@ -63,7 +61,6 @@ export const UpdateUserProfileSchema = z.object({
   bio: z.string().max(1000).optional().nullable(),
   location: UserLocationSchema.optional().nullable(),
   website: z.string().url().optional().nullable().or(z.literal("")),
-  values: z.string().max(1000).optional().nullable(),
   about: z.string().max(1000).optional().nullable(),
   contacts: UserContactsSchema.optional().nullable(),
   educationalInstitution: z.string().max(200).optional().nullable(),
