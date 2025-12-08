@@ -36,6 +36,8 @@ import type {
     CreatePollDto,
     CreatePollCastDto,
     UpdateCommunityDto,
+    UpdatePublicationDto,
+    UpdatePollDto,
 } from "@/types/api-v1";
 import type { PaginatedResponse } from "@/types/api-v1";
 import type {
@@ -644,7 +646,7 @@ export const publicationsApiV1 = {
 
     async updatePublication(
         id: string,
-        data: Partial<CreatePublicationDto>
+        data: UpdatePublicationDto
     ): Promise<Publication> {
         const response = await apiClient.put<{
             success: true;
@@ -1018,7 +1020,7 @@ export const pollsApiV1 = {
         return validateApiResponse(PollSchema as any, response, "createPoll");
     },
 
-    async updatePoll(id: string, data: Partial<CreatePollDto>): Promise<Poll> {
+    async updatePoll(id: string, data: UpdatePollDto): Promise<Poll> {
         const response = await apiClient.put<{ success: true; data: Poll }>(
             `/api/v1/polls/${id}`,
             data

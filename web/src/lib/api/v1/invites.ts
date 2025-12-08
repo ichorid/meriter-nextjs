@@ -27,7 +27,7 @@ export const invitesApiV1 = {
         targetUserId?: string;
         targetUserName?: string;
         type: "superadmin-to-lead" | "lead-to-participant";
-        communityId: string;
+        communityId?: string;
         teamId?: string;
         expiresAt?: string;
     }): Promise<Invite> {

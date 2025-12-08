@@ -14,10 +14,13 @@
         "confirm": "Подтвердить",
         "dailyMerits": "Дневные",
         "permanentMerits": "Постоянные",
+        "siteTitle": "Meriter",
         "add": "Добавить",
         "createCommunity": "Создать сообщество",
         "about": "О приложении",
         "allCommunities": "Все сообщества",
+        "copy": "Копировать",
+        "copied": "Скопировано!",
         "notifications": "Уведомления",
         "superadmin": "Суперадмин",
         "representative": "Представитель",
@@ -28,7 +31,18 @@
         "search": "Поиск",
         "open": "Открыть",
         "comingSoon": "Скоро",
-        "noPermission": "У вас нет разрешения на выполнение этого действия"
+        "noPermission": "У вас нет разрешения на выполнение этого действия",
+        "user": "Пользователь",
+        "unknownUser": "Неизвестный пользователь",
+        "createInvite": "Создать приглашение",
+        "noMembersFound": "Участники не найдены",
+        "userProfile": "Профиль пользователя",
+        "userNotFound": "Пользователь не найден",
+        "userNotFoundDescription": "Профиль пользователя, который вы ищете, не существует",
+        "contactInformation": "Контактная информация",
+        "about": "О себе",
+        "noProfileInformation": "Информация о профиле недоступна",
+        "noProfileInformationDescription": "Этот пользователь еще не добавил информацию о профиле"
     },
     "home": {
         "breadcrumb": "Главная",
@@ -45,7 +59,8 @@
                 "publications": "Публикации",
                 "comments": "Комментарии",
                 "polls": "Опросы",
-                "updates": "Обновления"
+                "updates": "Обновления",
+                "projects": "Проекты"
             },
             "actions": {
                 "createPublication": "Создать публикацию",
@@ -272,7 +287,12 @@
         "specifyAmount": "Укажите количество баллов",
         "insufficientPoints": "Недостаточно баллов",
         "castError": "Ошибка при голосовании",
-        "confirm": "Подтвердить"
+        "confirm": "Подтвердить",
+        "amountRequired": "Пожалуйста, введите сумму",
+        "amountMustBeNumber": "Сумма должна быть числом",
+        "amountMustBeInteger": "Сумма должна быть целым числом",
+        "amountMinValue": "Сумма должна быть не менее 1",
+        "amountInsufficient": "Недостаточно баланса: у вас доступно {balance}"
     },
     "feed": {
         "saving": "Сохраняю...",
@@ -458,6 +478,7 @@
             "members": {
                 "title": "Участники сообщества",
                 "noMembers": "Пока нет участников",
+                "empty": "Участники не найдены",
                 "noInvite": "Нет инвайте",
                 "inviteUsed": "Инвайт использован",
                 "invitePending": "Инвайт ожидает использования",
@@ -688,6 +709,8 @@
     },
     "profile": {
         "activity": "Активность",
+        "newUserTitle": "Регистрация нового пользователя",
+        "completeRegistration": "Завершить регистрацию",
         "newUserDescription": "Пожалуйста, заполните свой профиль для продолжения.",
         "generalInformation": "Основная информация",
         "generalInformationSubtitle": "Пожалуйста, заполните следующую информацию для завершения вашего профиля.",
@@ -699,6 +722,12 @@
         "displayNamePlaceholder": "Введите ваше имя для отображения",
         "displayNameHelper": "Введите ваше имя для отображения",
         "displayNameRequired": "Имя для отображения обязательно",
+        "otherContacts": "Другие контакты",
+        "otherContactsPlaceholder": "Введите ваши другие контакты",
+        "otherContactsHelper": "Введите ваши другие контакты",
+        "otherContactsRequired": "Другие контакты обязательны",
+        "otherContactsTooLong": "Другие контакты должны быть не более {max} символов",
+        "contactInformation": "Контакты",
         "outerContacts": "Другие контакты",
         "newProfile": "Новый пользователь",
         "newProfileSubtitle": "Поля отмеченные * обязательные. Пожалуйста не пропускайте их.",
@@ -728,8 +757,6 @@
         "cityPlaceholder": "Введите город",
         "website": "Веб-сайт",
         "websitePlaceholder": "https://example.com",
-        "values": "Ценности",
-        "valuesPlaceholder": "Опишите свои ценности",
         "about": "О себе",
         "aboutPlaceholder": "Расскажите больше о себе",
         "contacts": "Контакты",
@@ -753,7 +780,6 @@
         "characters": "символов",
         "errors": {
             "bioTooLong": "О себе должно быть менее {max} символов",
-            "valuesTooLong": "Ценности должны быть менее {max} символов",
             "aboutTooLong": "О себе должно быть менее {max} символов",
             "educationalInstitutionTooLong": "Образовательное учреждение должно быть не более {max} символов",
             "invalidUrl": "Неверный формат URL",
@@ -769,12 +795,27 @@
         "contactInformattion": "Контакты",
         "aboutInformattion": "О себе",
         "hint": {
-            "about": "Здесь вы можете рассказать немного о себе и о том, что важно для вас.",
-            "values": "Здесь должно быть описание/пояснение для пользователя о том, что именно мы подразумеваем под ценностями."
+            "about": "Здесь вы можете рассказать немного о себе и о том, что важно для вас."
         },
         "useInvite": {
-            "title": "Использовать приглашение",
-            "description": "Введите код приглашения, чтобы присоединиться к сообществу или повысить свою роль"
+            "title": "Присоединиться к сообществу по приглашению"
+        },
+        "invites": {
+            "title": "Генерация приглашений",
+            "selectCommunity": "Выберите сообщество",
+            "community": "Сообщество",
+            "inviteGenerated": "Приглашение успешно создано",
+            "inviteError": "Не удалось создать приглашение",
+            "noExpiration": "Без срока действия",
+            "generatedInvites": "Созданные приглашения",
+            "used": "Использовано",
+            "expired": "Истекло",
+            "active": "Активно",
+            "type": "Тип",
+            "superadminToLead": "От суперадмина к лиду",
+            "leadToParticipant": "От лида к участнику",
+            "expires": "Истекает",
+            "usedAt": "Использовано в"
         }
     },
     "invites": {
@@ -867,6 +908,16 @@
             "publications": "Публикации",
             "polls": "Опросы",
             "system": "Системные"
+        },
+        "ariaLabels": {
+            "markAsRead": "Отметить как прочитанное",
+            "settings": "Настройки",
+            "closeModal": "Закрыть модальное окно",
+            "clear": "Очистить",
+            "backToProfile": "Вернуться к профилю",
+            "search": "Поиск",
+            "clearSearch": "Очистить поиск",
+            "resizeCommentsColumn": "Изменить размер колонки комментариев"
         }
     }
 }

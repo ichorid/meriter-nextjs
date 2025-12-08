@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Plus, FileText, BarChart2, FolderKanban, FileSpreadsheet, Info, X } from 'lucide-react';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { useUIStore } from '@/stores/ui.store';
 
 interface FabMenuProps {
     communityId: string;
@@ -20,18 +21,9 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    // Check if any modal/sheet is open to hide FAB
-    const [isHidden, setIsHidden] = useState(false);
-
-    useEffect(() => {
-        // Check for open modals/sheets by looking at body overflow
-        const observer = new MutationObserver(() => {
-            const hasModal = document.body.style.overflow === 'hidden';
-            setIsHidden(hasModal);
-        });
-        observer.observe(document.body, { attributes: true, attributeFilter: ['style'] });
-        return () => observer.disconnect();
-    }, []);
+    // Check if any popup is active using UI store
+    const { activeVotingTarget, activeWithdrawTarget, activeModal } = useUIStore();
+    const hasActivePopup = activeVotingTarget !== null || activeWithdrawTarget !== null || activeModal !== null;
 
     const handleCreatePost = () => {
         if (!canCreate) {
@@ -76,8 +68,8 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
         };
     }, [isOpen]);
 
-    // Hide FAB when modal is open
-    if (isHidden && !isOpen) {
+    // Hide FAB when any popup is active (unless the FAB menu itself is open)
+    if (hasActivePopup && !isOpen) {
         return null;
     }
 

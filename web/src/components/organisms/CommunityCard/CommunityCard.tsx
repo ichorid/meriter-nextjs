@@ -2,10 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Zap } from 'lucide-react';
+import { Zap, ChevronRight } from 'lucide-react';
 import { CommunityAvatar } from '@/shared/components/community-avatar';
 import { Badge } from '@/components/atoms';
-import { WalletQuotaBlock } from '@/components/molecules/WalletQuotaBlock';
 import { useCommunity } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
@@ -28,9 +27,9 @@ export interface CommunityCardProps {
 /**
  * Community card component that displays community info
  * Layout (expanded):
- * - Row 1: Community title
- * - Row 2: Avatar | Role badge | WalletQuotaBlock (right-aligned)
- * - Row 3: Community description
+ * - Flex row layout with avatar (46px), content section, and chevron icon
+ * - Content section contains: title, merits/quota indicators (conditional), and description
+ * - Role badge overlays avatar in top-right corner
  * Used in both the left sidebar and the communities page
  */
 export const CommunityCard: React.FC<CommunityCardProps> = ({
@@ -67,10 +66,39 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     return null;
   }, [user?.globalRole, user?.id, userRoles, communityId, t]);
 
+  // Get user's role for this community to check merit rules
+  const userRole = React.useMemo(() => {
+    if (user?.globalRole === 'superadmin') {
+      return 'superadmin';
+    }
+    const role = userRoles.find(r => r.communityId === communityId);
+    return role?.role || null;
+  }, [user?.globalRole, userRoles, communityId]);
+
+  // Check if user can use merits and quota based on community rules
+  const canUseMerits = React.useMemo(() => {
+    if (!community?.meritRules) return false;
+    const { canEarn, canSpend } = community.meritRules;
+    // User can use merits if they can earn OR spend
+    return canEarn || canSpend;
+  }, [community?.meritRules]);
+
+  const hasQuota = React.useMemo(() => {
+    if (!community?.meritRules || !userRole) return false;
+    const { dailyQuota, quotaRecipients } = community.meritRules;
+    // User has quota if dailyQuota > 0 and their role is in quotaRecipients
+    return dailyQuota > 0 && quotaRecipients?.includes(userRole as any);
+  }, [community?.meritRules, userRole]);
+
   // Format balance and quota display
   const balance = wallet?.balance || 0;
   const remainingQuota = quota?.remainingToday || 0;
   const dailyQuota = quota?.dailyQuota || 0;
+
+  // Determine what to show in the subtitle
+  const showMerits = canUseMerits && wallet;
+  const showQuota = hasQuota && dailyQuota > 0;
+  const showIndicators = showMerits || showQuota;
 
   // Show a placeholder while loading or if community fetch fails
   if (!community) {
@@ -98,51 +126,105 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     return (
       <Link href={`/meriter/communities/${communityId}`}>
         <div
-          className={`w-full rounded-xl p-4 flex flex-col gap-3 cursor-pointer transition-all duration-200 ${
+          className={`w-full rounded-lg flex flex-row items-start gap-3 py-3 pr-2 pl-4 cursor-pointer transition-all duration-200 ${
             isActive
               ? 'bg-base-content text-base-100'
-              : 'bg-base-100 hover:bg-base-200/50 border border-base-content/5'
+              : 'bg-base-200 hover:bg-base-300'
           }`}
         >
-          {/* Row 1: Avatar + Title */}
-          <div className="flex items-center gap-3">
-            <CommunityAvatar
-              avatarUrl={community.avatarUrl}
-              communityName={community.name}
-              size={40}
-              needsSetup={community.needsSetup}
-            />
-            <div className="flex-1 min-w-0">
-              <div className={`text-sm font-medium truncate ${isActive ? 'text-base-100' : 'text-base-content'}`}>
-                {community.name}
+          {/* Left section: Avatar + Content */}
+          <div className="flex flex-row items-start gap-3 flex-1 min-w-0">
+            {/* Avatar with role badge overlay */}
+            <div className="relative flex-shrink-0">
+              <CommunityAvatar
+                avatarUrl={community.avatarUrl}
+                communityName={community.name}
+                size={46}
+                needsSetup={community.needsSetup}
+                className="bg-base-300"
+              />
+              {userRoleBadge && (
+                <div 
+                  className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 ${
+                    isActive ? 'border-base-content' : 'border-base-100'
+                  } ${
+                    userRoleBadge.variant === 'error' ? 'bg-error' :
+                    userRoleBadge.variant === 'accent' ? 'bg-accent' :
+                    userRoleBadge.variant === 'info' ? 'bg-info' : 'bg-accent'
+                  }`} 
+                  title={userRoleBadge.label} 
+                />
+              )}
+            </div>
+
+            {/* Content section */}
+            <div className="flex flex-col items-start gap-3 flex-1 min-w-0">
+              {/* Title section */}
+              <div className="flex flex-col items-start gap-1 w-full">
+                <div className={`text-[15px] font-semibold leading-[18px] tracking-[0.374px] w-full ${
+                  isActive ? 'text-base-100' : 'text-base-content'
+                }`}>
+                  {community.name}
+                </div>
+                {/* Merits/Quota indicators */}
+                {showIndicators && (
+                  <div className="flex flex-row items-start gap-2.5 w-full">
+                    {showMerits && (
+                      <div className="flex items-center gap-1">
+                        {currencyIconUrl && (
+                          <img 
+                            src={currencyIconUrl} 
+                            alt="Currency" 
+                            className="w-3 h-3 flex-shrink-0" 
+                          />
+                        )}
+                        <span className={`text-xs leading-[14px] tracking-[0.374px] ${
+                          isActive ? 'text-base-100/60' : 'text-base-content/60'
+                        }`}>
+                          {t('permanentMerits')}: <span className={`font-semibold ${
+                            isActive ? 'text-base-100' : 'text-base-content'
+                          }`}>{balance}</span>
+                        </span>
+                      </div>
+                    )}
+                    {showMerits && showQuota && (
+                      <span className={isActive ? 'text-base-100/40' : 'text-base-content/40'}>|</span>
+                    )}
+                    {showQuota && (
+                      <div className="flex items-center gap-1">
+                        <Zap className={`w-3 h-3 flex-shrink-0 ${
+                          isActive ? 'text-base-100/60' : 'text-base-content/60'
+                        }`} />
+                        <span className={`text-xs leading-[14px] tracking-[0.374px] ${
+                          isActive ? 'text-base-100/60' : 'text-base-content/60'
+                        }`}>
+                          {t('dailyMerits')}: <span className={`font-semibold ${
+                            isActive ? 'text-base-100' : 'text-base-content'
+                          }`}>{remainingQuota}</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* Description */}
               {community.description && (
-                <div className={`text-xs truncate mt-1 ${isActive ? 'text-base-100/60' : 'text-base-content/50'}`}>
+                <div className={`text-xs leading-[14px] tracking-[0.374px] line-clamp-2 w-full ${
+                  isActive ? 'text-base-100/60' : 'text-base-content/60'
+                }`}>
                   {community.description}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Row 2: Role badge + Wallet/Quota */}
-          <div className="flex items-center justify-between gap-2 pt-1">
-            {userRoleBadge ? (
-              <Badge 
-                variant={userRoleBadge.variant} 
-                size="xs"
-                className={isActive ? 'bg-base-100/20 text-base-100 border-base-100/20' : ''}
-              >
-                {userRoleBadge.label}
-              </Badge>
-            ) : (
-              <div />
-            )}
-            <WalletQuotaBlock
-              balance={balance}
-              remainingQuota={remainingQuota}
-              dailyQuota={dailyQuota}
-              currencyIconUrl={currencyIconUrl}
-              className={isActive ? 'text-base-100/80' : ''}
+          {/* Right section: Chevron */}
+          <div className="flex items-start flex-shrink-0 w-6 h-6">
+            <ChevronRight 
+              className={`w-6 h-6 ${
+                isActive ? 'text-base-100/60' : 'text-base-content/60'
+              }`} 
             />
           </div>
         </div>

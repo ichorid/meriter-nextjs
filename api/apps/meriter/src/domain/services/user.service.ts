@@ -393,7 +393,6 @@ export class UserService implements OnModuleInit {
       bio?: string;
       location?: { region: string; city: string };
       website?: string;
-      values?: string;
       about?: string;
       contacts?: { email: string; messenger: string };
       educationalInstitution?: string;
@@ -425,9 +424,6 @@ export class UserService implements OnModuleInit {
     }
     if (profileData.website !== undefined) {
       updateData['profile.website'] = profileData.website || null;
-    }
-    if (profileData.values !== undefined) {
-      updateData['profile.values'] = profileData.values;
     }
     if (profileData.about !== undefined) {
       updateData['profile.about'] = profileData.about;

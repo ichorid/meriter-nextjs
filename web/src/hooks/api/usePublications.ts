@@ -15,6 +15,7 @@ import type {
     Publication,
     PaginatedResponse,
     CreatePublicationDto,
+    UpdatePublicationDto,
 } from "@/types/api-v1";
 import {
     createGetNextPageParam,
@@ -151,6 +152,24 @@ export const useCreatePublication = createMutation({
         communities: {
             feed: true,
             detail: (_result: any, variables: CreatePublicationDto) => variables.communityId,
+        },
+    },
+} as any);
+
+export const useUpdatePublication = createMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdatePublicationDto }) =>
+        publicationsApiV1.updatePublication(id, data),
+    inputSchema: CreatePublicationDtoSchema.partial() as any,
+    outputSchema: PublicationSchema as any,
+    validationContext: "useUpdatePublication",
+    errorContext: "Update publication error",
+    invalidations: {
+        publications: {
+            lists: true,
+            detail: (_result: any, variables: { id: string }) => variables.id,
+        },
+        communities: {
+            feed: true,
         },
     },
 } as any);

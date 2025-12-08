@@ -31,7 +31,18 @@
         "search": "Search",
         "open": "Open",
         "comingSoon": "Coming soon",
-        "noPermission": "You don't have permission to perform this action"
+        "noPermission": "You don't have permission to perform this action",
+        "user": "User",
+        "unknownUser": "Unknown User",
+        "createInvite": "Create Invite",
+        "noMembersFound": "No members found",
+        "userProfile": "User Profile",
+        "userNotFound": "User not found",
+        "userNotFoundDescription": "The user profile you're looking for doesn't exist",
+        "contactInformation": "Contact Information",
+        "about": "About",
+        "noProfileInformation": "No profile information available",
+        "noProfileInformationDescription": "This user hasn't added any profile details yet"
     },
     "home": {
         "breadcrumb": "Home",
@@ -70,7 +81,8 @@
         },
         "sort": {
             "recent": "By Date",
-            "voted": "By Rating"
+            "voted": "By Rating",
+            "thanked": "By Rating"
         },
         "empty": {
             "publications": {
@@ -254,6 +266,7 @@
         "pollFinished": "Poll finished",
         "timeRemaining": "Time remaining",
         "casts": "casts",
+        "votes": "votes",
         "thanks": "casts",
         "youCast": "✓ You cast",
         "clickToView": "Click to view",
@@ -465,6 +478,7 @@
             "members": {
                 "title": "Community Members",
                 "noMembers": "No members yet",
+                "empty": "No members found",
                 "noInvite": "No invite",
                 "inviteUsed": "Invite used",
                 "invitePending": "Invite pending",
@@ -714,6 +728,7 @@
         "otherContactsRequired": "Other contacts are required",
         "otherContactsTooLong": "Other contacts must be no more than {max} characters",
         "contactInformation": "Contacts",
+        "outerContacts": "Other Contacts",
         "newProfile": "New User",
         "newProfileSubtitle": "Fields marked with * are required. Please do not skip them.",
         "title": "Profile",
@@ -742,8 +757,6 @@
         "cityPlaceholder": "Enter city",
         "website": "Website",
         "websitePlaceholder": "https://example.com",
-        "values": "Values",
-        "valuesPlaceholder": "Describe your values",
         "about": "About",
         "aboutPlaceholder": "Tell us more about yourself",
         "contacts": "Contacts",
@@ -767,7 +780,6 @@
         "characters": "characters",
         "errors": {
             "bioTooLong": "Bio must be no more than {max} characters",
-            "valuesTooLong": "Values must be no more than {max} characters",
             "aboutTooLong": "About must be no more than {max} characters",
             "educationalInstitutionTooLong": "Educational institution must be no more than {max} characters",
             "invalidUrl": "Invalid URL",
@@ -783,12 +795,10 @@
         "contactInformattion": "Contacts",
         "aboutInformattion": "About",
         "hint": {
-            "about": "Here you can tell a little bit about yourself and what is important to you.",
-            "values": "Here should be description/explanation for the user about what exactly we mean by values."
+            "about": "Here you can tell a little bit about yourself and what is important to you."
         },
         "useInvite": {
-            "title": "Use Invite",
-            "description": "Enter an invite code to join a community or upgrade your role"
+            "title": "Join community by invite"
         },
         "invites": {
             "title": "Invite Generation",
@@ -898,6 +908,16 @@
             "publications": "Publications",
             "polls": "Polls",
             "system": "System"
+        },
+        "ariaLabels": {
+            "markAsRead": "Mark as read",
+            "settings": "Settings",
+            "closeModal": "Close modal",
+            "clear": "Clear",
+            "backToProfile": "Back to profile",
+            "search": "Search",
+            "clearSearch": "Clear search",
+            "resizeCommentsColumn": "Resize comments column"
         }
     }
 }

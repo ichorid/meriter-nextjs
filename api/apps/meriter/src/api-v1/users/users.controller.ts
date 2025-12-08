@@ -359,8 +359,6 @@ export class UsersController {
       profileData.location = body.location;
     if (body.website !== undefined && body.website !== null)
       profileData.website = body.website;
-    if (body.values !== undefined && body.values !== null)
-      profileData.values = body.values;
     if (body.about !== undefined && body.about !== null)
       profileData.about = body.about;
     if (body.contacts !== undefined && body.contacts !== null)
@@ -376,8 +374,6 @@ export class UsersController {
         profileData.location = body.profile.location;
       if (body.profile.website !== undefined && body.profile.website !== null)
         profileData.website = body.profile.website;
-      if (body.profile.values !== undefined && body.profile.values !== null)
-        profileData.values = body.profile.values;
       if (body.profile.about !== undefined && body.profile.about !== null)
         profileData.about = body.profile.about;
       if (body.profile.contacts !== undefined && body.profile.contacts !== null)

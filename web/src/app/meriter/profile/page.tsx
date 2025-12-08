@@ -14,6 +14,7 @@ import { ProfileContentCards } from '@/components/organisms/Profile/ProfileConte
 import { useProfileData } from '@/hooks/useProfileData';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { routes } from '@/lib/constants/routes';
+import { InviteHandler } from '@/components/InviteHandler';
 import Link from 'next/link';
 import { Loader2, Settings } from 'lucide-react';
 
@@ -84,6 +85,7 @@ export default function ProfilePage() {
         </header>
       }
     >
+      <InviteHandler />
       <div className="space-y-6">
         {/* Profile Hero Section */}
         {isEditing ? (

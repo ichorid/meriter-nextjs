@@ -30,7 +30,6 @@ export default function NewUserPage() {
                 city: user.profile?.location?.city || "",
             },
             website: user.profile?.website || "",
-            values: user.profile?.values || "",
             about: user.profile?.about || "",
             contacts: {
                 email: user.profile?.contacts?.email || "",
@@ -54,7 +53,6 @@ export default function NewUserPage() {
                           }
                         : null,
                     website: data.website || null,
-                    values: data.values || null,
                     about: data.about || null,
                     contacts: {
                         email: data.contacts?.email || "",

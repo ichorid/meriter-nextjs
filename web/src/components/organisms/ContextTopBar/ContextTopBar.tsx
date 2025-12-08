@@ -159,8 +159,8 @@ const ProfileTopBar: React.FC = () => {
           <button
             onClick={() => handleSortClick('recent')}
             className={`p-2 rounded-md transition-colors ${sortByTab[currentTab] === 'recent'
-                ? 'bg-base-100 shadow-sm text-brand-primary'
-                : 'text-brand-text-secondary hover:text-brand-text-primary dark:text-base-content dark:hover:text-base-content'
+                ? 'bg-base-100 text-brand-primary shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
+                : 'text-brand-text-secondary hover:text-brand-text-primary'
               }`}
           >
             <Clock size={16} />
@@ -168,8 +168,8 @@ const ProfileTopBar: React.FC = () => {
           <button
             onClick={() => handleSortClick('voted')}
             className={`p-2 rounded-md transition-colors ${sortByTab[currentTab] === 'voted'
-                ? 'bg-base-100 shadow-sm text-brand-primary'
-                : 'text-brand-text-secondary hover:text-brand-text-primary dark:text-base-content dark:hover:text-base-content'
+                ? 'bg-base-100 text-brand-primary shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
+                : 'text-brand-text-secondary hover:text-brand-text-primary'
               }`}
           >
             <TrendingUp size={16} />
@@ -383,7 +383,7 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
             <button
               onClick={() => handleSortChange('recent')}
               className={`p-1.5 rounded-md transition-colors ${sortBy === 'recent'
-                  ? 'bg-base-100 shadow-sm text-base-content'
+                  ? 'bg-base-100 text-base-content shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
                   : 'text-base-content/50 hover:text-base-content'
                 }`}
             >
@@ -392,7 +392,7 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
             <button
               onClick={() => handleSortChange('voted')}
               className={`p-1.5 rounded-md transition-colors ${sortBy === 'voted'
-                  ? 'bg-base-100 shadow-sm text-base-content'
+                  ? 'bg-base-100 text-base-content shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
                   : 'text-base-content/50 hover:text-base-content'
                 }`}
             >

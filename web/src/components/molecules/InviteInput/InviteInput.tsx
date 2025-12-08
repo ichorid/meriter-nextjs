@@ -10,9 +10,10 @@ import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 
 interface InviteInputProps {
     className?: string;
+    hideLabel?: boolean;
 }
 
-export function InviteInput({ className = '' }: InviteInputProps) {
+export function InviteInput({ className = '', hideLabel = false }: InviteInputProps) {
     const router = useRouter();
     const t = useTranslations('registration');
     const addToast = useToastStore((state) => state.addToast);
@@ -63,7 +64,7 @@ export function InviteInput({ className = '' }: InviteInputProps) {
     return (
         <div className={`space-y-3 ${className}`}>
             <BrandFormControl
-                label={t('inviteCodeLabel')}
+                label={hideLabel ? undefined : t('inviteCodeLabel')}
                 error={inviteError}
             >
                 <div className="flex gap-2">

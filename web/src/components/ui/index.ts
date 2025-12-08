@@ -16,3 +16,4 @@ export * from "./LoadingSkeleton";
 export * from "./PageTransition";
 export * from "./PullToRefresh";
 export * from "./Logo";
+export * from "./Tabs";

@@ -186,10 +186,10 @@ export default function NotificationsPage() {
       const diffHours = Math.floor(diffMs / 3600000);
       const diffDays = Math.floor(diffMs / 86400000);
 
-      if (diffMins < 1) return t('justNow') || 'Just now';
-      if (diffMins < 60) return `${diffMins}${t('minutesAgo') || 'm ago'}`;
-      if (diffHours < 24) return `${diffHours}${t('hoursAgo') || 'h ago'}`;
-      if (diffDays < 7) return `${diffDays}${t('daysAgo') || 'd ago'}`;
+      if (diffMins < 1) return t('justNow');
+      if (diffMins < 60) return `${diffMins}${t('minutesAgo')}`;
+      if (diffHours < 24) return `${diffHours}${t('hoursAgo')}`;
+      if (diffDays < 7) return `${diffDays}${t('daysAgo')}`;
       return date.toLocaleDateString();
     } catch {
       return dateString;
@@ -197,19 +197,19 @@ export default function NotificationsPage() {
   };
 
   const filterOptions = [
-    { value: 'all', label: t('filters.all') || 'All' },
-    { value: 'unread', label: t('filters.unread') || 'Unread' },
-    { value: 'mention', label: t('filters.mention') || 'Mentions' },
-    { value: 'reply', label: t('filters.reply') || 'Replies' },
-    { value: 'vote', label: t('filters.vote') || 'Votes' },
-    { value: 'invite', label: t('filters.invite') || 'Invites' },
+    { value: 'all', label: t('filters.all') },
+    { value: 'unread', label: t('filters.unread') },
+    { value: 'mention', label: t('filters.mention') },
+    { value: 'reply', label: t('filters.reply') },
+    { value: 'vote', label: t('filters.vote') },
+    { value: 'invite', label: t('filters.invite') },
   ];
 
   return (
     <AdaptiveLayout>
       <div className="flex flex-col h-full bg-base-100 overflow-hidden">
         <PageHeader
-          title={t('title') || 'Notifications'}
+          title={t('title')}
           showBack={true}
         />
 
@@ -237,7 +237,7 @@ export default function NotificationsPage() {
                   className="w-fit"
                 >
                   <CheckCheck size={16} className="mr-1" />
-                  {t('markAllRead') || 'Mark all read'}
+                  {t('markAllRead')}
                 </BrandButton>
               )}
               <BrandButton
@@ -330,11 +330,11 @@ export default function NotificationsPage() {
           ) : (
             <div className="text-center py-12 text-base-content/60">
               <Bell className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
-              <p className="font-medium">{t('noNotifications') || 'No notifications'}</p>
+              <p className="font-medium">{t('noNotifications')}</p>
               <p className="text-sm mt-1">
                 {filter === 'unread' 
-                  ? t('noUnreadNotifications') || 'You have no unread notifications'
-                  : t('noNotificationsDescription') || 'You\'re all caught up!'}
+                  ? t('noUnreadNotifications')
+                  : t('noNotificationsDescription')}
               </p>
             </div>
           )}
@@ -383,7 +383,7 @@ function NotificationPreferencesPanel() {
   return (
     <div className="p-4 bg-base-200 rounded-xl border border-base-300 space-y-3">
       <h3 className="font-semibold text-brand-text-primary">
-        {t('preferences.title') || 'Notification Preferences'}
+        {t('preferences.title')}
       </h3>
       <div className="grid grid-cols-2 gap-2">
         {Object.entries(localPreferences).map(([key, value]) => (

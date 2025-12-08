@@ -99,6 +99,9 @@ export function InviteHandler() {
           const response = await useInviteMutation.mutateAsync(inviteCode);
           addToast(t('inviteUsedSuccess'), 'success');
 
+          // Get returnTo before removing invite param
+          const returnTo = searchParams?.get('returnTo');
+
           // Remove invite param from URL
           removeInviteFromUrl();
 
@@ -109,8 +112,9 @@ export function InviteHandler() {
             return;
           }
 
-          // Redirect to profile page without invite parameter
-          router.replace('/meriter/profile');
+          // Redirect to returnTo if specified, otherwise to profile page
+          const redirectUrl = returnTo && returnTo !== '/meriter/login' ? returnTo : '/meriter/profile';
+          router.replace(redirectUrl);
         } catch (error: any) {
           console.error('Failed to use invite:', error);
           // Extract error message from various possible formats
@@ -120,12 +124,16 @@ export function InviteHandler() {
                                t('errors.inviteUseFailed');
           addToast(errorMessage, 'error');
           
+          // Get returnTo before removing invite param
+          const returnTo = searchParams?.get('returnTo');
+          
           // Remove invite param from URL
           removeInviteFromUrl();
           
-          // Redirect to profile page without invite parameter for all errors
+          // Redirect to returnTo if specified, otherwise to profile page
           // This prevents infinite retry loop
-          router.replace('/meriter/profile');
+          const redirectUrl = returnTo && returnTo !== '/meriter/login' ? returnTo : '/meriter/profile';
+          router.replace(redirectUrl);
         }
       };
 

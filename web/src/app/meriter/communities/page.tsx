@@ -3,11 +3,9 @@
 import React, { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { useCommunitiesBatch, useCommunities } from '@/hooks/api/useCommunities';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
-import { useWallets } from '@/hooks/api';
-import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
+import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { InviteInput } from '@/components/molecules/InviteInput/InviteInput';
@@ -17,37 +15,14 @@ export default function CommunitiesPage() {
     const pathname = usePathname();
     const { user, isLoading: userLoading } = useAuth();
     
-    // Check if user is superadmin
-    const isSuperadmin = user?.globalRole === 'superadmin';
-    
     // Check if user has viewer role (CommunityCard handles badge display internally)
     const { data: userRoles } = useUserRoles(user?.id || '');
     const hasViewerRole = useMemo(() => {
         return userRoles?.some(role => role.role === 'viewer') ?? false;
     }, [userRoles]);
     
-    // For superadmin: fetch all communities
-    // For regular users: fetch only communities they're members of
-    const { data: allCommunitiesData, isLoading: allCommunitiesLoading } = useCommunities();
-    const communityIds = useMemo(() => {
-        if (isSuperadmin) return []; // Not needed for superadmin
-        if (!user?.communityMemberships) return [];
-        return Array.from(new Set(
-            user.communityMemberships
-                .filter((id): id is string => !!id)
-        ));
-    }, [isSuperadmin, user?.communityMemberships]);
-    
-    // Batch fetch communities for regular users
-    const { communities: memberCommunities, isLoading: memberCommunitiesLoading } = useCommunitiesBatch(communityIds);
-    
-    // Determine which communities to use
-    const allCommunities = useMemo(() => {
-        if (isSuperadmin) {
-            return allCommunitiesData?.data || [];
-        }
-        return memberCommunities;
-    }, [isSuperadmin, allCommunitiesData, memberCommunities]);
+    // Get user's communities with wallets and quotas (handles both regular users and superadmin)
+    const { communities: allCommunities, walletsMap, quotasMap, isLoading: communitiesLoading } = useUserCommunities();
     
     // Group communities into special and non-special
     const { specialCommunities, userCommunities } = useMemo(() => {
@@ -69,31 +44,8 @@ export default function CommunitiesPage() {
         };
     }, [allCommunities]);
 
-    // Get all community IDs for fetching wallets and quotas
-    const allCommunityIds = useMemo(() => {
-        return Array.from(new Set([
-            ...specialCommunities.map(c => c.id),
-            ...userCommunities.map(c => c.id),
-        ]));
-    }, [specialCommunities, userCommunities]);
-
-    // Fetch wallets and quotas
-    const { data: wallets = [] } = useWallets();
-    const { quotasMap } = useCommunityQuotas(allCommunityIds);
-
-    // Create a map of communityId -> wallet for quick lookup
-    const walletsMap = useMemo(() => {
-        const map = new Map<string, typeof wallets[0]>();
-        wallets.forEach((wallet: any) => {
-            if (wallet?.communityId) {
-                map.set(wallet.communityId, wallet);
-            }
-        });
-        return map;
-    }, [wallets]);
-
     // Combined loading state
-    const isLoading = userLoading || (isSuperadmin ? allCommunitiesLoading : memberCommunitiesLoading);
+    const isLoading = userLoading || communitiesLoading;
 
     return (
         <AdaptiveLayout

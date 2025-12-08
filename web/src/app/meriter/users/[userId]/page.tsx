@@ -15,6 +15,7 @@ import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 export default function UserProfilePage({ params }: { params: Promise<{ userId: string }> }) {
   const router = useRouter();
   const t = useTranslations('profile');
+  const tCommon = useTranslations('common');
   const resolvedParams = use(params);
   const userId = resolvedParams.userId;
 
@@ -24,7 +25,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
     return (
       <AdaptiveLayout>
         <div className="flex flex-col h-full bg-base-100 overflow-hidden">
-          <PageHeader title="User Profile" showBack={true} />
+          <PageHeader title={tCommon('userProfile')} showBack={true} />
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
             <CardSkeleton />
             <CardSkeleton />
@@ -38,12 +39,12 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
     return (
       <AdaptiveLayout>
         <div className="flex flex-col h-full bg-base-100 overflow-hidden">
-          <PageHeader title="User Profile" showBack={true} />
+          <PageHeader title={tCommon('userProfile')} showBack={true} />
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
             <div className="text-center py-12 text-base-content/60">
               <UserIcon className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
-              <p className="font-medium">User not found</p>
-              <p className="text-sm mt-1">The user profile you're looking for doesn't exist</p>
+              <p className="font-medium">{tCommon('userNotFound')}</p>
+              <p className="text-sm mt-1">{tCommon('userNotFoundDescription')}</p>
             </div>
           </div>
         </div>
@@ -65,13 +66,13 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
             <div className="flex items-start gap-4">
               <BrandAvatar
                 src={user.avatarUrl}
-                fallback={user.displayName || user.username || 'User'}
+                fallback={user.displayName || user.username || tCommon('user')}
                 size="lg"
                 className="bg-transparent"
               />
               <div className="flex-1">
                 <h1 className="text-2xl font-bold text-brand-text-primary mb-1">
-                  {user.displayName || user.username || 'Unknown User'}
+                  {user.displayName || user.username || tCommon('unknownUser')}
                 </h1>
                 {user.username && (
                   <p className="text-sm text-brand-text-secondary mb-2">@{user.username}</p>
@@ -86,7 +87,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
           {/* Contact Information */}
           {(contacts.email || contacts.messenger || profile.website || profile.location || profile.educationalInstitution) && (
             <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
-              <h2 className="text-lg font-bold text-brand-text-primary mb-4">Contact Information</h2>
+              <h2 className="text-lg font-bold text-brand-text-primary mb-4">{tCommon('contactInformation')}</h2>
               <div className="space-y-3">
                 {contacts.email && (
                   <div className="flex items-center gap-3">
@@ -139,20 +140,14 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
           )}
 
           {/* Additional Information */}
-          {(profile.about || profile.values) && (
+          {profile.about && (
             <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
-              <h2 className="text-lg font-bold text-brand-text-primary mb-4">About</h2>
+              <h2 className="text-lg font-bold text-brand-text-primary mb-4">{tCommon('about')}</h2>
               <div className="space-y-4">
                 {profile.about && (
                   <div>
                     <h3 className="text-sm font-medium text-brand-text-secondary mb-2">About</h3>
                     <p className="text-sm text-brand-text-primary whitespace-pre-wrap">{profile.about}</p>
-                  </div>
-                )}
-                {profile.values && (
-                  <div>
-                    <h3 className="text-sm font-medium text-brand-text-secondary mb-2">Values</h3>
-                    <p className="text-sm text-brand-text-primary whitespace-pre-wrap">{profile.values}</p>
                   </div>
                 )}
               </div>
@@ -166,12 +161,11 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
            !profile.website && 
            !profile.location && 
            !profile.educationalInstitution && 
-           !profile.about && 
-           !profile.values && (
+           !profile.about && (
             <div className="text-center py-12 text-base-content/60">
               <UserIcon className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
-              <p className="font-medium">No profile information available</p>
-              <p className="text-sm mt-1">This user hasn't added any profile details yet</p>
+              <p className="font-medium">{tCommon('noProfileInformation')}</p>
+              <p className="text-sm mt-1">{tCommon('noProfileInformationDescription')}</p>
             </div>
           )}
         </div>

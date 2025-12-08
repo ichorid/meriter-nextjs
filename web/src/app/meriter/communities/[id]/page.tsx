@@ -6,6 +6,9 @@ import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useRouter, useSearchParams } from "next/navigation";
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
 import { FabMenu } from "@/components/molecules/FabMenu/FabMenu";
+import { CommunityMembersFab } from "@/components/molecules/FabMenu/CommunityMembersFab";
+import { MembersTab } from "@/components/organisms/Community/MembersTab";
+import { Tabs } from "@/components/ui/Tabs";
 import { useTranslations } from 'next-intl';
 import { useWallets, useCommunity } from '@/hooks/api';
 import { useCommunityFeed } from '@/hooks/api/useCommunityFeed';
@@ -15,7 +18,7 @@ import { routes } from '@/lib/constants/routes';
 import type { FeedItem } from '@meriter/shared-types';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
-import { Loader2, FileText } from 'lucide-react';
+import { Loader2, FileText, Users } from 'lucide-react';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useUserRoles } from '@/hooks/api/useProfile';
 
@@ -35,9 +38,23 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const sortBy = searchParams?.get('sort') || 'recent';
     const selectedTag = searchParams?.get('tag');
     const searchQuery = searchParams?.get('q') || '';
+    
+    // Get active tab from URL params, default to 'publications'
+    const activeTab = searchParams?.get('tab') || 'publications';
 
     const [paginationEnd, setPaginationEnd] = useState(false);
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
+
+    // Handle tab change
+    const handleTabChange = (tabId: string) => {
+        const params = new URLSearchParams(searchParams?.toString() ?? '');
+        if (tabId === 'publications') {
+            params.delete('tab');
+        } else {
+            params.set('tab', tabId);
+        }
+        router.push(`?${params.toString()}`);
+    };
 
     // Use v1 API hook
     const { data: comms } = useCommunity(chatId);
@@ -267,16 +284,37 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                 {comms.description}
                             </p>
                         )}
-                        <div className="flex items-center gap-4 text-sm">
-                            <div className="flex items-center gap-1.5 text-base-content/60">
-                                <FileText size={14} />
-                                <span className="font-medium text-base-content">{filteredPublications.length}</span>
-                                <span>publications</span>
+                        {activeTab === 'publications' && (
+                            <div className="flex items-center gap-4 text-sm">
+                                <div className="flex items-center gap-1.5 text-base-content/60">
+                                    <FileText size={14} />
+                                    <span className="font-medium text-base-content">{filteredPublications.length}</span>
+                                    <span>publications</span>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             )}
+
+            {/* Tab Selector */}
+            <Tabs
+                tabs={[
+                    {
+                        id: 'publications',
+                        label: tCommunities('publications') || 'Publications',
+                        icon: <FileText size={16} />,
+                    },
+                    {
+                        id: 'members',
+                        label: tCommunities('members') || 'Members',
+                        icon: <Users size={16} />,
+                    },
+                ]}
+                activeTab={activeTab}
+                onChange={handleTabChange}
+                className="mb-6"
+            />
 
             {/* Banners */}
             {error === false && 
@@ -321,61 +359,68 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 </div>
             )}
 
-            {/* Publications Feed */}
-            <div className="space-y-4">
-                        {isAuthenticated &&
-                            filteredPublications
-                                .filter((p: FeedItem) => {
-                                    if (p.type === 'publication') {
-                                        return !!p.content;
-                                    } else {
-                                        return p.type === 'poll';
-                                    }
-                                })
-                                .map((p) => {
-                                    // Check if this post is selected (for comments or polls)
-                                    const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug))
-                                        || !!(targetPollId && p.id === targetPollId);
+            {/* Tab Content */}
+            {activeTab === 'publications' ? (
+                <div className="space-y-4">
+                    {isAuthenticated &&
+                        filteredPublications
+                            .filter((p: FeedItem) => {
+                                if (p.type === 'publication') {
+                                    return !!p.content;
+                                } else {
+                                    return p.type === 'poll';
+                                }
+                            })
+                            .map((p) => {
+                                // Check if this post is selected (for comments or polls)
+                                const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug))
+                                    || !!(targetPollId && p.id === targetPollId);
 
-                                    return (
-                                        <div
-                                            key={p.id}
-                                            id={`post-${p.id}`}
-                                            className={
-                                                highlightedPostId === p.id
-                                                    ? 'ring-2 ring-brand-primary ring-opacity-50 rounded-lg p-1 bg-brand-primary/5'
-                                                    : isSelected
-                                                        ? 'ring-2 ring-brand-secondary ring-opacity-70 rounded-lg p-1 bg-brand-secondary/5 transition-all duration-300'
-                                                        : 'hover:shadow-md transition-shadow rounded-lg'
-                                            }
-                                        >
-                                            <PublicationCard
-                                                publication={p}
-                                                wallets={Array.isArray(wallets) ? wallets : []}
-                                                showCommunityAvatar={false}
-                                                isSelected={isSelected}
-                                            />
-                                        </div>
-                                    );
-                                })}
+                                return (
+                                    <div
+                                        key={p.id}
+                                        id={`post-${p.id}`}
+                                        className={
+                                            highlightedPostId === p.id
+                                                ? 'ring-2 ring-brand-primary ring-opacity-50 rounded-lg p-1 bg-brand-primary/5'
+                                                : isSelected
+                                                    ? 'ring-2 ring-brand-secondary ring-opacity-70 rounded-lg p-1 bg-brand-secondary/5 transition-all duration-300'
+                                                    : 'hover:shadow-md transition-shadow rounded-lg'
+                                        }
+                                    >
+                                        <PublicationCard
+                                            publication={p}
+                                            wallets={Array.isArray(wallets) ? wallets : []}
+                                            showCommunityAvatar={false}
+                                            isSelected={isSelected}
+                                        />
+                                    </div>
+                                );
+                            })}
 
-                        {isFetchingNextPage && (
-                            <div className="flex justify-center py-4">
-                                <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
-                            </div>
-                        )}
+                    {isFetchingNextPage && (
+                        <div className="flex justify-center py-4">
+                            <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+                        </div>
+                    )}
 
-                        {!paginationEnd && filteredPublications.length > 1 && !isFetchingNextPage && (
-                            <BrandButton
-                                variant="primary"
-                                onClick={() => fetchNextPage()}
-                                className="w-full sm:w-auto mx-auto block"
-                            >
-                                {t('communities.loadMore')}
-                            </BrandButton>
-                        )}
-                    </div>
-            <FabMenu communityId={chatId} />
+                    {!paginationEnd && filteredPublications.length > 1 && !isFetchingNextPage && (
+                        <BrandButton
+                            variant="primary"
+                            onClick={() => fetchNextPage()}
+                            className="w-full sm:w-auto mx-auto block"
+                        >
+                            {t('communities.loadMore')}
+                        </BrandButton>
+                    )}
+                </div>
+            ) : (
+                <MembersTab communityId={chatId} />
+            )}
+
+            {/* Conditional FABs */}
+            {activeTab === 'publications' && <FabMenu communityId={chatId} />}
+            {activeTab === 'members' && <CommunityMembersFab communityId={chatId} />}
         </AdaptiveLayout>
     );
 };

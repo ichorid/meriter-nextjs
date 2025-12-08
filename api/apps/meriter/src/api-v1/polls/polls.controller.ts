@@ -144,13 +144,25 @@ export class PollsController {
 
   @Put(':id')
   @ZodValidation(UpdatePollDtoSchema as any)
+  @RequirePermission('edit', 'poll')
   async updatePoll(
     @Param('id') id: string,
     @Body() updateDto: any,
     @Req() req: any,
   ): Promise<Poll> {
-    // Update functionality not implemented yet
-    throw new Error('Update poll functionality not implemented');
+    const poll = await this.pollsService.updatePoll(id, req.user.id, updateDto);
+    const snapshot = poll.toSnapshot();
+    
+    // Batch fetch user and community using enrichment services
+    const [usersMap, communitiesMap] = await Promise.all([
+      this.userEnrichmentService.batchFetchUsers([snapshot.authorId]),
+      this.communityEnrichmentService.batchFetchCommunities([snapshot.communityId]),
+    ]);
+    
+    // Transform domain Poll to API Poll format
+    const apiPoll = EntityMappers.mapPollToApi(poll, usersMap, communitiesMap);
+    
+    return ApiResponseHelper.successResponse(apiPoll);
   }
 
   @Delete(':id')

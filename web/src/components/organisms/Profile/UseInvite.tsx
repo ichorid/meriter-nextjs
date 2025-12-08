@@ -38,16 +38,11 @@ export function UseInvite() {
           <Ticket size={24} />
         </div>
         <h2 className="text-lg font-bold text-brand-text-primary">
-          {t('title') || 'Use Invite'}
+          {t('title')}
         </h2>
       </div>
       <div className="space-y-4">
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <p className="text-sm text-blue-800 dark:text-blue-200">
-            {t('description') || 'Enter an invite code to join a community or upgrade your role'}
-          </p>
-        </div>
-        <InviteInput />
+        <InviteInput hideLabel />
       </div>
     </div>
   );

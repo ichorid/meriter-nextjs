@@ -8,8 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar } from '@/components/atoms';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
-import { useUserMeritsBalance } from '@/hooks/useUserMeritsBalance';
-import { useCommunity } from '@/hooks/api/useCommunities';
+import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
 
@@ -27,17 +26,26 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   const { data: unreadCount = 0 } = useUnreadCount();
   const t = useTranslations('common');
 
-  // Calculate total merits balance and get related data
-  const { totalWalletBalance, totalDailyQuota, communityIds, quotasMap, wallets, walletsLoading } = useUserMeritsBalance();
+  // Get user's communities with wallets and quotas
+  const { communities, communityIds, wallets, quotasMap, walletsMap, isLoading: communitiesLoading } = useUserCommunities();
   
-  // Get first community ID for currency icon
-  const firstCommunityId = useMemo(() => {
-    const walletWithCommunity = wallets.find((w: any) => w?.communityId);
-    return walletWithCommunity?.communityId;
+  // Calculate total merits balance
+  const totalWalletBalance = useMemo(() => {
+    return wallets.reduce((sum: number, wallet: any) => sum + (wallet.balance || 0), 0);
   }, [wallets]);
   
-  // Fetch first community to get currency icon
-  const { data: firstCommunity } = useCommunity(firstCommunityId || '');
+  const totalDailyQuota = useMemo(() => {
+    let total = 0;
+    quotasMap.forEach((quota) => {
+      total += quota.remainingToday || 0;
+    });
+    return total;
+  }, [quotasMap]);
+  
+  // Get first community for currency icon
+  const firstCommunity = useMemo(() => {
+    return communities.find((c: any) => c?.id);
+  }, [communities]);
   const currencyIconUrl = firstCommunity?.settings?.iconUrl;
 
   // Don't show sidebar on login page
@@ -142,13 +150,13 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
               <div className="flex items-center w-full">
                 <Avatar
                   src={user.avatarUrl}
-                  alt={user.displayName || 'User'}
+                  alt={user.displayName || tCommon('user')}
                   size="sm"
                 />
                 <div className="flex-1 ml-2 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <div className="text-xs font-medium text-base-content truncate">
-                      {user.displayName || 'User'}
+                      {user.displayName || tCommon('user')}
                     </div>
                   </div>
                   <div className={`flex items-center gap-2 text-[10px] mt-0.5 ${pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
@@ -226,19 +234,19 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 
       <div className={`flex-1 overflow-y-auto w-full ${paddingClass} py-4`}>
         {/* Community Cards or Avatars */}
-        <div className={isExpanded ? 'space-y-4' : 'space-y-5'}>
-          {isAuthenticated && !walletsLoading && communityIds.length === 0 && wallets.length > 0 && (
+        <div className={isExpanded ? 'space-y-6' : 'space-y-6'}>
+          {isAuthenticated && !communitiesLoading && communityIds.length === 0 && wallets.length > 0 && (
             <div className="text-xs text-base-content/50 px-2">
               {t('noCommunitiesFound')}
             </div>
           )}
-          {isAuthenticated && walletsLoading && (
+          {isAuthenticated && communitiesLoading && (
             <div className="text-xs text-base-content/50 px-2">
               {t('loadingCommunities')}
             </div>
           )}
           {isAuthenticated && communityIds.map((communityId: string) => {
-            const wallet = wallets.find((w: any) => w?.communityId === communityId);
+            const wallet = walletsMap.get(communityId);
             const quota = quotasMap.get(communityId);
 
             return (

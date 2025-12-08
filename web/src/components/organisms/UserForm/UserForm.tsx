@@ -14,7 +14,6 @@ export interface UserFormData {
         city: string;
     };
     website?: string;
-    values: string;
     about?: string;
     contacts?: {
         email: string;
@@ -60,7 +59,6 @@ export function UserForm({
     const [region, setRegion] = useState(initialData?.location?.region || "");
     const [city, setCity] = useState(initialData?.location?.city || "");
     const [website, setWebsite] = useState(initialData?.website || "");
-    const [values, setValues] = useState(initialData?.values || "");
     const [about, setAbout] = useState(initialData?.about || "");
     const [email, setEmail] = useState(initialData?.contacts?.email || "");
     const [otherContacts, setOtherContacts] = useState(
@@ -82,7 +80,6 @@ export function UserForm({
             setRegion(initialData.location?.region || "");
             setCity(initialData.location?.city || "");
             setWebsite(initialData.website || "");
-            setValues(initialData.values || "");
             setAbout(initialData.about || "");
             setEmail(initialData.contacts?.email || "");
             setOtherContacts(initialData.contacts?.other || "");
@@ -103,15 +100,9 @@ export function UserForm({
         if (!city.trim()) {
             newErrors.city = t("errors.required");
         }
-        if (!values.trim()) {
-            newErrors.values = t("errors.required");
-        }
 
         if (bio.length > 1000) {
             newErrors.bio = t("errors.bioTooLong", { max: 1000 });
-        }
-        if (values.length > 1000) {
-            newErrors.values = t("errors.valuesTooLong", { max: 1000 });
         }
         if (about.length > 1000) {
             newErrors.about = t("errors.aboutTooLong", { max: 1000 });
@@ -161,7 +152,6 @@ export function UserForm({
                 city: city.trim(),
             },
             website: website.trim() || undefined,
-            values: values.trim(),
             about: about.trim() || undefined,
             contacts: {
                 email: email.trim(),
@@ -345,28 +335,6 @@ export function UserForm({
                                 value={about}
                                 onChange={(e) => setAbout(e.target.value)}
                                 placeholder={t("aboutPlaceholder")}
-                                maxLength={1000}
-                                rows={4}
-                            />
-                        </BrandFormControl>
-                    </div>
-
-                    {/* Values Field */}
-                    <div>
-                        <p className="text-xs text-base-content/50 mb-3 leading-relaxed">
-                            {t("hint.values")}
-                        </p>
-                        <BrandFormControl
-                            label={t("values")}
-                            helperText={`${values.length}/1000`}
-                            error={errors.values}
-                            required
-                        >
-                            <textarea
-                                className="w-full px-4 py-3 bg-base-100 border border-base-content/10 rounded-xl resize-none text-base-content placeholder:text-base-content/40 focus:outline-none focus:ring-2 focus:ring-base-content/20 focus:border-base-content/20 transition-all"
-                                value={values}
-                                onChange={(e) => setValues(e.target.value)}
-                                placeholder={t("valuesPlaceholder")}
                                 maxLength={1000}
                                 rows={4}
                             />

@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { useCreatePublication } from '@/hooks/api/usePublications';
+import { useCreatePublication, useUpdatePublication } from '@/hooks/api/usePublications';
+import type { Publication } from '@/types/api-v1';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandInput } from '@/components/ui/BrandInput';
@@ -33,6 +34,8 @@ interface PublicationCreateFormProps {
   onSuccess?: (publicationId: string) => void;
   onCancel?: () => void;
   defaultPostType?: PublicationPostType;
+  publicationId?: string;
+  initialData?: Publication;
 }
 
 const getDraftKey = (communityId: string) => `publication_draft_${communityId}`;
@@ -42,21 +45,25 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   onSuccess,
   onCancel,
   defaultPostType = 'basic',
+  publicationId,
+  initialData,
 }) => {
   const t = useTranslations('publications.create');
   const router = useRouter();
   const createPublication = useCreatePublication();
+  const updatePublication = useUpdatePublication();
   const { data: community } = useCommunity(communityId);
+  const isEditMode = !!publicationId && !!initialData;
 
   // Check if this is Good Deeds Marathon community
   const isGoodDeedsMarathon = community?.typeTag === 'marathon-of-good';
 
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [postType, setPostType] = useState<PublicationPostType>(defaultPostType);
-  const [hashtags, setHashtags] = useState<string[]>([]);
-  const [imageUrl, setImageUrl] = useState('');
-  const [isProject, setIsProject] = useState(false);
+  const [title, setTitle] = useState(initialData?.title || '');
+  const [description, setDescription] = useState(initialData?.description || initialData?.content || '');
+  const [postType, setPostType] = useState<PublicationPostType>(initialData?.postType || defaultPostType);
+  const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
+  const [imageUrl, setImageUrl] = useState(initialData?.imageUrl || '');
+  const [isProject, setIsProject] = useState(initialData?.isProject || false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -97,8 +104,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     }
   };
 
-  // Load draft on mount
+  // Load draft on mount (skip if editing)
   useEffect(() => {
+    if (isEditMode) {
+      return; // Don't load draft when editing
+    }
     const draftKey = getDraftKey(communityId);
     const savedDraft = localStorage.getItem(draftKey);
     if (savedDraft) {
@@ -116,10 +126,13 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         console.error('Failed to load draft:', error);
       }
     }
-  }, [communityId, defaultPostType]);
+  }, [communityId, defaultPostType, isEditMode]);
 
-  // Auto-save draft
+  // Auto-save draft (skip if editing)
   useEffect(() => {
+    if (isEditMode) {
+      return; // Don't auto-save draft when editing
+    }
     const hasContent = title.trim() || description.trim();
     if (!hasContent) {
       return;
@@ -137,7 +150,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
     const draftKey = getDraftKey(communityId);
     localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [title, description, postType, hashtags, imageUrl, isProject, communityId]);
+  }, [title, description, postType, hashtags, imageUrl, isProject, communityId, isEditMode]);
 
   const saveDraft = () => {
     const draft: PublicationDraft = {
@@ -208,24 +221,40 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       // Ensure postType is 'project' if isProject is true
       const finalPostType = isProject ? 'project' : postType;
 
-      const publication = await createPublication.mutateAsync({
-        communityId,
-        title: title.trim(),
-        description: description.trim(),
-        content: description.trim(), // Оставляем для обратной совместимости
-        type: 'text',
-        postType: finalPostType,
-        isProject: isProject,
-        hashtags,
-        imageUrl: imageUrl || undefined,
-      });
+      let publication;
+      if (isEditMode && publicationId) {
+        // Update existing publication
+        publication = await updatePublication.mutateAsync({
+          id: publicationId,
+          data: {
+            title: title.trim(),
+            description: description.trim(),
+            content: description.trim(), // Оставляем для обратной совместимости
+            hashtags,
+            imageUrl: imageUrl || undefined,
+          },
+        });
+      } else {
+        // Create new publication
+        publication = await createPublication.mutateAsync({
+          communityId,
+          title: title.trim(),
+          description: description.trim(),
+          content: description.trim(), // Оставляем для обратной совместимости
+          type: 'text',
+          postType: finalPostType,
+          isProject: isProject,
+          hashtags,
+          imageUrl: imageUrl || undefined,
+        });
 
-      // Clear draft after successful publication
-      const draftKey = getDraftKey(communityId);
-      localStorage.removeItem(draftKey);
-      setHasDraft(false);
+        // Clear draft after successful publication
+        const draftKey = getDraftKey(communityId);
+        localStorage.removeItem(draftKey);
+        setHasDraft(false);
+      }
 
-      // Navigate after successful creation
+      // Navigate after successful creation/update
       if (onSuccess) {
         onSuccess(publication.id);
       } else {
@@ -271,7 +300,9 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             >
               <ArrowLeft size={24} />
             </BrandButton>
-            <h1 className="text-xl font-bold text-brand-text-primary">{t('title')}</h1>
+            <h1 className="text-xl font-bold text-brand-text-primary">
+              {isEditMode ? t('editTitle') || 'Edit Publication' : t('title')}
+            </h1>
           </div>
           {hasDraft && (
             <BrandButton variant="outline" size="sm" onClick={loadDraft} leftIcon={<FileText size={16} />}>
@@ -462,7 +493,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               disabled={!title.trim() || !description.trim() || isSubmitting || isSubmittingRef.current}
               isLoading={isSubmitting || isSubmittingRef.current}
             >
-              {t('create')}
+              {isEditMode ? (t('update') || 'Update') : t('create')}
             </BrandButton>
           </div>
         </div>

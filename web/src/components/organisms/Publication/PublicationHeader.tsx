@@ -2,9 +2,13 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
+import { Edit } from 'lucide-react';
 import { Avatar, Badge } from '@/components/atoms';
 import { Badge as BrandBadge } from '@/components/ui/Badge';
+import { BrandButton } from '@/components/atoms';
 import { dateVerbose } from '@shared/lib/date';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Local Publication type definition
 interface Publication {
@@ -40,17 +44,36 @@ interface PublicationHeaderProps {
   publication: Publication;
   showCommunityAvatar?: boolean;
   className?: string;
+  authorId?: string;
+  metrics?: {
+    upvotes?: number;
+    downvotes?: number;
+    totalCasts?: number;
+  };
+  publicationId?: string;
+  communityId?: string;
+  isPoll?: boolean;
 }
 
 export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   publication,
   showCommunityAvatar = false,
   className = '',
+  authorId,
+  metrics,
+  publicationId,
+  communityId,
+  isPoll = false,
 }) => {
+  const router = useRouter();
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+
   const author = {
     name: publication.meta?.author?.name || 'Unknown',
     photoUrl: publication.meta?.author?.photoUrl,
     username: publication.meta?.author?.username,
+    id: authorId || publication.meta?.author?.id,
   };
 
   const beneficiary = publication.meta?.beneficiary ? {
@@ -58,6 +81,22 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     photoUrl: publication.meta.beneficiary.photoUrl,
     username: publication.meta.beneficiary.username,
   } : null;
+
+  // Check if user can edit
+  const isAuthor = currentUserId && author.id && currentUserId === author.id;
+  const hasVotes = isPoll
+    ? (metrics?.totalCasts || 0) > 0
+    : ((metrics?.upvotes || 0) + (metrics?.downvotes || 0)) > 0;
+  const canEdit = isAuthor && !hasVotes && publicationId && communityId;
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isPoll) {
+      router.push(`/meriter/communities/${communityId}/edit-poll/${publicationId}`);
+    } else {
+      router.push(`/meriter/communities/${communityId}/edit/${publicationId}`);
+    }
+  };
 
   return (
     <div className={`flex items-start justify-between gap-3 ${className}`}>
@@ -86,8 +125,19 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
         </div>
       </div>
       
-      {/* Tags & Badges */}
+      {/* Tags & Badges & Edit Button */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
+        {canEdit && (
+          <BrandButton
+            variant="ghost"
+            size="sm"
+            onClick={handleEdit}
+            className="p-1.5 h-auto min-h-0"
+            title="Edit"
+          >
+            <Edit size={16} />
+          </BrandButton>
+        )}
         {(publication as any).postType === 'project' || (publication as any).isProject ? (
           <BrandBadge variant="warning" size="sm">
             PROJECT

@@ -34,7 +34,7 @@ export function useCreateInvite() {
             targetUserId?: string;
             targetUserName?: string;
             type: "superadmin-to-lead" | "lead-to-participant";
-            communityId: string;
+            communityId?: string;
             teamId?: string;
             expiresAt?: string;
         }) => invitesApiV1.createInvite(data),

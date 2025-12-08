@@ -7,6 +7,7 @@ import { Plus, FileText, BarChart2, Users } from 'lucide-react';
 import { useWallets } from '@/hooks/api';
 import { useCanCreateCommunity } from '@/hooks/api/useProfile';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { useUIStore } from '@/stores/ui.store';
 
 export const HomeFabMenu: React.FC = () => {
     const router = useRouter();
@@ -17,6 +18,10 @@ export const HomeFabMenu: React.FC = () => {
     const addToast = useToastStore((state) => state.addToast);
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+
+    // Check if any popup is active using UI store
+    const { activeVotingTarget, activeWithdrawTarget, activeModal } = useUIStore();
+    const hasActivePopup = activeVotingTarget !== null || activeWithdrawTarget !== null || activeModal !== null;
 
     // Get first community ID from wallets
     const firstCommunityId = wallets.length > 0 ? wallets[0]?.communityId : null;
@@ -69,6 +74,11 @@ export const HomeFabMenu: React.FC = () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [isOpen]);
+
+    // Hide FAB when any popup is active (unless the FAB menu itself is open)
+    if (hasActivePopup && !isOpen) {
+        return null;
+    }
 
     return (
         <div className="fixed bottom-20 right-6 z-[60] lg:bottom-6" ref={menuRef}>

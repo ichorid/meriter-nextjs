@@ -53,7 +53,6 @@ export class User {
       },
       website: String,
       isVerified: { type: Boolean, default: false },
-      values: String,
       about: String,
       contacts: {
         email: String,
@@ -71,7 +70,6 @@ export class User {
     };
     website?: string;
     isVerified?: boolean;
-    values?: string;
     about?: string;
     contacts?: {
       email: string;

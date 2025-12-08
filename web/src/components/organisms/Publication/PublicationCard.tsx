@@ -80,6 +80,11 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   // Render poll card
   if (isPoll && pollData) {
     const pollItem = publication as PollFeedItem;
+    // Get metrics from pollData or use default
+    const pollMetrics = {
+      totalCasts: pollData.totalCasts || 0,
+    };
+    
     return (
       <div className="bg-base-100 rounded-2xl p-5 border border-base-content/5 hover:border-base-content/10 transition-all duration-200">
         <PublicationHeader
@@ -91,6 +96,11 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           }}
           showCommunityAvatar={showCommunityAvatar}
           className="mb-4"
+          authorId={pollItem.authorId || pollItem.meta?.author?.id}
+          metrics={pollMetrics}
+          publicationId={pollItem.id}
+          communityId={pollItem.communityId}
+          isPoll={true}
         />
         
         <PollCasting
@@ -142,6 +152,11 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           }}
           showCommunityAvatar={showCommunityAvatar}
           className="mb-3"
+          authorId={pubItem.authorId}
+          metrics={pubItem.metrics}
+          publicationId={pubItem.id || pubItem.slug}
+          communityId={pubItem.communityId}
+          isPoll={false}
         />
         
         <PublicationContent

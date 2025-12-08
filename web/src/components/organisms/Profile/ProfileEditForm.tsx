@@ -37,7 +37,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
     bio: user?.profile?.bio,
     location: user?.profile?.location,
     website: user?.profile?.website,
-    values: user?.profile?.values || '', // Ensure string
     about: user?.profile?.about,
     contacts: {
       email: user?.profile?.contacts?.email || '', // Email is in profile.contacts
@@ -55,7 +54,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
           bio: data.bio,
           location: data.location,
           website: data.website,
-          values: data.values,
           about: data.about,
           contacts: {
             messenger: data.contacts?.other,

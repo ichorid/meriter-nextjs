@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from 'next-intl';
 import { initDataRaw, useSignal, mainButton, backButton } from '@telegram-apps/sdk-react';
 import { pollsApiV1 } from '@/lib/api/v1';
+import { useUpdatePoll } from '@/hooks/api/usePolls';
+import type { Poll } from '@/types/api-v1';
 import { safeHapticFeedback } from '@/shared/lib/utils/haptic-utils';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { BrandButton } from '@/components/ui/BrandButton';
@@ -22,6 +24,8 @@ interface IFormPollCreateProps {
     communityId?: string;
     onSuccess?: (pollId: string) => void;
     onCancel?: () => void;
+    pollId?: string;
+    initialData?: Poll;
 }
 
 export const FormPollCreate = ({
@@ -29,21 +33,54 @@ export const FormPollCreate = ({
     communityId,
     onSuccess,
     onCancel,
+    pollId,
+    initialData,
 }: IFormPollCreateProps) => {
     const t = useTranslations('polls');
     const rawData = useSignal(initDataRaw);
     const isInTelegram = !!rawData;
     const isMountedRef = useRef(true);
+    const updatePoll = useUpdatePoll();
+    const isEditMode = !!pollId && !!initialData;
 
-    const [title, setTitle] = useState("");
-    const [description, setDescription] = useState("");
-    const [options, setOptions] = useState<IPollOption[]>([
-        { id: "1", text: "" },
-        { id: "2", text: "" },
-    ]);
-    const [timeValue, setTimeValue] = useState("24");
-    const [timeUnit, setTimeUnit] = useState<"minutes" | "hours" | "days">("hours");
-    const [selectedWallet, setSelectedWallet] = useState(communityId || "");
+    // Calculate timeValue and timeUnit from expiresAt if editing
+    const calculateTimeFromExpiresAt = (expiresAt: string): { value: string; unit: "minutes" | "hours" | "days" } => {
+        const now = new Date();
+        const expires = new Date(expiresAt);
+        const diffMs = expires.getTime() - now.getTime();
+        
+        if (diffMs <= 0) {
+            return { value: "24", unit: "hours" };
+        }
+
+        const diffMinutes = Math.floor(diffMs / (60 * 1000));
+        const diffHours = Math.floor(diffMs / (60 * 60 * 1000));
+        const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+
+        if (diffDays >= 1) {
+            return { value: diffDays.toString(), unit: "days" };
+        } else if (diffHours >= 1) {
+            return { value: diffHours.toString(), unit: "hours" };
+        } else {
+            return { value: diffMinutes.toString(), unit: "minutes" };
+        }
+    };
+
+    const initialTime = initialData?.expiresAt 
+        ? calculateTimeFromExpiresAt(initialData.expiresAt)
+        : { value: "24", unit: "hours" as const };
+
+    const [title, setTitle] = useState(initialData?.question || "");
+    const [description, setDescription] = useState(initialData?.description || "");
+    const [options, setOptions] = useState<IPollOption[]>(
+        initialData?.options?.map(opt => ({ id: opt.id, text: opt.text })) || [
+            { id: "1", text: "" },
+            { id: "2", text: "" },
+        ]
+    );
+    const [timeValue, setTimeValue] = useState(initialTime.value);
+    const [timeUnit, setTimeUnit] = useState<"minutes" | "hours" | "days">(initialTime.unit);
+    const [selectedWallet, setSelectedWallet] = useState(communityId || initialData?.communityId || "");
     const [isCreating, setIsCreating] = useState(false);
     const [error, setError] = useState("");
 
@@ -156,9 +193,19 @@ export const FormPollCreate = ({
 
             console.log('📊 Creating poll with payload:', payload);
 
-            const poll = await pollsApiV1.createPoll(payload);
-
-            console.log('📊 Poll creation response:', poll);
+            let poll;
+            if (isEditMode && pollId) {
+                // Update existing poll
+                poll = await updatePoll.mutateAsync({
+                    id: pollId,
+                    data: payload,
+                });
+                console.log('📊 Poll update response:', poll);
+            } else {
+                // Create new poll
+                poll = await pollsApiV1.createPoll(payload);
+                console.log('📊 Poll creation response:', poll);
+            }
 
             safeHapticFeedback('success', isInTelegram);
             onSuccess && onSuccess(poll.id);
@@ -178,7 +225,7 @@ export const FormPollCreate = ({
                 }
             }
         }
-    }, [title, description, options, timeValue, timeUnit, selectedWallet, isInTelegram, t, onSuccess]);
+    }, [title, description, options, timeValue, timeUnit, selectedWallet, isInTelegram, t, onSuccess, isEditMode, pollId, updatePoll]);
 
     // Telegram MainButton integration
     useEffect(() => {
@@ -200,7 +247,7 @@ export const FormPollCreate = ({
                 try {
                     // Set the mainButton parameters
                     mainButton.setParams({
-                        text: t('createPoll'),
+                        text: isEditMode ? (t('updatePoll') || 'Update Poll') : t('createPoll'),
                         isVisible: true,
                         isEnabled: true
                     });
@@ -288,7 +335,9 @@ export const FormPollCreate = ({
                         <ArrowLeft size={24} />
                     </BrandButton>
                 )}
-                <h1 className="text-xl font-bold text-brand-text-primary dark:text-base-content">{t('createTitle')}</h1>
+                <h1 className="text-xl font-bold text-brand-text-primary dark:text-base-content">
+                    {isEditMode ? (t('editTitle') || 'Edit Poll') : t('createTitle')}
+                </h1>
             </div>
 
             {/* Poll Title Section */}
@@ -428,7 +477,7 @@ export const FormPollCreate = ({
                         disabled={isCreating}
                         isLoading={isCreating}
                     >
-                        {t('createPoll')}
+                        {isEditMode ? (t('updatePoll') || 'Update Poll') : t('createPoll')}
                     </BrandButton>
                 </div>
             )}

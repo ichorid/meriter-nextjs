@@ -51,12 +51,11 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
 
   if (!user) return null;
 
-  const displayName = user.displayName || user.username || 'User';
+  const displayName = user.displayName || user.username || tCommon('user');
   const avatarUrl = user.avatarUrl;
   const bio = user.profile?.bio;
   const location = user.profile?.location;
   const website = user.profile?.website;
-  const values = user.profile?.values;
   const about = user.profile?.about;
   const educationalInstitution = user.profile?.educationalInstitution;
   const contacts = user.profile?.contacts;
@@ -124,18 +123,6 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
             <p className="text-sm text-base-content/80 leading-relaxed">
               {bio}
             </p>
-          )}
-
-          {/* Values */}
-          {values && (
-            <div>
-              <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide mb-1">
-                Values
-              </p>
-              <p className="text-sm text-base-content/70 leading-relaxed">
-                {values}
-              </p>
-            </div>
           )}
 
           {/* About */}

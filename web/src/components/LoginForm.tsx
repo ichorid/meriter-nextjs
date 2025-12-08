@@ -67,36 +67,8 @@ export function LoginForm({
         }
     }, [authError, addToast]);
 
-    // Handle fake authentication
-    const handleFakeAuth = async () => {
-        try {
-            await authenticateFakeUser();
-            handleAuthRedirect(null, "/meriter/profile");
-        } catch (error: unknown) {
-            const message = getErrorMessage(error);
-            console.error("❌ Fake authentication failed:", error);
-            setAuthError(message);
-            addToast(message, "error");
-        }
-    };
-
-    // Handle fake superadmin authentication
-    const handleFakeSuperadminAuth = async () => {
-        try {
-            await authenticateFakeSuperadmin();
-            handleAuthRedirect(null, "/meriter/profile");
-        } catch (error: unknown) {
-            const message = getErrorMessage(error);
-            console.error("❌ Fake superadmin authentication failed:", error);
-            setAuthError(message);
-            addToast(message, "error");
-        }
-    };
-
-    // Handle OAuth provider authentication
-    const handleOAuthAuth = (providerId: string) => {
-        // Construct returnTo path with invite code as query parameter
-        // Always use /meriter/profile as base path when invite code is present
+    // Helper function to construct redirect URL with invite code
+    const buildRedirectUrl = (): string => {
         let returnToPath = returnTo || "/meriter/profile";
 
         // If invite code is present, ensure we redirect to /meriter/profile with invite query param
@@ -110,6 +82,40 @@ export function LoginForm({
             returnToPath = url.pathname + url.search;
         }
 
+        return returnToPath;
+    };
+
+    // Handle fake authentication
+    const handleFakeAuth = async () => {
+        try {
+            await authenticateFakeUser();
+            const redirectUrl = buildRedirectUrl();
+            window.location.href = redirectUrl;
+        } catch (error: unknown) {
+            const message = getErrorMessage(error);
+            console.error("❌ Fake authentication failed:", error);
+            setAuthError(message);
+            addToast(message, "error");
+        }
+    };
+
+    // Handle fake superadmin authentication
+    const handleFakeSuperadminAuth = async () => {
+        try {
+            await authenticateFakeSuperadmin();
+            const redirectUrl = buildRedirectUrl();
+            window.location.href = redirectUrl;
+        } catch (error: unknown) {
+            const message = getErrorMessage(error);
+            console.error("❌ Fake superadmin authentication failed:", error);
+            setAuthError(message);
+            addToast(message, "error");
+        }
+    };
+
+    // Handle OAuth provider authentication
+    const handleOAuthAuth = (providerId: string) => {
+        const returnToPath = buildRedirectUrl();
         const oauthUrl = getOAuthUrl(providerId, returnToPath);
         window.location.href = oauthUrl;
     };

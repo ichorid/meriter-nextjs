@@ -6,7 +6,7 @@ import { Poll as PollSchema, PollDocument } from '../models/poll/poll.schema';
 import { PollCastRepository } from '../models/poll/poll-cast.repository';
 import { PollCreatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
-import { CreatePollDto } from '../../../../../../libs/shared-types/dist/index';
+import { CreatePollDto, UpdatePollDto } from '../../../../../../libs/shared-types/dist/index';
 
 @Injectable()
 export class PollService {
@@ -175,5 +175,89 @@ export class PollService {
       .lean();
     
     return docs.map(doc => Poll.fromSnapshot(doc as any));
+  }
+
+  async updatePoll(
+    pollId: string,
+    userId: string,
+    updateData: UpdatePollDto
+  ): Promise<Poll> {
+    const doc = await this.pollModel.findOne({ id: pollId }).lean();
+    if (!doc) {
+      throw new NotFoundException('Poll not found');
+    }
+
+    const poll = Poll.fromSnapshot(doc as any);
+
+    // Check if user is the author
+    if (poll.getAuthorId !== userId) {
+      throw new BadRequestException('Not authorized to edit this poll');
+    }
+
+    // Check if poll has any casts (totalCasts > 0)
+    const metrics = poll.getMetrics;
+    if (metrics.totalCasts > 0) {
+      throw new BadRequestException('Cannot edit poll after votes have been cast');
+    }
+
+    // Build update object
+    const updateObj: any = {
+      updatedAt: new Date(),
+    };
+
+    if (updateData.question !== undefined) {
+      updateObj.question = updateData.question;
+    }
+    if (updateData.description !== undefined) {
+      updateObj.description = updateData.description;
+    }
+    if (updateData.options !== undefined) {
+      // Validate options
+      if (updateData.options.length < 2) {
+        throw new BadRequestException('Poll must have at least 2 options');
+      }
+      
+      // Map options to the format expected by the schema
+      // Preserve existing option IDs if they match, otherwise generate new ones
+      const { uid } = require('uid');
+      const existingOptions = poll.getOptions;
+      const updatedOptions = updateData.options.map((opt, index) => {
+        // Try to match by index first, then by ID
+        const existingOption = existingOptions[index] || existingOptions.find(o => o.getId === opt.id);
+        const optionId = existingOption?.getId || opt.id || uid();
+        
+        return {
+          id: optionId,
+          text: opt.text,
+          votes: existingOption?.getVotes || 0,
+          amount: existingOption?.getAmount || 0,
+          casterCount: existingOption?.getCasterCount || 0,
+        };
+      });
+      
+      updateObj.options = updatedOptions;
+    }
+    if (updateData.expiresAt !== undefined) {
+      const expiresAt = typeof updateData.expiresAt === 'string' ? new Date(updateData.expiresAt) : updateData.expiresAt;
+      if (expiresAt <= new Date()) {
+        throw new BadRequestException('Poll expiration must be in the future');
+      }
+      updateObj.expiresAt = expiresAt;
+    }
+
+    // Update the document
+    await this.pollModel.updateOne(
+      { id: pollId },
+      { $set: updateObj }
+    );
+
+    // Fetch and return updated poll
+    const updatedDoc = await this.pollModel.findOne({ id: pollId }).lean();
+    if (!updatedDoc) {
+      throw new NotFoundException('Poll not found after update');
+    }
+
+    this.logger.log(`Poll updated successfully: ${pollId}`);
+    return Poll.fromSnapshot(updatedDoc as any);
   }
 }

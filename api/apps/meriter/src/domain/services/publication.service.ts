@@ -268,7 +268,15 @@ export class PublicationService {
     const userIdObj = UserId.fromString(userId);
 
     if (!publication.canBeEditedBy(userIdObj)) {
-      throw new Error('Not authorized to edit this publication');
+      throw new BadRequestException('Not authorized to edit this publication');
+    }
+
+    // Check if publication has any votes (upvotes + downvotes > 0)
+    const metrics = publication.getMetrics();
+    const metricsSnapshot = metrics.toSnapshot();
+    const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
+    if (totalVotes > 0) {
+      throw new BadRequestException('Cannot edit publication after votes have been cast');
     }
 
     // Update publication fields
@@ -277,6 +285,21 @@ export class PublicationService {
     }
     if (updateData.hashtags) {
       publication.updateHashtags(updateData.hashtags);
+    }
+    if (updateData.title !== undefined) {
+      // Update title if provided
+      const snapshot = publication.toSnapshot();
+      await this.publicationModel.updateOne(
+        { id: publication.getId },
+        { $set: { title: updateData.title } },
+      );
+    }
+    if (updateData.description !== undefined) {
+      // Update description if provided
+      await this.publicationModel.updateOne(
+        { id: publication.getId },
+        { $set: { description: updateData.description } },
+      );
     }
 
     await this.publicationModel.updateOne(
