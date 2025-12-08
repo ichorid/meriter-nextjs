@@ -148,7 +148,11 @@ export const InviteCreationPopup: React.FC<InviteCreationPopupProps> = ({
     }, [invites, communityId]);
 
     // Hide component completely if user doesn't have permissions
-    if (!isSuperadmin && !isLead) {
+    // Note: We check this after hooks to maintain hook call order
+    const hasPermission = isSuperadmin || isLead;
+    
+    // Don't render the sheet if not open or no permission
+    if (!hasPermission || !isOpen) {
         return null;
     }
 

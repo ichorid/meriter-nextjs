@@ -54,7 +54,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   }
 
   // Determine width based on expanded state
-  const widthClass = isExpanded ? 'w-[280px]' : 'w-[72px]';
+  const widthClass = isExpanded ? 'w-[336px]' : 'w-[72px]';
   const paddingClass = isExpanded ? 'px-4' : 'px-2';
 
   return (

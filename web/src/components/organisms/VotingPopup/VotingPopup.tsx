@@ -2,17 +2,17 @@
 
 import React, { useMemo } from 'react';
 import { useUIStore } from '@/stores/ui.store';
-import { FormComment } from '@/features/comments/components/form-comment';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFreeBalance } from '@/hooks/api/useWallet';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { useTranslations } from 'next-intl';
 import { useVoteOnPublicationWithComment, useVoteOnVote } from '@/hooks/api/useVotes';
-import { BasePopup } from '../BasePopup/BasePopup';
 import { usePopupCommunityData } from '@/hooks/usePopupCommunityData';
 import { usePopupFormData } from '@/hooks/usePopupFormData';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useCommunity } from '@/hooks/api';
+import { VotingPanel } from './VotingPanel';
+import { BottomPortal } from '@/shared/components/bottom-portal';
 
 interface VotingPopupProps {
   communityId?: string;
@@ -232,26 +232,27 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   }
 
   return (
-    <BasePopup isOpen={isOpen} onClose={handleClose}>
-      <FormComment
-        uid={activeVotingTarget}
-        hasPoints={hasPoints}
-        comment={formData.comment}
-        setComment={handleCommentChange}
-        amount={formData.delta}
-        setAmount={handleAmountChange}
-        free={freePlusAmount}
-        maxPlus={maxPlus}
-        maxMinus={calculatedMaxMinus}
-        commentAdd={handleSubmit}
-        error={formData.error}
-        onClose={handleClose}
-        quotaAmount={voteBreakdown.quotaAmount}
-        walletAmount={voteBreakdown.walletAmount}
-        quotaRemaining={quotaRemaining}
-        currencyIconUrl={currencyIconUrl}
-      />
-    </BasePopup>
+    <BottomPortal>
+      <div className="fixed inset-0 z-50 pointer-events-auto flex items-end justify-center">
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" 
+          onClick={handleClose}
+        />
+        <VotingPanel
+          onClose={handleClose}
+          amount={formData.delta}
+          setAmount={handleAmountChange}
+          comment={formData.comment}
+          setComment={handleCommentChange}
+          onSubmit={handleSubmit}
+          maxPlus={maxPlus}
+          maxMinus={calculatedMaxMinus}
+          quotaRemaining={quotaRemaining}
+          error={formData.error}
+          isViewer={isViewer}
+        />
+      </div>
+    </BottomPortal>
   );
 };
 

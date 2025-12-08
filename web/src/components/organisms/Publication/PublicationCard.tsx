@@ -10,7 +10,6 @@ import { PollCasting } from '@features/polls/components/poll-casting';
 import { usePollCardData } from '@/hooks/usePollCardData';
 import { getWalletBalance } from '@/lib/utils/wallet';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
-import { Pressable } from 'react-native';
 
 import type { FeedItem, PublicationFeedItem, PollFeedItem, Wallet } from '@/types/api-v1';
 
@@ -139,7 +138,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   };
   
   return (
-    <Pressable onPress={handleCardClick}>
+    <div onClick={handleCardClick} className="cursor-pointer">
       <article className="bg-base-100 rounded-2xl p-5 border border-base-content/5 hover:border-base-content/10 transition-all duration-200">
         <PublicationHeader
           publication={{
@@ -198,6 +197,6 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           // maxMinus is calculated in PublicationActions using quota data
         />
       </article>
-    </Pressable>
+    </div>
   );
 };

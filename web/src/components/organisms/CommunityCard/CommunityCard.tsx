@@ -134,8 +134,8 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
         >
           {/* Left section: Avatar + Content */}
           <div className="flex flex-row items-start gap-3 flex-1 min-w-0">
-            {/* Avatar with role badge overlay */}
-            <div className="relative flex-shrink-0">
+            {/* Avatar section with badge below */}
+            <div className="flex flex-col items-start gap-2 flex-shrink-0">
               <CommunityAvatar
                 avatarUrl={community.avatarUrl}
                 communityName={community.name}
@@ -144,16 +144,13 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                 className="bg-base-300"
               />
               {userRoleBadge && (
-                <div 
-                  className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 ${
-                    isActive ? 'border-base-content' : 'border-base-100'
-                  } ${
-                    userRoleBadge.variant === 'error' ? 'bg-error' :
-                    userRoleBadge.variant === 'accent' ? 'bg-accent' :
-                    userRoleBadge.variant === 'info' ? 'bg-info' : 'bg-accent'
-                  }`} 
-                  title={userRoleBadge.label} 
-                />
+                <Badge 
+                  variant={userRoleBadge.variant} 
+                  size="xs"
+                  className={isActive ? 'bg-base-100/20 text-base-100 border-base-100/20' : ''}
+                >
+                  {userRoleBadge.label}
+                </Badge>
               )}
             </div>
 

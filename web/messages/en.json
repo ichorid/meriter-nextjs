@@ -40,7 +40,6 @@
         "userNotFound": "User not found",
         "userNotFoundDescription": "The user profile you're looking for doesn't exist",
         "contactInformation": "Contact Information",
-        "about": "About",
         "noProfileInformation": "No profile information available",
         "noProfileInformationDescription": "This user hasn't added any profile details yet"
     },
@@ -314,6 +313,13 @@
         "projectNoVoting": "PROJECT posts are for discussion only. Voting and merits are not available."
     },
     "comments": {
+        "voteTitle": "Voting",
+        "dailyLimit": "Daily limit",
+        "available": "Available",
+        "downvoteExplanation": "You are voting against publication. Please leave a detailed explanation, the reason for your decision.",
+        "explanationDetails": "Explanations, details and descriptions",
+        "textField": "Text field",
+        "submit": "Submit",
         "upvoteQuota": "Vote for {used}/{total} daily quota",
         "upvoteBalance": "Vote for {amount} from Balance",
         "sliderUpvote": "Move up to vote positively",
@@ -322,7 +328,7 @@
         "voteAmount": "Vote amount",
         "downvoteQuota": "Vote negatively for {used}/{total} daily quota",
         "downvoteBalance": "Vote negatively for {amount} from Balance",
-        "sliderHint": "Move the slider to select the number of points",
+        "sliderHint": "Move the slider to choose the number of votes you want to give.",
         "commentHint": "Tell us why you gave this rating. We value your opinion",
         "reasonRequired": "A reason for your vote is required",
         "close": "close[x]",
@@ -423,7 +429,9 @@
             "byRating": "By Rating",
             "loadMore": "Load more",
             "createPost": "Create Post",
-            "joinByInvite": "Or join by invite"
+            "joinByInvite": "Or join by invite",
+            "publications": "Publications",
+            "members": "Members"
         },
         "communitySettings": {
             "title": "Community Settings",
