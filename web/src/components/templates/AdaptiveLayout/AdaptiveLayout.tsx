@@ -75,11 +75,24 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   const dragStartWidth = useRef<number>(400);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Resizable left sidebar state management
+  const [leftSidebarWidth, setLeftSidebarWidth] = useLocalStorage<number>('adaptive-layout-left-sidebar-width', 336);
+  const [isDraggingLeftSidebar, setIsDraggingLeftSidebar] = useState(false);
+  const dragStartXLeftSidebar = useRef<number>(0);
+  const dragStartWidthLeftSidebar = useRef<number>(336);
+  const saveTimeoutRefLeftSidebar = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Constrain width: min 300px, max min(800px, 50vw)
   const clampWidth = useCallback((width: number): number => {
     if (typeof window === 'undefined') return width;
     const maxWidth = Math.min(800, window.innerWidth * 0.5);
     return Math.max(300, Math.min(maxWidth, width));
+  }, []);
+
+  // Constrain left sidebar width: min 200px, max 600px
+  const clampLeftSidebarWidth = useCallback((width: number): number => {
+    if (typeof window === 'undefined') return width;
+    return Math.max(200, Math.min(600, width));
   }, []);
 
   // Validate and clamp saved width on mount and window resize
@@ -112,6 +125,37 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
     const clampedWidth = clampWidth(rightColumnWidth);
     document.documentElement.style.setProperty('--right-column-width', `${clampedWidth}px`);
   }, [rightColumnWidth, isDesktop, showCommentsColumn, clampWidth]);
+
+  // Validate and clamp saved left sidebar width on mount and window resize
+  useEffect(() => {
+    if (!isDesktop) return;
+
+    const validateWidth = () => {
+      const clamped = clampLeftSidebarWidth(leftSidebarWidth);
+      if (clamped !== leftSidebarWidth) {
+        setLeftSidebarWidth(clamped);
+      }
+    };
+
+    // Validate on mount
+    validateWidth();
+
+    // Validate on window resize
+    window.addEventListener('resize', validateWidth);
+    return () => window.removeEventListener('resize', validateWidth);
+  }, [isDesktop, leftSidebarWidth, clampLeftSidebarWidth, setLeftSidebarWidth]);
+
+  // Update CSS variable for left sidebar width
+  useEffect(() => {
+    if (!isDesktop) {
+      // Reset to default when not on desktop
+      document.documentElement.style.setProperty('--left-sidebar-width', '336px');
+      return;
+    }
+
+    const clampedWidth = clampLeftSidebarWidth(leftSidebarWidth);
+    document.documentElement.style.setProperty('--left-sidebar-width', `${clampedWidth}px`);
+  }, [leftSidebarWidth, isDesktop, clampLeftSidebarWidth]);
 
   // Debounced localStorage save on drag end
   const saveWidth = useCallback((width: number) => {
@@ -187,11 +231,88 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
     };
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
+  // Debounced localStorage save for left sidebar on drag end
+  const saveLeftSidebarWidth = useCallback((width: number) => {
+    if (saveTimeoutRefLeftSidebar.current) {
+      clearTimeout(saveTimeoutRefLeftSidebar.current);
+    }
+    saveTimeoutRefLeftSidebar.current = setTimeout(() => {
+      const clamped = clampLeftSidebarWidth(width);
+      setLeftSidebarWidth(clamped);
+      saveTimeoutRefLeftSidebar.current = null;
+    }, 500);
+  }, [clampLeftSidebarWidth, setLeftSidebarWidth]);
+
+  // Mouse event handlers for resizing left sidebar
+  const handleLeftSidebarMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!isDesktop) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingLeftSidebar(true);
+    dragStartXLeftSidebar.current = e.clientX;
+    dragStartWidthLeftSidebar.current = leftSidebarWidth;
+
+    // Prevent text selection during drag
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+  }, [isDesktop, leftSidebarWidth]);
+
+  const handleLeftSidebarMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDraggingLeftSidebar || !isDesktop) return;
+
+    requestAnimationFrame(() => {
+      const deltaX = e.clientX - dragStartXLeftSidebar.current; // Positive delta = drag right = increase width
+      const newWidth = dragStartWidthLeftSidebar.current + deltaX;
+      const clampedWidth = clampLeftSidebarWidth(newWidth);
+
+      // Update CSS variable directly for smooth drag (no state update during drag)
+      document.documentElement.style.setProperty('--left-sidebar-width', `${clampedWidth}px`);
+    });
+  }, [isDraggingLeftSidebar, isDesktop, clampLeftSidebarWidth]);
+
+  const handleLeftSidebarMouseUp = useCallback(() => {
+    if (!isDraggingLeftSidebar) return;
+
+    setIsDraggingLeftSidebar(false);
+
+    // Restore cursor and selection
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+
+    // Get current width from CSS variable and update state
+    const currentWidth = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--left-sidebar-width')
+    ) || leftSidebarWidth;
+
+    const clamped = clampLeftSidebarWidth(currentWidth);
+    setLeftSidebarWidth(clamped);
+
+    // Debounced save for persistence
+    saveLeftSidebarWidth(clamped);
+  }, [isDraggingLeftSidebar, leftSidebarWidth, clampLeftSidebarWidth, setLeftSidebarWidth, saveLeftSidebarWidth]);
+
+  // Attach/remove mouse event listeners for left sidebar
+  useEffect(() => {
+    if (!isDraggingLeftSidebar) return;
+
+    document.addEventListener('mousemove', handleLeftSidebarMouseMove);
+    document.addEventListener('mouseup', handleLeftSidebarMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleLeftSidebarMouseMove);
+      document.removeEventListener('mouseup', handleLeftSidebarMouseUp);
+    };
+  }, [isDraggingLeftSidebar, handleLeftSidebarMouseMove, handleLeftSidebarMouseUp]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
+      }
+      if (saveTimeoutRefLeftSidebar.current) {
+        clearTimeout(saveTimeoutRefLeftSidebar.current);
       }
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
@@ -208,12 +329,50 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
       */}
       {/* Mobile/Tablet sidebar is hidden when BottomNavigation is shown (both use lg:hidden breakpoint) */}
       {/* Desktop lg-xl (1024-1279px): shrink to avatar when comments shown */}
-      <div className="hidden lg:flex xl:hidden flex-shrink-0" style={{ width: sidebarExpandedDesktop ? '336px' : '72px' }}>
+      <div className="hidden lg:flex xl:hidden flex-shrink-0 relative" style={{ width: sidebarExpandedDesktop ? 'var(--left-sidebar-width, 336px)' : '72px' }}>
         <VerticalSidebar isExpanded={sidebarExpandedDesktop} />
+        {/* Resizable Divider - Desktop only, when expanded */}
+        {sidebarExpandedDesktop && isDesktop && (
+          <div
+            role="separator"
+            aria-label="Resize sidebar"
+            aria-orientation="vertical"
+            className={`absolute top-0 bottom-0 right-0 z-30 cursor-col-resize select-none transition-colors ${
+              isDraggingLeftSidebar
+                ? 'bg-base-300/80'
+                : 'bg-transparent hover:bg-base-300/50'
+              }`}
+            style={{
+              marginLeft: '-6px',
+              marginRight: '-6px',
+              width: '12px'
+            }}
+            onMouseDown={handleLeftSidebarMouseDown}
+          />
+        )}
       </div>
       {/* Desktop xl+ (≥1280px): always expanded (default, broad windows) */}
-      <div className="hidden xl:flex flex-shrink-0 w-[336px]">
+      <div className="hidden xl:flex flex-shrink-0 relative" style={{ width: 'var(--left-sidebar-width, 336px)' }}>
         <VerticalSidebar isExpanded={true} />
+        {/* Resizable Divider - Desktop only */}
+        {isDesktop && (
+          <div
+            role="separator"
+            aria-label="Resize sidebar"
+            aria-orientation="vertical"
+            className={`absolute top-0 bottom-0 right-0 z-30 cursor-col-resize select-none transition-colors ${
+              isDraggingLeftSidebar
+                ? 'bg-base-300/80'
+                : 'bg-transparent hover:bg-base-300/50'
+              }`}
+            style={{
+              marginLeft: '-6px',
+              marginRight: '-6px',
+              width: '12px'
+            }}
+            onMouseDown={handleLeftSidebarMouseDown}
+          />
+        )}
       </div>
 
       {/* Main Content Area */}

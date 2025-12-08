@@ -165,9 +165,9 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                 </div>
                 {/* Merits/Quota indicators */}
                 {showIndicators && (
-                  <div className="flex flex-row items-start gap-2.5 w-full">
+                  <div className="flex flex-row items-start gap-2.5 w-full min-w-0">
                     {showMerits && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 min-w-0 flex-shrink">
                         {currencyIconUrl && (
                           <img 
                             src={currencyIconUrl} 
@@ -175,27 +175,27 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                             className="w-3 h-3 flex-shrink-0" 
                           />
                         )}
-                        <span className={`text-xs leading-[14px] tracking-[0.374px] ${
+                        <span className={`text-xs leading-[14px] tracking-[0.374px] min-w-0 ${
                           isActive ? 'text-base-100/60' : 'text-base-content/60'
                         }`}>
-                          {t('permanentMerits')}: <span className={`font-semibold ${
+                          <span className="truncate">{t('permanentMerits')}:</span> <span className={`font-semibold whitespace-nowrap ${
                             isActive ? 'text-base-100' : 'text-base-content'
                           }`}>{balance}</span>
                         </span>
                       </div>
                     )}
                     {showMerits && showQuota && (
-                      <span className={isActive ? 'text-base-100/40' : 'text-base-content/40'}>|</span>
+                      <span className={`flex-shrink-0 ${isActive ? 'text-base-100/40' : 'text-base-content/40'}`}>|</span>
                     )}
                     {showQuota && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 min-w-0 flex-shrink">
                         <Zap className={`w-3 h-3 flex-shrink-0 ${
                           isActive ? 'text-base-100/60' : 'text-base-content/60'
                         }`} />
-                        <span className={`text-xs leading-[14px] tracking-[0.374px] ${
+                        <span className={`text-xs leading-[14px] tracking-[0.374px] min-w-0 ${
                           isActive ? 'text-base-100/60' : 'text-base-content/60'
                         }`}>
-                          {t('dailyMerits')}: <span className={`font-semibold ${
+                          <span className="truncate">{t('dailyMerits')}:</span> <span className={`font-semibold whitespace-nowrap ${
                             isActive ? 'text-base-100' : 'text-base-content'
                           }`}>{remainingQuota}</span>
                         </span>

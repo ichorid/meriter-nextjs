@@ -54,11 +54,17 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   }
 
   // Determine width based on expanded state
-  const widthClass = isExpanded ? 'w-[336px]' : 'w-[72px]';
+  // When expanded, use CSS variable for dynamic width; when collapsed, use fixed width
+  const widthStyle = isExpanded 
+    ? { width: 'var(--left-sidebar-width, 336px)' }
+    : { width: '72px' };
   const paddingClass = isExpanded ? 'px-4' : 'px-2';
 
   return (
-    <aside className={`flex fixed lg:sticky left-0 top-0 h-screen ${widthClass} bg-base-200 border-r border-base-300 z-40 flex-col py-4 pb-16 lg:pb-4 transition-all duration-300 ${className}`}>
+    <aside 
+      className={`flex fixed lg:sticky left-0 top-0 h-screen bg-base-200 border-r border-base-300 z-40 flex-col py-4 pb-16 lg:pb-4 transition-all duration-300 ${className}`}
+      style={widthStyle}
+    >
       {/* All Communities Button */}
       {isAuthenticated && (
         <div className={paddingClass}>
