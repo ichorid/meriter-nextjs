@@ -62,6 +62,24 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     // Use v1 API hook
     const { data: comms } = useCommunity(chatId);
 
+    // Fetch all communities to find the future-vision community when on marathon-of-good
+    // This must be called before calculating futureVisionCommunityId
+    const { data: communitiesData } = useCommunities();
+
+    // Check if community is special (marathon-of-good or future-vision)
+    const isSpecialCommunity = comms?.typeTag === 'marathon-of-good' || comms?.typeTag === 'future-vision';
+    const isMarathonOfGood = comms?.typeTag === 'marathon-of-good';
+
+    // Find the future-vision community ID when on marathon-of-good
+    // This must be calculated before useCommunityFeed that uses it
+    const futureVisionCommunityId = useMemo(() => {
+        if (!isMarathonOfGood || !communitiesData?.data) return null;
+        const futureVisionCommunity = communitiesData.data.find(
+            (c: any) => c.typeTag === 'future-vision'
+        );
+        return futureVisionCommunity?.id || null;
+    }, [isMarathonOfGood, communitiesData?.data]);
+
     const {
         data,
         fetchNextPage,
@@ -228,23 +246,6 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const quotaRemaining = quotaData?.remainingToday ?? 0;
     const quotaMax = quotaData?.dailyQuota ?? 0;
     const currencyIconUrl = comms?.settings?.iconUrl;
-
-
-    // Check if community is special (marathon-of-good or future-vision)
-    const isSpecialCommunity = comms?.typeTag === 'marathon-of-good' || comms?.typeTag === 'future-vision';
-    const isMarathonOfGood = comms?.typeTag === 'marathon-of-good';
-
-    // Fetch all communities to find the future-vision community when on marathon-of-good
-    const { data: communitiesData } = useCommunities();
-    
-    // Find the future-vision community ID when on marathon-of-good
-    const futureVisionCommunityId = useMemo(() => {
-        if (!isMarathonOfGood || !communitiesData?.data) return null;
-        const futureVisionCommunity = communitiesData.data.find(
-            (c: any) => c.typeTag === 'future-vision'
-        );
-        return futureVisionCommunity?.id || null;
-    }, [isMarathonOfGood, communitiesData?.data]);
 
     // Get user's team community (community with typeTag: 'team' where user has a role)
     const userTeamCommunityId = useMemo(() => {
