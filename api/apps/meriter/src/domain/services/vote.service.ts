@@ -51,15 +51,36 @@ export class VoteService {
    * Check if user can vote on a publication or vote.
    * Rules:
    * - Cannot vote if user is the effective beneficiary
+   * - Exception: In future-vision groups, participants/leads/superadmins can self-vote
    * - For publications: effective beneficiary = beneficiaryId if set, otherwise authorId
    * - For votes: effective beneficiary = userId of the vote being voted on (cannot vote on your own vote)
    */
-  async canUserVote(userId: string, targetType: 'publication' | 'vote', targetId: string): Promise<boolean> {
+  async canUserVote(userId: string, targetType: 'publication' | 'vote', targetId: string, communityId?: string): Promise<boolean> {
     const effectiveBeneficiary = await this.getEffectiveBeneficiary(targetType, targetId);
     if (!effectiveBeneficiary) {
       return false;
     }
-    return effectiveBeneficiary !== userId;
+
+    // Check if this is self-voting
+    const isSelfVoting = effectiveBeneficiary === userId;
+    if (!isSelfVoting) {
+      return true; // Not self-voting, allow it
+    }
+
+    // Self-voting: check if allowed in future-vision group
+    if (communityId) {
+      const community = await this.communityService.getCommunity(communityId);
+      if (community?.typeTag === 'future-vision') {
+        // Check user role - allow self-voting for participant, lead, or superadmin
+        const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
+        if (userRole === 'participant' || userRole === 'lead' || userRole === 'superadmin') {
+          return true; // Allow self-voting in future-vision group for these roles
+        }
+      }
+    }
+
+    // Default: prevent self-voting
+    return false;
   }
 
   /**
@@ -98,7 +119,8 @@ export class VoteService {
     }
 
     // Validate that user can vote (mutual exclusivity check)
-    const canVote = await this.canUserVote(userId, targetType, targetId);
+    // Pass communityId to allow self-voting in future-vision groups
+    const canVote = await this.canUserVote(userId, targetType, targetId, communityId);
     if (!canVote) {
       throw new BadRequestException('Cannot vote: you are the effective beneficiary of this content');
     }

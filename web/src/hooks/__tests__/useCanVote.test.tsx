@@ -83,6 +83,20 @@ describe('useCanVote Hook', () => {
     },
   };
 
+  const mockFutureVisionCommunity = {
+    id: 'future-vision-community-123',
+    name: 'Future Vision',
+    typeTag: 'future-vision',
+    adminIds: [],
+    votingRules: {
+      allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
+      canVoteForOwnPosts: false,
+      participantsCannotVoteForLead: false,
+      spendsMerits: true,
+      awardsMerits: true,
+    },
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
 
@@ -305,6 +319,124 @@ describe('useCanVote Hook', () => {
 
       // Participants should be able to vote in marathon-of-good regardless of allowedRoles
       expect(result.current).toBe(true);
+    });
+  });
+
+  describe('Future Vision Self-Voting', () => {
+    it('should allow participant to self-vote in future-vision group', () => {
+      mockUseCommunity.mockReturnValue({
+        data: mockFutureVisionCommunity,
+        isLoading: false,
+        error: null,
+      } as any);
+
+      mockUseUserRoles.mockReturnValue({
+        data: [{ communityId: 'future-vision-community-123', role: 'participant' }],
+        isLoading: false,
+        error: null,
+      } as any);
+
+      const { result } = renderHook(
+        () => useCanVote('pub-123', 'publication', 'future-vision-community-123', 'user-123', true, false, false, false),
+        { wrapper: createWrapper() }
+      );
+
+      // Participants can self-vote in future-vision group
+      expect(result.current).toBe(true);
+    });
+
+    it('should allow lead to self-vote in future-vision group', () => {
+      mockUseCommunity.mockReturnValue({
+        data: mockFutureVisionCommunity,
+        isLoading: false,
+        error: null,
+      } as any);
+
+      mockUseUserRoles.mockReturnValue({
+        data: [{ communityId: 'future-vision-community-123', role: 'lead' }],
+        isLoading: false,
+        error: null,
+      } as any);
+
+      const { result } = renderHook(
+        () => useCanVote('pub-123', 'publication', 'future-vision-community-123', 'user-123', true, false, false, false),
+        { wrapper: createWrapper() }
+      );
+
+      // Leads can self-vote in future-vision group
+      expect(result.current).toBe(true);
+    });
+
+    it('should allow superadmin to self-vote in future-vision group', () => {
+      mockUseCommunity.mockReturnValue({
+        data: mockFutureVisionCommunity,
+        isLoading: false,
+        error: null,
+      } as any);
+
+      mockUseAuth.mockReturnValue({
+        user: { id: 'user-123', globalRole: 'superadmin' },
+        isLoading: false,
+        isAuthenticated: true,
+        authenticateWithTelegram: jest.fn(),
+        authenticateWithTelegramWebApp: jest.fn(),
+        logout: jest.fn(),
+        handleDeepLink: jest.fn(),
+        authError: null,
+        setAuthError: jest.fn(),
+      } as any);
+
+      const { result } = renderHook(
+        () => useCanVote('pub-123', 'publication', 'future-vision-community-123', 'user-123', true, false, false, false),
+        { wrapper: createWrapper() }
+      );
+
+      // Superadmins can self-vote in future-vision group
+      expect(result.current).toBe(true);
+    });
+
+    it('should NOT allow viewer to self-vote in future-vision group', () => {
+      mockUseCommunity.mockReturnValue({
+        data: mockFutureVisionCommunity,
+        isLoading: false,
+        error: null,
+      } as any);
+
+      mockUseUserRoles.mockReturnValue({
+        data: [{ communityId: 'future-vision-community-123', role: 'viewer' }],
+        isLoading: false,
+        error: null,
+      } as any);
+
+      const { result } = renderHook(
+        () => useCanVote('pub-123', 'publication', 'future-vision-community-123', 'user-123', true, false, false, false),
+        { wrapper: createWrapper() }
+      );
+
+      // Viewers cannot self-vote in future-vision group
+      expect(result.current).toBe(false);
+    });
+
+    it('should NOT allow self-voting in other community types', () => {
+      mockUseCommunity.mockReturnValue({
+        data: mockCommunity,
+        isLoading: false,
+        error: null,
+      } as any);
+
+      mockUseUserRoles.mockReturnValue({
+        data: [{ communityId: 'community-123', role: 'participant' }],
+        isLoading: false,
+        error: null,
+      } as any);
+
+      const { result } = renderHook(
+        () => useCanVote('pub-123', 'publication', 'community-123', 'user-123', true, false, false, false),
+        { wrapper: createWrapper() }
+      );
+
+      // Self-voting is not allowed in regular communities
+      expect(result.current).toBe(false);
     });
   });
 });

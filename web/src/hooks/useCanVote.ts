@@ -28,15 +28,10 @@ export function useCanVote(
     // Project posts cannot be voted on (handled separately, but check here too)
     if (isProject) return false;
 
-    // Mutual exclusivity: Cannot vote if user is the effective beneficiary
-    // (already checked via isBeneficiary prop, but double-check)
-    if (isBeneficiary) return false;
-    if (isAuthor && !hasBeneficiary) return false;
-
     // If no community, cannot determine permissions - default to false for safety
     if (!community || !communityId) return false;
 
-    // Get user's role in the community
+    // Get user's role in the community (needed for future-vision self-voting check)
     let userRole: 'superadmin' | 'lead' | 'participant' | 'viewer' | null = null;
     
     // Check global superadmin role first
@@ -48,6 +43,21 @@ export function useCanVote(
       if (role?.role) {
         userRole = role.role as 'lead' | 'participant' | 'viewer';
       }
+    }
+
+    // Exception: Allow self-voting in future-vision groups for participants/leads/superadmins
+    const isFutureVisionSelfVoting = community.typeTag === 'future-vision' && 
+      (userRole === 'participant' || userRole === 'lead' || userRole === 'superadmin') &&
+      isAuthor && authorId === user.id;
+    
+    if (isFutureVisionSelfVoting) {
+      // Allow self-voting in future-vision group - skip mutual exclusivity check
+      // Continue to other checks below (role checks, etc.)
+    } else {
+      // Mutual exclusivity: Cannot vote if user is the effective beneficiary
+      // (already checked via isBeneficiary prop, but double-check)
+      if (isBeneficiary) return false;
+      if (isAuthor && !hasBeneficiary) return false;
     }
 
     // Superadmin always can vote
@@ -89,7 +99,8 @@ export function useCanVote(
     }
 
     // Check if voting for own post is allowed
-    if (isAuthor && authorId === user.id && !rules.canVoteForOwnPosts) {
+    // Exception: Skip this check for future-vision groups (self-voting already handled above)
+    if (!isFutureVisionSelfVoting && isAuthor && authorId === user.id && !rules.canVoteForOwnPosts) {
       return false;
     }
 
