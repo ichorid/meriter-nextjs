@@ -13,6 +13,8 @@ import { CommentDetailsPopup } from "@shared/components/comment-details-popup";
 import { useCommentVoteDisplay } from '../hooks/useCommentVoteDisplay';
 import { useCommentRecipient } from '../hooks/useCommentRecipient';
 import { useCommentWithdrawal } from '../hooks/useCommentWithdrawal';
+import { useCanVote } from '@/hooks/useCanVote';
+import { useFeaturesConfig } from '@/hooks/useConfig';
 
 interface CommentProps {
     _id: string;
@@ -92,6 +94,8 @@ export const Comment: React.FC<CommentProps> = ({
     ...rest
 }) => {
     const t = useTranslations('comments');
+    const features = useFeaturesConfig();
+    const enableCommentVoting = features.commentVoting;
     
     // Use API data directly - no fallbacks
     const authorMeta = meta?.author;
@@ -115,6 +119,7 @@ export const Comment: React.FC<CommentProps> = ({
     // Check if there's a beneficiary and it's different from the author
     const beneficiaryMeta = meta?.beneficiary;
     const hasBeneficiary = beneficiaryMeta && beneficiaryMeta.id !== commentAuthorId;
+    const isBeneficiary = hasBeneficiary && myId === beneficiaryMeta?.id;
     
     // Withdrawal state management (for author's own comments)
     // IMPORTANT: For withdrawal, we only use metrics.score (votes cast ON the comment)
@@ -178,6 +183,24 @@ export const Comment: React.FC<CommentProps> = ({
     
     // Check if community is special group (withdrawals disabled)
     const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
+    
+    // Check if user can vote on this comment based on community rules
+    const { canVote: canVoteFromHook, reason: voteDisabledReasonFromHook } = useCanVote(
+        _id,
+        'comment',
+        communityId,
+        commentAuthorId,
+        isAuthor,
+        isBeneficiary,
+        hasBeneficiary,
+        false // Comments are not projects
+    );
+    
+    // Override reason if comment voting is disabled via feature flag
+    const canVote = enableCommentVoting ? canVoteFromHook : false;
+    const voteDisabledReason = enableCommentVoting 
+        ? voteDisabledReasonFromHook 
+        : 'voteDisabled.commentVotingDisabled';
     
     // Get currency icon from community info
     const currencyIcon = communityInfo?.settings?.iconUrl;
@@ -305,10 +328,12 @@ export const Comment: React.FC<CommentProps> = ({
                                 useUIStore.getState().openVotingPopup(_id, 'comment', mode);
                             }}
                             isAuthor={isAuthor}
-                            isBeneficiary={false}
-                            hasBeneficiary={false}
+                            isBeneficiary={isBeneficiary}
+                            hasBeneficiary={hasBeneficiary}
                             commentCount={comments?.length || 0}
                             onCommentClick={() => setShowComments(true)}
+                            canVote={canVote}
+                            disabledReason={voteDisabledReason}
                         />
                     )
                 }

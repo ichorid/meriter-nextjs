@@ -126,7 +126,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const publicationId = getPublicationIdentifier(publication);
 
   // Check if user can vote based on community rules
-  const canVote = useCanVote(
+  const { canVote, reason: voteDisabledReason } = useCanVote(
     publicationId,
     'publication',
     communityId,
@@ -208,6 +208,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
             commentCount={publication.metrics?.commentCount || 0}
             onCommentClick={handleCommentToggle}
             canVote={canVote}
+            disabledReason={voteDisabledReason}
           />
         )}
       </div>

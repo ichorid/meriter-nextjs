@@ -117,7 +117,7 @@ export const Publication = ({
     const isProject = type === 'project' || (meta as any)?.isProject === true;
     
     // Check if user can vote based on community rules
-    const canVote = useCanVote(
+    const { canVote, reason: voteDisabledReason } = useCanVote(
         postId,
         'publication',
         communityId || '',
@@ -305,6 +305,7 @@ export const Publication = ({
                                         }
                                     } : undefined}
                                     canVote={canVote}
+                                    disabledReason={voteDisabledReason}
                                 />
                             );
                         }

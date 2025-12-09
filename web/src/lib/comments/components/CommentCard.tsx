@@ -106,7 +106,7 @@ export function CommentCard({
   const isBeneficiary = hasBeneficiary && myId === beneficiaryMeta?.id;
   
   // Check if user can vote on this comment based on community rules
-  const canVote = useCanVote(
+  const { canVote: canVoteFromHook, reason: voteDisabledReasonFromHook } = useCanVote(
     node.id,
     'comment',
     communityId,
@@ -116,6 +116,12 @@ export function CommentCard({
     hasBeneficiary,
     false // Comments are not projects
   );
+  
+  // Override reason if comment voting is disabled via feature flag
+  const canVote = enableCommentVoting ? canVoteFromHook : false;
+  const voteDisabledReason = enableCommentVoting 
+    ? voteDisabledReasonFromHook 
+    : 'voteDisabled.commentVotingDisabled';
   
   // Withdrawal state management
   const withdrawableBalance = originalComment.metrics?.score ?? 0;
@@ -375,6 +381,7 @@ export function CommentCard({
                 onNavigate();
               }}
               canVote={canVote}
+              disabledReason={voteDisabledReason}
             />
           ) : (
             // Vote button and counter are hidden - comments cannot be voted on (feature flag disabled)

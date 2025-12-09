@@ -12,6 +12,7 @@ interface BarVoteUnifiedProps {
     commentCount?: number;
     onCommentClick?: () => void;
     canVote?: boolean; // Whether user has permission to vote based on community rules
+    disabledReason?: string; // Translation key for why voting is disabled
 }
 
 export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({ 
@@ -22,7 +23,8 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
     hasBeneficiary = false,
     commentCount = 0,
     onCommentClick,
-    canVote: canVoteProp
+    canVote: canVoteProp,
+    disabledReason
 }) => {
     const t = useTranslations('shared');
     const rawData = useSignal(initDataRaw);
@@ -94,7 +96,7 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
                     }`}
                     onClick={handleVoteClick}
                     disabled={!canVote}
-                    title={!canVote ? 'You do not have permission to vote on this content' : undefined}
+                    title={!canVote ? (disabledReason ? t(disabledReason) : t('voteDisabled.default')) : undefined}
                 >
                     {t('vote')}
                 </button>

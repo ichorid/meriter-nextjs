@@ -39,7 +39,7 @@ describe('PublicationActions - Special Groups Withdrawal', () => {
       isLoading: false,
     } as any);
 
-    mockUseCanVote.mockReturnValue(true);
+    mockUseCanVote.mockReturnValue({ canVote: true });
     
     mockUseUIStore.mockReturnValue({
       openVotingPopup: jest.fn(),

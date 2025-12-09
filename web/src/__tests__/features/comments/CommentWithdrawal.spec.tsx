@@ -3,10 +3,14 @@ import { render, screen } from '@testing-library/react';
 import { Comment } from '@/features/comments/components/comment';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { useCommentWithdrawal } from '@/features/comments/hooks/useCommentWithdrawal';
+import { useCanVote } from '@/hooks/useCanVote';
+import { useFeaturesConfig } from '@/hooks/useConfig';
 
 // Mock dependencies
 jest.mock('@/hooks/api/useCommunities');
 jest.mock('@/features/comments/hooks/useCommentWithdrawal');
+jest.mock('@/hooks/useCanVote');
+jest.mock('@/hooks/useConfig');
 jest.mock('@/shared/hooks/use-comments', () => ({
   useComments: () => ({
     comments: [],
@@ -28,6 +32,8 @@ jest.mock('@/stores/ui.store', () => ({
 
 const mockUseCommunity = useCommunity as jest.MockedFunction<typeof useCommunity>;
 const mockUseCommentWithdrawal = useCommentWithdrawal as jest.MockedFunction<typeof useCommentWithdrawal>;
+const mockUseCanVote = useCanVote as jest.MockedFunction<typeof useCanVote>;
+const mockUseFeaturesConfig = useFeaturesConfig as jest.MockedFunction<typeof useFeaturesConfig>;
 
 describe('Comment Withdrawal - Special Groups', () => {
   const mockComment = {
@@ -55,6 +61,9 @@ describe('Comment Withdrawal - Special Groups', () => {
       maxWithdrawAmount: 5,
       maxTopUpAmount: 0,
     });
+    
+    mockUseCanVote.mockReturnValue({ canVote: true });
+    mockUseFeaturesConfig.mockReturnValue({ commentVoting: true } as any);
   });
 
   it('should hide withdrawal UI for comments in marathon-of-good community', () => {

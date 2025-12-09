@@ -144,7 +144,8 @@ describe('useCanVote Hook', () => {
         { wrapper: createWrapper() }
       );
 
-      expect(result.current).toBe(false);
+      expect(result.current.canVote).toBe(false);
+      expect(result.current.reason).toBe('voteDisabled.notLoggedIn');
     });
 
     it('should return false for project posts', () => {
@@ -153,7 +154,8 @@ describe('useCanVote Hook', () => {
         { wrapper: createWrapper() }
       );
 
-      expect(result.current).toBe(false);
+      expect(result.current.canVote).toBe(false);
+      expect(result.current.reason).toBe('voteDisabled.projectPost');
     });
 
     it('should return false when user is beneficiary', () => {
@@ -162,7 +164,8 @@ describe('useCanVote Hook', () => {
         { wrapper: createWrapper() }
       );
 
-      expect(result.current).toBe(false);
+      expect(result.current.canVote).toBe(false);
+      expect(result.current.reason).toBe('voteDisabled.isBeneficiary');
     });
 
     it('should return false when user is author and no beneficiary', () => {
@@ -171,7 +174,8 @@ describe('useCanVote Hook', () => {
         { wrapper: createWrapper() }
       );
 
-      expect(result.current).toBe(false);
+      expect(result.current.canVote).toBe(false);
+      expect(result.current.reason).toBe('voteDisabled.isAuthor');
     });
   });
 
@@ -194,7 +198,8 @@ describe('useCanVote Hook', () => {
         { wrapper: createWrapper() }
       );
 
-      expect(result.current).toBe(true);
+      expect(result.current.canVote).toBe(true);
+      expect(result.current.reason).toBeUndefined();
     });
   });
 
@@ -211,7 +216,8 @@ describe('useCanVote Hook', () => {
         { wrapper: createWrapper() }
       );
 
-      expect(result.current).toBe(false);
+      expect(result.current.canVote).toBe(false);
+      expect(result.current.reason).toBe('voteDisabled.teamOwnPost');
     });
 
     it('should allow voting for other posts in team community (backend validates team membership)', () => {
@@ -233,7 +239,8 @@ describe('useCanVote Hook', () => {
       );
 
       // Frontend allows it, backend will validate team membership
-      expect(result.current).toBe(true);
+      expect(result.current.canVote).toBe(true);
+      expect(result.current.reason).toBeUndefined();
     });
   });
 
@@ -257,7 +264,8 @@ describe('useCanVote Hook', () => {
       );
 
       // Frontend allows it, backend will validate restrictions
-      expect(result.current).toBe(true);
+      expect(result.current.canVote).toBe(true);
+      expect(result.current.reason).toBeUndefined();
     });
   });
 
@@ -288,7 +296,8 @@ describe('useCanVote Hook', () => {
         { wrapper: createWrapper() }
       );
 
-      expect(result.current).toBe(false);
+      expect(result.current.canVote).toBe(false);
+      expect(result.current.reason).toBe('voteDisabled.roleNotAllowed');
     });
 
     it('should allow participants to vote in marathon-of-good even when not in allowedRoles', () => {
@@ -318,7 +327,8 @@ describe('useCanVote Hook', () => {
       );
 
       // Participants should be able to vote in marathon-of-good regardless of allowedRoles
-      expect(result.current).toBe(true);
+      expect(result.current.canVote).toBe(true);
+      expect(result.current.reason).toBeUndefined();
     });
   });
 
@@ -342,7 +352,8 @@ describe('useCanVote Hook', () => {
       );
 
       // Participants can self-vote in future-vision group
-      expect(result.current).toBe(true);
+      expect(result.current.canVote).toBe(true);
+      expect(result.current.reason).toBeUndefined();
     });
 
     it('should allow lead to self-vote in future-vision group', () => {
@@ -364,7 +375,8 @@ describe('useCanVote Hook', () => {
       );
 
       // Leads can self-vote in future-vision group
-      expect(result.current).toBe(true);
+      expect(result.current.canVote).toBe(true);
+      expect(result.current.reason).toBeUndefined();
     });
 
     it('should allow superadmin to self-vote in future-vision group', () => {
@@ -392,7 +404,8 @@ describe('useCanVote Hook', () => {
       );
 
       // Superadmins can self-vote in future-vision group
-      expect(result.current).toBe(true);
+      expect(result.current.canVote).toBe(true);
+      expect(result.current.reason).toBeUndefined();
     });
 
     it('should NOT allow viewer to self-vote in future-vision group', () => {
@@ -414,7 +427,8 @@ describe('useCanVote Hook', () => {
       );
 
       // Viewers cannot self-vote in future-vision group
-      expect(result.current).toBe(false);
+      expect(result.current.canVote).toBe(false);
+      expect(result.current.reason).toBe('voteDisabled.isAuthor');
     });
 
     it('should NOT allow self-voting in other community types', () => {
@@ -436,7 +450,8 @@ describe('useCanVote Hook', () => {
       );
 
       // Self-voting is not allowed in regular communities
-      expect(result.current).toBe(false);
+      expect(result.current.canVote).toBe(false);
+      expect(result.current.reason).toBe('voteDisabled.isAuthor');
     });
   });
 });

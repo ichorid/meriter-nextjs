@@ -40,7 +40,7 @@ describe('PublicationActions - Voting Mode Restrictions', () => {
       isLoading: false,
     } as any);
 
-    mockUseCanVote.mockReturnValue(true);
+    mockUseCanVote.mockReturnValue({ canVote: true });
     
     mockUseUIStore.mockReturnValue({
       openVotingPopup: mockOpenVotingPopup,

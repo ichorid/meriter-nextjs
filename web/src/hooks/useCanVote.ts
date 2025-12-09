@@ -16,20 +16,26 @@ export function useCanVote(
   isBeneficiary?: boolean,
   hasBeneficiary?: boolean,
   isProject?: boolean
-): boolean {
+): { canVote: boolean; reason?: string } {
   const { user } = useAuth();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const { data: community } = useCommunity(communityId || '');
 
   return useMemo(() => {
     // If no user, cannot vote
-    if (!user?.id) return false;
+    if (!user?.id) {
+      return { canVote: false, reason: 'voteDisabled.notLoggedIn' };
+    }
 
     // Project posts cannot be voted on (handled separately, but check here too)
-    if (isProject) return false;
+    if (isProject) {
+      return { canVote: false, reason: 'voteDisabled.projectPost' };
+    }
 
     // If no community, cannot determine permissions - default to false for safety
-    if (!community || !communityId) return false;
+    if (!community || !communityId) {
+      return { canVote: false, reason: 'voteDisabled.noCommunity' };
+    }
 
     // Get user's role in the community (needed for future-vision self-voting check)
     let userRole: 'superadmin' | 'lead' | 'participant' | 'viewer' | null = null;
@@ -53,35 +59,42 @@ export function useCanVote(
       (userRole === 'participant' || userRole === 'lead' || userRole === 'superadmin') &&
       isEffectiveBeneficiary;
     
+    // Superadmin always can vote (check before mutual exclusivity)
+    if (userRole === 'superadmin') {
+      return { canVote: true };
+    }
+
+    // Check if this is a team community (typeTag === 'team')
+    // In team communities, only team members can vote, and they can't vote for themselves
+    // This check must happen before the general mutual exclusivity check
+    if (community.typeTag === 'team') {
+      // Cannot vote for own post in team community
+      if (isAuthor && authorId === user.id) {
+        return { canVote: false, reason: 'voteDisabled.teamOwnPost' };
+      }
+      // Note: Team membership check is handled by backend
+      // Frontend allows the vote attempt, backend will validate team membership
+    }
+    
     if (isFutureVisionSelfVoting) {
       // Allow self-voting in future-vision group - skip mutual exclusivity check
       // Continue to other checks below (role checks, etc.)
     } else {
       // Mutual exclusivity: Cannot vote if user is the effective beneficiary
       // (already checked via isBeneficiary prop, but double-check)
-      if (isBeneficiary) return false;
-      if (isAuthor && !hasBeneficiary) return false;
-    }
-
-    // Superadmin always can vote
-    if (userRole === 'superadmin') return true;
-
-    // Check if this is a team community (typeTag === 'team')
-    // In team communities, only team members can vote, and they can't vote for themselves
-    if (community.typeTag === 'team') {
-      // Cannot vote for own post in team community
-      if (isAuthor && authorId === user.id) {
-        return false;
+      if (isBeneficiary) {
+        return { canVote: false, reason: 'voteDisabled.isBeneficiary' };
       }
-      // Note: Team membership check is handled by backend
-      // Frontend allows the vote attempt, backend will validate team membership
+      if (isAuthor && !hasBeneficiary) {
+        return { canVote: false, reason: 'voteDisabled.isAuthor' };
+      }
     }
 
     // Get voting rules from community
     const rules = community.votingRules;
     if (!rules) {
       // Fallback: if no rules configured, allow everyone (backward compatibility)
-      return true;
+      return { canVote: true };
     }
 
     // For participants in marathon-of-good communities: allow voting regardless of allowedRoles
@@ -93,30 +106,30 @@ export function useCanVote(
       // - Cannot vote for leads from their own team
       // - Can vote for leads from other teams
       // - Can vote for participants (per MARATHON_OF_GOOD.md)
-      return true;
+      return { canVote: true };
     }
 
     // Check if role is allowed
     if (!rules.allowedRoles.includes(userRole as any)) {
-      return false;
+      return { canVote: false, reason: 'voteDisabled.roleNotAllowed' };
     }
 
     // Check if voting for own post is allowed
     // Exception: Skip this check for future-vision groups (self-voting already handled above)
     if (!isFutureVisionSelfVoting && isAuthor && authorId === user.id && !rules.canVoteForOwnPosts) {
-      return false;
+      return { canVote: false, reason: 'voteDisabled.ownPostNotAllowed' };
     }
 
     // For viewers: Only allow voting in marathon-of-good communities
     if (userRole === 'viewer') {
       if (community.typeTag !== 'marathon-of-good') {
-        return false; // Viewers can only vote in marathon-of-good communities
+        return { canVote: false, reason: 'voteDisabled.viewerNotMarathon' };
       }
       // Viewers can vote in marathon-of-good (already checked own posts above)
-      return true;
+      return { canVote: true };
     }
 
-    return true;
+    return { canVote: true };
   }, [
     user?.id,
     user?.globalRole,
