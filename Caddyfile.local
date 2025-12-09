@@ -3,9 +3,10 @@
 
 {
     auto_https off
+    admin localhost:20190
 }
 
-:80 {
+:8080 {
     # Enable access logs
     log {
         output stdout
@@ -60,9 +61,8 @@
             X-RateLimit-Window "60"
         }
         
-        reverse_proxy api:8002 {
+        reverse_proxy localhost:8002 {
             header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
         }
         encode gzip
     }
@@ -85,9 +85,8 @@
             X-RateLimit-Window "60"
         }
         
-        reverse_proxy web:8001 {
+        reverse_proxy localhost:8001 {
             header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
         }
         encode gzip
     }
