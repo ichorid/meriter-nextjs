@@ -316,7 +316,7 @@ export class WalletsController {
         ])
         .toArray(),
       this.mongoose.db
-        .collection('pollcasts')
+        .collection('poll_casts')
         .aggregate([
           {
             $match: {

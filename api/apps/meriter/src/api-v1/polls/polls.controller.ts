@@ -240,7 +240,7 @@ export class PollsController {
         ])
         .toArray(),
       this.connection.db
-        .collection('pollcasts')
+        .collection('poll_casts')
         .aggregate([
           {
             $match: {

@@ -91,33 +91,61 @@ export class QuotaResetService {
       ? new Date(community.lastQuotaResetAt)
       : today;
 
-    // Query votes with amountQuota > 0 for this user in this community created after quotaStartTime
-    const usedToday = await this.mongoose.db
-      .collection('votes')
-      .aggregate([
-        {
-          $match: {
-            userId,
-            communityId: community.id,
-            amountQuota: { $gt: 0 },
-            createdAt: { $gte: quotaStartTime },
+    // Query votes and poll casts with amountQuota > 0 for this user in this community created after quotaStartTime
+    const [votesUsed, pollCastsUsed] = await Promise.all([
+      this.mongoose.db
+        .collection('votes')
+        .aggregate([
+          {
+            $match: {
+              userId,
+              communityId: community.id,
+              amountQuota: { $gt: 0 },
+              createdAt: { $gte: quotaStartTime },
+            },
           },
-        },
-        {
-          $project: {
-            absAmount: '$amountQuota',
+          {
+            $project: {
+              absAmount: '$amountQuota',
+            },
           },
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$absAmount' },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$absAmount' },
+            },
           },
-        },
-      ])
-      .toArray();
+        ])
+        .toArray(),
+      this.mongoose.db
+        .collection('poll_casts')
+        .aggregate([
+          {
+            $match: {
+              userId,
+              communityId: community.id,
+              amountQuota: { $gt: 0 },
+              createdAt: { $gte: quotaStartTime },
+            },
+          },
+          {
+            $project: {
+              absAmount: '$amountQuota',
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$absAmount' },
+            },
+          },
+        ])
+        .toArray(),
+    ]);
 
-    const used = usedToday.length > 0 ? usedToday[0].total : 0;
+    const votesTotal = votesUsed.length > 0 ? votesUsed[0].total : 0;
+    const pollCastsTotal = pollCastsUsed.length > 0 ? pollCastsUsed[0].total : 0;
+    const used = votesTotal + pollCastsTotal;
 
     return {
       dailyQuota,
