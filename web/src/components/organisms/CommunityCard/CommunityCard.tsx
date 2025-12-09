@@ -102,7 +102,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const dailyQuota = quotaData?.dailyQuota ?? quota?.dailyQuota ?? 0;
 
   // Determine what to show in the subtitle
-  const showMerits = canEarnPermanentMerits && wallet;
+  const showMerits = canEarnPermanentMerits && wallet && userRole !== 'viewer';
   const showQuota = hasQuota && dailyQuota > 0;
   const showIndicators = showMerits || showQuota;
 
