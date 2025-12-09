@@ -8,6 +8,8 @@ export interface DailyQuotaRingProps {
   max: number;
   onClick?: () => void;
   className?: string;
+  style?: React.CSSProperties;
+  asDiv?: boolean; // If true, render as div instead of button (for use inside other buttons)
 }
 
 export const DailyQuotaRing: React.FC<DailyQuotaRingProps> = ({
@@ -15,6 +17,8 @@ export const DailyQuotaRing: React.FC<DailyQuotaRingProps> = ({
   max,
   onClick,
   className = '',
+  style,
+  asDiv = false,
 }) => {
   const prevRemainingRef = useRef(remaining);
   const numberRef = useRef<HTMLSpanElement>(null);
@@ -54,31 +58,46 @@ export const DailyQuotaRing: React.FC<DailyQuotaRingProps> = ({
   const showPulse = remaining > 0;
   const isComplete = remaining === 0 && max > 0;
 
+  const commonProps = {
+    onClick: asDiv ? undefined : onClick,
+    className: `
+      daily-quota-ring
+      ${showPulse ? 'daily-quota-ring--pulse' : ''}
+      ${className}
+    `,
+    style: { background, ...style },
+    'aria-label': `Daily quota: ${remaining} of ${max} remaining`,
+  };
+
+  const innerContent = (
+    <div className="daily-quota-ring__inner">
+      {isComplete ? (
+        <Check className="daily-quota-ring__checkmark" size={14} />
+      ) : (
+        <span
+          ref={numberRef}
+          className="daily-quota-ring__number"
+        >
+          {remaining}
+        </span>
+      )}
+    </div>
+  );
+
+  if (asDiv) {
+    return (
+      <div {...commonProps}>
+        {innerContent}
+      </div>
+    );
+  }
+
   return (
     <button
-      onClick={onClick}
-      className={`
-        daily-quota-ring
-        ${showPulse ? 'daily-quota-ring--pulse' : ''}
-        ${className}
-      `}
-      style={{ background }}
+      {...commonProps}
       type="button"
-      aria-label={`Daily quota: ${remaining} of ${max} remaining`}
     >
-      {/* Inner disc */}
-      <div className="daily-quota-ring__inner">
-        {isComplete ? (
-          <Check className="daily-quota-ring__checkmark" size={14} />
-        ) : (
-          <span
-            ref={numberRef}
-            className="daily-quota-ring__number"
-          >
-            {remaining}
-          </span>
-        )}
-      </div>
+      {innerContent}
     </button>
   );
 };
