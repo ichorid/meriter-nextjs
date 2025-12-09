@@ -8,7 +8,6 @@ import { useUserRoles, useUserProjects, useMeritStats } from '@/hooks/api/usePro
 import { ProfileEditForm } from '@/components/organisms/Profile/ProfileEditForm';
 import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
 import { ProfileStats } from '@/components/organisms/Profile/ProfileStats';
-import { InviteGeneration } from '@/components/organisms/Profile/InviteGeneration';
 import { UseInvite } from '@/components/organisms/Profile/UseInvite';
 import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
 import { useProfileData } from '@/hooks/useProfileData';
@@ -130,9 +129,6 @@ export default function ProfilePage() {
             pollsLoading
           }
         />
-
-        {/* Invite Generation Section */}
-        <InviteGeneration />
 
         {/* Use Invite Section (for viewers) */}
         <UseInvite />

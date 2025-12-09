@@ -104,7 +104,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
 
   return (
     <div 
-      className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-[336px] bg-base-100 rounded-t-[8px] flex flex-col gap-5 shadow-xl z-50 h-[523px]"
+      className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-[336px] bg-base-100 rounded-t-[8px] flex flex-col gap-5 shadow-xl z-50 max-h-[90vh] overflow-y-auto"
       style={{ padding: '16px 16px 20px' }}
     >
       {/* Title */}
@@ -364,22 +364,6 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         </div>
       </div>
 
-      {/* Downvote Warning / Explanation */}
-      {!isPositive && (
-        <div 
-          className="text-base-content leading-[120%] flex items-center"
-          style={{ 
-            width: '304px',
-            height: '54px',
-            fontSize: '15px',
-            fontFamily: 'Roboto, sans-serif',
-            fontWeight: 400,
-          }}
-        >
-          {t('downvoteExplanation') || 'You are voting against publication. Please leave a detailed explanation, the reason for your decision.'}
-        </div>
-      )}
-
       {/* Comment Input */}
       <div className="flex flex-col gap-1" style={{ width: '304px', height: '98px' }}>
         <label 
@@ -422,11 +406,11 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
       <button
         onClick={() => onSubmit(isPositive)}
         className={classList(
-          "flex justify-center items-center border rounded-[8px]",
+          "flex justify-center items-center border rounded-[8px] sticky bottom-0",
           isPositive 
             ? "border-success bg-success hover:bg-success/90" 
             : "border-error bg-error hover:bg-error/90",
-          (absAmount === 0 || (!isPositive && !comment.trim())) ? "opacity-50 cursor-not-allowed" : ""
+          absAmount === 0 ? "opacity-50 cursor-not-allowed" : ""
         )}
         style={{ 
           width: '304px',
@@ -435,7 +419,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
           gap: '10px',
           boxSizing: 'border-box',
         }}
-        disabled={absAmount === 0 || (!isPositive && !comment.trim())}
+        disabled={absAmount === 0}
       >
         <span 
           className="text-base-100 text-center leading-[120%]"

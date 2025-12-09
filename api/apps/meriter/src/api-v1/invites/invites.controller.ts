@@ -70,6 +70,19 @@ export class InvitesController {
   ) {
     let finalCommunityId = dto.communityId;
 
+    // If superadmin is creating an invite from a special community (marathon-of-good or future-vision),
+    // it must always be a superadmin-to-lead invite
+    if (user.globalRole === 'superadmin' && finalCommunityId) {
+      const community = await this.communityService.getCommunity(finalCommunityId);
+      if (community && (community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision')) {
+        if (dto.type !== 'superadmin-to-lead') {
+          throw new BadRequestException(
+            'Invites from marathon-of-good or future-vision communities must be superadmin-to-lead type',
+          );
+        }
+      }
+    }
+
     // Check permissions based on invite type
     if (dto.type === 'superadmin-to-lead') {
       // Only superadmin can create superadmin-to-lead invites

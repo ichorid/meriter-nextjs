@@ -24,7 +24,8 @@ export const CommunityMembersFab: React.FC<CommunityMembersFabProps> = ({ commun
 
     // Check if user has invite creation permissions
     const isSuperadmin = user?.globalRole === 'superadmin';
-    const isLead = userRoles.some(r => r.role === 'lead') || leadCommunities.length > 0;
+    const isLead = userRoles.some(r => r.communityId === communityId && r.role === 'lead') || 
+                   leadCommunities.some(c => c.id === communityId);
     const hasPermission = isSuperadmin || isLead;
 
     // Check if any popup is active using UI store

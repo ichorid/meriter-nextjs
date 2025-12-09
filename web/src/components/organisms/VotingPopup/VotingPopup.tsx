@@ -165,13 +165,13 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       return;
     }
 
-    // Check if comment is required and provided
-    if (!formData.comment?.trim()) {
+    const isUpvote = directionPlus;
+
+    // Check if comment is required and provided (only for positive votes)
+    if (isUpvote && !formData.comment?.trim()) {
       updateVotingFormData({ error: t('reasonRequired') || 'A reason for your vote is required' });
       return;
     }
-
-    const isUpvote = directionPlus;
     const absoluteAmount = Math.abs(delta);
 
     // Calculate vote breakdown

@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles, useLeadCommunities } from '@/hooks/api/useProfile';
 import { useInvites, useCommunityInvites, useCreateInvite } from '@/hooks/api/useInvites';
-import { useCommunities } from '@/hooks/api/useCommunities';
+import { useCommunities, useCommunity } from '@/hooks/api/useCommunities';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
 import { InviteCreationForm } from './InviteCreationForm';
 import { InviteList } from './InviteList';
@@ -31,19 +31,30 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
     const { data: leadCommunities = [] } = useLeadCommunities(user?.id || '');
     const { data: communitiesData } = useCommunities();
     
+    // Fetch community data if communityId is provided to check if it's a special community
+    const { data: currentCommunity } = useCommunity(communityId || '');
+    
     // Determine user role and permissions early to conditionally enable hooks
     const isSuperadmin = user?.globalRole === 'superadmin';
     const isLead = useMemo(() => {
         return userRoles.some(r => r.role === 'lead') || leadCommunities.length > 0;
     }, [userRoles, leadCommunities]);
     const hasPermission = isSuperadmin || isLead;
+
+    // Check if user has permission to view invites for the SPECIFIC community (admin/lead of that community)
+    const canViewCurrentCommunityInvites = useMemo(() => {
+        if (!communityId) return false;
+        if (isSuperadmin) return true;
+        // Check if user is lead in this specific community
+        return leadCommunities.some(c => c.id === communityId);
+    }, [communityId, isSuperadmin, leadCommunities]);
     
     // Use community-specific invites if communityId is provided, otherwise use all invites
-    // Only fetch community invites if user has permission (admin/lead/superadmin)
+    // Only fetch community invites if user has permission (admin/lead of THAT community)
     const { data: allInvites = [], isLoading: allInvitesLoading } = useInvites();
     const { data: communityInvitesData, isLoading: communityInvitesLoading } = useCommunityInvites(
         communityId || '',
-        { enabled: hasPermission }
+        { enabled: canViewCurrentCommunityInvites }
     );
     
     // If communityId is provided and valid, use community-specific invites, otherwise use all invites
@@ -57,7 +68,19 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
     const [showInviteList, setShowInviteList] = useState(false);
 
     // Determine invite type
-    const inviteType = isSuperadmin ? 'superadmin-to-lead' : 'lead-to-participant';
+    // If superadmin is creating from a special community (marathon-of-good or future-vision),
+    // always use superadmin-to-lead type
+    const isSpecialCommunity = useMemo(() => {
+        if (!communityId || !currentCommunity) return false;
+        return currentCommunity.typeTag === 'marathon-of-good' || currentCommunity.typeTag === 'future-vision';
+    }, [communityId, currentCommunity]);
+
+    const inviteType = useMemo(() => {
+        if (isSuperadmin && isSpecialCommunity) {
+            return 'superadmin-to-lead';
+        }
+        return isSuperadmin ? 'superadmin-to-lead' : 'lead-to-participant';
+    }, [isSuperadmin, isSpecialCommunity]);
 
     // Get available communities for selection (only for lead - superadmin doesn't need selection)
     const availableCommunities = useMemo(() => {
