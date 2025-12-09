@@ -253,7 +253,8 @@ export class VotesController {
    * 
    * Rules:
    * - Marathon of Good: awards to beneficiary's Future Vision wallet ONLY
-   * - Future Vision: no merit awarding
+   * - Future Vision: no merit awarding (already handled by early return)
+   * - Self-votes: no merit awarding (voter cannot earn merits from voting on their own posts)
    * - Other communities: normal merit awarding
    */
   private async awardMeritsToBeneficiary(
@@ -261,9 +262,19 @@ export class VotesController {
     communityId: string,
     amount: number,
     community: any,
+    voterId: string,
   ): Promise<void> {
     const beneficiaryId = publication.getEffectiveBeneficiary()?.getValue();
     if (!beneficiaryId) {
+      return;
+    }
+
+    // Skip merit awarding if voter is the effective beneficiary (self-vote)
+    // This prevents users from earning merits by voting on their own posts
+    if (voterId === beneficiaryId) {
+      this.logger.log(
+        `Skipping merit award: voter ${voterId} is the effective beneficiary of publication ${publication.getId.getValue()}`,
+      );
       return;
     }
 
@@ -553,6 +564,7 @@ export class VotesController {
 
     // Award merits to beneficiary if this is an upvote
     // According to concept: "All merits collected by posts with good deeds go to the wallet of the Team Representative who published the post"
+    // Note: Self-votes (when voter is the effective beneficiary) do not award merits
     if (direction === 'up' && absoluteAmount > 0) {
       // Get community for currency info
       const community = await this.communityService.getCommunity(communityId);
@@ -562,6 +574,7 @@ export class VotesController {
           communityId,
           absoluteAmount,
           community,
+          req.user.id, // Pass voter ID to check for self-votes
         );
       }
     }

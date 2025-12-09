@@ -16,6 +16,7 @@ export interface CommunityCardProps {
   communityId: string;
   pathname: string | null;
   isExpanded?: boolean;
+  hideDescription?: boolean; // Hide description when used in sidebar
   wallet?: {
     balance: number;
     communityId: string;
@@ -38,6 +39,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   communityId,
   pathname,
   isExpanded = false,
+  hideDescription = false,
   wallet,
   quota,
 }) => {
@@ -201,7 +203,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
               </div>
 
               {/* Description */}
-              {community.description && (
+              {!hideDescription && community.description && (
                 <div className={`text-xs leading-[14px] tracking-[0.374px] line-clamp-2 w-full ${
                   isActive ? 'text-base-100/60' : 'text-base-content/60'
                 }`}>

@@ -46,9 +46,12 @@ export function useCanVote(
     }
 
     // Exception: Allow self-voting in future-vision groups for participants/leads/superadmins
+    // Effective beneficiary = beneficiary if set, otherwise author
+    // Allow voting if user is the effective beneficiary in a future-vision group
+    const isEffectiveBeneficiary = isBeneficiary || (isAuthor && !hasBeneficiary);
     const isFutureVisionSelfVoting = community.typeTag === 'future-vision' && 
       (userRole === 'participant' || userRole === 'lead' || userRole === 'superadmin') &&
-      isAuthor && authorId === user.id;
+      isEffectiveBeneficiary;
     
     if (isFutureVisionSelfVoting) {
       // Allow self-voting in future-vision group - skip mutual exclusivity check

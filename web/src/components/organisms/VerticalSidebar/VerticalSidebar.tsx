@@ -213,6 +213,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 communityId={communityId}
                 pathname={pathname}
                 isExpanded={isExpanded}
+                hideDescription={true}
                 wallet={wallet ? { balance: wallet.balance || 0, communityId } : undefined}
                 quota={quota && typeof quota.remainingToday === 'number' ? { 
                   remainingToday: quota.remainingToday,

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Plus, FileText, BarChart2, FolderKanban, FileSpreadsheet, Info, X } from 'lucide-react';
+import { Plus, FileText, BarChart2, Info } from 'lucide-react';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -141,18 +141,6 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
                                 )}
                             </>
                         )}
-
-                        {/* Divider */}
-                        <div className="my-2 mx-4 border-t border-base-content/5" />
-
-                        {/* Coming soon items */}
-                        <button
-                            disabled
-                            className="w-full px-4 py-2.5 flex items-center gap-3 text-left opacity-30 cursor-not-allowed"
-                        >
-                            <FolderKanban size={16} className="text-base-content/50" />
-                            <span className="text-xs text-base-content/50">{tCommon('comingSoon')}</span>
-                        </button>
                     </div>
                 </div>
             )}

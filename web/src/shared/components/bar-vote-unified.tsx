@@ -47,11 +47,16 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
     // Mutual exclusivity: Vote and Withdraw are mutually exclusive
     // Can vote if: (NOT author AND NOT beneficiary) OR (IS author AND has beneficiary)
     // IMPORTANT: Never show vote button if user is beneficiary, regardless of other conditions
+    // Exception: If canVoteProp is explicitly provided (from useCanVote hook), it already handles
+    // all edge cases including future-vision group self-voting exceptions, so we trust it.
     const mutualExclusivityCheck = (!isAuthor && !isBeneficiary) || (isAuthor && hasBeneficiary);
     
     // Combine mutual exclusivity check with permission check (community rules, roles, etc.)
+    // If canVoteProp is explicitly provided (true/false), trust it as it handles all exceptions
     // If canVoteProp is undefined, fall back to mutual exclusivity check only (backward compatibility)
-    const canVote = mutualExclusivityCheck && (canVoteProp !== undefined ? canVoteProp : true);
+    const canVote = canVoteProp !== undefined 
+      ? canVoteProp  // Trust the permission system (handles future-vision exceptions, etc.)
+      : mutualExclusivityCheck; // Fallback for backward compatibility
     
     // Cannot show withdraw button here - withdraw should be handled by separate BarWithdraw component
     // This component always shows the vote button and score counter, but disables the button when user cannot vote
