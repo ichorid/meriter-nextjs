@@ -61,7 +61,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     
     // Only show badge for lead, participant, and superadmin (not viewer)
     if (role?.role === 'lead') {
-      return { role: 'lead', label: t('representative'), variant: 'accent' as const };
+      return { role: 'lead', label: t('lead'), variant: 'accent' as const };
     }
     if (role?.role === 'participant') {
       return { role: 'participant', label: t('participant'), variant: 'info' as const };

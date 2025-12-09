@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-12-08T18:30:41.867Z",
+  "timestamp": "2025-12-09T15:50:39.131Z",
   "missingKeys": {
     "inRu": [],
     "inEn": []
@@ -8,14 +8,14 @@
     "fallbackStrings": [
       {
         "file": "app/meriter/communities/[id]/page.tsx",
-        "line": 38,
+        "line": 41,
         "translationKey": "sort",
         "fallbackText": "recent",
         "fullLine": "const sortBy = searchParams?.get('sort') || 'recent';"
       },
       {
         "file": "app/meriter/communities/[id]/page.tsx",
-        "line": 43,
+        "line": 46,
         "translationKey": "tab",
         "fallbackText": "publications",
         "fullLine": "const activeTab = searchParams?.get('tab') || 'publications';"
@@ -148,7 +148,7 @@
       },
       {
         "file": "components/organisms/Community/InviteCreationPopup.tsx",
-        "line": 167,
+        "line": 172,
         "translationKey": "title",
         "fallbackText": "Invite Generation",
         "fullLine": "{t('title') || 'Invite Generation'}"
@@ -392,22 +392,78 @@
         "fullLine": "return t('beneficiary') || 'created a post with you as beneficiary';"
       },
       {
+        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
+        "line": 101,
+        "translationKey": "voteTitle",
+        "fallbackText": "Voting",
+        "fullLine": "{t('voteTitle') || 'Voting'}"
+      },
+      {
+        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
+        "line": 115,
+        "translationKey": "sliderHint",
+        "fallbackText": "Move the slider to choose the number of votes you want to give.",
+        "fullLine": "{t('sliderHint') || 'Move the slider to choose the number of votes you want to give.'}"
+      },
+      {
+        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
+        "line": 130,
+        "translationKey": "dailyLimit",
+        "fallbackText": "Daily limit",
+        "fullLine": "{t('dailyLimit') || 'Daily limit'}"
+      },
+      {
+        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
+        "line": 160,
+        "translationKey": "available",
+        "fallbackText": "Available",
+        "fullLine": "{t('available') || 'Available'} {quotaRemaining}"
+      },
+      {
+        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
+        "line": 244,
+        "translationKey": "downvoteExplanation",
+        "fallbackText": "You are voting against publication. Please leave a detailed explanation, the reason for your decision.",
+        "fullLine": "{t('downvoteExplanation') || 'You are voting against publication. Please leave a detailed explanation, the reason for your decision.'}"
+      },
+      {
+        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
+        "line": 260,
+        "translationKey": "explanationDetails",
+        "fallbackText": "Explanations, details and descriptions",
+        "fullLine": "{t('explanationDetails') || 'Explanations, details and descriptions'}"
+      },
+      {
+        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
+        "line": 281,
+        "translationKey": "textField",
+        "fallbackText": "Text field",
+        "fullLine": "placeholder={t('textField') || 'Text field'}"
+      },
+      {
+        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
+        "line": 310,
+        "translationKey": "submit",
+        "fallbackText": "Submit",
+        "fullLine": "{t('submit') || 'Submit'}"
+      },
+      {
         "file": "components/organisms/VotingPopup/VotingPopup.tsx",
-        "line": 153,
+        "line": 162,
         "translationKey": "pleaseAdjustSlider",
         "fallbackText": "Please adjust the slider to vote",
         "fullLine": "updateVotingFormData({ error: t('pleaseAdjustSlider') || 'Please adjust the slider to vote' });"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPopup.tsx",
-        "line": 159,
+        "line": 168,
         "translationKey": "reasonRequired",
         "fallbackText": "A reason for your vote is required",
         "fullLine": "updateVotingFormData({ error: t('reasonRequired') || 'A reason for your vote is required' });"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPopup.tsx",
-        "line": 225,
+        "line": 234,
         "translationKey": "errorCommenting",
         "fallbackText": "Failed to submit",
         "fullLine": "const message = err instanceof Error ? err.message : t('errorCommenting') || 'Failed to submit';"
@@ -780,7 +836,19 @@
       },
       {
         "file": "components/templates/AdaptiveLayout/AdaptiveLayout.tsx",
-        "line": 253,
+        "line": 338,
+        "label": "Resize sidebar",
+        "fullLine": "aria-label=\"Resize sidebar\""
+      },
+      {
+        "file": "components/templates/AdaptiveLayout/AdaptiveLayout.tsx",
+        "line": 361,
+        "label": "Resize sidebar",
+        "fullLine": "aria-label=\"Resize sidebar\""
+      },
+      {
+        "file": "components/templates/AdaptiveLayout/AdaptiveLayout.tsx",
+        "line": 412,
         "label": "Resize comments column",
         "fullLine": "aria-label=\"Resize comments column\""
       },
@@ -856,19 +924,19 @@
     "russianText": [
       {
         "file": "config/index.ts",
-        "line": 240,
+        "line": 243,
         "text": "еще",
         "fullLine": "Добавьте этого бота (@${botUsername}) в один из чатов, в котором являетесь администратором. Для этого кликните на заголовок <b>этого</b> чата, далее на кнопку \"еще\"/\"more\", а затем на \"добавить в группу\"/\"add to group\" и выберите сообщество, в которое будет добавлен бот.`,"
       },
       {
         "file": "config/index.ts",
-        "line": 240,
+        "line": 243,
         "text": "добавить в группу",
         "fullLine": "Добавьте этого бота (@${botUsername}) в один из чатов, в котором являетесь администратором. Для этого кликните на заголовок <b>этого</b> чата, далее на кнопку \"еще\"/\"more\", а затем на \"добавить в группу\"/\"add to group\" и выберите сообщество, в которое будет добавлен бот.`,"
       },
       {
         "file": "config/index.ts",
-        "line": 248,
+        "line": 251,
         "text": "одобрить",
         "fullLine": "approvedPendingWords: ['одобрить'],"
       },

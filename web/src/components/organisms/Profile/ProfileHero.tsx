@@ -37,7 +37,7 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
     const hasViewer = userRoles.some(r => r.role === 'viewer');
     
     if (hasLead) {
-      return { role: 'lead', label: tCommon('representative'), variant: 'accent' as const };
+      return { role: 'lead', label: tCommon('lead'), variant: 'accent' as const };
     }
     if (hasParticipant) {
       return { role: 'participant', label: tCommon('participant'), variant: 'info' as const };

@@ -160,7 +160,7 @@ export function InviteGeneration() {
         {isSuperadmin && (
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              {tInvites('superadminToLeadDescription') || 'Create an invite to make a user a Lead (Representative)'}
+              {tInvites('superadminToLeadDescription') || 'Create an invite to make a user a Lead'}
             </p>
           </div>
         )}

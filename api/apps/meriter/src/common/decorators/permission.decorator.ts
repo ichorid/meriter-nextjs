@@ -51,3 +51,4 @@ export const RequirePermission = (
   resource: PermissionResource,
 ) => SetMetadata(PERMISSION_KEY, { action, resource } as PermissionMetadata);
 
+

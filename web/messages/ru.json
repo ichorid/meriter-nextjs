@@ -23,7 +23,7 @@
         "copied": "Скопировано!",
         "notifications": "Уведомления",
         "superadmin": "Суперадмин",
-        "representative": "Представитель",
+        "lead": "Лид",
         "participant": "Участник",
         "viewer": "Наблюдатель",
         "noCommunitiesFound": "Сообщества не найдены в кошельках",
@@ -443,7 +443,9 @@
             "byRating": "По рейтингу",
             "loadMore": "Загрузить еще",
             "createPost": "Создать пост",
-            "joinByInvite": "Или присоединиться по приглашению"
+            "joinByInvite": "Или присоединиться по приглашению",
+            "publications": "Публикации",
+            "members": "Участники"
         },
         "communitySettings": {
             "title": "Настройки сообщества",
@@ -786,7 +788,7 @@
         "messengerPlaceholder": "Ваш username в мессенджере",
         "educationalInstitution": "Образовательное учреждение",
         "educationalInstitutionPlaceholder": "Введите название школы или учреждения",
-        "educationalInstitutionHelper": "Обязательно для Представителей и Участников",
+        "educationalInstitutionHelper": "Обязательно для Лидов и Участников",
         "saving": "Сохранение...",
         "saved": "Профиль успешно сохранен",
         "error": "Не удалось сохранить профиль",
@@ -845,7 +847,7 @@
             "leadToParticipant": "От лида к участнику",
             "superadminToLead": "От суперадмина к лиду",
             "leadToParticipantDescription": "Создать инвайт для добавления участника в это командное сообщество",
-            "superadminToLeadDescription": "Создать инвайт для назначения пользователя Лидом (Представителем) этого сообщества",
+            "superadminToLeadDescription": "Создать инвайт для назначения пользователя Лидом этого сообщества",
             "targetUserId": "ID целевого пользователя",
             "targetUserIdPlaceholder": "Введите ID целевого пользователя (необязательно)",
             "targetUserName": "Имя пользователя",
