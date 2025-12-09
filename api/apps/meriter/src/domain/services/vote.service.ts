@@ -89,6 +89,14 @@ export class VoteService {
   ): Promise<Vote> {
     this.logger.log(`Creating vote: user=${userId}, target=${targetType}:${targetId}, amountQuota=${amountQuota}, amountWallet=${amountWallet}, direction=${direction}, communityId=${communityId}, comment=${comment.substring(0, 50)}...`);
 
+    // Check feature flag - comment voting is disabled by default
+    const enableCommentVoting = process.env.ENABLE_COMMENT_VOTING === 'true';
+    if (targetType === 'vote' && !enableCommentVoting) {
+      throw new BadRequestException(
+        'Voting on comments is disabled. You can only vote on posts/publications.',
+      );
+    }
+
     // Validate that user can vote (mutual exclusivity check)
     const canVote = await this.canUserVote(userId, targetType, targetId);
     if (!canVote) {

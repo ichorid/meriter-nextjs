@@ -79,6 +79,7 @@ const envSchema = z.object({
   // Feature Flags
   NEXT_PUBLIC_ENABLE_ANALYTICS: z.string().optional(),
   NEXT_PUBLIC_ENABLE_DEBUG: z.string().optional(),
+  NEXT_PUBLIC_ENABLE_COMMENT_VOTING: z.string().optional(),
   
   // Development Mode
   NEXT_PUBLIC_FAKE_DATA_MODE: z.string().optional(),
@@ -100,6 +101,7 @@ const env = envSchema.parse({
   S3_REGION: process.env.S3_REGION,
   NEXT_PUBLIC_ENABLE_ANALYTICS: process.env.NEXT_PUBLIC_ENABLE_ANALYTICS,
   NEXT_PUBLIC_ENABLE_DEBUG: process.env.NEXT_PUBLIC_ENABLE_DEBUG,
+  NEXT_PUBLIC_ENABLE_COMMENT_VOTING: process.env.NEXT_PUBLIC_ENABLE_COMMENT_VOTING,
   NEXT_PUBLIC_FAKE_DATA_MODE: process.env.NEXT_PUBLIC_FAKE_DATA_MODE,
 });
 
@@ -206,6 +208,7 @@ export const config = {
   features: {
     analytics: env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true',
     debug: env.NEXT_PUBLIC_ENABLE_DEBUG === 'true' || env.NODE_ENV === 'development',
+    commentVoting: env.NEXT_PUBLIC_ENABLE_COMMENT_VOTING === 'true',
   },
   
   // Development Mode

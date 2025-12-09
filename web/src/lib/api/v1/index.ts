@@ -863,6 +863,16 @@ export const votesApiV1 = {
         voteId: string,
         data: VoteWithCommentDto
     ): Promise<{ vote: Vote; comment?: Comment; wallet: Wallet }> {
+        // Check feature flag - comment voting is disabled by default
+        // Note: This is a client-side check. The backend also validates the feature flag.
+        const enableCommentVoting = typeof window !== 'undefined' 
+            ? (process.env.NEXT_PUBLIC_ENABLE_COMMENT_VOTING === 'true')
+            : false;
+        
+        if (!enableCommentVoting) {
+            throw new Error('Voting on comments is disabled. You can only vote on posts/publications.');
+        }
+        
         const response = await apiClient.post<{
             success: true;
             data: { vote: Vote; comment?: Comment; wallet: Wallet };

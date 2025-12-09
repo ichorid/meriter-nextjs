@@ -19,6 +19,7 @@ import { useCommentVoteDisplay } from '@/features/comments/hooks/useCommentVoteD
 import { useCommentRecipient } from '@/features/comments/hooks/useCommentRecipient';
 import { useCommentWithdrawal } from '@/features/comments/hooks/useCommentWithdrawal';
 import { useCanVote } from '@/hooks/useCanVote';
+import { useFeaturesConfig } from '@/hooks/useConfig';
 
 interface CommentCardProps {
   node: TreeNode;
@@ -71,6 +72,8 @@ export function CommentCard({
   isDetailPage = false,
 }: CommentCardProps) {
   const t = useTranslations('comments');
+  const features = useFeaturesConfig();
+  const enableCommentVoting = features.commentVoting;
   const originalComment = node.originalComment;
   const authorMeta = originalComment.meta?.author;
   const authorName = authorMeta?.name || 'Unknown';
@@ -339,7 +342,7 @@ export function CommentCard({
                 onNavigate();
               }}
             />
-          ) : (
+          ) : enableCommentVoting ? (
             <BarVoteUnified
               score={commentScore}
               onVoteClick={() => {
@@ -373,6 +376,25 @@ export function CommentCard({
               }}
               canVote={canVote}
             />
+          ) : (
+            // Vote button and counter are hidden - comments cannot be voted on (feature flag disabled)
+            // Only show comment count for navigation if there are replies
+            (node.children.length || replyComments?.length || 0) > 0 ? (
+              <div className="flex items-center justify-start pt-3 border-t border-base-content/5">
+                <button 
+                  className="flex items-center gap-1.5 text-base-content/40 hover:text-base-content/60 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigate();
+                  }}
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  <span className="text-xs font-medium">{node.children.length || replyComments?.length || 0}</span>
+                </button>
+              </div>
+            ) : null
           )
         }
         showCommunityAvatar={showCommunityAvatar}

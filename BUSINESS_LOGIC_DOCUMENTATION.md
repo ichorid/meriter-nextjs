@@ -122,11 +122,12 @@ Meriter is a merit-based social platform that operates through Telegram communit
 
 #### Comment Rules
 - **No Beneficiary Support**: Comments CANNOT have beneficiaries. The effective beneficiary is always the author.
-- **Voting Cost**: Comments can be voted for (costs merits)
+- **Voting Cost**: Comments can be voted for (costs merits) - **Note: Comment voting can be disabled via feature flag**
 - **Nesting**: Comments can be replies to other comments
 - **Content Validation**: Must have meaningful content
 - **Vote Allocation**: Users specify merit amount for voting
 - **Mutual Exclusivity**: Vote and Withdraw are MUTUALLY EXCLUSIVE. Author can withdraw, others can vote.
+- **Feature Flag**: Comment voting is controlled by `ENABLE_COMMENT_VOTING` (backend) and `NEXT_PUBLIC_ENABLE_COMMENT_VOTING` (frontend). When disabled (default), users can only vote on posts/publications, not on comments.
 
 #### Comment Lifecycle
 1. **Creation**: User creates comment on publication
@@ -267,6 +268,44 @@ Meriter is a merit-based social platform that operates through Telegram communit
 2. **Bot Integration**: Bot must be added to Telegram group for community
 3. **User Validation**: Bot validates user membership in Telegram groups
 4. **Content Moderation**: Administrators can manage community content
+
+## Feature Flags
+
+Feature flags allow enabling or disabling specific features without code changes. They are controlled via environment variables.
+
+### Comment Voting Feature Flag
+
+**Purpose**: Control whether users can vote on comments (replies to publications).
+
+**Environment Variables**:
+- **Backend**: `ENABLE_COMMENT_VOTING` (default: `false` - disabled)
+- **Frontend**: `NEXT_PUBLIC_ENABLE_COMMENT_VOTING` (default: `false` - disabled)
+
+**Behavior**:
+- **When Disabled (default)**:
+  - Users can only vote on posts/publications
+  - Comment voting UI (vote button and counter) is hidden
+  - API endpoints reject comment voting requests
+  - Comments still display vote metrics (read-only) from previous votes if any existed
+
+- **When Enabled**:
+  - Users can vote on comments using the same voting mechanics as posts
+  - Vote button and counter appear on comment cards
+  - Comments can receive upvotes/downvotes with quota or wallet merits
+  - Comment voting follows the same rules as publication voting (mutual exclusivity, self-voting prevention, etc.)
+
+**To Enable**:
+1. Set `ENABLE_COMMENT_VOTING=true` in backend environment (`.env` or Docker environment)
+2. Set `NEXT_PUBLIC_ENABLE_COMMENT_VOTING=true` in frontend environment (`.env` or Docker environment)
+3. Restart both backend and frontend services
+
+**Implementation Details**:
+- Feature flag is checked at multiple layers:
+  - Frontend UI components (hides/shows vote button)
+  - Frontend API client (validates before making requests)
+  - Backend API endpoint (validates before processing)
+  - Backend service layer (validates before creating votes)
+- This multi-layer approach ensures the feature cannot be bypassed even if one layer fails
 
 ## Data Flow
 

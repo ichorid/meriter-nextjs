@@ -13,6 +13,7 @@ import { useUserRoles } from '@/hooks/api/useProfile';
 import { useCommunity } from '@/hooks/api';
 import { VotingPanel } from './VotingPanel';
 import { BottomPortal } from '@/shared/components/bottom-portal';
+import { useFeaturesConfig } from '@/hooks/useConfig';
 
 interface VotingPopupProps {
   communityId?: string;
@@ -22,6 +23,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   communityId,
 }) => {
   const t = useTranslations('comments');
+  const features = useFeaturesConfig();
+  const enableCommentVoting = features.commentVoting;
   const { user } = useAuth();
   const {
     activeVotingTarget,
@@ -147,6 +150,12 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   const handleSubmit = async (directionPlus: boolean) => {
     if (!activeVotingTarget || !votingTargetType || !targetCommunityId) return;
+
+    // Check feature flag - comment voting is disabled by default
+    if (votingTargetType === 'comment' && !enableCommentVoting) {
+      updateVotingFormData({ error: 'Voting on comments is disabled. You can only vote on posts/publications.' });
+      return;
+    }
 
     const delta = formData.delta;
     if (delta === 0) {

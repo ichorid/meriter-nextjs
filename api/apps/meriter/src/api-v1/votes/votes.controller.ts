@@ -614,6 +614,14 @@ export class VotesController {
     @Body() createDto: VoteWithCommentDto,
     @Req() req: any,
   ) {
+    // Check feature flag - comment voting is disabled by default
+    const enableCommentVoting = process.env.ENABLE_COMMENT_VOTING === 'true';
+    if (!enableCommentVoting) {
+      throw new BadRequestException(
+        'Voting on comments is disabled. You can only vote on posts/publications.',
+      );
+    }
+
     const { vote } = await this.handleVoteCreation('vote', id, createDto, req);
 
     return ApiResponseHelper.successResponse(

@@ -7,6 +7,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { useVoteOnVote } from '@/hooks/api/useVotes';
 import { useCreateComment, commentsKeys } from '@/hooks/api/useComments';
 import { useUserQuota } from '@/hooks/api/useQuota';
+import { useFeaturesConfig } from '@/hooks/useConfig';
 
 const { round } = Math;
 
@@ -44,6 +45,10 @@ export const useComments = (
     const [plusSign, setPlusSign] = useState(true);
     const [delta, setDelta] = useState(0);
     const [error, setError] = useState("");
+    
+    // Feature flag check
+    const features = useFeaturesConfig();
+    const enableCommentVoting = features.commentVoting;
     
     // Mutation hooks
     const voteOnVoteMutation = useVoteOnVote();
@@ -148,6 +153,12 @@ export const useComments = (
             try {
                 // Use mutation hooks based on whether it's a comment or vote
                 if (forTransaction) {
+                    // Check feature flag - comment voting is disabled by default
+                    if (!enableCommentVoting) {
+                        setError('Voting on comments is disabled. You can only vote on posts/publications.');
+                        return;
+                    }
+                    
                     // This is a vote for a comment
                     const absoluteAmount = Math.abs(delta);
                     const isUpvote = directionPlus;
