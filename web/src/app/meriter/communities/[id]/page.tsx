@@ -338,15 +338,6 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                 )}
                             </div>
                         )}
-                        {activeTab === 'publications' && (
-                            <div className="flex items-center gap-4 text-sm">
-                                <div className="flex items-center gap-1.5 text-base-content/60">
-                                    <FileText size={14} />
-                                    <span className="font-medium text-base-content">{filteredPublications.length}</span>
-                                    <span>publications</span>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             )}
