@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Info, Users, Zap } from 'lucide-react';
+import { Info, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar } from '@/components/atoms';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
@@ -27,26 +27,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   const t = useTranslations('common');
 
   // Get user's communities with wallets and quotas
-  const { communities, communityIds, wallets, quotasMap, walletsMap, isLoading: communitiesLoading } = useUserCommunities();
-  
-  // Calculate total merits balance
-  const totalWalletBalance = useMemo(() => {
-    return wallets.reduce((sum: number, wallet: any) => sum + (wallet.balance || 0), 0);
-  }, [wallets]);
-  
-  const totalDailyQuota = useMemo(() => {
-    let total = 0;
-    quotasMap.forEach((quota) => {
-      total += quota.remainingToday || 0;
-    });
-    return total;
-  }, [quotasMap]);
-  
-  // Get first community for currency icon
-  const firstCommunity = useMemo(() => {
-    return communities.find((c: any) => c?.id);
-  }, [communities]);
-  const currencyIconUrl = firstCommunity?.settings?.iconUrl;
+  const { communityIds, wallets, quotasMap, walletsMap, isLoading: communitiesLoading } = useUserCommunities();
 
   // Don't show sidebar on login page
   if (pathname?.includes('/login')) {
@@ -156,43 +137,14 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
               <div className="flex items-center w-full">
                 <Avatar
                   src={user.avatarUrl}
-                  alt={user.displayName || tCommon('user')}
+                  alt={user.displayName || t('user')}
                   size="sm"
                 />
                 <div className="flex-1 ml-2 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <div className="text-xs font-medium text-base-content truncate">
-                      {user.displayName || tCommon('user')}
+                      {user.displayName || t('user')}
                     </div>
-                  </div>
-                  <div className={`flex items-center gap-2 text-[10px] mt-0.5 ${pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
-                    ? 'text-primary-content/70'
-                    : 'text-base-content/70'
-                  }`}>
-                    <span className="flex items-center gap-1">
-                      {currencyIconUrl && (
-                        <img 
-                          src={currencyIconUrl} 
-                          alt="Currency" 
-                          className="w-3 h-3 flex-shrink-0" 
-                        />
-                      )}
-                      <span>{t('permanentMerits')}: <span className={`font-semibold ${pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
-                        ? 'text-primary-content'
-                        : 'text-brand-primary'
-                      }`}>{totalWalletBalance}</span></span>
-                    </span>
-                    <span className={pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
-                      ? 'text-primary-content/40'
-                      : 'text-base-content/40'
-                    }>|</span>
-                    <span className="flex items-center gap-1">
-                      <Zap className="w-3 h-3 flex-shrink-0" />
-                      <span>{t('dailyMerits')}: <span className={`font-semibold ${pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
-                        ? 'text-primary-content'
-                        : 'text-brand-primary'
-                      }`}>{totalDailyQuota}</span></span>
-                    </span>
                   </div>
                 </div>
                 <svg className="w-5 h-5 ml-auto flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
