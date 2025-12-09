@@ -180,16 +180,14 @@ export class PollsController {
   }
 
   @Delete(':id')
+  @RequirePermission('delete', 'poll')
   async deletePoll(@Param('id') id: string, @Req() req: any) {
     const poll = await this.pollsService.getPoll(id);
     if (!poll) {
       throw new NotFoundError('Poll', id);
     }
 
-    if (poll.toSnapshot().authorId !== req.user.id) {
-      throw new ForbiddenError('Only the author can delete this poll');
-    }
-
+    // Permission check is handled by PermissionGuard via @RequirePermission decorator
     // Delete functionality not implemented yet
     throw new Error('Delete poll functionality not implemented');
   }

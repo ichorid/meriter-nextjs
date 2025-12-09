@@ -20,6 +20,12 @@ import { useCommentRecipient } from '@/features/comments/hooks/useCommentRecipie
 import { useCommentWithdrawal } from '@/features/comments/hooks/useCommentWithdrawal';
 import { useCanVote } from '@/hooks/useCanVote';
 import { useFeaturesConfig } from '@/hooks/useConfig';
+import { useCanEditDelete } from '@/hooks/useCanEditDelete';
+import { useUpdateComment, useDeleteComment } from '@/hooks/api/useComments';
+import { CommentEditModal } from '@/components/organisms/CommentEditModal/CommentEditModal';
+import { DeleteConfirmationModal } from '@/components/organisms/DeleteConfirmationModal/DeleteConfirmationModal';
+import { Edit, Trash2 } from 'lucide-react';
+import { useToastStore } from '@/shared/stores/toast.store';
 
 interface CommentCardProps {
   node: TreeNode;
@@ -145,6 +151,42 @@ export function CommentCard({
   
   // State for comment details popup
   const [showDetailsPopup, setShowDetailsPopup] = useState(false);
+  
+  // State for edit/delete modals
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  
+  // Permission checks
+  const { canEdit, canDelete } = useCanEditDelete(commentAuthorId, communityId);
+  
+  // Mutations
+  const updateComment = useUpdateComment();
+  const deleteComment = useDeleteComment();
+  const addToast = useToastStore((state) => state.addToast);
+  
+  // Handlers
+  const handleEdit = async (newContent: string) => {
+    try {
+      await updateComment.mutateAsync({
+        id: node.id,
+        data: { content: newContent },
+      });
+      setShowEditModal(false);
+      addToast('Comment updated successfully', 'success');
+    } catch (error: any) {
+      addToast(error?.message || 'Failed to update comment', 'error');
+    }
+  };
+  
+  const handleDelete = async () => {
+    try {
+      await deleteComment.mutateAsync(node.id);
+      setShowDeleteModal(false);
+      addToast('Comment deleted successfully', 'success');
+    } catch (error: any) {
+      addToast(error?.message || 'Failed to delete comment', 'error');
+    }
+  };
   
   // Calculate direction
   const calculatedDirectionPlus = directionPlus ?? 
@@ -278,21 +320,55 @@ export function CommentCard({
           }
         }}
       >
-      {/* Details button - positioned in top right */}
-      <Button
-        variant="ghost"
-        size="xs"
-        className="absolute top-2 right-2 z-10 btn-sm opacity-60 hover:opacity-100"
-        onClick={(e: React.MouseEvent) => {
-          e.stopPropagation();
-          setShowDetailsPopup(true);
-        }}
-        title="View details"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </Button>
+      {/* Action buttons - positioned in top right */}
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+        {(canEdit || canDelete) && (
+          <>
+            {canEdit && (
+              <Button
+                variant="ghost"
+                size="xs"
+                className="btn-sm opacity-60 hover:opacity-100"
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  setShowEditModal(true);
+                }}
+                title="Edit comment"
+              >
+                <Edit size={14} />
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="xs"
+                className="btn-sm opacity-60 hover:opacity-100 text-error hover:text-error"
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  setShowDeleteModal(true);
+                }}
+                title="Delete comment"
+              >
+                <Trash2 size={14} />
+              </Button>
+            )}
+          </>
+        )}
+        <Button
+          variant="ghost"
+          size="xs"
+          className="btn-sm opacity-60 hover:opacity-100"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            setShowDetailsPopup(true);
+          }}
+          title="View details"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </Button>
+      </div>
       <CardCommentVote
         title={authorName}
         subtitle={new Date(commentTimestamp || '').toLocaleString()}
@@ -462,6 +538,24 @@ export function CommentCard({
         totalScore={commentDetails?.metrics?.score ?? displaySum}
         totalReceived={commentDetails?.metrics?.totalReceived}
         totalWithdrawn={commentDetails?.withdrawals?.totalWithdrawn}
+      />
+      
+      {/* Edit Modal */}
+      <CommentEditModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onSave={handleEdit}
+        initialContent={commentText}
+        isLoading={updateComment.isPending}
+      />
+      
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        itemType="comment"
+        isLoading={deleteComment.isPending}
       />
     </div>
   );

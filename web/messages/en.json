@@ -41,7 +41,11 @@
         "userNotFoundDescription": "The user profile you're looking for doesn't exist",
         "contactInformation": "Contact Information",
         "noProfileInformation": "No profile information available",
-        "noProfileInformationDescription": "This user hasn't added any profile details yet"
+        "noProfileInformationDescription": "This user hasn't added any profile details yet",
+        "deleteConfirmation": {
+            "title": "Confirm Delete",
+            "message": "Are you sure you want to delete this {itemType}? This action cannot be undone."
+        }
     },
     "home": {
         "breadcrumb": "Home",
@@ -323,6 +327,11 @@
         "projectNoVoting": "PROJECT posts are for discussion only. Voting and merits are not available."
     },
     "comments": {
+        "editComment": "Edit Comment",
+        "comment": "Comment",
+        "writeComment": "Write your comment...",
+        "save": "Save",
+        "cancel": "Cancel",
         "voteTitle": "Voting",
         "dailyLimit": "Daily limit",
         "available": "Available",

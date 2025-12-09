@@ -42,7 +42,11 @@
         "contactInformation": "Контактная информация",
         "about": "О себе",
         "noProfileInformation": "Информация о профиле недоступна",
-        "noProfileInformationDescription": "Этот пользователь еще не добавил информацию о профиле"
+        "noProfileInformationDescription": "Этот пользователь еще не добавил информацию о профиле",
+        "deleteConfirmation": {
+            "title": "Подтвердите удаление",
+            "message": "Вы уверены, что хотите удалить этот {itemType}? Это действие нельзя отменить."
+        }
     },
     "home": {
         "breadcrumb": "Главная",
@@ -324,6 +328,11 @@
         "projectNoVoting": "Посты типа PROJECT предназначены только для обсуждения. Голосование и мериты недоступны."
     },
     "comments": {
+        "editComment": "Редактировать комментарий",
+        "comment": "Комментарий",
+        "writeComment": "Напишите ваш комментарий...",
+        "save": "Сохранить",
+        "cancel": "Отмена",
         "voteTitle": "Голосование",
         "dailyLimit": "Дневной лимит",
         "available": "Доступно",

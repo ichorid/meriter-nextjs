@@ -4,6 +4,7 @@ import { CommunityService } from './community.service';
 import { PublicationService } from './publication.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { CommentService } from './comment.service';
+import { PollService } from './poll.service';
 
 /**
  * PermissionService
@@ -19,6 +20,7 @@ export class PermissionService {
     private publicationService: PublicationService,
     private commentService: CommentService,
     private userCommunityRoleService: UserCommunityRoleService,
+    private pollService: PollService,
   ) { }
 
   /**
@@ -386,14 +388,15 @@ export class PermissionService {
     const authorId = publication.getAuthorId.getValue();
     if (authorId === userId) return true;
 
-    // If not author, check if user is superadmin
-    const userRole = await this.getUserRoleInCommunity(
-      userId,
-      publication.getCommunityId.getValue(),
-    );
+    // If not author, check if user is superadmin or lead
+    const communityId = publication.getCommunityId.getValue();
+    const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
     // Superadmin can edit any publication
     if (userRole === 'superadmin') return true;
+
+    // Lead can edit publications in their community
+    if (userRole === 'lead') return true;
 
     return false;
   }
@@ -409,17 +412,20 @@ export class PermissionService {
       await this.publicationService.getPublication(publicationId);
     if (!publication) return false;
 
-    const userRole = await this.getUserRoleInCommunity(
-      userId,
-      publication.getCommunityId.getValue(),
-    );
+    const communityId = publication.getCommunityId.getValue();
+    const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
     // Superadmin always can
     if (userRole === 'superadmin') return true;
 
     // Author can delete
     const authorId = publication.getAuthorId.getValue();
-    return authorId === userId;
+    if (authorId === userId) return true;
+
+    // Lead can delete publications in their community
+    if (userRole === 'lead') return true;
+
+    return false;
   }
 
   /**
@@ -437,7 +443,13 @@ export class PermissionService {
     if (userRole === 'superadmin') return true;
 
     // Author can edit
-    return comment.getAuthorId.getValue() === userId;
+    const authorId = comment.getAuthorId.getValue();
+    if (authorId === userId) return true;
+
+    // Lead can edit comments in their community
+    if (userRole === 'lead') return true;
+
+    return false;
   }
 
   /**
@@ -455,6 +467,59 @@ export class PermissionService {
     if (userRole === 'superadmin') return true;
 
     // Author can delete
-    return comment.getAuthorId.getValue() === userId;
+    const authorId = comment.getAuthorId.getValue();
+    if (authorId === userId) return true;
+
+    // Lead can delete comments in their community
+    if (userRole === 'lead') return true;
+
+    return false;
+  }
+
+  /**
+   * Check if user can edit a poll
+   */
+  async canEditPoll(userId: string, pollId: string): Promise<boolean> {
+    const poll = await this.pollService.getPoll(pollId);
+    if (!poll) return false;
+
+    // Author can edit their own polls
+    const authorId = poll.getAuthorId;
+    if (authorId === userId) return true;
+
+    // If not author, check if user is superadmin or lead
+    const communityId = poll.getCommunityId;
+    const userRole = await this.getUserRoleInCommunity(userId, communityId);
+
+    // Superadmin can edit any poll
+    if (userRole === 'superadmin') return true;
+
+    // Lead can edit polls in their community
+    if (userRole === 'lead') return true;
+
+    return false;
+  }
+
+  /**
+   * Check if user can delete a poll
+   */
+  async canDeletePoll(userId: string, pollId: string): Promise<boolean> {
+    const poll = await this.pollService.getPoll(pollId);
+    if (!poll) return false;
+
+    const communityId = poll.getCommunityId;
+    const userRole = await this.getUserRoleInCommunity(userId, communityId);
+
+    // Superadmin always can
+    if (userRole === 'superadmin') return true;
+
+    // Author can delete
+    const authorId = poll.getAuthorId;
+    if (authorId === userId) return true;
+
+    // Lead can delete polls in their community
+    if (userRole === 'lead') return true;
+
+    return false;
   }
 }

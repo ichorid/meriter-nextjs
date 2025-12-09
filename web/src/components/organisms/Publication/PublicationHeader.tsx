@@ -1,15 +1,20 @@
 // Publication header component
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Edit } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 import { Avatar, Badge } from '@/components/atoms';
 import { Badge as BrandBadge } from '@/components/ui/Badge';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { dateVerbose } from '@shared/lib/date';
 import { useAuth } from '@/contexts/AuthContext';
 import { routes } from '@/lib/constants/routes';
+import { useCanEditDelete } from '@/hooks/useCanEditDelete';
+import { useDeletePublication } from '@/hooks/api/usePublications';
+import { useDeletePoll } from '@/hooks/api/usePolls';
+import { DeleteConfirmationModal } from '@/components/organisms/DeleteConfirmationModal/DeleteConfirmationModal';
+import { useToastStore } from '@/shared/stores/toast.store';
 
 // Local Publication type definition
 interface Publication {
@@ -69,6 +74,11 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   const router = useRouter();
   const { user } = useAuth();
   const currentUserId = user?.id;
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  
+  const deletePublication = useDeletePublication();
+  const deletePoll = useDeletePoll();
+  const addToast = useToastStore((state) => state.addToast);
 
   const author = {
     name: publication.meta?.author?.name || 'Unknown',
@@ -83,12 +93,16 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     username: publication.meta.beneficiary.username,
   } : null;
 
-  // Check if user can edit
+  // Check permissions (author, lead, superadmin)
+  const { canEdit: canEditFromHook, canDelete } = useCanEditDelete(author.id, communityId);
+  
+  // Check if user can edit (must also have zero votes for posts/polls)
   const isAuthor = currentUserId && author.id && currentUserId === author.id;
   const hasVotes = isPoll
     ? (metrics?.totalCasts || 0) > 0
     : ((metrics?.upvotes || 0) + (metrics?.downvotes || 0)) > 0;
-  const canEdit = isAuthor && !hasVotes && publicationId && communityId;
+  // Authors can only edit if no votes; leads/superadmins can always edit (but backend will enforce zero votes)
+  const canEdit = canEditFromHook && (!isAuthor || !hasVotes) && publicationId && communityId;
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -96,6 +110,26 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
       router.push(`/meriter/communities/${communityId}/edit-poll/${publicationId}`);
     } else {
       router.push(`/meriter/communities/${communityId}/edit/${publicationId}`);
+    }
+  };
+  
+  const handleDelete = async () => {
+    try {
+      if (isPoll) {
+        await deletePoll.mutateAsync(publicationId!);
+      } else {
+        await deletePublication.mutateAsync(publicationId!);
+      }
+      setShowDeleteModal(false);
+      addToast(isPoll ? 'Poll deleted successfully' : 'Post deleted successfully', 'success');
+      // Navigate away after deletion
+      if (communityId) {
+        router.push(`/meriter/communities/${communityId}`);
+      } else {
+        router.push(routes.profile);
+      }
+    } catch (error: any) {
+      addToast(error?.message || 'Failed to delete', 'error');
     }
   };
 
@@ -138,7 +172,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
         </div>
       </div>
       
-      {/* Tags & Badges & Edit Button */}
+      {/* Tags & Badges & Action Buttons */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
         {canEdit && (
           <BrandButton
@@ -149,6 +183,20 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             title="Edit"
           >
             <Edit size={16} />
+          </BrandButton>
+        )}
+        {canDelete && (
+          <BrandButton
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDeleteModal(true);
+            }}
+            className="p-1.5 h-auto min-h-0 text-error hover:text-error"
+            title="Delete"
+          >
+            <Trash2 size={16} />
           </BrandButton>
         )}
         {(publication as any).postType === 'project' || (publication as any).isProject ? (
@@ -167,6 +215,15 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
           </Badge>
         )}
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        itemType={isPoll ? 'poll' : 'post'}
+        isLoading={isPoll ? deletePoll.isPending : deletePublication.isPending}
+      />
     </div>
   );
 };

@@ -135,6 +135,12 @@ export class PermissionGuard implements CanActivate {
         result.commentId = req.params?.id;
         break;
 
+      case 'edit:poll':
+      case 'delete:poll':
+        // pollId comes from route params
+        result.pollId = req.params?.id;
+        break;
+
       default:
         this.logger.warn(
           `Unknown permission combination: ${permission.action}:${permission.resource}`,
@@ -236,6 +242,20 @@ export class PermissionGuard implements CanActivate {
           resourceIds.commentId,
         );
 
+      case 'edit:poll':
+        if (!resourceIds.pollId) {
+          this.logger.warn('Missing pollId for edit:poll');
+          return false;
+        }
+        return this.permissionService.canEditPoll(userId, resourceIds.pollId);
+
+      case 'delete:poll':
+        if (!resourceIds.pollId) {
+          this.logger.warn('Missing pollId for delete:poll');
+          return false;
+        }
+        return this.permissionService.canDeletePoll(userId, resourceIds.pollId);
+
       default:
         this.logger.warn(
           `No handler for permission: ${action}:${resource}`,
@@ -265,6 +285,8 @@ export class PermissionGuard implements CanActivate {
         'You do not have permission to delete this publication',
       'edit:comment': 'You do not have permission to edit this comment',
       'delete:comment': 'You do not have permission to delete this comment',
+      'edit:poll': 'You do not have permission to edit this poll',
+      'delete:poll': 'You do not have permission to delete this poll',
     };
 
     return (
@@ -281,5 +303,6 @@ interface ResourceIds {
   communityId?: string;
   publicationId?: string;
   commentId?: string;
+  pollId?: string;
 }
 
