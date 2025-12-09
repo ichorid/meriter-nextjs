@@ -36,33 +36,48 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
   const t = useTranslations('comments');
   const sliderRef = useRef<HTMLDivElement>(null);
   const [sliderValuePosition, setSliderValuePosition] = useState<number>(0);
+  const [voteDirection, setVoteDirection] = useState<'positive' | 'negative'>('positive');
   
-  // Calculate slider range
-  const min = -maxMinus;
-  const max = maxPlus;
+  // Calculate slider range - now only goes from 0 to max (right only)
+  const max = voteDirection === 'positive' ? maxPlus : maxMinus;
+  const min = 0;
   const range = max - min;
 
+  // Get absolute slider value (0 to max)
+  const sliderValue = Math.abs(amount);
+
   const handleSliderChange = (value: number | number[]) => {
-    const val = typeof value === 'number' ? value : value[0];
-    setAmount(val);
+    const val = typeof value === 'number' ? value : (value[0] ?? 0);
+    // Convert to signed value based on direction
+    const signedValue = voteDirection === 'positive' ? val : -val;
+    setAmount(signedValue);
   };
 
-  const isPositive = amount >= 0;
+  // When direction changes, reset slider if needed
+  useEffect(() => {
+    if (voteDirection === 'positive' && amount < 0) {
+      setAmount(0);
+    } else if (voteDirection === 'negative' && amount > 0) {
+      setAmount(0);
+    }
+  }, [voteDirection, amount, setAmount]);
+
+  const isPositive = voteDirection === 'positive';
   const absAmount = Math.abs(amount);
 
   // Calculate position for value indicator based on slider value
   useEffect(() => {
     if (sliderRef.current && range > 0) {
-      const percentage = ((amount - min) / range) * 100;
+      const percentage = ((sliderValue - min) / range) * 100;
       setSliderValuePosition(percentage);
     }
-  }, [amount, min, range]);
+  }, [sliderValue, min, range]);
 
-  // Calculate filled track width for positive values
+  // Calculate filled track width
   const filledTrackWidth = useMemo(() => {
-    if (amount <= 0 || max <= 0) return 0;
-    return Math.min(100, (amount / max) * 100);
-  }, [amount, max]);
+    if (sliderValue <= 0 || max <= 0) return 0;
+    return Math.min(100, (sliderValue / max) * 100);
+  }, [sliderValue, max]);
 
   // Styling for the slider - using CSS variables for theme support
   const railStyle = { 
@@ -115,6 +130,70 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         {t('sliderHint') || 'Move the slider to choose the number of votes you want to give.'}
       </p>
 
+      {/* Vote Direction Radio Buttons */}
+      <div className="flex gap-4" style={{ width: '304px' }}>
+        <label 
+          className={classList(
+            "flex items-center gap-2 cursor-pointer",
+            voteDirection === 'positive' ? "text-success" : "text-base-content opacity-60"
+          )}
+        >
+          <input
+            type="radio"
+            name="voteDirection"
+            value="positive"
+            checked={voteDirection === 'positive'}
+            onChange={(e) => setVoteDirection(e.target.value as 'positive' | 'negative')}
+            className="radio radio-success"
+            style={{ 
+              accentColor: voteDirection === 'positive' ? 'var(--success)' : undefined,
+            }}
+          />
+          <span 
+            className={classList(
+              "font-medium",
+              voteDirection === 'positive' ? "text-success font-bold" : ""
+            )}
+            style={{ 
+              fontSize: '15px',
+              fontFamily: 'Roboto, sans-serif',
+            }}
+          >
+            {t('voteUp') || 'Vote up'} 👍
+          </span>
+        </label>
+        <label 
+          className={classList(
+            "flex items-center gap-2 cursor-pointer",
+            voteDirection === 'negative' ? "text-error" : "text-base-content opacity-60"
+          )}
+        >
+          <input
+            type="radio"
+            name="voteDirection"
+            value="negative"
+            checked={voteDirection === 'negative'}
+            onChange={(e) => setVoteDirection(e.target.value as 'positive' | 'negative')}
+            className="radio radio-error"
+            style={{ 
+              accentColor: voteDirection === 'negative' ? 'var(--error)' : undefined,
+            }}
+          />
+          <span 
+            className={classList(
+              "font-medium",
+              voteDirection === 'negative' ? "text-error font-bold" : ""
+            )}
+            style={{ 
+              fontSize: '15px',
+              fontFamily: 'Roboto, sans-serif',
+            }}
+          >
+            {t('voteDown') || 'Vote down'} 👎
+          </span>
+        </label>
+      </div>
+
       {/* Limit / Quota Indicator */}
       <div className="flex flex-col gap-[5px]" style={{ width: '304px', height: '40px' }}>
         <div 
@@ -136,8 +215,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             height: '40px',
           }}
         >
-          {/* Filled indicator - shows used quota */}
-          {amount > 0 && (
+          {/* Filled indicator - shows used quota/merits */}
+          {absAmount > 0 && (
             <div 
               className="absolute left-0 top-0 bottom-0 bg-base-content opacity-30"
               style={{ 
@@ -164,20 +243,31 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
 
       {/* Slider Container */}
       <div className="relative" style={{ width: '304px', height: '58px' }}>
-        {/* Value Indicator - positioned above slider */}
+        {/* Value Indicator - positioned above slider with direction and color */}
         <div 
-          className="absolute flex items-center text-base-content"
+          className={classList(
+            "absolute flex items-center font-bold whitespace-nowrap",
+            isPositive ? "text-success" : "text-error"
+          )}
           style={{ 
             left: `${sliderValuePosition}%`,
             top: '0px',
             transform: 'translateX(-50%)',
-            fontSize: '24px',
+            fontSize: '20px',
             fontFamily: 'Roboto, sans-serif',
-            fontWeight: 500,
+            fontWeight: 700,
             lineHeight: '120%',
           }}
         >
-          {absAmount}
+          {isPositive ? (
+            <>
+              👍 {t('voteUp') || 'Vote up'}: +{absAmount}
+            </>
+          ) : (
+            <>
+              👎 {t('voteDown') || 'Vote down'}: -{absAmount}
+            </>
+          )}
         </div>
 
         {/* Slider */}
@@ -202,8 +292,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             }}
           />
           
-          {/* Filled track for positive values */}
-          {amount > 0 && (
+          {/* Filled track */}
+          {sliderValue > 0 && (
             <div 
               className="absolute bg-base-content"
               style={{ 
@@ -220,7 +310,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
           <Slider
             min={min}
             max={max}
-            value={amount}
+            value={sliderValue}
             onChange={handleSliderChange}
             railStyle={railStyle}
             handleStyle={handleStyle}
@@ -287,8 +377,11 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
       <button
         onClick={() => onSubmit(isPositive)}
         className={classList(
-          "flex justify-center items-center border border-base-content rounded-[8px] bg-base-content",
-          (amount === 0 || (!isPositive && !comment.trim())) ? "opacity-50 cursor-not-allowed" : ""
+          "flex justify-center items-center border rounded-[8px]",
+          isPositive 
+            ? "border-success bg-success hover:bg-success/90" 
+            : "border-error bg-error hover:bg-error/90",
+          (absAmount === 0 || (!isPositive && !comment.trim())) ? "opacity-50 cursor-not-allowed" : ""
         )}
         style={{ 
           width: '304px',
@@ -297,7 +390,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
           gap: '10px',
           boxSizing: 'border-box',
         }}
-        disabled={amount === 0 || (!isPositive && !comment.trim())}
+        disabled={absAmount === 0 || (!isPositive && !comment.trim())}
       >
         <span 
           className="text-base-100 text-center leading-[120%]"

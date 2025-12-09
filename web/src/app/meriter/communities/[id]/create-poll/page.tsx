@@ -35,7 +35,7 @@ export default function CreatePollPage({
         <FormPollCreate
           communityId={communityId}
           onSuccess={(pollId) => {
-            router.push(`/meriter/communities/${communityId}`);
+            router.push(`/meriter/communities/${communityId}?poll=${pollId}`);
           }}
           onCancel={() => {
             router.push(`/meriter/communities/${communityId}`);

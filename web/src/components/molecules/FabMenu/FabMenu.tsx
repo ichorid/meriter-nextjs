@@ -26,6 +26,11 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
     // Check if community is future-vision (polls disabled)
     const isFutureVision = community?.typeTag === 'future-vision';
 
+    // Calculate available actions
+    // "Create Post" is available when canCreate === true
+    // "Create Poll" is available when canCreate === true AND community is not future-vision
+    const hasAvailableActions = canCreate === true; // At least "Create Post" is available if canCreate is true
+
     // Check if any popup is active using UI store
     const { activeVotingTarget, activeWithdrawTarget, activeModal } = useUIStore();
     const hasActivePopup = activeVotingTarget !== null || activeWithdrawTarget !== null || activeModal !== null;
@@ -75,6 +80,11 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
 
     // Hide FAB when any popup is active (unless the FAB menu itself is open)
     if (hasActivePopup && !isOpen) {
+        return null;
+    }
+
+    // Wait for permission loading to complete, then hide FAB if no actions are available
+    if (!permissionLoading && !hasAvailableActions) {
         return null;
     }
 

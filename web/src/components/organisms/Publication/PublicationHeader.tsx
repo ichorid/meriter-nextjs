@@ -9,6 +9,7 @@ import { Badge as BrandBadge } from '@/components/ui/Badge';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { dateVerbose } from '@shared/lib/date';
 import { useAuth } from '@/contexts/AuthContext';
+import { routes } from '@/lib/constants/routes';
 
 // Local Publication type definition
 interface Publication {
@@ -98,11 +99,23 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     }
   };
 
+  const handleAvatarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (author.id) {
+      router.push(routes.userProfile(author.id));
+    }
+  };
+
   return (
     <div className={`flex items-start justify-between gap-3 ${className}`}>
       {/* Author Info */}
       <div className="flex items-center gap-3 min-w-0">
-        <Avatar src={author.photoUrl} alt={author.name} size="md" />
+        <Avatar 
+          src={author.photoUrl} 
+          alt={author.name} 
+          size="md" 
+          onClick={author.id ? handleAvatarClick : undefined}
+        />
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-sm text-base-content truncate">{author.name}</span>

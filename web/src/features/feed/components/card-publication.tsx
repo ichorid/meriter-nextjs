@@ -3,6 +3,8 @@
 import { classList } from '@lib/classList';
 import { Avatar } from '@/components/atoms';
 import { CommunityAvatar } from '@shared/components/community-avatar';
+import { useRouter } from 'next/navigation';
+import { routes } from '@/lib/constants/routes';
 
 interface CardPublicationProps {
     title: any;
@@ -24,6 +26,8 @@ interface CardPublicationProps {
     beneficiaryName?: any;
     beneficiaryAvatarUrl?: any;
     beneficiarySubtitle?: any;
+    authorId?: string;
+    beneficiaryId?: string;
 }
 
 export const CardPublication = ({
@@ -46,8 +50,25 @@ export const CardPublication = ({
     beneficiaryName,
     beneficiaryAvatarUrl,
     beneficiarySubtitle,
+    authorId,
+    beneficiaryId,
 }: CardPublicationProps) => {
+    const router = useRouter();
     const clickableClass = onClick ? " cursor-pointer hover:shadow-xl" : "";
+    
+    const handleAuthorAvatarClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (authorId) {
+            router.push(routes.userProfile(authorId));
+        }
+    };
+    
+    const handleBeneficiaryAvatarClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (beneficiaryId) {
+            router.push(routes.userProfile(beneficiaryId));
+        }
+    };
     
     return (
     <div 
@@ -96,6 +117,7 @@ export const CardPublication = ({
                             name={title}
                             size={32}
                             onError={onAvatarUrlNotFound}
+                            onClick={authorId ? handleAuthorAvatarClick : undefined}
                         />
                         <div className="info min-w-0 flex-1">
                             <div className="text-xs font-medium text-base-content dark:text-base-content break-words">{title}</div>
@@ -109,6 +131,7 @@ export const CardPublication = ({
                                 alt={beneficiaryName}
                                 name={beneficiaryName}
                                 size={32}
+                                onClick={beneficiaryId ? handleBeneficiaryAvatarClick : undefined}
                             />
                             <div className="info min-w-0">
                                 <div className="text-xs font-medium text-base-content dark:text-base-content break-words">{beneficiaryName}</div>

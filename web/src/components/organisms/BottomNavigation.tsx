@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Users, User, Bell, Info } from 'lucide-react';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { useUserMeritsBalance } from '@/hooks/useUserMeritsBalance';
 import { useMarathonOfGoodQuota } from '@/hooks/useMarathonOfGoodQuota';
+import { useUserQuota } from '@/hooks/api/useQuota';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { WalletChip } from '@/components/molecules/WalletChip';
@@ -19,8 +20,48 @@ export const BottomNavigation = () => {
     // Calculate total merits balance (permanent and daily)
     const { totalWalletBalance, totalDailyQuota, wallets } = useUserMeritsBalance();
     
-    // Get marathon-of-good quota for the ring
-    const { remaining: quotaRemaining, max: quotaMax, isLoading: quotaLoading } = useMarathonOfGoodQuota();
+    // Detect community context from pathname
+    const communityContextId = useMemo(() => {
+        if (!pathname) return null;
+        // Match patterns: /meriter/communities/[id] or /meriter/communities/[id]/...
+        const match = pathname.match(/\/meriter\/communities\/([^\/]+)/);
+        return match ? match[1] : null;
+    }, [pathname]);
+    
+    // Get marathon-of-good quota for global context
+    const { remaining: marathonQuotaRemaining, max: marathonQuotaMax, isLoading: marathonQuotaLoading } = useMarathonOfGoodQuota();
+    
+    // Get community-specific quota when in community context
+    const { data: communityQuota, isLoading: communityQuotaLoading } = useUserQuota(communityContextId || undefined);
+    
+    // Determine which quota to use and loading state
+    const isInCommunityContext = !!communityContextId;
+    const quotaRemaining = isInCommunityContext 
+        ? (communityQuota?.remainingToday ?? 0)
+        : marathonQuotaRemaining;
+    const quotaMax = isInCommunityContext
+        ? (communityQuota?.dailyQuota ?? 0)
+        : marathonQuotaMax;
+    const quotaLoading = isInCommunityContext
+        ? communityQuotaLoading
+        : marathonQuotaLoading;
+    
+    // Track previous context mode to detect changes
+    const prevContextModeRef = useRef<'global' | 'community' | null>(null);
+    const [flashTrigger, setFlashTrigger] = useState(0);
+    
+    // Detect context mode changes and trigger flash
+    useEffect(() => {
+        const currentMode: 'global' | 'community' = isInCommunityContext ? 'community' : 'global';
+        const prevMode = prevContextModeRef.current;
+        
+        // Only trigger flash if mode actually changed (not on initial load)
+        if (prevMode !== null && prevMode !== currentMode) {
+            setFlashTrigger(prev => prev + 1);
+        }
+        
+        prevContextModeRef.current = currentMode;
+    }, [isInCommunityContext]);
     
     // Get marathon-of-good community ID for navigation
     const { communities: userCommunities } = useUserCommunities();
@@ -29,22 +70,27 @@ export const BottomNavigation = () => {
         return marathonCommunity?.id || null;
     }, [userCommunities]);
     
-    // Get first community ID for currency icon
-    const firstCommunityId = useMemo(() => {
+    // Get current community or first community ID for currency icon
+    const communityIdForIcon = useMemo(() => {
+        if (communityContextId) return communityContextId;
         const walletWithCommunity = wallets.find((w: any) => w?.communityId);
         return walletWithCommunity?.communityId;
-    }, [wallets]);
+    }, [communityContextId, wallets]);
     
-    // Fetch first community to get currency icon
-    const { data: firstCommunity } = useCommunity(firstCommunityId || '');
-    const currencyIconUrl = firstCommunity?.settings?.iconUrl;
+    // Fetch community to get currency icon
+    const { data: communityForIcon } = useCommunity(communityIdForIcon || '');
+    const currencyIconUrl = communityForIcon?.settings?.iconUrl;
     
-    // Handle click on WalletChip to navigate to marathon-of-good community
+    // Handle click on WalletChip to navigate appropriately
     const handleWalletChipClick = () => {
-        if (marathonOfGoodCommunityId) {
+        if (isInCommunityContext && communityContextId) {
+            // In community context, navigate to that community
+            router.push(`/meriter/communities/${communityContextId}`);
+        } else if (marathonOfGoodCommunityId) {
+            // Out of community context, navigate to marathon-of-good
             router.push(`/meriter/communities/${marathonOfGoodCommunityId}`);
         } else {
-            // Fallback to communities list if marathon-of-good not found
+            // Fallback to communities list
             router.push(routes.communities);
         }
     };
@@ -124,6 +170,7 @@ export const BottomNavigation = () => {
                         quotaRemaining={quotaRemaining}
                         quotaMax={quotaMax}
                         showRing={true}
+                        flashTrigger={flashTrigger}
                     />
                 )}
             </div>

@@ -10,6 +10,7 @@ export interface DailyQuotaRingProps {
   className?: string;
   style?: React.CSSProperties;
   asDiv?: boolean; // If true, render as div instead of button (for use inside other buttons)
+  flashTrigger?: number; // Incrementing number that triggers flash animation when changed
 }
 
 export const DailyQuotaRing: React.FC<DailyQuotaRingProps> = ({
@@ -19,9 +20,12 @@ export const DailyQuotaRing: React.FC<DailyQuotaRingProps> = ({
   className = '',
   style,
   asDiv = false,
+  flashTrigger,
 }) => {
   const prevRemainingRef = useRef(remaining);
   const numberRef = useRef<HTMLSpanElement>(null);
+  const ringRef = useRef<HTMLButtonElement | HTMLDivElement | null>(null);
+  const prevFlashTriggerRef = useRef<number | undefined>(flashTrigger);
 
   // Trigger number scale animation when remaining changes
   useEffect(() => {
@@ -34,6 +38,18 @@ export const DailyQuotaRing: React.FC<DailyQuotaRingProps> = ({
     }
     prevRemainingRef.current = remaining;
   }, [remaining]);
+
+  // Trigger flash animation when flashTrigger changes
+  useEffect(() => {
+    if (flashTrigger !== undefined && flashTrigger !== prevFlashTriggerRef.current && ringRef.current) {
+      ringRef.current.classList.add('daily-quota-ring--flash');
+      const timer = setTimeout(() => {
+        ringRef.current?.classList.remove('daily-quota-ring--flash');
+      }, 400);
+      prevFlashTriggerRef.current = flashTrigger;
+      return () => clearTimeout(timer);
+    }
+  }, [flashTrigger]);
 
   // Calculate ratio and color
   const ratio = max > 0 ? Math.max(0, Math.min(remaining / max, 1)) : 0;
@@ -106,7 +122,7 @@ export const DailyQuotaRing: React.FC<DailyQuotaRingProps> = ({
 
   if (asDiv) {
     return (
-      <div {...commonProps}>
+      <div {...commonProps} ref={ringRef as React.Ref<HTMLDivElement>}>
         {innerContent}
       </div>
     );
@@ -116,6 +132,7 @@ export const DailyQuotaRing: React.FC<DailyQuotaRingProps> = ({
     <button
       {...commonProps}
       type="button"
+      ref={ringRef as React.Ref<HTMLButtonElement>}
     >
       {innerContent}
     </button>

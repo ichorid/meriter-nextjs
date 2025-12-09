@@ -64,9 +64,11 @@ export default function EditPublicationPage({
           communityId={communityId}
           publicationId={publicationId}
           initialData={publication}
-          onSuccess={(updatedPublicationId) => {
+          onSuccess={(publication) => {
             // Redirect to community page with post parameter in query string
-            router.push(`/meriter/communities/${communityId}?post=${updatedPublicationId}`);
+            // Use slug if available, otherwise fall back to id
+            const postIdentifier = publication.slug || publication.id;
+            router.push(`/meriter/communities/${communityId}?post=${postIdentifier}`);
           }}
           onCancel={() => {
             router.push(`/meriter/communities/${communityId}`);

@@ -65,7 +65,7 @@ export default function EditPollPage({
           pollId={pollId}
           initialData={poll}
           onSuccess={(updatedPollId) => {
-            router.push(`/meriter/communities/${communityId}`);
+            router.push(`/meriter/communities/${communityId}?poll=${updatedPollId}`);
           }}
           onCancel={() => {
             router.push(`/meriter/communities/${communityId}`);

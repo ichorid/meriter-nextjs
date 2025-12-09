@@ -4,7 +4,6 @@ import {
     useInfiniteQuery,
 } from "@tanstack/react-query";
 import { communitiesApiV1 } from "@/lib/api/v1";
-import { communitiesApiV1Enhanced } from "@/lib/api/v1";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import { STALE_TIME } from "@/lib/constants/query-config";
 import type { PaginatedResponse, Community } from "@/types/api-v1";
@@ -125,25 +124,6 @@ export const useUpdateCommunity = createMutation<
             lists: true,
             detail: (_, variables) => variables.id,
         },
-    },
-});
-
-export const useSyncCommunities = createMutation<void, void>({
-    mutationFn: () => communitiesApiV1Enhanced.syncCommunities(),
-    errorContext: "Sync communities error",
-    invalidations: {
-        wallet: {
-            includeBalance: false,
-        },
-        communities: {
-            lists: true,
-        },
-    },
-    onSuccess: (_result, _variables, queryClient) => {
-        // Invalidate user communities query if any hook uses it
-        queryClient.invalidateQueries({ queryKey: ["user-communities"] });
-        // Invalidate user query to refresh user data
-        queryClient.invalidateQueries({ queryKey: queryKeys.auth.me() });
     },
 });
 

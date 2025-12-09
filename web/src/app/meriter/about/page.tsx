@@ -8,11 +8,11 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { VersionDisplay } from '@/components/organisms/VersionDisplay';
 import { useTranslations } from 'next-intl';
 import { useAllLeads } from '@/hooks/api/useUsers';
-import { InfoCard } from '@/components/ui/InfoCard';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { SearchInput } from '@/components/molecules/SearchInput';
+import { LeadCard } from '@/components/molecules/LeadCard/LeadCard';
 import { routes } from '@/lib/constants/routes';
+import type { EnrichedLead } from '@/types/lead';
 
 const AboutPage = () => {
     const t = useTranslations('common');
@@ -21,7 +21,7 @@ const AboutPage = () => {
     
     // Fetch leads
     const { data: leadsData, isLoading: leadsLoading } = useAllLeads({ pageSize: 100 });
-    const leads = leadsData?.data || [];
+    const leads = (leadsData?.data || []) as EnrichedLead[];
     
     // Filter leads based on search query
     const filteredLeads = useMemo(() => {
@@ -95,20 +95,17 @@ const AboutPage = () => {
                                 <CardSkeleton />
                             </div>
                         ) : filteredLeads.length > 0 ? (
-                            <div className="space-y-3">
+                            <div className="bg-base-100 rounded-lg border border-base-300 overflow-hidden">
                                 {filteredLeads.map((lead) => (
-                                    <InfoCard
+                                    <LeadCard
                                         key={lead.id}
-                                        title={lead.displayName || lead.username || 'Unknown User'}
-                                        subtitle={lead.profile?.bio || lead.username ? `@${lead.username}` : undefined}
-                                        icon={
-                                            <BrandAvatar
-                                                src={lead.avatarUrl}
-                                                fallback={lead.displayName || lead.username || 'User'}
-                                                size="sm"
-                                                className="bg-transparent"
-                                            />
-                                        }
+                                        id={lead.id}
+                                        displayName={lead.displayName || lead.username || 'Unknown User'}
+                                        username={lead.username}
+                                        avatarUrl={lead.avatarUrl}
+                                        totalMerits={lead.totalMerits}
+                                        leadCommunities={lead.leadCommunities}
+                                        showRoleChip={false}
                                         onClick={() => router.push(routes.userProfile(lead.id))}
                                     />
                                 ))}

@@ -519,16 +519,25 @@ export class CommunityService {
       })
       .lean();
 
-    // Map to DTOs
-    const mappedMembers = members.map((user) => ({
-      id: user.id,
-      username: user.username,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
-      globalRole: user.globalRole,
-      // We might want to fetch community-specific role here too, but that's expensive
-      // for a list. PermissionService has getUserRoleInCommunity.
-    }));
+    // Map to DTOs with roles
+    const mappedMembers = await Promise.all(
+      members.map(async (user) => {
+        // Get user's role in this community
+        const role = await this.userCommunityRoleService.getRole(
+          user.id,
+          communityId,
+        );
+        
+        return {
+          id: user.id,
+          username: user.username,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+          globalRole: user.globalRole,
+          role: role || undefined, // role can be 'lead', 'participant', 'viewer', or null
+        };
+      }),
+    );
 
     return { members: mappedMembers, total };
   }

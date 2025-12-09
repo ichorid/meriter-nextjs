@@ -381,17 +381,21 @@ export class PermissionService {
       await this.publicationService.getPublication(publicationId);
     if (!publication) return false;
 
+    // Author can always edit their own publications (in any group)
+    // Check author first before any community role checks
+    const authorId = publication.getAuthorId.getValue();
+    if (authorId === userId) return true;
+
+    // If not author, check if user is superadmin
     const userRole = await this.getUserRoleInCommunity(
       userId,
       publication.getCommunityId.getValue(),
     );
 
-    // Superadmin always can
+    // Superadmin can edit any publication
     if (userRole === 'superadmin') return true;
 
-    // Author can edit
-    const authorId = publication.getAuthorId.getValue();
-    return authorId === userId;
+    return false;
   }
 
   /**

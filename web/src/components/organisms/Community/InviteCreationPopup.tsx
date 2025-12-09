@@ -31,10 +31,19 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
     const { data: leadCommunities = [] } = useLeadCommunities(user?.id || '');
     const { data: communitiesData } = useCommunities();
     
+    // Determine user role and permissions early to conditionally enable hooks
+    const isSuperadmin = user?.globalRole === 'superadmin';
+    const isLead = useMemo(() => {
+        return userRoles.some(r => r.role === 'lead') || leadCommunities.length > 0;
+    }, [userRoles, leadCommunities]);
+    const hasPermission = isSuperadmin || isLead;
+    
     // Use community-specific invites if communityId is provided, otherwise use all invites
+    // Only fetch community invites if user has permission (admin/lead/superadmin)
     const { data: allInvites = [], isLoading: allInvitesLoading } = useInvites();
     const { data: communityInvitesData, isLoading: communityInvitesLoading } = useCommunityInvites(
-        communityId || ''
+        communityId || '',
+        { enabled: hasPermission }
     );
     
     // If communityId is provided and valid, use community-specific invites, otherwise use all invites
@@ -46,12 +55,6 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
     const [generatedInvite, setGeneratedInvite] = useState<Invite | null>(null);
     const [inviteCopied, setInviteCopied] = useState(false);
     const [showInviteList, setShowInviteList] = useState(false);
-
-    // Determine user role and permissions
-    const isSuperadmin = user?.globalRole === 'superadmin';
-    const isLead = useMemo(() => {
-        return userRoles.some(r => r.role === 'lead') || leadCommunities.length > 0;
-    }, [userRoles, leadCommunities]);
 
     // Determine invite type
     const inviteType = isSuperadmin ? 'superadmin-to-lead' : 'lead-to-participant';
@@ -146,10 +149,6 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
         }
         return invites;
     }, [invites, communityId]);
-
-    // Hide component completely if user doesn't have permissions
-    // Note: We check this after hooks to maintain hook call order
-    const hasPermission = isSuperadmin || isLead;
     
     // Don't render the sheet if not open or no permission
     if (!hasPermission || !isOpen) {

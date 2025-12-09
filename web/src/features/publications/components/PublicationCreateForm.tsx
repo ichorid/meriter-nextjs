@@ -31,7 +31,7 @@ interface PublicationDraft {
 
 interface PublicationCreateFormProps {
   communityId: string;
-  onSuccess?: (publicationId: string) => void;
+  onSuccess?: (publication: { id: string; slug?: string }) => void;
   onCancel?: () => void;
   defaultPostType?: PublicationPostType;
   publicationId?: string;
@@ -256,7 +256,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
       // Navigate after successful creation/update
       if (onSuccess) {
-        onSuccess(publication.id);
+        onSuccess({ id: publication.id, slug: publication.slug });
       } else {
         // Redirect to community page with post parameter in query string
         // Use slug if available, otherwise fall back to id
@@ -466,7 +466,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
         <div className="flex items-center justify-between gap-4">
           <div className="flex gap-2">
-            {(title.trim() || description.trim()) && (
+            {false && (title.trim() || description.trim()) && (
               <BrandButton variant="outline" onClick={saveDraft} disabled={isSubmitting} leftIcon={<Save size={16} />}>
                 {t('saveDraft')}
               </BrandButton>

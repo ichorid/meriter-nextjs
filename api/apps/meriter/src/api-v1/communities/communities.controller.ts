@@ -603,59 +603,6 @@ export class CommunitiesController {
     };
   }
 
-  @Post('sync')
-  async syncCommunities(@Req() req: any) {
-    const userId = req.user.id;
-    const authId = req.user.authId;
-    this.logger.log(`Syncing communities for user: ${userId}`);
-
-    try {
-      // Get all active communities
-      const allCommunities = await this.communityService.getAllCommunities(
-        1000,
-        0,
-      );
-      this.logger.log(`Found ${allCommunities.length} active communities`);
-
-      const communityChatIds: string[] = [];
-      let syncedCount = 0;
-      let membershipsAdded = 0;
-
-      // Check membership for each community (only active communities)
-      for (const community of allCommunities) {
-        // Skip inactive communities
-        if (!community.isActive) {
-          this.logger.log(`Skipping inactive community: ${community.name}`);
-          continue;
-        }
-
-        // Telegram membership checks are disabled
-      }
-
-      this.logger.log(
-        `Synced ${syncedCount} communities for user ${userId}, added ${membershipsAdded} memberships`,
-      );
-      return {
-        success: true,
-        data: {
-          message: 'Communities synced successfully',
-          syncedCount: syncedCount,
-          membershipsUpdated: membershipsAdded,
-        },
-      };
-    } catch (error) {
-      this.logger.error(`Error syncing communities for user ${userId}:`, error);
-      return {
-        success: false,
-        data: {
-          message: 'Error syncing communities',
-          syncedCount: 0,
-          membershipsUpdated: 0,
-        },
-      };
-    }
-  }
-
   @Get(':id/publications')
   async getCommunityPublications(
     @Param('id') id: string,

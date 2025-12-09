@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Avatar } from '@/components/atoms';
 import { formatDate } from '@/shared/lib/date';
+import { routes } from '@/lib/constants/routes';
 
 export interface CommentListItemProps {
   id: string;
@@ -52,6 +53,13 @@ export const CommentListItem: React.FC<CommentListItemProps> = ({
     }
   };
 
+  const handleAvatarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (authorId) {
+      router.push(routes.userProfile(authorId));
+    }
+  };
+
   const score = metrics?.score ?? 0;
   const isPositive = score > 0;
   const isNegative = score < 0;
@@ -95,6 +103,7 @@ export const CommentListItem: React.FC<CommentListItemProps> = ({
                     alt={authorName || 'Unknown'}
                     name={authorName || 'Unknown'}
                     size={32}
+                    onClick={authorId ? handleAvatarClick : undefined}
                   />
                   <div className="info">
                     <div className="text-xs font-medium">{authorName || 'Unknown'}</div>

@@ -35,9 +35,11 @@ export default function CreatePublicationPage({
       <div className="flex-1 p-4">
         <PublicationCreateForm
           communityId={communityId}
-          onSuccess={(publicationId) => {
+          onSuccess={(publication) => {
             // Redirect to community page with post parameter in query string
-            router.push(`/meriter/communities/${communityId}?post=${publicationId}`);
+            // Use slug if available, otherwise fall back to id
+            const postIdentifier = publication.slug || publication.id;
+            router.push(`/meriter/communities/${communityId}?post=${postIdentifier}`);
           }}
           onCancel={() => {
             router.push(`/meriter/communities/${communityId}`);

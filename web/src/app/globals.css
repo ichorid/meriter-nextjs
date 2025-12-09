@@ -633,6 +633,23 @@
   }
 }
 
+/* Flash animation for context mode changes */
+.daily-quota-ring--flash {
+  animation: quota-flash 400ms ease-out;
+}
+
+@keyframes quota-flash {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 /* Dark mode adjustments */
 [data-theme="dark"] .daily-quota-ring::before {
   background: var(--base-200);

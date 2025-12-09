@@ -1153,18 +1153,6 @@ export const walletApiV1 = {
     },
 };
 
-// Communities API with missing sync functionality
-export const communitiesApiV1Enhanced = {
-    ...communitiesApiV1,
-
-    async syncCommunities(): Promise<{ message: string; syncedCount: number }> {
-        const response = await apiClient.post<{
-            success: true;
-            data: { message: string; syncedCount: number };
-        }>("/api/v1/communities/sync");
-        return response.data;
-    },
-};
 
 // Search API - unified search across all content types
 export const searchApiV1 = {
@@ -1464,7 +1452,7 @@ import { profileApiV1 } from "./profile";
 export const apiV1 = {
     auth: authApiV1,
     users: usersApiV1,
-    communities: communitiesApiV1Enhanced,
+    communities: communitiesApiV1,
     publications: publicationsApiV1,
     comments: commentsApiV1,
     votes: votesApiV1,

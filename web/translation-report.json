@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-12-09T15:50:39.131Z",
+  "timestamp": "2025-12-09T17:44:52.569Z",
   "missingKeys": {
     "inRu": [],
     "inEn": []
@@ -50,10 +50,45 @@
       },
       {
         "file": "components/molecules/FabMenu/HomeFabMenu.tsx",
-        "line": 98,
+        "line": 108,
         "translationKey": "hero.actions.createCommunity",
         "fallbackText": "Create Community",
         "fullLine": "{t('hero.actions.createCommunity') || 'Create Community'}"
+      },
+      {
+        "file": "components/molecules/LeadCard/LeadCard.tsx",
+        "line": 48,
+        "translationKey": "lead",
+        "fallbackText": "Lead",
+        "fullLine": "lead: t('lead') || 'Lead',"
+      },
+      {
+        "file": "components/molecules/LeadCard/LeadCard.tsx",
+        "line": 49,
+        "translationKey": "participant",
+        "fallbackText": "Participant",
+        "fullLine": "participant: t('participant') || 'Participant',"
+      },
+      {
+        "file": "components/molecules/LeadCard/LeadCard.tsx",
+        "line": 50,
+        "translationKey": "viewer",
+        "fallbackText": "Viewer",
+        "fullLine": "viewer: t('viewer') || 'Viewer',"
+      },
+      {
+        "file": "components/molecules/LeadCard/LeadCard.tsx",
+        "line": 51,
+        "translationKey": "superadmin",
+        "fallbackText": "Superadmin",
+        "fullLine": "superadmin: t('superadmin') || 'Superadmin',"
+      },
+      {
+        "file": "components/molecules/LeadCard/LeadCard.tsx",
+        "line": 106,
+        "translationKey": "lead",
+        "fallbackText": "Lead",
+        "fullLine": "{t('lead') || 'Lead'}"
       },
       {
         "file": "components/organisms/AdvancedSearch/AdvancedSearch.tsx",
@@ -120,35 +155,35 @@
       },
       {
         "file": "components/organisms/CommentListItem/CommentListItem.tsx",
-        "line": 128,
+        "line": 137,
         "translationKey": "viewInPublication",
         "fallbackText": "View in publication →",
         "fullLine": "{t('viewInPublication') || 'View in publication →'}"
       },
       {
         "file": "components/organisms/Community/InviteCreationPopup.tsx",
-        "line": 112,
+        "line": 115,
         "translationKey": "noExpiration",
         "fallbackText": "No expiration",
         "fullLine": "if (!dateString) return t('noExpiration') || 'No expiration';"
       },
       {
         "file": "components/organisms/Community/InviteCreationPopup.tsx",
-        "line": 130,
+        "line": 133,
         "translationKey": "autoAssigned",
         "fallbackText": "Auto-assigned (Marathon-of-Good & Future-Vision)",
         "fullLine": "? (t('autoAssigned') || 'Auto-assigned (Marathon-of-Good & Future-Vision)')"
       },
       {
         "file": "components/organisms/Community/InviteCreationPopup.tsx",
-        "line": 131,
+        "line": 134,
         "translationKey": "notSet",
         "fallbackText": "Not set",
         "fullLine": ": (t('notSet') || 'Not set');"
       },
       {
         "file": "components/organisms/Community/InviteCreationPopup.tsx",
-        "line": 172,
+        "line": 171,
         "translationKey": "title",
         "fallbackText": "Invite Generation",
         "fullLine": "{t('title') || 'Invite Generation'}"
@@ -393,56 +428,84 @@
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 101,
+        "line": 116,
         "translationKey": "voteTitle",
         "fallbackText": "Voting",
         "fullLine": "{t('voteTitle') || 'Voting'}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 115,
+        "line": 130,
         "translationKey": "sliderHint",
         "fallbackText": "Move the slider to choose the number of votes you want to give.",
         "fullLine": "{t('sliderHint') || 'Move the slider to choose the number of votes you want to give.'}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 130,
+        "line": 162,
+        "translationKey": "voteUp",
+        "fallbackText": "Vote up",
+        "fullLine": "{t('voteUp') || 'Vote up'} 👍"
+      },
+      {
+        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
+        "line": 192,
+        "translationKey": "voteDown",
+        "fallbackText": "Vote down",
+        "fullLine": "{t('voteDown') || 'Vote down'} 👎"
+      },
+      {
+        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
+        "line": 209,
         "translationKey": "dailyLimit",
         "fallbackText": "Daily limit",
         "fullLine": "{t('dailyLimit') || 'Daily limit'}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 160,
+        "line": 239,
         "translationKey": "available",
         "fallbackText": "Available",
         "fullLine": "{t('available') || 'Available'} {quotaRemaining}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 244,
+        "line": 264,
+        "translationKey": "voteUp",
+        "fallbackText": "Vote up",
+        "fullLine": "👍 {t('voteUp') || 'Vote up'}: +{absAmount}"
+      },
+      {
+        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
+        "line": 268,
+        "translationKey": "voteDown",
+        "fallbackText": "Vote down",
+        "fullLine": "👎 {t('voteDown') || 'Vote down'}: -{absAmount}"
+      },
+      {
+        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
+        "line": 334,
         "translationKey": "downvoteExplanation",
         "fallbackText": "You are voting against publication. Please leave a detailed explanation, the reason for your decision.",
         "fullLine": "{t('downvoteExplanation') || 'You are voting against publication. Please leave a detailed explanation, the reason for your decision.'}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 260,
+        "line": 350,
         "translationKey": "explanationDetails",
         "fallbackText": "Explanations, details and descriptions",
         "fullLine": "{t('explanationDetails') || 'Explanations, details and descriptions'}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 281,
+        "line": 371,
         "translationKey": "textField",
         "fallbackText": "Text field",
         "fullLine": "placeholder={t('textField') || 'Text field'}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 310,
+        "line": 403,
         "translationKey": "submit",
         "fallbackText": "Submit",
         "fullLine": "{t('submit') || 'Submit'}"
@@ -505,91 +568,91 @@
       },
       {
         "file": "features/communities/components/CommunityForm.tsx",
-        "line": 433,
+        "line": 435,
         "translationKey": "prioritySettings",
         "fallbackText": "Priority Settings",
         "fullLine": "{t('prioritySettings') || 'Priority Settings'}"
       },
       {
         "file": "features/communities/components/CommunityForm.tsx",
-        "line": 435,
+        "line": 437,
         "translationKey": "priorityHelp",
         "fallbackText": "Priority communities are displayed first in the list",
         "fullLine": "<BrandFormControl helperText={t('priorityHelp') || 'Priority communities are displayed first in the list'}>"
       },
       {
         "file": "features/communities/components/CommunityForm.tsx",
-        "line": 439,
+        "line": 441,
         "translationKey": "isPriority",
         "fallbackText": "Mark as priority community",
         "fullLine": "label={t('isPriority') || 'Mark as priority community'}"
-      },
-      {
-        "file": "features/communities/components/CommunityForm.tsx",
-        "line": 451,
-        "translationKey": "prioritySettings",
-        "fallbackText": "Priority Settings",
-        "fullLine": "{t('prioritySettings') || 'Priority Settings'}"
       },
       {
         "file": "features/communities/components/CommunityForm.tsx",
         "line": 453,
+        "translationKey": "prioritySettings",
+        "fallbackText": "Priority Settings",
+        "fullLine": "{t('prioritySettings') || 'Priority Settings'}"
+      },
+      {
+        "file": "features/communities/components/CommunityForm.tsx",
+        "line": 455,
         "translationKey": "priorityHelp",
         "fallbackText": "Priority communities are displayed first in the list",
         "fullLine": "<BrandFormControl helperText={t('priorityHelp') || 'Priority communities are displayed first in the list'}>"
       },
       {
         "file": "features/communities/components/CommunityForm.tsx",
-        "line": 457,
+        "line": 459,
         "translationKey": "isPriority",
         "fallbackText": "Mark as priority community",
         "fullLine": "label={t('isPriority') || 'Mark as priority community'}"
       },
       {
         "file": "features/communities/components/CommunityForm.tsx",
-        "line": 471,
+        "line": 473,
         "translationKey": "members.title",
         "fallbackText": "Community Members",
         "fullLine": "{t('members.title') || 'Community Members'}"
       },
       {
         "file": "features/communities/components/CommunityForm.tsx",
-        "line": 504,
+        "line": 506,
         "translationKey": "members.invited",
         "fallbackText": "Invited",
         "fullLine": "({t('members.invited') || 'Invited'})"
       },
       {
         "file": "features/communities/components/CommunityForm.tsx",
-        "line": 528,
+        "line": 530,
         "translationKey": "members.inviteUsed",
         "fallbackText": "Invite used",
         "fullLine": "<span>{t('members.inviteUsed') || 'Invite used'}</span>"
       },
       {
         "file": "features/communities/components/CommunityForm.tsx",
-        "line": 533,
+        "line": 535,
         "translationKey": "members.invitePending",
         "fallbackText": "Invite pending",
         "fullLine": "<span>{t('members.invitePending') || 'Invite pending'}</span>"
       },
       {
         "file": "features/communities/components/CommunityForm.tsx",
-        "line": 545,
+        "line": 547,
         "translationKey": "members.noInvite",
         "fallbackText": "No invite",
         "fullLine": "{t('members.noInvite') || 'No invite'}"
       },
       {
         "file": "features/communities/components/CommunityForm.tsx",
-        "line": 556,
+        "line": 558,
         "translationKey": "members.remove",
         "fallbackText": "Remove member",
         "fullLine": "title={t('members.remove') || 'Remove member'}"
       },
       {
         "file": "features/communities/components/CommunityForm.tsx",
-        "line": 571,
+        "line": 573,
         "translationKey": "members.noMembers",
         "fallbackText": "No members yet",
         "fullLine": "{t('members.noMembers') || 'No members yet'}"
@@ -889,6 +952,12 @@
         "line": 22,
         "placeholder": "Search...",
         "fullLine": "placeholder=\"Search...\""
+      },
+      {
+        "file": "components/organisms/Community/MembersTab.tsx",
+        "line": 70,
+        "placeholder": "Search members by name or username...",
+        "fullLine": "placeholder=\"Search members by name or username...\""
       },
       {
         "file": "components/organisms/ContextTopBar/ContextTopBar.tsx",

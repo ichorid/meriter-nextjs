@@ -5,13 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
-import { BrandButton } from '@/components/ui/BrandButton';
 import { useCommunity, useCommunityMembers, useRemoveCommunityMember } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { Loader2, UserX } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
+import { LeadCard } from '@/components/molecules/LeadCard/LeadCard';
 
 const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
@@ -27,6 +26,12 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
 
     // Check if user is admin (superadmin or lead of this community)
     const isAdmin = community?.isAdmin;
+
+    // Determine if we should show role chip and hide team info
+    const isMarathonOrFutureVision = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
+    const isTeam = community?.typeTag === 'team';
+    const showRoleChip = isMarathonOrFutureVision || isTeam;
+    const hideTeamInfo = isTeam;
 
     const handleRemoveMember = (userId: string, userName: string) => {
         if (confirm(t('members.confirmRemove', { name: userName }))) {
@@ -61,33 +66,27 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
                             <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
                         </div>
                     ) : membersData?.data && membersData.data.length > 0 ? (
-                        <div className="space-y-2">
+                        <div className="bg-base-100 rounded-lg border border-base-300 overflow-hidden">
                             {membersData.data.map((member) => (
-                                <div
-                                    key={member.id}
-                                    className="flex items-center justify-between p-3 bg-base-100 border border-brand-secondary/10 rounded-lg shadow-sm hover:shadow-md transition-shadow"
-                                >
-                                    <div className="flex items-center space-x-3">
-                                        <BrandAvatar
-                                            src={member.avatarUrl}
-                                            fallback={member.displayName || member.username}
-                                            size="md"
-                                        />
-                                        <div>
-                                            <div className="font-medium text-brand-text-primary">
-                                                {member.displayName || member.username}
-                                            </div>
-                                            <div className="text-xs text-brand-text-secondary">
-                                                @{member.username} • {member.globalRole}
-                                            </div>
-                                        </div>
-                                    </div>
-
+                                <div key={member.id} className="relative group">
+                                    <LeadCard
+                                        id={member.id}
+                                        displayName={member.displayName || member.username}
+                                        username={member.username}
+                                        avatarUrl={member.avatarUrl}
+                                        role={member.role}
+                                        showRoleChip={showRoleChip}
+                                        hideTeamInfo={hideTeamInfo}
+                                        onClick={() => router.push(routes.userProfile(member.id))}
+                                    />
                                     {isAdmin && member.id !== user?.id && (
                                         <button
-                                            onClick={() => handleRemoveMember(member.id, member.displayName || member.username)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleRemoveMember(member.id, member.displayName || member.username);
+                                            }}
                                             disabled={isRemoving}
-                                            className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                            className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
                                             title={t('members.remove')}
                                         >
                                             {isRemoving ? (

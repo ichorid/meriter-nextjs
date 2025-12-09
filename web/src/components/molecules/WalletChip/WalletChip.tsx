@@ -14,6 +14,7 @@ export interface WalletChipProps {
   quotaRemaining?: number;
   quotaMax?: number;
   showRing?: boolean;
+  flashTrigger?: number;
 }
 
 export const WalletChip: React.FC<WalletChipProps> = ({
@@ -25,6 +26,7 @@ export const WalletChip: React.FC<WalletChipProps> = ({
   quotaRemaining,
   quotaMax,
   showRing = false,
+  flashTrigger,
 }) => {
   return (
     <button
@@ -70,6 +72,7 @@ export const WalletChip: React.FC<WalletChipProps> = ({
           onClick={onClick}
           className="w-[30px] h-[30px]"
           asDiv={true}
+          flashTrigger={flashTrigger}
         />
       ) : (
         <div className="flex items-center gap-1.5">

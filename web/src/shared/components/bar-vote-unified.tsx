@@ -2,6 +2,7 @@
 
 import { initDataRaw, useSignal, hapticFeedback } from '@telegram-apps/sdk-react';
 import { useTranslations } from 'next-intl';
+import { shareUrl, getPostUrl } from '../lib/share-utils';
 
 interface BarVoteUnifiedProps {
     score: number;
@@ -13,6 +14,8 @@ interface BarVoteUnifiedProps {
     onCommentClick?: () => void;
     canVote?: boolean; // Whether user has permission to vote based on community rules
     disabledReason?: string; // Translation key for why voting is disabled
+    communityId?: string; // Community ID for share functionality
+    slug?: string; // Post slug for share functionality
 }
 
 export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({ 
@@ -24,7 +27,9 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
     commentCount = 0,
     onCommentClick,
     canVote: canVoteProp,
-    disabledReason
+    disabledReason,
+    communityId,
+    slug
 }) => {
     const t = useTranslations('shared');
     const rawData = useSignal(initDataRaw);
@@ -44,6 +49,17 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
             hapticFeedback.impactOccurred('light');
         }
         onCommentClick && onCommentClick();
+    };
+
+    const handleShareClick = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isInTelegram) {
+            hapticFeedback.impactOccurred('light');
+        }
+        if (communityId && slug) {
+            const url = getPostUrl(communityId, slug);
+            await shareUrl(url, t('urlCopiedToBuffer'));
+        }
     };
 
     // Mutual exclusivity: Vote and Withdraw are mutually exclusive
@@ -80,7 +96,7 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
                 )}
             </div>
             
-            {/* Score & Vote */}
+            {/* Score & Vote & Share */}
             <div className="flex items-center gap-3">
                 <span className={`text-lg font-semibold tabular-nums ${
                     score > 0 ? "text-success" : score < 0 ? "text-error" : "text-base-content/40"
@@ -100,6 +116,22 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
                 >
                     {t('vote')}
                 </button>
+
+                {communityId && slug && (
+                    <button
+                        className="flex items-center justify-center h-8 w-8 text-base-content/40 hover:text-base-content/60 transition-colors"
+                        onClick={handleShareClick}
+                        title={t('share')}
+                    >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="18" cy="5" r="3"></circle>
+                            <circle cx="6" cy="12" r="3"></circle>
+                            <circle cx="18" cy="19" r="3"></circle>
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                        </svg>
+                    </button>
+                )}
             </div>
         </div>
     );

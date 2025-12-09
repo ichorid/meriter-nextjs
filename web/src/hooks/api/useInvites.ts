@@ -10,11 +10,11 @@ export function useInvites() {
     });
 }
 
-export function useCommunityInvites(communityId: string) {
+export function useCommunityInvites(communityId: string, options?: { enabled?: boolean }) {
     return useQuery({
         queryKey: ["invites", "community", communityId],
         queryFn: () => invitesApiV1.getCommunityInvites(communityId),
-        enabled: !!communityId,
+        enabled: options?.enabled !== false && !!communityId,
     });
 }
 

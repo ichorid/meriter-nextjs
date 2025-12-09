@@ -27,6 +27,11 @@ export const HomeFabMenu: React.FC = () => {
     const firstCommunityId = wallets.length > 0 ? wallets[0]?.communityId : null;
     const hasCommunities = wallets.length > 0;
 
+    // Calculate available actions
+    // If no communities: only "Create Community" (requires canCreateCommunity === true)
+    // If has communities: always "Create Post" + "Create Poll" (always available, so always show)
+    const hasAvailableActions = hasCommunities || canCreateCommunity;
+
     const handleCreateCommunity = () => {
         if (!canCreateCommunity) {
             addToast(
@@ -77,6 +82,11 @@ export const HomeFabMenu: React.FC = () => {
 
     // Hide FAB when any popup is active (unless the FAB menu itself is open)
     if (hasActivePopup && !isOpen) {
+        return null;
+    }
+
+    // Hide FAB if no actions are available
+    if (!hasAvailableActions) {
         return null;
     }
 

@@ -4,6 +4,10 @@ import { classList } from '@lib/classList';
 import { Avatar } from '@/components/atoms';
 import { CommunityAvatar } from '@shared/components/community-avatar';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
+import { routes } from '@/lib/constants/routes';
+import { shareUrl, getCommentUrl } from '../lib/share-utils';
+import { initDataRaw, useSignal, hapticFeedback } from '@telegram-apps/sdk-react';
 
 export const CardCommentVote = ({
     title,
@@ -30,8 +34,31 @@ export const CardCommentVote = ({
     upvotes,
     downvotes,
     onDetailsClick,
+    authorId,
+    beneficiaryId,
+    communityId,
+    publicationSlug,
+    commentId,
 }:any) => {
     const t = useTranslations('comments');
+    const tShared = useTranslations('shared');
+    const router = useRouter();
+    const rawData = useSignal(initDataRaw);
+    const isInTelegram = !!rawData;
+    
+    const handleAuthorAvatarClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (authorId) {
+            router.push(routes.userProfile(authorId));
+        }
+    };
+    
+    const handleBeneficiaryAvatarClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (beneficiaryId) {
+            router.push(routes.userProfile(beneficiaryId));
+        }
+    };
     
     // Determine direction from voteType or rate
     const isUpvote = voteType?.includes('upvote') || (!voteType && rate && !rate.startsWith('-'));
@@ -54,6 +81,17 @@ export const CardCommentVote = ({
             onDetailsClick();
         } else if (onClick) {
             onClick();
+        }
+    };
+
+    const handleShareClick = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isInTelegram) {
+            hapticFeedback.impactOccurred('light');
+        }
+        if (communityId && publicationSlug && commentId) {
+            const url = getCommentUrl(communityId, publicationSlug, commentId);
+            await shareUrl(url, tShared('urlCopiedToBuffer'));
         }
     };
     
@@ -96,6 +134,7 @@ export const CardCommentVote = ({
                                     name={title}
                                     size={32}
                                     onError={onAvatarUrlNotFound}
+                                    onClick={authorId ? handleAuthorAvatarClick : undefined}
                                 />
                                 <div className="info min-w-0 flex-1">
                                     <div className="text-xs font-medium break-words">{title}</div>
@@ -129,11 +168,31 @@ export const CardCommentVote = ({
                                     alt={beneficiaryName}
                                     name={beneficiaryName}
                                     size={16}
+                                    onClick={beneficiaryId ? handleBeneficiaryAvatarClick : undefined}
                                 />
                                 <span className="break-words min-w-0">{beneficiaryName}</span>
                             </div>
                         )}
-                        <div className="bottom" onClick={(e) => e.stopPropagation()}>{bottom}</div>
+                        <div className="bottom" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-2">
+                                {bottom}
+                                {communityId && publicationSlug && commentId && (
+                                    <button
+                                        className="flex items-center justify-center h-8 w-8 text-base-content/40 hover:text-base-content/60 transition-colors"
+                                        onClick={handleShareClick}
+                                        title={tShared('share')}
+                                    >
+                                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <circle cx="18" cy="5" r="3"></circle>
+                                            <circle cx="6" cy="12" r="3"></circle>
+                                            <circle cx="18" cy="19" r="3"></circle>
+                                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                                        </svg>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

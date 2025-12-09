@@ -317,6 +317,9 @@ export function CommentCard({
             if (imgElement) imgElement.src = fallbackUrl;
           }
         }}
+        communityId={communityId}
+        publicationSlug={publicationSlug}
+        commentId={node.id}
         bottom={
           false ? ( // Withdrawals disabled - merits are automatically credited on upvote
             <BarWithdraw
@@ -427,6 +430,8 @@ export function CommentCard({
         }}
         communityNeedsSetup={communityInfo?.needsSetup}
         communityIsAdmin={communityInfo?.isAdmin}
+        authorId={commentAuthorId}
+        beneficiaryId={beneficiaryMeta?.id}
       />
       </div>
       <CommentDetailsPopup

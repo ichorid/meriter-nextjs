@@ -1,8 +1,12 @@
+'use client';
+
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardBody } from '@/components/atoms';
 import { UserCard, VoteIndicator } from '@/components/molecules';
 import { Avatar, Badge, Button, Icon, Divider } from '@/components/atoms';
 import { formatDate } from '@/shared/lib/date';
+import { routes } from '@/lib/constants/routes';
 
 // Local Comment type definition
 interface Comment {
@@ -44,14 +48,27 @@ export const CommentThread: React.FC<CommentThreadProps> = ({
   level = 0,
   maxLevel = 5,
 }) => {
+  const router = useRouter();
   const canNest = level < maxLevel;
+  
+  const handleAvatarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (comment.authorId) {
+      router.push(routes.userProfile(comment.authorId));
+    }
+  };
   
   return (
     <div className="space-y-2">
       <Card compact>
         <CardBody className="p-3">
           <div className="flex gap-2 mb-2">
-            <Avatar src={comment.author?.avatarUrl} alt={comment.author?.displayName} size="sm" />
+            <Avatar 
+              src={comment.author?.avatarUrl} 
+              alt={comment.author?.displayName} 
+              size="sm"
+              onClick={comment.authorId ? handleAvatarClick : undefined}
+            />
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-medium text-sm">{comment.author?.displayName}</span>

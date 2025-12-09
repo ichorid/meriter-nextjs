@@ -8,7 +8,6 @@ import { LanguageSelector } from '@shared/components/language-selector';
 import { ThemeSelector } from '@shared/components/theme-selector';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSyncCommunities } from '@/hooks/api/useCommunities';
 import { isFakeDataMode } from '@/config';
 import { communitiesApiV1 } from '@/lib/api/v1';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -21,8 +20,6 @@ const SettingsPage = () => {
     const router = useRouter();
     const t = useTranslations('settings');
     const { user, isLoading, isAuthenticated } = useAuth();
-    const syncCommunitiesMutation = useSyncCommunities();
-    const [syncMessage, setSyncMessage] = useState('');
 
     const fakeDataMode = isFakeDataMode();
     const [creatingFakeCommunity, setCreatingFakeCommunity] = useState(false);
@@ -35,18 +32,6 @@ const SettingsPage = () => {
             router.push('/meriter/login?returnTo=' + encodeURIComponent(window.location.pathname));
         }
     }, [isAuthenticated, isLoading, router]);
-
-    const handleSyncCommunities = async () => {
-        setSyncMessage('');
-        try {
-            const result = await syncCommunitiesMutation.mutateAsync();
-            setSyncMessage(t('syncSuccess', { count: result.syncedCount }));
-            setTimeout(() => setSyncMessage(''), 3000);
-        } catch (error) {
-            console.error('Sync communities error:', error);
-            setSyncMessage(t('syncError'));
-        }
-    };
 
     const handleCreateFakeCommunity = async () => {
         setCreatingFakeCommunity(true);
@@ -123,27 +108,6 @@ const SettingsPage = () => {
                             {t('themeSection')}
                         </h2>
                         <ThemeSelector />
-                    </div>
-
-                    {/* Communities Section */}
-                    <div className="space-y-3">
-                        <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
-                            {t('communities')}
-                        </h2>
-                        <BrandButton
-                            variant="primary"
-                            size="md"
-                            onClick={handleSyncCommunities}
-                            isLoading={syncCommunitiesMutation.isPending}
-                            disabled={syncCommunitiesMutation.isPending}
-                        >
-                            {syncCommunitiesMutation.isPending ? t('syncing') : t('syncCommunities')}
-                        </BrandButton>
-                        {syncMessage && (
-                            <p className={`text-sm ${syncMessage.includes(t('syncError')) ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                                {syncMessage}
-                            </p>
-                        )}
                     </div>
 
                     {/* Invite Section */}

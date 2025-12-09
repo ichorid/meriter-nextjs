@@ -209,6 +209,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
             onCommentClick={handleCommentToggle}
             canVote={canVote}
             disabledReason={voteDisabledReason}
+            communityId={communityId}
+            slug={publication.slug}
           />
         )}
       </div>

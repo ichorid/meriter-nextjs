@@ -146,10 +146,12 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
 
     // Superadmin can create invites for leads or participants in any community
     // Lead can create invites for participants in their community
+    // Only fetch invites if user has admin/lead permissions
+    const canViewInvites = isSuperadmin || isUserLead;
 
     // Get community members and invites for settings page
     const { data: membersData, isLoading: membersLoading } = useCommunityMembers(isEditMode ? communityId : '');
-    const { data: communityInvites = [] } = useCommunityInvites(isEditMode ? communityId : '');
+    const { data: communityInvites = [] } = useCommunityInvites(isEditMode ? communityId : '', { enabled: canViewInvites });
     const { mutate: removeMember, isPending: isRemoving } = useRemoveCommunityMember(isEditMode ? communityId : '');
 
     // Create a map of userId -> invite status

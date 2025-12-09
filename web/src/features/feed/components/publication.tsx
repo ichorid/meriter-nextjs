@@ -255,6 +255,8 @@ export const Publication = ({
                 beneficiaryName={hasBeneficiary ? beneficiaryName : undefined}
                 beneficiaryAvatarUrl={hasBeneficiary ? beneficiaryPhotoUrl : undefined}
                 beneficiarySubtitle={hasBeneficiary ? beneficiaryUsername : undefined}
+                authorId={authorId}
+                beneficiaryId={beneficiaryId}
                 bottom={
                     (() => {
                         if (showWithdraw) {

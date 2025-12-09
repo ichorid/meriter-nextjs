@@ -7,6 +7,7 @@ export interface CommunityMember {
     displayName: string;
     avatarUrl?: string;
     globalRole: string;
+    role?: 'lead' | 'participant' | 'viewer' | 'superadmin';
 }
 
 export interface CommunityMembersResponse {

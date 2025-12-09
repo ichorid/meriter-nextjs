@@ -280,6 +280,9 @@ export const Comment: React.FC<CommentProps> = ({
                         if (imgElement) imgElement.src = fallbackUrl;
                     }
                 }}
+                communityId={communityId}
+                publicationSlug={inPublicationSlug}
+                commentId={_id}
                 bottom={
                     // Comments cannot have beneficiaries, so logic is simpler:
                     // - If author: show withdraw (if balance > 0) UNLESS special group
@@ -363,6 +366,8 @@ export const Comment: React.FC<CommentProps> = ({
                 }}
                 communityNeedsSetup={communityInfo?.needsSetup}
                 communityIsAdmin={communityInfo?.isAdmin}
+                authorId={commentAuthorId}
+                beneficiaryId={beneficiaryMeta?.id}
             />
             {showComments && (
                 <div className="transaction-comments">

@@ -16,6 +16,7 @@ import { PublicationService } from '../../domain/services/publication.service';
 import { VoteService } from '../../domain/services/vote.service';
 import { UserCommunityRoleService } from '../../domain/services/user-community-role.service';
 import { CommunityService } from '../../domain/services/community.service';
+import { WalletService } from '../../domain/services/wallet.service';
 import { UserGuard } from '../../user.guard';
 import { NotFoundError, ForbiddenError } from '../../common/exceptions/api.exceptions';
 import {
@@ -39,6 +40,7 @@ export class UsersController {
     private readonly voteService: VoteService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly communityService: CommunityService,
+    private readonly walletService: WalletService,
     @InjectConnection() private mongoose: Connection,
     private readonly userSettingsService: UserSettingsService,
   ) { }
@@ -70,11 +72,33 @@ export class UsersController {
     // Apply pagination to valid user IDs
     const paginatedUserIds = validUserIds.slice(skip, skip + pagination.limit);
     
-    // Get the corresponding user objects
-    const validUsers = paginatedUserIds.map((userId) => {
-      const entry = validUserEntries.find((e) => e!.userId === userId);
-      return entry!.user;
-    });
+    // Enrich users with total merits and lead communities
+    const enrichedUsers = await Promise.all(
+      paginatedUserIds.map(async (userId) => {
+        const entry = validUserEntries.find((e) => e!.userId === userId);
+        if (!entry) return null;
+
+        const user = entry.user;
+
+        // Get total merits (sum of all wallet balances)
+        const wallets = await this.walletService.getUserWallets(userId);
+        const totalMerits = wallets.reduce((sum, wallet) => sum + wallet.getBalance(), 0);
+
+        // Get communities where user is lead
+        const leadCommunities = await this.communityService.getUserManagedCommunities(userId);
+        const leadCommunityNames = leadCommunities.map((c) => c.name);
+
+        // Return enriched user object
+        return {
+          ...user,
+          totalMerits,
+          leadCommunities: leadCommunityNames,
+        };
+      }),
+    );
+
+    // Filter out any null values
+    const validUsers = enrichedUsers.filter((u) => u !== null);
 
     // Return in the format expected by frontend (with meta.pagination)
     return {
@@ -422,85 +446,6 @@ export class UsersController {
     };
   }
 
-  @Get('leads')
-  async getAllLeads(@Query() query: any) {
-    const pagination = PaginationHelper.parseOptions(query);
-    const skip = PaginationHelper.getSkip(pagination);
-
-    // Get all unique user IDs that have lead role in at least one community
-    const leadUserIds =
-      await this.userCommunityRoleService.getAllUsersByRole('lead');
-
-    // Get total count
-    const total = leadUserIds.length;
-
-    // Apply pagination
-    const paginatedUserIds = leadUserIds.slice(skip, skip + pagination.limit);
-
-    // Fetch user details for paginated user IDs
-    const users = await Promise.all(
-      paginatedUserIds.map(async (userId) => {
-        const user = await this.userService.getUser(userId);
-        return user ? this.mapUserToV1Format(user) : null;
-      }),
-    );
-
-    // Filter out null values (users that might have been deleted)
-    const validUsers = users.filter((u) => u !== null);
-
-    return PaginationHelper.createResult(validUsers, total, pagination);
-  }
-
-  @Get('leads')
-  async getAllLeads(@Query() query: any) {
-    const pagination = PaginationHelper.parseOptions(query);
-    const skip = PaginationHelper.getSkip(pagination);
-
-    // Get all unique user IDs that have lead role in at least one community
-    const leadUserIds =
-      await this.userCommunityRoleService.getAllUsersByRole('lead');
-
-    // Fetch user details for all lead user IDs first to filter out deleted users
-    const allUsers = await Promise.all(
-      leadUserIds.map(async (userId) => {
-        const user = await this.userService.getUser(userId);
-        return user ? { userId, user: this.mapUserToV1Format(user) } : null;
-      }),
-    );
-
-    // Filter out null values (users that might have been deleted)
-    const validUserEntries = allUsers.filter((entry) => entry !== null);
-    const validUserIds = validUserEntries.map((entry) => entry!.userId);
-    
-    // Get total count of valid users (excluding deleted)
-    const total = validUserIds.length;
-
-    // Apply pagination to valid user IDs
-    const paginatedUserIds = validUserIds.slice(skip, skip + pagination.limit);
-    
-    // Get the corresponding user objects
-    const validUsers = paginatedUserIds.map((userId) => {
-      const entry = validUserEntries.find((e) => e!.userId === userId);
-      return entry!.user;
-    });
-
-    // Return in the format expected by frontend (with meta.pagination)
-    return {
-      data: validUsers,
-      meta: {
-        pagination: {
-          page: pagination.page || 1,
-          pageSize: pagination.limit || 20,
-          total: total,
-          totalPages: Math.ceil(total / (pagination.limit || 20)),
-          hasNext: (pagination.page || 1) * (pagination.limit || 20) < total,
-          hasPrev: (pagination.page || 1) > 1,
-        },
-        timestamp: new Date().toISOString(),
-        requestId: '',
-      },
-    };
-  }
 
   @Get('search')
   async searchUsers(@Query('q') query: string, @Query('limit') limit: number) {
