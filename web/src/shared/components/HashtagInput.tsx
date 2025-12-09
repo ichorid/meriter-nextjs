@@ -106,7 +106,7 @@ export const HashtagInput = ({
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={defaultPlaceholder}={placeholder}
+                        placeholder={defaultPlaceholder}
                         fullWidth
                     />
                 )}

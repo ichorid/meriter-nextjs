@@ -16,6 +16,7 @@ import { authApiV1 } from '@/lib/api/v1';
 import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { useMe, useFakeAuth, useFakeSuperadminAuth, useLogout } from '@/hooks/api/useAuth';
 import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
 import { clearAuthStorage, redirectToLogin, clearJwtCookie } from '@/lib/utils/auth';

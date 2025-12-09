@@ -20,11 +20,11 @@ export const UpdateCard: React.FC<UpdateCardProps> = ({
   const handleClick = () => {
     if (update.communityId && update.publicationId) {
       // Navigate to publication, optionally with comment highlight
-      const path = `/meriter/communities/${update.communityId}/posts/${update.publicationId}`;
+      const basePath = `/meriter/communities/${update.communityId}?post=${update.publicationId}`;
       const params = update.targetType === 'comment' && update.targetId
-        ? `?highlight=${update.targetId}`
+        ? `&highlight=${update.targetId}`
         : '';
-      router.push(path + params);
+      router.push(basePath + params);
     }
   };
 
