@@ -182,6 +182,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     // Check if community is special (marathon-of-good or future-vision)
     const isSpecialCommunity = comms?.typeTag === 'marathon-of-good' || comms?.typeTag === 'future-vision';
+    const isMarathonOfGood = comms?.typeTag === 'marathon-of-good';
 
     // Get user's team community (community with typeTag: 'team' where user has a role)
     const userTeamCommunityId = useMemo(() => {
@@ -333,6 +334,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                             max={quotaMax}
                                             className="w-6 h-6 flex-shrink-0"
                                             asDiv={true}
+                                            variant={isMarathonOfGood ? 'golden' : 'default'}
                                         />
                                     </div>
                                 )}

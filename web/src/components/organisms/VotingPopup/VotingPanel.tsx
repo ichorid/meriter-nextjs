@@ -16,6 +16,8 @@ interface VotingPanelProps {
   maxPlus: number;
   maxMinus: number;
   quotaRemaining: number;
+  dailyQuota: number;
+  usedToday: number;
   error?: string;
   isViewer?: boolean;
 }
@@ -30,18 +32,22 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
   maxPlus,
   maxMinus,
   quotaRemaining,
+  dailyQuota,
+  usedToday,
   error,
   isViewer = false,
 }) => {
   const t = useTranslations('comments');
   const sliderRef = useRef<HTMLDivElement>(null);
-  const [sliderValuePosition, setSliderValuePosition] = useState<number>(0);
   const [voteDirection, setVoteDirection] = useState<'positive' | 'negative'>('positive');
+  const prevDirectionRef = useRef<'positive' | 'negative'>('positive');
+  
+  // Check if downvote is available
+  const canDownvote = maxMinus > 0 && !isViewer;
   
   // Calculate slider range - now only goes from 0 to max (right only)
   const max = voteDirection === 'positive' ? maxPlus : maxMinus;
   const min = 0;
-  const range = max - min;
 
   // Get absolute slider value (0 to max)
   const sliderValue = Math.abs(amount);
@@ -53,25 +59,24 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     setAmount(signedValue);
   };
 
-  // When direction changes, reset slider if needed
+  // When direction changes, always reset slider to zero
   useEffect(() => {
-    if (voteDirection === 'positive' && amount < 0) {
+    if (prevDirectionRef.current !== voteDirection) {
       setAmount(0);
-    } else if (voteDirection === 'negative' && amount > 0) {
+      prevDirectionRef.current = voteDirection;
+    }
+  }, [voteDirection, setAmount]);
+
+  // If downvote becomes unavailable and user is on negative, switch to positive
+  useEffect(() => {
+    if (!canDownvote && voteDirection === 'negative') {
+      setVoteDirection('positive');
       setAmount(0);
     }
-  }, [voteDirection, amount, setAmount]);
+  }, [canDownvote, voteDirection, setAmount]);
 
   const isPositive = voteDirection === 'positive';
   const absAmount = Math.abs(amount);
-
-  // Calculate position for value indicator based on slider value
-  useEffect(() => {
-    if (sliderRef.current && range > 0) {
-      const percentage = ((sliderValue - min) / range) * 100;
-      setSliderValuePosition(percentage);
-    }
-  }, [sliderValue, min, range]);
 
   // Calculate filled track width
   const filledTrackWidth = useMemo(() => {
@@ -130,29 +135,14 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         {t('sliderHint') || 'Move the slider to choose the number of votes you want to give.'}
       </p>
 
-      {/* Vote Direction Radio Buttons */}
-      <div className="flex gap-4" style={{ width: '304px' }}>
-        <label 
-          className={classList(
-            "flex items-center gap-2 cursor-pointer",
-            voteDirection === 'positive' ? "text-success" : "text-base-content opacity-60"
-          )}
-        >
-          <input
-            type="radio"
-            name="voteDirection"
-            value="positive"
-            checked={voteDirection === 'positive'}
-            onChange={(e) => setVoteDirection(e.target.value as 'positive' | 'negative')}
-            className="radio radio-success"
-            style={{ 
-              accentColor: voteDirection === 'positive' ? 'var(--success)' : undefined,
-            }}
-          />
+      {/* Vote Direction Toggle */}
+      {canDownvote && (
+        <div className="flex items-center justify-center gap-3" style={{ width: '304px' }}>
+          {/* Vote Up Label */}
           <span 
             className={classList(
               "font-medium",
-              voteDirection === 'positive' ? "text-success font-bold" : ""
+              voteDirection === 'positive' ? "text-success font-bold" : "text-base-content opacity-60"
             )}
             style={{ 
               fontSize: '15px',
@@ -161,28 +151,42 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
           >
             {t('voteUp') || 'Vote up'} 👍
           </span>
-        </label>
-        <label 
-          className={classList(
-            "flex items-center gap-2 cursor-pointer",
-            voteDirection === 'negative' ? "text-error" : "text-base-content opacity-60"
-          )}
-        >
-          <input
-            type="radio"
-            name="voteDirection"
-            value="negative"
-            checked={voteDirection === 'negative'}
-            onChange={(e) => setVoteDirection(e.target.value as 'positive' | 'negative')}
-            className="radio radio-error"
-            style={{ 
-              accentColor: voteDirection === 'negative' ? 'var(--error)' : undefined,
+          
+          {/* Toggle Switch */}
+          <label 
+            className="flex items-center cursor-pointer"
+            onClick={() => {
+              setVoteDirection(voteDirection === 'positive' ? 'negative' : 'positive');
             }}
-          />
+          >
+            <div 
+              className={classList(
+                "relative inline-flex items-center rounded-full transition-colors duration-200",
+                voteDirection === 'positive' ? "bg-success" : "bg-error"
+              )}
+              style={{
+                width: '56px',
+                height: '32px',
+              }}
+            >
+              <div
+                className={classList(
+                  "bg-white rounded-full shadow-md transform transition-transform duration-200",
+                  voteDirection === 'negative' ? "translate-x-6" : "translate-x-1"
+                )}
+                style={{
+                  width: '24px',
+                  height: '24px',
+                }}
+              />
+            </div>
+          </label>
+          
+          {/* Vote Down Label */}
           <span 
             className={classList(
               "font-medium",
-              voteDirection === 'negative' ? "text-error font-bold" : ""
+              voteDirection === 'negative' ? "text-error font-bold" : "text-base-content opacity-60"
             )}
             style={{ 
               fontSize: '15px',
@@ -191,7 +195,32 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
           >
             {t('voteDown') || 'Vote down'} 👎
           </span>
-        </label>
+        </div>
+      )}
+
+      {/* Vote Amount Display - Fixed Position */}
+      <div 
+        className={classList(
+          "flex items-center justify-center font-bold",
+          isPositive ? "text-success" : "text-error"
+        )}
+        style={{ 
+          width: '304px',
+          fontSize: '24px',
+          fontFamily: 'Roboto, sans-serif',
+          fontWeight: 700,
+          lineHeight: '120%',
+        }}
+      >
+        {isPositive ? (
+          <>
+            👍 {t('voteUp') || 'Vote up'}: +{absAmount}
+          </>
+        ) : (
+          <>
+            👎 {t('voteDown') || 'Vote down'}: -{absAmount}
+          </>
+        )}
       </div>
 
       {/* Limit / Quota Indicator */}
@@ -215,16 +244,60 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             height: '40px',
           }}
         >
-          {/* Filled indicator - shows used quota/merits */}
-          {absAmount > 0 && (
-            <div 
-              className="absolute left-0 top-0 bottom-0 bg-base-content opacity-30"
-              style={{ 
-                width: `${Math.min(100, ((absAmount / Math.max(quotaRemaining + absAmount, 1)) * 100))}%`,
-                zIndex: 2,
-              }}
-            />
-          )}
+          {/* Calculate percentages */}
+          {(() => {
+            const totalQuota = dailyQuota || (quotaRemaining + usedToday);
+            if (totalQuota <= 0) return null;
+            
+            const usedPercent = (usedToday / totalQuota) * 100;
+            // For upvotes, vote amount is part of quota; for downvotes, show it visually but it doesn't use quota
+            const votePercent = absAmount > 0 ? (absAmount / totalQuota) * 100 : 0;
+            const usedWidth = Math.min(100, usedPercent);
+            // For upvotes, vote width is limited by remaining quota; for downvotes, show it after used quota
+            const maxVoteWidth = isPositive 
+              ? Math.min(100 - usedWidth, (quotaRemaining / totalQuota) * 100)
+              : Math.min(100 - usedWidth, votePercent);
+            const voteWidth = absAmount > 0 ? Math.min(maxVoteWidth, votePercent) : 0;
+            
+            return (
+              <>
+                {/* Already used quota - striped pattern */}
+                {usedToday > 0 && (
+                  <div 
+                    className="absolute left-0 top-0 bottom-0 opacity-40"
+                    style={{ 
+                      width: `${usedWidth}%`,
+                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,0.1) 4px, rgba(0,0,0,0.1) 8px)',
+                      backgroundColor: 'var(--base-content)',
+                      zIndex: 1,
+                    }}
+                  />
+                )}
+                
+                {/* Current vote amount - colored by direction */}
+                {absAmount > 0 && isPositive && (
+                  <div 
+                    className="absolute top-0 bottom-0 bg-success"
+                    style={{ 
+                      left: `${usedWidth}%`,
+                      width: `${voteWidth}%`,
+                      zIndex: 2,
+                    }}
+                  />
+                )}
+                {absAmount > 0 && !isPositive && (
+                  <div 
+                    className="absolute top-0 bottom-0 bg-error"
+                    style={{ 
+                      left: `${usedWidth}%`,
+                      width: `${voteWidth}%`,
+                      zIndex: 2,
+                    }}
+                  />
+                )}
+              </>
+            );
+          })()}
           
           <span 
             className="relative z-10 text-base-content"
@@ -242,34 +315,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
       </div>
 
       {/* Slider Container */}
-      <div className="relative" style={{ width: '304px', height: '58px' }}>
-        {/* Value Indicator - positioned above slider with direction and color */}
-        <div 
-          className={classList(
-            "absolute flex items-center font-bold whitespace-nowrap",
-            isPositive ? "text-success" : "text-error"
-          )}
-          style={{ 
-            left: `${sliderValuePosition}%`,
-            top: '0px',
-            transform: 'translateX(-50%)',
-            fontSize: '20px',
-            fontFamily: 'Roboto, sans-serif',
-            fontWeight: 700,
-            lineHeight: '120%',
-          }}
-        >
-          {isPositive ? (
-            <>
-              👍 {t('voteUp') || 'Vote up'}: +{absAmount}
-            </>
-          ) : (
-            <>
-              👎 {t('voteDown') || 'Vote down'}: -{absAmount}
-            </>
-          )}
-        </div>
-
+      <div className="relative" style={{ width: '304px', height: '24px' }}>
         {/* Slider */}
         <div 
           ref={sliderRef}
@@ -277,7 +323,6 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
           style={{ 
             width: '304px',
             height: '24px',
-            marginTop: '29px',
           }}
         >
           {/* Custom track visualization */}

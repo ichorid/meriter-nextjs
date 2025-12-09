@@ -93,6 +93,9 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     return dailyQuota > 0 && quotaRecipients?.includes(userRole as any);
   }, [community?.meritRules, userRole]);
 
+  // Check if it's marathon-of-good
+  const isMarathonOfGood = community?.typeTag === 'marathon-of-good';
+
   // Fetch quota data for this community
   const { data: quotaData } = useUserQuota(communityId);
   
@@ -196,6 +199,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                         max={dailyQuota}
                         className="w-5 h-5 flex-shrink-0"
                         asDiv={true}
+                        variant={isMarathonOfGood ? 'golden' : 'default'}
                       />
                     )}
                   </div>
@@ -270,6 +274,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                 max={dailyQuota}
                 className="w-4 h-4 flex-shrink-0"
                 asDiv={true}
+                variant={isMarathonOfGood ? 'golden' : 'default'}
               />
             )}
           </div>

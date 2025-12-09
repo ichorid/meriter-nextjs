@@ -81,6 +81,11 @@ export const BottomNavigation = () => {
     const { data: communityForIcon } = useCommunity(communityIdForIcon || '');
     const currencyIconUrl = communityForIcon?.settings?.iconUrl;
     
+    // Determine if we should show golden variant (marathon-of-good)
+    // If not in community context, we show marathon quota by default -> golden
+    // If in community context, we check if it is marathon-of-good -> golden
+    const isMarathonQuota = !isInCommunityContext || communityForIcon?.typeTag === 'marathon-of-good';
+
     // Handle click on WalletChip to navigate appropriately
     const handleWalletChipClick = () => {
         if (isInCommunityContext && communityContextId) {
@@ -171,6 +176,7 @@ export const BottomNavigation = () => {
                         quotaMax={quotaMax}
                         showRing={true}
                         flashTrigger={flashTrigger}
+                        variant={isMarathonQuota ? 'golden' : 'default'}
                     />
                 )}
             </div>

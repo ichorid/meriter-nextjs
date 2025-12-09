@@ -63,6 +63,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   const { quotasMap } = useCommunityQuotas(targetCommunityId ? [targetCommunityId] : []);
   const quotaData = targetCommunityId ? quotasMap.get(targetCommunityId) : null;
   const quotaRemaining = quotaData?.remainingToday ?? 0;
+  const dailyQuota = quotaData?.dailyQuota ?? 0;
+  const usedToday = quotaData?.usedToday ?? 0;
   const freePlus = quotaRemaining;
   const freeMinus = 0; // Downvotes typically don't have free quota
 
@@ -257,6 +259,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           maxPlus={maxPlus}
           maxMinus={calculatedMaxMinus}
           quotaRemaining={quotaRemaining}
+          dailyQuota={dailyQuota}
+          usedToday={usedToday}
           error={formData.error}
           isViewer={isViewer}
         />

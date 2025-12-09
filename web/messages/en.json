@@ -345,6 +345,7 @@
         "voteDown": "Vote down",
         "close": "close[x]",
         "downvoteRequiresBalance": "Negative voting is only possible from Balance. ",
+        "downvoteViewerReason": "Viewers can only vote using daily quota. Downvotes require wallet merits.",
         "withdrawToBalance": "Withdraw points from publications to your Balance",
         "insufficientPoints": "Insufficient points. ",
         "addToBalance": "Add them to your Balance",
