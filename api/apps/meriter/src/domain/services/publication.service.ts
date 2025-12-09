@@ -319,10 +319,8 @@ export class PublicationService {
       throw new NotFoundException('Publication not found');
     }
 
-    const userIdObj = UserId.fromString(userId);
-    if (!publication.canBeDeletedBy(userIdObj)) {
-      throw new Error('Not authorized to delete this publication');
-    }
+    // Authorization is handled by PermissionGuard via PermissionService.canDeletePublication()
+    // No need for redundant check here
 
     await this.publicationModel.deleteOne({ id: publicationId });
     return true;

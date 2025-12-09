@@ -224,10 +224,8 @@ export class CommentService {
       throw new NotFoundException('Comment not found');
     }
 
-    const userIdObj = UserId.fromString(userId);
-    if (!comment.canBeDeletedBy(userIdObj)) {
-      throw new Error('Not authorized to delete this comment');
-    }
+    // Authorization is handled by PermissionGuard via PermissionService.canDeleteComment()
+    // No need for redundant check here
 
     await this.commentModel.deleteOne({ id: commentId });
     return true;
