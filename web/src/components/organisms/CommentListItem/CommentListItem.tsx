@@ -134,7 +134,7 @@ export const CommentListItem: React.FC<CommentListItemProps> = ({
               {/* Navigation hint */}
               {communityId && publicationSlug && (
                 <div className="mt-2 text-xs text-primary">
-                  {t('viewInPublication') || 'View in publication →'}
+                  {t('viewInPublication')}
                 </div>
               )}
               {!publicationSlug && targetType === 'publication' && (

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { ChevronDown } from 'lucide-react';
 
 interface SelectOption {
@@ -23,12 +24,14 @@ export const BrandSelect: React.FC<BrandSelectProps> = ({
     value,
     onChange,
     options,
-    placeholder = 'Select an option',
+    placeholder,
     disabled = false,
     error,
     fullWidth = false,
     className = '',
 }) => {
+    const tCommon = useTranslations('common');
+    const defaultPlaceholder = placeholder ?? tCommon('selectOption');
     const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         if (onChange) {
             onChange(e.target.value);
@@ -54,9 +57,9 @@ export const BrandSelect: React.FC<BrandSelectProps> = ({
                     }
                 `}
             >
-                {placeholder && (
+                {defaultPlaceholder && (
                     <option value="" disabled>
-                        {placeholder}
+                        {defaultPlaceholder}
                     </option>
                 )}
                 {options.map((option) => (

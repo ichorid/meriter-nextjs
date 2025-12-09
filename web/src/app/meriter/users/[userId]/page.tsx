@@ -58,7 +58,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
   return (
     <AdaptiveLayout>
       <div className="flex flex-col h-full bg-base-100 overflow-hidden">
-        <PageHeader title="User Profile" showBack={true} />
+        <PageHeader title={tCommon('userProfile')} showBack={true} />
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6">
           {/* Profile Header */}

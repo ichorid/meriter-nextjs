@@ -304,7 +304,7 @@ export default function NotificationsPage() {
                               markAsRead.mutate(notification.id);
                             }}
                             className="p-1 hover:bg-base-200 rounded-full transition-colors"
-                            aria-label="Mark as read"
+                            aria-label={t('ariaLabels.markAsRead')}
                           >
                             <Check size={16} className="text-base-content/60" />
                           </button>

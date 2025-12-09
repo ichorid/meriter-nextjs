@@ -118,7 +118,7 @@ export const HomeFabMenu: React.FC = () => {
                                 >
                                     <FileText size={18} className="text-brand-primary" />
                                     <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">
-                                        {tCommunities('createPost') || 'Create Post'}
+                                        {tCommunities('createPost')}
                                     </span>
                                 </button>
                                 <button
@@ -127,7 +127,7 @@ export const HomeFabMenu: React.FC = () => {
                                 >
                                     <BarChart2 size={18} className="text-brand-primary" />
                                     <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">
-                                        {tCommunities('createPoll') || 'Create Poll'}
+                                        {tCommunities('createPoll')}
                                     </span>
                                 </button>
                             </>

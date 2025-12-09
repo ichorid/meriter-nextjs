@@ -135,7 +135,7 @@ const ProfileTopBar: React.FC = () => {
             variant="ghost"
             size="sm"
             onClick={handleBackClick}
-            aria-label="Back to profile"
+            aria-label={tCommon('backToProfile')}
             className="px-2"
           >
             <ArrowLeft size={18} />
@@ -146,7 +146,7 @@ const ProfileTopBar: React.FC = () => {
             variant="ghost"
             size="sm"
             onClick={() => setShowSearchModal(true)}
-            aria-label="Search"
+            aria-label={tCommon('search')}
             className="px-2"
           >
             <Search size={18} />
@@ -198,7 +198,7 @@ const ProfileTopBar: React.FC = () => {
                   type="button"
                   onClick={handleSearchClear}
                   className="text-brand-text-muted hover:text-brand-text-primary transition-colors"
-                  aria-label="Clear search"
+                  aria-label={tCommon('clearSearch')}
                 >
                   <X size={18} />
                 </button>

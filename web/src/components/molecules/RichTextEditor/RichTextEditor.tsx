@@ -16,6 +16,8 @@ interface RichTextEditorProps {
 }
 
 const MenuBar = ({ editor }: { editor: any }) => {
+    const tProfile = useTranslations('profile');
+    
     if (!editor) {
         return null;
     }
@@ -80,7 +82,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
                     "p-1.5 rounded hover:bg-base-300 transition-colors",
                     editor.isActive('bulletList') ? 'bg-base-300 text-brand-primary' : 'text-base-content/70'
                 )}
-                title="Bullet List"
+                title={tProfile('bulletList')}
             >
                 <List size={18} />
             </button>
@@ -90,7 +92,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
                     "p-1.5 rounded hover:bg-base-300 transition-colors",
                     editor.isActive('orderedList') ? 'bg-base-300 text-brand-primary' : 'text-base-content/70'
                 )}
-                title="Ordered List"
+                title={tProfile('orderedList')}
             >
                 <ListOrdered size={18} />
             </button>

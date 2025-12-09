@@ -49,10 +49,9 @@ export function ProfilePublicationsTab({
   if (publications.length === 0) {
     return (
       <EmptyState
-        title={t('empty.publications.title') || 'No Publications'}
+        title={t('empty.publications.title')}
         message={
-          t('empty.publications.message') ||
-          "You haven't created any publications yet."
+          t('empty.publications.message')
         }
       />
     );

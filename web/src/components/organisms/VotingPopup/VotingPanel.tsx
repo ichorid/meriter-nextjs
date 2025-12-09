@@ -118,7 +118,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
           fontWeight: 700,
         }}
       >
-        {t('voteTitle') || 'Voting'}
+        {t('voteTitle')}
       </h2>
 
       {/* Description */}
@@ -132,7 +132,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
           fontWeight: 400,
         }}
       >
-        {t('sliderHint') || 'Move the slider to choose the number of votes you want to give.'}
+        {t('sliderHint')}
       </p>
 
       {/* Vote Direction Toggle */}
@@ -149,7 +149,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
               fontFamily: 'Roboto, sans-serif',
             }}
           >
-            {t('voteUp') || 'Vote up'} 👍
+            {t('voteUp')} 👍
           </span>
           
           {/* Toggle Switch */}
@@ -193,7 +193,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
               fontFamily: 'Roboto, sans-serif',
             }}
           >
-            {t('voteDown') || 'Vote down'} 👎
+            {t('voteDown')} 👎
           </span>
         </div>
       )}
@@ -214,11 +214,11 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
       >
         {isPositive ? (
           <>
-            👍 {t('voteUp') || 'Vote up'}: +{absAmount}
+            👍 {t('voteUp')}: +{absAmount}
           </>
         ) : (
           <>
-            👎 {t('voteDown') || 'Vote down'}: -{absAmount}
+            👎 {t('voteDown')}: -{absAmount}
           </>
         )}
       </div>
@@ -235,7 +235,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             letterSpacing: '0.374px',
           }}
         >
-          {t('dailyLimit') || 'Daily limit'}
+          {t('dailyLimit')}
         </div>
         <div 
           className="relative flex items-center justify-center overflow-hidden bg-base-200"
@@ -309,7 +309,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
               letterSpacing: '0.374px',
             }}
           >
-            {t('available') || 'Available'} {quotaRemaining}
+            {t('available')} {quotaRemaining}
           </span>
         </div>
       </div>
@@ -376,7 +376,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             letterSpacing: '0.374px',
           }}
         >
-          {t('explanationDetails') || 'Explanations, details and descriptions'}
+          {t('explanationDetails')}
         </label>
         <div 
           className="bg-base-100 border border-base-content rounded-[8px]"
@@ -397,7 +397,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
               fontWeight: 400,
               lineHeight: '120%',
             }}
-            placeholder={t('textField') || 'Text field'}
+            placeholder={t('textField')}
           />
         </div>
       </div>
@@ -429,7 +429,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             fontWeight: 400,
           }}
         >
-          {t('submit') || 'Submit'}
+          {t('submit')}
         </span>
       </button>
     </div>

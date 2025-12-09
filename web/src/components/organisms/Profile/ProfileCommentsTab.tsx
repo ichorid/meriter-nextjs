@@ -67,9 +67,9 @@ export function ProfileCommentsTab({
   if (comments.length === 0) {
     return (
       <EmptyState
-        title={t('empty.comments.title') || 'No Comments'}
+        title={t('empty.comments.title')}
         message={
-          t('empty.comments.message') || "You haven't written any comments yet."
+          t('empty.comments.message')
         }
       />
     );

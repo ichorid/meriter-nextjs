@@ -33,6 +33,7 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
   className = ''
 }) => {
   const t = useTranslations('shared');
+  const tCommon = useTranslations('common');
   const router = useRouter();
 
   const handleSettingsClick = (e: React.MouseEvent) => {
@@ -76,8 +77,8 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
               size="sm"
               onClick={handleSettingsClick}
               className="btn-circle btn-xs opacity-60 hover:opacity-100"
-              aria-label="Settings"
-              title="Settings"
+              aria-label={tCommon('settings')}
+              title={tCommon('settings')}
             >
               <Settings className="w-3 h-3" />
             </Button>

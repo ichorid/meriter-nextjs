@@ -49,10 +49,9 @@ export function ProfileProjectsTab({
   if (projects.length === 0) {
     return (
       <EmptyState
-        title={t('empty.projects.title') || 'No Projects'}
+        title={t('empty.projects.title')}
         message={
-          t('empty.projects.message') ||
-          "You haven't created any projects yet."
+          t('empty.projects.message')
         }
       />
     );

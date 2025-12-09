@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, KeyboardEvent } from 'react';
+import { useTranslations } from 'next-intl';
 import { BrandInput } from '@/components/ui/BrandInput';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { X, Hash } from 'lucide-react';
@@ -22,10 +23,12 @@ export const HashtagInput = ({
     value = [],
     onChange,
     label = 'Hashtags',
-    placeholder = 'Type hashtag and press Enter',
+    placeholder,
     helperText,
     maxTags = 10,
 }: HashtagInputProps) => {
+    const tCommon = useTranslations('common');
+    const defaultPlaceholder = placeholder ?? tCommon('hashtagPlaceholder');
     const [inputValue, setInputValue] = useState('');
 
     const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -103,7 +106,7 @@ export const HashtagInput = ({
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={placeholder}
+                        placeholder={defaultPlaceholder}={placeholder}
                         fullWidth
                     />
                 )}

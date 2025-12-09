@@ -58,6 +58,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const fakeAuthMutation = useFakeAuth();
   const fakeSuperadminAuthMutation = useFakeSuperadminAuth();
   const logoutMutation = useLogout();
+  const tCommon = useTranslations('common');
 
   const { handleDeepLink } = useDeepLinkHandler(router as unknown as Router, null, undefined);
 
@@ -123,7 +124,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       clearAuthStorage();
       redirectToLogin();
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Logout failed';
+      const message = error instanceof Error ? error.message : tCommon('logoutFailed');
       setAuthError(message);
 
       // Still clear everything and redirect on error

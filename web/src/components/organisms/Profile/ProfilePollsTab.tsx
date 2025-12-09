@@ -49,9 +49,9 @@ export function ProfilePollsTab({
   if (polls.length === 0) {
     return (
       <EmptyState
-        title={t('empty.polls.title') || 'No Polls'}
+        title={t('empty.polls.title')}
         message={
-          t('empty.polls.message') || "You haven't created any polls yet."
+          t('empty.polls.message')
         }
       />
     );

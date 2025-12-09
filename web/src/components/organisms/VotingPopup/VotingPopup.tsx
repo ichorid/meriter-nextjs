@@ -161,7 +161,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
     const delta = formData.delta;
     if (delta === 0) {
-      updateVotingFormData({ error: t('pleaseAdjustSlider') || 'Please adjust the slider to vote' });
+      updateVotingFormData({ error: t('pleaseAdjustSlider') });
       return;
     }
 
@@ -169,7 +169,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
     // Check if comment is required and provided (only for positive votes)
     if (isUpvote && !formData.comment?.trim()) {
-      updateVotingFormData({ error: t('reasonRequired') || 'A reason for your vote is required' });
+      updateVotingFormData({ error: t('reasonRequired') });
       return;
     }
     const absoluteAmount = Math.abs(delta);
@@ -233,7 +233,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       handleClose();
     } catch (err: unknown) {
       // Mutation hooks handle rollback automatically via onError
-      const message = err instanceof Error ? err.message : t('errorCommenting') || 'Failed to submit';
+      const message = err instanceof Error ? err.message : t('errorCommenting');
       updateVotingFormData({ error: message });
     }
   };

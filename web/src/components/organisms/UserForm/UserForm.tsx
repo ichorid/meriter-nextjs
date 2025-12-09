@@ -50,6 +50,7 @@ export function UserForm({
     formRef,
 }: UserFormProps) {
     const t = useTranslations("profile");
+    const tCommon = useTranslations("common");
 
     const [displayName, setDisplayName] = useState(
         initialData?.displayName || ""
@@ -215,7 +216,7 @@ export function UserForm({
                                     onChange={(e) =>
                                         setAvatarUrl(e.target.value)
                                     }
-                                    placeholder="https://..."
+                                    placeholder={tCommon('urlPlaceholder')}
                                 />
                             </BrandFormControl>
                         </div>

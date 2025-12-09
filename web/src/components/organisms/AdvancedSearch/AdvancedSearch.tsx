@@ -40,6 +40,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
 }) => {
   const router = useRouter();
   const t = useTranslations('search');
+  const tCommon = useTranslations('common');
   const [query, setQuery] = useState(initialQuery);
   const [contentType, setContentType] = useState<SearchContentType>('all');
   const [showFilters, setShowFilters] = useState(false);
@@ -191,7 +192,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               <button
                 onClick={handleClear}
                 className="p-1 hover:bg-base-200 rounded-full transition-colors"
-                aria-label="Clear"
+                aria-label={tCommon('clear')}
               >
                 <X size={16} />
               </button>
@@ -244,7 +245,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
           {/* Content Type */}
           <div>
             <label className="block text-sm font-medium text-brand-text-primary mb-2">
-              {t('contentType') || 'Content Type'}
+              {t('contentType')}
             </label>
             <BrandSelect
               value={contentType}
@@ -260,7 +261,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
           {/* Tags */}
           <div>
             <label className="block text-sm font-medium text-brand-text-primary mb-2">
-              {t('tags') || 'Tags'}
+              {t('tags')}
             </label>
             <div className="flex gap-2 mb-2">
               <BrandInput
@@ -272,12 +273,12 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                     handleAddTag();
                   }
                 }}
-                placeholder={t('tagsPlaceholder') || 'Add tag...'}
+                placeholder={t('tagsPlaceholder')}
                 leftIcon={<Hash size={16} />}
                 className="flex-1"
               />
               <BrandButton onClick={handleAddTag} className="w-fit">
-                {t('add') || 'Add'}
+                {t('add')}
               </BrandButton>
             </div>
             {tags.length > 0 && (
@@ -304,7 +305,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-brand-text-primary mb-2">
-                {t('dateFrom') || 'From'}
+                {t('dateFrom')}
               </label>
               <BrandInput
                 type="date"
@@ -315,7 +316,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
             </div>
             <div>
               <label className="block text-sm font-medium text-brand-text-primary mb-2">
-                {t('dateTo') || 'To'}
+                {t('dateTo')}
               </label>
               <BrandInput
                 type="date"

@@ -198,7 +198,7 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
         {userRoleDisplay && (
           <div className="mt-5 pt-4 border-t border-base-content/5">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-base-content/40">{t('role') || 'Role'}</span>
+              <span className="text-xs text-base-content/40">{t('role')}</span>
               <Badge variant={userRoleDisplay.variant} size="sm">
                 {userRoleDisplay.label}
               </Badge>

@@ -11,12 +11,14 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useLogout } from '@/hooks/api/useAuth';
 import { clearAuthStorage, redirectToLogin } from '@/lib/utils/auth';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { Loader2 } from 'lucide-react';
 
 export function LogoutButton() {
+  const tCommon = useTranslations('common');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const logoutMutation = useLogout();
 
@@ -45,7 +47,7 @@ export function LogoutButton() {
         isLoading={isLoggingOut}
         leftIcon={isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}
       >
-        {isLoggingOut ? 'Logging out...' : 'Logout'}
+        {isLoggingOut ? tCommon('loggingOut') : tCommon('logout')}
       </BrandButton>
     </div>
   );

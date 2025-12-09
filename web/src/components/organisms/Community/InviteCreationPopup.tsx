@@ -135,7 +135,7 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
 
     // Format date for display
     const formatDate = (dateString?: string) => {
-        if (!dateString) return t('noExpiration') || 'No expiration';
+        if (!dateString) return t('noExpiration');
         try {
             return new Date(dateString).toLocaleDateString();
         } catch {
@@ -153,8 +153,8 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
     const getCommunityName = (inviteCommunityId?: string) => {
         if (!inviteCommunityId) {
             return inviteType === 'superadmin-to-lead'
-                ? (t('autoAssigned') || 'Auto-assigned (Marathon-of-Good & Future-Vision)')
-                : (t('notSet') || 'Not set');
+                ? t('autoAssigned')
+                : t('notSet');
         }
         if (isSuperadmin && communitiesData?.data) {
             const comm = communitiesData.data.find(c => c.id === inviteCommunityId);
@@ -191,7 +191,7 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
                         <UserPlus size={20} />
                     </div>
                     <h2 className="text-lg font-bold text-brand-text-primary">
-                        {t('title') || 'Invite Generation'}
+                        {t('title')}
                     </h2>
                 </div>
 

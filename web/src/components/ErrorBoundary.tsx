@@ -2,6 +2,7 @@
 
 import React, { Component, ReactNode } from 'react';
 import { ErrorDisplay } from './atoms/ErrorDisplay';
+import { ErrorBoundaryContent } from './ErrorBoundaryContent';
 
 // Use plain HTML button instead of Gluestack UI Button to avoid SSR issues
 const Button = ({ variant, onClick, children }: { variant?: string; onClick?: () => void; children: ReactNode }) => {
@@ -44,29 +45,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return this.props.fallback || (
-        <ErrorDisplay
-          message={this.state.error?.message || 'An unexpected error occurred'}
-          variant="card"
-          fullScreen
-          error={this.state.error || undefined}
-          showDetails={!!this.state.error}
-          actions={
-            <div className="flex flex-col sm:flex-row gap-3 w-full">
-              <Button 
-                variant="primary" 
-                onClick={() => window.location.href = '/meriter/profile'}
-              >
-                Go Home
-              </Button>
-              <Button 
-                variant="secondary" 
-                onClick={() => window.location.reload()}
-              >
-                Reload Page
-              </Button>
-            </div>
-          }
-        />
+        <ErrorBoundaryContent error={this.state.error} />
       );
     }
 

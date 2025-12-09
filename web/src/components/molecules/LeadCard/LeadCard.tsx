@@ -103,7 +103,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
                 {/* Role text (only show if role chip is not shown) */}
                 {!showRoleChip && (
                     <div className="text-xs leading-[120%] text-base-content/60">
-                        {t('lead') || 'Lead'}
+                        {t('lead')}
                     </div>
                 )}
                 

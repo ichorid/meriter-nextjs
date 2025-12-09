@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { VerticalSidebar, ContextTopBar, BottomNavigation } from '@/components/organisms';
 import { CommentsColumn } from '@/components/organisms/CommentsColumn';
 import { VotingPopup } from '@/components/organisms/VotingPopup';
@@ -51,6 +52,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   const searchParams = useSearchParams();
   const selectedPostSlug = searchParams?.get('post');
   const showComments = !!selectedPostSlug;
+  const tCommon = useTranslations('common');
 
   // Comments column shows on desktop (lg) only
   const showCommentsColumn = showComments && selectedPostSlug && communityId;
@@ -335,7 +337,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
         {sidebarExpandedDesktop && isDesktop && (
           <div
             role="separator"
-            aria-label="Resize sidebar"
+            aria-label={tCommon('resizeSidebar')}
             aria-orientation="vertical"
             className={`absolute top-0 bottom-0 right-0 z-30 cursor-col-resize select-none transition-colors ${
               isDraggingLeftSidebar
@@ -358,7 +360,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
         {isDesktop && (
           <div
             role="separator"
-            aria-label="Resize sidebar"
+            aria-label={tCommon('resizeSidebar')}
             aria-orientation="vertical"
             className={`absolute top-0 bottom-0 right-0 z-30 cursor-col-resize select-none transition-colors ${
               isDraggingLeftSidebar
@@ -409,7 +411,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
           {showCommentsColumn && isDesktop && (
             <div
               role="separator"
-              aria-label="Resize comments column"
+              aria-label={tCommon('resizeCommentsColumn')}
               aria-orientation="vertical"
               className={`hidden lg:block absolute top-0 bottom-0 z-30 cursor-col-resize select-none transition-colors ${isDragging
                 ? 'bg-base-300/80'

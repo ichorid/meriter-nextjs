@@ -75,7 +75,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                             size="sm"
                             className="mr-2 -ml-2 px-2"
                             onClick={handleBack}
-                            aria-label="Go back"
+                            aria-label={t('goBack')}
                         >
                             <ArrowLeft size={20} className="text-base-content" />
                         </BrandButton>
@@ -125,7 +125,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                                     type="button"
                                     onClick={handleSearchClear}
                                     className="text-brand-text-muted hover:text-brand-text-primary transition-colors"
-                                    aria-label="Clear search"
+                                    aria-label={t('clearSearch')}
                                 >
                                     <X size={18} />
                                 </button>

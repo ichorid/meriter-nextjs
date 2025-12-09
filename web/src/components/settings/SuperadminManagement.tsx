@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 
 export const SuperadminManagement = () => {
     const tSearch = useTranslations('search');
+    const tSettings = useTranslations('settings');
     const [query, setQuery] = useState('');
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -58,7 +59,7 @@ export const SuperadminManagement = () => {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={tSearch('results.searchUsersPlaceholder')}
-                label="Search Users"
+                label={tSettings('searchUsers')}
             />
 
             {isLoading && (
@@ -84,7 +85,7 @@ export const SuperadminManagement = () => {
                             variant={user.globalRole === 'superadmin' ? 'outline' : 'primary'}
                             onClick={() => handleToggleRole(user)}
                         >
-                            {user.globalRole === 'superadmin' ? 'Remove Admin' : 'Make Admin'}
+                            {user.globalRole === 'superadmin' ? tSettings('removeAdmin') : tSettings('makeAdmin')}
                         </BrandButton>
                     </div>
                 ))}

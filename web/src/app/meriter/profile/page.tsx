@@ -19,6 +19,7 @@ import { Loader2, Settings } from 'lucide-react';
 
 export default function ProfilePage() {
   const t = useTranslations('profile');
+  const tCommon = useTranslations('common');
   const { user, isLoading: authLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
 
@@ -76,7 +77,7 @@ export default function ProfilePage() {
               variant="ghost"
               size="sm"
               className="px-2"
-              aria-label="Settings"
+                aria-label={tCommon('ariaLabels.settings')}
             >
               <Settings size={18} className="text-base-content/70" />
             </BrandButton>

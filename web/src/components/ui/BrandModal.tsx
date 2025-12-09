@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { BrandButton } from './BrandButton';
 
 interface BrandModalProps {
@@ -27,6 +28,7 @@ export const BrandModal: React.FC<BrandModalProps> = ({
 }) => {
     const modalRef = useRef<HTMLDivElement>(null);
     const previousActiveElement = useRef<HTMLElement | null>(null);
+    const tCommon = useTranslations('common');
 
     // Handle ESC key
     useEffect(() => {
@@ -105,7 +107,7 @@ export const BrandModal: React.FC<BrandModalProps> = ({
                                 size="sm"
                                 onClick={onClose}
                                 className="ml-auto -mr-2"
-                                aria-label="Close modal"
+                                aria-label={tCommon('closeModal')}
                             >
                                 <X size={20} />
                             </BrandButton>

@@ -16,6 +16,8 @@ import type { EnrichedLead } from '@/types/lead';
 
 const AboutPage = () => {
     const t = useTranslations('common');
+    const tCommon = useTranslations('common');
+    const tAbout = useTranslations('about');
     const tSearch = useTranslations('search');
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState('');
@@ -101,7 +103,7 @@ const AboutPage = () => {
                                     <LeadCard
                                         key={lead.id}
                                         id={lead.id}
-                                        displayName={lead.displayName || lead.username || 'Unknown User'}
+                                        displayName={lead.displayName || lead.username || tCommon('unknownUser')}
                                         username={lead.username}
                                         avatarUrl={lead.avatarUrl}
                                         totalMerits={lead.totalMerits}
@@ -115,10 +117,10 @@ const AboutPage = () => {
                             <div className="text-center py-12 text-base-content/60">
                                 <Users className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
                                 <p className="font-medium">
-                                    {searchQuery ? 'No leads found matching your search' : 'No leads found'}
+                                    {searchQuery ? tAbout('noLeadsMatchingSearch') : tAbout('noLeadsFound')}
                                 </p>
                                 <p className="text-sm mt-1">
-                                    {searchQuery ? 'Try a different search term' : 'No leads available'}
+                                    {searchQuery ? tAbout('tryDifferentSearchTerm') : tAbout('noLeadsAvailable')}
                                 </p>
                             </div>
                         )}

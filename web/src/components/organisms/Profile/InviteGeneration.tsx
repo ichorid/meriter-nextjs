@@ -74,7 +74,7 @@ export function InviteGeneration() {
   const handleGenerateInvite = async () => {
     // For lead, communityId is required (auto-selected from their team)
     if (!isSuperadmin && !selectedCommunityId) {
-      addToast(t('selectCommunity') || 'Please select a community', 'warning');
+      addToast(t('selectCommunity'), 'warning');
       return;
     }
 
@@ -94,10 +94,10 @@ export function InviteGeneration() {
       setInviteCopied(false);
       // Reset form
       setInviteExpiresInDays(30);
-      addToast(t('inviteGenerated') || 'Invite generated successfully', 'success');
+      addToast(t('inviteGenerated'), 'success');
     } catch (error) {
       console.error('Failed to create invite:', error);
-      addToast(t('inviteError') || 'Failed to generate invite', 'error');
+      addToast(t('inviteError'), 'error');
     }
   };
 
@@ -110,7 +110,7 @@ export function InviteGeneration() {
 
   // Format date for display
   const formatDate = (dateString?: string) => {
-    if (!dateString) return t('noExpiration') || 'No expiration';
+    if (!dateString) return t('noExpiration');
     try {
       return new Date(dateString).toLocaleDateString();
     } catch {
@@ -129,8 +129,8 @@ export function InviteGeneration() {
     if (!communityId) {
       // For superadmin-to-lead invites, communityId is not set (auto-assigned)
       return inviteType === 'superadmin-to-lead' 
-        ? (t('autoAssigned') || 'Auto-assigned (Marathon-of-Good & Future-Vision)')
-        : (t('notSet') || 'Not set');
+        ? t('autoAssigned')
+        : t('notSet');
     }
     if (isSuperadmin && communitiesData?.data) {
       const comm = communitiesData.data.find(c => c.id === communityId);
@@ -153,7 +153,7 @@ export function InviteGeneration() {
           <UserPlus size={24} />
         </div>
         <h2 className="text-lg font-bold text-brand-text-primary">
-          {t('title') || 'Invite Generation'}
+          {t('title')}
         </h2>
       </div>
       <div className="space-y-4">
@@ -168,14 +168,14 @@ export function InviteGeneration() {
         {!isSuperadmin && (
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              {tInvites('leadToParticipantDescription') || 'Create an invite to add a participant to this team community'}
+              {tInvites('leadToParticipantDescription')}
             </p>
           </div>
         )}
 
         {!isSuperadmin && availableCommunities.length > 1 && (
           <BrandFormControl
-            label={t('selectCommunity') || 'Select Community'}
+            label={t('selectCommunity')}
           >
             <BrandSelect
               value={selectedCommunityId}
@@ -191,7 +191,7 @@ export function InviteGeneration() {
 
         {!isSuperadmin && availableCommunities.length === 1 && selectedCommunityId && (
           <div className="text-sm text-brand-text-secondary">
-            {t('community') || 'Community'}: <span className="font-medium">{availableCommunities[0].name}</span>
+            {t('community')}: <span className="font-medium">{availableCommunities[0].name}</span>
           </div>
         )}
 
@@ -259,7 +259,7 @@ export function InviteGeneration() {
             className="flex items-center justify-between w-full p-3 bg-brand-surface border border-brand-secondary/10 rounded-lg hover:bg-brand-secondary/5 transition-colors"
           >
             <span className="font-medium text-brand-text-primary">
-              {t('generatedInvites') || 'Generated Invites'} ({invites.length})
+              {t('generatedInvites')} ({invites.length})
             </span>
             {showInviteList ? (
               <ChevronUp className="w-5 h-5 text-brand-text-secondary" />
@@ -298,38 +298,38 @@ export function InviteGeneration() {
                             </span>
                             {used && (
                               <span className="px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded">
-                                {t('used') || 'Used'}
+                                {t('used')}
                               </span>
                             )}
                             {!used && expired && (
                               <span className="px-2 py-0.5 text-xs bg-yellow-200 dark:bg-yellow-800 text-yellow-700 dark:text-yellow-300 rounded">
-                                {t('expired') || 'Expired'}
+                                {t('expired')}
                               </span>
                             )}
                             {!used && !expired && (
                               <span className="px-2 py-0.5 text-xs bg-green-200 dark:bg-green-800 text-green-700 dark:text-green-300 rounded">
-                                {t('active') || 'Active'}
+                                {t('active')}
                               </span>
                             )}
                           </div>
                           <div className="text-xs text-brand-text-secondary space-y-0.5">
                             <div>
-                              <span className="font-medium">{t('type') || 'Type'}:</span>{' '}
+                              <span className="font-medium">{t('type')}:</span>{' '}
                               {invite.type === 'superadmin-to-lead' 
-                                ? (t('superadminToLead') || 'Superadmin to Lead')
-                                : (t('leadToParticipant') || 'Lead to Participant')}
+                                ? t('superadminToLead')
+                                : t('leadToParticipant')}
                             </div>
                             <div>
-                              <span className="font-medium">{t('community') || 'Community'}:</span>{' '}
+                              <span className="font-medium">{t('community')}:</span>{' '}
                               {getCommunityName(invite.communityId)}
                             </div>
                             <div>
-                              <span className="font-medium">{t('expires') || 'Expires'}:</span>{' '}
+                              <span className="font-medium">{t('expires')}:</span>{' '}
                               {formatDate(invite.expiresAt)}
                             </div>
                             {used && invite.usedAt && (
                               <div>
-                                <span className="font-medium">{t('usedAt') || 'Used at'}:</span>{' '}
+                                <span className="font-medium">{t('usedAt')}:</span>{' '}
                                 {formatDate(invite.usedAt)}
                               </div>
                             )}

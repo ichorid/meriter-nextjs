@@ -429,7 +429,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                         {currencyIconUrl && (
                                             <img 
                                                 src={currencyIconUrl} 
-                                                alt="Currency" 
+                                                alt={tCommunities('currency')} 
                                                 className="w-4 h-4 flex-shrink-0" 
                                             />
                                         )}
@@ -642,13 +642,13 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
                             {filteredVisionPublications.length === 0 && !isFetchingNextVisionPage && (
                                 <div className="text-center py-8 text-base-content/60">
-                                    <p>{tCommunities('noVisionPosts') || 'No vision posts yet'}</p>
+                                    <p>{tCommunities('noVisionPosts')}</p>
                                 </div>
                             )}
                         </>
                     ) : (
                         <div className="text-center py-8 text-base-content/60">
-                            <p>{tCommunities('visionCommunityNotFound') || 'Vision community not found'}</p>
+                            <p>{tCommunities('visionCommunityNotFound')}</p>
                         </div>
                     )}
                 </div>

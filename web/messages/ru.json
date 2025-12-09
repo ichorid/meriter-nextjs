@@ -6,7 +6,15 @@
         "logout": "Выход",
         "loading": "Загрузка...",
         "error": "Ошибка",
+        "unexpectedError": "Произошла неожиданная ошибка",
+        "somethingWentWrong": "Что-то пошло не так",
+        "somethingWentWrongMessage": "Произошла неожиданная ошибка. Пожалуйста, попробуйте обновить страницу.",
+        "goHome": "На главную",
+        "reloadPage": "Обновить страницу",
+        "loggingOut": "Выход...",
         "save": "Сохранить",
+        "authenticationFailed": "Ошибка аутентификации",
+        "logoutFailed": "Ошибка выхода",
         "cancel": "Отмена",
         "delete": "Удалить",
         "edit": "Редактировать",
@@ -44,10 +52,17 @@
         "about": "О себе",
         "noProfileInformation": "Информация о профиле недоступна",
         "noProfileInformationDescription": "Этот пользователь еще не добавил информацию о профиле",
-        "deleteConfirmation": {
-            "title": "Подтвердите удаление",
-            "message": "Вы уверены, что хотите удалить этот {itemType}? Это действие нельзя отменить."
-        }
+        "closeModal": "Закрыть модальное окно",
+        "clear": "Очистить",
+        "settings": "Настройки",
+        "backToProfile": "Вернуться к профилю",
+        "clearSearch": "Очистить поиск",
+        "resizeSidebar": "Изменить размер боковой панели",
+        "resizeCommentsColumn": "Изменить размер колонки комментариев",
+        "goBack": "Назад",
+        "urlPlaceholder": "https://...",
+        "selectOption": "Выберите опцию",
+        "hashtagPlaceholder": "Введите хештег и нажмите Enter"
     },
     "home": {
         "breadcrumb": "Главная",
@@ -71,7 +86,9 @@
                 "createPublication": "Создать публикацию",
                 "createCommunity": "Создать сообщество",
                 "browseCommunities": "Найти сообщества",
-                "search": "Поиск"
+                "search": "Поиск",
+                "createPost": "Создать пост",
+                "createPoll": "Создать опрос"
             }
         },
         "tip1": "переводите баллы из публикаций и комментариев на доступный баланс, чтобы пользоваться ими",
@@ -105,6 +122,10 @@
             "updates": {
                 "title": "Нет обновлений",
                 "message": "Нет доступных обновлений."
+            },
+            "projects": {
+                "title": "Нет проектов",
+                "message": "Вы еще не создали ни одного проекта."
             }
         },
         "emptyCommunities": {
@@ -159,8 +180,11 @@
         "addToAllSuccess": "Успешно добавлено в {added} сообществ ({skipped} уже были участниками)",
         "addToAllPartial": "Добавлено в {added} сообществ, пропущено {skipped}. Произошло {errors} ошибок.",
         "addToAllFailed": "Не удалось добавить пользователя во все сообщества",
-        "languageEnglish": "English",
-        "languageRussian": "Русский"
+        "languageEnglish": "Английский",
+        "languageRussian": "Русский",
+        "searchUsers": "Поиск пользователей",
+        "removeAdmin": "Удалить админа",
+        "makeAdmin": "Сделать админом"
     },
     "wallet": {
         "balance": "Баланс",
@@ -302,6 +326,7 @@
         "specifyAmount": "Укажите количество баллов",
         "insufficientPoints": "Недостаточно баллов",
         "castError": "Ошибка при голосовании",
+        "updatePoll": "Обновить опрос",
         "confirm": "Подтвердить",
         "amountRequired": "Пожалуйста, введите сумму",
         "amountMustBeNumber": "Сумма должна быть числом",
@@ -350,6 +375,8 @@
         "downvoteQuota": "Проголосовать негативно на {used}/{total} суточной квоты",
         "downvoteBalance": "Проголосовать негативно на {amount} с Баланса",
         "sliderHint": "Перемещая слайдер выберите кол-во голосов, которое вы хотите отдать.",
+        "adjustSliderToVote": "Настройте слайдер для голосования",
+        "addCommentOptional": "Добавить комментарий (необязательно)",
         "commentHint": "Расскажите, почему вы поставили такую оценку. Нам ценно ваше мнение",
         "reasonRequired": "Требуется причина для вашего голоса",
         "voteUp": "Голосовать за",
@@ -396,7 +423,8 @@
         "totals": "Итоги по этому комментарию",
         "totalSum": "Итого",
         "totalReceived": "Всего получено",
-        "authorWithdrawn": "Автор вывел"
+        "authorWithdrawn": "Автор вывел",
+        "errorCommenting": "Ошибка при отправке"
     },
     "pages": {
         "setupCommunity": {
@@ -449,6 +477,7 @@
             "searchPlaceholder": "Поиск публикаций...",
             "noAccess": "Нет доступа",
             "createPoll": "Создать опрос",
+            "createPost": "Создать пост",
             "byDate": "По дате",
             "byRating": "По рейтингу",
             "loadMore": "Загрузить еще",
@@ -560,6 +589,8 @@
     "publications": {
         "create": {
             "title": "Создать публикацию",
+            "editTitle": "Редактировать публикацию",
+            "update": "Обновить",
             "fields": {
                 "title": "Заголовок",
                 "titlePlaceholder": "Введите заголовок",
@@ -643,6 +674,8 @@
             "createButton": "Создать сообщество",
             "settings": "Настройки"
         },
+        "createPost": "Создать пост",
+        "createPoll": "Создать опрос",
         "rules": {
             "title": "Правила сообщества",
             "communityNotFound": "Сообщество не найдено",
@@ -712,7 +745,10 @@
                 "user": "Это сообщество будет настроено вашим администратором в ближайшее время"
             },
             "tooltip": "Сообщество не настроено"
-        }
+        },
+        "noVisionPosts": "Пока нет постов видения",
+        "visionCommunityNotFound": "Сообщество видения не найдено",
+        "currency": "Валюта"
     },
     "registration": {
         "title": "Регистрация",
@@ -743,6 +779,12 @@
         }
     },
     "profile": {
+        "bulletList": "Маркированный список",
+        "orderedList": "Нумерованный список",
+        "deleteConfirmation": {
+            "title": "Подтвердите удаление",
+            "message": "Вы уверены, что хотите удалить этот {itemType}? Это действие нельзя отменить."
+        },
         "activity": "Активность",
         "newUserTitle": "Регистрация нового пользователя",
         "completeRegistration": "Завершить регистрацию",
@@ -773,6 +815,11 @@
         "inviteSection": "Код приглашения",
         "noRoles": "Роли не назначены",
         "noProjects": "Пока нет проектов",
+        "empty": {
+            "projects": {
+                "title": "Нет проектов"
+            }
+        },
         "view": "Просмотр",
         "loading": "Загрузка...",
         "loadMore": "Загрузить еще",
@@ -842,6 +889,8 @@
             "inviteGenerated": "Приглашение успешно создано",
             "inviteError": "Не удалось создать приглашение",
             "noExpiration": "Без срока действия",
+            "notSet": "Не установлено",
+            "autoAssigned": "Автоматически назначено (Марафон добра и Видение будущего)",
             "generatedInvites": "Созданные приглашения",
             "used": "Использовано",
             "expired": "Истекло",
@@ -852,6 +901,12 @@
             "expires": "Истекает",
             "usedAt": "Использовано в"
         }
+    },
+    "about": {
+        "noLeadsFound": "Лиды не найдены",
+        "noLeadsMatchingSearch": "Лиды, соответствующие вашему поиску, не найдены",
+        "tryDifferentSearchTerm": "Попробуйте другой поисковый запрос",
+        "noLeadsAvailable": "Лиды недоступны"
     },
     "invites": {
         "create": {
