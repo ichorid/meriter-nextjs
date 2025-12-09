@@ -49,15 +49,13 @@ export class PollCastService {
       throw new BadRequestException('Invalid option ID');
     }
 
-    // Validate amounts - poll casts only use wallet
-    if (quotaAmount > 0) {
-      throw new BadRequestException('Poll casts cannot use quota, only wallet');
-    }
-    if (walletAmount <= 0) {
-      throw new BadRequestException('Cast amount must be positive');
-    }
+    // Validate amounts - poll casts can use both quota and wallet
     if (totalAmount <= 0) {
       throw new BadRequestException('Cast amount must be positive');
+    }
+    // At least one of quotaAmount or walletAmount must be positive
+    if (quotaAmount <= 0 && walletAmount <= 0) {
+      throw new BadRequestException('Cast amount must be positive (quota or wallet)');
     }
 
     const cast = await this.pollCastRepository.create({
@@ -71,9 +69,9 @@ export class PollCastService {
       createdAt: new Date(),
     });
 
-    // Publish event - use wallet amount as the amount for the event
+    // Publish event - use total amount (quota + wallet) for the event
     await this.eventBus.publish(
-      new PollCastedEvent(pollId, userId, optionId, walletAmount)
+      new PollCastedEvent(pollId, userId, optionId, totalAmount)
     );
 
     this.logger.log(`Poll cast created successfully: ${cast.id}`);

@@ -288,34 +288,62 @@ export class WalletsController {
       ? new Date(community.lastQuotaResetAt)
       : today;
 
-    // Query votes with amountQuota > 0 for this user in this community created after quotaStartTime
+    // Query votes and poll casts with amountQuota > 0 for this user in this community created after quotaStartTime
     // Use absolute value of amountQuota - both upvotes and downvotes consume quota
-    const usedToday = await this.mongoose.db
-      .collection('votes')
-      .aggregate([
-        {
-          $match: {
-            userId: actualUserId,
-            communityId: community.id,
-            amountQuota: { $gt: 0 },
-            createdAt: { $gte: quotaStartTime },
+    const [votesUsed, pollCastsUsed] = await Promise.all([
+      this.mongoose.db
+        .collection('votes')
+        .aggregate([
+          {
+            $match: {
+              userId: actualUserId,
+              communityId: community.id,
+              amountQuota: { $gt: 0 },
+              createdAt: { $gte: quotaStartTime },
+            },
           },
-        },
-        {
-          $project: {
-            absAmount: '$amountQuota',
+          {
+            $project: {
+              absAmount: '$amountQuota',
+            },
           },
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$absAmount' },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$absAmount' },
+            },
           },
-        },
-      ])
-      .toArray();
+        ])
+        .toArray(),
+      this.mongoose.db
+        .collection('pollcasts')
+        .aggregate([
+          {
+            $match: {
+              userId: actualUserId,
+              communityId: community.id,
+              amountQuota: { $gt: 0 },
+              createdAt: { $gte: quotaStartTime },
+            },
+          },
+          {
+            $project: {
+              absAmount: '$amountQuota',
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$absAmount' },
+            },
+          },
+        ])
+        .toArray(),
+    ]);
 
-    const used = usedToday.length > 0 ? usedToday[0].total : 0;
+    const votesTotal = votesUsed.length > 0 ? votesUsed[0].total : 0;
+    const pollCastsTotal = pollCastsUsed.length > 0 ? pollCastsUsed[0].total : 0;
+    const used = votesTotal + pollCastsTotal;
 
     // Calculate resetAt as next midnight or next reset time if reset was done today
     const tomorrow = new Date(today);

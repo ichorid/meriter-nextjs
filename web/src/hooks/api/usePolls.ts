@@ -17,6 +17,7 @@ import {
 import type { PaginatedResponse, Poll } from "@/types/api-v1";
 import { createGetNextPageParam } from "@/lib/utils/pagination-utils";
 import { createMutation } from "@/lib/api/mutation-factory";
+import { quotaKeys } from "./useQuota";
 
 // Local type definitions (only for types not in shared-types)
 interface PollOption {
@@ -162,7 +163,7 @@ export function useCastPoll() {
 
             return context;
         },
-        onSuccess: (result, { id }) => {
+        onSuccess: (result, { id, communityId, data }) => {
             // Invalidate poll results to get updated cast counts
             queryClient.invalidateQueries({ queryKey: [...queryKeys.polls.all, "results", id] });
 
@@ -179,6 +180,13 @@ export function useCastPoll() {
             queryClient.invalidateQueries({
                 queryKey: queryKeys.wallet.balance(),
             });
+            
+            // Invalidate quota queries if quota was used (poll casts can now use quota)
+            if (data.quotaAmount && data.quotaAmount > 0 && communityId && user?.id) {
+                queryClient.invalidateQueries({
+                    queryKey: quotaKeys.quota(user.id, communityId),
+                });
+            }
         },
         onError: (error, variables, context) => {
             console.error("Cast poll error:", error);

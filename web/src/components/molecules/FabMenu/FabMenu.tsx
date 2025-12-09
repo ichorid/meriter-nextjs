@@ -7,6 +7,7 @@ import { Plus, FileText, BarChart2, FolderKanban, FileSpreadsheet, Info, X } fro
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useCommunity } from '@/hooks/api/useCommunities';
 
 interface FabMenuProps {
     communityId: string;
@@ -17,9 +18,13 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
     const t = useTranslations('pages.communities');
     const tCommon = useTranslations('common');
     const { canCreate, isLoading: permissionLoading, reason } = useCanCreatePost(communityId);
+    const { data: community } = useCommunity(communityId);
     const addToast = useToastStore((state) => state.addToast);
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+
+    // Check if community is future-vision (polls disabled)
+    const isFutureVision = community?.typeTag === 'future-vision';
 
     // Check if any popup is active using UI store
     const { activeVotingTarget, activeWithdrawTarget, activeModal } = useUIStore();
@@ -90,15 +95,17 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
                                     </div>
                                     <span className="text-sm font-medium text-base-content">{t('createPost')}</span>
                                 </button>
-                                <button
-                                    onClick={handleCreatePoll}
-                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-base-content/5 transition-colors text-left"
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
-                                        <BarChart2 size={16} className="text-secondary" />
-                                    </div>
-                                    <span className="text-sm font-medium text-base-content">{t('createPoll')}</span>
-                                </button>
+                                {!isFutureVision && (
+                                    <button
+                                        onClick={handleCreatePoll}
+                                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-base-content/5 transition-colors text-left"
+                                    >
+                                        <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
+                                            <BarChart2 size={16} className="text-secondary" />
+                                        </div>
+                                        <span className="text-sm font-medium text-base-content">{t('createPoll')}</span>
+                                    </button>
+                                )}
                             </>
                         ) : (
                             <>
@@ -111,15 +118,17 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
                                     </div>
                                     <span className="text-sm font-medium text-base-content/50">{t('createPost')}</span>
                                 </button>
-                                <button
-                                    disabled
-                                    className="w-full px-4 py-3 flex items-center gap-3 text-left opacity-40 cursor-not-allowed"
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-base-content/5 flex items-center justify-center">
-                                        <BarChart2 size={16} className="text-base-content/50" />
-                                    </div>
-                                    <span className="text-sm font-medium text-base-content/50">{t('createPoll')}</span>
-                                </button>
+                                {!isFutureVision && (
+                                    <button
+                                        disabled
+                                        className="w-full px-4 py-3 flex items-center gap-3 text-left opacity-40 cursor-not-allowed"
+                                    >
+                                        <div className="w-8 h-8 rounded-full bg-base-content/5 flex items-center justify-center">
+                                            <BarChart2 size={16} className="text-base-content/50" />
+                                        </div>
+                                        <span className="text-sm font-medium text-base-content/50">{t('createPoll')}</span>
+                                    </button>
+                                )}
                                 {reason && (
                                     <div className="mx-3 mt-2 p-3 rounded-xl bg-base-200/50">
                                         <div className="flex items-start gap-2">

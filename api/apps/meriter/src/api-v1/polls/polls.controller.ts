@@ -12,11 +12,14 @@ import {
   Logger,
   ForbiddenException,
 } from '@nestjs/common';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 import { PollService } from '../../domain/services/poll.service';
 import { PollCastService } from '../../domain/services/poll-cast.service';
 import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { UserService } from '../../domain/services/user.service';
+import { PermissionService } from '../../domain/services/permission.service';
 import { UserEnrichmentService } from '../common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../common/services/community-enrichment.service';
 import { EntityMappers } from '../common/mappers/entity-mappers';
@@ -44,8 +47,10 @@ export class PollsController {
     private readonly walletService: WalletService,
     private readonly communityService: CommunityService,
     private readonly userService: UserService,
+    private readonly permissionService: PermissionService,
     private readonly userEnrichmentService: UserEnrichmentService,
     private readonly communityEnrichmentService: CommunityEnrichmentService,
+    @InjectConnection() private readonly connection: Connection,
   ) {}
 
   @Get()
@@ -120,6 +125,15 @@ export class PollsController {
     @Body() createDto: CreatePollDto,
     @Req() req: any,
   ) {
+    // Prevent poll creation in future-vision communities
+    const community = await this.communityService.getCommunity(createDto.communityId);
+    if (!community) {
+      throw new NotFoundError('Community', createDto.communityId);
+    }
+    if (community.typeTag === 'future-vision') {
+      throw new ValidationError('Polls are disabled in future-vision communities');
+    }
+    
     // Transform API CreatePollDto to domain CreatePollDto
     // Service handles string->Date conversion
     const domainDto = createDto;
@@ -180,6 +194,80 @@ export class PollsController {
     throw new Error('Delete poll functionality not implemented');
   }
 
+  /**
+   * Calculate remaining quota for a user in a community (including poll casts)
+   */
+  private async getRemainingQuota(
+    userId: string,
+    communityId: string,
+    community: any,
+  ): Promise<number> {
+    // Future Vision has no quota - wallet voting only
+    if (community?.typeTag === 'future-vision') {
+      return 0;
+    }
+
+    if (
+      !community.settings?.dailyEmission ||
+      typeof community.settings.dailyEmission !== 'number'
+    ) {
+      return 0;
+    }
+
+    const dailyQuota = community.settings.dailyEmission;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const quotaStartTime = community.lastQuotaResetAt
+      ? new Date(community.lastQuotaResetAt)
+      : today;
+
+    // Aggregate quota used from both votes and poll casts
+    const [votesUsed, pollCastsUsed] = await Promise.all([
+      this.connection.db
+        .collection('votes')
+        .aggregate([
+          {
+            $match: {
+              userId,
+              communityId,
+              createdAt: { $gte: quotaStartTime },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$amountQuota' },
+            },
+          },
+        ])
+        .toArray(),
+      this.connection.db
+        .collection('pollcasts')
+        .aggregate([
+          {
+            $match: {
+              userId,
+              communityId,
+              createdAt: { $gte: quotaStartTime },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$amountQuota' },
+            },
+          },
+        ])
+        .toArray(),
+    ]);
+
+    const votesTotal = votesUsed.length > 0 ? votesUsed[0].total : 0;
+    const pollCastsTotal = pollCastsUsed.length > 0 ? pollCastsUsed[0].total : 0;
+    const used = votesTotal + pollCastsTotal;
+    
+    return Math.max(0, dailyQuota - used);
+  }
+
   @Post(':id/casts')
   @ZodValidation(CreatePollCastDtoSchema as any)
   async castPoll(
@@ -195,57 +283,84 @@ export class PollsController {
     const snapshot = poll.toSnapshot();
     const communityId = snapshot.communityId;
     
-    // Poll casts only use wallet (quotaAmount should be 0)
-    const quotaAmount = createDto.quotaAmount ?? 0;
-    const walletAmount = createDto.walletAmount ?? 0;
-    const totalAmount = quotaAmount + walletAmount;
-    
-    // Validate amounts
-    if (quotaAmount > 0) {
-      throw new ValidationError('Poll casts cannot use quota, only wallet');
-    }
-    if (walletAmount <= 0) {
-      throw new ValidationError('Cast amount must be positive');
-    }
-    if (totalAmount <= 0) {
-      throw new ValidationError('Cast amount must be positive');
-    }
-    
-    // Get community to get currency info (needed for wallet operations)
+    // Get community first to check typeTag and get settings
     const community = await this.communityService.getCommunity(communityId);
     if (!community) {
       throw new NotFoundError('Community', communityId);
     }
     
+    // Prevent poll casting in future-vision communities
+    if (community.typeTag === 'future-vision') {
+      throw new ValidationError('Poll casting is disabled in future-vision communities');
+    }
+    
+    const quotaAmount = createDto.quotaAmount ?? 0;
+    const walletAmount = createDto.walletAmount ?? 0;
+    const totalAmount = quotaAmount + walletAmount;
+    
+    // Validate amounts
+    if (totalAmount <= 0) {
+      throw new ValidationError('Cast amount must be positive');
+    }
+    // At least one of quotaAmount or walletAmount must be positive
+    if (quotaAmount <= 0 && walletAmount <= 0) {
+      throw new ValidationError('Cast amount must be positive (quota or wallet)');
+    }
+    
+    // Check user role - only participants/leads/superadmin can use quota
+    if (quotaAmount > 0) {
+      const userRole = await this.permissionService.getUserRoleInCommunity(
+        req.user.id,
+        communityId,
+      );
+      
+      if (!userRole || !['participant', 'lead', 'superadmin'].includes(userRole)) {
+        throw new ValidationError('Only participants, leads, and superadmins can use quota for poll casts');
+      }
+      
+      // Calculate remaining quota
+      const remainingQuota = await this.getRemainingQuota(
+        req.user.id,
+        communityId,
+        community,
+      );
+      
+      if (quotaAmount > remainingQuota) {
+        throw new ValidationError(`Insufficient quota. Available: ${remainingQuota}, requested: ${quotaAmount}`);
+      }
+    }
+    
     // Validate and deduct balance BEFORE creating cast
     // This prevents race conditions by checking balance first
-    const wallet = await this.walletService.getWallet(req.user.id, communityId);
-    if (!wallet) {
-      throw new ValidationError('Wallet not found');
+    if (walletAmount > 0) {
+      const wallet = await this.walletService.getWallet(req.user.id, communityId);
+      if (!wallet) {
+        throw new ValidationError('Wallet not found');
+      }
+      
+      // Check balance - throws error if insufficient
+      if (!wallet.canAfford(walletAmount)) {
+        throw new ValidationError('Insufficient balance to cast this amount');
+      }
+      
+      // Deduct from wallet FIRST - this will throw if balance is insufficient
+      // By doing this before creating the cast, we prevent orphaned casts
+      await this.walletService.addTransaction(
+        req.user.id,
+        communityId,
+        'debit',
+        walletAmount,
+        'personal',
+        'poll_cast',
+        id,
+        community.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        `Cast on poll ${id}`
+      );
     }
-    
-    // Check balance - throws error if insufficient
-    if (!wallet.canAfford(walletAmount)) {
-      throw new ValidationError('Insufficient balance to cast this amount');
-    }
-    
-    // Deduct from wallet FIRST - this will throw if balance is insufficient
-    // By doing this before creating the cast, we prevent orphaned casts
-    const updatedWallet = await this.walletService.addTransaction(
-      req.user.id,
-      communityId,
-      'debit',
-      walletAmount,
-      'personal',
-      'poll_cast',
-      id,
-      community.settings?.currencyNames || {
-        singular: 'merit',
-        plural: 'merits',
-        genitive: 'merits',
-      },
-      `Cast on poll ${id}`
-    );
     
     // Check if this is a new caster
     const existingCasts = await this.pollsService.getUserCasts(id, req.user.id);
@@ -261,10 +376,13 @@ export class PollsController {
       communityId
     );
     
-    // Update poll aggregate to reflect the cast
-    await this.pollsService.updatePollForCast(id, createDto.optionId, walletAmount, isNewCaster);
+    // Update poll aggregate to reflect the cast (use totalAmount)
+    await this.pollsService.updatePollForCast(id, createDto.optionId, totalAmount, isNewCaster);
     
-    // Get final wallet balance to return (already set from transaction)
+    // Get final wallet balance to return
+    const updatedWallet = walletAmount > 0 
+      ? await this.walletService.getWallet(req.user.id, communityId)
+      : null;
     
     return {
       success: true,
@@ -291,6 +409,20 @@ export class PollsController {
     @Query() query: any,
     @Req() req: any,
   ) {
+    // Return empty array for future-vision communities
+    const community = await this.communityService.getCommunity(communityId);
+    if (community?.typeTag === 'future-vision') {
+      return { 
+        success: true, 
+        data: { 
+          data: [], 
+          total: 0, 
+          skip: 0, 
+          limit: 20 
+        } 
+      };
+    }
+    
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
     const result = await this.pollsService.getPollsByCommunity(
@@ -334,3 +466,4 @@ export class PollsController {
     };
   }
 }
+

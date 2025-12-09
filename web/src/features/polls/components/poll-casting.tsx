@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { IPollData, IPollCast, IPollUserCastSummary } from "../types";
 import { useTranslations } from 'next-intl';
 import { useCastPoll } from '@/hooks/api/usePolls';
@@ -11,6 +11,10 @@ import { useToastStore } from '@/shared/stores/toast.store';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandInput } from '@/components/ui/BrandInput';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
+import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
+import { useUserRoles } from '@/hooks/api/useProfile';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCommunity } from '@/hooks/api/useCommunities';
 
 interface IPollCastingProps {
     pollData: IPollData;
@@ -35,6 +39,7 @@ export const PollCasting = ({
 }: IPollCastingProps) => {
     const t = useTranslations('polls');
     const addToast = useToastStore((state) => state.addToast);
+    const { user } = useAuth();
     const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
     const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
     const [amountInputValue, setAmountInputValue] = useState<string>("1");
@@ -44,13 +49,34 @@ export const PollCasting = ({
 
     const castPollMutation = useCastPoll();
 
+    // Get quota data
+    const { quotasMap } = useCommunityQuotas(communityId ? [communityId] : []);
+    const quotaData = communityId ? quotasMap.get(communityId) : null;
+    const quotaRemaining = quotaData?.remainingToday ?? 0;
+
+    // Get user role to check if quota can be used
+    const { data: userRoles = [] } = useUserRoles(user?.id || '');
+    const { data: community } = useCommunity(communityId || '');
+    
+    // Check if user can use quota (participants/leads/superadmin)
+    const canUseQuota = useMemo(() => {
+        if (!user?.id || !communityId || !community) return false;
+        if (user.globalRole === 'superadmin') return true;
+        if (community.typeTag === 'future-vision') return false; // Future vision doesn't use quota
+        const role = userRoles.find(r => r.communityId === communityId);
+        return role && ['participant', 'lead', 'superadmin'].includes(role.role);
+    }, [user?.id, user?.globalRole, userRoles, communityId, community]);
+
+    // Calculate max amount (quota + wallet)
+    const maxAmount = canUseQuota ? quotaRemaining + balance : balance;
+
     const now = new Date();
     const expiresAt = new Date(pollData.expiresAt);
     const isExpired = now > expiresAt;
     const isCasting = castPollMutation.isPending;
 
     const timeRemaining = usePollTimeRemaining({ expiresAt: pollData.expiresAt });
-    const { validateAmount } = usePollAmountValidation({ balance });
+    const { validateAmount } = usePollAmountValidation({ balance: maxAmount });
 
     const handleCastPoll = async () => {
         if (!selectedOptionId) {
@@ -70,12 +96,25 @@ export const PollCasting = ({
             return;
         }
 
-        // Double-check balance (UX validation should prevent this, but safety check)
-        if (validation.numValue > balance) {
-            const message = t('amountInsufficient', { balance });
+        // Double-check max amount (UX validation should prevent this, but safety check)
+        if (validation.numValue > maxAmount) {
+            const message = t('amountInsufficient', { balance: maxAmount });
             setAmountValidationError(message);
             addToast(message, 'error');
             return;
+        }
+
+        // Calculate quota and wallet breakdown
+        let quotaAmount = 0;
+        let walletAmount = 0;
+        
+        if (canUseQuota && quotaRemaining > 0) {
+            // Use quota first, then wallet
+            quotaAmount = Math.min(validation.numValue, quotaRemaining);
+            walletAmount = Math.max(0, validation.numValue - quotaRemaining);
+        } else {
+            // No quota available, use wallet only
+            walletAmount = validation.numValue;
         }
 
         // Clear any previous errors
@@ -87,8 +126,8 @@ export const PollCasting = ({
                 id: pollId,
                 data: {
                     optionId: selectedOptionId,
-                    quotaAmount: 0, // Poll casts only use wallet
-                    walletAmount: validation.numValue,
+                    quotaAmount,
+                    walletAmount,
                 },
                 communityId,
             });
@@ -249,7 +288,12 @@ export const PollCasting = ({
                     <div className="form-control mb-3">
                         <label className="label" htmlFor="cast-amount">
                             <span className="label-text">{t('amountLabel')}</span>
-                            <span className="label-text-alt">{t('available')}: {balance}</span>
+                            <span className="label-text-alt">
+                                {canUseQuota && quotaRemaining > 0 && (
+                                    <span className="mr-2">{t('quota')}: {quotaRemaining}</span>
+                                )}
+                                {t('available')}: {maxAmount}
+                            </span>
                         </label>
                         <input
                             id="cast-amount"
@@ -303,7 +347,7 @@ export const PollCasting = ({
                             <span className="label-text-alt text-error">{amountValidationError}</span>
                         </div>
                     )}
-                    {balance === 0 && (
+                    {maxAmount === 0 && (
                         <div className="label">
                             <span className="label-text-alt text-error">{t('insufficientPoints')}</span>
                         </div>
@@ -315,7 +359,7 @@ export const PollCasting = ({
                             fullWidth
                             onClick={handleCastPoll}
                             isLoading={isCasting}
-                            disabled={isCasting || !selectedOptionId || amountValidationError !== null || balance === 0}
+                            disabled={isCasting || !selectedOptionId || amountValidationError !== null || maxAmount === 0}
                         >
                             {isCasting ? t('casting') : t('castPoll')}
                         </BrandButton>

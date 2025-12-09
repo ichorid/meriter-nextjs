@@ -421,9 +421,11 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                             .filter((p: FeedItem) => {
                                 if (p.type === 'publication') {
                                     return !!p.content;
-                                } else {
-                                    return p.type === 'poll';
+                                } else if (p.type === 'poll') {
+                                    // Hide polls in future-vision communities
+                                    return comms?.typeTag !== 'future-vision';
                                 }
+                                return false;
                             })
                             .map((p) => {
                                 // Check if this post is selected (for comments or polls)

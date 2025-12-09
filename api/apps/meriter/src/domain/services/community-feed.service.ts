@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PublicationService } from './publication.service';
 import { PollService } from './poll.service';
 import { UserService } from './user.service';
+import { CommunityService } from './community.service';
 import { Publication } from '../aggregates/publication/publication.entity';
 import { Poll } from '../aggregates/poll/poll.entity';
 import {
@@ -27,6 +28,7 @@ export class CommunityFeedService {
     private readonly publicationService: PublicationService,
     private readonly pollService: PollService,
     private readonly userService: UserService,
+    private readonly communityService: CommunityService,
   ) {}
 
   async getCommunityFeed(
@@ -54,6 +56,10 @@ export class CommunityFeedService {
     const limit = providedLimit ?? pageSize;
     const skip = providedSkip ?? (page - 1) * pageSize;
 
+    // Check if community is future-vision (polls are disabled)
+    const community = await this.communityService.getCommunity(communityId);
+    const isFutureVision = community?.typeTag === 'future-vision';
+
     // Fetch both publications and polls in parallel
     // Fetch more items than needed to ensure we have enough after merging and sorting
     const fetchLimit = limit * 2; // Fetch 2x limit from each source
@@ -67,12 +73,15 @@ export class CommunityFeedService {
         sortBy,
         tag,
       ),
-      this.pollService.getPollsByCommunity(
-        communityId,
-        fetchLimit,
-        skip,
-        sortBy,
-      ),
+      // Don't fetch polls for future-vision communities
+      isFutureVision
+        ? Promise.resolve([])
+        : this.pollService.getPollsByCommunity(
+            communityId,
+            fetchLimit,
+            skip,
+            sortBy,
+          ),
     ]);
 
     // Transform to unified feed items
