@@ -21,6 +21,9 @@ import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { Loader2, FileText, Users } from 'lucide-react';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useUserRoles } from '@/hooks/api/useProfile';
+import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
+import { useUserQuota } from '@/hooks/api/useQuota';
+import { useTranslations as useCommonTranslations } from 'next-intl';
 
 const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
@@ -144,9 +147,14 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     // Get wallet balance using standardized hook
     const { data: balance = 0 } = useWalletBalance(chatId);
 
+    // Get quota data for this community
+    const { data: quotaData } = useUserQuota(chatId);
+
     // Get user roles and check if can create posts
     const { data: userRoles = [] } = useUserRoles(user?.id || '');
     const canCreatePost = useCanCreatePost(chatId);
+    
+    const tCommon = useCommonTranslations('common');
 
     // Get user's role in current community
     const userRoleInCommunity = useMemo(() => {
@@ -154,6 +162,23 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         const role = userRoles.find(r => r.communityId === chatId);
         return role?.role || null;
     }, [user?.globalRole, userRoles, chatId]);
+
+    // Determine eligibility for permanent merits and quota
+    const canEarnPermanentMerits = useMemo(() => {
+        if (!comms?.meritRules) return false;
+        return comms.meritRules.canEarn === true && balance !== undefined;
+    }, [comms?.meritRules, balance]);
+
+    const hasQuota = useMemo(() => {
+        if (!comms?.meritRules || !userRoleInCommunity) return false;
+        const { dailyQuota, quotaRecipients } = comms.meritRules;
+        return dailyQuota > 0 && quotaRecipients?.includes(userRoleInCommunity as any);
+    }, [comms?.meritRules, userRoleInCommunity]);
+
+    const quotaRemaining = quotaData?.remainingToday ?? 0;
+    const quotaMax = quotaData?.dailyQuota ?? 0;
+    const currencyIconUrl = comms?.settings?.iconUrl;
+
 
     // Check if community is special (marathon-of-good or future-vision)
     const isSpecialCommunity = comms?.typeTag === 'marathon-of-good' || comms?.typeTag === 'future-vision';
@@ -283,6 +308,35 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                             <p className="text-sm text-base-content/70 leading-relaxed mb-3">
                                 {comms.description}
                             </p>
+                        )}
+                        {/* Quota and Permanent Merits Indicators */}
+                        {(canEarnPermanentMerits || hasQuota) && (
+                            <div className="flex items-center gap-3 mb-3">
+                                {canEarnPermanentMerits && (
+                                    <div className="flex items-center gap-1.5 text-sm">
+                                        {currencyIconUrl && (
+                                            <img 
+                                                src={currencyIconUrl} 
+                                                alt="Currency" 
+                                                className="w-4 h-4 flex-shrink-0" 
+                                            />
+                                        )}
+                                        <span className="text-base-content/60">{tCommon('permanentMerits')}:</span>
+                                        <span className="font-semibold text-base-content">{balance}</span>
+                                    </div>
+                                )}
+                                {hasQuota && quotaMax > 0 && (
+                                    <div className="flex items-center gap-1.5 text-sm">
+                                        <span className="text-base-content/60">{tCommon('dailyMerits')}:</span>
+                                        <DailyQuotaRing
+                                            remaining={quotaRemaining}
+                                            max={quotaMax}
+                                            className="w-6 h-6 flex-shrink-0"
+                                            asDiv={true}
+                                        />
+                                    </div>
+                                )}
+                            </div>
                         )}
                         {activeTab === 'publications' && (
                             <div className="flex items-center gap-4 text-sm">

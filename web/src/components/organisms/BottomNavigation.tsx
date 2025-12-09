@@ -7,6 +7,7 @@ import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { useUserMeritsBalance } from '@/hooks/useUserMeritsBalance';
 import { useMarathonOfGoodQuota } from '@/hooks/useMarathonOfGoodQuota';
 import { useCommunity } from '@/hooks/api/useCommunities';
+import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { WalletChip } from '@/components/molecules/WalletChip';
 import { routes } from '@/lib/constants/routes';
 
@@ -21,6 +22,13 @@ export const BottomNavigation = () => {
     // Get marathon-of-good quota for the ring
     const { remaining: quotaRemaining, max: quotaMax, isLoading: quotaLoading } = useMarathonOfGoodQuota();
     
+    // Get marathon-of-good community ID for navigation
+    const { communities: userCommunities } = useUserCommunities();
+    const marathonOfGoodCommunityId = useMemo(() => {
+        const marathonCommunity = userCommunities.find((c: any) => c?.typeTag === 'marathon-of-good');
+        return marathonCommunity?.id || null;
+    }, [userCommunities]);
+    
     // Get first community ID for currency icon
     const firstCommunityId = useMemo(() => {
         const walletWithCommunity = wallets.find((w: any) => w?.communityId);
@@ -30,6 +38,16 @@ export const BottomNavigation = () => {
     // Fetch first community to get currency icon
     const { data: firstCommunity } = useCommunity(firstCommunityId || '');
     const currencyIconUrl = firstCommunity?.settings?.iconUrl;
+    
+    // Handle click on WalletChip to navigate to marathon-of-good community
+    const handleWalletChipClick = () => {
+        if (marathonOfGoodCommunityId) {
+            router.push(`/meriter/communities/${marathonOfGoodCommunityId}`);
+        } else {
+            // Fallback to communities list if marathon-of-good not found
+            router.push(routes.communities);
+        }
+    };
 
     const tabs = [
         {
@@ -101,7 +119,7 @@ export const BottomNavigation = () => {
                         balance={totalWalletBalance}
                         quota={totalDailyQuota}
                         currencyIconUrl={currencyIconUrl}
-                        onClick={() => router.push(routes.communities)}
+                        onClick={handleWalletChipClick}
                         className="bottom-12"
                         quotaRemaining={quotaRemaining}
                         quotaMax={quotaMax}

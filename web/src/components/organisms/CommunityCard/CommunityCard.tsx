@@ -9,6 +9,8 @@ import { useCommunity } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useTranslations } from 'next-intl';
+import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
+import { useUserQuota } from '@/hooks/api/useQuota';
 
 export interface CommunityCardProps {
   communityId: string;
@@ -75,12 +77,11 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     return role?.role || null;
   }, [user?.globalRole, userRoles, communityId]);
 
-  // Check if user can use merits and quota based on community rules
-  const canUseMerits = React.useMemo(() => {
+  // Check if user can earn permanent merits based on community rules
+  const canEarnPermanentMerits = React.useMemo(() => {
     if (!community?.meritRules) return false;
-    const { canEarn, canSpend } = community.meritRules;
-    // User can use merits if they can earn OR spend
-    return canEarn || canSpend;
+    // User can earn permanent merits only if canEarn is true
+    return community.meritRules.canEarn === true;
   }, [community?.meritRules]);
 
   const hasQuota = React.useMemo(() => {
@@ -90,13 +91,16 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     return dailyQuota > 0 && quotaRecipients?.includes(userRole as any);
   }, [community?.meritRules, userRole]);
 
+  // Fetch quota data for this community
+  const { data: quotaData } = useUserQuota(communityId);
+  
   // Format balance and quota display
   const balance = wallet?.balance || 0;
-  const remainingQuota = quota?.remainingToday || 0;
-  const dailyQuota = quota?.dailyQuota || 0;
+  const remainingQuota = quotaData?.remainingToday ?? quota?.remainingToday ?? 0;
+  const dailyQuota = quotaData?.dailyQuota ?? quota?.dailyQuota ?? 0;
 
   // Determine what to show in the subtitle
-  const showMerits = canUseMerits && wallet;
+  const showMerits = canEarnPermanentMerits && wallet;
   const showQuota = hasQuota && dailyQuota > 0;
   const showIndicators = showMerits || showQuota;
 
@@ -165,7 +169,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                 </div>
                 {/* Merits/Quota indicators */}
                 {showIndicators && (
-                  <div className="flex flex-row items-start gap-2.5 w-full min-w-0">
+                  <div className="flex flex-row items-center gap-2.5 w-full min-w-0">
                     {showMerits && (
                       <div className="flex items-center gap-1 min-w-0 flex-shrink">
                         {currencyIconUrl && (
@@ -184,22 +188,13 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                         </span>
                       </div>
                     )}
-                    {showMerits && showQuota && (
-                      <span className={`flex-shrink-0 ${isActive ? 'text-base-100/40' : 'text-base-content/40'}`}>|</span>
-                    )}
                     {showQuota && (
-                      <div className="flex items-center gap-1 min-w-0 flex-shrink">
-                        <Zap className={`w-3 h-3 flex-shrink-0 ${
-                          isActive ? 'text-base-100/60' : 'text-base-content/60'
-                        }`} />
-                        <span className={`text-xs leading-[14px] tracking-[0.374px] min-w-0 ${
-                          isActive ? 'text-base-100/60' : 'text-base-content/60'
-                        }`}>
-                          <span className="truncate">{t('dailyMerits')}:</span> <span className={`font-semibold whitespace-nowrap ${
-                            isActive ? 'text-base-100' : 'text-base-content'
-                          }`}>{remainingQuota}</span>
-                        </span>
-                      </div>
+                      <DailyQuotaRing
+                        remaining={remainingQuota}
+                        max={dailyQuota}
+                        className="w-5 h-5 flex-shrink-0"
+                        asDiv={true}
+                      />
                     )}
                   </div>
                 )}
@@ -257,18 +252,26 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
             title={userRoleBadge.label} 
           />
         )}
-        <div className="mt-2 px-1.5 py-1 rounded-lg bg-base-200/50 flex flex-col gap-1">
-          <div className="text-[9px] leading-none text-base-content/50 flex items-center gap-0.5 justify-center">
-            {currencyIconUrl && (
-              <img src={currencyIconUrl} alt="" className="w-2 h-2 flex-shrink-0 opacity-60" />
+        {(showMerits || showQuota) && (
+          <div className="mt-2 px-1.5 py-1 rounded-lg bg-base-200/50 flex items-center justify-center gap-2">
+            {showMerits && (
+              <div className="text-[9px] leading-none text-base-content/50 flex items-center gap-0.5 justify-center">
+                {currencyIconUrl && (
+                  <img src={currencyIconUrl} alt="" className="w-2 h-2 flex-shrink-0 opacity-60" />
+                )}
+                <span className="font-medium text-base-content/70">{balance}</span>
+              </div>
             )}
-            <span className="font-medium text-base-content/70">{balance}</span>
+            {showQuota && (
+              <DailyQuotaRing
+                remaining={remainingQuota}
+                max={dailyQuota}
+                className="w-4 h-4 flex-shrink-0"
+                asDiv={true}
+              />
+            )}
           </div>
-          <div className="text-[9px] leading-none text-base-content/50 flex items-center gap-0.5 justify-center">
-            <Zap className="w-2 h-2 flex-shrink-0 opacity-60" />
-            <span className="font-medium text-base-content/70">{remainingQuota}/{dailyQuota}</span>
-          </div>
-        </div>
+        )}
       </div>
     </Link>
   );
