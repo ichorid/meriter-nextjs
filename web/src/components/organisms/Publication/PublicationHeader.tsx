@@ -93,14 +93,17 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     username: publication.meta.beneficiary.username,
   } : null;
 
-  // Check permissions (author, lead, superadmin)
-  const { canEdit: canEditFromHook, canDelete } = useCanEditDelete(author.id, communityId);
-  
-  // Check if user can edit (must also have zero votes for posts/polls)
-  const isAuthor = currentUserId && author.id && currentUserId === author.id;
+  // Check if there are votes
   const hasVotes = isPoll
     ? (metrics?.totalCasts || 0) > 0
     : ((metrics?.upvotes || 0) + (metrics?.downvotes || 0)) > 0;
+  
+  // Check permissions (author, lead, superadmin)
+  // Pass hasVotes to restrict non-admin authors from deleting posts with votes
+  const { canEdit: canEditFromHook, canDelete } = useCanEditDelete(author.id, communityId, hasVotes);
+  
+  // Check if user can edit (must also have zero votes for posts/polls)
+  const isAuthor = currentUserId && author.id && currentUserId === author.id;
   // Authors can only edit if no votes; leads/superadmins can always edit (but backend will enforce zero votes)
   const canEdit = canEditFromHook && (!isAuthor || !hasVotes) && publicationId && communityId;
 

@@ -7,10 +7,14 @@ import { useUserRoles } from '@/hooks/api/useProfile';
  * - The author of the resource
  * - A lead in the resource's community
  * - A superadmin
+ * 
+ * For delete: Non-admin authors (non-superadmin, non-lead) can only delete if there are no votes.
+ * Leads and superadmins can always delete.
  */
 export function useCanEditDelete(
   authorId: string | undefined,
-  communityId: string | undefined
+  communityId: string | undefined,
+  hasVotes: boolean = false
 ) {
   const { user } = useAuth();
   const { data: userRoles } = useUserRoles(user?.id || '');
@@ -26,8 +30,16 @@ export function useCanEditDelete(
     (role) => role.role === 'lead' && role.communityId === communityId
   ) ?? false;
 
-  const canEdit = !!(isAuthor || isSuperadmin || isLeadInCommunity);
-  const canDelete = !!(isAuthor || isSuperadmin || isLeadInCommunity);
+  // Check if user is admin (superadmin or lead)
+  const isAdmin = isSuperadmin || isLeadInCommunity;
+
+  // Edit: Authors can edit if no votes, admins can always edit (backend will enforce zero votes)
+  const canEdit = !!(isAuthor || isAdmin);
+  
+  // Delete: 
+  // - Admins (superadmin/lead) can always delete
+  // - Non-admin authors can only delete if no votes
+  const canDelete = isAdmin || (isAuthor && !hasVotes);
 
   return {
     canEdit,
