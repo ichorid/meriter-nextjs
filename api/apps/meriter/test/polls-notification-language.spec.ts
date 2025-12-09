@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CanActivate, ExecutionContext } from '@nestjs/common';
+import { getConnectionToken } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 import { PollsController } from '../src/api-v1/polls/polls.controller';
 import { PollService } from '../src/domain/services/poll.service';
 import { PollCastService } from '../src/domain/services/poll-cast.service';
@@ -70,6 +72,17 @@ describe('PollsController - Notification Language', () => {
       getCommunityLanguageByChatId: jest.fn(),
     };
 
+    // Mock Connection for database operations
+    const mockConnection = {
+      db: {
+        collection: jest.fn().mockReturnValue({
+          aggregate: jest.fn().mockReturnValue({
+            toArray: jest.fn().mockResolvedValue([]),
+          }),
+        }),
+      },
+    } as unknown as Connection;
+
     module = await Test.createTestingModule({
       controllers: [PollsController],
       providers: [
@@ -112,6 +125,10 @@ describe('PollsController - Notification Language', () => {
           useValue: {
             batchFetchCommunities: jest.fn().mockResolvedValue(new Map()),
           },
+        },
+        {
+          provide: getConnectionToken(),
+          useValue: mockConnection,
         },
       ],
     })
