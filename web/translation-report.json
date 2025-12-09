@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-12-09T17:44:52.569Z",
+  "timestamp": "2025-12-09T20:22:05.960Z",
   "missingKeys": {
     "inRu": [],
     "inEn": []
@@ -21,95 +21,11 @@
         "fullLine": "const activeTab = searchParams?.get('tab') || 'publications';"
       },
       {
-        "file": "app/meriter/search/page.tsx",
-        "line": 104,
-        "translationKey": "results.title",
-        "fallbackText": "Search Results",
-        "fullLine": "title={t('results.title') || 'Search Results'}"
-      },
-      {
-        "file": "app/meriter/search/page.tsx",
-        "line": 120,
-        "translationKey": "results.loading",
-        "fallbackText": "Searching...",
-        "fullLine": "{t('results.loading') || 'Searching...'}"
-      },
-      {
-        "file": "app/meriter/search/page.tsx",
-        "line": 190,
-        "translationKey": "results.noResults",
-        "fallbackText": "No results found",
-        "fullLine": "<p className=\"font-medium\">{t('results.noResults') || 'No results found'}</p>"
-      },
-      {
-        "file": "app/meriter/search/page.tsx",
-        "line": 192,
-        "translationKey": "results.tryDifferent",
-        "fallbackText": "Try different search terms or filters",
-        "fullLine": "{t('results.tryDifferent') || 'Try different search terms or filters'}"
-      },
-      {
-        "file": "components/molecules/FabMenu/HomeFabMenu.tsx",
-        "line": 108,
-        "translationKey": "hero.actions.createCommunity",
-        "fallbackText": "Create Community",
-        "fullLine": "{t('hero.actions.createCommunity') || 'Create Community'}"
-      },
-      {
-        "file": "components/molecules/LeadCard/LeadCard.tsx",
-        "line": 48,
-        "translationKey": "lead",
-        "fallbackText": "Lead",
-        "fullLine": "lead: t('lead') || 'Lead',"
-      },
-      {
-        "file": "components/molecules/LeadCard/LeadCard.tsx",
-        "line": 49,
-        "translationKey": "participant",
-        "fallbackText": "Participant",
-        "fullLine": "participant: t('participant') || 'Participant',"
-      },
-      {
-        "file": "components/molecules/LeadCard/LeadCard.tsx",
-        "line": 50,
-        "translationKey": "viewer",
-        "fallbackText": "Viewer",
-        "fullLine": "viewer: t('viewer') || 'Viewer',"
-      },
-      {
-        "file": "components/molecules/LeadCard/LeadCard.tsx",
-        "line": 51,
-        "translationKey": "superadmin",
-        "fallbackText": "Superadmin",
-        "fullLine": "superadmin: t('superadmin') || 'Superadmin',"
-      },
-      {
         "file": "components/molecules/LeadCard/LeadCard.tsx",
         "line": 106,
         "translationKey": "lead",
         "fallbackText": "Lead",
         "fullLine": "{t('lead') || 'Lead'}"
-      },
-      {
-        "file": "components/organisms/AdvancedSearch/AdvancedSearch.tsx",
-        "line": 187,
-        "translationKey": "placeholder",
-        "fallbackText": "Search...",
-        "fullLine": "placeholder={t('placeholder') || 'Search...'}"
-      },
-      {
-        "file": "components/organisms/AdvancedSearch/AdvancedSearch.tsx",
-        "line": 229,
-        "translationKey": "filters",
-        "fallbackText": "Filters",
-        "fullLine": "<span>{t('filters') || 'Filters'}</span>"
-      },
-      {
-        "file": "components/organisms/AdvancedSearch/AdvancedSearch.tsx",
-        "line": 237,
-        "translationKey": "search",
-        "fallbackText": "Search",
-        "fullLine": "{t('search') || 'Search'}"
       },
       {
         "file": "components/organisms/AdvancedSearch/AdvancedSearch.tsx",
@@ -162,35 +78,35 @@
       },
       {
         "file": "components/organisms/Community/InviteCreationPopup.tsx",
-        "line": 115,
+        "line": 138,
         "translationKey": "noExpiration",
         "fallbackText": "No expiration",
         "fullLine": "if (!dateString) return t('noExpiration') || 'No expiration';"
       },
       {
         "file": "components/organisms/Community/InviteCreationPopup.tsx",
-        "line": 133,
+        "line": 156,
         "translationKey": "autoAssigned",
         "fallbackText": "Auto-assigned (Marathon-of-Good & Future-Vision)",
         "fullLine": "? (t('autoAssigned') || 'Auto-assigned (Marathon-of-Good & Future-Vision)')"
       },
       {
         "file": "components/organisms/Community/InviteCreationPopup.tsx",
-        "line": 134,
+        "line": 157,
         "translationKey": "notSet",
         "fallbackText": "Not set",
         "fullLine": ": (t('notSet') || 'Not set');"
       },
       {
         "file": "components/organisms/Community/InviteCreationPopup.tsx",
-        "line": 171,
+        "line": 194,
         "translationKey": "title",
         "fallbackText": "Invite Generation",
         "fullLine": "{t('title') || 'Invite Generation'}"
       },
       {
         "file": "components/organisms/ContextTopBar/ContextTopBar.tsx",
-        "line": 232,
+        "line": 233,
         "translationKey": "sort",
         "fallbackText": "recent",
         "fullLine": "const sortBy = searchParams?.get('sort') || 'recent';"
@@ -428,105 +344,98 @@
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 116,
+        "line": 121,
         "translationKey": "voteTitle",
         "fallbackText": "Voting",
         "fullLine": "{t('voteTitle') || 'Voting'}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 130,
+        "line": 135,
         "translationKey": "sliderHint",
         "fallbackText": "Move the slider to choose the number of votes you want to give.",
         "fullLine": "{t('sliderHint') || 'Move the slider to choose the number of votes you want to give.'}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 162,
+        "line": 152,
         "translationKey": "voteUp",
         "fallbackText": "Vote up",
         "fullLine": "{t('voteUp') || 'Vote up'} 👍"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 192,
+        "line": 196,
         "translationKey": "voteDown",
         "fallbackText": "Vote down",
         "fullLine": "{t('voteDown') || 'Vote down'} 👎"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 209,
-        "translationKey": "dailyLimit",
-        "fallbackText": "Daily limit",
-        "fullLine": "{t('dailyLimit') || 'Daily limit'}"
-      },
-      {
-        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 239,
-        "translationKey": "available",
-        "fallbackText": "Available",
-        "fullLine": "{t('available') || 'Available'} {quotaRemaining}"
-      },
-      {
-        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 264,
+        "line": 217,
         "translationKey": "voteUp",
         "fallbackText": "Vote up",
         "fullLine": "👍 {t('voteUp') || 'Vote up'}: +{absAmount}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 268,
+        "line": 221,
         "translationKey": "voteDown",
         "fallbackText": "Vote down",
         "fullLine": "👎 {t('voteDown') || 'Vote down'}: -{absAmount}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 334,
-        "translationKey": "downvoteExplanation",
-        "fallbackText": "You are voting against publication. Please leave a detailed explanation, the reason for your decision.",
-        "fullLine": "{t('downvoteExplanation') || 'You are voting against publication. Please leave a detailed explanation, the reason for your decision.'}"
+        "line": 238,
+        "translationKey": "dailyLimit",
+        "fallbackText": "Daily limit",
+        "fullLine": "{t('dailyLimit') || 'Daily limit'}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 350,
+        "line": 312,
+        "translationKey": "available",
+        "fallbackText": "Available",
+        "fullLine": "{t('available') || 'Available'} {quotaRemaining}"
+      },
+      {
+        "file": "components/organisms/VotingPopup/VotingPanel.tsx",
+        "line": 379,
         "translationKey": "explanationDetails",
         "fallbackText": "Explanations, details and descriptions",
         "fullLine": "{t('explanationDetails') || 'Explanations, details and descriptions'}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 371,
+        "line": 400,
         "translationKey": "textField",
         "fallbackText": "Text field",
         "fullLine": "placeholder={t('textField') || 'Text field'}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPanel.tsx",
-        "line": 403,
+        "line": 432,
         "translationKey": "submit",
         "fallbackText": "Submit",
         "fullLine": "{t('submit') || 'Submit'}"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPopup.tsx",
-        "line": 162,
+        "line": 164,
         "translationKey": "pleaseAdjustSlider",
         "fallbackText": "Please adjust the slider to vote",
         "fullLine": "updateVotingFormData({ error: t('pleaseAdjustSlider') || 'Please adjust the slider to vote' });"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPopup.tsx",
-        "line": 168,
+        "line": 172,
         "translationKey": "reasonRequired",
         "fallbackText": "A reason for your vote is required",
         "fullLine": "updateVotingFormData({ error: t('reasonRequired') || 'A reason for your vote is required' });"
       },
       {
         "file": "components/organisms/VotingPopup/VotingPopup.tsx",
-        "line": 234,
+        "line": 236,
         "translationKey": "errorCommenting",
         "fallbackText": "Failed to submit",
         "fullLine": "const message = err instanceof Error ? err.message : t('errorCommenting') || 'Failed to submit';"
@@ -857,7 +766,7 @@
       },
       {
         "file": "app/meriter/profile/page.tsx",
-        "line": 80,
+        "line": 79,
         "label": "Settings",
         "fullLine": "aria-label=\"Settings\""
       },
@@ -881,19 +790,19 @@
       },
       {
         "file": "components/organisms/ContextTopBar/ContextTopBar.tsx",
-        "line": 137,
+        "line": 138,
         "label": "Back to profile",
         "fullLine": "aria-label=\"Back to profile\""
       },
       {
         "file": "components/organisms/ContextTopBar/ContextTopBar.tsx",
-        "line": 148,
+        "line": 149,
         "label": "Search",
         "fullLine": "aria-label=\"Search\""
       },
       {
         "file": "components/organisms/ContextTopBar/ContextTopBar.tsx",
-        "line": 200,
+        "line": 201,
         "label": "Clear search",
         "fullLine": "aria-label=\"Clear search\""
       },
@@ -936,46 +845,10 @@
     ],
     "placeholders": [
       {
-        "file": "app/meriter/about/page.tsx",
-        "line": 82,
-        "placeholder": "Search leads by name, username, or bio...",
-        "fullLine": "placeholder=\"Search leads by name, username, or bio...\""
-      },
-      {
-        "file": "components/molecules/LocationPicker/LocationPicker.tsx",
-        "line": 111,
-        "placeholder": "Search city or region...",
-        "fullLine": "placeholder=\"Search city or region...\""
-      },
-      {
-        "file": "components/molecules/SearchInput/SearchInput.tsx",
-        "line": 22,
-        "placeholder": "Search...",
-        "fullLine": "placeholder=\"Search...\""
-      },
-      {
-        "file": "components/organisms/Community/MembersTab.tsx",
-        "line": 70,
-        "placeholder": "Search members by name or username...",
-        "fullLine": "placeholder=\"Search members by name or username...\""
-      },
-      {
-        "file": "components/organisms/ContextTopBar/ContextTopBar.tsx",
-        "line": 191,
-        "placeholder": "Search...",
-        "fullLine": "placeholder=\"Search...\""
-      },
-      {
         "file": "components/organisms/UserForm/UserForm.tsx",
         "line": 218,
         "placeholder": "https://...",
         "fullLine": "placeholder=\"https://...\""
-      },
-      {
-        "file": "components/settings/SuperadminManagement.tsx",
-        "line": 58,
-        "placeholder": "Search users by name, username or email...",
-        "fullLine": "placeholder=\"Search users by name, username or email...\""
       },
       {
         "file": "components/ui/BrandSelect.tsx",

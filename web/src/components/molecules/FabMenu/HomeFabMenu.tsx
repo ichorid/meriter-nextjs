@@ -105,7 +105,7 @@ export const HomeFabMenu: React.FC = () => {
                                 >
                                     <Users size={18} className="text-brand-primary" />
                                     <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">
-                                        {t('hero.actions.createCommunity') || 'Create Community'}
+                                        {t('hero.actions.createCommunity')}
                                     </span>
                                 </button>
                             )

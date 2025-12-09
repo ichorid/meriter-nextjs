@@ -29,6 +29,7 @@
         "noCommunitiesFound": "Сообщества не найдены в кошельках",
         "loadingCommunities": "Загрузка сообществ...",
         "search": "Поиск",
+        "searchPlaceholder": "Поиск...",
         "open": "Открыть",
         "comingSoon": "Скоро",
         "noPermission": "У вас нет разрешения на выполнение этого действия",
@@ -454,7 +455,10 @@
             "createPost": "Создать пост",
             "joinByInvite": "Или присоединиться по приглашению",
             "publications": "Публикации",
-            "members": "Участники"
+            "members": "Участники",
+            "vision": "Видение",
+            "noVisionPosts": "Пока нет постов видения",
+            "visionCommunityNotFound": "Сообщество видения не найдено"
         },
         "communitySettings": {
             "title": "Настройки сообщества",
@@ -905,6 +909,11 @@
             "noResults": "Ничего не найдено",
             "tryDifferent": "Попробуйте другие поисковые запросы или фильтры",
             "loading": "Поиск...",
+            "searchPlaceholder": "Поиск...",
+            "searchLeadsPlaceholder": "Поиск лидов по имени, username или биографии...",
+            "searchMembersPlaceholder": "Поиск участников по имени или username...",
+            "searchLocationPlaceholder": "Поиск города или региона...",
+            "searchUsersPlaceholder": "Поиск пользователей по имени, username или email...",
             "publications": "Публикации",
             "comments": "Комментарии",
             "polls": "Опросы",

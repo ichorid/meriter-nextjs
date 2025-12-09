@@ -29,6 +29,7 @@
         "noCommunitiesFound": "No communities found in wallets",
         "loadingCommunities": "Loading communities...",
         "search": "Search",
+        "searchPlaceholder": "Search...",
         "open": "Open",
         "comingSoon": "Coming soon",
         "noPermission": "You don't have permission to perform this action",
@@ -453,7 +454,10 @@
             "createPost": "Create Post",
             "joinByInvite": "Or join by invite",
             "publications": "Publications",
-            "members": "Members"
+            "members": "Members",
+            "vision": "Vision",
+            "noVisionPosts": "No vision posts yet",
+            "visionCommunityNotFound": "Vision community not found"
         },
         "communitySettings": {
             "title": "Community Settings",
@@ -904,6 +908,11 @@
             "noResults": "No results found",
             "tryDifferent": "Try different search terms or filters",
             "loading": "Searching...",
+            "searchPlaceholder": "Search...",
+            "searchLeadsPlaceholder": "Search leads by name, username, or bio...",
+            "searchMembersPlaceholder": "Search members by name or username...",
+            "searchLocationPlaceholder": "Search city or region...",
+            "searchUsersPlaceholder": "Search users by name, username or email...",
             "publications": "Publications",
             "comments": "Comments",
             "polls": "Polls",

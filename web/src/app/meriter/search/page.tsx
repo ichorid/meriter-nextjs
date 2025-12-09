@@ -101,7 +101,7 @@ export default function SearchResultsPage() {
     <AdaptiveLayout>
       <div className="flex flex-col h-full bg-base-100 overflow-hidden">
         <PageHeader
-          title={t('results.title') || 'Search Results'}
+          title={t('results.title')}
           showBack={true}
         />
 
@@ -117,7 +117,7 @@ export default function SearchResultsPage() {
             <div className="flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
               <span className="ml-3 text-brand-text-secondary">
-                {t('results.loading') || 'Searching...'}
+                {t('results.loading')}
               </span>
             </div>
           ) : searchResults && searchResults.results.length > 0 ? (
@@ -187,9 +187,9 @@ export default function SearchResultsPage() {
           ) : searchParamsState.query || searchParamsState.tags?.length ? (
             <div className="text-center py-12 text-base-content/60">
               <Search className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
-              <p className="font-medium">{t('results.noResults') || 'No results found'}</p>
+              <p className="font-medium">{t('results.noResults')}</p>
               <p className="text-sm mt-1">
-                {t('results.tryDifferent') || 'Try different search terms or filters'}
+                {t('results.tryDifferent')}
               </p>
             </div>
           ) : null}

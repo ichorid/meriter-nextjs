@@ -184,7 +184,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               setShowHistory(true);
             }
           }}
-          placeholder={t('placeholder') || 'Search...'}
+          placeholder={t('results.searchPlaceholder')}
           leftIcon={<Search size={18} />}
           rightIcon={
             query ? (
@@ -226,7 +226,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
           className="flex items-center gap-2 text-sm text-brand-text-secondary hover:text-brand-primary transition-colors"
         >
           <Filter size={16} />
-          <span>{t('filters') || 'Filters'}</span>
+          <span>{t('filters')}</span>
         </button>
 
         <BrandButton
@@ -234,7 +234,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
           disabled={!query.trim() && !tags.length && !dateFrom && !dateTo}
           className="w-fit"
         >
-          {t('search') || 'Search'}
+          {t('search')}
         </BrandButton>
       </div>
 

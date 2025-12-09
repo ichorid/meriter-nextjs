@@ -45,10 +45,10 @@ export const LeadCard: React.FC<LeadCardProps> = ({
         if (!role) return null;
         
         const roleLabels: Record<string, string> = {
-            lead: t('lead') || 'Lead',
-            participant: t('participant') || 'Participant',
-            viewer: t('viewer') || 'Viewer',
-            superadmin: t('superadmin') || 'Superadmin',
+            lead: t('lead'),
+            participant: t('participant'),
+            viewer: t('viewer'),
+            superadmin: t('superadmin'),
         };
 
         const roleVariants: Record<string, 'primary' | 'secondary' | 'accent' | 'info' | 'success' | 'warning' | 'error'> = {

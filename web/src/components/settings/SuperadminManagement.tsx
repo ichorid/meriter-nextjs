@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { usersApiV1 } from '@/lib/api/v1';
 import { BrandInput } from '@/components/ui/BrandInput';
 import { BrandButton } from '@/components/ui/BrandButton';
@@ -7,6 +8,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { Loader2 } from 'lucide-react';
 
 export const SuperadminManagement = () => {
+    const tSearch = useTranslations('search');
     const [query, setQuery] = useState('');
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +57,7 @@ export const SuperadminManagement = () => {
             <BrandInput
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search users by name, username or email..."
+                placeholder={tSearch('results.searchUsersPlaceholder')}
                 label="Search Users"
             />
 

@@ -19,6 +19,7 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
     const router = useRouter();
     const t = useTranslations('pages.communities');
     const tCommon = useTranslations('common');
+    const tSearch = useTranslations('search');
     const { data: membersData, isLoading: membersLoading } = useCommunityMembers(communityId);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -67,7 +68,7 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
             {members.length > 0 && (
                 <div className="mb-4">
                     <SearchInput
-                        placeholder="Search members by name or username..."
+                        placeholder={tSearch('results.searchMembersPlaceholder')}
                         value={searchQuery}
                         onSearch={setSearchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}

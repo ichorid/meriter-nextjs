@@ -65,6 +65,7 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
 // Profile Top Bar with Tabs
 const ProfileTopBar: React.FC = () => {
   const t = useTranslations('home');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -188,7 +189,7 @@ const ProfileTopBar: React.FC = () => {
           <div className="space-y-4">
             <BrandInput
               type="text"
-              placeholder="Search..."
+              placeholder={tCommon('searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               leftIcon={<Search size={18} />}

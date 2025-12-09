@@ -10,7 +10,7 @@ import { CommunityMembersFab } from "@/components/molecules/FabMenu/CommunityMem
 import { MembersTab } from "@/components/organisms/Community/MembersTab";
 import { Tabs } from "@/components/ui/Tabs";
 import { useTranslations } from 'next-intl';
-import { useWallets, useCommunity } from '@/hooks/api';
+import { useWallets, useCommunity, useCommunities } from '@/hooks/api';
 import { useCommunityFeed } from '@/hooks/api/useCommunityFeed';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,7 +18,7 @@ import { routes } from '@/lib/constants/routes';
 import type { FeedItem } from '@meriter/shared-types';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
-import { Loader2, FileText, Users } from 'lucide-react';
+import { Loader2, FileText, Users, Eye } from 'lucide-react';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
@@ -74,12 +74,35 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         tag: selectedTag || undefined,
     });
 
+    // Fetch vision posts when vision tab is active and future-vision community exists
+    const {
+        data: visionData,
+        fetchNextPage: fetchNextVisionPage,
+        hasNextPage: hasNextVisionPage,
+        isFetchingNextPage: isFetchingNextVisionPage,
+        error: visionErr
+    } = useCommunityFeed(futureVisionCommunityId || '', {
+        pageSize: 5,
+        sort: sortBy === 'recent' ? 'recent' : 'score',
+        tag: selectedTag || undefined,
+    });
+
     // Derive paginationEnd from hasNextPage instead of setting it in getNextPageParam
     useEffect(() => {
-        if (!hasNextPage) {
-            setPaginationEnd(true);
+        if (activeTab === 'vision') {
+            if (!hasNextVisionPage) {
+                setPaginationEnd(true);
+            } else {
+                setPaginationEnd(false);
+            }
+        } else {
+            if (!hasNextPage) {
+                setPaginationEnd(true);
+            } else {
+                setPaginationEnd(false);
+            }
         }
-    }, [hasNextPage]);
+    }, [hasNextPage, hasNextVisionPage, activeTab]);
 
     // Memoize feed items array (can contain both publications and polls)
     const publications = useMemo(() => {
@@ -107,15 +130,42 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             );
     }, [data?.pages]); // Only recalculate when data.pages changes
 
+    // Memoize vision feed items array
+    const visionPublications = useMemo(() => {
+        return (visionData?.pages ?? [])
+            .flatMap((page: any) => {
+                // The API returns PaginatedResponse which has a 'data' property with the array
+                if (page?.data && Array.isArray(page.data)) {
+                    return page.data;
+                }
+                // Fallback: empty array
+                return [];
+            })
+            .map((p: any) => ({
+                ...p,
+                slug: p.slug || p.id, // Ensure slug is set (use id as fallback)
+                beneficiaryId: p.beneficiaryId || p.meta?.beneficiary?.username,
+                beneficiaryName: p.meta?.beneficiary?.name,
+                beneficiaryPhotoUrl: p.meta?.beneficiary?.photoUrl,
+                beneficiaryUsername: p.meta?.beneficiary?.username,
+                // Ensure type is set
+                type: p.type || (p.content ? 'publication' : 'poll'),
+            }))
+            .filter((p: FeedItem, index: number, self: FeedItem[]) =>
+                index === self.findIndex((t: FeedItem) => t?.id === p?.id)
+            );
+    }, [visionData?.pages]); // Only recalculate when visionData.pages changes
+
     // Handle deep linking to specific post or poll
     useEffect(() => {
-        if ((targetPostSlug || targetPollId) && publications.length > 0) {
+        const postsToSearch = activeTab === 'vision' ? visionPublications : publications;
+        if ((targetPostSlug || targetPollId) && postsToSearch.length > 0) {
             let targetPost: FeedItem | undefined;
 
             if (targetPollId) {
-                targetPost = publications.find((p: FeedItem) => p.id === targetPollId && p.type === 'poll');
+                targetPost = postsToSearch.find((p: FeedItem) => p.id === targetPollId && p.type === 'poll');
             } else if (targetPostSlug) {
-                targetPost = publications.find((p: FeedItem) => p.slug === targetPostSlug);
+                targetPost = postsToSearch.find((p: FeedItem) => p.slug === targetPostSlug);
             }
 
             if (targetPost) {
@@ -132,7 +182,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 }, 500);
             }
         }
-    }, [targetPostSlug, targetPollId, publications]);
+    }, [targetPostSlug, targetPollId, publications, visionPublications, activeTab]);
 
     const error =
         (publications ?? [])?.[0]?.error || err
@@ -184,6 +234,18 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const isSpecialCommunity = comms?.typeTag === 'marathon-of-good' || comms?.typeTag === 'future-vision';
     const isMarathonOfGood = comms?.typeTag === 'marathon-of-good';
 
+    // Fetch all communities to find the future-vision community when on marathon-of-good
+    const { data: communitiesData } = useCommunities();
+    
+    // Find the future-vision community ID when on marathon-of-good
+    const futureVisionCommunityId = useMemo(() => {
+        if (!isMarathonOfGood || !communitiesData?.data) return null;
+        const futureVisionCommunity = communitiesData.data.find(
+            (c: any) => c.typeTag === 'future-vision'
+        );
+        return futureVisionCommunity?.id || null;
+    }, [isMarathonOfGood, communitiesData?.data]);
+
     // Get user's team community (community with typeTag: 'team' where user has a role)
     const userTeamCommunityId = useMemo(() => {
         if (!userRoles || userRoles.length === 0) return null;
@@ -212,7 +274,11 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 document.body.offsetHeight
             ) {
                 if (!paginationEnd && !cooldown.current) {
-                    fetchNextPage();
+                    if (activeTab === 'vision' && futureVisionCommunityId) {
+                        fetchNextVisionPage();
+                    } else if (activeTab === 'publications') {
+                        fetchNextPage();
+                    }
 
                     cooldown.current = true;
                     setTimeout(() => {
@@ -223,7 +289,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         };
         window.addEventListener("scroll", fn);
         return () => window.removeEventListener("scroll", fn);
-    }, []);
+    }, [paginationEnd, activeTab, futureVisionCommunityId, fetchNextPage, fetchNextVisionPage]);
 
     // Use community data for chat info (same as comms)
     const chatUrl = comms?.description;
@@ -278,6 +344,50 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
         return filtered;
     }, [publications, selectedTag, searchQuery]);
+
+    // Filter vision publications by tag and search query
+    const filteredVisionPublications = useMemo(() => {
+        let filtered = visionPublications;
+
+        // Filter by tag
+        if (selectedTag) {
+            filtered = filtered.filter((p: FeedItem) => {
+                if (p.type === 'publication') {
+                    const tags = p.hashtags as string[] | undefined;
+                    return tags && Array.isArray(tags) && tags.includes(selectedTag);
+                } else {
+                    // Polls don't have hashtags in the schema, skip filtering
+                    return true;
+                }
+            });
+        }
+
+        // Filter by search query
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            filtered = filtered.filter((p: FeedItem) => {
+                if (p.type === 'publication') {
+                    const content = (p.content || '').toLowerCase();
+                    const title = ((p as any).title || '').toLowerCase();
+                    const authorName = (p.meta?.author?.name || '').toLowerCase();
+                    const hashtags = (p.hashtags || []).join(' ').toLowerCase();
+                    
+                    return content.includes(query) ||
+                           title.includes(query) ||
+                           authorName.includes(query) ||
+                           hashtags.includes(query);
+                } else if (p.type === 'poll') {
+                    const question = ((p as any).question || '').toLowerCase();
+                    const authorName = (p.meta?.author?.name || '').toLowerCase();
+                    
+                    return question.includes(query) || authorName.includes(query);
+                }
+                return false;
+            });
+        }
+
+        return filtered;
+    }, [visionPublications, selectedTag, searchQuery]);
 
     // Early return AFTER all hooks have been called
     if (!isAuthenticated) return null;
@@ -352,6 +462,11 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                         label: tCommunities('publications') || 'Publications',
                         icon: <FileText size={16} />,
                     },
+                    ...(isMarathonOfGood && futureVisionCommunityId ? [{
+                        id: 'vision',
+                        label: tCommunities('vision') || 'Vision',
+                        icon: <Eye size={16} />,
+                    }] : []),
                     {
                         id: 'members',
                         label: tCommunities('members') || 'Members',
@@ -463,12 +578,86 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                         </BrandButton>
                     )}
                 </div>
+            ) : activeTab === 'vision' ? (
+                <div className="space-y-4">
+                    {futureVisionCommunityId ? (
+                        <>
+                            {isAuthenticated &&
+                                filteredVisionPublications
+                                    .filter((p: FeedItem) => {
+                                        if (p.type === 'publication') {
+                                            return !!p.content;
+                                        }
+                                        return false;
+                                    })
+                                    .map((p) => {
+                                        // Check if this post is selected (for comments or polls)
+                                        const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug))
+                                            || !!(targetPollId && p.id === targetPollId);
+
+                                        return (
+                                            <div
+                                                key={p.id}
+                                                id={`post-${p.id}`}
+                                                className={
+                                                    highlightedPostId === p.id
+                                                        ? 'ring-2 ring-brand-primary ring-opacity-50 rounded-lg p-1 bg-brand-primary/5'
+                                                        : isSelected
+                                                            ? 'ring-2 ring-brand-secondary ring-opacity-70 rounded-lg p-1 bg-brand-secondary/5 transition-all duration-300'
+                                                            : 'hover:shadow-md transition-shadow rounded-lg'
+                                                }
+                                            >
+                                                <div className="relative">
+                                                    {/* Vision indicator icon */}
+                                                    <div className="absolute -top-2 -right-2 z-10 bg-primary text-primary-content rounded-full p-1.5 shadow-lg">
+                                                        <Eye size={16} />
+                                                    </div>
+                                                    <PublicationCard
+                                                        publication={p}
+                                                        wallets={Array.isArray(wallets) ? wallets : []}
+                                                        showCommunityAvatar={false}
+                                                        isSelected={isSelected}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                            {isFetchingNextVisionPage && (
+                                <div className="flex justify-center py-4">
+                                    <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+                                </div>
+                            )}
+
+                            {!paginationEnd && filteredVisionPublications.length > 1 && !isFetchingNextVisionPage && (
+                                <BrandButton
+                                    variant="primary"
+                                    onClick={() => fetchNextVisionPage()}
+                                    className="w-full sm:w-auto mx-auto block"
+                                >
+                                    {t('communities.loadMore')}
+                                </BrandButton>
+                            )}
+
+                            {filteredVisionPublications.length === 0 && !isFetchingNextVisionPage && (
+                                <div className="text-center py-8 text-base-content/60">
+                                    <p>{tCommunities('noVisionPosts') || 'No vision posts yet'}</p>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="text-center py-8 text-base-content/60">
+                            <p>{tCommunities('visionCommunityNotFound') || 'Vision community not found'}</p>
+                        </div>
+                    )}
+                </div>
             ) : (
                 <MembersTab communityId={chatId} />
             )}
 
             {/* Conditional FABs */}
             {activeTab === 'publications' && <FabMenu communityId={chatId} />}
+            {activeTab === 'vision' && futureVisionCommunityId && <FabMenu communityId={futureVisionCommunityId} />}
             {activeTab === 'members' && <CommunityMembersFab communityId={chatId} />}
         </AdaptiveLayout>
     );

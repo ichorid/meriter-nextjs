@@ -16,6 +16,7 @@ import type { EnrichedLead } from '@/types/lead';
 
 const AboutPage = () => {
     const t = useTranslations('common');
+    const tSearch = useTranslations('search');
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState('');
     
@@ -79,7 +80,7 @@ const AboutPage = () => {
                         {leads.length > 0 && (
                             <div className="mb-4">
                                 <SearchInput
-                                    placeholder="Search leads by name, username, or bio..."
+                                    placeholder={tSearch('results.searchLeadsPlaceholder')}
                                     value={searchQuery}
                                     onSearch={setSearchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}

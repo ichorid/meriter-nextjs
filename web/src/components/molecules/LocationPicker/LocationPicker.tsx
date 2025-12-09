@@ -31,7 +31,8 @@ interface NominatimResult {
 }
 
 export function LocationPicker({ initialRegion, initialCity, onLocationSelect }: LocationPickerProps) {
-    const t = useTranslations('common'); // Assuming common translations exist, or fallback
+    const t = useTranslations('common');
+    const tSearch = useTranslations('search');
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<NominatimResult[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -108,7 +109,7 @@ export function LocationPicker({ initialRegion, initialCity, onLocationSelect }:
                 <BrandInput
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search city or region..."
+                    placeholder={tSearch('results.searchLocationPlaceholder')}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     rightElement={
                         <button
