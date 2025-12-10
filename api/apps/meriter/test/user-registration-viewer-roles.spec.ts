@@ -48,6 +48,7 @@ describe('User Registration - Viewer Role Assignment', () => {
   // Test community IDs
   let marathonCommunityId: string;
   let visionCommunityId: string;
+  let supportCommunityId: string;
 
   beforeAll(async () => {
     testDb = new TestDatabaseHelper();
@@ -82,6 +83,7 @@ describe('User Registration - Viewer Role Assignment', () => {
 
     marathonCommunityId = uid();
     visionCommunityId = uid();
+    supportCommunityId = uid();
   });
 
   beforeEach(async () => {
@@ -113,6 +115,23 @@ describe('User Registration - Viewer Role Assignment', () => {
       id: visionCommunityId,
       name: 'Future Vision',
       typeTag: 'future-vision',
+      members: [],
+      settings: {
+        dailyEmission: 10,
+        currencyNames: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await communityModel.create({
+      id: supportCommunityId,
+      name: 'Support',
+      typeTag: 'support',
       members: [],
       settings: {
         dailyEmission: 10,

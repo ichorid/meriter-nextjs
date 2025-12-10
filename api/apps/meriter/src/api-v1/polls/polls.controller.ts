@@ -136,18 +136,51 @@ export class PollsController {
       throw new ValidationError('Polls are disabled in future-vision communities');
     }
     
-    // Check quota requirement (skip for future-vision communities)
-    if (community.typeTag !== 'future-vision') {
-      const remainingQuota = await this.getRemainingQuota(
-        req.user.id,
-        createDto.communityId,
-        community,
-      );
-
-      if (remainingQuota < 1) {
+    // Get poll cost from community settings (default to 1 if not set)
+    const pollCost = community.settings?.pollCost ?? 1;
+    
+    // Extract payment amounts
+    const quotaAmount = createDto.quotaAmount ?? 0;
+    const walletAmount = createDto.walletAmount ?? 0;
+    
+    // Default to pollCost quota if neither is specified (backward compatibility)
+    const effectiveQuotaAmount = quotaAmount === 0 && walletAmount === 0 ? pollCost : quotaAmount;
+    const effectiveWalletAmount = walletAmount;
+    
+    // Validate payment (skip for future-vision communities and if cost is 0)
+    if (community.typeTag !== 'future-vision' && pollCost > 0) {
+      // Validate that at least one payment method is provided
+      if (effectiveQuotaAmount === 0 && effectiveWalletAmount === 0) {
         throw new ValidationError(
-          'Insufficient quota. You need at least 1 quota to create a poll.',
+          `You must pay with either quota or wallet merits to create a poll. The cost is ${pollCost}. At least one of quotaAmount or walletAmount must be at least ${pollCost}.`,
         );
+      }
+
+      // Check quota if using quota
+      if (effectiveQuotaAmount > 0) {
+        const remainingQuota = await this.getRemainingQuota(
+          req.user.id,
+          createDto.communityId,
+          community,
+        );
+
+        if (remainingQuota < effectiveQuotaAmount) {
+          throw new ValidationError(
+            `Insufficient quota. Available: ${remainingQuota}, Requested: ${effectiveQuotaAmount}`,
+          );
+        }
+      }
+
+      // Check wallet balance if using wallet
+      if (effectiveWalletAmount > 0) {
+        const wallet = await this.walletService.getWallet(req.user.id, createDto.communityId);
+        const walletBalance = wallet ? wallet.getBalance() : 0;
+
+        if (walletBalance < effectiveWalletAmount) {
+          throw new ValidationError(
+            `Insufficient wallet balance. Available: ${walletBalance}, Requested: ${effectiveWalletAmount}`,
+          );
+        }
       }
     }
     
@@ -159,23 +192,56 @@ export class PollsController {
     const snapshot = poll.toSnapshot();
     const pollId = snapshot.id;
     
-    // Consume quota after successful creation (skip for future-vision communities)
-    if (community.typeTag !== 'future-vision') {
-      try {
-        await this.quotaUsageService.consumeQuota(
-          req.user.id,
-          snapshot.communityId,
-          1,
-          'poll_creation',
-          pollId,
-        );
-      } catch (error) {
-        this.logger.error(
-          `Failed to consume quota for poll ${pollId}:`,
-          error,
-        );
-        // Don't fail the request if quota consumption fails - poll is already created
-        // This is a best-effort quota tracking
+    // Process payment after successful creation (skip for future-vision communities and if cost is 0)
+    if (community.typeTag !== 'future-vision' && pollCost > 0) {
+      // Record quota usage if quota was used
+      if (effectiveQuotaAmount > 0) {
+        try {
+          await this.quotaUsageService.consumeQuota(
+            req.user.id,
+            snapshot.communityId,
+            effectiveQuotaAmount,
+            'poll_creation',
+            pollId,
+          );
+        } catch (error) {
+          this.logger.error(
+            `Failed to consume quota for poll ${pollId}:`,
+            error,
+          );
+          // Don't fail the request if quota consumption fails - poll is already created
+          // This is a best-effort quota tracking
+        }
+      }
+
+      // Deduct from wallet if wallet was used
+      if (effectiveWalletAmount > 0) {
+        try {
+          const currency = community.settings?.currencyNames || {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          };
+
+          await this.walletService.addTransaction(
+            req.user.id,
+            snapshot.communityId,
+            'debit',
+            effectiveWalletAmount,
+            'personal',
+            'poll_creation',
+            pollId,
+            currency,
+            `Payment for creating poll`,
+          );
+        } catch (error) {
+          this.logger.error(
+            `Failed to deduct wallet balance for poll ${pollId}:`,
+            error,
+          );
+          // Don't fail the request if wallet deduction fails - poll is already created
+          // This is a best-effort payment tracking
+        }
       }
     }
     

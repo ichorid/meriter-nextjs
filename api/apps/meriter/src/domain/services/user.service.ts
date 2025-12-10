@@ -199,8 +199,11 @@ export class UserService implements OnModuleInit {
     const marathonOfGood = await this.communityModel
       .findOne({ typeTag: 'marathon-of-good' })
       .lean();
+    const support = await this.communityModel
+      .findOne({ typeTag: 'support' })
+      .lean();
 
-    if (!futureVision || !marathonOfGood) {
+    if (!futureVision || !marathonOfGood || !support) {
       this.logger.warn(
         'Base communities not found. They should be created on server startup.',
       );
@@ -217,6 +220,7 @@ export class UserService implements OnModuleInit {
     const memberships = user.communityMemberships || [];
     const needsToJoinFV = !memberships.includes(futureVision.id);
     const needsToJoinMG = !memberships.includes(marathonOfGood.id);
+    const needsToJoinSupport = !memberships.includes(support.id);
 
     // Add user to Future Vision if needed
     if (needsToJoinFV) {
@@ -314,7 +318,54 @@ export class UserService implements OnModuleInit {
       }
     }
 
-    if (!needsToJoinFV && !needsToJoinMG) {
+    // Add user to Support if needed
+    if (needsToJoinSupport) {
+      this.logger.log(`Adding user ${userId} to Support`);
+      try {
+        // 1. Check if user has any role in this community
+        const existingRole = await this.userCommunityRoleService.getRole(
+          userId,
+          support.id,
+        );
+        
+        // 2. Add user to community's members list
+        await this.communityService.addMember(support.id, userId);
+        // 3. Add community to user's memberships
+        await this.addCommunityMembership(userId, support.id);
+        
+        // 4. Assign participant role if user has no role (joining without invite)
+        if (!existingRole) {
+          await this.userCommunityRoleService.setRole(
+            userId,
+            support.id,
+            'participant',
+            true, // skipSync to prevent recursion
+          );
+          this.logger.log(
+            `Assigned participant role to user ${userId} in Support (no invite)`,
+          );
+        }
+        
+        // 5. Create wallet for user in community
+        const currency = support.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        };
+        await this.walletService.createOrGetWallet(
+          userId,
+          support.id,
+          currency,
+        );
+        this.logger.log(`User ${userId} successfully added to Support`);
+      } catch (error) {
+        this.logger.error(
+          `Failed to add user ${userId} to Support: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+      }
+    }
+
+    if (!needsToJoinFV && !needsToJoinMG && !needsToJoinSupport) {
       this.logger.log(`User ${userId} already in base communities`);
     }
   }

@@ -73,6 +73,8 @@ export const CommunitySettingsSchema = z.object({
   currencyNames: CurrencySchema,
   dailyEmission: z.number().int().min(0).default(10),
   language: z.enum(["en", "ru"]).default("en"),
+  postCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a post (0 = free)
+  pollCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a poll (0 = free)
 });
 
 // Community rules schemas (настраиваемые правила)
@@ -180,6 +182,7 @@ export const CommunitySchema = IdentifiableSchema.merge(
     .enum([
       "future-vision",
       "marathon-of-good",
+      "support",
       "team",
       "political",
       "housing",
@@ -326,7 +329,19 @@ export const CreatePublicationDtoSchema = z.object({
   imageUrl: z.string().url().optional(),
   videoUrl: z.string().url().optional(),
   authorDisplay: z.string().optional(),
-});
+  quotaAmount: z.number().int().min(0).optional(),
+  walletAmount: z.number().int().min(0).optional(),
+}).refine(
+  (data) => {
+    const quota = data.quotaAmount ?? 0;
+    const wallet = data.walletAmount ?? 0;
+    // At least one must be >= 1, or both can be 0 for future-vision communities
+    return quota >= 1 || wallet >= 1 || (quota === 0 && wallet === 0);
+  },
+  {
+    message: "At least one of quotaAmount or walletAmount must be at least 1 to create a post",
+  }
+);
 
 export const CreateCommentDtoSchema = z.object({
   targetType: z.enum(["publication", "comment"]),
@@ -380,7 +395,19 @@ export const CreatePollDtoSchema = z.object({
     )
     .min(2),
   expiresAt: z.string().datetime(),
-});
+  quotaAmount: z.number().int().min(0).optional(),
+  walletAmount: z.number().int().min(0).optional(),
+}).refine(
+  (data) => {
+    const quota = data.quotaAmount ?? 0;
+    const wallet = data.walletAmount ?? 0;
+    // At least one must be >= 1, or both can be 0 for future-vision communities
+    return quota >= 1 || wallet >= 1 || (quota === 0 && wallet === 0);
+  },
+  {
+    message: "At least one of quotaAmount or walletAmount must be at least 1 to create a poll",
+  }
+);
 
 export const UpdatePollDtoSchema = CreatePollDtoSchema.partial();
 

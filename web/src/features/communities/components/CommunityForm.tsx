@@ -49,6 +49,8 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const [currencyPlural, setCurrencyPlural] = useState('merits');
     const [currencyGenitive, setCurrencyGenitive] = useState('merits');
     const [dailyEmission, setDailyEmission] = useState('100');
+    const [postCost, setPostCost] = useState('1');
+    const [pollCost, setPollCost] = useState('1');
     const [hashtags, setHashtags] = useState<string[]>([]);
     const [isPriority, setIsPriority] = useState(false);
     // Default icon is "thanks" emoji (🙏)
@@ -65,6 +67,8 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             setCurrencyPlural(community.settings?.currencyNames?.plural || 'merits');
             setCurrencyGenitive(community.settings?.currencyNames?.genitive || 'merits');
             setDailyEmission(String(community.settings?.dailyEmission || 100));
+            setPostCost(String(community.settings?.postCost ?? 1));
+            setPollCost(String(community.settings?.pollCost ?? 1));
             setHashtags(community.hashtags || []);
             setIsPriority((community as any).isPriority || false);
             setIconUrl(community.settings?.iconUrl || defaultIconUrl);
@@ -84,15 +88,17 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 description,
                 avatarUrl: avatarUrl || undefined,
                 hashtags,
-                settings: {
-                    iconUrl: iconUrl || defaultIconUrl,
-                    currencyNames: {
-                        singular: currencySingular,
-                        plural: currencyPlural,
-                        genitive: currencyGenitive,
+                    settings: {
+                        iconUrl: iconUrl || defaultIconUrl,
+                        currencyNames: {
+                            singular: currencySingular,
+                            plural: currencyPlural,
+                            genitive: currencyGenitive,
+                        },
+                        dailyEmission: parseInt(dailyEmission, 10),
+                        postCost: parseInt(postCost, 10),
+                        pollCost: parseInt(pollCost, 10),
                     },
-                    dailyEmission: parseInt(dailyEmission, 10),
-                },
             };
 
             if (isEditMode) {
@@ -353,6 +359,36 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                                 fullWidth
                             />
                         </BrandFormControl>
+
+                        {(isSuperadmin || isUserLead) && (
+                            <>
+                                <BrandFormControl
+                                    label={t('postCost')}
+                                    helperText={t('postCostHelp')}
+                                >
+                                    <BrandInput
+                                        type="number"
+                                        min="0"
+                                        value={postCost}
+                                        onChange={(e) => setPostCost(e.target.value)}
+                                        fullWidth
+                                    />
+                                </BrandFormControl>
+
+                                <BrandFormControl
+                                    label={t('pollCost')}
+                                    helperText={t('pollCostHelp')}
+                                >
+                                    <BrandInput
+                                        type="number"
+                                        min="0"
+                                        value={pollCost}
+                                        onChange={(e) => setPollCost(e.target.value)}
+                                        fullWidth
+                                    />
+                                </BrandFormControl>
+                            </>
+                        )}
 
                         {isEditMode && canResetQuota && (
                             <BrandFormControl

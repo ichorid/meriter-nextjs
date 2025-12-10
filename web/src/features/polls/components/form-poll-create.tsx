@@ -7,6 +7,7 @@ import { pollsApiV1 } from '@/lib/api/v1';
 import { useUpdatePoll } from '@/hooks/api/usePolls';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { useCommunity } from '@/hooks/api/useCommunities';
+import { useWallet } from '@/hooks/api/useWallet';
 import type { Poll } from '@/types/api-v1';
 import { safeHapticFeedback } from '@/shared/lib/utils/haptic-utils';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
@@ -44,13 +45,23 @@ export const FormPollCreate = ({
     const isMountedRef = useRef(true);
     const updatePoll = useUpdatePoll();
     const isEditMode = !!pollId && !!initialData;
-    const currentCommunityId = communityId || initialData?.communityId;
+    const currentCommunityId = communityId || initialData?.communityId || '';
     const { data: community } = useCommunity(currentCommunityId);
     const { data: quotaData } = useUserQuota(currentCommunityId);
+    const { data: wallet } = useWallet(currentCommunityId || undefined);
     
-    // Check if quota is required (not future-vision)
-    const requiresQuota = community?.typeTag !== 'future-vision';
-    const hasInsufficientQuota = requiresQuota && quotaData && quotaData.remainingToday < 1;
+    // Get poll cost from community settings (default to 1 if not set)
+    const pollCost = community?.settings?.pollCost ?? 1;
+    
+    // Check if payment is required (not future-vision and cost > 0)
+    const requiresPayment = community?.typeTag !== 'future-vision' && pollCost > 0;
+    const quotaRemaining = quotaData?.remainingToday ?? 0;
+    const walletBalance = wallet?.balance ?? 0;
+    
+    // Automatic payment method selection: quota first, then wallet
+    const willUseQuota = requiresPayment && quotaRemaining >= pollCost;
+    const willUseWallet = requiresPayment && quotaRemaining < pollCost && walletBalance >= pollCost;
+    const hasInsufficientPayment = requiresPayment && quotaRemaining < pollCost && walletBalance < pollCost;
 
     // Calculate timeValue and timeUnit from expiresAt if editing
     const calculateTimeFromExpiresAt = (expiresAt: string): { value: string; unit: "minutes" | "hours" | "days" } => {
@@ -147,9 +158,9 @@ export const FormPollCreate = ({
             return false;
         }
 
-        // Check quota if required
-        if (requiresQuota && hasInsufficientQuota) {
-            setError(t('insufficientQuota'));
+        // Check payment if required
+        if (hasInsufficientPayment) {
+            setError(t('insufficientPayment'));
             return false;
         }
 
@@ -198,12 +209,18 @@ export const FormPollCreate = ({
                     text: opt.text.trim(),
                 }));
 
+            // Automatic payment (quota first, then wallet)
+            const quotaAmount = willUseQuota ? pollCost : 0;
+            const walletAmount = willUseWallet ? pollCost : 0;
+            
             const payload = {
                 question: title.trim(),
                 description: description.trim() || undefined,
                 options: filledOptions,
                 expiresAt: expiresAt.toISOString(),
                 communityId: selectedWallet,
+                quotaAmount: quotaAmount > 0 ? quotaAmount : undefined,
+                walletAmount: walletAmount > 0 ? walletAmount : undefined,
             };
 
             console.log('📊 Creating poll with payload:', payload);
@@ -355,17 +372,27 @@ export const FormPollCreate = ({
                 </h1>
             </div>
 
-            {!isEditMode && requiresQuota && (
+            {!isEditMode && requiresPayment && (
                 <div className={`p-3 rounded-lg border ${
-                    hasInsufficientQuota
+                    hasInsufficientPayment
                         ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
                         : 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
                 }`}>
-                    <p className={hasInsufficientQuota ? 'text-red-700 dark:text-red-300' : 'text-blue-700 dark:text-blue-300'}>
-                        {hasInsufficientQuota
-                            ? t('insufficientQuota')
-                            : t('quotaInfo') + ' ' + t('quotaRemaining', { remaining: quotaData?.remainingToday ?? 0 })}
-                    </p>
+                    {hasInsufficientPayment ? (
+                        <p className="text-red-700 dark:text-red-300 text-sm">
+                            {t('insufficientPayment', { cost: pollCost })}
+                        </p>
+                    ) : pollCost > 0 ? (
+                        <p className="text-blue-700 dark:text-blue-300 text-sm">
+                            {willUseQuota 
+                                ? t('willPayWithQuota', { remaining: quotaRemaining, cost: pollCost })
+                                : t('willPayWithWallet', { balance: walletBalance, cost: pollCost })}
+                        </p>
+                    ) : (
+                        <p className="text-blue-700 dark:text-blue-300 text-sm">
+                            {t('pollIsFree')}
+                        </p>
+                    )}
                 </div>
             )}
 
@@ -503,7 +530,7 @@ export const FormPollCreate = ({
                     <BrandButton
                         variant="primary"
                         onClick={handleCreate}
-                        disabled={isCreating || hasInsufficientQuota}
+                        disabled={isCreating || hasInsufficientPayment}
                         isLoading={isCreating}
                     >
                         {isEditMode ? (t('updatePoll') || 'Update Poll') : t('createPoll')}

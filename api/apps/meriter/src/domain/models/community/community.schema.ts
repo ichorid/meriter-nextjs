@@ -36,6 +36,7 @@ export class Community {
     enum: [
       'future-vision',
       'marathon-of-good',
+      'support',
       'team',
       'political',
       'housing',
@@ -47,6 +48,7 @@ export class Community {
   typeTag?:
     | 'future-vision'
     | 'marathon-of-good'
+    | 'support'
     | 'team'
     | 'political'
     | 'housing'
@@ -164,6 +166,8 @@ export class Community {
       },
       dailyEmission: { type: Number, default: 10 },
       language: { type: String, enum: ['en', 'ru'], default: 'en' },
+      postCost: { type: Number, default: 1 },
+      pollCost: { type: Number, default: 1 },
     },
     default: {},
   })
@@ -176,6 +180,8 @@ export class Community {
     };
     dailyEmission: number;
     language?: 'en' | 'ru';
+    postCost?: number;
+    pollCost?: number;
   };
 
   @Prop({ type: [String], default: [] })

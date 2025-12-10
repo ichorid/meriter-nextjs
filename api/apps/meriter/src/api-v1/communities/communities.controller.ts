@@ -186,6 +186,8 @@ export class CommunitiesController {
         dailyEmission: community.settings?.dailyEmission as number,
         iconUrl: community.settings?.iconUrl,
         language: community.settings?.language ?? 'en',
+        postCost: community.settings?.postCost ?? 1,
+        pollCost: community.settings?.pollCost ?? 1,
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
@@ -270,6 +272,8 @@ export class CommunitiesController {
         dailyEmission: community.settings?.dailyEmission as number,
         iconUrl: community.settings?.iconUrl,
         language: community.settings?.language ?? 'en',
+        postCost: community.settings?.postCost ?? 1,
+        pollCost: community.settings?.pollCost ?? 1,
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
@@ -331,6 +335,8 @@ export class CommunitiesController {
         dailyEmission: community.settings?.dailyEmission as number,
         iconUrl: community.settings?.iconUrl,
         language: community.settings?.language ?? 'en',
+        postCost: community.settings?.postCost ?? 1,
+        pollCost: community.settings?.pollCost ?? 1,
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,

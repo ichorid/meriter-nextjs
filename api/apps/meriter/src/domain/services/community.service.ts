@@ -28,6 +28,7 @@ export interface CreateCommunityDto {
   typeTag?:
     | 'future-vision'
     | 'marathon-of-good'
+    | 'support'
     | 'team'
     | 'political'
     | 'housing'
@@ -143,11 +144,34 @@ export class CommunityService {
         this.logger.error('Failed to create Marathon of Good', e);
       }
     }
+
+    // 3. Support
+    const support = await this.getCommunityByTypeTag('support');
+    if (!support) {
+      this.logger.log('Creating "Support" community...');
+      try {
+        await this.createCommunity({
+          name: 'Поддержка',
+          description: 'Группа поддержки.',
+          typeTag: 'support',
+          settings: {
+            currencyNames: {
+              singular: 'merit',
+              plural: 'merits',
+              genitive: 'merits',
+            },
+            dailyEmission: 10,
+          },
+        });
+      } catch (e) {
+        this.logger.error('Failed to create Support', e);
+      }
+    }
   }
 
   async createCommunity(dto: CreateCommunityDto): Promise<Community> {
-    // Check for single-instance communities (Future Vision and Good Deeds Marathon)
-    if (dto.typeTag === 'future-vision' || dto.typeTag === 'marathon-of-good') {
+    // Check for single-instance communities (Future Vision, Good Deeds Marathon, and Support)
+    if (dto.typeTag === 'future-vision' || dto.typeTag === 'marathon-of-good' || dto.typeTag === 'support') {
       const existing = await this.communityModel
         .findOne({ typeTag: dto.typeTag })
         .lean();
@@ -217,6 +241,17 @@ export class CommunityService {
       defaultPostingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
       defaultPostingRules.onlyTeamLead = false;
       // Merit rules: Viewers do NOT get daily quota (wallet voting only)
+      defaultMeritRules.quotaRecipients = ['superadmin', 'lead', 'participant'];
+    }
+
+    // Special rules for "Support" (same as Team)
+    if (dto.typeTag === 'support') {
+      // Posting: Only Team Members and Lead
+      defaultPostingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
+      defaultPostingRules.requiresTeamMembership = true;
+      // Voting: Team Members can vote
+      defaultVotingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
+      // Merit rules: Viewers do NOT get daily quota in support groups
       defaultMeritRules.quotaRecipients = ['superadmin', 'lead', 'participant'];
     }
 

@@ -1,5 +1,5 @@
 import { UsePipes } from '@nestjs/common';
-import { ZodSchema } from 'zod';
+import { z } from 'zod';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
 
 /**
@@ -14,7 +14,7 @@ import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
  * }
  * ```
  */
-export function ZodValidation(schema: ZodSchema) {
+export function ZodValidation(schema: z.ZodTypeAny) {
   return UsePipes(new ZodValidationPipe(schema));
 }
 

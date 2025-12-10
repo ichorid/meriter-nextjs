@@ -19,6 +19,7 @@ import { PublicationService } from '../../domain/services/publication.service';
 import { UserService } from '../../domain/services/user.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { QuotaUsageService } from '../../domain/services/quota-usage.service';
+import { WalletService } from '../../domain/services/wallet.service';
 import { UserEnrichmentService } from '../common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../common/services/community-enrichment.service';
 import { EntityMappers } from '../common/mappers/entity-mappers';
@@ -47,6 +48,7 @@ export class PublicationsController {
     private userService: UserService,
     private communityService: CommunityService,
     private quotaUsageService: QuotaUsageService,
+    private walletService: WalletService,
     private userEnrichmentService: UserEnrichmentService,
     private communityEnrichmentService: CommunityEnrichmentService,
     @InjectConnection() private readonly connection: Connection,
@@ -59,24 +61,57 @@ export class PublicationsController {
     @User() user: AuthenticatedUser,
     @Body() dto: CreatePublicationDto,
   ) {
-    // Get community to check quota requirements
+    // Get community to check payment requirements
     const community = await this.communityService.getCommunity(dto.communityId);
     if (!community) {
       throw new NotFoundException('Community not found');
     }
 
-    // Check quota requirement (skip for future-vision communities)
-    if (community.typeTag !== 'future-vision') {
-      const remainingQuota = await this.getRemainingQuota(
-        user.id,
-        dto.communityId,
-        community,
-      );
-
-      if (remainingQuota < 1) {
+    // Get post cost from community settings (default to 1 if not set)
+    const postCost = community.settings?.postCost ?? 1;
+    
+    // Extract payment amounts
+    const quotaAmount = dto.quotaAmount ?? 0;
+    const walletAmount = dto.walletAmount ?? 0;
+    
+    // Default to postCost quota if neither is specified (backward compatibility)
+    const effectiveQuotaAmount = quotaAmount === 0 && walletAmount === 0 ? postCost : quotaAmount;
+    const effectiveWalletAmount = walletAmount;
+    
+    // Validate payment (skip for future-vision communities and if cost is 0)
+    if (community.typeTag !== 'future-vision' && postCost > 0) {
+      // Validate that at least one payment method is provided
+      if (effectiveQuotaAmount === 0 && effectiveWalletAmount === 0) {
         throw new ValidationError(
-          'Insufficient quota. You need at least 1 quota to create a post.',
+          `You must pay with either quota or wallet merits to create a post. The cost is ${postCost}. At least one of quotaAmount or walletAmount must be at least ${postCost}.`,
         );
+      }
+
+      // Check quota if using quota
+      if (effectiveQuotaAmount > 0) {
+        const remainingQuota = await this.getRemainingQuota(
+          user.id,
+          dto.communityId,
+          community,
+        );
+
+        if (remainingQuota < effectiveQuotaAmount) {
+          throw new ValidationError(
+            `Insufficient quota. Available: ${remainingQuota}, Requested: ${effectiveQuotaAmount}`,
+          );
+        }
+      }
+
+      // Check wallet balance if using wallet
+      if (effectiveWalletAmount > 0) {
+        const wallet = await this.walletService.getWallet(user.id, dto.communityId);
+        const walletBalance = wallet ? wallet.getBalance() : 0;
+
+        if (walletBalance < effectiveWalletAmount) {
+          throw new ValidationError(
+            `Insufficient wallet balance. Available: ${walletBalance}, Requested: ${effectiveWalletAmount}`,
+          );
+        }
       }
     }
 
@@ -92,23 +127,56 @@ export class PublicationsController {
     const communityId = publication.getCommunityId.getValue();
     const publicationId = publication.getId.getValue();
 
-    // Consume quota after successful creation (skip for future-vision communities)
+    // Process payment after successful creation (skip for future-vision communities)
     if (community.typeTag !== 'future-vision') {
-      try {
-        await this.quotaUsageService.consumeQuota(
-          user.id,
-          communityId,
-          1,
-          'publication_creation',
-          publicationId,
-        );
-      } catch (error) {
-        this.logger.error(
-          `Failed to consume quota for publication ${publicationId}:`,
-          error,
-        );
-        // Don't fail the request if quota consumption fails - publication is already created
-        // This is a best-effort quota tracking
+      // Record quota usage if quota was used
+      if (effectiveQuotaAmount > 0) {
+        try {
+          await this.quotaUsageService.consumeQuota(
+            user.id,
+            communityId,
+            effectiveQuotaAmount,
+            'publication_creation',
+            publicationId,
+          );
+        } catch (error) {
+          this.logger.error(
+            `Failed to consume quota for publication ${publicationId}:`,
+            error,
+          );
+          // Don't fail the request if quota consumption fails - publication is already created
+          // This is a best-effort quota tracking
+        }
+      }
+
+      // Deduct from wallet if wallet was used
+      if (effectiveWalletAmount > 0) {
+        try {
+          const currency = community.settings?.currencyNames || {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          };
+
+          await this.walletService.addTransaction(
+            user.id,
+            communityId,
+            'debit',
+            effectiveWalletAmount,
+            'personal',
+            'publication_creation',
+            publicationId,
+            currency,
+            `Payment for creating publication`,
+          );
+        } catch (error) {
+          this.logger.error(
+            `Failed to deduct wallet balance for publication ${publicationId}:`,
+            error,
+          );
+          // Don't fail the request if wallet deduction fails - publication is already created
+          // This is a best-effort payment tracking
+        }
       }
     }
 

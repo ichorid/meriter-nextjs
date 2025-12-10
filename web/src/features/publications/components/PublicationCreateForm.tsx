@@ -7,6 +7,7 @@ import { useCreatePublication, useUpdatePublication } from '@/hooks/api/usePubli
 import type { Publication } from '@/types/api-v1';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { useUserQuota } from '@/hooks/api/useQuota';
+import { useWallet } from '@/hooks/api/useWallet';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandInput } from '@/components/ui/BrandInput';
 import { BrandSelect } from '@/components/ui/BrandSelect';
@@ -55,14 +56,25 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const updatePublication = useUpdatePublication();
   const { data: community } = useCommunity(communityId);
   const { data: quotaData } = useUserQuota(communityId);
+  const { data: wallet } = useWallet(communityId);
   const isEditMode = !!publicationId && !!initialData;
 
   // Check if this is Good Deeds Marathon community
   const isGoodDeedsMarathon = community?.typeTag === 'marathon-of-good';
   
-  // Check if quota is required (not future-vision)
-  const requiresQuota = community?.typeTag !== 'future-vision';
-  const hasInsufficientQuota = requiresQuota && quotaData && quotaData.remainingToday < 1;
+  // Get post cost from community settings (default to 1 if not set)
+  const postCost = community?.settings?.postCost ?? 1;
+  
+  // Check if payment is required (not future-vision and cost > 0)
+  const requiresPayment = community?.typeTag !== 'future-vision' && postCost > 0;
+  const quotaRemaining = quotaData?.remainingToday ?? 0;
+  const walletBalance = wallet?.balance ?? 0;
+  
+  // Automatic payment method selection: quota first, then wallet
+  const willUseQuota = requiresPayment && quotaRemaining >= postCost;
+  const willUseWallet = requiresPayment && quotaRemaining < postCost && walletBalance >= postCost;
+  const hasInsufficientPayment = requiresPayment && quotaRemaining < postCost && walletBalance < postCost;
+  const paymentMethod = willUseQuota ? 'quota' : (willUseWallet ? 'wallet' : null);
 
   const [title, setTitle] = useState(initialData?.title || '');
   const [description, setDescription] = useState(initialData?.description || initialData?.content || '');
@@ -241,7 +253,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           },
         });
       } else {
-        // Create new publication
+        // Create new publication with automatic payment (quota first, then wallet)
+        const quotaAmount = willUseQuota ? postCost : 0;
+        const walletAmount = willUseWallet ? postCost : 0;
+        
         publication = await createPublication.mutateAsync({
           communityId,
           title: title.trim(),
@@ -252,6 +267,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           isProject: isProject,
           hashtags,
           imageUrl: imageUrl || undefined,
+          quotaAmount: quotaAmount > 0 ? quotaAmount : undefined,
+          walletAmount: walletAmount > 0 ? walletAmount : undefined,
         });
 
         // Clear draft after successful publication
@@ -329,17 +346,27 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           </div>
         )}
 
-        {!isEditMode && requiresQuota && (
-          <div className={`p-3 rounded-lg mb-4 border ${
-            hasInsufficientQuota
+        {!isEditMode && requiresPayment && (
+          <div className={`p-3 rounded-lg border ${
+            hasInsufficientPayment
               ? 'bg-red-50 border-red-200'
               : 'bg-blue-50 border-blue-200'
           }`}>
-            <p className={hasInsufficientQuota ? 'text-red-700' : 'text-blue-700'}>
-              {hasInsufficientQuota
-                ? t('insufficientQuota')
-                : t('quotaInfo') + ' ' + t('quotaRemaining', { remaining: quotaData?.remainingToday ?? 0 })}
-            </p>
+                    {hasInsufficientPayment ? (
+                        <p className="text-red-700 text-sm">
+                            {t('insufficientPayment', { cost: postCost })}
+                        </p>
+                    ) : postCost > 0 ? (
+                        <p className="text-blue-700 text-sm">
+                            {willUseQuota 
+                                ? t('willPayWithQuota', { remaining: quotaRemaining, cost: postCost })
+                                : t('willPayWithWallet', { balance: walletBalance, cost: postCost })}
+                        </p>
+                    ) : (
+                        <p className="text-blue-700 text-sm">
+                            {t('postIsFree')}
+                        </p>
+                    )}
           </div>
         )}
 
@@ -510,7 +537,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                 e.stopPropagation();
                 handleSubmit();
               }}
-              disabled={!title.trim() || !description.trim() || isSubmitting || isSubmittingRef.current || hasInsufficientQuota}
+              disabled={!title.trim() || !description.trim() || isSubmitting || isSubmittingRef.current || hasInsufficientPayment}
               isLoading={isSubmitting || isSubmittingRef.current}
             >
               {isEditMode ? (t('update') || 'Update') : t('create')}
