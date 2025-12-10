@@ -212,6 +212,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
             quotaAmount,
             walletAmount,
             comment: formData.comment.trim() || undefined,
+            direction: isUpvote ? 'up' : 'down',
           },
           communityId: targetCommunityId,
         });
@@ -224,6 +225,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
             quotaAmount,
             walletAmount,
             comment: formData.comment.trim() || undefined,
+            direction: isUpvote ? 'up' : 'down',
           },
           communityId: targetCommunityId,
         });

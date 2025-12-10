@@ -467,6 +467,7 @@ export const VoteWithCommentDtoSchema = PolymorphicReferenceSchema.partial()
     quotaAmount: z.number().int().min(0).optional(),
     walletAmount: z.number().int().min(0).optional(),
     comment: z.string().optional(),
+    direction: z.enum(["up", "down"]).optional(),
   })
   .refine(
     (data) => {

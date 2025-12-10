@@ -823,13 +823,13 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         updatedAt: new Date(),
       });
 
-      // Create a downvote using negative amount (wallet-only)
+      // Create a downvote using explicit direction field (wallet-only)
       const response = await request(app.getHttpServer())
         .post(`/api/v1/publications/${pubId}/votes`)
         .send({
           quotaAmount: 0,
           walletAmount: 5,
-          amount: -5, // Negative amount indicates downvote
+          direction: 'down', // Explicit direction for downvote
           comment: 'Downvote in Future Vision',
         })
         .expect(201);

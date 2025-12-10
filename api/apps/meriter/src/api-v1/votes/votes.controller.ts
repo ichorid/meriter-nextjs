@@ -365,7 +365,9 @@ export class VotesController {
     // Determine vote direction from amounts
     // For Future Vision groups: wallet-only votes are upvotes (quota is blocked)
     let direction: 'up' | 'down' = 'up';
-    if (isFutureVision) {
+    if (createDto.direction) {
+      direction = createDto.direction;
+    } else if (isFutureVision) {
       // In Future Vision, all votes are wallet-only, so they're upvotes by default
       direction = 'up';
     } else {

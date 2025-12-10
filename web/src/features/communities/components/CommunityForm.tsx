@@ -49,7 +49,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const [currencyPlural, setCurrencyPlural] = useState('merits');
     const [currencyGenitive, setCurrencyGenitive] = useState('merits');
     const [dailyEmission, setDailyEmission] = useState('100');
-    const [language, setLanguage] = useState<'en' | 'ru'>('en');
     const [hashtags, setHashtags] = useState<string[]>([]);
     const [isPriority, setIsPriority] = useState(false);
     // Default icon is "thanks" emoji (🙏)
@@ -66,7 +65,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             setCurrencyPlural(community.settings?.currencyNames?.plural || 'merits');
             setCurrencyGenitive(community.settings?.currencyNames?.genitive || 'merits');
             setDailyEmission(String(community.settings?.dailyEmission || 100));
-            setLanguage((community.settings?.language as 'en' | 'ru') || 'en');
             setHashtags(community.hashtags || []);
             setIsPriority((community as any).isPriority || false);
             setIconUrl(community.settings?.iconUrl || defaultIconUrl);
@@ -94,7 +92,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                         genitive: currencyGenitive,
                     },
                     dailyEmission: parseInt(dailyEmission, 10),
-                    language,
                 },
             };
 
@@ -345,19 +342,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                     </h2>
 
                     <div className="space-y-6">
-                        <BrandFormControl label={t('language')}>
-                            <BrandSelect
-                                value={language}
-                                onChange={(val) => setLanguage(val as 'en' | 'ru')}
-                                options={[
-                                    { label: t('languageOption.en'), value: 'en' },
-                                    { label: t('languageOption.ru'), value: 'ru' },
-                                ]}
-                                placeholder={t('languageSelect')}
-                                fullWidth
-                            />
-                        </BrandFormControl>
-
                         <BrandFormControl
                             label={t('dailyEmission')}
                             helperText={t('dailyEmissionHelp')}

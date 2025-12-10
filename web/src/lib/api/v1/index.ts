@@ -926,6 +926,7 @@ export const votesApiV1 = {
             quotaAmount?: number;
             walletAmount?: number;
             comment?: string;
+            direction?: 'up' | 'down';
         }
     ): Promise<{ vote: Vote; comment?: Comment }> {
         // Use the regular vote endpoint (vote-with-comment endpoint was removed)

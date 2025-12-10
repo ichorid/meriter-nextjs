@@ -85,7 +85,8 @@ export function useVoteOnPublicationWithComment() {
       data: { 
         quotaAmount?: number;
         walletAmount?: number;
-        comment?: string; 
+        comment?: string;
+        direction?: 'up' | 'down';
       }; 
       communityId?: string; 
     }) => votesApiV1.voteOnPublicationWithComment(publicationId, data),
