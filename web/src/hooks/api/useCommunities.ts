@@ -127,7 +127,7 @@ export const useUpdateCommunity = createMutation<
     },
 });
 
-export const useSendCommunityMemo = createMutation<void, string>({
+export const useSendCommunityMemo = createMutation<{ success: boolean }, string>({
     mutationFn: (communityId) => communitiesApiV1.sendUsageMemo(communityId),
     errorContext: "Send community memo error",
     invalidations: {
@@ -138,7 +138,7 @@ export const useSendCommunityMemo = createMutation<void, string>({
     },
 });
 
-export const useResetDailyQuota = createMutation<void, string>({
+export const useResetDailyQuota = createMutation<{ success: boolean; resetAt: string }, string>({
     mutationFn: (communityId) => communitiesApiV1.resetDailyQuota(communityId),
     errorContext: "Reset daily quota error",
     invalidations: {

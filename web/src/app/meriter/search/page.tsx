@@ -17,13 +17,15 @@ export default function SearchResultsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('search');
-  
+
+  const initialParams = searchParams ?? new URLSearchParams();
+
   const [searchParamsState, setSearchParamsState] = useState<AdvancedSearchParams>({
-    query: searchParams.get('q') || '',
-    contentType: (searchParams.get('type') as SearchContentType) || 'all',
-    tags: searchParams.get('tags')?.split(',').filter(Boolean) || [],
-    dateFrom: searchParams.get('from') || undefined,
-    dateTo: searchParams.get('to') || undefined,
+    query: initialParams.get('q') || '',
+    contentType: (initialParams.get('type') as SearchContentType) || 'all',
+    tags: initialParams.get('tags')?.split(',').filter(Boolean) || [],
+    dateFrom: initialParams.get('from') || undefined,
+    dateTo: initialParams.get('to') || undefined,
   });
 
   const { data: searchResults, isLoading } = useSearch({

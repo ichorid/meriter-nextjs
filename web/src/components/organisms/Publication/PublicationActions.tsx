@@ -169,7 +169,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const handleWithdrawClick = () => {
     useUIStore.getState().openWithdrawPopup(
       publicationId,
-      'publication-withdraw',
+      'publication-topup',
       maxWithdrawAmount,
       maxTopUpAmount
     );

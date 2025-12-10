@@ -184,12 +184,12 @@ export function useWalletController() {
 // }
 
 // Withdraw funds
-export const useWithdraw = createMutation<void, WithdrawRequest>({
+export const useWithdraw = createMutation<Transaction, WithdrawRequest>({
     mutationFn: (data) => walletApiV1.withdraw(data.communityId, data),
     errorContext: "Withdraw error",
     invalidations: {
         wallet: {
-            communityId: (_result, variables) => variables.communityId,
+            communityId: (_result: Transaction, variables: { communityId: string }) => variables.communityId as unknown as string,
             includeBalance: true,
             includeTransactions: true,
         },
@@ -198,7 +198,7 @@ export const useWithdraw = createMutation<void, WithdrawRequest>({
 
 // Transfer funds
 export const useTransfer = createMutation<
-    void,
+    Transaction,
     {
         amount: number;
         toUserId: string;
@@ -210,7 +210,7 @@ export const useTransfer = createMutation<
     errorContext: "Transfer error",
     invalidations: {
         wallet: {
-            communityId: (_result, variables) => variables.communityId,
+            communityId: (_result: Transaction, variables: { communityId: string }) => variables.communityId as unknown as string,
             includeBalance: true,
             includeTransactions: true,
         },

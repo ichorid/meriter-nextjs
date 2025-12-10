@@ -12,7 +12,7 @@ export interface AvatarProps extends Omit<React.ImgHTMLAttributes<HTMLImageEleme
   size?: AvatarSize;
   fallback?: string | React.ReactNode;
   name?: string; // Name for automatic colored initials placeholder
-  onClick?: () => void;
+  onClick?: React.MouseEventHandler<HTMLDivElement>;
   onError?: () => void; // Callback when image fails to load
 }
 

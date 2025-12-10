@@ -104,9 +104,9 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
             // Auto-select first team community if no communityId provided
             const teamCommunities = availableCommunities.filter(c => c.typeTag === 'team');
             if (teamCommunities.length > 0) {
-                setSelectedCommunityId(teamCommunities[0].id);
+                setSelectedCommunityId(teamCommunities[0]?.id ?? '');
             } else if (availableCommunities.length > 0) {
-                setSelectedCommunityId(availableCommunities[0].id);
+                setSelectedCommunityId(availableCommunities[0]?.id ?? '');
             }
         }
     }, [communityId, availableCommunities, selectedCommunityId]);

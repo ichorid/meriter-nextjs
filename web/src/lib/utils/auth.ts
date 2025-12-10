@@ -154,7 +154,8 @@ export function clearAllCookies(): void {
   for (const cookie of cookies) {
     const trimmed = cookie.trim();
     if (trimmed) {
-      const name = trimmed.split('=')[0].trim();
+      const [namePart] = trimmed.split('=');
+      const name = (namePart ?? '').trim();
       if (name) {
         cookieNames.add(name);
       }

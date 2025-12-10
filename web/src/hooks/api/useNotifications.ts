@@ -107,7 +107,7 @@ export const useDeleteNotification = createMutation<void, string>({
 });
 
 export const useUpdatePreferences = createMutation<
-    NotificationPreferences,
+    void,
     Partial<NotificationPreferences>
 >({
     mutationFn: (preferences) => notificationsApiV1.updatePreferences(preferences),

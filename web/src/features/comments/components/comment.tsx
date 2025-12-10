@@ -293,7 +293,7 @@ export const Comment: React.FC<CommentProps> = ({
                             onWithdraw={() => {
                                 useUIStore.getState().openWithdrawPopup(
                                     _id,
-                                    'comment-withdraw',
+                                    'comment-topup',
                                     maxWithdrawAmount,
                                     maxTopUpAmount
                                 );

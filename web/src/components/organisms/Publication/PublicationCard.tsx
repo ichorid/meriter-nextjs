@@ -95,7 +95,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           }}
           showCommunityAvatar={showCommunityAvatar}
           className="mb-4"
-          authorId={pollItem.authorId || pollItem.meta?.author?.id}
+            authorId={pollItem.authorId}
           metrics={pollMetrics}
           publicationId={pollItem.id}
           communityId={pollItem.communityId}

@@ -15,7 +15,7 @@ export interface BatchQueryConfig<TData, TId = string> {
     staleTime?: number;
     retry?: boolean | number;
     // Optional: transform data before adding to map/array
-    transformData?: (data: TData, id: TId) => TData;
+    transformData?: (data: NonNullable<TData>, id: TId) => NonNullable<TData>;
     // Optional: filter which results to include in map/array
     shouldInclude?: (data: TData | undefined, id: TId, query: any) => boolean;
 }
@@ -101,13 +101,13 @@ export function useBatchQueries<TData, TId = string>(
         if (!id) return;
 
         // Check if we should include this result
-        if (shouldInclude(query.data, id, query)) {
-            let data = query.data!;
+            if (shouldInclude(query.data, id, query)) {
+            let data: NonNullable<TData> = query.data as NonNullable<TData>;
 
             // Transform data if needed
-            if (transformData) {
-                data = transformData(data, id);
-            }
+                if (transformData) {
+                    data = transformData(data, id);
+                }
 
             dataMap.set(id, data);
             dataArray.push(data);
