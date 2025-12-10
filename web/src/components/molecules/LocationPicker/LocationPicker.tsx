@@ -111,7 +111,7 @@ export function LocationPicker({ initialRegion, initialCity, onLocationSelect }:
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder={tSearch('results.searchLocationPlaceholder')}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    rightElement={
+                    rightIcon={
                         <button
                             onClick={handleSearch}
                             className="p-1 hover:bg-base-200 rounded-full transition-colors"

@@ -51,12 +51,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     
     // Use SDK signals only in mini app mode
     let rawData;
-    let isDark;
+    let isDark: { value: boolean };
     
     if (isTelegramMiniApp) {
         try {
             rawData = useSignal(initDataRaw);
-            isDark = useSignal(miniApp.isDark);
+            const darkSignal: any = useSignal(miniApp.isDark as any);
+            const darkValue = typeof darkSignal === 'object' && darkSignal !== null
+                ? darkSignal.value
+                : Boolean(darkSignal);
+            isDark = { value: darkValue };
         } catch (error: unknown) {
             console.warn('⚠️ Telegram SDK signals not available');
             rawData = { value: null };

@@ -112,7 +112,7 @@ export function useCommentDetails(id: string) {
 // Create comment
 // Workaround for TypeScript's "Type instantiation is excessively deep" error
 export const useCreateComment = createMutation<Comment, CreateCommentDto>({
-    mutationFn: (data) => commentsApiV1.createComment(data),
+    mutationFn: (data: CreateCommentDto) => commentsApiV1.createComment(data),
     inputSchema: CreateCommentDtoSchema as any,
     outputSchema: CommentSchema as any,
     validationContext: "useCreateComment",
@@ -124,8 +124,8 @@ export const useCreateComment = createMutation<Comment, CreateCommentDto>({
         },
     },
     setQueryData: {
-        queryKey: (result) => commentsKeys.detail(result.id),
-        data: (result) => result,
+        queryKey: (result: Comment) => commentsKeys.detail(result.id),
+        data: (result: Comment) => result,
     },
 } as any);
 

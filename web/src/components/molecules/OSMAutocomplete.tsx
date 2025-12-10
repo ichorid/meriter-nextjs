@@ -224,21 +224,21 @@ export function OSMAutocomplete({
         (result: NominatimResult): string => {
             if (type === "city") {
                 return (
-                    result.address.city ||
-                    result.address.town ||
-                    result.address.village ||
-                    result.address.hamlet ||
+                    result.address.city ??
+                    result.address.town ??
+                    result.address.village ??
+                    result.address.hamlet ??
                     result.display_name.split(",")[0]
-                );
+                ) as string;
             }
             if (type === "state") {
                 return (
-                    result.address.state ||
-                    result.address.region ||
+                    result.address.state ??
+                    result.address.region ??
                     result.display_name.split(",")[0]
-                );
+                ) as string;
             }
-            return result.display_name.split(",")[0];
+            return result.display_name.split(",")[0] ?? '';
         },
         [type]
     );
@@ -249,18 +249,18 @@ export function OSMAutocomplete({
             const parts = result.display_name.split(", ");
 
             if (type === "city") {
-                const city =
-                    result.address.city ||
-                    result.address.town ||
-                    result.address.village ||
-                    result.address.hamlet ||
-                    parts[0];
-                const region =
-                    result.address.state ||
-                    result.address.region ||
-                    parts[1] ||
+                const city: string =
+                    result.address.city ??
+                    result.address.town ??
+                    result.address.village ??
+                    result.address.hamlet ??
+                    parts[0] ?? '';
+                const region: string =
+                    result.address.state ??
+                    result.address.region ??
+                    parts[1] ??
                     "";
-                const country = result.address.country || parts[parts.length - 1] || "";
+                const country: string = result.address.country ?? parts[parts.length - 1] ?? "";
                 return {
                     primary: city,
                     secondary: [region, country].filter(Boolean).join(", "),
@@ -268,17 +268,18 @@ export function OSMAutocomplete({
             }
 
             if (type === "state") {
-                const state =
-                    result.address.state || result.address.region || parts[0];
-                const country = result.address.country || parts[parts.length - 1] || "";
+                const state: string =
+                    result.address.state ?? result.address.region ?? parts[0] ?? '';
+                const country: string = result.address.country ?? parts[parts.length - 1] ?? "";
                 return {
                     primary: state,
                     secondary: country,
                 };
             }
 
+            const primary = parts[0] ?? '';
             return {
-                primary: parts[0],
+                primary,
                 secondary: parts.slice(1, 3).join(", "),
             };
         },

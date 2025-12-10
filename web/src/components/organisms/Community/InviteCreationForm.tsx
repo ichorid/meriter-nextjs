@@ -124,11 +124,11 @@ export const InviteCreationForm: React.FC<InviteCreationFormProps> = ({
                 </BrandFormControl>
             )}
 
-            {!isSuperadmin && availableCommunities.length === 1 && selectedCommunityId && (
-                <div className="text-sm text-brand-text-secondary">
-                    {t('community')}: <span className="font-medium">{availableCommunities[0].name}</span>
-                </div>
-            )}
+                {!isSuperadmin && availableCommunities.length === 1 && selectedCommunityId && (
+                    <div className="text-sm text-brand-text-secondary">
+                        {t('community')}: <span className="font-medium">{availableCommunities[0]?.name}</span>
+                    </div>
+                )}
 
             <BrandFormControl
                 label={tInvites('expiresInDays')}

@@ -18,11 +18,11 @@ export function useCommunityInvites(communityId: string, options?: { enabled?: b
     });
 }
 
-export function useInviteByCode(code: string) {
+export function useInviteByCode(code: string, options?: { enabled?: boolean }) {
     return useQuery({
         queryKey: ["invites", code],
         queryFn: () => invitesApiV1.getInviteByCode(code),
-        enabled: !!code,
+        enabled: options?.enabled !== false && !!code,
     });
 }
 

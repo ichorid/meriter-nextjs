@@ -266,7 +266,7 @@ export const Publication = ({
                                     onWithdraw={() => {
                                         useUIStore.getState().openWithdrawPopup(
                                             postId,
-                                            'publication-withdraw',
+                                            'publication-topup',
                                             maxWithdrawAmount,
                                             maxTopUpAmount
                                         );

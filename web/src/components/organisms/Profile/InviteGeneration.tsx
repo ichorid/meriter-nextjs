@@ -45,17 +45,17 @@ export function InviteGeneration() {
   }, [isSuperadmin, isLead]);
 
   // Set default community for lead (first team community) - auto-select
-  useEffect(() => {
-    if (isLead && !isSuperadmin && leadCommunities.length > 0) {
-      // Filter to only team communities
-      const teamCommunities = leadCommunities.filter(c => c.typeTag === 'team');
-      if (teamCommunities.length > 0) {
-        setSelectedCommunityId(teamCommunities[0].id);
-      } else if (leadCommunities.length > 0) {
-        setSelectedCommunityId(leadCommunities[0].id);
+    useEffect(() => {
+      if (isLead && !isSuperadmin && leadCommunities.length > 0) {
+        // Filter to only team communities
+        const teamCommunities = leadCommunities.filter(c => c.typeTag === 'team');
+        if (teamCommunities.length > 0) {
+          setSelectedCommunityId(teamCommunities[0]?.id ?? '');
+        } else if (leadCommunities.length > 0) {
+          setSelectedCommunityId(leadCommunities[0]?.id ?? '');
+        }
       }
-    }
-  }, [isLead, isSuperadmin, leadCommunities]);
+    }, [isLead, isSuperadmin, leadCommunities]);
 
   // Determine invite type
   const inviteType = isSuperadmin ? 'superadmin-to-lead' : 'lead-to-participant';
@@ -189,11 +189,11 @@ export function InviteGeneration() {
           </BrandFormControl>
         )}
 
-        {!isSuperadmin && availableCommunities.length === 1 && selectedCommunityId && (
-          <div className="text-sm text-brand-text-secondary">
-            {t('community')}: <span className="font-medium">{availableCommunities[0].name}</span>
-          </div>
-        )}
+      {!isSuperadmin && availableCommunities.length === 1 && selectedCommunityId && (
+        <div className="text-sm text-brand-text-secondary">
+          {t('community')}: <span className="font-medium">{availableCommunities[0]?.name}</span>
+        </div>
+      )}
 
         <BrandFormControl
           label={tInvites('expiresInDays') || 'Expires in (days)'}

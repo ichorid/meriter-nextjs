@@ -52,7 +52,6 @@ export const Icon = React.forwardRef<SVGSVGElement, IconProps>(
           ref={ref as any}
           className={className}
           style={{ width: size, height: size, ...style }}
-          {...props}
         >
           ?
         </div>

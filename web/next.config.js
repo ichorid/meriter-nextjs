@@ -8,12 +8,9 @@ const path = require('path');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: false,
-    // Skip type checking during build to reduce memory usage
-    // NOTE: Type checking causes infinite memory usage due to complex Zod schema inferences
-    // in @meriter/shared-types. The package has been optimized with explicit exports instead
-    // of wildcard exports, but the fundamental issue with z.infer<> type resolution remains.
+    // Re-enable strict type checking now that shared types have been trimmed for memory safety
     typescript: {
-        ignoreBuildErrors: true,
+        ignoreBuildErrors: false,
     },
     // Skip ESLint during build to reduce memory usage
     eslint: {

@@ -84,7 +84,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     name: publication.meta?.author?.name || 'Unknown',
     photoUrl: publication.meta?.author?.photoUrl,
     username: publication.meta?.author?.username,
-    id: authorId || publication.meta?.author?.id,
+    id: authorId,
   };
 
   const beneficiary = publication.meta?.beneficiary ? {

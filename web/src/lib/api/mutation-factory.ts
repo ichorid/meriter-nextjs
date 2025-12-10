@@ -15,12 +15,12 @@ import {
 } from './invalidation-helpers';
 import { useValidatedMutation } from './validated-query';
 
-export interface InvalidationConfig {
-    wallet?: {
-        communityId?: string;
+    export interface InvalidationConfig {
+        wallet?: {
+        communityId?: string | ((result: any, variables: any) => string | undefined);
         includeBalance?: boolean;
         includeTransactions?: boolean;
-    };
+        };
     publications?: {
         lists?: boolean;
         detail?: string | ((result: any, variables: any) => string | undefined);
@@ -207,7 +207,7 @@ export function createMutation<
 
         const mutationOptions: any = {
             mutationFn: config.mutationFn,
-            onSuccess: (result, variables) => {
+            onSuccess: (result: TData, variables: TVariables) => {
                 // Apply automatic invalidations
                 if (config.invalidations) {
                     applyInvalidations(queryClient, config.invalidations, result, variables);
@@ -233,7 +233,7 @@ export function createMutation<
                     config.onSuccess(result, variables, queryClient);
                 }
             },
-            onError: (error, variables) => {
+            onError: (error: TError, variables: TVariables) => {
                 // Standard error logging
                 const context = config.errorContext || 'Mutation error';
                 console.error(`${context}:`, error);

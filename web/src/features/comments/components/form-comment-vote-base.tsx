@@ -261,10 +261,10 @@ export const FormCommentVoteBase = memo(({
                     <button
                         onClick={() => commentAdd(directionPlus ? true : false)}
                         disabled={amount < 0 && !comment?.trim()}
-                        className={classList(
-                            "btn btn-circle btn-primary absolute bottom-2 right-2",
-                            amount < 0 && !comment?.trim() && "opacity-50 cursor-not-allowed"
-                        )}
+                          className={classList(
+                              "btn btn-circle btn-primary absolute bottom-2 right-2",
+                              amount < 0 && !comment?.trim() ? "opacity-50 cursor-not-allowed" : ""
+                          )}
                     >
                         <img src={"/meriter/send.svg"} alt="Send" className="w-5 h-5" />
                     </button>
