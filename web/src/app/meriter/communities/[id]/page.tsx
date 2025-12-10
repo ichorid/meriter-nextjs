@@ -465,7 +465,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                     },
                     ...(isMarathonOfGood && futureVisionCommunityId ? [{
                         id: 'vision',
-                        label: tCommunities('vision') || 'Vision',
+                        label: tCommunities('vision') || 'Future',
                         icon: <Eye size={16} />,
                     }] : []),
                     {
@@ -609,7 +609,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                                                 }
                                             >
                                                 <div className="relative">
-                                                    {/* Vision indicator icon */}
+                                                    {/* Future indicator icon */}
                                                     <div className="absolute -top-2 -right-2 z-10 bg-primary text-primary-content rounded-full p-1.5 shadow-lg">
                                                         <Eye size={16} />
                                                     </div>

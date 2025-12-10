@@ -153,6 +153,9 @@ export const useCreatePublication = createMutation({
             feed: true,
             detail: (_result: any, variables: CreatePublicationDto) => variables.communityId,
         },
+        quota: {
+            communityId: (_result: any, variables: CreatePublicationDto) => variables.communityId,
+        },
     },
 } as any);
 

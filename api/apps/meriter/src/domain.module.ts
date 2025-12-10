@@ -36,6 +36,10 @@ import {
   Notification,
   NotificationSchema,
 } from './domain/models/notification/notification.schema';
+import {
+  QuotaUsage,
+  QuotaUsageSchema,
+} from './domain/models/quota-usage/quota-usage.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -58,6 +62,7 @@ import { PermissionService } from './domain/services/permission.service';
 import { MeritService } from './domain/services/merit.service';
 import { NotificationService } from './domain/services/notification.service';
 import { NotificationHandlersService } from './domain/services/notification-handlers.service';
+import { QuotaUsageService } from './domain/services/quota-usage.service';
 
 // Import event bus
 import { EventBus } from './domain/events/event-bus';
@@ -79,6 +84,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: UserCommunityRole.name, schema: UserCommunityRoleSchema },
       { name: Invite.name, schema: InviteSchema },
       { name: Notification.name, schema: NotificationSchema },
+      { name: QuotaUsage.name, schema: QuotaUsageSchema },
     ]),
   ],
   providers: [
@@ -103,6 +109,7 @@ import { EventBus } from './domain/events/event-bus';
     MeritService,
     NotificationService,
     NotificationHandlersService,
+    QuotaUsageService,
 
     // Event bus
     EventBus,
@@ -129,6 +136,7 @@ import { EventBus } from './domain/events/event-bus';
     MeritService,
     NotificationService,
     NotificationHandlersService,
+    QuotaUsageService,
 
     // Export event bus
     EventBus,

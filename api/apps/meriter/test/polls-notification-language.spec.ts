@@ -9,6 +9,7 @@ import { WalletService } from '../src/domain/services/wallet.service';
 import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
 import { PermissionService } from '../src/domain/services/permission.service';
+import { QuotaUsageService } from '../src/domain/services/quota-usage.service';
 import { TgBotsService } from '../src/tg-bots/tg-bots.service';
 import { UserEnrichmentService } from '../src/api-v1/common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../src/api-v1/common/services/community-enrichment.service';
@@ -67,6 +68,19 @@ describe('PollsController - Notification Language', () => {
       canCreatePoll: jest.fn().mockResolvedValue(true),
     };
 
+    const mockQuotaUsageService = {
+      consumeQuota: jest.fn().mockResolvedValue({
+        id: 'quota-usage-id',
+        userId: 'test-user-id',
+        communityId: 'test-community-id',
+        amountQuota: 1,
+        usageType: 'poll_creation',
+        referenceId: 'test-poll-id',
+        createdAt: new Date(),
+      }),
+      getQuotaUsed: jest.fn().mockResolvedValue(0),
+    };
+
     const mockTgBotsService = {
       tgSend: jest.fn(),
       getCommunityLanguageByChatId: jest.fn(),
@@ -109,6 +123,10 @@ describe('PollsController - Notification Language', () => {
         {
           provide: PermissionService,
           useValue: mockPermissionService,
+        },
+        {
+          provide: QuotaUsageService,
+          useValue: mockQuotaUsageService,
         },
         {
           provide: TgBotsService,

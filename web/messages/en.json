@@ -53,7 +53,6 @@
         "noProfileInformationDescription": "This user hasn't added any profile details yet",
         "closeModal": "Close modal",
         "clear": "Clear",
-        "settings": "Settings",
         "backToProfile": "Back to profile",
         "clearSearch": "Clear search",
         "resizeSidebar": "Resize sidebar",
@@ -61,7 +60,11 @@
         "goBack": "Go back",
         "urlPlaceholder": "https://...",
         "selectOption": "Select an option",
-        "hashtagPlaceholder": "Type hashtag and press Enter"
+        "hashtagPlaceholder": "Type hashtag and press Enter",
+        "deleteConfirmation": {
+            "title": "Confirm Deletion",
+            "message": "Are you sure you want to delete this {itemType}? This action cannot be undone."
+        }
     },
     "home": {
         "breadcrumb": "Home",
@@ -292,6 +295,9 @@
         "cancel": "Cancel",
         "creating": "Creating...",
         "createPoll": "Create Poll",
+        "quotaInfo": "Creating a poll costs 1 daily quota.",
+        "quotaRemaining": "You have {remaining} quota remaining.",
+        "insufficientQuota": "Insufficient quota. You need at least 1 quota to create a poll.",
         "errorMaxOptions": "Maximum 10 answer options",
         "errorMinOptions": "Minimum 2 answer options",
         "errorTitleRequired": "Enter poll title",
@@ -483,9 +489,9 @@
             "joinByInvite": "Or join by invite",
             "publications": "Publications",
             "members": "Members",
-            "vision": "Vision",
-            "noVisionPosts": "No vision posts yet",
-            "visionCommunityNotFound": "Vision community not found"
+            "vision": "Future",
+            "noVisionPosts": "No future posts yet",
+            "visionCommunityNotFound": "Future community not found"
         },
         "communitySettings": {
             "title": "Community Settings",
@@ -589,6 +595,9 @@
             "title": "Create Publication",
             "editTitle": "Edit Publication",
             "update": "Update",
+            "quotaInfo": "Creating a post costs 1 daily quota.",
+            "quotaRemaining": "You have {remaining} quota remaining.",
+            "insufficientQuota": "Insufficient quota. You need at least 1 quota to create a post.",
             "fields": {
                 "title": "Title",
                 "titlePlaceholder": "Enter title",
@@ -744,14 +753,14 @@
             },
             "tooltip": "Community is unconfigured"
         },
-        "noVisionPosts": "No vision posts yet",
-        "visionCommunityNotFound": "Vision community not found",
+        "noVisionPosts": "No future posts yet",
+        "visionCommunityNotFound": "Future community not found",
         "currency": "Currency"
     },
     "registration": {
         "title": "Registration",
         "authTitle": "Authentication",
-        "inviteDescription": "Enter your invite code to begin registration",
+        "inviteDescription": "Enter your invite code to begin registration (optional)",
         "inviteCodeLabel": "Invite Code",
         "inviteCodePlaceholder": "Enter invite code",
         "continue": "Continue",
@@ -789,7 +798,7 @@
         "newUserDescription": "Please complete your profile to continue.",
         "generalInformation": "General",
         "generalInformationSubtitle": "Please fill in the following information to complete your profile.",
-        "aboutInformation": "About",
+        "aboutInformation": "About project",
         "avatarUrl": "Avatar URL",
         "avatarUrlPlaceholder": "https://example.com/avatar.png",
         "avatarUrlHelper": "Add an avatar URL to your profile",
@@ -837,8 +846,8 @@
         "cityPlaceholder": "Enter city",
         "website": "Website",
         "websitePlaceholder": "https://example.com",
-        "about": "About",
-        "aboutPlaceholder": "Tell us more about yourself",
+        "about": "About project",
+        "aboutPlaceholder": "Tell us more about the project",
         "contacts": "Contacts",
         "email": "Email",
         "messenger": "Messenger",
@@ -860,7 +869,7 @@
         "characters": "characters",
         "errors": {
             "bioTooLong": "Bio must be no more than {max} characters",
-            "aboutTooLong": "About must be no more than {max} characters",
+            "aboutTooLong": "About project must be no more than {max} characters",
             "educationalInstitutionTooLong": "Educational institution must be no more than {max} characters",
             "invalidUrl": "Invalid URL",
             "invalidEmail": "Invalid email address"
@@ -873,9 +882,9 @@
             "superadmin": "Superadmin"
         },
         "contactInformattion": "Contacts",
-        "aboutInformattion": "About",
+        "aboutInformattion": "About project",
         "hint": {
-            "about": "Here you can tell a little bit about yourself and what is important to you."
+            "about": "Here you can tell a little bit about the project and what is important to you."
         },
         "useInvite": {
             "title": "Join community by invite"
@@ -888,7 +897,7 @@
             "inviteError": "Failed to generate invite",
             "noExpiration": "No expiration",
             "notSet": "Not set",
-            "autoAssigned": "Auto-assigned (Marathon-of-Good & Future-Vision)",
+            "autoAssigned": "Auto-assigned (Marathon-of-Good & Future)",
             "generatedInvites": "Generated Invites",
             "used": "Used",
             "expired": "Expired",

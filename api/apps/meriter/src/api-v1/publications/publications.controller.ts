@@ -10,11 +10,15 @@ import {
   UseGuards,
   ForbiddenException,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { NotFoundException } from '@nestjs/common';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 import { PublicationService } from '../../domain/services/publication.service';
 import { UserService } from '../../domain/services/user.service';
 import { CommunityService } from '../../domain/services/community.service';
+import { QuotaUsageService } from '../../domain/services/quota-usage.service';
 import { UserEnrichmentService } from '../common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../common/services/community-enrichment.service';
 import { EntityMappers } from '../common/mappers/entity-mappers';
@@ -31,6 +35,7 @@ import {
   VoteDirectionDtoSchema,
 } from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
+import { ValidationError } from '../../common/exceptions/api.exceptions';
 
 @Controller('api/v1/publications')
 @UseGuards(UserGuard, PermissionGuard)
@@ -41,8 +46,10 @@ export class PublicationsController {
     private publicationService: PublicationService,
     private userService: UserService,
     private communityService: CommunityService,
+    private quotaUsageService: QuotaUsageService,
     private userEnrichmentService: UserEnrichmentService,
     private communityEnrichmentService: CommunityEnrichmentService,
+    @InjectConnection() private readonly connection: Connection,
   ) {}
 
   @Post()
@@ -52,6 +59,28 @@ export class PublicationsController {
     @User() user: AuthenticatedUser,
     @Body() dto: CreatePublicationDto,
   ) {
+    // Get community to check quota requirements
+    const community = await this.communityService.getCommunity(dto.communityId);
+    if (!community) {
+      throw new NotFoundException('Community not found');
+    }
+
+    // Check quota requirement (skip for future-vision communities)
+    if (community.typeTag !== 'future-vision') {
+      const remainingQuota = await this.getRemainingQuota(
+        user.id,
+        dto.communityId,
+        community,
+      );
+
+      if (remainingQuota < 1) {
+        throw new ValidationError(
+          'Insufficient quota. You need at least 1 quota to create a post.',
+        );
+      }
+    }
+
+    // Create publication
     const publication = await this.publicationService.createPublication(
       user.id,
       dto,
@@ -61,6 +90,27 @@ export class PublicationsController {
     const authorId = publication.getAuthorId.getValue();
     const beneficiaryId = publication.getBeneficiaryId?.getValue();
     const communityId = publication.getCommunityId.getValue();
+    const publicationId = publication.getId.getValue();
+
+    // Consume quota after successful creation (skip for future-vision communities)
+    if (community.typeTag !== 'future-vision') {
+      try {
+        await this.quotaUsageService.consumeQuota(
+          user.id,
+          communityId,
+          1,
+          'publication_creation',
+          publicationId,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to consume quota for publication ${publicationId}:`,
+          error,
+        );
+        // Don't fail the request if quota consumption fails - publication is already created
+        // This is a best-effort quota tracking
+      }
+    }
 
     // Batch fetch users and communities
     const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : [])];
@@ -77,6 +127,99 @@ export class PublicationsController {
     );
 
     return ApiResponseHelper.successResponse(mappedPublication);
+  }
+
+  /**
+   * Calculate remaining quota for a user in a community
+   */
+  private async getRemainingQuota(
+    userId: string,
+    communityId: string,
+    community: any,
+  ): Promise<number> {
+    // Future Vision has no quota - wallet voting only
+    if (community?.typeTag === 'future-vision') {
+      return 0;
+    }
+
+    if (
+      !community.settings?.dailyEmission ||
+      typeof community.settings.dailyEmission !== 'number'
+    ) {
+      return 0;
+    }
+
+    const dailyQuota = community.settings.dailyEmission;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const quotaStartTime = community.lastQuotaResetAt
+      ? new Date(community.lastQuotaResetAt)
+      : today;
+
+    // Aggregate quota used from votes, poll casts, and quota usage
+    const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
+      this.connection.db
+        .collection('votes')
+        .aggregate([
+          {
+            $match: {
+              userId,
+              communityId,
+              createdAt: { $gte: quotaStartTime },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$amountQuota' },
+            },
+          },
+        ])
+        .toArray(),
+      this.connection.db
+        .collection('poll_casts')
+        .aggregate([
+          {
+            $match: {
+              userId,
+              communityId,
+              createdAt: { $gte: quotaStartTime },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$amountQuota' },
+            },
+          },
+        ])
+        .toArray(),
+      this.connection.db
+        .collection('quota_usage')
+        .aggregate([
+          {
+            $match: {
+              userId,
+              communityId,
+              createdAt: { $gte: quotaStartTime },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$amountQuota' },
+            },
+          },
+        ])
+        .toArray(),
+    ]);
+
+    const votesTotal = votesUsed.length > 0 ? votesUsed[0].total : 0;
+    const pollCastsTotal = pollCastsUsed.length > 0 ? pollCastsUsed[0].total : 0;
+    const quotaUsageTotal = quotaUsageUsed.length > 0 ? quotaUsageUsed[0].total : 0;
+    const used = votesTotal + pollCastsTotal + quotaUsageTotal;
+
+    return Math.max(0, dailyQuota - used);
   }
 
   @Get(':id')

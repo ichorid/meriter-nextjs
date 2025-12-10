@@ -175,6 +175,15 @@ function applyInvalidations(
             queryClient.invalidateQueries({
                 queryKey: ['quota', userId, communityId],
             });
+        } else if (communityId) {
+            // Invalidate all quota queries for this community (will refetch for current user)
+            queryClient.invalidateQueries({ 
+                queryKey: ['quota'], 
+                predicate: (query) => {
+                    const key = query.queryKey;
+                    return key.length >= 3 && key[2] === communityId;
+                }
+            });
         } else {
             queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
         }

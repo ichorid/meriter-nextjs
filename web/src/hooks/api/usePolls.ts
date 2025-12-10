@@ -109,6 +109,9 @@ export const useCreatePoll = createMutation<Poll, PollCreate>({
         polls: {
             lists: true,
         },
+        quota: {
+            communityId: (_result: any, variables: PollCreate) => variables.communityId,
+        },
     },
     setQueryData: {
         queryKey: (result) => queryKeys.polls.detail(result.id),

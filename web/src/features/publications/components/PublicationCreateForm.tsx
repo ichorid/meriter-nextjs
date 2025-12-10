@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useCreatePublication, useUpdatePublication } from '@/hooks/api/usePublications';
 import type { Publication } from '@/types/api-v1';
 import { useCommunity } from '@/hooks/api/useCommunities';
+import { useUserQuota } from '@/hooks/api/useQuota';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandInput } from '@/components/ui/BrandInput';
 import { BrandSelect } from '@/components/ui/BrandSelect';
@@ -53,10 +54,15 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const createPublication = useCreatePublication();
   const updatePublication = useUpdatePublication();
   const { data: community } = useCommunity(communityId);
+  const { data: quotaData } = useUserQuota(communityId);
   const isEditMode = !!publicationId && !!initialData;
 
   // Check if this is Good Deeds Marathon community
   const isGoodDeedsMarathon = community?.typeTag === 'marathon-of-good';
+  
+  // Check if quota is required (not future-vision)
+  const requiresQuota = community?.typeTag !== 'future-vision';
+  const hasInsufficientQuota = requiresQuota && quotaData && quotaData.remainingToday < 1;
 
   const [title, setTitle] = useState(initialData?.title || '');
   const [description, setDescription] = useState(initialData?.description || initialData?.content || '');
@@ -323,6 +329,20 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           </div>
         )}
 
+        {!isEditMode && requiresQuota && (
+          <div className={`p-3 rounded-lg mb-4 border ${
+            hasInsufficientQuota
+              ? 'bg-red-50 border-red-200'
+              : 'bg-blue-50 border-blue-200'
+          }`}>
+            <p className={hasInsufficientQuota ? 'text-red-700' : 'text-blue-700'}>
+              {hasInsufficientQuota
+                ? t('insufficientQuota')
+                : t('quotaInfo') + ' ' + t('quotaRemaining', { remaining: quotaData?.remainingToday ?? 0 })}
+            </p>
+          </div>
+        )}
+
         <BrandFormControl
           label={t('fields.title')}
           error={errors.title}
@@ -490,7 +510,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                 e.stopPropagation();
                 handleSubmit();
               }}
-              disabled={!title.trim() || !description.trim() || isSubmitting || isSubmittingRef.current}
+              disabled={!title.trim() || !description.trim() || isSubmitting || isSubmittingRef.current || hasInsufficientQuota}
               isLoading={isSubmitting || isSubmittingRef.current}
             >
               {isEditMode ? (t('update') || 'Update') : t('create')}

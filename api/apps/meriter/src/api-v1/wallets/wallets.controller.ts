@@ -288,9 +288,9 @@ export class WalletsController {
       ? new Date(community.lastQuotaResetAt)
       : today;
 
-    // Query votes and poll casts with amountQuota > 0 for this user in this community created after quotaStartTime
+    // Query votes, poll casts, and quota usage with amountQuota > 0 for this user in this community created after quotaStartTime
     // Use absolute value of amountQuota - both upvotes and downvotes consume quota
-    const [votesUsed, pollCastsUsed] = await Promise.all([
+    const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
       this.mongoose.db
         .collection('votes')
         .aggregate([
@@ -339,11 +339,36 @@ export class WalletsController {
           },
         ])
         .toArray(),
+      this.mongoose.db
+        .collection('quota_usage')
+        .aggregate([
+          {
+            $match: {
+              userId: actualUserId,
+              communityId: community.id,
+              amountQuota: { $gt: 0 },
+              createdAt: { $gte: quotaStartTime },
+            },
+          },
+          {
+            $project: {
+              absAmount: '$amountQuota',
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$absAmount' },
+            },
+          },
+        ])
+        .toArray(),
     ]);
 
     const votesTotal = votesUsed.length > 0 ? votesUsed[0].total : 0;
     const pollCastsTotal = pollCastsUsed.length > 0 ? pollCastsUsed[0].total : 0;
-    const used = votesTotal + pollCastsTotal;
+    const quotaUsageTotal = quotaUsageUsed.length > 0 ? quotaUsageUsed[0].total : 0;
+    const used = votesTotal + pollCastsTotal + quotaUsageTotal;
 
     // Calculate resetAt as next midnight or next reset time if reset was done today
     const tomorrow = new Date(today);

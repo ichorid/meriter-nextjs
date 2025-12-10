@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl';
 import { initDataRaw, useSignal, mainButton, backButton } from '@telegram-apps/sdk-react';
 import { pollsApiV1 } from '@/lib/api/v1';
 import { useUpdatePoll } from '@/hooks/api/usePolls';
+import { useUserQuota } from '@/hooks/api/useQuota';
+import { useCommunity } from '@/hooks/api/useCommunities';
 import type { Poll } from '@/types/api-v1';
 import { safeHapticFeedback } from '@/shared/lib/utils/haptic-utils';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
@@ -42,6 +44,13 @@ export const FormPollCreate = ({
     const isMountedRef = useRef(true);
     const updatePoll = useUpdatePoll();
     const isEditMode = !!pollId && !!initialData;
+    const currentCommunityId = communityId || initialData?.communityId;
+    const { data: community } = useCommunity(currentCommunityId);
+    const { data: quotaData } = useUserQuota(currentCommunityId);
+    
+    // Check if quota is required (not future-vision)
+    const requiresQuota = community?.typeTag !== 'future-vision';
+    const hasInsufficientQuota = requiresQuota && quotaData && quotaData.remainingToday < 1;
 
     // Calculate timeValue and timeUnit from expiresAt if editing
     const calculateTimeFromExpiresAt = (expiresAt: string): { value: string; unit: "minutes" | "hours" | "days" } => {
@@ -135,6 +144,12 @@ export const FormPollCreate = ({
         const timeVal = parseInt(timeValue);
         if (isNaN(timeVal) || timeVal <= 0) {
             setError(t('errorInvalidTime'));
+            return false;
+        }
+
+        // Check quota if required
+        if (requiresQuota && hasInsufficientQuota) {
+            setError(t('insufficientQuota'));
             return false;
         }
 
@@ -340,6 +355,20 @@ export const FormPollCreate = ({
                 </h1>
             </div>
 
+            {!isEditMode && requiresQuota && (
+                <div className={`p-3 rounded-lg border ${
+                    hasInsufficientQuota
+                        ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                        : 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
+                }`}>
+                    <p className={hasInsufficientQuota ? 'text-red-700 dark:text-red-300' : 'text-blue-700 dark:text-blue-300'}>
+                        {hasInsufficientQuota
+                            ? t('insufficientQuota')
+                            : t('quotaInfo') + ' ' + t('quotaRemaining', { remaining: quotaData?.remainingToday ?? 0 })}
+                    </p>
+                </div>
+            )}
+
             {/* Poll Title Section */}
             <BrandFormControl label={t('pollTitleLabel')} required>
                 <BrandInput
@@ -474,7 +503,7 @@ export const FormPollCreate = ({
                     <BrandButton
                         variant="primary"
                         onClick={handleCreate}
-                        disabled={isCreating}
+                        disabled={isCreating || hasInsufficientQuota}
                         isLoading={isCreating}
                     >
                         {isEditMode ? (t('updatePoll') || 'Update Poll') : t('createPoll')}

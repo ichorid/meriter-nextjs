@@ -4,9 +4,10 @@ import { useUserRoles } from '@/hooks/api/useProfile';
 /**
  * Hook to check if current user can edit/delete a resource
  * Returns true if user is:
- * - The author of the resource
  * - A lead in the resource's community
  * - A superadmin
+ * 
+ * Authors cannot edit or delete their own comments - only admins can.
  * 
  * For delete: Non-admin authors (non-superadmin, non-lead) can only delete if there are no votes.
  * Leads and superadmins can always delete.
@@ -33,13 +34,11 @@ export function useCanEditDelete(
   // Check if user is admin (superadmin or lead)
   const isAdmin = isSuperadmin || isLeadInCommunity;
 
-  // Edit: Authors can edit if no votes, admins can always edit (backend will enforce zero votes)
-  const canEdit = !!(isAuthor || isAdmin);
+  // Edit: Authors cannot edit their own comments - only admins can edit
+  const canEdit = !!isAdmin;
   
-  // Delete: 
-  // - Admins (superadmin/lead) can always delete
-  // - Non-admin authors can only delete if no votes
-  const canDelete = isAdmin || (isAuthor && !hasVotes);
+  // Delete: Authors cannot delete their own comments - only admins can delete
+  const canDelete = !!isAdmin;
 
   return {
     canEdit,

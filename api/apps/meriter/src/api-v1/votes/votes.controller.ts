@@ -88,26 +88,48 @@ export class VotesController {
       ? new Date(community.lastQuotaResetAt)
       : today;
 
-    const usedToday = await this.connection.db
-      .collection('votes')
-      .aggregate([
-        {
-          $match: {
-            userId,
-            communityId,
-            createdAt: { $gte: quotaStartTime },
+    const [votesUsed, quotaUsageUsed] = await Promise.all([
+      this.connection.db
+        .collection('votes')
+        .aggregate([
+          {
+            $match: {
+              userId,
+              communityId,
+              createdAt: { $gte: quotaStartTime },
+            },
           },
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$amountQuota' },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$amountQuota' },
+            },
           },
-        },
-      ])
-      .toArray();
+        ])
+        .toArray(),
+      this.connection.db
+        .collection('quota_usage')
+        .aggregate([
+          {
+            $match: {
+              userId,
+              communityId,
+              createdAt: { $gte: quotaStartTime },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$amountQuota' },
+            },
+          },
+        ])
+        .toArray(),
+    ]);
 
-    const used = usedToday.length > 0 ? usedToday[0].total : 0;
+    const votesTotal = votesUsed.length > 0 ? votesUsed[0].total : 0;
+    const quotaUsageTotal = quotaUsageUsed.length > 0 ? quotaUsageUsed[0].total : 0;
+    const used = votesTotal + quotaUsageTotal;
     return Math.max(0, dailyQuota - used);
   }
 

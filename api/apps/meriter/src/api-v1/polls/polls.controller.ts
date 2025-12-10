@@ -20,6 +20,7 @@ import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { UserService } from '../../domain/services/user.service';
 import { PermissionService } from '../../domain/services/permission.service';
+import { QuotaUsageService } from '../../domain/services/quota-usage.service';
 import { UserEnrichmentService } from '../common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../common/services/community-enrichment.service';
 import { EntityMappers } from '../common/mappers/entity-mappers';
@@ -48,6 +49,7 @@ export class PollsController {
     private readonly communityService: CommunityService,
     private readonly userService: UserService,
     private readonly permissionService: PermissionService,
+    private readonly quotaUsageService: QuotaUsageService,
     private readonly userEnrichmentService: UserEnrichmentService,
     private readonly communityEnrichmentService: CommunityEnrichmentService,
     @InjectConnection() private readonly connection: Connection,
@@ -134,12 +136,48 @@ export class PollsController {
       throw new ValidationError('Polls are disabled in future-vision communities');
     }
     
+    // Check quota requirement (skip for future-vision communities)
+    if (community.typeTag !== 'future-vision') {
+      const remainingQuota = await this.getRemainingQuota(
+        req.user.id,
+        createDto.communityId,
+        community,
+      );
+
+      if (remainingQuota < 1) {
+        throw new ValidationError(
+          'Insufficient quota. You need at least 1 quota to create a poll.',
+        );
+      }
+    }
+    
     // Transform API CreatePollDto to domain CreatePollDto
     // Service handles string->Date conversion
     const domainDto = createDto;
     
     const poll = await this.pollsService.createPoll(req.user.id, domainDto);
     const snapshot = poll.toSnapshot();
+    const pollId = snapshot.id;
+    
+    // Consume quota after successful creation (skip for future-vision communities)
+    if (community.typeTag !== 'future-vision') {
+      try {
+        await this.quotaUsageService.consumeQuota(
+          req.user.id,
+          snapshot.communityId,
+          1,
+          'poll_creation',
+          pollId,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to consume quota for poll ${pollId}:`,
+          error,
+        );
+        // Don't fail the request if quota consumption fails - poll is already created
+        // This is a best-effort quota tracking
+      }
+    }
     
     // Batch fetch user and community using enrichment services
     const [usersMap, communitiesMap] = await Promise.all([
@@ -151,7 +189,7 @@ export class PollsController {
     const apiPoll = EntityMappers.mapPollToApi(poll, usersMap, communitiesMap);
     
     // Telegram notifications are disabled in this project; skip sending poll notifications.
-    this.logger.log(`Poll ${snapshot.id} created; Telegram notifications are disabled, skipping community chat notification`);
+    this.logger.log(`Poll ${pollId} created; Telegram notifications are disabled, skipping community chat notification`);
     
     return ApiResponseHelper.successResponse(apiPoll);
   }
@@ -219,8 +257,8 @@ export class PollsController {
       ? new Date(community.lastQuotaResetAt)
       : today;
 
-    // Aggregate quota used from both votes and poll casts
-    const [votesUsed, pollCastsUsed] = await Promise.all([
+    // Aggregate quota used from votes, poll casts, and quota usage
+    const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
       this.connection.db
         .collection('votes')
         .aggregate([
@@ -257,11 +295,30 @@ export class PollsController {
           },
         ])
         .toArray(),
+      this.connection.db
+        .collection('quota_usage')
+        .aggregate([
+          {
+            $match: {
+              userId,
+              communityId,
+              createdAt: { $gte: quotaStartTime },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$amountQuota' },
+            },
+          },
+        ])
+        .toArray(),
     ]);
 
     const votesTotal = votesUsed.length > 0 ? votesUsed[0].total : 0;
     const pollCastsTotal = pollCastsUsed.length > 0 ? pollCastsUsed[0].total : 0;
-    const used = votesTotal + pollCastsTotal;
+    const quotaUsageTotal = quotaUsageUsed.length > 0 ? quotaUsageUsed[0].total : 0;
+    const used = votesTotal + pollCastsTotal + quotaUsageTotal;
     
     return Math.max(0, dailyQuota - used);
   }

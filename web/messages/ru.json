@@ -54,7 +54,6 @@
         "noProfileInformationDescription": "Этот пользователь еще не добавил информацию о профиле",
         "closeModal": "Закрыть модальное окно",
         "clear": "Очистить",
-        "settings": "Настройки",
         "backToProfile": "Вернуться к профилю",
         "clearSearch": "Очистить поиск",
         "resizeSidebar": "Изменить размер боковой панели",
@@ -62,7 +61,11 @@
         "goBack": "Назад",
         "urlPlaceholder": "https://...",
         "selectOption": "Выберите опцию",
-        "hashtagPlaceholder": "Введите хештег и нажмите Enter"
+        "hashtagPlaceholder": "Введите хештег и нажмите Enter",
+        "deleteConfirmation": {
+            "title": "Подтвердите удаление",
+            "message": "Вы уверены, что хотите удалить этот {itemType}? Это действие нельзя отменить."
+        }
     },
     "home": {
         "breadcrumb": "Главная",
@@ -293,6 +296,9 @@
         "cancel": "Отмена",
         "creating": "Создаю...",
         "createPoll": "Создать опрос",
+        "quotaInfo": "Создание опроса стоит 1 дневную квоту.",
+        "quotaRemaining": "У вас осталось {remaining} квоты.",
+        "insufficientQuota": "Недостаточно квоты. Вам нужно минимум 1 квота для создания опроса.",
         "errorMaxOptions": "Максимум 10 вариантов ответа",
         "errorMinOptions": "Минимум 2 варианта ответа",
         "errorTitleRequired": "Введите название опроса",
@@ -485,9 +491,9 @@
             "joinByInvite": "Или присоединиться по приглашению",
             "publications": "Публикации",
             "members": "Участники",
-            "vision": "Видение",
-            "noVisionPosts": "Пока нет постов видения",
-            "visionCommunityNotFound": "Сообщество видения не найдено"
+            "vision": "Будущее",
+            "noVisionPosts": "Пока нет постов будущего",
+            "visionCommunityNotFound": "Сообщество будущего не найдено"
         },
         "communitySettings": {
             "title": "Настройки сообщества",
@@ -591,6 +597,9 @@
             "title": "Создать публикацию",
             "editTitle": "Редактировать публикацию",
             "update": "Обновить",
+            "quotaInfo": "Создание поста стоит 1 дневную квоту.",
+            "quotaRemaining": "У вас осталось {remaining} квоты.",
+            "insufficientQuota": "Недостаточно квоты. Вам нужно минимум 1 квота для создания поста.",
             "fields": {
                 "title": "Заголовок",
                 "titlePlaceholder": "Введите заголовок",
@@ -746,14 +755,14 @@
             },
             "tooltip": "Сообщество не настроено"
         },
-        "noVisionPosts": "Пока нет постов видения",
-        "visionCommunityNotFound": "Сообщество видения не найдено",
+        "noVisionPosts": "Пока нет постов будущего",
+        "visionCommunityNotFound": "Сообщество будущего не найдено",
         "currency": "Валюта"
     },
     "registration": {
         "title": "Регистрация",
         "authTitle": "Авторизация",
-        "inviteDescription": "Введите код приглашения для начала регистрации",
+        "inviteDescription": "Введите код приглашения для начала регистрации (необязательно)",
         "inviteCodeLabel": "Код приглашения",
         "inviteCodePlaceholder": "Введите код приглашения",
         "continue": "Продолжить",
@@ -791,7 +800,7 @@
         "newUserDescription": "Пожалуйста, заполните свой профиль для продолжения.",
         "generalInformation": "Основная информация",
         "generalInformationSubtitle": "Пожалуйста, заполните следующую информацию для завершения вашего профиля.",
-        "aboutInformation": "О себе",
+        "aboutInformation": "О проекте",
         "avatarUrl": "URL аватара",
         "avatarUrlPlaceholder": "https://example.com/avatar.png",
         "avatarUrlHelper": "Добавьте URL аватара в ваш профиль",
@@ -839,8 +848,8 @@
         "cityPlaceholder": "Введите город",
         "website": "Веб-сайт",
         "websitePlaceholder": "https://example.com",
-        "about": "О себе",
-        "aboutPlaceholder": "Расскажите больше о себе",
+        "about": "О проекте",
+        "aboutPlaceholder": "Расскажите больше о проекте",
         "contacts": "Контакты",
         "email": "Email",
         "messenger": "Мессенджер",
@@ -862,7 +871,7 @@
         "characters": "символов",
         "errors": {
             "bioTooLong": "О себе должно быть менее {max} символов",
-            "aboutTooLong": "О себе должно быть менее {max} символов",
+            "aboutTooLong": "О проекте должно быть менее {max} символов",
             "educationalInstitutionTooLong": "Образовательное учреждение должно быть не более {max} символов",
             "invalidUrl": "Неверный формат URL",
             "invalidEmail": "Неверный формат email"
@@ -875,9 +884,9 @@
             "superadmin": "Суперадмин"
         },
         "contactInformattion": "Контакты",
-        "aboutInformattion": "О себе",
+        "aboutInformattion": "О проекте",
         "hint": {
-            "about": "Здесь вы можете рассказать немного о себе и о том, что важно для вас."
+            "about": "Здесь вы можете рассказать немного о проекте и о том, что важно для вас."
         },
         "useInvite": {
             "title": "Присоединиться к сообществу по приглашению"
@@ -890,7 +899,7 @@
             "inviteError": "Не удалось создать приглашение",
             "noExpiration": "Без срока действия",
             "notSet": "Не установлено",
-            "autoAssigned": "Автоматически назначено (Марафон добра и Видение будущего)",
+            "autoAssigned": "Автоматически назначено (Марафон добра и Будущее)",
             "generatedInvites": "Созданные приглашения",
             "used": "Использовано",
             "expired": "Истекло",

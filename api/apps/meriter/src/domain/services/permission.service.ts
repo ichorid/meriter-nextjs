@@ -118,6 +118,12 @@ export class PermissionService {
       return true;
     }
 
+    // Allow participants in team groups to create polls
+    // This overrides postingRules if they exist and are restrictive
+    if (community.typeTag === 'team' && ['participant', 'lead'].includes(userRole)) {
+      return true;
+    }
+
     const rules = community.postingRules;
     if (!rules) {
       // If no rules configured, deny by default
@@ -430,6 +436,7 @@ export class PermissionService {
 
   /**
    * Check if user can edit a comment
+   * Authors cannot edit their own comments - only admins (superadmin/lead) can edit
    */
   async canEditComment(userId: string, commentId: string): Promise<boolean> {
     const comment = await this.commentService.getComment(commentId);
@@ -442,9 +449,8 @@ export class PermissionService {
     // Superadmin always can
     if (userRole === 'superadmin') return true;
 
-    // Author can edit
-    const authorId = comment.getAuthorId.getValue();
-    if (authorId === userId) return true;
+    // Authors cannot edit their own comments
+    // Removed: if (authorId === userId) return true;
 
     // Lead can edit comments in their community
     if (userRole === 'lead') return true;
@@ -454,6 +460,7 @@ export class PermissionService {
 
   /**
    * Check if user can delete a comment
+   * Authors cannot delete their own comments - only admins (superadmin/lead) can delete
    */
   async canDeleteComment(userId: string, commentId: string): Promise<boolean> {
     const comment = await this.commentService.getComment(commentId);
@@ -466,9 +473,8 @@ export class PermissionService {
     // Superadmin always can
     if (userRole === 'superadmin') return true;
 
-    // Author can delete
-    const authorId = comment.getAuthorId.getValue();
-    if (authorId === userId) return true;
+    // Authors cannot delete their own comments
+    // Removed: if (authorId === userId) return true;
 
     // Lead can delete comments in their community
     if (userRole === 'lead') return true;
