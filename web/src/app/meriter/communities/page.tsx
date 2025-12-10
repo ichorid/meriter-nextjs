@@ -4,7 +4,6 @@ import React, { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUserRoles } from '@/hooks/api/useProfile';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
@@ -15,12 +14,6 @@ export default function CommunitiesPage() {
     const pathname = usePathname();
     const { user, isLoading: userLoading } = useAuth();
     
-    // Check if user has viewer role (CommunityCard handles badge display internally)
-    const { data: userRoles } = useUserRoles(user?.id || '');
-    const hasViewerRole = useMemo(() => {
-        return userRoles?.some(role => role.role === 'viewer') ?? false;
-    }, [userRoles]);
-    
     // Get user's communities with wallets and quotas (handles both regular users and superadmin)
     const { communities: allCommunities, walletsMap, quotasMap, isLoading: communitiesLoading } = useUserCommunities();
     
@@ -30,7 +23,7 @@ export default function CommunitiesPage() {
         const userComms: typeof allCommunities = [];
         
         allCommunities.forEach(community => {
-            const isSpecial = community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision';
+            const isSpecial = community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision' || community.typeTag === 'support';
             if (isSpecial) {
                 special.push(community);
             } else {
@@ -111,8 +104,8 @@ export default function CommunitiesPage() {
                     </section>
                 )}
 
-                {/* Section 2: User's Communities (hidden for viewers) */}
-                {!hasViewerRole && userCommunities.length > 0 && (
+                {/* Section 2: User's Communities */}
+                {userCommunities.length > 0 && (
                     <section>
                         <h2 className="text-sm font-medium text-base-content/60 uppercase tracking-wide mb-4">
                             Your Communities
