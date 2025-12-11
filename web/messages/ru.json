@@ -59,9 +59,15 @@
         "resizeSidebar": "Изменить размер боковой панели",
         "resizeCommentsColumn": "Изменить размер колонки комментариев",
         "goBack": "Назад",
+        "post": "Пост",
+        "comments": "Комментарии",
+        "addComment": "Добавить комментарий",
+        "publicationNotFound": "Публикация не найдена",
+        "backToCommunity": "Вернуться в сообщество",
         "urlPlaceholder": "https://...",
         "selectOption": "Выберите опцию",
         "hashtagPlaceholder": "Введите хештег и нажмите Enter",
+        "hashtagRules": "Только английские буквы, нижний регистр, цифры, подчёркивание",
         "deleteConfirmation": {
             "title": "Подтвердите удаление",
             "message": "Вы уверены, что хотите удалить этот {itemType}? Это действие нельзя отменить."
@@ -361,7 +367,8 @@
         "merits": "Мериты",
         "points": "Баллы",
         "communitySetupPending": "Настройка сообщества не завершена, ваш администратор настроит его скоро",
-        "projectNoVoting": "Посты типа PROJECT предназначены только для обсуждения. Голосование и мериты недоступны."
+        "projectNoVoting": "Посты типа PROJECT предназначены только для обсуждения. Голосование и мериты недоступны.",
+        "addComment": "Добавить комментарий"
     },
     "comments": {
         "editComment": "Редактировать комментарий",
@@ -513,6 +520,7 @@
             "avatarUrlPlaceholder": "https://example.com/avatar.png",
             "generateAvatar": "Генерировать",
             "generateAvatarHelp": "Нажмите Генерировать, чтобы создать абстрактный аватар на основе названия сообщества",
+            "coverImage": "Обложка",
             "configuration": "Конфигурация",
             "language": "Язык",
             "languageSelect": "Выберите опцию",
@@ -622,9 +630,12 @@
                 "postTypeHelp": "Выберите тип публикации, которую хотите создать",
                 "markAsProject": "Пометить как проект",
                 "markAsProjectHelp": "Пометить эту публикацию как проект",
-                "imageUrl": "URL изображения",
-                "imageUrlPlaceholder": "https://example.com/image.png",
-                "imageUrlHelp": "Добавьте ссылку на изображение",
+                "imageUrl": "Обложка",
+                "imageUrlPlaceholder": "Перетащите изображение или нажмите для загрузки",
+                "imageUrlHelp": "Добавьте обложку к публикации",
+                "imageUploadPlaceholder": "Перетащите изображение или нажмите для загрузки",
+                "imageUploading": "Загрузка...",
+                "imageUploadFailed": "Ошибка загрузки. Попробуйте снова.",
                 "hashtags": "Хештеги",
                 "hashtagsPlaceholder": "Добавьте хештеги",
                 "hashtagsHelp": "Добавьте до 10 хештегов",
@@ -635,6 +646,8 @@
                 "poll": "Опрос",
                 "project": "Проект"
             },
+            "pollCreatePrompt": "Опросы создаются в отдельной форме с вариантами ответов и настройками голосования.",
+            "goToPollCreate": "Создать опрос",
             "showPreview": "Показать предпросмотр",
             "hidePreview": "Скрыть предпросмотр",
             "preview": "Предпросмотр",

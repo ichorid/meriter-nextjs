@@ -9,7 +9,7 @@ import { BrandInput } from './BrandInput';
 import { useTranslations } from 'next-intl';
 
 interface PageHeaderProps {
-    title: string;
+    title: React.ReactNode;
     showBack?: boolean;
     onBack?: () => void;
     rightAction?: React.ReactNode;

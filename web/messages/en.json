@@ -58,9 +58,15 @@
         "resizeSidebar": "Resize sidebar",
         "resizeCommentsColumn": "Resize comments column",
         "goBack": "Go back",
+        "post": "Post",
+        "comments": "Comments",
+        "addComment": "Add a comment",
+        "publicationNotFound": "Publication not found",
+        "backToCommunity": "Back to Community",
         "urlPlaceholder": "https://...",
         "selectOption": "Select an option",
         "hashtagPlaceholder": "Type hashtag and press Enter",
+        "hashtagRules": "English only, lowercase, numbers, underscore",
         "deleteConfirmation": {
             "title": "Confirm Deletion",
             "message": "Are you sure you want to delete this {itemType}? This action cannot be undone."
@@ -360,7 +366,8 @@
         "merits": "Merits",
         "points": "Points",
         "communitySetupPending": "Community setup pending, your admin will set it up soon",
-        "projectNoVoting": "PROJECT posts are for discussion only. Voting and merits are not available."
+        "projectNoVoting": "PROJECT posts are for discussion only. Voting and merits are not available.",
+        "addComment": "Add a comment"
     },
     "comments": {
         "editComment": "Edit Comment",
@@ -511,6 +518,7 @@
             "avatarUrlPlaceholder": "https://example.com/avatar.png",
             "generateAvatar": "Generate",
             "generateAvatarHelp": "Click Generate to create an abstract avatar based on community name",
+            "coverImage": "Cover Image",
             "configuration": "Configuration",
             "language": "Language",
             "languageSelect": "Select option",
@@ -620,9 +628,12 @@
                 "postTypeHelp": "Select the type of post you want to create",
                 "markAsProject": "Mark as Project",
                 "markAsProjectHelp": "Mark this post as a project",
-                "imageUrl": "Image URL",
-                "imageUrlPlaceholder": "https://example.com/image.png",
-                "imageUrlHelp": "Add an image URL to your post",
+                "imageUrl": "Cover Image",
+                "imageUrlPlaceholder": "Drop image here or click to upload",
+                "imageUrlHelp": "Add a cover image to your post",
+                "imageUploadPlaceholder": "Drop image here or click to upload",
+                "imageUploading": "Uploading...",
+                "imageUploadFailed": "Upload failed. Please try again.",
                 "hashtags": "Hashtags",
                 "hashtagsPlaceholder": "Add hashtags",
                 "hashtagsHelp": "Add up to 10 hashtags",
@@ -633,6 +644,8 @@
                 "poll": "Poll",
                 "project": "Project"
             },
+            "pollCreatePrompt": "Polls have their own creation form with options and voting settings.",
+            "goToPollCreate": "Create Poll",
             "showPreview": "Show Preview",
             "hidePreview": "Hide Preview",
             "preview": "Preview",

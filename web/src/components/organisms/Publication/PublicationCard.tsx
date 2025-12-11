@@ -65,14 +65,11 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   const isCommenting = false;
 
   const handleCardClick = () => {
-    // Only navigate if we have a slug or id
-    // Note: Interactive elements (buttons, links) should use stopPropagation
-    // to prevent this handler from firing
+    // Navigate to post detail page
     const postSlug = getPublicationIdentifier(publication);
-    if (postSlug) {
-      const params = new URLSearchParams(searchParams?.toString() ?? '');
-      params.set('post', postSlug);
-      router.push(`?${params.toString()}`);
+    const communityId = publication.communityId;
+    if (postSlug && communityId) {
+      router.push(`/meriter/communities/${communityId}/posts/${postSlug}`);
     }
   };
 
@@ -166,6 +163,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             title: (pubItem as any).title,
             description: (pubItem as any).description,
             isProject: (pubItem as any).isProject,
+            imageUrl: (pubItem as any).imageUrl,
             meta: transformedMeta,
           }}
           className="mb-4"

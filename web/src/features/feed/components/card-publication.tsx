@@ -28,6 +28,8 @@ interface CardPublicationProps {
     beneficiarySubtitle?: any;
     authorId?: string;
     beneficiaryId?: string;
+    /** Cover image URL for the post */
+    coverImageUrl?: string;
 }
 
 export const CardPublication = ({
@@ -52,6 +54,7 @@ export const CardPublication = ({
     beneficiarySubtitle,
     authorId,
     beneficiaryId,
+    coverImageUrl,
 }: CardPublicationProps) => {
     const router = useRouter();
     const clickableClass = onClick ? " cursor-pointer hover:shadow-xl" : "";
@@ -75,6 +78,16 @@ export const CardPublication = ({
         className={`card bg-base-100 shadow-lg dark:border dark:border-base-content/20 rounded-2xl mb-5 overflow-hidden max-w-full transition-all${clickableClass}`}
         onClick={onClick}
     >
+        {/* Cover Image - Twitter-style */}
+        {coverImageUrl && (
+            <div className="relative w-full aspect-video bg-base-200">
+                <img 
+                    src={coverImageUrl} 
+                    alt="" 
+                    className="w-full h-full object-cover"
+                />
+            </div>
+        )}
         <div className="card-body p-0 max-w-full overflow-hidden">
             <div className="flex flex-col px-5 pt-5 gap-3 min-w-0">
                 {/* Top row: Community avatar + time + description */}

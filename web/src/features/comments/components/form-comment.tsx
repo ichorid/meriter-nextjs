@@ -57,7 +57,7 @@ export const FormComment: React.FC<FormCommentProps> = ({
     return (
         <div
             key={uid + "_unable"}
-            className="max-w-2xl mx-auto px-4"
+            className="max-w-2xl mx-auto"
             onClick={(e) => {
                 if (e.stopPropagation) {
                     e.stopPropagation();
@@ -66,18 +66,6 @@ export const FormComment: React.FC<FormCommentProps> = ({
                 }
             }}
         >
-        <div
-            style={{
-                opacity: 0.5,
-                textAlign: "right",
-                fontSize: ".8em",
-                marginTop: "-1.5em",
-            }}
-        >
-            <span style={{ cursor: "pointer" }} onClick={onClose}>
-                {t('close')}
-            </span>
-        </div>
         {maxMinus == 0 && amount < 0 && (
             <div className="text-sm text-warning p-4 mb-4 bg-warning/10 rounded-lg">
                 <div className="flex items-center gap-2 flex-1">

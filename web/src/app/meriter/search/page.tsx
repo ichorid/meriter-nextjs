@@ -100,14 +100,10 @@ export default function SearchResultsPage() {
   };
 
   return (
-    <AdaptiveLayout>
-      <div className="flex flex-col h-full bg-base-100 overflow-hidden">
-        <PageHeader
-          title={t('results.title')}
-          showBack={true}
-        />
-
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6">
+    <AdaptiveLayout
+      stickyHeader={<PageHeader title={t('results.title')} showBack={true} />}
+    >
+      <div className="space-y-6">
           {/* Search Input */}
           <AdvancedSearch
             onSearch={handleSearch}
@@ -186,16 +182,15 @@ export default function SearchResultsPage() {
                 </div>
               ))}
             </div>
-          ) : searchParamsState.query || searchParamsState.tags?.length ? (
-            <div className="text-center py-12 text-base-content/60">
-              <Search className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
-              <p className="font-medium">{t('results.noResults')}</p>
-              <p className="text-sm mt-1">
-                {t('results.tryDifferent')}
-              </p>
-            </div>
-          ) : null}
-        </div>
+        ) : searchParamsState.query || searchParamsState.tags?.length ? (
+          <div className="text-center py-12 text-base-content/60">
+            <Search className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
+            <p className="font-medium">{t('results.noResults')}</p>
+            <p className="text-sm mt-1">
+              {t('results.tryDifferent')}
+            </p>
+          </div>
+        ) : null}
       </div>
     </AdaptiveLayout>
   );

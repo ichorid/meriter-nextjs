@@ -79,110 +79,108 @@ export default function CreateInvitePage() {
   };
 
   return (
-    <AdaptiveLayout>
-      <div className="flex flex-col h-full bg-base-100 overflow-hidden">
-        <PageHeader title={t('title')} showBack={true} />
+    <AdaptiveLayout
+      stickyHeader={<PageHeader title={t('title')} showBack={true} />}
+    >
+      <div className="space-y-6">
+        {!communitiesLoading && !hasPermission && (
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+            <p className="font-bold text-yellow-800 mb-2">{t('noPermission')}</p>
+            <p className="text-sm text-yellow-700">{t('noPermissionDescription')}</p>
+          </div>
+        )}
 
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6">
-          {!communitiesLoading && !hasPermission && (
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-              <p className="font-bold text-yellow-800 mb-2">{t('noPermission')}</p>
-              <p className="text-sm text-yellow-700">{t('noPermissionDescription')}</p>
-            </div>
-          )}
+        {hasPermission && (
+          <>
+            <BrandFormControl label={t('inviteType')}>
+              <BrandSelect
+                value={inviteType}
+                onChange={(value) => setInviteType(value as any)}
+                options={[
+                  { label: t('leadToParticipant'), value: 'lead-to-participant' },
+                  { label: t('superadminToLead'), value: 'superadmin-to-lead' },
+                ]}
+                fullWidth
+              />
+            </BrandFormControl>
 
-          {hasPermission && (
-            <>
-              <BrandFormControl label={t('inviteType')}>
-                <BrandSelect
-                  value={inviteType}
-                  onChange={(value) => setInviteType(value as any)}
-                  options={[
-                    { label: t('leadToParticipant'), value: 'lead-to-participant' },
-                    { label: t('superadminToLead'), value: 'superadmin-to-lead' },
-                  ]}
-                  fullWidth
-                />
-              </BrandFormControl>
+            <BrandFormControl
+              label={t('expiresInDays')}
+              helperText={t('expiresInDaysHelp')}
+            >
+              <BrandInput
+                type="number"
+                value={expiresInDays.toString()}
+                onChange={(e) => {
+                  const num = parseInt(e.target.value, 10);
+                  setExpiresInDays(isNaN(num) ? '' : num);
+                }}
+                placeholder={t('expiresInDaysPlaceholder')}
+                fullWidth
+              />
+            </BrandFormControl>
 
-              <BrandFormControl
-                label={t('expiresInDays')}
-                helperText={t('expiresInDaysHelp')}
-              >
-                <BrandInput
-                  type="number"
-                  value={expiresInDays.toString()}
-                  onChange={(e) => {
-                    const num = parseInt(e.target.value, 10);
-                    setExpiresInDays(isNaN(num) ? '' : num);
-                  }}
-                  placeholder={t('expiresInDaysPlaceholder')}
-                  fullWidth
-                />
-              </BrandFormControl>
-
-              <div className="space-y-3">
-                <h2 className="text-base font-semibold text-brand-text-primary">
-                  {t('selectCommunities')}
-                </h2>
-                {communitiesLoading ? (
-                  <div className="flex justify-center py-4">
-                    <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
-                  </div>
-                ) : !leadCommunities || leadCommunities.length === 0 ? (
-                  <p className="text-brand-text-secondary">{t('noCommunities')}</p>
-                ) : (
-                  <div className="space-y-2">
-                    {leadCommunities.map((community) => (
-                      <BrandCheckbox
-                        key={community.id}
-                        checked={selectedCommunities.includes(community.id)}
-                        onChange={() => handleToggleCommunity(community.id)}
-                        label={community.name}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {generatedInvites.length > 0 && (
-                <div className="space-y-3">
-                  <h2 className="text-base font-semibold text-brand-text-primary">
-                    {t('generatedInvites')}
-                  </h2>
-                  <div className="space-y-2">
-                    {generatedInvites.map((invite) => (
-                      <div
-                        key={invite.communityId}
-                        className="p-3 bg-green-50 border border-green-200 rounded-lg"
-                      >
-                        <p className="font-bold text-brand-text-primary">{invite.communityId}</p>
-                        <p className="font-mono text-sm text-brand-text-secondary">{invite.code}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-sm text-green-600">
-                    {t('invitesCopied')}
-                  </p>
+            <div className="space-y-3">
+              <h2 className="text-base font-semibold text-brand-text-primary">
+                {t('selectCommunities')}
+              </h2>
+              {communitiesLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+                </div>
+              ) : !leadCommunities || leadCommunities.length === 0 ? (
+                <p className="text-brand-text-secondary">{t('noCommunities')}</p>
+              ) : (
+                <div className="space-y-2">
+                  {leadCommunities.map((community) => (
+                    <BrandCheckbox
+                      key={community.id}
+                      checked={selectedCommunities.includes(community.id)}
+                      onChange={() => handleToggleCommunity(community.id)}
+                      label={community.name}
+                    />
+                  ))}
                 </div>
               )}
+            </div>
 
-              <BrandButton
-                variant="primary"
-                size="lg"
-                fullWidth
-                onClick={handleCreateInvites}
-                disabled={
-                  selectedCommunities.length === 0 ||
-                  createInvite.isPending
-                }
-                isLoading={createInvite.isPending}
-              >
-                {createInvite.isPending ? t('creating') : t('create')}
-              </BrandButton>
-            </>
-          )}
-        </div>
+            {generatedInvites.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-base font-semibold text-brand-text-primary">
+                  {t('generatedInvites')}
+                </h2>
+                <div className="space-y-2">
+                  {generatedInvites.map((invite) => (
+                    <div
+                      key={invite.communityId}
+                      className="p-3 bg-green-50 border border-green-200 rounded-lg"
+                    >
+                      <p className="font-bold text-brand-text-primary">{invite.communityId}</p>
+                      <p className="font-mono text-sm text-brand-text-secondary">{invite.code}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-green-600">
+                  {t('invitesCopied')}
+                </p>
+              </div>
+            )}
+
+            <BrandButton
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={handleCreateInvites}
+              disabled={
+                selectedCommunities.length === 0 ||
+                createInvite.isPending
+              }
+              isLoading={createInvite.isPending}
+            >
+              {createInvite.isPending ? t('creating') : t('create')}
+            </BrandButton>
+          </>
+        )}
       </div>
     </AdaptiveLayout>
   );

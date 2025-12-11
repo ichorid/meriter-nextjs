@@ -15,7 +15,7 @@ import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandInput } from '@/components/ui/BrandInput';
 import { BrandSelect } from '@/components/ui/BrandSelect';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
-import { ArrowLeft, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
 interface IPollOption {
     id: string;
@@ -355,23 +355,7 @@ export const FormPollCreate = ({
     }, [isInTelegram, handleCreate, onCancel, t]);
 
     return (
-        <div className="p-4 space-y-6">
-            <div className="flex items-center gap-4">
-                {onCancel && (
-                    <BrandButton
-                        variant="ghost"
-                        size="sm"
-                        onClick={onCancel}
-                        className="p-0"
-                    >
-                        <ArrowLeft size={24} />
-                    </BrandButton>
-                )}
-                <h1 className="text-xl font-bold text-brand-text-primary dark:text-base-content">
-                    {isEditMode ? (t('editTitle') || 'Edit Poll') : t('createTitle')}
-                </h1>
-            </div>
-
+        <div className="space-y-6">
             {!isEditMode && requiresPayment && (
                 <div className={`p-3 rounded-lg border ${
                     hasInsufficientPayment

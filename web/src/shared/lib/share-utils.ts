@@ -61,13 +61,13 @@ export async function shareUrl(url: string, toastMessage?: string): Promise<void
  * Construct a post URL
  */
 export function getPostUrl(communityId: string, slug: string): string {
-  return `/meriter/communities/${communityId}?post=${slug}`;
+  return `/meriter/communities/${communityId}/posts/${slug}`;
 }
 
 /**
  * Construct a comment URL with highlight parameter
  */
 export function getCommentUrl(communityId: string, publicationSlug: string, commentId: string): string {
-  return `/meriter/communities/${communityId}?post=${publicationSlug}&highlight=${commentId}`;
+  return `/meriter/communities/${communityId}/posts/${publicationSlug}?highlight=${commentId}`;
 }
 

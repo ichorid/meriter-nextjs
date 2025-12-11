@@ -18,6 +18,7 @@ import { routes } from '@/lib/constants/routes';
 import type { FeedItem } from '@meriter/shared-types';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
 import { Loader2, FileText, Users, Eye } from 'lucide-react';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useUserRoles } from '@/hooks/api/useProfile';
@@ -406,52 +407,45 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
         >
-            {/* Community Info - Compact */}
+            {/* Community Hero Card - Twitter-style with cover */}
             {comms && (
-                <div className="flex items-start gap-4 mb-6">
-                    <BrandAvatar
-                        src={comms.avatarUrl}
-                        fallback={comms.name}
-                        size="lg"
-                        className="shrink-0"
+                <div className="mb-6">
+                    <CommunityHeroCard
+                        community={{
+                            ...(comms as any),
+                            id: comms.id || chatId,
+                        }}
                     />
-                    <div className="flex-1 min-w-0">
-                        {comms.description && (
-                            <p className="text-sm text-base-content/70 leading-relaxed mb-3">
-                                {comms.description}
-                            </p>
-                        )}
-                        {/* Quota and Permanent Merits Indicators */}
-                        {(canEarnPermanentMerits || hasQuota) && (
-                            <div className="flex items-center gap-3 mb-3">
-                                {canEarnPermanentMerits && (
-                                    <div className="flex items-center gap-1.5 text-sm">
-                                        {currencyIconUrl && (
-                                            <img 
-                                                src={currencyIconUrl} 
-                                                alt={tCommunities('currency')} 
-                                                className="w-4 h-4 flex-shrink-0" 
-                                            />
-                                        )}
-                                        <span className="text-base-content/60">{tCommon('permanentMerits')}:</span>
-                                        <span className="font-semibold text-base-content">{balance}</span>
-                                    </div>
-                                )}
-                                {hasQuota && quotaMax > 0 && (
-                                    <div className="flex items-center gap-1.5 text-sm">
-                                        <span className="text-base-content/60">{tCommon('dailyMerits')}:</span>
-                                        <DailyQuotaRing
-                                            remaining={quotaRemaining}
-                                            max={quotaMax}
-                                            className="w-6 h-6 flex-shrink-0"
-                                            asDiv={true}
-                                            variant={isMarathonOfGood ? 'golden' : 'default'}
+                    {/* Quota and Permanent Merits Indicators */}
+                    {(canEarnPermanentMerits || hasQuota) && (
+                        <div className="flex items-center gap-4 mt-3 px-4 py-2 bg-base-200/50 rounded-lg">
+                            {canEarnPermanentMerits && (
+                                <div className="flex items-center gap-1.5 text-sm">
+                                    {currencyIconUrl && (
+                                        <img 
+                                            src={currencyIconUrl} 
+                                            alt={tCommunities('currency')} 
+                                            className="w-4 h-4 flex-shrink-0" 
                                         />
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                                    )}
+                                    <span className="text-base-content/60">{tCommon('permanentMerits')}:</span>
+                                    <span className="font-semibold text-base-content">{balance}</span>
+                                </div>
+                            )}
+                            {hasQuota && quotaMax > 0 && (
+                                <div className="flex items-center gap-1.5 text-sm">
+                                    <span className="text-base-content/60">{tCommon('dailyMerits')}:</span>
+                                    <DailyQuotaRing
+                                        remaining={quotaRemaining}
+                                        max={quotaMax}
+                                        className="w-6 h-6 flex-shrink-0"
+                                        asDiv={true}
+                                        variant={isMarathonOfGood ? 'golden' : 'default'}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
 

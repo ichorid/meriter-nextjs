@@ -12,6 +12,7 @@ import { FormDimensionsEditor } from "@shared/components/form-dimensions-editor"
 import { useUIStore } from "@/stores/ui.store";
 import { classList } from "@lib/classList";
 import { Comment } from "@features/comments/components/comment";
+import { FormComment } from "@features/comments/components/form-comment";
 import { PollCasting } from "@features/polls/components/poll-casting";
 import type { IPollData } from "@features/polls/types";
 import { useRouter } from "next/navigation";
@@ -61,6 +62,10 @@ export const Publication = ({
     communityId,
     authorId,
     meta,
+    // Sort order for comments
+    commentSortBy,
+    // Cover image for the post
+    imageUrl,
 }: any) => {
     // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     // This is required by React's Rules of Hooks
@@ -106,7 +111,8 @@ export const Publication = ({
         activeCommentHook,
         onlyPublication,
         communityId || '',
-        wallets
+        wallets,
+        commentSortBy || 'recent'
     );
     
     // Get community info to check typeTag
@@ -257,6 +263,7 @@ export const Publication = ({
                 beneficiarySubtitle={hasBeneficiary ? beneficiaryUsername : undefined}
                 authorId={authorId}
                 beneficiaryId={beneficiaryId}
+                coverImageUrl={imageUrl}
                 bottom={
                     (() => {
                         if (showWithdraw) {
@@ -361,6 +368,17 @@ export const Publication = ({
 
             {showComments && (
                 <div className="publication-comments">
+                    {/* Comment Form - shown when replying to this publication */}
+                    {publicationUnderReply && (
+                        <div className="mb-4">
+                            <FormComment
+                                {...formCommentProps}
+                                currencyIconUrl={communityInfo?.settings?.iconUrl}
+                            />
+                        </div>
+                    )}
+                    
+                    {/* Existing Comments */}
                     <div className="comments">
                         {comments?.map((c: any, index: number) => (
                             <Comment
@@ -384,6 +402,23 @@ export const Publication = ({
                             />
                         ))}
                     </div>
+                    
+                    {/* Add Comment Button - shown when not already replying */}
+                    {!publicationUnderReply && isDetailPage && (
+                        <div className="mt-4">
+                            <button
+                                onClick={() => {
+                                    showPlus();
+                                    if (activeCommentHook) {
+                                        activeCommentHook[1](slug);
+                                    }
+                                }}
+                                className="w-full py-3 px-4 bg-base-200 hover:bg-base-300 rounded-xl text-base-content/70 hover:text-base-content transition-colors text-sm font-medium"
+                            >
+                                {t('addComment')}
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

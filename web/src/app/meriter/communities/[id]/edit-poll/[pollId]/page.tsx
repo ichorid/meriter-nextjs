@@ -3,10 +3,13 @@
 import React from 'react';
 import { FormPollCreate } from '@/features/polls/components/form-poll-create';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { usePoll } from '@/hooks/api/usePolls';
+import { Loader2 } from 'lucide-react';
 
 export default function EditPollPage({
   params,
@@ -14,6 +17,7 @@ export default function EditPollPage({
   params: Promise<{ id: string; pollId: string }>;
 }) {
   const router = useRouter();
+  const t = useTranslations('polls');
   const { isAuthenticated, isLoading: userLoading } = useAuth();
   const [communityId, setCommunityId] = React.useState<string>('');
   const [pollId, setPollId] = React.useState<string>('');
@@ -37,11 +41,19 @@ export default function EditPollPage({
     return null;
   }
 
+  const pageHeader = (
+    <PageHeader
+      title={t('editTitle') || 'Edit Poll'}
+      showBack={true}
+      onBack={() => router.push(`/meriter/communities/${communityId}`)}
+    />
+  );
+
   if (pollLoading) {
     return (
-      <AdaptiveLayout communityId={communityId}>
-        <div className="flex-1 p-4 flex items-center justify-center">
-          <div className="text-base-content/60">Loading...</div>
+      <AdaptiveLayout communityId={communityId} stickyHeader={pageHeader}>
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
         </div>
       </AdaptiveLayout>
     );
@@ -49,8 +61,8 @@ export default function EditPollPage({
 
   if (!poll) {
     return (
-      <AdaptiveLayout communityId={communityId}>
-        <div className="flex-1 p-4 flex items-center justify-center">
+      <AdaptiveLayout communityId={communityId} stickyHeader={pageHeader}>
+        <div className="flex-1 flex items-center justify-center">
           <div className="text-base-content/60">Poll not found</div>
         </div>
       </AdaptiveLayout>
@@ -58,8 +70,8 @@ export default function EditPollPage({
   }
 
   return (
-    <AdaptiveLayout communityId={communityId}>
-      <div className="flex-1 p-4">
+    <AdaptiveLayout communityId={communityId} stickyHeader={pageHeader}>
+      <div className="space-y-6">
         <FormPollCreate
           communityId={communityId}
           pollId={pollId}

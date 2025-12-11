@@ -29,6 +29,7 @@ export const HashtagInput = ({
 }: HashtagInputProps) => {
     const tCommon = useTranslations('common');
     const defaultPlaceholder = placeholder ?? tCommon('hashtagPlaceholder');
+    const hashtagRules = tCommon('hashtagRules');
     const [inputValue, setInputValue] = useState('');
 
     const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -44,11 +45,21 @@ export const HashtagInput = ({
         }
     };
 
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value;
+        // Remove # prefix, convert to lowercase, filter only valid chars (a-z, 0-9, _)
+        const filtered = raw
+            .replace(/^#/, '') // Remove leading #
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, ''); // Keep only valid characters
+        setInputValue(filtered);
+    };
+
     const addHashtag = (tag: string) => {
         // Remove # if user typed it
         const cleanTag = tag.replace(/^#/, '').toLowerCase();
 
-        // Validate: only alphanumeric and underscores
+        // Validate: English lowercase letters, numbers, and underscores only
         if (!/^[a-z0-9_]+$/.test(cleanTag)) {
             return;
         }
@@ -72,10 +83,14 @@ export const HashtagInput = ({
         onChange(value.filter(t => t !== tag));
     };
 
+    const combinedHelperText = helperText 
+        ? `${helperText}. ${hashtagRules} (${value.length}/${maxTags})`
+        : `${hashtagRules} (${value.length}/${maxTags})`;
+
     return (
         <BrandFormControl
             label={label}
-            helperText={`${helperText || ''} (${value.length}/${maxTags})`}
+            helperText={combinedHelperText}
         >
             <div className="space-y-2">
                 {/* Tags display */}
@@ -104,7 +119,7 @@ export const HashtagInput = ({
                 {value.length < maxTags && (
                     <BrandInput
                         value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
+                        onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
                         placeholder={defaultPlaceholder}
                         fullWidth

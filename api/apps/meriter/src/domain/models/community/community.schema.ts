@@ -28,6 +28,9 @@ export class Community {
   @Prop()
   avatarUrl?: string;
 
+  @Prop()
+  coverImageUrl?: string;
+
   @Prop({ type: [String], default: [] })
   members: string[]; // УСТАРЕВШЕЕ, использовать UserCommunityRole
 

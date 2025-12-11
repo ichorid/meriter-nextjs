@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useProfileData } from '@/hooks/useProfileData';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import { ProfileCommentsTab } from '@/components/organisms/Profile/ProfileCommentsTab';
@@ -12,6 +14,7 @@ import { Loader2 } from 'lucide-react';
 export default function ProfileCommentsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('profile');
   const { user, isLoading: userLoading, isAuthenticated } = useAuth();
   const { sortByTab, setSortByTab } = useProfileTabState();
   const {
@@ -27,7 +30,6 @@ export default function ProfileCommentsPage() {
   const [activeSlider, setActiveSlider] = useState<string | null>(null);
   const activeCommentHook = useState<string | null>(null);
 
-  // Get sort from URL params
   useEffect(() => {
     const sortParam = searchParams?.get('sort');
     if (sortParam === 'voted' || sortParam === 'recent') {
@@ -38,10 +40,17 @@ export default function ProfileCommentsPage() {
     }
   }, [searchParams, setSortByTab]);
 
-  // Show loading state during auth check
+  const pageHeader = (
+    <PageHeader
+      title={t('tabs.comments')}
+      showBack={true}
+      onBack={() => router.push('/meriter/profile')}
+    />
+  );
+
   if (userLoading || !isAuthenticated) {
     return (
-      <AdaptiveLayout className="feed">
+      <AdaptiveLayout className="feed" stickyHeader={pageHeader}>
         <div className="flex flex-1 items-center justify-center h-64">
           <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
         </div>
@@ -53,6 +62,8 @@ export default function ProfileCommentsPage() {
 
   return (
     <AdaptiveLayout
+      className="feed"
+      stickyHeader={pageHeader}
       activeCommentHook={activeCommentHook}
       activeSlider={activeSlider}
       setActiveSlider={setActiveSlider}
@@ -61,7 +72,7 @@ export default function ProfileCommentsPage() {
       wallets={wallets}
       myId={user?.id}
     >
-      <div className="flex-1 space-y-4">
+      <div className="space-y-4">
         <ProfileCommentsTab
           comments={myComments}
           isLoading={commentsLoading}

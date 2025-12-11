@@ -45,7 +45,7 @@ export const CommentListItem: React.FC<CommentListItemProps> = ({
 
   const handleClick = () => {
     if (communityId && publicationSlug) {
-      router.push(`/meriter/communities/${communityId}?post=${publicationSlug}&highlight=${id}`);
+      router.push(`/meriter/communities/${communityId}/posts/${publicationSlug}?highlight=${id}`);
     } else if (targetType === 'publication' && targetId) {
       // If we don't have slug/communityId, we can still try to navigate using the publication ID
       // But for now, we'll just show the comment without navigation
