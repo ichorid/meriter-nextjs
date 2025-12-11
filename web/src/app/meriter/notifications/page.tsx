@@ -206,14 +206,10 @@ export default function NotificationsPage() {
   ];
 
   return (
-    <AdaptiveLayout>
-      <div className="flex flex-col h-full bg-base-100 overflow-hidden">
-        <PageHeader
-          title={t('title')}
-          showBack={true}
-        />
-
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
+    <AdaptiveLayout
+      stickyHeader={<PageHeader title={t('title')} showBack={true} />}
+    >
+      <div className="space-y-4">
           {/* Filters and Actions */}
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
             <div className="flex items-center gap-2 flex-1">
@@ -327,18 +323,17 @@ export default function NotificationsPage() {
                 </div>
               )}
             </div>
-          ) : (
-            <div className="text-center py-12 text-base-content/60">
-              <Bell className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
-              <p className="font-medium">{t('noNotifications')}</p>
-              <p className="text-sm mt-1">
-                {filter === 'unread' 
-                  ? t('noUnreadNotifications')
-                  : t('noNotificationsDescription')}
-              </p>
-            </div>
-          )}
-        </div>
+        ) : (
+          <div className="text-center py-12 text-base-content/60">
+            <Bell className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
+            <p className="font-medium">{t('noNotifications')}</p>
+            <p className="text-sm mt-1">
+              {filter === 'unread' 
+                ? t('noUnreadNotifications')
+                : t('noNotificationsDescription')}
+            </p>
+          </div>
+        )}
       </div>
     </AdaptiveLayout>
   );

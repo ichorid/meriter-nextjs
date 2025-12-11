@@ -89,88 +89,86 @@ const SettingsPage = () => {
     }
 
     return (
-        <AdaptiveLayout>
-            <div className="flex flex-col h-full bg-base-100 overflow-hidden">
-                <PageHeader title={t('title')} showBack={true} />
+        <AdaptiveLayout
+            stickyHeader={<PageHeader title={t('title')} showBack={true} />}
+        >
+            <div className="space-y-6">
+                {/* Language Section */}
+                <div className="space-y-3">
+                    <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
+                        {t('languageSection')}
+                    </h2>
+                    <LanguageSelector />
+                </div>
 
-                <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-6">
-                    {/* Language Section */}
+                {/* Theme Section */}
+                <div className="space-y-3">
+                    <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
+                        {t('themeSection')}
+                    </h2>
+                    <ThemeSelector />
+                </div>
+
+                {/* Invite Section */}
+                <div className="space-y-3">
+                    <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
+                        {t('inviteSection')}
+                    </h2>
+                    <InviteInput />
+                </div>
+
+                {/* Development Section (Fake Data Mode) */}
+                {fakeDataMode && (
                     <div className="space-y-3">
                         <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
-                            {t('languageSection')}
+                            {t('development')}
                         </h2>
-                        <LanguageSelector />
-                    </div>
-
-                    {/* Theme Section */}
-                    <div className="space-y-3">
-                        <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
-                            {t('themeSection')}
-                        </h2>
-                        <ThemeSelector />
-                    </div>
-
-                    {/* Invite Section */}
-                    <div className="space-y-3">
-                        <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
-                            {t('inviteSection')}
-                        </h2>
-                        <InviteInput />
-                    </div>
-
-                    {/* Development Section (Fake Data Mode) */}
-                    {fakeDataMode && (
-                        <div className="space-y-3">
-                            <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
-                                {t('development')}
-                            </h2>
-                            <div className="space-y-2">
-                                <BrandButton
-                                    variant="primary"
-                                    size="md"
-                                    onClick={handleCreateFakeCommunity}
-                                    isLoading={creatingFakeCommunity}
-                                    disabled={creatingFakeCommunity || addingToAllCommunities}
-                                    fullWidth
-                                >
-                                    {creatingFakeCommunity ? t('creating') : t('createFakeCommunity')}
-                                </BrandButton>
-                                <BrandButton
-                                    variant="outline"
-                                    size="md"
-                                    onClick={handleAddToAllCommunities}
-                                    isLoading={addingToAllCommunities}
-                                    disabled={creatingFakeCommunity || addingToAllCommunities}
-                                    fullWidth
-                                >
-                                    {addingToAllCommunities ? t('adding') : t('addUserToAllCommunities')}
-                                </BrandButton>
-                                {fakeCommunityMessage && (
-                                    <p className={`text-sm ${fakeCommunityMessage.includes('Failed') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                                        {fakeCommunityMessage}
-                                    </p>
-                                )}
-                                {addToAllMessage && (
-                                    <p className={`text-sm ${addToAllMessage.includes('Failed') || addToAllMessage.includes('errors') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                                        {addToAllMessage}
-                                    </p>
-                                )}
-                            </div>
+                        <div className="space-y-2">
+                            <BrandButton
+                                variant="primary"
+                                size="md"
+                                onClick={handleCreateFakeCommunity}
+                                isLoading={creatingFakeCommunity}
+                                disabled={creatingFakeCommunity || addingToAllCommunities}
+                                fullWidth
+                            >
+                                {creatingFakeCommunity ? t('creating') : t('createFakeCommunity')}
+                            </BrandButton>
+                            <BrandButton
+                                variant="outline"
+                                size="md"
+                                onClick={handleAddToAllCommunities}
+                                isLoading={addingToAllCommunities}
+                                disabled={creatingFakeCommunity || addingToAllCommunities}
+                                fullWidth
+                            >
+                                {addingToAllCommunities ? t('adding') : t('addUserToAllCommunities')}
+                            </BrandButton>
+                            {fakeCommunityMessage && (
+                                <p className={`text-sm ${fakeCommunityMessage.includes('Failed') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                    {fakeCommunityMessage}
+                                </p>
+                            )}
+                            {addToAllMessage && (
+                                <p className={`text-sm ${addToAllMessage.includes('Failed') || addToAllMessage.includes('errors') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                    {addToAllMessage}
+                                </p>
+                            )}
                         </div>
-                    )}
-
-                    {/* Superadmin Section */}
-                    {user.globalRole === 'superadmin' && (
-                        <SuperadminManagement />
-                    )}
-
-                    {/* Account Section */}
-                    <div className="space-y-3">
-                        <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
-                            {t('account')}
-                        </h2>
-                        <LogoutButton />
                     </div>
+                )}
+
+                {/* Superadmin Section */}
+                {user.globalRole === 'superadmin' && (
+                    <SuperadminManagement />
+                )}
+
+                {/* Account Section */}
+                <div className="space-y-3">
+                    <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
+                        {t('account')}
+                    </h2>
+                    <LogoutButton />
                 </div>
             </div>
         </AdaptiveLayout>

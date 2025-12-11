@@ -166,6 +166,7 @@ export class CommunityFeedService {
           postType: snapshot.postType || 'basic',
           isProject: snapshot.isProject || false,
           hashtags: snapshot.hashtags || [],
+          imageUrl: snapshot.imageUrl || undefined,
           metrics: {
             upvotes: snapshot.metrics.upvotes,
             downvotes: snapshot.metrics.downvotes,

@@ -130,16 +130,27 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   // Get currency icon from community settings (stored as data URL or image URL)
   const currencyIconUrl = community.settings?.iconUrl;
 
+  // Get cover image from community
+  const coverImageUrl = (community as any).coverImageUrl;
+  const hasCover = !!coverImageUrl;
+
   // Expanded version (desktop)
   if (isExpanded) {
     return (
       <Link href={`/meriter/communities/${communityId}`}>
         <div
-          className={`w-full rounded-lg flex flex-row items-start gap-3 py-3 pr-2 pl-4 cursor-pointer transition-all duration-200 ${
+          className={`w-full rounded-2xl flex flex-row items-start gap-3 py-3 pr-2 pl-4 cursor-pointer transition-all duration-200 overflow-hidden relative ${
             isActive
               ? 'bg-base-content text-base-100'
-              : 'bg-base-200 hover:bg-base-300'
+              : hasCover 
+                ? 'text-white' 
+                : 'bg-base-200 hover:bg-base-300'
           }`}
+          style={hasCover && !isActive ? {
+            backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.7), rgba(0,0,0,0.4)), url(${coverImageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          } : undefined}
         >
           {/* Left section: Avatar + Content */}
           <div className="flex flex-row items-start gap-3 flex-1 min-w-0">
@@ -168,7 +179,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
               {/* Title section */}
               <div className="flex flex-col items-start gap-1 w-full">
                 <div className={`text-[15px] font-semibold leading-[18px] tracking-[0.374px] w-full ${
-                  isActive ? 'text-base-100' : 'text-base-content'
+                  isActive ? 'text-base-100' : hasCover ? 'text-white drop-shadow' : 'text-base-content'
                 }`}>
                   {community.name}
                 </div>
@@ -185,10 +196,10 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                           />
                         )}
                         <span className={`text-xs leading-[14px] tracking-[0.374px] min-w-0 ${
-                          isActive ? 'text-base-100/60' : 'text-base-content/60'
+                          isActive ? 'text-base-100/60' : hasCover ? 'text-white/70' : 'text-base-content/60'
                         }`}>
                           <span className="truncate">{t('permanentMerits')}:</span> <span className={`font-semibold whitespace-nowrap ${
-                            isActive ? 'text-base-100' : 'text-base-content'
+                            isActive ? 'text-base-100' : hasCover ? 'text-white' : 'text-base-content'
                           }`}>{balance}</span>
                         </span>
                       </div>
@@ -209,7 +220,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
               {/* Description */}
               {!hideDescription && community.description && (
                 <div className={`text-xs leading-[14px] tracking-[0.374px] line-clamp-2 w-full ${
-                  isActive ? 'text-base-100/60' : 'text-base-content/60'
+                  isActive ? 'text-base-100/60' : hasCover ? 'text-white/70' : 'text-base-content/60'
                 }`}>
                   {community.description}
                 </div>
@@ -221,7 +232,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
           <div className="flex items-start flex-shrink-0 w-6 h-6">
             <ChevronRight 
               className={`w-6 h-6 ${
-                isActive ? 'text-base-100/60' : 'text-base-content/60'
+                isActive ? 'text-base-100/60' : hasCover ? 'text-white/60' : 'text-base-content/60'
               }`} 
             />
           </div>

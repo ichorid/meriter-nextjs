@@ -16,8 +16,9 @@ import { BrandCheckbox } from '@/components/ui/BrandCheckbox';
 import { HashtagInput } from '@/shared/components/HashtagInput';
 import { PublicationContent } from '@/components/organisms/Publication/PublicationContent';
 import { useToastStore } from '@/shared/stores/toast.store';
-import { X, Check, ArrowLeft, Save, FileText, Loader2 } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { RichTextEditor } from '@/components/molecules/RichTextEditor';
+import { ImageUploader } from '@/components/ui/ImageUploader';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project';
 
@@ -105,21 +106,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       newErrors.description = t('errors.descriptionTooLong', { max: 5000 });
     }
 
-    if (imageUrl && !isValidUrl(imageUrl)) {
-      newErrors.imageUrl = t('errors.invalidUrl');
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const isValidUrl = (url: string): boolean => {
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
   };
 
   // Load draft on mount (skip if editing)
@@ -281,10 +269,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       if (onSuccess) {
         onSuccess({ id: publication.id, slug: publication.slug });
       } else {
-        // Redirect to community page with post parameter in query string
+        // Redirect to post detail page
         // Use slug if available, otherwise fall back to id
         const postIdentifier = publication.slug || publication.id;
-        router.push(`/meriter/communities/${communityId}?post=${postIdentifier}`);
+        router.push(`/meriter/communities/${communityId}/posts/${postIdentifier}`);
       }
       
       // Don't reset state here - navigation will unmount component
@@ -313,26 +301,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   return (
     <div className="flex-1">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <BrandButton
-              variant="ghost"
-              size="sm"
-              onClick={() => router.back()}
-              className="p-0"
-            >
-              <ArrowLeft size={24} />
-            </BrandButton>
-            <h1 className="text-xl font-bold text-brand-text-primary">
-              {isEditMode ? t('editTitle') || 'Edit Publication' : t('title')}
-            </h1>
-          </div>
-          {hasDraft && (
+        {/* Draft restore button */}
+        {hasDraft && (
+          <div className="flex justify-end">
             <BrandButton variant="outline" size="sm" onClick={loadDraft} leftIcon={<FileText size={16} />}>
               {t('loadDraft')}
             </BrandButton>
-          )}
-        </div>
+          </div>
+        )}
 
         {showDraftAlert && hasDraft && (
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4 flex items-center justify-between">
@@ -412,7 +388,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           </BrandFormControl>
         )}
 
-        {/* Post Type selector - hide if PROJECT is selected */}
+        {/* Post Type selector - hide if PROJECT checkbox is checked (in marathon communities) */}
         {!isProject && (
           <BrandFormControl
             label={t('fields.postType')}
@@ -421,17 +397,13 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             <BrandSelect
               value={postType}
               onChange={(value) => {
-                setPostType(value as PublicationPostType);
-                if (value === 'project') {
-                  setIsProject(true);
-                } else {
-                  setIsProject(false);
-                }
+                const newType = value as PublicationPostType;
+                setPostType(newType);
               }}
               options={[
                 { label: t('postTypes.basic'), value: 'basic' },
                 { label: t('postTypes.poll'), value: 'poll' },
-                { label: t('postTypes.project'), value: 'project' },
+                ...(isGoodDeedsMarathon ? [] : [{ label: t('postTypes.project'), value: 'project' }]),
               ]}
               placeholder={t('fields.postTypePlaceholder')}
               disabled={isSubmitting}
@@ -440,17 +412,38 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           </BrandFormControl>
         )}
 
+        {/* Show poll creation prompt when poll type is selected */}
+        {postType === 'poll' && !isProject && (
+          <div className="p-4 bg-info/10 border border-info/20 rounded-xl">
+            <p className="text-sm text-base-content mb-3">
+              {t('pollCreatePrompt')}
+            </p>
+            <BrandButton
+              variant="primary"
+              onClick={() => router.push(`/meriter/communities/${communityId}/create-poll`)}
+            >
+              {t('goToPollCreate')}
+            </BrandButton>
+          </div>
+        )}
+
         <BrandFormControl
           label={t('fields.imageUrl')}
           error={errors.imageUrl}
           helperText={t('fields.imageUrlHelp')}
         >
-          <BrandInput
+          <ImageUploader
             value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            placeholder={t('fields.imageUrlPlaceholder')}
+            onUpload={(url) => setImageUrl(url)}
+            onRemove={() => setImageUrl('')}
             disabled={isSubmitting}
-            fullWidth
+            aspectRatio={16 / 9}
+            placeholder={t('fields.imageUrlPlaceholder')}
+            labels={{
+              placeholder: t('fields.imageUploadPlaceholder') || 'Drop image here or click to upload',
+              uploading: t('fields.imageUploading') || 'Uploading...',
+              uploadFailed: t('fields.imageUploadFailed') || 'Upload failed',
+            }}
           />
         </BrandFormControl>
 
@@ -513,11 +506,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
         <div className="flex items-center justify-between gap-4">
           <div className="flex gap-2">
-            {false && (title.trim() || description.trim()) && (
-              <BrandButton variant="outline" onClick={saveDraft} disabled={isSubmitting} leftIcon={<Save size={16} />}>
-                {t('saveDraft')}
-              </BrandButton>
-            )}
             {hasDraft && (
               <BrandButton variant="outline" onClick={clearDraft} disabled={isSubmitting}>
                 {t('clearDraft')}

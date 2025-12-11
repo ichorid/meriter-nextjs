@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import { ProfileProjectsTab } from '@/components/organisms/Profile/ProfileProjectsTab';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +15,7 @@ import { Loader2 } from 'lucide-react';
 export default function ProfileProjectsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('profile');
   const { user, isLoading: userLoading, isAuthenticated } = useAuth();
   const { sortByTab, setSortByTab } = useProfileTabState();
   const { data: wallets = [] } = useWallets();
@@ -29,12 +32,10 @@ export default function ProfileProjectsPage() {
   const [activeSlider, setActiveSlider] = useState<string | null>(null);
   const activeCommentHook = useState<string | null>(null);
 
-  // Flatten projects from all pages
   const projects = useMemo(() => {
     return (projectsData?.pages ?? []).flatMap((page) => page.data || []);
   }, [projectsData?.pages]);
 
-  // Get sort from URL params
   useEffect(() => {
     const sortParam = searchParams?.get('sort');
     if (sortParam === 'voted' || sortParam === 'recent') {
@@ -45,10 +46,17 @@ export default function ProfileProjectsPage() {
     }
   }, [searchParams, setSortByTab]);
 
-  // Show loading state during auth check
+  const pageHeader = (
+    <PageHeader
+      title={t('tabs.projects')}
+      showBack={true}
+      onBack={() => router.push('/meriter/profile')}
+    />
+  );
+
   if (userLoading || !isAuthenticated) {
     return (
-      <AdaptiveLayout className="feed">
+      <AdaptiveLayout className="feed" stickyHeader={pageHeader}>
         <div className="flex flex-1 items-center justify-center h-64">
           <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
         </div>
@@ -60,6 +68,8 @@ export default function ProfileProjectsPage() {
 
   return (
     <AdaptiveLayout
+      className="feed"
+      stickyHeader={pageHeader}
       activeCommentHook={activeCommentHook}
       activeSlider={activeSlider}
       setActiveSlider={setActiveSlider}
@@ -68,7 +78,7 @@ export default function ProfileProjectsPage() {
       wallets={wallets}
       myId={user?.id}
     >
-      <div className="flex-1 space-y-4">
+      <div className="space-y-4">
         <ProfileProjectsTab
           projects={projects}
           isLoading={projectsLoading}

@@ -4,10 +4,10 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { CommunityRulesEditor } from '@/features/communities/components/CommunityRulesEditor';
 import { useCommunity, useUpdateCommunity } from '@/hooks/api/useCommunities';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export default function CommunityRulesPage({
   params,
@@ -41,9 +41,17 @@ export default function CommunityRulesPage({
     });
   };
 
+  const pageHeader = (
+    <PageHeader
+      title={t('title')}
+      showBack={true}
+      onBack={() => communityId && router.push(`/meriter/communities/${communityId}`)}
+    />
+  );
+
   if (!communityId || isLoading) {
     return (
-      <AdaptiveLayout>
+      <AdaptiveLayout stickyHeader={pageHeader}>
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
         </div>
@@ -53,29 +61,15 @@ export default function CommunityRulesPage({
 
   if (!community) {
     return (
-      <AdaptiveLayout>
-        <div className="p-4">
-          <p className="text-brand-text-primary">{t('communityNotFound')}</p>
-        </div>
+      <AdaptiveLayout stickyHeader={pageHeader}>
+        <div className="text-brand-text-primary">{t('communityNotFound')}</div>
       </AdaptiveLayout>
     );
   }
 
   return (
-    <AdaptiveLayout communityId={communityId}>
-      <div className="flex-1 p-4">
-        <div className="flex items-center gap-4 mb-4">
-          <BrandButton
-            variant="ghost"
-            size="sm"
-            onClick={() => router.back()}
-            className="p-0"
-          >
-            <ArrowLeft size={24} />
-          </BrandButton>
-          <h1 className="text-xl font-bold text-brand-text-primary">{t('title')}</h1>
-        </div>
-
+    <AdaptiveLayout communityId={communityId} stickyHeader={pageHeader}>
+      <div className="space-y-6">
         <CommunityRulesEditor
           community={community}
           onSave={handleSave}

@@ -3,10 +3,13 @@
 import React from 'react';
 import { PublicationCreateForm } from '@/features/publications/components/PublicationCreateForm';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { usePublication } from '@/hooks/api/usePublications';
+import { Loader2 } from 'lucide-react';
 
 export default function EditPublicationPage({
   params,
@@ -14,6 +17,7 @@ export default function EditPublicationPage({
   params: Promise<{ id: string; publicationId: string }>;
 }) {
   const router = useRouter();
+  const t = useTranslations('publications.create');
   const { isAuthenticated, isLoading: userLoading } = useAuth();
   const [communityId, setCommunityId] = React.useState<string>('');
   const [publicationId, setPublicationId] = React.useState<string>('');
@@ -37,11 +41,19 @@ export default function EditPublicationPage({
     return null;
   }
 
+  const pageHeader = (
+    <PageHeader
+      title={t('editTitle') || 'Edit Publication'}
+      showBack={true}
+      onBack={() => router.push(`/meriter/communities/${communityId}`)}
+    />
+  );
+
   if (publicationLoading) {
     return (
-      <AdaptiveLayout communityId={communityId}>
-        <div className="flex-1 p-4 flex items-center justify-center">
-          <div className="text-base-content/60">Loading...</div>
+      <AdaptiveLayout communityId={communityId} stickyHeader={pageHeader}>
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
         </div>
       </AdaptiveLayout>
     );
@@ -49,8 +61,8 @@ export default function EditPublicationPage({
 
   if (!publication) {
     return (
-      <AdaptiveLayout communityId={communityId}>
-        <div className="flex-1 p-4 flex items-center justify-center">
+      <AdaptiveLayout communityId={communityId} stickyHeader={pageHeader}>
+        <div className="flex-1 flex items-center justify-center">
           <div className="text-base-content/60">Publication not found</div>
         </div>
       </AdaptiveLayout>
@@ -58,17 +70,15 @@ export default function EditPublicationPage({
   }
 
   return (
-    <AdaptiveLayout communityId={communityId}>
-      <div className="flex-1 p-4">
+    <AdaptiveLayout communityId={communityId} stickyHeader={pageHeader}>
+      <div className="space-y-6">
         <PublicationCreateForm
           communityId={communityId}
           publicationId={publicationId}
           initialData={publication}
-          onSuccess={(publication) => {
-            // Redirect to community page with post parameter in query string
-            // Use slug if available, otherwise fall back to id
-            const postIdentifier = publication.slug || publication.id;
-            router.push(`/meriter/communities/${communityId}?post=${postIdentifier}`);
+          onSuccess={(pub) => {
+            const postIdentifier = pub.slug || pub.id;
+            router.push(`/meriter/communities/${communityId}/posts/${postIdentifier}`);
           }}
           onCancel={() => {
             router.push(`/meriter/communities/${communityId}`);

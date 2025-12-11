@@ -51,6 +51,7 @@ export interface UpdateCommunityDto {
   name?: string;
   description?: string;
   avatarUrl?: string;
+  coverImageUrl?: string;
   hashtags?: string[];
   hashtagDescriptions?: Record<string, string>;
   settings?: {
@@ -321,6 +322,7 @@ export class CommunityService {
     if (dto.name !== undefined) updateData.name = dto.name;
     if (dto.description !== undefined) updateData.description = dto.description;
     if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
+    if (dto.coverImageUrl !== undefined) updateData.coverImageUrl = dto.coverImageUrl;
     if (dto.hashtags !== undefined) updateData.hashtags = dto.hashtags;
     if (dto.hashtagDescriptions !== undefined) {
       updateData.hashtagDescriptions = dto.hashtagDescriptions;
