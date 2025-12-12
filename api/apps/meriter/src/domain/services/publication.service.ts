@@ -277,25 +277,28 @@ export class PublicationService {
     if (updateData.hashtags) {
       publication.updateHashtags(updateData.hashtags);
     }
+
+    // Build combined update object
+    // Start with snapshot (contains entity-managed fields: content, hashtags, metrics, etc.)
+    const snapshot = publication.toSnapshot();
+    const updatePayload: any = { ...snapshot };
+
+    // Override readonly fields from updateData if provided
+    // These fields are readonly in the entity, so we update them directly
     if (updateData.title !== undefined) {
-      // Update title if provided
-      const snapshot = publication.toSnapshot();
-      await this.publicationModel.updateOne(
-        { id: publication.getId },
-        { $set: { title: updateData.title } },
-      );
+      updatePayload.title = updateData.title;
     }
     if (updateData.description !== undefined) {
-      // Update description if provided
-      await this.publicationModel.updateOne(
-        { id: publication.getId },
-        { $set: { description: updateData.description } },
-      );
+      updatePayload.description = updateData.description;
+    }
+    if (updateData.imageUrl !== undefined) {
+      updatePayload.imageUrl = updateData.imageUrl || null;
     }
 
+    // Single atomic update with all changes
     await this.publicationModel.updateOne(
-      { id: publication.getId },
-      { $set: publication.toSnapshot() },
+      { id: publication.getId.getValue() },
+      { $set: updatePayload },
     );
 
     return publication;
