@@ -394,7 +394,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
         <div className="flex-1 flex relative overflow-hidden">
           {/* Center Column - Posts */}
           <div
-            className={`transition-all duration-300 flex-1 min-w-0 overflow-y-auto overflow-x-hidden sm:max-w-2xl lg:max-w-4xl ${showCommentsColumn && isDesktop ? '' : 'mx-auto'}`}
+            className={`transition-all duration-300 flex-1 min-w-0 overflow-y-auto overflow-x-hidden sm:max-w-2xl lg:max-w-4xl ${isDesktop ? '' : 'mx-auto'}`}
             style={showCommentsColumn && isDesktop ? { 
               marginLeft: `calc((100vw - var(--right-column-width)) / 2 - ${actualLeftSidebarWidth}px)`,
               marginRight: 'var(--right-column-width)'
