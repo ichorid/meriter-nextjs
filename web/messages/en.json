@@ -502,7 +502,8 @@
             "members": "Members",
             "vision": "Future",
             "noVisionPosts": "No future posts yet",
-            "visionCommunityNotFound": "Future community not found"
+            "visionCommunityNotFound": "Future community not found",
+            "currency": "Currency"
         },
         "communitySettings": {
             "title": "Community Settings",
