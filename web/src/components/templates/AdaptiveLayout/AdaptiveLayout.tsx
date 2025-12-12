@@ -386,11 +386,11 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
         <div className="flex-1 flex relative overflow-hidden">
           {/* Center Column - Posts */}
           <div
-            className={`transition-all duration-300 flex-1 min-w-0 overflow-y-auto overflow-x-hidden sm:max-w-2xl lg:max-w-4xl ${showCommentsColumn
-              ? '' // Make room for comments column when shown via margin
-              : 'mx-auto' // Center content when comments hidden
-              }`}
-            style={showCommentsColumn && isDesktop ? { marginRight: 'var(--right-column-width)' } : undefined}
+            className={`transition-all duration-300 flex-1 min-w-0 overflow-y-auto overflow-x-hidden sm:max-w-2xl lg:max-w-4xl mx-auto`}
+            style={showCommentsColumn && isDesktop ? { 
+              marginRight: 'var(--right-column-width)',
+              marginLeft: 'auto'
+            } : undefined}
           >
             {/* Sticky Header - rendered outside main for proper sticky behavior */}
             {stickyHeader && (
