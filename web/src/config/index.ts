@@ -80,6 +80,7 @@ const envSchema = z.object({
   NEXT_PUBLIC_ENABLE_ANALYTICS: z.string().optional(),
   NEXT_PUBLIC_ENABLE_DEBUG: z.string().optional(),
   NEXT_PUBLIC_ENABLE_COMMENT_VOTING: z.string().optional(),
+  NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM: z.string().optional(),
   
   // Development Mode
   NEXT_PUBLIC_FAKE_DATA_MODE: z.string().optional(),
@@ -102,6 +103,7 @@ const env = envSchema.parse({
   NEXT_PUBLIC_ENABLE_ANALYTICS: process.env.NEXT_PUBLIC_ENABLE_ANALYTICS,
   NEXT_PUBLIC_ENABLE_DEBUG: process.env.NEXT_PUBLIC_ENABLE_DEBUG,
   NEXT_PUBLIC_ENABLE_COMMENT_VOTING: process.env.NEXT_PUBLIC_ENABLE_COMMENT_VOTING,
+  NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM: process.env.NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM,
   NEXT_PUBLIC_FAKE_DATA_MODE: process.env.NEXT_PUBLIC_FAKE_DATA_MODE,
 });
 
@@ -209,6 +211,7 @@ export const config = {
     analytics: env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true',
     debug: env.NEXT_PUBLIC_ENABLE_DEBUG === 'true' || env.NODE_ENV === 'development',
     commentVoting: env.NEXT_PUBLIC_ENABLE_COMMENT_VOTING === 'true',
+    loginInviteForm: env.NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM === 'true',
   },
   
   // Development Mode
