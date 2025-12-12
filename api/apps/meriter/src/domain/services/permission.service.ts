@@ -389,20 +389,44 @@ export class PermissionService {
       await this.publicationService.getPublication(publicationId);
     if (!publication) return false;
 
-    // Author can always edit their own publications (in any group)
-    // Check author first before any community role checks
     const authorId = publication.getAuthorId.getValue();
-    if (authorId === userId) return true;
-
-    // If not author, check if user is superadmin or lead
     const communityId = publication.getCommunityId.getValue();
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
-    // Superadmin can edit any publication
+    // Superadmin can edit any publication (no restrictions)
     if (userRole === 'superadmin') return true;
 
-    // Lead can edit publications in their community
+    // Lead can edit publications in their community (no restrictions)
     if (userRole === 'lead') return true;
+
+    // For authors: check vote count and time window
+    if (authorId === userId) {
+      // Check if publication has any votes
+      const metrics = publication.getMetrics();
+      const metricsSnapshot = metrics.toSnapshot();
+      const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
+      if (totalVotes > 0) {
+        return false; // Cannot edit if votes exist
+      }
+
+      // Check time window from community settings
+      const community = await this.communityService.getCommunity(communityId);
+      if (!community) return false;
+
+      const editWindowDays = community.settings?.editWindowDays ?? 7;
+      if (editWindowDays === 0) {
+        // 0 means no time limit
+        return true;
+      }
+
+      const createdAt = publication.toSnapshot().createdAt;
+      const now = new Date();
+      const daysSinceCreation = Math.floor(
+        (now.getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      return daysSinceCreation <= editWindowDays;
+    }
 
     return false;
   }
@@ -436,24 +460,50 @@ export class PermissionService {
 
   /**
    * Check if user can edit a comment
-   * Authors cannot edit their own comments - only admins (superadmin/lead) can edit
    */
   async canEditComment(userId: string, commentId: string): Promise<boolean> {
     const comment = await this.commentService.getComment(commentId);
     if (!comment) return false;
 
+    const authorId = comment.getAuthorId.getValue();
     const communityId =
       await this.commentService.resolveCommentCommunityId(commentId);
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
-    // Superadmin always can
+    // Superadmin can edit any comment (no restrictions)
     if (userRole === 'superadmin') return true;
 
-    // Authors cannot edit their own comments
-    // Removed: if (authorId === userId) return true;
-
-    // Lead can edit comments in their community
+    // Lead can edit comments in their community (no restrictions)
     if (userRole === 'lead') return true;
+
+    // For authors: check vote count and time window
+    if (authorId === userId) {
+      // Check if comment has any votes
+      const metrics = comment.getMetrics();
+      const metricsSnapshot = metrics.toSnapshot();
+      const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
+      if (totalVotes > 0) {
+        return false; // Cannot edit if votes exist
+      }
+
+      // Check time window from community settings
+      const community = await this.communityService.getCommunity(communityId);
+      if (!community) return false;
+
+      const editWindowDays = community.settings?.editWindowDays ?? 7;
+      if (editWindowDays === 0) {
+        // 0 means no time limit
+        return true;
+      }
+
+      const createdAt = comment.toSnapshot().createdAt;
+      const now = new Date();
+      const daysSinceCreation = Math.floor(
+        (now.getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      return daysSinceCreation <= editWindowDays;
+    }
 
     return false;
   }

@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { PublicationHeader } from './PublicationHeader';
 import { PublicationContent } from './PublicationContent';
 import { PublicationActions } from './PublicationActions';
@@ -30,6 +30,10 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  
+  // Check if we're on the community feed page (not the detail page)
+  const isOnCommunityFeedPage = pathname?.match(/^\/meriter\/communities\/[^/]+$/);
   
   // Check if this is a poll
   const isPoll = publication.type === 'poll';
@@ -64,10 +68,17 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   const isCommenting = false;
 
   const handleCardClick = () => {
-    // Navigate to post detail page
     const postSlug = getPublicationIdentifier(publication);
     const communityId = publication.communityId;
-    if (postSlug && communityId) {
+    if (!postSlug || !communityId) return;
+    
+    // If on community feed page, set query parameter to show side panel
+    if (isOnCommunityFeedPage) {
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      params.set('post', postSlug);
+      router.push(`${pathname}?${params.toString()}`);
+    } else {
+      // Otherwise, navigate to detail page
       router.push(`/meriter/communities/${communityId}/posts/${postSlug}`);
     }
   };

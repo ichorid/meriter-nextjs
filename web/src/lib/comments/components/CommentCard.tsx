@@ -152,8 +152,20 @@ export function CommentCard({
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   
-  // Permission checks
-  const { canEdit, canDelete } = useCanEditDelete(commentAuthorId, communityId);
+  // Check if comment has votes
+  const commentHasVotes = (commentUpvotes + commentDownvotes) > 0;
+  
+  // Permission checks - hook checks vote count and time window for authors, allows admins always
+  const { canEdit, canEditEnabled, canDelete } = useCanEditDelete(
+    commentAuthorId, 
+    communityId,
+    commentHasVotes,
+    commentTimestamp
+  );
+  
+  // Show edit button if user can edit, disable if canEdit but not canEditEnabled
+  const showEditButton = canEdit;
+  const editButtonDisabled = !!(canEdit && !canEditEnabled);
   
   // Mutations
   const updateComment = useUpdateComment();
@@ -309,18 +321,21 @@ export function CommentCard({
       >
       {/* Action buttons - positioned in top right */}
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
-        {(canEdit || canDelete) && (
+        {(showEditButton || canDelete) && (
           <>
-            {canEdit && (
+            {showEditButton && (
               <Button
                 variant="ghost"
                 size="xs"
-                className="btn-sm opacity-60 hover:opacity-100"
+                className={`btn-sm ${editButtonDisabled ? 'opacity-30 cursor-not-allowed' : 'opacity-60 hover:opacity-100'}`}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
-                  setShowEditModal(true);
+                  if (!editButtonDisabled) {
+                    setShowEditModal(true);
+                  }
                 }}
-                title="Edit comment"
+                disabled={editButtonDisabled}
+                title={editButtonDisabled ? 'Cannot edit: comment has votes or edit window expired' : 'Edit comment'}
               >
                 <Edit size={14} />
               </Button>

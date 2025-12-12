@@ -211,7 +211,6 @@ export const Comment: React.FC<CommentProps> = ({
         showMinus,
         showComments,
         setShowComments,
-        formCommentProps,
     } = useComments(
         true,
         inPublicationSlug,

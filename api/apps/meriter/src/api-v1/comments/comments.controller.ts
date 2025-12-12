@@ -287,8 +287,15 @@ export class CommentsController {
     @Body() updateDto: any,
     @Req() req: any,
   ): Promise<Comment> {
-    // Update functionality not implemented yet
-    throw new Error('Update comment functionality not implemented');
+    if (!updateDto.content) {
+      throw new NotFoundError('Comment', 'Content is required');
+    }
+    const updatedComment = await this.commentsService.updateComment(
+      id,
+      req.user.id,
+      { content: updateDto.content }
+    );
+    return EntityMappers.mapCommentToV1Format(updatedComment);
   }
 
   @Delete(':id')

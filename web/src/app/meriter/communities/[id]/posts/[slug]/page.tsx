@@ -9,7 +9,6 @@ import { SortTabs, type SortValue } from '@/components/ui/SortTabs';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { useRouter } from "next/navigation";
 import { Comment } from "@features/comments/components/comment";
-import { FormComment } from "@features/comments/components/form-comment";
 import { useComments } from "@shared/hooks/use-comments";
 import { useAuth } from '@/contexts/AuthContext';
 import { usePublication, useCommunity, useWallets, useUserProfile } from '@/hooks/api';
@@ -49,8 +48,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     // Get comments for this publication
     const {
         comments,
-        showPlus,
-        formCommentProps,
         showComments,
         setShowComments,
     } = useComments(
@@ -71,8 +68,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     // Show comments by default on detail page
     useEffect(() => {
         setShowComments(true);
-        showPlus();
-    }, [setShowComments, showPlus]);
+    }, [setShowComments]);
 
     useEffect(() => {
         if (!user?.id) {
@@ -283,31 +279,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                 {publication && showComments && (
                     <div className="bg-base-100 rounded-2xl p-5 border border-base-content/5">
                         <h3 className="text-lg font-semibold mb-4">{t('comments')} ({comments?.length || 0})</h3>
-                        
-                        {/* Comment Form */}
-                        {activeCommentHook[0] === slug && (
-                            <div className="mb-4">
-                                <FormComment
-                                    {...formCommentProps}
-                                    currencyIconUrl={community?.settings?.iconUrl}
-                                />
-                            </div>
-                        )}
-                        
-                        {/* Add Comment Button */}
-                        {activeCommentHook[0] !== slug && (
-                            <div className="mb-4">
-                                <button
-                                    onClick={() => {
-                                        showPlus();
-                                        activeCommentHook[1](slug);
-                                    }}
-                                    className="w-full py-3 px-4 bg-base-200 hover:bg-base-300 rounded-xl text-base-content/70 hover:text-base-content transition-colors text-sm font-medium"
-                                >
-                                    {t('addComment')}
-                                </button>
-                            </div>
-                        )}
                         
                         {/* Comments List */}
                         <div className="space-y-4">

@@ -75,6 +75,7 @@ export const CommunitySettingsSchema = z.object({
   language: z.enum(["en", "ru"]).default("en"),
   postCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a post (0 = free)
   pollCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a poll (0 = free)
+  editWindowDays: z.number().int().min(0).default(7), // Number of days after creation that regular users can edit their posts/comments (0 = no time limit)
 });
 
 // Community rules schemas (настраиваемые правила)

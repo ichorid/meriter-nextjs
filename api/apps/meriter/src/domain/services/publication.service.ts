@@ -265,19 +265,10 @@ export class PublicationService {
     }
 
     const publication = Publication.fromSnapshot(doc as IPublicationDocument);
-    const userIdObj = UserId.fromString(userId);
 
-    if (!publication.canBeEditedBy(userIdObj)) {
-      throw new BadRequestException('Not authorized to edit this publication');
-    }
-
-    // Check if publication has any votes (upvotes + downvotes > 0)
-    const metrics = publication.getMetrics();
-    const metricsSnapshot = metrics.toSnapshot();
-    const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
-    if (totalVotes > 0) {
-      throw new BadRequestException('Cannot edit publication after votes have been cast');
-    }
+    // Authorization is handled by PermissionGuard via PermissionService.canEditPublication()
+    // PermissionService already checks vote count and time window for authors
+    // Leads and superadmins can edit regardless of votes/time, so no additional check needed here
 
     // Update publication fields
     if (updateData.content) {
