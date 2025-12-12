@@ -402,7 +402,7 @@ export class PermissionService {
     // For authors: check vote count and time window
     if (authorId === userId) {
       // Check if publication has any votes
-      const metrics = publication.getMetrics();
+      const metrics = publication.getMetrics;
       const metricsSnapshot = metrics.toSnapshot();
       const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
       if (totalVotes > 0) {
@@ -419,13 +419,20 @@ export class PermissionService {
         return true;
       }
 
-      const createdAt = publication.toSnapshot().createdAt;
+      const snapshot = publication.toSnapshot();
+      const createdAt = snapshot.createdAt instanceof Date 
+        ? snapshot.createdAt 
+        : new Date(snapshot.createdAt);
       const now = new Date();
-      const daysSinceCreation = Math.floor(
-        (now.getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24)
-      );
+      // Calculate days since creation using floor to be consistent with day boundaries
+      // If created 8 days ago at any time, it's been more than 7 days
+      const millisecondsSinceCreation = now.getTime() - createdAt.getTime();
+      const daysSinceCreation = Math.floor(millisecondsSinceCreation / (1000 * 60 * 60 * 24));
 
-      return daysSinceCreation <= editWindowDays;
+      // editWindowDays of 7 means can edit for 7 days (days 0-6), not including day 7+
+      // So if daysSinceCreation is 8 and editWindowDays is 7, should return false
+      // Use < instead of <= to be strict: if it's been 7 full days, that's the limit
+      return daysSinceCreation < editWindowDays;
     }
 
     return false;
@@ -479,7 +486,7 @@ export class PermissionService {
     // For authors: check vote count and time window
     if (authorId === userId) {
       // Check if comment has any votes
-      const metrics = comment.getMetrics();
+      const metrics = comment.getMetrics;
       const metricsSnapshot = metrics.toSnapshot();
       const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
       if (totalVotes > 0) {

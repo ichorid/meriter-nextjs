@@ -113,8 +113,8 @@ export class Publication implements EditableEntity {
       snapshot.isProject || false,
       snapshot.title || null,
       snapshot.description || null,
-      snapshot.createdAt,
-      snapshot.updatedAt,
+      snapshot.createdAt instanceof Date ? snapshot.createdAt : new Date(snapshot.createdAt),
+      snapshot.updatedAt instanceof Date ? snapshot.updatedAt : new Date(snapshot.updatedAt),
     );
   }
 

@@ -195,6 +195,7 @@ describe('Publication and Comment Edit Permissions', () => {
     const now = new Date();
     await userCommunityRoleModel.create([
       { id: uid(), userId: authorId, communityId: communityId, role: 'participant', createdAt: now, updatedAt: now },
+      { id: uid(), userId: authorId, communityId: otherCommunityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: leadId, communityId: communityId, role: 'lead', createdAt: now, updatedAt: now },
       { id: uid(), userId: participantId, communityId: communityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: otherLeadId, communityId: otherCommunityId, role: 'lead', createdAt: now, updatedAt: now },
@@ -277,12 +278,17 @@ describe('Publication and Comment Edit Permissions', () => {
       const publicationId = createRes.body.data.id;
 
       // Update createdAt to 8 days ago (outside 7-day window)
+      // Use raw MongoDB collection to bypass Mongoose's timestamp management
       const eightDaysAgo = new Date();
       eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
-      await publicationModel.updateOne(
+      eightDaysAgo.setHours(0, 0, 0, 0); // Set to midnight for consistent day calculation
+      await connection.db.collection('publications').updateOne(
         { id: publicationId },
         { $set: { createdAt: eightDaysAgo } }
       );
+
+      // Small delay to ensure database update is committed
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Author should NOT be able to edit
       const updateDto = {
@@ -345,9 +351,10 @@ describe('Publication and Comment Edit Permissions', () => {
       const publicationId = createRes.body.data.id;
 
       // Update createdAt to 8 days ago
+      // Use raw MongoDB collection to bypass Mongoose's timestamp management
       const eightDaysAgo = new Date();
       eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
-      await publicationModel.updateOne(
+      await connection.db.collection('publications').updateOne(
         { id: publicationId },
         { $set: { createdAt: eightDaysAgo } }
       );
