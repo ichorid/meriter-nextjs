@@ -1,0 +1,6 @@
+---
+alwaysApply: true
+---
+
+DO NOT USE/IMPORT REACT NATIVE DIRECTLY!!!
+Use Gluestack UI instead.
