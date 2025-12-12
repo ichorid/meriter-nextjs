@@ -455,7 +455,10 @@ export const UpdateCommunityDtoSchema = z.object({
 export const UpdatePublicationDtoSchema = z.object({
   content: z.string().min(1).max(10000).optional(),
   hashtags: z.array(z.string()).optional(),
-});
+  title: z.string().min(1).max(500).optional(),
+  description: z.string().min(1).max(5000).optional(),
+  imageUrl: z.string().url().optional().nullable(),
+}).strict(); // Strict mode prevents postType and isProject from being included
 
 export const CreateCommunityDtoSchema = z
   .object({

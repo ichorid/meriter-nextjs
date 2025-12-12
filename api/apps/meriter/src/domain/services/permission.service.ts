@@ -401,7 +401,11 @@ export class PermissionService {
 
     // Log in development/test to help debug permission issues
     if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-      console.log(`[canEditPublication] Check: userId=${userId}, authorId=${authorId}, userRole=${userRole}, publicationId=${publicationId}`);
+      const authorIdType = typeof authorId;
+      const userIdType = typeof userId;
+      const idsMatch = authorId === userId;
+      const idsMatchStrict = authorId === userId && authorIdType === userIdType;
+      console.log(`[canEditPublication] Check: userId=${userId} (${userIdType}), authorId=${authorId} (${authorIdType}), userRole=${userRole}, publicationId=${publicationId}, idsMatch=${idsMatch}, idsMatchStrict=${idsMatchStrict}`);
     }
 
     // Superadmin can edit any publication (no restrictions)
@@ -421,7 +425,13 @@ export class PermissionService {
     }
 
     // For authors: check vote count and time window
-    if (authorId === userId) {
+    // Use strict equality check - both should be strings
+    const isAuthor = authorId === userId;
+    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+      console.log(`[canEditPublication] Author comparison: authorId="${authorId}" === userId="${userId}" = ${isAuthor}`);
+    }
+    
+    if (isAuthor) {
       // Check if publication has any votes
       const metrics = publication.getMetrics;
       const metricsSnapshot = metrics.toSnapshot();

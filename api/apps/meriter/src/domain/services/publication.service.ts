@@ -257,6 +257,14 @@ export class PublicationService {
     userId: string,
     updateData: Partial<CreatePublicationDto>,
   ): Promise<Publication> {
+    // Explicitly reject attempts to change postType or isProject
+    if ('postType' in updateData && updateData.postType !== undefined) {
+      throw new BadRequestException('Cannot change post type when editing a publication');
+    }
+    if ('isProject' in updateData && updateData.isProject !== undefined) {
+      throw new BadRequestException('Cannot change project status when editing a publication');
+    }
+
     const doc = await this.publicationModel
       .findOne({ id: publicationId })
       .lean();
