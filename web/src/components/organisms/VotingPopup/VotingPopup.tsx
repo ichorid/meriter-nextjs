@@ -99,7 +99,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   });
 
   const handleAmountChange = (amount: number) => {
-    // FormCommentVoteVertical passes signed values (can be negative)
+    // Amount can be signed (positive for upvotes, negative for downvotes)
     updateVotingFormData({ delta: amount, error: '' });
   };
 
