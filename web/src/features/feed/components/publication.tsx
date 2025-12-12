@@ -33,8 +33,6 @@ export const Publication = ({
     keyword,
     ts,
     activeCommentHook,
-    activeSlider,
-    setActiveSlider,
     beneficiaryName,
     beneficiaryPhotoUrl,
     beneficiaryId,
@@ -220,18 +218,8 @@ export const Publication = ({
         <div
             className={classList(
                 "mb-5 transition-all duration-300",
-                publicationUnderReply ? "scale-100 opacity-100" : 
-                activeSlider && activeSlider !== postId ? "scale-95 opacity-60" : "scale-100 opacity-100"
+                publicationUnderReply ? "scale-100 opacity-100" : "scale-100 opacity-100"
             )}
-            onClick={(e) => {
-                if (
-                    activeSlider === postId &&
-                    myId !== authorId &&
-                    !(e.target as any)?.className?.match("clickable")
-                ) {
-                    setActiveSlider && setActiveSlider(null);
-                }
-            }}
             key={slug}
         >
             <CardPublication
@@ -390,8 +378,6 @@ export const Publication = ({
                                 spaceSlug={spaceSlug}
                                 inPublicationSlug={slug}
                                 activeCommentHook={activeCommentHook}
-                                activeSlider={activeSlider}
-                                setActiveSlider={setActiveSlider}
                                 myId={myId}
                                 highlightTransactionId={highlightTransactionId}
                                 wallets={wallets}

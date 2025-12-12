@@ -7,8 +7,6 @@ export interface UsePublicationNavigationProps {
   isDetailPage?: boolean;
   myId?: string;
   authorId: string; // Internal author ID (required)
-  activeSlider?: string | null;
-  setActiveSlider?: (slider: string | null) => void;
 }
 
 export function usePublicationNavigation({
@@ -17,8 +15,6 @@ export function usePublicationNavigation({
   isDetailPage,
   myId,
   authorId,
-  activeSlider,
-  setActiveSlider,
 }: UsePublicationNavigationProps) {
   const router = useRouter();
   
@@ -40,17 +36,6 @@ export function usePublicationNavigation({
     }
   };
   
-  // Handle click on publication container
-  const handleContainerClick = (e: React.MouseEvent) => {
-    if (
-      activeSlider === postId &&
-      myId !== authorId &&
-      !(e.target as any)?.className?.match("clickable")
-    ) {
-      setActiveSlider && setActiveSlider(null);
-    }
-  };
-  
   // Handle comment counter click
   const handleCommentClick = () => {
     if (!isDetailPage) {
@@ -62,7 +47,6 @@ export function usePublicationNavigation({
   return {
     navigateToDetail,
     navigateToCommunity,
-    handleContainerClick,
     handleCommentClick,
   };
 }

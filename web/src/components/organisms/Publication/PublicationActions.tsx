@@ -63,8 +63,6 @@ interface PublicationActionsProps {
   isCommenting?: boolean;
   maxPlus?: number;
   maxMinus?: number;
-  activeSlider?: string | null;
-  setActiveSlider?: (slider: string | null) => void;
   wallets?: Wallet[];
   updateAll?: () => void;
   className?: string;
@@ -79,8 +77,6 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   isCommenting = false,
   maxPlus = 100,
   maxMinus = 100,
-  activeSlider,
-  setActiveSlider,
   wallets = [],
   updateAll,
   className = '',

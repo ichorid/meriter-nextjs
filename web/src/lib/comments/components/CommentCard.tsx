@@ -41,8 +41,6 @@ interface CommentCardProps {
   communityId?: string;
   publicationSlug?: string;
   activeCommentHook?: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
-  activeSlider?: string | null;
-  setActiveSlider?: (id: string | null) => void;
   activeWithdrawPost?: string | null;
   setActiveWithdrawPost?: (id: string | null) => void;
   highlightTransactionId?: string;
@@ -69,8 +67,6 @@ export function CommentCard({
   communityId,
   publicationSlug,
   activeCommentHook,
-  activeSlider,
-  setActiveSlider,
   activeWithdrawPost,
   setActiveWithdrawPost,
   highlightTransactionId,
@@ -306,19 +302,10 @@ export function CommentCard({
         className={classList(
           "comment-vote-wrapper transition-all duration-300 mb-4 relative z-10 w-full overflow-hidden",
           { 'ring-2 ring-warning': isChainMode },
-          commentUnderReply ? "scale-100 opacity-100" : 
-          activeSlider && activeSlider !== node.id ? "scale-95 opacity-60" : "scale-100 opacity-100",
+          commentUnderReply ? "scale-100 opacity-100" : "scale-100 opacity-100",
           highlightTransactionId === node.id ? "highlight" : ""
         )}
         data-comment-id={node.id}
-        onClick={(e) => {
-          if (
-            activeSlider === node.id &&
-            !(e.target as any)?.className?.match("clickable")
-          ) {
-            setActiveSlider && setActiveSlider(null);
-          }
-        }}
       >
       {/* Action buttons - positioned in top right */}
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1">

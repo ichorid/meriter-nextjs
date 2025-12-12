@@ -44,7 +44,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     const { data: wallets = [] } = useWallets();
 
     const activeCommentHook = useState<string | null>(null);
-    const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
     // Get comments for this publication
@@ -153,8 +152,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                 wallets={wallets}
                 myId={user?.id}
                 activeCommentHook={activeCommentHook}
-                activeSlider={activeSlider}
-                setActiveSlider={setActiveSlider}
                 activeWithdrawPost={activeWithdrawPost}
                 setActiveWithdrawPost={setActiveWithdrawPost}
                 stickyHeader={pageHeader}
@@ -176,8 +173,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                 wallets={wallets}
                 myId={user?.id}
                 activeCommentHook={activeCommentHook}
-                activeSlider={activeSlider}
-                setActiveSlider={setActiveSlider}
                 activeWithdrawPost={activeWithdrawPost}
                 setActiveWithdrawPost={setActiveWithdrawPost}
                 stickyHeader={pageHeader}
@@ -203,8 +198,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
             wallets={wallets}
             myId={user?.id}
             activeCommentHook={activeCommentHook}
-            activeSlider={activeSlider}
-            setActiveSlider={setActiveSlider}
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
             stickyHeader={pageHeader}
@@ -328,8 +321,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                                     spaceSlug=""
                                     inPublicationSlug={slug}
                                     activeCommentHook={activeCommentHook}
-                                    activeSlider={activeSlider}
-                                    setActiveSlider={setActiveSlider}
                                     myId={user?.id}
                                     highlightTransactionId={highlightCommentId || undefined}
                                     wallets={wallets}

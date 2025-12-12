@@ -19,8 +19,6 @@ interface CommentsListProps {
   communityId?: string;
   publicationSlug?: string;
   activeCommentHook?: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
-  activeSlider?: string | null;
-  setActiveSlider?: (id: string | null) => void;
   activeWithdrawPost?: string | null;
   setActiveWithdrawPost?: (id: string | null) => void;
   highlightTransactionId?: string;
@@ -48,8 +46,6 @@ export function CommentsList({
   communityId,
   publicationSlug,
   activeCommentHook,
-  activeSlider,
-  setActiveSlider,
   activeWithdrawPost,
   setActiveWithdrawPost,
   highlightTransactionId,
@@ -479,8 +475,6 @@ export function CommentsList({
                   communityId={communityId}
                   publicationSlug={publicationSlug}
                   activeCommentHook={activeCommentHook}
-                  activeSlider={activeSlider}
-                  setActiveSlider={setActiveSlider}
                   activeWithdrawPost={activeWithdrawPost}
                   setActiveWithdrawPost={setActiveWithdrawPost}
                   highlightTransactionId={highlightTransactionId}

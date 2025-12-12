@@ -27,7 +27,6 @@ export default function ProfilePublicationsPage() {
   } = useProfileData();
 
   const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
-  const [activeSlider, setActiveSlider] = useState<string | null>(null);
   const activeCommentHook = useState<string | null>(null);
 
   useEffect(() => {
@@ -65,8 +64,6 @@ export default function ProfilePublicationsPage() {
       className="feed"
       stickyHeader={pageHeader}
       activeCommentHook={activeCommentHook}
-      activeSlider={activeSlider}
-      setActiveSlider={setActiveSlider}
       activeWithdrawPost={activeWithdrawPost}
       setActiveWithdrawPost={setActiveWithdrawPost}
       wallets={wallets}

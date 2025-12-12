@@ -29,7 +29,6 @@ export default function ProfileProjectsPage() {
   } = useUserProjects(user?.id || '', 20);
 
   const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
-  const [activeSlider, setActiveSlider] = useState<string | null>(null);
   const activeCommentHook = useState<string | null>(null);
 
   const projects = useMemo(() => {
@@ -71,8 +70,6 @@ export default function ProfileProjectsPage() {
       className="feed"
       stickyHeader={pageHeader}
       activeCommentHook={activeCommentHook}
-      activeSlider={activeSlider}
-      setActiveSlider={setActiveSlider}
       activeWithdrawPost={activeWithdrawPost}
       setActiveWithdrawPost={setActiveWithdrawPost}
       wallets={wallets}

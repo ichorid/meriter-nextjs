@@ -47,7 +47,6 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   // Note: usePublication expects a different Publication type, so we need to adapt
   // For now, skip using usePublication for cards and handle voting/commenting differently
   const [activeCommentHook] = useState<[string | null, React.Dispatch<React.SetStateAction<string | null>>]>([null, () => {}]);
-  const [activeSlider, setActiveSlider] = useState<string | null>(null);
   
   // Placeholder handlers - these should be implemented using React Query mutations
   const handleVote = () => {
@@ -189,8 +188,6 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           isVoting={isVoting}
           isCommenting={isCommenting}
           maxPlus={currentBalance}
-          activeSlider={activeSlider}
-          setActiveSlider={setActiveSlider}
           wallets={wallets}
           // maxMinus is calculated in PublicationActions using quota data
         />

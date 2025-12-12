@@ -20,8 +20,6 @@ export interface AdaptiveLayoutProps {
   myId?: string;
   highlightTransactionId?: string;
   activeCommentHook?: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
-  activeSlider?: string | null;
-  setActiveSlider?: (id: string | null) => void;
   activeWithdrawPost?: string | null;
   setActiveWithdrawPost?: (id: string | null) => void;
   /** Sticky header that stays at top of scroll area */
@@ -43,8 +41,6 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   myId,
   highlightTransactionId,
   activeCommentHook = [null, () => { }],
-  activeSlider,
-  setActiveSlider = () => { },
   activeWithdrawPost,
   setActiveWithdrawPost = () => { },
   stickyHeader,
@@ -445,8 +441,6 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
                     myId,
                     highlightTransactionId,
                     activeCommentHook: activeCommentHook || [null, () => { }],
-                    activeSlider: activeSlider ?? null,
-                    setActiveSlider: setActiveSlider || (() => { }),
                     activeWithdrawPost: activeWithdrawPost ?? null,
                     setActiveWithdrawPost: setActiveWithdrawPost || (() => { }),
                   }
@@ -471,8 +465,6 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
                 myId,
                 highlightTransactionId,
                 activeCommentHook: activeCommentHook || [null, () => { }],
-                activeSlider: activeSlider ?? null,
-                setActiveSlider: setActiveSlider || (() => { }),
                 activeWithdrawPost: activeWithdrawPost ?? null,
                 setActiveWithdrawPost: setActiveWithdrawPost || (() => { }),
               }

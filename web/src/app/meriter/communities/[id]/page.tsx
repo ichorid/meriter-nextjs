@@ -299,7 +299,6 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     // Declare all state hooks unconditionally at the top level
     const [activeCommentHook, setActiveCommentHook] = useState<string | null>(null);
-    const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
     // Filter publications by tag and search query
@@ -402,8 +401,6 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             wallets={Array.isArray(wallets) ? wallets : []}
             myId={user?.id}
             activeCommentHook={[activeCommentHook, setActiveCommentHook]}
-            activeSlider={activeSlider}
-            setActiveSlider={setActiveSlider}
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
         >
