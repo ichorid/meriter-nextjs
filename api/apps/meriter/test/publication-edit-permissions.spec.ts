@@ -233,6 +233,80 @@ describe('Publication and Comment Edit Permissions', () => {
       expect(updateRes.body.data.content).toBe('Updated content');
     });
 
+    it('should allow author to edit own publication with UI-style update payload', async () => {
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const pubDto = createTestPublication(communityId, authorId, {});
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/publications')
+        .send(pubDto)
+        .expect(201);
+
+      const publicationId = createRes.body.data.id;
+
+      // Simulate UI update call - matches PublicationCreateForm.tsx update call
+      const updateDto = {
+        title: 'Updated title',
+        description: 'Updated description',
+        content: 'Updated description', // UI sends description as content for backward compatibility
+        hashtags: ['updated', 'tags'],
+        imageUrl: undefined, // UI sends undefined for imageUrl
+      };
+
+      const updateRes = await request(app.getHttpServer())
+        .put(`/api/v1/publications/${publicationId}`)
+        .send(updateDto)
+        .expect(200);
+
+      expect(updateRes.body.success).toBe(true);
+      expect(updateRes.body.data.content).toBe('Updated description');
+    });
+
+    it('should debug permission check for publication edit - check all conditions', async () => {
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const pubDto = createTestPublication(communityId, authorId, {});
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/publications')
+        .send(pubDto)
+        .expect(201);
+
+      const publicationId = createRes.body.data.id;
+
+      // Get the publication to check its state
+      const getRes = await request(app.getHttpServer())
+        .get(`/api/v1/publications/${publicationId}`)
+        .expect(200);
+
+      const publication = getRes.body.data;
+      
+      // Log publication state for debugging
+      console.log('Publication state:', {
+        id: publication.id,
+        authorId: publication.authorId,
+        currentUserId: authorId,
+        metrics: publication.metrics,
+        createdAt: publication.createdAt,
+        communityId: publication.communityId,
+      });
+
+      // Check if publication has votes
+      const totalVotes = (publication.metrics?.upvotes || 0) + (publication.metrics?.downvotes || 0);
+      console.log('Total votes:', totalVotes);
+
+      // Try to edit - this should work if no votes and within edit window
+      const updateDto = {
+        content: 'Debug test content',
+      };
+
+      const updateRes = await request(app.getHttpServer())
+        .put(`/api/v1/publications/${publicationId}`)
+        .send(updateDto)
+        .expect(200);
+
+      expect(updateRes.body.success).toBe(true);
+    });
+
     it('should NOT allow author to edit own publication with votes', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;

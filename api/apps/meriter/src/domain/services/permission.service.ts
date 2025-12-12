@@ -387,17 +387,38 @@ export class PermissionService {
   ): Promise<boolean> {
     const publication =
       await this.publicationService.getPublication(publicationId);
-    if (!publication) return false;
+    if (!publication) {
+      // Log in development/test to help debug permission issues
+      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+        console.log(`[canEditPublication] Publication not found: publicationId=${publicationId}, userId=${userId}`);
+      }
+      return false;
+    }
 
     const authorId = publication.getAuthorId.getValue();
     const communityId = publication.getCommunityId.getValue();
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
+    // Log in development/test to help debug permission issues
+    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+      console.log(`[canEditPublication] Check: userId=${userId}, authorId=${authorId}, userRole=${userRole}, publicationId=${publicationId}`);
+    }
+
     // Superadmin can edit any publication (no restrictions)
-    if (userRole === 'superadmin') return true;
+    if (userRole === 'superadmin') {
+      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+        console.log(`[canEditPublication] Allowed: superadmin`);
+      }
+      return true;
+    }
 
     // Lead can edit publications in their community (no restrictions)
-    if (userRole === 'lead') return true;
+    if (userRole === 'lead') {
+      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+        console.log(`[canEditPublication] Allowed: lead`);
+      }
+      return true;
+    }
 
     // For authors: check vote count and time window
     if (authorId === userId) {
@@ -405,17 +426,38 @@ export class PermissionService {
       const metrics = publication.getMetrics;
       const metricsSnapshot = metrics.toSnapshot();
       const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
+      
+      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+        console.log(`[canEditPublication] Author check: totalVotes=${totalVotes}, upvotes=${metricsSnapshot.upvotes}, downvotes=${metricsSnapshot.downvotes}`);
+      }
+      
       if (totalVotes > 0) {
+        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+          console.log(`[canEditPublication] Denied: has votes`);
+        }
         return false; // Cannot edit if votes exist
       }
 
       // Check time window from community settings
       const community = await this.communityService.getCommunity(communityId);
-      if (!community) return false;
+      if (!community) {
+        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+          console.log(`[canEditPublication] Denied: community not found: ${communityId}`);
+        }
+        return false;
+      }
 
       const editWindowDays = community.settings?.editWindowDays ?? 7;
+      
+      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+        console.log(`[canEditPublication] Edit window: ${editWindowDays} days`);
+      }
+      
       if (editWindowDays === 0) {
         // 0 means no time limit
+        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+          console.log(`[canEditPublication] Allowed: no time limit`);
+        }
         return true;
       }
 
@@ -429,12 +471,25 @@ export class PermissionService {
       const millisecondsSinceCreation = now.getTime() - createdAt.getTime();
       const daysSinceCreation = Math.floor(millisecondsSinceCreation / (1000 * 60 * 60 * 24));
 
+      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+        console.log(`[canEditPublication] Date check: createdAt=${createdAt.toISOString()}, now=${now.toISOString()}, daysSinceCreation=${daysSinceCreation}, editWindowDays=${editWindowDays}`);
+      }
+
       // editWindowDays of 7 means can edit for 7 days (days 0-6), not including day 7+
       // So if daysSinceCreation is 8 and editWindowDays is 7, should return false
       // Use < instead of <= to be strict: if it's been 7 full days, that's the limit
-      return daysSinceCreation < editWindowDays;
+      const canEdit = daysSinceCreation < editWindowDays;
+      
+      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+        console.log(`[canEditPublication] Result: ${canEdit}`);
+      }
+      
+      return canEdit;
     }
 
+    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+      console.log(`[canEditPublication] Denied: not author (authorId=${authorId}, userId=${userId})`);
+    }
     return false;
   }
 
