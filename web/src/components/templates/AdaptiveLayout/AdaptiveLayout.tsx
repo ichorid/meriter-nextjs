@@ -67,6 +67,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
   // Resizable right column state management
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const isXl = useMediaQuery('(min-width: 1280px)');
   const [rightColumnWidth, setRightColumnWidth] = useLocalStorage<number>('adaptive-layout-right-column-width', 400);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartX = useRef<number>(0);
@@ -79,6 +80,13 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   const dragStartXLeftSidebar = useRef<number>(0);
   const dragStartWidthLeftSidebar = useRef<number>(336);
   const saveTimeoutRefLeftSidebar = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Calculate actual left sidebar width based on breakpoint and state
+  // xl+: always leftSidebarWidth (always expanded)
+  // lg-xl: leftSidebarWidth when expanded, 72px when collapsed (comments shown)
+  const actualLeftSidebarWidth = isXl 
+    ? leftSidebarWidth 
+    : (showCommentsColumn ? 72 : leftSidebarWidth);
 
   // Constrain width: min 300px, max min(800px, 50vw)
   const clampWidth = useCallback((width: number): number => {
@@ -386,10 +394,10 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
         <div className="flex-1 flex relative overflow-hidden">
           {/* Center Column - Posts */}
           <div
-            className={`transition-all duration-300 flex-1 min-w-0 overflow-y-auto overflow-x-hidden sm:max-w-2xl lg:max-w-4xl mx-auto`}
+            className={`transition-all duration-300 flex-1 min-w-0 overflow-y-auto overflow-x-hidden sm:max-w-2xl lg:max-w-4xl ${showCommentsColumn && isDesktop ? '' : 'mx-auto'}`}
             style={showCommentsColumn && isDesktop ? { 
-              marginRight: 'var(--right-column-width)',
-              marginLeft: 'auto'
+              marginLeft: `calc((100vw - var(--right-column-width)) / 2 - ${actualLeftSidebarWidth}px)`,
+              marginRight: 'var(--right-column-width)'
             } : undefined}
           >
             {/* Sticky Header - rendered outside main for proper sticky behavior */}
