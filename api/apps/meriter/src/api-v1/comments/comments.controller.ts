@@ -265,7 +265,7 @@ export class CommentsController {
     const author = await this.commentEnrichment.fetchAuthor(authorId);
 
     const snapshot = comment.toSnapshot();
-    return {
+    const response = {
       ...snapshot,
       metrics: {
         ...snapshot.metrics,
@@ -277,6 +277,7 @@ export class CommentsController {
         author: UserFormatter.formatUserForApi(author, authorId),
       },
     };
+    return ApiResponseHelper.successResponse(response);
   }
 
   @Put(':id')
@@ -295,7 +296,20 @@ export class CommentsController {
       req.user.id,
       { content: updateDto.content }
     );
-    return EntityMappers.mapCommentToV1Format(updatedComment);
+
+    // Extract author ID for enrichment
+    const authorId = updatedComment.getAuthorId.getValue();
+
+    // Batch fetch users for enrichment
+    const usersMap = await this.userEnrichmentService.batchFetchUsers([authorId]);
+
+    // Map domain entity to API format
+    const mappedComment = EntityMappers.mapCommentToApi(
+      updatedComment,
+      usersMap,
+    );
+
+    return ApiResponseHelper.successResponse(mappedComment);
   }
 
   @Delete(':id')
