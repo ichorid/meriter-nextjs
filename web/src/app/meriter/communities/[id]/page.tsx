@@ -267,6 +267,15 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
         }
     }, [isAuthenticated, userLoading, router]);
 
+    // Redirect away from vision tab if it's active (tab is now hidden)
+    useEffect(() => {
+        if (activeTab === 'vision') {
+            const params = new URLSearchParams(searchParams?.toString() ?? '');
+            params.delete('tab');
+            router.push(`?${params.toString()}`);
+        }
+    }, [activeTab, searchParams, router]);
+
 
     const cooldown = useRef(false);
     useEffect(() => {
@@ -454,11 +463,6 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                         label: tCommunities('publications') || 'Publications',
                         icon: <FileText size={16} />,
                     },
-                    ...(isMarathonOfGood && futureVisionCommunityId ? [{
-                        id: 'vision',
-                        label: tCommunities('vision') || 'Future',
-                        icon: <Eye size={16} />,
-                    }] : []),
                     {
                         id: 'members',
                         label: tCommunities('members') || 'Members',
