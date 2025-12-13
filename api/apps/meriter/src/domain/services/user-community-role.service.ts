@@ -6,6 +6,7 @@ import {
   UserCommunityRoleDocument,
 } from '../models/user-community-role/user-community-role.schema';
 import { CommunityService } from './community.service';
+import { COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
 import { uid } from 'uid';
 
 /**

@@ -166,6 +166,7 @@ export const UserSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   profile: UserProfileSchema.default({ isVerified: false }),
   meritStats: z.record(z.string(), z.number().int().min(0)).optional(), // Статистика меритов по коммьюнити (только для lead)
   inviteCode: z.string().optional(), // Код, использованный при регистрации
+  teamId: z.string().optional(), // ID команды, к которой принадлежит пользователь
   communityTags: z.array(z.string()).default([]),
   communityMemberships: z.array(z.string()).default([]),
 });
@@ -177,6 +178,8 @@ export const CommunitySchema = IdentifiableSchema.merge(
   description: z.string().optional(),
   avatarUrl: z.string().url().optional(),
   coverImageUrl: z.string().url().optional(),
+  // IDs of administrators (internal User IDs) - УСТАРЕВШЕЕ, использовать UserCommunityRole
+  adminIds: z.array(z.string()).default([]),
   members: z.array(z.string()).default([]), // УСТАРЕВШЕЕ, использовать UserCommunityRole
   // НОВОЕ: Метка типа (опциональная, только для удобства)
   typeTag: z

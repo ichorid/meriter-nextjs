@@ -58,7 +58,7 @@ export default function CommunitiesPage() {
                         <h2 className="text-sm font-medium text-base-content/60 uppercase tracking-wide mb-4">
                             Special Communities
                         </h2>
-                        <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
                             {specialCommunities.map((community) => {
                                 const wallet = walletsMap.get(community.id);
                                 const quota = quotasMap.get(community.id);
@@ -111,13 +111,13 @@ export default function CommunitiesPage() {
                             Your Communities
                         </h2>
                         {isLoading ? (
-                            <div className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
                                 <CardSkeleton />
                                 <CardSkeleton />
                                 <CardSkeleton />
                             </div>
                         ) : (
-                            <div className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
                                 {userCommunities.map((community) => {
                                     const wallet = walletsMap.get(community.id);
                                     const quota = quotasMap.get(community.id);
