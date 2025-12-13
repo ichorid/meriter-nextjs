@@ -513,39 +513,35 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: background 0.3s ease-out, transform 0.2s ease-out;
-  border: 2px solid rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease-out;
   cursor: pointer;
   padding: 0;
-  background: #E4E4E7; /* Default track color - fallback */
+  background: transparent;
   overflow: visible;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Inner disc that covers the center, creating the ring effect */
-.daily-quota-ring::before {
-  content: "";
-  position: absolute;
-  width: 22px;
-  height: 22px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  border-radius: 999px;
-  background: var(--base-100);
-  z-index: 1;
+.daily-quota-ring__svg {
   pointer-events: none;
 }
 
 .daily-quota-ring__inner {
   position: relative;
   z-index: 2;
-  width: 22px;
-  height: 22px;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
+}
+
+.daily-quota-ring__svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .daily-quota-ring__number {
