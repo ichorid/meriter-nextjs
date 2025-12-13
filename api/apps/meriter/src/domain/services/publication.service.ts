@@ -257,6 +257,14 @@ export class PublicationService {
     userId: string,
     updateData: Partial<CreatePublicationDto>,
   ): Promise<Publication> {
+    // Explicitly reject attempts to change postType or isProject
+    if ('postType' in updateData && updateData.postType !== undefined) {
+      throw new BadRequestException('Cannot change post type when editing a publication');
+    }
+    if ('isProject' in updateData && updateData.isProject !== undefined) {
+      throw new BadRequestException('Cannot change project status when editing a publication');
+    }
+
     const doc = await this.publicationModel
       .findOne({ id: publicationId })
       .lean();
@@ -265,19 +273,10 @@ export class PublicationService {
     }
 
     const publication = Publication.fromSnapshot(doc as IPublicationDocument);
-    const userIdObj = UserId.fromString(userId);
 
-    if (!publication.canBeEditedBy(userIdObj)) {
-      throw new BadRequestException('Not authorized to edit this publication');
-    }
-
-    // Check if publication has any votes (upvotes + downvotes > 0)
-    const metrics = publication.getMetrics();
-    const metricsSnapshot = metrics.toSnapshot();
-    const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
-    if (totalVotes > 0) {
-      throw new BadRequestException('Cannot edit publication after votes have been cast');
-    }
+    // Authorization is handled by PermissionGuard via PermissionService.canEditPublication()
+    // PermissionService already checks vote count and time window for authors
+    // Leads and superadmins can edit regardless of votes/time, so no additional check needed here
 
     // Update publication fields
     if (updateData.content) {
@@ -286,25 +285,28 @@ export class PublicationService {
     if (updateData.hashtags) {
       publication.updateHashtags(updateData.hashtags);
     }
+
+    // Build combined update object
+    // Start with snapshot (contains entity-managed fields: content, hashtags, metrics, etc.)
+    const snapshot = publication.toSnapshot();
+    const updatePayload: any = { ...snapshot };
+
+    // Override readonly fields from updateData if provided
+    // These fields are readonly in the entity, so we update them directly
     if (updateData.title !== undefined) {
-      // Update title if provided
-      const snapshot = publication.toSnapshot();
-      await this.publicationModel.updateOne(
-        { id: publication.getId },
-        { $set: { title: updateData.title } },
-      );
+      updatePayload.title = updateData.title;
     }
     if (updateData.description !== undefined) {
-      // Update description if provided
-      await this.publicationModel.updateOne(
-        { id: publication.getId },
-        { $set: { description: updateData.description } },
-      );
+      updatePayload.description = updateData.description;
+    }
+    if (updateData.imageUrl !== undefined) {
+      updatePayload.imageUrl = updateData.imageUrl || null;
     }
 
+    // Single atomic update with all changes
     await this.publicationModel.updateOne(
-      { id: publication.getId },
-      { $set: publication.toSnapshot() },
+      { id: publication.getId.getValue() },
+      { $set: updatePayload },
     );
 
     return publication;

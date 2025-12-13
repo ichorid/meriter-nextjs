@@ -508,7 +508,8 @@
             "members": "Участники",
             "vision": "Будущее",
             "noVisionPosts": "Пока нет постов будущего",
-            "visionCommunityNotFound": "Сообщество будущего не найдено"
+            "visionCommunityNotFound": "Сообщество будущего не найдено",
+            "currency": "Валюта"
         },
         "communitySettings": {
             "title": "Настройки сообщества",

@@ -50,7 +50,6 @@ export function usePublication({
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [activeCommentHook, setActiveCommentHook] = useState<string | null>(null);
-  const [activeSlider, setActiveSlider] = useState<string | null>(null);
 
   const voteOnPublicationMutation = useVoteOnPublication();
   const voteOnVoteMutation = useVoteOnVote();
@@ -151,10 +150,6 @@ export function usePublication({
     }
   }, [publication, voteOnPublicationWithCommentMutation, quotaRemaining, walletBalance, updateAll]);
 
-  const handleSliderToggle = useCallback((sliderId: string | null) => {
-    setActiveSlider(sliderId);
-  }, []);
-
   const handleCommentToggle = useCallback((commentId: string | null) => {
     console.log('🔄 handleCommentToggle called in usePublication:', { commentId, currentValue: activeCommentHook });
     setActiveCommentHook(commentId);
@@ -170,8 +165,6 @@ export function usePublication({
   return {
     // State
     activeCommentHook: [activeCommentHook, handleCommentToggle] as const,
-    activeSlider,
-    setActiveSlider: handleSliderToggle,
     
     // Actions
     handleVote,

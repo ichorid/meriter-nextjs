@@ -99,13 +99,17 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     : ((metrics?.upvotes || 0) + (metrics?.downvotes || 0)) > 0;
   
   // Check permissions (author, lead, superadmin)
-  // Pass hasVotes to restrict non-admin authors from deleting posts with votes
-  const { canEdit: canEditFromHook, canDelete } = useCanEditDelete(author.id, communityId, hasVotes);
+  // Hook checks vote count and time window for authors, allows admins always
+  const { canEdit, canEditEnabled, canDelete, isAuthor } = useCanEditDelete(
+    author.id, 
+    communityId, 
+    hasVotes,
+    publication.createdAt
+  );
   
-  // Check if user can edit (must also have zero votes for posts/polls)
-  const isAuthor = currentUserId && author.id && currentUserId === author.id;
-  // Authors can only edit if no votes; leads/superadmins can always edit (but backend will enforce zero votes)
-  const canEdit = canEditFromHook && (!isAuthor || !hasVotes) && publicationId && communityId;
+  // Show edit button if user can edit, disable if canEdit but not canEditEnabled
+  const showEditButton = canEdit && publicationId && communityId;
+  const editButtonDisabled = !!(canEdit && !canEditEnabled);
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -177,13 +181,14 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
       
       {/* Tags & Badges & Action Buttons */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        {canEdit && (
+        {showEditButton && (
           <BrandButton
             variant="ghost"
             size="sm"
             onClick={handleEdit}
-            className="p-1.5 h-auto min-h-0"
-            title="Edit"
+            disabled={editButtonDisabled}
+            className={`p-1.5 h-auto min-h-0 ${editButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title={editButtonDisabled ? 'Cannot edit: post has votes or edit window expired' : 'Edit'}
           >
             <Edit size={16} />
           </BrandButton>

@@ -17,7 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { LoadingState } from "@/components/atoms/LoadingState";
 import { handleAuthRedirect } from "@/lib/utils/auth";
 import { getErrorMessage } from "@/lib/api/errors";
-import { isFakeDataMode } from "@/config";
+import { isFakeDataMode, config } from "@/config";
 import {
     OAUTH_PROVIDERS,
     getOAuthUrl,
@@ -147,18 +147,20 @@ export function LoginForm({
 
             <div className="space-y-4 mb-4">
                 {/* Invite Code Input */}
-                <BrandFormControl
-                    label={tReg('inviteCodeLabel')}
-                    helperText={tReg('inviteDescription')}
-                >
-                    <BrandInput
-                        value={inviteCode}
-                        onChange={(e) => setInviteCode(e.target.value)}
-                        placeholder={tReg('inviteCodePlaceholder')}
-                        autoCapitalize="none"
-                        autoComplete="off"
-                    />
-                </BrandFormControl>
+                {config.features.loginInviteForm && (
+                    <BrandFormControl
+                        label={tReg('inviteCodeLabel')}
+                        helperText={tReg('inviteDescription')}
+                    >
+                        <BrandInput
+                            value={inviteCode}
+                            onChange={(e) => setInviteCode(e.target.value)}
+                            placeholder={tReg('inviteCodePlaceholder')}
+                            autoCapitalize="none"
+                            autoComplete="off"
+                        />
+                    </BrandFormControl>
+                )}
 
                 <p className="text-sm text-base-content/70 mb-8">
                     {t("subtitle")}

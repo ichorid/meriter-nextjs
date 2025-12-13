@@ -7,6 +7,7 @@ import { BarWithdraw } from '@shared/components/bar-withdraw';
 import { useUIStore } from '@/stores/ui.store';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { getWalletBalance } from '@/lib/utils/wallet';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { useCanVote } from '@/hooks/useCanVote';
@@ -63,8 +64,6 @@ interface PublicationActionsProps {
   isCommenting?: boolean;
   maxPlus?: number;
   maxMinus?: number;
-  activeSlider?: string | null;
-  setActiveSlider?: (slider: string | null) => void;
   wallets?: Wallet[];
   updateAll?: () => void;
   className?: string;
@@ -79,15 +78,19 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   isCommenting = false,
   maxPlus = 100,
   maxMinus = 100,
-  activeSlider,
-  setActiveSlider,
   wallets = [],
   updateAll,
   className = '',
 }) => {
   const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const t = useTranslations('feed');
   const myId = user?.id;
+  
+  // Check if we're on the community feed page (not the detail page)
+  const isOnCommunityFeedPage = pathname?.match(/^\/meriter\/communities\/[^/]+$/);
 
   // Check if this is a PROJECT post (no voting allowed)
   const isProject = (publication as any).postType === 'project' || (publication as any).isProject === true;
@@ -157,12 +160,18 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     useUIStore.getState().openVotingPopup(publicationId, 'publication', mode);
   };
 
-  const handleCommentToggle = () => {
-    // For now, comment toggle can still use activeCommentHook for backwards compatibility
-    // but voting uses the store
-    const activeComment = activeCommentHook[0];
-    const setActiveComment = activeCommentHook[1];
-    setActiveComment(activeComment === publicationId ? null : publicationId);
+  const handleCommentClick = () => {
+    if (!publicationId || !communityId) return;
+    
+    // If on community feed page, set query parameter to show side panel
+    if (isOnCommunityFeedPage) {
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      params.set('post', publicationId);
+      router.push(`${pathname}?${params.toString()}`);
+    } else {
+      // Otherwise, navigate to detail page
+      router.push(`/meriter/communities/${communityId}/posts/${publicationId}`);
+    }
   };
 
   // Handle withdraw button click - opens popup
@@ -196,7 +205,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
             showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)}
             isLoading={false}
             commentCount={publication.metrics?.commentCount || 0}
-            onCommentClick={handleCommentToggle}
+            onCommentClick={handleCommentClick}
           />
         ) : (
           <BarVoteUnified
@@ -206,7 +215,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
             isBeneficiary={isBeneficiary}
             hasBeneficiary={hasBeneficiary}
             commentCount={publication.metrics?.commentCount || 0}
-            onCommentClick={handleCommentToggle}
+            onCommentClick={handleCommentClick}
             canVote={canVote}
             disabledReason={voteDisabledReason}
             communityId={communityId}

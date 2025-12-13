@@ -171,6 +171,7 @@ export class Community {
       language: { type: String, enum: ['en', 'ru'], default: 'en' },
       postCost: { type: Number, default: 1 },
       pollCost: { type: Number, default: 1 },
+      editWindowDays: { type: Number, default: 7 },
     },
     default: {},
   })
@@ -185,6 +186,7 @@ export class Community {
     language?: 'en' | 'ru';
     postCost?: number;
     pollCost?: number;
+    editWindowDays?: number;
   };
 
   @Prop({ type: [String], default: [] })

@@ -99,7 +99,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   });
 
   const handleAmountChange = (amount: number) => {
-    // VotingPanel passes signed values (can be negative)
     updateVotingFormData({ delta: amount, error: '' });
   };
 

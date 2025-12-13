@@ -234,6 +234,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
       let publication;
       if (isEditMode && publicationId) {
+        // Validate publicationId is defined and not empty
+        if (!publicationId || publicationId === 'undefined') {
+          throw new Error('Publication ID is required for editing');
+        }
+        
         // Update existing publication
         publication = await updatePublication.mutateAsync({
           id: publicationId,
@@ -395,8 +400,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           </BrandFormControl>
         )}
 
-        {/* Post Type selector - hide if PROJECT checkbox is checked (in marathon communities) */}
-        {!isProject && (
+        {/* Post Type selector - hide if PROJECT checkbox is checked (in marathon communities) or when editing */}
+        {!isProject && !isEditMode && (
           <BrandFormControl
             label={t('fields.postType')}
             helperText={t('fields.postTypeHelp')}
@@ -481,6 +486,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                   title,
                   description,
                   content: description,
+                  imageUrl: images.length > 0 ? images[0] : undefined,
+                  images: images.length > 0 ? images : undefined,
                   isProject,
                   meta: {},
                 }}

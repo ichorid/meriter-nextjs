@@ -75,6 +75,7 @@ export const CommunitySettingsSchema = z.object({
   language: z.enum(["en", "ru"]).default("en"),
   postCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a post (0 = free)
   pollCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a poll (0 = free)
+  editWindowDays: z.number().int().min(0).default(7), // Number of days after creation that regular users can edit their posts/comments (0 = no time limit)
 });
 
 // Community rules schemas (настраиваемые правила)
@@ -458,7 +459,10 @@ export const UpdateCommunityDtoSchema = z.object({
 export const UpdatePublicationDtoSchema = z.object({
   content: z.string().min(1).max(10000).optional(),
   hashtags: z.array(z.string()).optional(),
-});
+  title: z.string().min(1).max(500).optional(),
+  description: z.string().min(1).max(5000).optional(),
+  imageUrl: z.string().url().optional().nullable(),
+}).strict(); // Strict mode prevents postType and isProject from being included
 
 export const CreateCommunityDtoSchema = z
   .object({

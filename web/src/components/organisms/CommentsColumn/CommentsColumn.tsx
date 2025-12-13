@@ -18,8 +18,6 @@ export interface CommentsColumnProps {
   myId?: string;
   highlightTransactionId?: string;
   activeCommentHook: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
-  activeSlider: string | null;
-  setActiveSlider: (id: string | null) => void;
   activeWithdrawPost: string | null;
   setActiveWithdrawPost: (id: string | null) => void;
   onBack?: () => void;
@@ -38,8 +36,6 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
   myId,
   highlightTransactionId,
   activeCommentHook,
-  activeSlider,
-  setActiveSlider,
   activeWithdrawPost,
   setActiveWithdrawPost,
   onBack,
@@ -155,8 +151,6 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
             communityId={communityId}
             publicationSlug={publicationSlug}
             activeCommentHook={activeCommentHook}
-            activeSlider={activeSlider}
-            setActiveSlider={setActiveSlider}
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
             highlightTransactionId={highlightTransactionId}

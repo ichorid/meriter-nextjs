@@ -220,6 +220,42 @@ export class CommentService {
     return comment;
   }
 
+  async updateComment(
+    commentId: string,
+    userId: string,
+    updateData: { content: string },
+  ): Promise<Comment> {
+    const doc = await this.commentModel.findOne({ id: commentId }).lean();
+    if (!doc) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    const comment = Comment.fromSnapshot(doc as ICommentDocument);
+
+    // Authorization is handled by PermissionGuard via PermissionService.canEditComment()
+    // PermissionService already checks vote count and time window for authors
+    // Leads and superadmins can edit regardless of votes/time, so no additional check needed here
+
+    // Update comment content by updating the document directly
+    const snapshot = comment.toSnapshot();
+    await this.commentModel.updateOne(
+      { id: commentId },
+      { 
+        $set: { 
+          content: updateData.content,
+          updatedAt: new Date(),
+        }
+      }
+    );
+
+    // Return updated comment
+    const updatedDoc = await this.commentModel.findOne({ id: commentId }).lean();
+    if (!updatedDoc) {
+      throw new NotFoundException('Comment not found after update');
+    }
+    return Comment.fromSnapshot(updatedDoc as ICommentDocument);
+  }
+
   async deleteComment(commentId: string, userId: string): Promise<boolean> {
     const comment = await this.getComment(commentId);
     if (!comment) {

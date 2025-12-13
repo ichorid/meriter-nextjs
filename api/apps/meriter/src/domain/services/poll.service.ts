@@ -189,10 +189,8 @@ export class PollService {
 
     const poll = Poll.fromSnapshot(doc as any);
 
-    // Check if user is the author
-    if (poll.getAuthorId !== userId) {
-      throw new BadRequestException('Not authorized to edit this poll');
-    }
+    // Authorization is handled by PermissionGuard via PermissionService.canEditPoll()
+    // No need for redundant check here
 
     // Check if poll has any casts (totalCasts > 0)
     const metrics = poll.getMetrics;

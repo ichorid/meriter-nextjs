@@ -12,10 +12,9 @@ import { FormDimensionsEditor } from "@shared/components/form-dimensions-editor"
 import { useUIStore } from "@/stores/ui.store";
 import { classList } from "@lib/classList";
 import { Comment } from "@features/comments/components/comment";
-import { FormComment } from "@features/comments/components/form-comment";
 import { PollCasting } from "@features/polls/components/poll-casting";
 import type { IPollData } from "@features/polls/types";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import type { Publication as PublicationType } from '@/types/api-v1';
 import { useCanVote } from '@/hooks/useCanVote';
@@ -28,14 +27,12 @@ export const Publication = (props: any) => {
         slug,
         spaceSlug,
         balance,
-        updBalance = () => {}, // Default no-op function
+        updBalance = () => {},
         messageText,
         authorPhotoUrl,
         keyword,
         ts,
         activeCommentHook,
-        activeSlider,
-        setActiveSlider,
         beneficiaryName,
         beneficiaryPhotoUrl,
         beneficiaryId,
@@ -51,7 +48,6 @@ export const Publication = (props: any) => {
         _id,
         isDetailPage,
         showCommunityAvatar,
-        // New props for author withdraw functionality
         wallets,
         updateWalletBalance,
         updateAll,
@@ -59,23 +55,24 @@ export const Publication = (props: any) => {
         inMerits,
         currencyOfCommunityTgChatId,
         fromTgChatId,
-        // Internal IDs (required)
         communityId,
         authorId,
         meta,
-        // Sort order for comments
         commentSortBy,
-        // Cover image for the post
         imageUrl,
     } = props;
     
-    // Сохраняем весь объект публикации для доступа к images
     const originalPublication = props;
     // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     // This is required by React's Rules of Hooks
     
     const t = useTranslations('feed');
     const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    
+    // Check if we're on the community feed page (not the detail page)
+    const isOnCommunityFeedPage = pathname?.match(/^\/meriter\/communities\/[^/]+$/);
     
     // Use internal IDs only - no legacy fallbacks
     const displayAuthorName = meta?.author?.name || 'Unknown';
@@ -97,13 +94,10 @@ export const Publication = (props: any) => {
     // Always call hooks even if we might return early - React requires consistent hook calls
     const {
         comments,
-        showPlus,
         currentPlus,
         currentMinus,
-        showMinus,
         showComments,
         setShowComments,
-        formCommentProps,
     } = useComments(
         false,
         slug,
@@ -156,10 +150,9 @@ export const Publication = (props: any) => {
     // Additional hooks must be called before any conditional returns
     useEffect(() => {
         if (onlyPublication || isDetailPage) {
-            showPlus();
             setShowComments(true);
         }
-    }, [onlyPublication, isDetailPage, showPlus, setShowComments]);
+    }, [onlyPublication, isDetailPage, setShowComments]);
     
     const [showDimensionsEditor, setShowDimensionsEditor] = useState(false);
     
@@ -207,10 +200,6 @@ export const Publication = (props: any) => {
     // Display title - use meta.author.name
     const displayTitle = displayAuthorName;
     
-    const publicationUnderReply = activeCommentHook[0] == slug;
-    const nobodyUnderReply = activeCommentHook[0] === null;
-    const commentUnderReply = activeCommentHook[0] && activeCommentHook[0] !== slug && activeCommentHook[0] !== null;
-    
     const tagsStr = [
         "#" + keyword,
         ...(Object.entries(dimensions || {}) || [])
@@ -223,19 +212,8 @@ export const Publication = (props: any) => {
     return (
         <div
             className={classList(
-                "mb-5 transition-all duration-300",
-                publicationUnderReply ? "scale-100 opacity-100" : 
-                activeSlider && activeSlider !== postId ? "scale-95 opacity-60" : "scale-100 opacity-100"
+                "mb-5 transition-all duration-300"
             )}
-            onClick={(e) => {
-                if (
-                    activeSlider === postId &&
-                    myId !== authorId &&
-                    !(e.target as any)?.className?.match("clickable")
-                ) {
-                    setActiveSlider && setActiveSlider(null);
-                }
-            }}
             key={slug}
         >
             <CardPublication
@@ -295,7 +273,15 @@ export const Publication = (props: any) => {
                                     commentCount={!isDetailPage ? comments?.length || 0 : 0}
                         onCommentClick={!isDetailPage ? () => {
                             const routingCommunityId = communityInfo?.id || communityId;
-                            if (routingCommunityId && slug) {
+                            if (!routingCommunityId || !slug) return;
+                            
+                            // If on community feed page, set query parameter to show side panel
+                            if (isOnCommunityFeedPage) {
+                                const params = new URLSearchParams(searchParams?.toString() || '');
+                                params.set('post', slug);
+                                router.push(`${pathname}?${params.toString()}`);
+                            } else {
+                                // Otherwise, navigate to detail page
                                 router.push(`/meriter/communities/${routingCommunityId}/posts/${slug}`);
                             }
                         } : undefined}
@@ -314,7 +300,15 @@ export const Publication = (props: any) => {
                                     commentCount={!isDetailPage ? comments?.length || 0 : 0}
                                     onCommentClick={!isDetailPage ? () => {
                                         const routingCommunityId = communityInfo?.id || communityId;
-                                        if (routingCommunityId && slug) {
+                                        if (!routingCommunityId || !slug) return;
+                                        
+                                        // If on community feed page, set query parameter to show side panel
+                                        if (isOnCommunityFeedPage) {
+                                            const params = new URLSearchParams(searchParams?.toString() || '');
+                                            params.set('post', slug);
+                                            router.push(`${pathname}?${params.toString()}`);
+                                        } else {
+                                            // Otherwise, navigate to detail page
                                             router.push(`/meriter/communities/${routingCommunityId}/posts/${slug}`);
                                         }
                                     } : undefined}
@@ -373,16 +367,6 @@ export const Publication = (props: any) => {
 
             {showComments && (
                 <div className="publication-comments">
-                    {/* Comment Form - shown when replying to this publication */}
-                    {publicationUnderReply && (
-                        <div className="mb-4">
-                            <FormComment
-                                {...formCommentProps}
-                                currencyIconUrl={communityInfo?.settings?.iconUrl}
-                            />
-                        </div>
-                    )}
-                    
                     {/* Existing Comments */}
                     <div className="comments">
                         {comments?.map((c: any, index: number) => (
@@ -395,8 +379,6 @@ export const Publication = (props: any) => {
                                 spaceSlug={spaceSlug}
                                 inPublicationSlug={slug}
                                 activeCommentHook={activeCommentHook}
-                                activeSlider={activeSlider}
-                                setActiveSlider={setActiveSlider}
                                 myId={myId}
                                 highlightTransactionId={highlightTransactionId}
                                 wallets={wallets}
@@ -407,23 +389,6 @@ export const Publication = (props: any) => {
                             />
                         ))}
                     </div>
-                    
-                    {/* Add Comment Button - shown when not already replying */}
-                    {!publicationUnderReply && isDetailPage && (
-                        <div className="mt-4">
-                            <button
-                                onClick={() => {
-                                    showPlus();
-                                    if (activeCommentHook) {
-                                        activeCommentHook[1](slug);
-                                    }
-                                }}
-                                className="w-full py-3 px-4 bg-base-200 hover:bg-base-300 rounded-xl text-base-content/70 hover:text-base-content transition-colors text-sm font-medium"
-                            >
-                                {t('addComment')}
-                            </button>
-                        </div>
-                    )}
                 </div>
             )}
         </div>

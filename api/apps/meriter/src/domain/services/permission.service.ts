@@ -432,23 +432,116 @@ export class PermissionService {
   ): Promise<boolean> {
     const publication =
       await this.publicationService.getPublication(publicationId);
-    if (!publication) return false;
+    if (!publication) {
+      // Log in development/test to help debug permission issues
+      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+        console.log(`[canEditPublication] Publication not found: publicationId=${publicationId}, userId=${userId}`);
+      }
+      return false;
+    }
 
-    // Author can always edit their own publications (in any group)
-    // Check author first before any community role checks
     const authorId = publication.getAuthorId.getValue();
-    if (authorId === userId) return true;
-
-    // If not author, check if user is superadmin or lead
     const communityId = publication.getCommunityId.getValue();
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
-    // Superadmin can edit any publication
-    if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
+    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+      const authorIdType = typeof authorId;
+      const userIdType = typeof userId;
+      const idsMatch = authorId === userId;
+      const idsMatchStrict = authorId === userId && authorIdType === userIdType;
+      console.log(`[canEditPublication] Check: userId=${userId} (${userIdType}), authorId=${authorId} (${authorIdType}), userRole=${userRole}, publicationId=${publicationId}, idsMatch=${idsMatch}, idsMatchStrict=${idsMatchStrict}`);
+    }
 
-    // Lead can edit publications in their community
-    if (userRole === COMMUNITY_ROLE_LEAD) return true;
+    if (userRole === COMMUNITY_ROLE_SUPERADMIN) {
+      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+        console.log(`[canEditPublication] Allowed: superadmin`);
+      }
+      return true;
+    }
 
+    if (userRole === COMMUNITY_ROLE_LEAD) {
+      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+        console.log(`[canEditPublication] Allowed: lead`);
+      }
+      return true;
+    }
+
+    // For authors: check vote count and time window
+    // Use strict equality check - both should be strings
+    const isAuthor = authorId === userId;
+    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+      console.log(`[canEditPublication] Author comparison: authorId="${authorId}" === userId="${userId}" = ${isAuthor}`);
+    }
+    
+    if (isAuthor) {
+      // Check if publication has any votes
+      const metrics = publication.getMetrics;
+      const metricsSnapshot = metrics.toSnapshot();
+      const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
+      
+      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+        console.log(`[canEditPublication] Author check: totalVotes=${totalVotes}, upvotes=${metricsSnapshot.upvotes}, downvotes=${metricsSnapshot.downvotes}`);
+      }
+      
+      if (totalVotes > 0) {
+        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+          console.log(`[canEditPublication] Denied: has votes`);
+        }
+        return false; // Cannot edit if votes exist
+      }
+
+      // Check time window from community settings
+      const community = await this.communityService.getCommunity(communityId);
+      if (!community) {
+        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+          console.log(`[canEditPublication] Denied: community not found: ${communityId}`);
+        }
+        return false;
+      }
+
+      const editWindowDays = community.settings?.editWindowDays ?? 7;
+      
+      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+        console.log(`[canEditPublication] Edit window: ${editWindowDays} days`);
+      }
+      
+      if (editWindowDays === 0) {
+        // 0 means no time limit
+        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+          console.log(`[canEditPublication] Allowed: no time limit`);
+        }
+        return true;
+      }
+
+      const snapshot = publication.toSnapshot();
+      const createdAt = snapshot.createdAt instanceof Date 
+        ? snapshot.createdAt 
+        : new Date(snapshot.createdAt);
+      const now = new Date();
+      // Calculate days since creation using floor to be consistent with day boundaries
+      // If created 8 days ago at any time, it's been more than 7 days
+      const millisecondsSinceCreation = now.getTime() - createdAt.getTime();
+      const daysSinceCreation = Math.floor(millisecondsSinceCreation / (1000 * 60 * 60 * 24));
+
+      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+        console.log(`[canEditPublication] Date check: createdAt=${createdAt.toISOString()}, now=${now.toISOString()}, daysSinceCreation=${daysSinceCreation}, editWindowDays=${editWindowDays}`);
+      }
+
+      // editWindowDays of 7 means can edit for 7 days (days 0-6), not including day 7+
+      // So if daysSinceCreation is 8 and editWindowDays is 7, should return false
+      // Use < instead of <= to be strict: if it's been 7 full days, that's the limit
+      const canEdit = daysSinceCreation < editWindowDays;
+      
+      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+        console.log(`[canEditPublication] Result: ${canEdit}`);
+      }
+      
+      return canEdit;
+    }
+
+    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+      console.log(`[canEditPublication] Denied: not author (authorId=${authorId}, userId=${userId})`);
+    }
     return false;
   }
 
@@ -481,24 +574,48 @@ export class PermissionService {
 
   /**
    * Check if user can edit a comment
-   * Authors cannot edit their own comments - only admins (superadmin/lead) can edit
    */
   async canEditComment(userId: string, commentId: string): Promise<boolean> {
     const comment = await this.commentService.getComment(commentId);
     if (!comment) return false;
 
+    const authorId = comment.getAuthorId.getValue();
     const communityId =
       await this.commentService.resolveCommentCommunityId(commentId);
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
-    // Superadmin always can
     if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
 
-    // Authors cannot edit their own comments
-    // Removed: if (authorId === userId) return true;
-
-    // Lead can edit comments in their community
     if (userRole === COMMUNITY_ROLE_LEAD) return true;
+
+    // For authors: check vote count and time window
+    if (authorId === userId) {
+      // Check if comment has any votes
+      const metrics = comment.getMetrics;
+      const metricsSnapshot = metrics.toSnapshot();
+      const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
+      if (totalVotes > 0) {
+        return false; // Cannot edit if votes exist
+      }
+
+      // Check time window from community settings
+      const community = await this.communityService.getCommunity(communityId);
+      if (!community) return false;
+
+      const editWindowDays = community.settings?.editWindowDays ?? 7;
+      if (editWindowDays === 0) {
+        // 0 means no time limit
+        return true;
+      }
+
+      const createdAt = comment.toSnapshot().createdAt;
+      const now = new Date();
+      const daysSinceCreation = Math.floor(
+        (now.getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      return daysSinceCreation <= editWindowDays;
+    }
 
     return false;
   }

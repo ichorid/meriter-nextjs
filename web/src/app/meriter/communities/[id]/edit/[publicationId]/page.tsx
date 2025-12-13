@@ -69,12 +69,16 @@ export default function EditPublicationPage({
     );
   }
 
+  // Use the actual publication ID from the fetched publication, not the slug from URL
+  // The URL parameter might be a slug, but the API needs the actual ID
+  const actualPublicationId = publication?.id || publicationId;
+
   return (
     <AdaptiveLayout communityId={communityId} stickyHeader={pageHeader}>
       <div className="space-y-6">
         <PublicationCreateForm
           communityId={communityId}
-          publicationId={publicationId}
+          publicationId={actualPublicationId}
           initialData={publication}
           onSuccess={(pub) => {
             const postIdentifier = pub.slug || pub.id;

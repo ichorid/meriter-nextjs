@@ -219,10 +219,16 @@ export class PermissionGuard implements CanActivate {
           this.logger.warn('Missing publicationId for edit:publication');
           return false;
         }
-        return this.permissionService.canEditPublication(
+        const canEdit = await this.permissionService.canEditPublication(
           userId,
           resourceIds.publicationId,
         );
+        if (!canEdit) {
+          this.logger.debug(
+            `Permission denied for edit:publication - userId: ${userId}, publicationId: ${resourceIds.publicationId}`,
+          );
+        }
+        return canEdit;
 
       case 'delete:publication':
         if (!resourceIds.publicationId) {

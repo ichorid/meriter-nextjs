@@ -44,7 +44,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     const { data: wallets = [] } = useWallets();
 
     const activeCommentHook = useState<string | null>(null);
-    const [activeSlider, setActiveSlider] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
     // Get comments for this publication
@@ -150,8 +149,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                 wallets={wallets}
                 myId={user?.id}
                 activeCommentHook={activeCommentHook}
-                activeSlider={activeSlider}
-                setActiveSlider={setActiveSlider}
                 activeWithdrawPost={activeWithdrawPost}
                 setActiveWithdrawPost={setActiveWithdrawPost}
                 stickyHeader={pageHeader}
@@ -173,8 +170,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                 wallets={wallets}
                 myId={user?.id}
                 activeCommentHook={activeCommentHook}
-                activeSlider={activeSlider}
-                setActiveSlider={setActiveSlider}
                 activeWithdrawPost={activeWithdrawPost}
                 setActiveWithdrawPost={setActiveWithdrawPost}
                 stickyHeader={pageHeader}
@@ -200,8 +195,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
             wallets={wallets}
             myId={user?.id}
             activeCommentHook={activeCommentHook}
-            activeSlider={activeSlider}
-            setActiveSlider={setActiveSlider}
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
             stickyHeader={pageHeader}
@@ -288,7 +281,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                     <div className="bg-base-100 rounded-2xl p-5 border border-base-content/5">
                         <h3 className="text-lg font-semibold mb-4">{t('comments')} ({comments?.length || 0})</h3>
                         
-                        {/* Add Comment Button */}
                         <div className="mb-4">
                             <button
                                 onClick={() => {
@@ -312,8 +304,6 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                                     spaceSlug=""
                                     inPublicationSlug={slug}
                                     activeCommentHook={activeCommentHook}
-                                    activeSlider={activeSlider}
-                                    setActiveSlider={setActiveSlider}
                                     myId={user?.id}
                                     highlightTransactionId={highlightCommentId || undefined}
                                     wallets={wallets}

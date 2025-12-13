@@ -265,7 +265,7 @@ export class CommentsController {
     const author = await this.commentEnrichment.fetchAuthor(authorId);
 
     const snapshot = comment.toSnapshot();
-    return {
+    const response = {
       ...snapshot,
       metrics: {
         ...snapshot.metrics,
@@ -277,6 +277,7 @@ export class CommentsController {
         author: UserFormatter.formatUserForApi(author, authorId),
       },
     };
+    return ApiResponseHelper.successResponse(response);
   }
 
   @Put(':id')
@@ -287,8 +288,28 @@ export class CommentsController {
     @Body() updateDto: any,
     @Req() req: any,
   ): Promise<Comment> {
-    // Update functionality not implemented yet
-    throw new Error('Update comment functionality not implemented');
+    if (!updateDto.content) {
+      throw new NotFoundError('Comment', 'Content is required');
+    }
+    const updatedComment = await this.commentsService.updateComment(
+      id,
+      req.user.id,
+      { content: updateDto.content }
+    );
+
+    // Extract author ID for enrichment
+    const authorId = updatedComment.getAuthorId.getValue();
+
+    // Batch fetch users for enrichment
+    const usersMap = await this.userEnrichmentService.batchFetchUsers([authorId]);
+
+    // Map domain entity to API format
+    const mappedComment = EntityMappers.mapCommentToApi(
+      updatedComment,
+      usersMap,
+    );
+
+    return ApiResponseHelper.successResponse(mappedComment);
   }
 
   @Delete(':id')

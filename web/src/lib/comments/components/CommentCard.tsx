@@ -41,8 +41,6 @@ interface CommentCardProps {
   communityId?: string;
   publicationSlug?: string;
   activeCommentHook?: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
-  activeSlider?: string | null;
-  setActiveSlider?: (id: string | null) => void;
   activeWithdrawPost?: string | null;
   setActiveWithdrawPost?: (id: string | null) => void;
   highlightTransactionId?: string;
@@ -69,8 +67,6 @@ export function CommentCard({
   communityId,
   publicationSlug,
   activeCommentHook,
-  activeSlider,
-  setActiveSlider,
   activeWithdrawPost,
   setActiveWithdrawPost,
   highlightTransactionId,
@@ -156,8 +152,20 @@ export function CommentCard({
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   
-  // Permission checks
-  const { canEdit, canDelete } = useCanEditDelete(commentAuthorId, communityId);
+  // Check if comment has votes
+  const commentHasVotes = (commentUpvotes + commentDownvotes) > 0;
+  
+  // Permission checks - hook checks vote count and time window for authors, allows admins always
+  const { canEdit, canEditEnabled, canDelete } = useCanEditDelete(
+    commentAuthorId, 
+    communityId,
+    commentHasVotes,
+    commentTimestamp
+  );
+  
+  // Show edit button if user can edit, disable if canEdit but not canEditEnabled
+  const showEditButton = canEdit;
+  const editButtonDisabled = !!(canEdit && !canEditEnabled);
   
   // Mutations
   const updateComment = useUpdateComment();
@@ -306,34 +314,28 @@ export function CommentCard({
         className={classList(
           "comment-vote-wrapper transition-all duration-300 mb-4 relative z-10 w-full overflow-hidden",
           { 'ring-2 ring-warning': isChainMode },
-          commentUnderReply ? "scale-100 opacity-100" : 
-          activeSlider && activeSlider !== node.id ? "scale-95 opacity-60" : "scale-100 opacity-100",
+          commentUnderReply ? "scale-100 opacity-100" : "scale-100 opacity-100",
           highlightTransactionId === node.id ? "highlight" : ""
         )}
         data-comment-id={node.id}
-        onClick={(e) => {
-          if (
-            activeSlider === node.id &&
-            !(e.target as any)?.className?.match("clickable")
-          ) {
-            setActiveSlider && setActiveSlider(null);
-          }
-        }}
       >
       {/* Action buttons - positioned in top right */}
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
-        {(canEdit || canDelete) && (
+        {(showEditButton || canDelete) && (
           <>
-            {canEdit && (
+            {showEditButton && (
               <Button
                 variant="ghost"
                 size="xs"
-                className="btn-sm opacity-60 hover:opacity-100"
+                className={`btn-sm ${editButtonDisabled ? 'opacity-30 cursor-not-allowed' : 'opacity-60 hover:opacity-100'}`}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
-                  setShowEditModal(true);
+                  if (!editButtonDisabled) {
+                    setShowEditModal(true);
+                  }
                 }}
-                title="Edit comment"
+                disabled={editButtonDisabled}
+                title={editButtonDisabled ? 'Cannot edit: comment has votes or edit window expired' : 'Edit comment'}
               >
                 <Edit size={14} />
               </Button>

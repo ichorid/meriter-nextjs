@@ -70,8 +70,6 @@ export const Comment: React.FC<CommentProps> = ({
     amountTotal,
     inPublicationSlug,
     activeCommentHook,
-    activeSlider,
-    setActiveSlider,
     myId,
     highlightTransactionId,
     forTransactionId,
@@ -213,7 +211,6 @@ export const Comment: React.FC<CommentProps> = ({
         showMinus,
         showComments,
         setShowComments,
-        formCommentProps,
     } = useComments(
         true,
         inPublicationSlug,
@@ -235,20 +232,11 @@ export const Comment: React.FC<CommentProps> = ({
         <div
             className={classList(
                 "comment-vote-wrapper transition-all duration-300",
-                commentUnderReply ? "scale-100 opacity-100" : 
-                activeSlider && activeSlider !== _id ? "scale-95 opacity-60" : "scale-100 opacity-100",
+                commentUnderReply ? "scale-100 opacity-100" : "scale-100 opacity-100",
                 highlightTransactionId == _id ? "highlight" : ""
             )}
             data-comment-id={_id}
             key={_id}
-            onClick={(e) => {
-                if (
-                    activeSlider === _id &&
-                    !(e.target as any)?.className?.match("clickable")
-                ) {
-                    setActiveSlider && setActiveSlider(null);
-                }
-            }}
         >
             <CardCommentVote
                 title={authorName}
@@ -383,8 +371,6 @@ export const Comment: React.FC<CommentProps> = ({
                                 spaceSlug={spaceSlug}
                                 inPublicationSlug={inPublicationSlug}
                                 activeCommentHook={activeCommentHook}
-                                activeSlider={activeSlider}
-                                setActiveSlider={setActiveSlider}
                                 highlightTransactionId={highlightTransactionId}
                         wallets={wallets}
                         updateWalletBalance={updateWalletBalance}

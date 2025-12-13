@@ -33,7 +33,6 @@ export function ProfileCommentsTab({
   const t = useTranslations('home');
   const queryClient = useQueryClient();
   const activeCommentHook = useState<string | null>(null);
-  const [activeSlider, setActiveSlider] = useState<string | null>(null);
 
   // Infinite scroll trigger
   const observerTarget = useInfiniteScroll({
@@ -96,8 +95,6 @@ export function ProfileCommentsTab({
             communityId={comment.communityId}
             inPublicationSlug={comment.publicationSlug}
             activeCommentHook={activeCommentHook}
-            activeSlider={activeSlider}
-            setActiveSlider={setActiveSlider}
             myId={myId}
             wallets={wallets}
             balance={communityBalance}

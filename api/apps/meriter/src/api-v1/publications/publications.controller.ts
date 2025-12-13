@@ -410,7 +410,28 @@ export class PublicationsController {
     @Param('id') id: string,
     @Body() updates: any,
   ) {
-    return this.publicationService.updatePublication(id, user.id, updates);
+    const publication = await this.publicationService.updatePublication(id, user.id, updates);
+
+    // Extract IDs for enrichment
+    const authorId = publication.getAuthorId.getValue();
+    const beneficiaryId = publication.getBeneficiaryId?.getValue();
+    const communityId = publication.getCommunityId.getValue();
+
+    // Batch fetch users and communities
+    const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : [])];
+    const [usersMap, communitiesMap] = await Promise.all([
+      this.userEnrichmentService.batchFetchUsers(userIds),
+      this.communityEnrichmentService.batchFetchCommunities([communityId]),
+    ]);
+
+    // Map domain entity to API format
+    const mappedPublication = EntityMappers.mapPublicationToApi(
+      publication,
+      usersMap,
+      communitiesMap,
+    );
+
+    return ApiResponseHelper.successResponse(mappedPublication);
   }
 
   @Delete(':id')
