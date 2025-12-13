@@ -40,6 +40,9 @@ export class Vote {
   @Prop({ required: true, maxlength: 5000 })
   comment: string; // Required comment text attached to vote
 
+  @Prop({ type: [String], default: [] })
+  images?: string[]; // Array of image URLs for vote attachments
+
   @Prop({ required: true })
   communityId: string; // Made required for consistency
 

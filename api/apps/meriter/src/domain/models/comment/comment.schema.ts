@@ -55,6 +55,9 @@ export class Comment {
   @Prop()
   parentCommentId?: string;
 
+  @Prop({ type: [String], default: [] })
+  images?: string[]; // Array of image URLs for comment attachments
+
   @Prop({ required: true })
   createdAt: Date;
 

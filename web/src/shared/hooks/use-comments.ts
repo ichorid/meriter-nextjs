@@ -45,6 +45,7 @@ export const useComments = (
     const [plusSign, setPlusSign] = useState(true);
     const [delta, setDelta] = useState(0);
     const [error, setError] = useState("");
+    const [images, setImages] = useState<string[]>([]);
     
     // Feature flag check
     const features = useFeaturesConfig();
@@ -98,6 +99,9 @@ export const useComments = (
     // Use quota data directly
     const freePlus = quotaData?.remainingToday || 0;
     const freeMinus = 0;
+    const dailyQuota = quotaData?.dailyQuota || 0;
+    const usedToday = quotaData?.usedToday || 0;
+    const quotaRemaining = freePlus;
 
     const currentPlus = round(
         (plusGiven + (delta as any)) || 0
@@ -142,13 +146,18 @@ export const useComments = (
         hasPoints: freePlus > 0 || walletBalance > 0,
         comment,
         setComment,
-        amount: Math.abs(delta),
+        amount: delta, // Keep signed value for VotingPanel
         setAmount: setDelta,
         free: freePlus,
         // maxPlus should be the sum of quota and wallet balance (allows voting over quota using wallet)
         maxPlus: freePlus + (walletBalance || 0),
         // maxMinus should use wallet balance for negative votes (downvotes use wallet only)
         maxMinus: walletBalance || 0,
+        quotaRemaining,
+        dailyQuota,
+        usedToday,
+        images,
+        setImages,
         commentAdd: async (directionPlus: boolean) => {
             try {
                 // Use mutation hooks based on whether it's a comment or vote
@@ -195,16 +204,18 @@ export const useComments = (
                         communityId,
                     });
                     
-                    // Create comment separately if there's comment text
-                    if (comment.trim()) {
+                    // Create comment separately if there's comment text or images
+                    if (comment.trim() || images.length > 0) {
                         await createCommentMutation.mutateAsync({
                             targetType: 'comment',
                             targetId: transactionId,
                             content: comment.trim(),
+                            images: images.length > 0 ? images : undefined,
                         });
                     }
                     setComment("");
                     setDelta(0);
+                    setImages([]);
                     setError("");
                     // Mutations handle query invalidation automatically
                     if (activeCommentHook) {
@@ -216,9 +227,11 @@ export const useComments = (
                         targetType: 'publication',
                         targetId: publicationSlug,
                         content: comment.trim(),
+                        images: images.length > 0 ? images : undefined,
                     });
                     setComment("");
                     setDelta(0);
+                    setImages([]);
                     setError("");
                     // Mutations handle query invalidation automatically
                     if (activeCommentHook) {

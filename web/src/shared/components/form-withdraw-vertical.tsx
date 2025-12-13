@@ -2,10 +2,9 @@
 
 import { useState, useMemo, useCallback, memo } from "react";
 import { etv } from '@shared/lib/input-utils';
-import Slider from "rc-slider";
+import { Slider, SliderTrack, SliderFilledTrack, SliderThumb } from '@gluestack-ui/themed';
 import { classList } from '@lib/classList';
 import { useTranslations } from 'next-intl';
-import 'rc-slider/assets/index.css';
 
 interface FormWithdrawVerticalProps {
     comment: string;
@@ -41,29 +40,9 @@ export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = memo(({
     const disabled = !amount || amount <= 0;
 
     // Memoize onChange handler to prevent unnecessary re-renders
-    const handleSliderChange = useCallback((value: number | number[]) => {
-        const newAmount = typeof value === 'number' ? value : value[0] || 0;
-        setAmount(Math.max(0, Math.min(newAmount, maxAmount)));
+    const handleSliderChange = useCallback((value: number) => {
+        setAmount(Math.max(0, Math.min(value, maxAmount)));
     }, [maxAmount, setAmount]);
-
-    // Memoize track style to prevent object recreation on every render
-    const trackStyle = useMemo(() => ({
-        backgroundColor: '#10b981',
-        bottom: '0%',
-        height: `${(amount / maxAmount) * 100}%`
-    }), [amount, maxAmount]);
-
-    // Memoize rail style
-    const railStyle = useMemo(() => ({
-        background: 'linear-gradient(to bottom, #10b981 0%, #10b981 100%)'
-    }), []);
-
-    // Memoize handle style
-    const handleStyle = useMemo(() => ({
-        backgroundColor: amount > 0 ? '#10b981' : '#6b7280',
-        borderColor: amount > 0 ? '#10b981' : '#6b7280',
-        boxShadow: amount !== 0 ? `0 0 0 3px rgba(16, 185, 129, 0.2)` : 'none',
-    }), [amount]);
 
     return (
         <div className="p-5 rounded-2xl shadow-lg bg-base-100">
@@ -99,18 +78,46 @@ export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = memo(({
             {/* Vertical Slider */}
             {maxAmount >= 1 && (
                 <div className="mb-4 flex justify-center">
-                    <div className="relative" style={{ height: '220px' }}>
+                    <div className="relative" style={{ height: '220px', width: '40px' }}>
                         <Slider
-                            vertical={true}
-                            min={0}
-                            max={maxAmount}
+                            orientation="vertical"
+                            minValue={0}
+                            maxValue={maxAmount}
                             value={amount}
                             onChange={handleSliderChange}
-                            className="rc-slider-vertical"
-                            trackStyle={trackStyle}
-                            railStyle={railStyle}
-                            handleStyle={handleStyle}
-                        />
+                            style={{ height: '100%' }}
+                        >
+                            <SliderTrack
+                                style={{
+                                    width: 6,
+                                    borderRadius: 8,
+                                    backgroundColor: 'var(--fallback-b3,oklch(var(--b3)/1))',
+                                }}
+                            >
+                                <SliderFilledTrack
+                                    style={{
+                                        width: 6,
+                                        borderRadius: 8,
+                                        backgroundColor: amount > 0 
+                                            ? 'var(--fallback-p,oklch(var(--p)/1))' 
+                                            : 'var(--fallback-b3,oklch(var(--b3)/1))',
+                                    }}
+                                />
+                            </SliderTrack>
+                            <SliderThumb
+                                style={{
+                                    width: 20,
+                                    height: 20,
+                                    borderRadius: 10,
+                                    backgroundColor: amount > 0 
+                                        ? 'var(--fallback-p,oklch(var(--p)/1))' 
+                                        : 'var(--fallback-bc,oklch(var(--bc)/1))',
+                                    boxShadow: amount !== 0 
+                                        ? '0 0 0 3px rgba(16, 185, 129, 0.2)' 
+                                        : '-2px 2px 8px rgba(0, 0, 0, 0.2)',
+                                }}
+                            />
+                        </Slider>
                     </div>
                 </div>
             )}

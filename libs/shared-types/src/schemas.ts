@@ -349,6 +349,7 @@ export const CreateCommentDtoSchema = z.object({
   targetId: z.string().min(1),
   content: z.string().max(5000),
   parentCommentId: z.string().optional(),
+  images: z.array(z.string().url()).optional(),
 });
 
 export const UpdateCommentDtoSchema = CreateCommentDtoSchema.partial();
@@ -497,6 +498,7 @@ export const VoteWithCommentDtoSchema = PolymorphicReferenceSchema.partial()
     walletAmount: z.number().int().min(0).optional(),
     comment: z.string().optional(),
     direction: z.enum(["up", "down"]).optional(),
+    images: z.array(z.string().url()).optional(),
   })
   .refine(
     (data) => {

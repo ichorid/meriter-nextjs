@@ -20,6 +20,7 @@ import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.hel
 import { uid } from 'uid';
 import { UserService } from './user.service';
 import { UserCommunityRoleService } from './user-community-role.service';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
 
 export interface CreateCommunityDto {
   name: string;
@@ -402,13 +403,13 @@ export class CommunityService {
   async isUserAdmin(communityId: string, userId: string): Promise<boolean> {
     // 1. Check global superadmin role
     const user = await this.userService.getUserById(userId);
-    if (user?.globalRole === 'superadmin') {
+    if (user?.globalRole === GLOBAL_ROLE_SUPERADMIN) {
       return true;
     }
 
     // 2. Check lead role in community
     const userRole = await this.userCommunityRoleService.getRole(userId, communityId);
-    if (userRole?.role === 'lead') {
+    if (userRole?.role === COMMUNITY_ROLE_LEAD) {
       return true;
     }
 

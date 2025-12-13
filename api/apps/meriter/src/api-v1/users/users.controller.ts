@@ -28,6 +28,7 @@ import { JwtService } from '../common/utils/jwt-service.util';
 import { UserSettingsService } from '../../domain/services/user-settings.service';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 
 @Controller('api/v1/users')
 @UseGuards(UserGuard)
@@ -464,7 +465,7 @@ export class UsersController {
   ) {
     // Check if requester is superadmin
     const requester = await this.userService.getUser(req.user.id);
-    if (requester?.globalRole !== 'superadmin') {
+    if (requester?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
       throw new ForbiddenError('Only superadmins can update global roles');
     }
 

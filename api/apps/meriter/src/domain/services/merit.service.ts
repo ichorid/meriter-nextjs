@@ -3,6 +3,7 @@ import { CommunityService } from './community.service';
 import { UserService } from './user.service';
 import { PermissionService } from './permission.service';
 import { WalletService } from './wallet.service';
+import { COMMUNITY_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
 
 /**
  * MeritService
@@ -30,7 +31,7 @@ export class MeritService {
     );
 
     // Superadmin always can
-    if (userRole === 'superadmin') return true;
+    if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
 
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
@@ -59,7 +60,7 @@ export class MeritService {
     );
 
     // Superadmin always can
-    if (userRole === 'superadmin') return true;
+    if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
 
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
@@ -144,7 +145,7 @@ export class MeritService {
     );
 
     // Only lead can see merit stats
-    if (userRole !== 'lead') {
+    if (userRole !== COMMUNITY_ROLE_LEAD) {
       return null;
     }
 

@@ -264,6 +264,7 @@ export const Comment: React.FC<CommentProps> = ({
                 beneficiaryAvatarUrl={recipientAvatar}
                 upvotes={voteDisplay.displayUpvotes}
                 downvotes={voteDisplay.displayDownvotes}
+                images={(rest as any).images || []}
                 onDetailsClick={() => setShowDetailsPopup(true)}
                 onClick={!isDetailPage ? () => {
                     // Navigate to the post page only when not on detail page

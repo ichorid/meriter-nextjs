@@ -158,6 +158,7 @@ export class VotesController {
     communityId: string,
     community: any,
     comment: string,
+    images?: string[],
   ): Promise<any> {
     // Validate that quota is not used for downvotes
     if (direction === 'down' && quotaAmount > 0) {
@@ -174,6 +175,7 @@ export class VotesController {
       direction,
       comment,
       communityId,
+      images,
     );
 
     // Deduct from wallet: only walletAmount is deducted from wallet balance
@@ -513,6 +515,9 @@ export class VotesController {
     if (!comment) {
       throw new BadRequestException(commentRequiredMessage);
     }
+    
+    // Get images from DTO
+    const images = (createDto as any).images || [];
 
     // Validate and process vote amounts (quotaAmount + walletAmount)
     const { quotaAmount, walletAmount, totalAmount, direction } =
@@ -537,6 +542,7 @@ export class VotesController {
       communityId,
       community,
       comment,
+      images,
     );
 
     return { vote, communityId, direction, absoluteAmount };

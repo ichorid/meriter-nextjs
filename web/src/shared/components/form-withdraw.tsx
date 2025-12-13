@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { etv } from '@shared/lib/input-utils';
-import Slider from "rc-slider";
+import { Slider, SliderTrack, SliderFilledTrack, SliderThumb } from '@gluestack-ui/themed';
 import { useTranslations } from 'next-intl';
 
 interface FormWithdrawProps {
@@ -42,15 +42,40 @@ export const FormWithdraw: React.FC<FormWithdrawProps> = ({
                 <div>
                     <div className="mb-4 px-2">
                         <Slider
-                            min={0}
-                            max={
+                            minValue={0}
+                            maxValue={
                                 isWithdrawal
                                     ? maxWithdrawAmount
                                     : maxTopUpAmount
                             }
                             value={amount}
-                            onChange={(value) => setAmount(typeof value === 'number' ? value : value[0] || 0)}
-                        />
+                            onChange={(value) => setAmount(value)}
+                        >
+                            <SliderTrack
+                                style={{
+                                    height: 6,
+                                    borderRadius: 8,
+                                    backgroundColor: 'var(--fallback-b3,oklch(var(--b3)/1))',
+                                }}
+                            >
+                                <SliderFilledTrack
+                                    style={{
+                                        height: 6,
+                                        borderRadius: 8,
+                                        backgroundColor: 'var(--fallback-p,oklch(var(--p)/1))',
+                                    }}
+                                />
+                            </SliderTrack>
+                            <SliderThumb
+                                style={{
+                                    width: 20,
+                                    height: 20,
+                                    borderRadius: 10,
+                                    backgroundColor: 'var(--fallback-bc,oklch(var(--bc)/1))',
+                                    boxShadow: '-2px 2px 8px rgba(0, 0, 0, 0.2)',
+                                }}
+                            />
+                        </Slider>
                     </div>
                     <div className="flex justify-end mt-4">
                         <button

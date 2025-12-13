@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { FormCommentVoteVertical } from "./form-comment-vote-vertical";
+import { VotingPanel } from '@/components/organisms/VotingPopup/VotingPanel';
 import { useTranslations } from 'next-intl';
 import { useToastStore } from '@/shared/stores/toast.store';
 
@@ -23,7 +23,11 @@ interface FormCommentProps {
     quotaAmount?: number;
     walletAmount?: number;
     quotaRemaining?: number;
+    dailyQuota?: number;
+    usedToday?: number;
     currencyIconUrl?: string;
+    images?: string[];
+    setImages?: (images: string[]) => void;
 }
 
 export const FormComment: React.FC<FormCommentProps> = ({
@@ -42,7 +46,11 @@ export const FormComment: React.FC<FormCommentProps> = ({
     quotaAmount = 0,
     walletAmount = 0,
     quotaRemaining = 0,
+    dailyQuota = 0,
+    usedToday = 0,
     currencyIconUrl,
+    images = [],
+    setImages,
 }) => {
     const t = useTranslations('comments');
     const addToast = useToastStore((state) => state.addToast);
@@ -97,22 +105,23 @@ export const FormComment: React.FC<FormCommentProps> = ({
                 </div>
             </div>
         ) : (
-            <FormCommentVoteVertical
-                key={uid}
-                comment={comment}
-                setComment={setComment}
+            <VotingPanel
+                onClose={onClose}
                 amount={amount}
                 setAmount={setAmount}
-                freePlus={free}
-                freeMinus={0}
+                comment={comment}
+                setComment={setComment}
+                onSubmit={(directionPlus: boolean) => commentAdd(directionPlus)}
                 maxPlus={maxPlus}
                 maxMinus={maxMinus}
-                commentAdd={commentAdd}
-                error={error}
-                quotaAmount={quotaAmount}
-                walletAmount={walletAmount}
                 quotaRemaining={quotaRemaining}
-                currencyIconUrl={currencyIconUrl}
+                dailyQuota={dailyQuota || (quotaRemaining + (walletAmount || 0))}
+                usedToday={usedToday}
+                error={error}
+                isViewer={false}
+                inline={true}
+                images={images}
+                onImagesChange={setImages}
             />
         )}
     </div>

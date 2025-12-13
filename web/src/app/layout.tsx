@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
@@ -19,6 +19,13 @@ import { getEnabledProviders } from '@/lib/utils/oauth-providers';
 export const metadata: Metadata = {
     title: 'Meriter',
     description: 'Merit-based community platform',
+};
+
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1.0,
+    maximumScale: 1.0,
+    userScalable: false,
 };
 
 

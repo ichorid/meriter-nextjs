@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles, useCanCreateCommunity } from "@/hooks/api/useProfile";
 import { useCommunityInvites } from "@/hooks/api/useInvites";
 import { useUserProfile } from "@/hooks/api/useUsers";
-import { HashtagInput } from "@/shared/components/HashtagInput";
+import { HashtagInput } from "@/shared/components/hashtag-input";
 import { IconPicker } from "@/shared/components/iconpicker";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { BrandInput } from "@/components/ui/BrandInput";

@@ -20,6 +20,7 @@ import { WalletService } from '../../domain/services/wallet.service';
 import { User } from '../../decorators/user.decorator';
 import { UserGuard } from '../../user.guard';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../../domain/common/constants/roles.constants';
 import { ApiResponseHelper } from '../common/helpers/api-response.helper';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import { z } from 'zod';
@@ -72,7 +73,7 @@ export class InvitesController {
 
     // If superadmin is creating an invite from a special community (marathon-of-good or future-vision),
     // it must always be a superadmin-to-lead invite
-    if (user.globalRole === 'superadmin' && finalCommunityId) {
+    if (user.globalRole === GLOBAL_ROLE_SUPERADMIN && finalCommunityId) {
       const community = await this.communityService.getCommunity(finalCommunityId);
       if (community && (community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision')) {
         if (dto.type !== 'superadmin-to-lead') {
@@ -86,7 +87,7 @@ export class InvitesController {
     // Check permissions based on invite type
     if (dto.type === 'superadmin-to-lead') {
       // Only superadmin can create superadmin-to-lead invites
-      if (user.globalRole !== 'superadmin') {
+      if (user.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
         throw new ForbiddenException(
           'Only superadmin can create superadmin-to-lead invites',
         );
@@ -124,7 +125,7 @@ export class InvitesController {
           user.id,
           finalCommunityId,
         );
-        if (userRole !== 'lead' && user.globalRole !== 'superadmin') {
+        if (userRole !== COMMUNITY_ROLE_LEAD && user.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
           throw new ForbiddenException(
             'Only lead or superadmin can create lead-to-participant invites',
           );
@@ -169,8 +170,8 @@ export class InvitesController {
     const isAdmin = await this.communityService.isUserAdmin(
       communityId,
       user.id,
-    );
-    if (!isAdmin && user.globalRole !== 'superadmin') {
+      );
+    if (!isAdmin && user.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
       throw new ForbiddenException(
         'Only administrators can view community invites',
       );

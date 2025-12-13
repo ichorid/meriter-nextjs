@@ -50,6 +50,7 @@ export class Publication implements EditableEntity {
     private hashtags: string[],
     private metrics: Metrics,
     private readonly imageUrl: string | null,
+    private readonly images: string[],
     private readonly videoUrl: string | null,
     private readonly postType: 'basic' | 'poll' | 'project',
     private readonly isProject: boolean,
@@ -68,6 +69,7 @@ export class Publication implements EditableEntity {
       beneficiaryId?: UserId;
       hashtags?: string[];
       imageUrl?: string;
+      images?: string[];
       videoUrl?: string;
       postType?: 'basic' | 'poll' | 'project';
       isProject?: boolean;
@@ -76,6 +78,8 @@ export class Publication implements EditableEntity {
     } = {},
   ): Publication {
     const publicationContent = PublicationContent.create(content);
+    // Support both legacy imageUrl and new images array
+    const images = options.images || (options.imageUrl ? [options.imageUrl] : []);
 
     return new Publication(
       PublicationId.generate(),
@@ -87,6 +91,7 @@ export class Publication implements EditableEntity {
       options.hashtags || [],
       Metrics.zero(),
       options.imageUrl || null,
+      images,
       options.videoUrl || null,
       options.postType || 'basic',
       options.isProject || false,
@@ -98,6 +103,9 @@ export class Publication implements EditableEntity {
   }
 
   static fromSnapshot(snapshot: PublicationSnapshot): Publication {
+    // Support both legacy imageUrl and new images array
+    const images = snapshot.images || (snapshot.imageUrl ? [snapshot.imageUrl] : []);
+    
     return new Publication(
       PublicationId.fromString(snapshot.id),
       CommunityId.fromString(snapshot.communityId),
@@ -108,6 +116,7 @@ export class Publication implements EditableEntity {
       snapshot.hashtags,
       Metrics.fromSnapshot(snapshot.metrics),
       snapshot.imageUrl || null,
+      images,
       snapshot.videoUrl || null,
       snapshot.postType || 'basic',
       snapshot.isProject || false,
@@ -211,6 +220,14 @@ export class Publication implements EditableEntity {
     return this.description;
   }
 
+  get getImageUrl(): string | null {
+    return this.imageUrl;
+  }
+
+  get getImages(): string[] {
+    return this.images;
+  }
+
   // Serialization
   toSnapshot(): PublicationSnapshot {
     return {
@@ -223,6 +240,7 @@ export class Publication implements EditableEntity {
       hashtags: [...this.hashtags],
       metrics: this.metrics.toSnapshot(),
       imageUrl: this.imageUrl || undefined,
+      images: this.images.length > 0 ? this.images : undefined,
       videoUrl: this.videoUrl || undefined,
       postType: this.postType,
       isProject: this.isProject,

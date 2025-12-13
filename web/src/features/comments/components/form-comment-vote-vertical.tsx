@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
 import { memo } from "react";
-import { FormCommentVoteBase } from './form-comment-vote-base';
+import { FormCommentVoteBase } from "./form-comment-vote-base";
 
 interface iFormCommentVoteVerticalProps {
     comment: string;
@@ -22,8 +22,10 @@ interface iFormCommentVoteVerticalProps {
     currencyIconUrl?: string;
 }
 
-export const FormCommentVoteVertical = memo((props: iFormCommentVoteVerticalProps) => {
-    return <FormCommentVoteBase {...props} orientation="vertical" />;
-});
+export const FormCommentVoteVertical = memo(
+    (props: iFormCommentVoteVerticalProps) => {
+        return <FormCommentVoteBase {...props} />;
+    }
+);
 
-FormCommentVoteVertical.displayName = 'FormCommentVoteVertical';
+FormCommentVoteVertical.displayName = "FormCommentVoteVertical";

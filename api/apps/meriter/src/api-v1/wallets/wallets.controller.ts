@@ -32,6 +32,7 @@ import {
   CommunityDocument,
 } from '../../domain/models/community/community.schema';
 import { User, UserDocument } from '../../domain/models/user/user.schema';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_VIEWER } from '../../domain/common/constants/roles.constants';
 
 @Controller('api/v1')
 @UseGuards(UserGuard)
@@ -68,7 +69,7 @@ export class WalletsController {
     }
 
     // Check if user is superadmin
-    const isSuperadmin = user.globalRole === 'superadmin';
+    const isSuperadmin = user.globalRole === GLOBAL_ROLE_SUPERADMIN;
 
     let userCommunities: any[];
 
@@ -264,7 +265,7 @@ export class WalletsController {
     // Viewers get zero quota in all communities EXCEPT marathon-of-good (where they can vote with quota)
     // Future Vision communities don't use quota regardless of role
     if (
-      (userRole === 'viewer' && community.typeTag !== 'marathon-of-good') ||
+      (userRole === COMMUNITY_ROLE_VIEWER && community.typeTag !== 'marathon-of-good') ||
       community.typeTag === 'future-vision'
     ) {
       // Viewers (except in marathon-of-good) and Future Vision users have no quota

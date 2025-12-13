@@ -70,6 +70,9 @@
         "deleteConfirmation": {
             "title": "Confirm Deletion",
             "message": "Are you sure you want to delete this {itemType}? This action cannot be undone."
+        },
+        "ariaLabels": {
+            "settings": "Settings"
         }
     },
     "home": {
@@ -391,6 +394,7 @@
         "downvoteQuota": "Vote negatively for {used}/{total} daily quota",
         "downvoteBalance": "Vote negatively for {amount} from Balance",
         "sliderHint": "Move the slider to choose the number of votes you want to give.",
+        "noVotesAvailable": "No votes available",
         "adjustSliderToVote": "Adjust slider to vote",
         "addCommentOptional": "Add a comment (optional)",
         "commentHint": "Tell us why you gave this rating. We value your opinion",

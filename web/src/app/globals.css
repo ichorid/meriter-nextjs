@@ -3,7 +3,6 @@
 @tailwind utilities;
 
 /* Keep essential third-party imports */
-@import 'rc-slider/assets/index.css';
 @import '@telegram-apps/telegram-ui/dist/styles.css';
 
 @layer base {
@@ -504,46 +503,6 @@
   }
 }
 
-/* rc-slider dark mode support */
-[data-theme="dark"] .rc-slider-rail {
-  background-color: var(--base-300) !important;
-}
-
-[data-theme="dark"] .rc-slider-track {
-  background-color: var(--base-content) !important;
-}
-
-[data-theme="dark"] .rc-slider-handle {
-  background-color: var(--base-content) !important;
-  border-color: var(--base-content) !important;
-}
-
-[data-theme="dark"] .rc-slider-handle:hover {
-  border-color: var(--base-content) !important;
-}
-
-[data-theme="dark"] .rc-slider-handle:active {
-  border-color: var(--base-content) !important;
-  box-shadow: 0 0 5px var(--base-content) !important;
-}
-
-[data-theme="dark"] .rc-slider-handle-dragging {
-  border-color: var(--base-content) !important;
-  box-shadow: 0 0 5px var(--base-content) !important;
-}
-
-[data-theme="dark"] .rc-slider-vertical .rc-slider-rail {
-  background-color: var(--base-300) !important;
-}
-
-[data-theme="dark"] .rc-slider-vertical .rc-slider-track {
-  background-color: var(--base-content) !important;
-}
-
-[data-theme="dark"] .rc-slider-vertical .rc-slider-handle {
-  background-color: var(--base-content) !important;
-  border-color: var(--base-content) !important;
-}
 
 /* Daily Quota Ring Styles */
 .daily-quota-ring {

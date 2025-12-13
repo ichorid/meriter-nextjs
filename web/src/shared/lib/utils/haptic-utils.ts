@@ -1,32 +1,38 @@
 /**
- * Utility functions for Telegram haptic feedback
- * Provides safe haptic feedback that only works in Telegram Mini App context
+ * Universal haptic feedback utility
+ * Works in any environment - silently fails if not available
  */
 
-import { hapticFeedback } from '@telegram-apps/sdk-react';
-
-/**
- * Safely triggers haptic feedback notification
- * Only works when running in Telegram Mini App context
- * Silently fails if called outside Telegram context or if haptic feedback is unavailable
- * 
- * @param type - Type of notification ('success' | 'error' | 'warning')
- * @param isInTelegram - Whether the app is running in Telegram Mini App context
- */
-export function safeHapticFeedback(
-  type: 'success' | 'error' | 'warning',
-  isInTelegram: boolean
-): void {
-  if (!isInTelegram) {
-    return;
-  }
+export function hapticImpact(type: 'light' | 'medium' | 'heavy' | 'soft' | 'rigid' = 'light'): void {
+  if (typeof window === 'undefined') return;
   
   try {
-    hapticFeedback.notificationOccurred(type);
+    const tgWebApp = (window as any).Telegram?.WebApp;
+    if (tgWebApp?.HapticFeedback?.impactOccurred) {
+      tgWebApp.HapticFeedback.impactOccurred(type);
+    }
   } catch (error) {
-    // Silently fail - this is UX enhancement, not critical
-    // Haptic feedback is optional and shouldn't break the app
-    console.warn('Haptic feedback failed:', error);
+    // Silently fail - haptic feedback is optional
   }
 }
 
+export function hapticNotification(type: 'error' | 'success' | 'warning'): void {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const tgWebApp = (window as any).Telegram?.WebApp;
+    if (tgWebApp?.HapticFeedback?.notificationOccurred) {
+      tgWebApp.HapticFeedback.notificationOccurred(type);
+    }
+  } catch (error) {
+    // Silently fail - haptic feedback is optional
+  }
+}
+
+// Legacy export for backward compatibility
+export function safeHapticFeedback(
+  type: 'success' | 'error' | 'warning',
+  _isInTelegram: boolean // Deprecated parameter, kept for compatibility
+): void {
+  hapticNotification(type);
+}

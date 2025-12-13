@@ -23,6 +23,7 @@ import { QuotaResetService } from '../../domain/services/quota-reset.service';
 import { UserGuard } from '../../user.guard';
 import { User } from '../../decorators/user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_VIEWER, COMMUNITY_ROLE_LEAD } from '../../domain/common/constants/roles.constants';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import {
   NotFoundError,
@@ -85,7 +86,7 @@ export class CommunitiesController {
     const skip = PaginationHelper.getSkip(pagination);
 
     // Superadmins can see all communities
-    if (user.globalRole === 'superadmin') {
+    if (user.globalRole === GLOBAL_ROLE_SUPERADMIN) {
     const result = await this.communityService.getAllCommunities(
         pagination.limit || 20,
         skip,
@@ -213,13 +214,13 @@ export class CommunitiesController {
 
     // Check if user is a viewer - viewers cannot create communities
     const userRoles = await this.userCommunityRoleService.getUserRoles(req.user.id);
-    const hasViewerRole = userRoles.some(role => role.role === 'viewer');
+    const hasViewerRole = userRoles.some(role => role.role === COMMUNITY_ROLE_VIEWER);
     if (hasViewerRole) {
       throw new ForbiddenError('Viewer users cannot create communities');
     }
 
     // Only superadmin can set isPriority
-    const isSuperadmin = req.user.globalRole === 'superadmin';
+    const isSuperadmin = req.user.globalRole === GLOBAL_ROLE_SUPERADMIN;
     if (createDto.isPriority && !isSuperadmin) {
       throw new ForbiddenError('Only superadmin can set community priority');
     }
@@ -293,7 +294,7 @@ export class CommunitiesController {
     @Req() req: any,
   ): Promise<Community> {
     const isAdmin = await this.communityService.isUserAdmin(id, req.user.id);
-    const isSuperadmin = req.user.globalRole === 'superadmin';
+    const isSuperadmin = req.user.globalRole === GLOBAL_ROLE_SUPERADMIN;
 
     if (!isAdmin && !isSuperadmin) {
       throw new ForbiddenError(
@@ -362,14 +363,14 @@ export class CommunitiesController {
   @Post(':id/reset-quota')
   async resetDailyQuota(@Param('id') id: string, @Req() req: any) {
     // Check if user is superadmin (can reset quota in any community)
-    const isSuperadmin = req.user.globalRole === 'superadmin';
+    const isSuperadmin = req.user.globalRole === GLOBAL_ROLE_SUPERADMIN;
     
     // Check if user has lead role in this community
     const userRole = await this.permissionService.getUserRoleInCommunity(
       req.user.id,
       id,
     );
-    const isLead = userRole === 'lead';
+    const isLead = userRole === COMMUNITY_ROLE_LEAD;
 
     // Only superadmin or lead can reset daily quota
     if (!isSuperadmin && !isLead) {

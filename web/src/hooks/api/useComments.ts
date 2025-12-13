@@ -121,6 +121,10 @@ export const useCreateComment = createMutation<Comment, CreateCommentDto>({
         comments: {
             lists: true,
             exact: false,
+            byPublication: (result: Comment, variables: CreateCommentDto) => 
+                variables.targetType === 'publication' ? variables.targetId : undefined,
+            byComment: (result: Comment, variables: CreateCommentDto) => 
+                variables.targetType === 'comment' ? variables.targetId : undefined,
         },
     },
     setQueryData: {

@@ -119,7 +119,7 @@ export class UserCommunityRoleService {
             await this.communityService.getCommunityByTypeTag(pairedTypeTag);
           if (pairedCommunity) {
             // Only sync 'lead' role changes
-            if (role === 'lead') {
+            if (role === COMMUNITY_ROLE_LEAD) {
               // User is becoming lead - set lead in paired community
               this.logger.log(
                 `Syncing lead status: User ${userId} is now lead in ${community.typeTag}, setting lead in ${pairedTypeTag}`,
@@ -130,7 +130,7 @@ export class UserCommunityRoleService {
                 'lead',
                 true, // Skip sync to prevent recursion
               );
-            } else if (previousRole === 'lead') {
+            } else if (previousRole === COMMUNITY_ROLE_LEAD) {
               // User was lead and is now changing to another role - sync the change
               this.logger.log(
                 `Syncing role change: User ${userId} changed from lead to ${role} in ${community.typeTag}, updating ${pairedTypeTag}`,
