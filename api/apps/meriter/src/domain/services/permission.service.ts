@@ -222,10 +222,14 @@ export class PermissionService {
     const authorId = publication.getAuthorId.getValue();
     this.logger.log(`[canVote] Publication: communityId=${communityId}, authorId=${authorId}`);
 
-    // STEP 3: SUPERADMIN CHECK - If superadmin, allow voting on all posts (including own posts)
+    // STEP 3: SUPERADMIN CHECK - If superadmin, allow voting on all posts EXCEPT own posts
     if (isSuperadmin) {
       this.logger.log(`[canVote] SUPERADMIN DETECTED`);
-      this.logger.log(`[canVote] Superadmin ALLOWED to vote on any post (including own posts)`);
+      if (authorId === userId) {
+        this.logger.log(`[canVote] Superadmin DENIED: cannot vote for own post`);
+        return false;
+      }
+      this.logger.log(`[canVote] Superadmin ALLOWED: voting for another user's post`);
       return true;
     }
 

@@ -33,22 +33,24 @@ describe('ConfigController', () => {
       delete process.env.BOT_USERNAME;
     });
 
-    it('should throw error when BOT_USERNAME is not set', () => {
+    it('should return null when BOT_USERNAME is not set', () => {
       const originalBotUsername = process.env.BOT_USERNAME;
       delete process.env.BOT_USERNAME;
       
-      expect(() => configController.getConfig()).toThrow(HttpException);
+      const result = configController.getConfig();
+      expect(result).toEqual({ botUsername: null });
       
       if (originalBotUsername) {
         process.env.BOT_USERNAME = originalBotUsername;
       }
     });
 
-    it('should throw error when BOT_USERNAME is empty string', () => {
+    it('should return null when BOT_USERNAME is empty string', () => {
       const originalBotUsername = process.env.BOT_USERNAME;
       process.env.BOT_USERNAME = '';
       
-      expect(() => configController.getConfig()).toThrow(HttpException);
+      const result = configController.getConfig();
+      expect(result).toEqual({ botUsername: null });
       
       if (originalBotUsername) {
         process.env.BOT_USERNAME = originalBotUsername;
@@ -57,11 +59,12 @@ describe('ConfigController', () => {
       }
     });
 
-    it('should throw error when BOT_USERNAME is only whitespace', () => {
+    it('should return null when BOT_USERNAME is only whitespace', () => {
       const originalBotUsername = process.env.BOT_USERNAME;
       process.env.BOT_USERNAME = '   ';
       
-      expect(() => configController.getConfig()).toThrow(HttpException);
+      const result = configController.getConfig();
+      expect(result).toEqual({ botUsername: null });
       
       if (originalBotUsername) {
         process.env.BOT_USERNAME = originalBotUsername;
