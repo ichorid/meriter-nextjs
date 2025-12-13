@@ -8,6 +8,9 @@ inputs:
   vps-host:
     description: 'VPS host address'
     required: true
+  commit-sha:
+    description: 'Short commit SHA for image tag'
+    required: false
 
 runs:
   using: 'composite'
@@ -27,9 +30,11 @@ runs:
       shell: bash
       env:
         VPS_HOST: ${{ inputs.vps-host }}
+        COMMIT_SHA: ${{ inputs.commit-sha }}
       run: |
-        ssh "deploy@$VPS_HOST" <<'EOF'
+        ssh "deploy@$VPS_HOST" <<EOF
           cd /opt/meriter
+          export COMMIT_SHA="$COMMIT_SHA"
           ./deploy.sh
         EOF
 

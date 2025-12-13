@@ -55,6 +55,7 @@ jobs:
       run_prod_deploy: ${{ steps.target.outputs.run_prod_deploy }}
       web_version: ${{ steps.versions.outputs.web_version }}
       api_version: ${{ steps.versions.outputs.api_version }}
+      commit_sha: ${{ steps.sha.outputs.short_sha }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -93,6 +94,12 @@ jobs:
           echo "api_version=$API_VERSION" >> "$GITHUB_OUTPUT"
           echo "Web version: $WEB_VERSION"
           echo "API version: $API_VERSION"
+      - id: sha
+        if: steps.target.outputs.build_type != ''
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "Short SHA: $SHORT_SHA"
 
   build-images:
     name: Build and push ${{ matrix.component }} image
@@ -126,6 +133,7 @@ jobs:
           COMPONENT="${{ matrix.component }}"
           BUILD_TYPE="${{ needs.determine-target.outputs.build_type }}"
           IMAGE_NAME="${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.component }}"
+          SHORT_SHA="${{ needs.determine-target.outputs.commit_sha }}"
 
           echo "image_name=${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
           if [[ "${{ github.event_name }}" == "push" && "$BUILD_TYPE" != "" ]]; then
@@ -138,7 +146,8 @@ jobs:
               if [ "$COMPONENT" = "api" ]; then
                 VERSION="${{ needs.determine-target.outputs.api_version }}"
               fi
-              TAGS_MULTILINE="type=raw,value=v${VERSION}"$'\n'"type=raw,value=latest"$'\n'"type=sha"
+              SHA_TAG="sha-${SHORT_SHA}"
+              TAGS_MULTILINE="type=raw,value=v${VERSION}"$'\n'"type=raw,value=latest"$'\n'"type=raw,value=${SHA_TAG}"$'\n'"type=sha"
             fi
             
             {
@@ -188,11 +197,13 @@ jobs:
             if [ "$COMPONENT" = "api" ]; then
               VERSION="${{ needs.determine-target.outputs.api_version }}"
             fi
+            SHORT_SHA="${{ needs.determine-target.outputs.commit_sha }}"
             echo "**Version:** v${VERSION}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Images:**" >> $GITHUB_STEP_SUMMARY
             echo "- \`${IMAGE_NAME}:v${VERSION}\`" >> $GITHUB_STEP_SUMMARY
             echo "- \`${IMAGE_NAME}:latest\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`${IMAGE_NAME}:sha-${SHORT_SHA}\`" >> $GITHUB_STEP_SUMMARY
           fi
 
   deploy-dev:
@@ -234,6 +245,7 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
           vps-host: ${{ secrets.VPS_HOST }}
+          commit-sha: ${{ needs.determine-target.outputs.commit_sha }}
 
   deploy-prod:
     name: Deploy to production server
@@ -252,3 +264,4 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
           vps-host: ${{ secrets.VPS_HOST }}
+          commit-sha: ${{ needs.determine-target.outputs.commit_sha }}
