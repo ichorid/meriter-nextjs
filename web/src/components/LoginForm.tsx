@@ -1,203 +1,246 @@
 /**
  * Centralized Login Form Component
- * 
- * Handles all authentication methods:
- * - Telegram widget authentication
- * - Telegram Web App authentication
+ *
+ * Handles authentication methods:
+ * - Multiple OAuth providers (Google, Yandex, VK, Telegram, Apple, Twitter, Instagram, Sber)
+ * - Fake authentication (development mode)
  * - Error handling and loading states
  */
 
-'use client';
+"use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useTranslations } from 'next-intl';
-import { useAuth } from '@/contexts/AuthContext';
-import { useBotConfig } from '@/contexts/BotConfigContext';
-import { LoadingState } from '@/components/atoms/LoadingState';
-import { ErrorDisplay } from '@/components/atoms/ErrorDisplay';
-import { useTelegramWebApp } from '@/hooks/useTelegramWebApp';
-import { handleAuthRedirect } from '@/lib/utils/auth';
-import { getErrorMessage } from '@/lib/api/errors';
-import { authApiV1 } from '@/lib/api/v1';
-import { isFakeDataMode } from '@/config';
-import type { TelegramUser } from '@/types/telegram';
+import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import * as LucideIcons from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { LoadingState } from "@/components/atoms/LoadingState";
+import { handleAuthRedirect } from "@/lib/utils/auth";
+import { getErrorMessage } from "@/lib/api/errors";
+import { isFakeDataMode, config } from "@/config";
+import {
+    OAUTH_PROVIDERS,
+    getOAuthUrl,
+    type OAuthProvider,
+} from "@/lib/utils/oauth-providers";
+import {
+    BrandButton,
+    BrandInput,
+    BrandFormControl,
+    Logo,
+} from "@/components/ui";
+import { useToastStore } from "@/shared/stores/toast.store";
 
 interface LoginFormProps {
-  className?: string;
+    className?: string;
+    enabledProviders?: string[];
 }
 
-export function LoginForm({ className = '' }: LoginFormProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const t = useTranslations('login');
-  const { botUsername } = useBotConfig();
-  const { initData, isInTelegram } = useTelegramWebApp();
-  const fakeDataMode = isFakeDataMode();
-  
-  const { 
-    authenticateWithTelegram, 
-    authenticateWithTelegramWebApp,
-    authenticateFakeUser,
-    isLoading, 
-    authError, 
-    setAuthError,
-    handleDeepLink 
-  } = useAuth();
-  
-  const [webAppAuthAttempted, setWebAppAuthAttempted] = useState(false);
-  const [cookiesCleared, setCookiesCleared] = useState(false);
-  const telegramWidgetRef = useRef<HTMLDivElement>(null);
-  
-  // Get return URL
-  const returnTo = searchParams?.get('returnTo');
-  
-  // Clear old cookies on page load for external browsers (not in Telegram)
-  // This handles stale cookies with mismatched attributes from previous sessions
-  useEffect(() => {
-    if (!isInTelegram && !cookiesCleared && !fakeDataMode) {
-      setCookiesCleared(true);
-      authApiV1.clearCookies().catch((error) => {
-        // Silently fail - cookies may not exist or clearing may fail
-        // This is not critical for the login flow
-        console.debug('Cookie clearing failed (non-critical):', error);
-      });
-    }
-  }, [isInTelegram, cookiesCleared, fakeDataMode]);
-  
-  // Auto-authenticate with Telegram Web App (only if not in fake mode)
-  useEffect(() => {
-    if (!fakeDataMode && isInTelegram && initData && !webAppAuthAttempted) {
-      setWebAppAuthAttempted(true);
-      
-      const performWebAppAuth = async () => {
-        try {
-          await authenticateWithTelegramWebApp(initData);
-          
-          handleAuthRedirect(returnTo);
-        } catch (error: unknown) {
-          const message = getErrorMessage(error);
-          console.error('❌ Telegram Web App authentication failed:', error);
-          setAuthError(message);
-        }
-      };
-      
-      performWebAppAuth();
-    }
-  }, [fakeDataMode, isInTelegram, initData, webAppAuthAttempted, authenticateWithTelegramWebApp, returnTo, setAuthError]);
-  
-  // Handle Telegram widget authentication
-  const handleTelegramAuth = async (telegramUser: unknown) => {
-    try {
-      await authenticateWithTelegram(telegramUser as TelegramUser);
-      
-      handleAuthRedirect(returnTo);
-    } catch (error: unknown) {
-      const message = getErrorMessage(error);
-      console.error('❌ Telegram widget authentication failed:', error);
-      setAuthError(message);
-    }
-  };
+export function LoginForm({
+    className = "",
+    enabledProviders,
+}: LoginFormProps) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const t = useTranslations("login");
+    const tReg = useTranslations("registration");
+    const fakeDataMode = isFakeDataMode();
 
-  // Handle fake authentication
-  const handleFakeAuth = async () => {
-    try {
-      await authenticateFakeUser();
-      
-      handleAuthRedirect(returnTo);
-    } catch (error: unknown) {
-      const message = getErrorMessage(error);
-      console.error('❌ Fake authentication failed:', error);
-      setAuthError(message);
-    }
-  };
-  
-  // Set up Telegram widget (only if not in fake mode)
-  useEffect(() => {
-    if (!fakeDataMode && telegramWidgetRef.current && botUsername) {
-      // Clear existing widget
-      telegramWidgetRef.current.innerHTML = '';
-      
-      // Create new widget
-      const script = document.createElement('script');
-      script.src = 'https://telegram.org/js/telegram-widget.js?22';
-      script.setAttribute('data-telegram-login', botUsername);
-      script.setAttribute('data-size', 'large');
-      script.setAttribute('data-onauth', 'onTelegramAuth(user)');
-      script.setAttribute('data-request-access', 'write');
-      script.async = true;
-      
-      telegramWidgetRef.current.appendChild(script);
-      
-      // Set up global callback
-      (window as any).onTelegramAuth = handleTelegramAuth;
-    }
-  }, [fakeDataMode, botUsername, handleTelegramAuth]);
-  
-  return (
-    <div className={`login-form ${className}`}>
-      <div className="card bg-base-100 shadow-xl max-w-md mx-auto">
-        <div className="card-body">
-          <h2 className="card-title justify-center mb-4">
-            {t('title')}
-          </h2>
-          
-          {authError && (
-            <ErrorDisplay
-              title="Authentication Error"
-              message={authError}
-              variant="alert"
-              className="mb-4"
-            />
-          )}
-          
-          {isLoading && (
-            <LoadingState text="Authenticating..." className="py-8" />
-          )}
-          
-          {!isLoading && (
-            <div className="space-y-4">
-              {fakeDataMode ? (
-                <div className="text-center">
-                  <p className="text-sm text-base-content/70 mb-4">
-                    Fake Data Mode Enabled
-                  </p>
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleFakeAuth}
-                    disabled={isLoading}
-                  >
-                    Fake Login
-                  </button>
-                </div>
-              ) : isInTelegram ? (
-                <div className="text-center">
-                  <p className="text-sm text-base-content/70 mb-4">
-                    {t('telegramWebApp.detected')}
-                  </p>
-                  <LoadingState size="md" />
-                </div>
-              ) : (
-                <div className="text-center">
-                  <p className="text-sm text-base-content/70 mb-4">
-                    {t('telegramWidget.instructions')}
-                  </p>
-                  <div ref={telegramWidgetRef} className="flex justify-center"></div>
-                </div>
-              )}
+    const { authenticateFakeUser, authenticateFakeSuperadmin, isLoading, authError, setAuthError } =
+        useAuth();
+    const addToast = useToastStore((state) => state.addToast);
+
+    // Get return URL and invite code from URL
+    const returnTo = searchParams?.get("returnTo");
+    const inviteCodeFromUrl = searchParams?.get("invite");
+    const [inviteCode, setInviteCode] = useState(inviteCodeFromUrl || "");
+
+    // Filter providers if enabledProviders is passed
+    const displayedProviders = enabledProviders
+        ? OAUTH_PROVIDERS.filter((p) => enabledProviders.includes(p.id))
+        : OAUTH_PROVIDERS;
+
+    // Show auth error toast when error changes
+    useEffect(() => {
+        if (authError) {
+            addToast(authError, "error");
+        }
+    }, [authError, addToast]);
+
+    // Helper function to construct redirect URL with invite code
+    const buildRedirectUrl = (): string => {
+        let returnToPath = returnTo || "/meriter/profile";
+
+        // If invite code is present, ensure we redirect to /meriter/profile with invite query param
+        if (inviteCode.trim()) {
+            const url = new URL("/meriter/profile", window.location.origin);
+            url.searchParams.set("invite", inviteCode.trim());
+            // Preserve returnTo as a query param if it was specified and different
+            if (returnTo && returnTo !== "/meriter/profile") {
+                url.searchParams.set("returnTo", returnTo);
+            }
+            returnToPath = url.pathname + url.search;
+        }
+
+        return returnToPath;
+    };
+
+    // Handle fake authentication
+    const handleFakeAuth = async () => {
+        try {
+            await authenticateFakeUser();
+            const redirectUrl = buildRedirectUrl();
+            window.location.href = redirectUrl;
+        } catch (error: unknown) {
+            const message = getErrorMessage(error);
+            console.error("❌ Fake authentication failed:", error);
+            setAuthError(message);
+            addToast(message, "error");
+        }
+    };
+
+    // Handle fake superadmin authentication
+    const handleFakeSuperadminAuth = async () => {
+        try {
+            await authenticateFakeSuperadmin();
+            const redirectUrl = buildRedirectUrl();
+            window.location.href = redirectUrl;
+        } catch (error: unknown) {
+            const message = getErrorMessage(error);
+            console.error("❌ Fake superadmin authentication failed:", error);
+            setAuthError(message);
+            addToast(message, "error");
+        }
+    };
+
+    // Handle OAuth provider authentication
+    const handleOAuthAuth = (providerId: string) => {
+        const returnToPath = buildRedirectUrl();
+        const oauthUrl = getOAuthUrl(providerId, returnToPath);
+        window.location.href = oauthUrl;
+    };
+
+    // Render OAuth provider icon
+    const renderProviderIcon = (provider: OAuthProvider) => {
+        const IconComponent = LucideIcons[
+            provider.icon
+        ] as React.ComponentType<{ className?: string; size?: number }>;
+        if (!IconComponent) {
+            return <LucideIcons.LogIn className="w-5 h-5" />;
+        }
+        return <IconComponent className="w-5 h-5" />;
+    };
+
+    return (
+        <div className={`w-full max-w-md mx-auto ${className}`}>
+            <div className="text-center mt-8 mb-24">
+                <h1 className="text-xl font-normal text-base-content flex justify-center items-center gap-4">
+                    <Logo size={40} className="text-base-content" />
+                    <span>{t("siteTitle")}</span>
+                </h1>
             </div>
-          )}
-          
-          <div className="card-actions justify-center mt-6">
-            <button 
-              className="btn btn-outline btn-sm"
-              onClick={() => router.push('/')}
-            >
-              {t('backToHome')}
-            </button>
-          </div>
+            <div className="mb-4">
+                <h2 className="text-2xl font-bold text-base-content text-left mb-6">
+                    {t("title")}
+                </h2>
+            </div>
+
+            <div className="space-y-4 mb-4">
+                {/* Invite Code Input */}
+                {config.features.loginInviteForm && (
+                    <BrandFormControl
+                        label={tReg('inviteCodeLabel')}
+                        helperText={tReg('inviteDescription')}
+                    >
+                        <BrandInput
+                            value={inviteCode}
+                            onChange={(e) => setInviteCode(e.target.value)}
+                            placeholder={tReg('inviteCodePlaceholder')}
+                            autoCapitalize="none"
+                            autoComplete="off"
+                        />
+                    </BrandFormControl>
+                )}
+
+                <p className="text-sm text-base-content/70 mb-8">
+                    {t("subtitle")}
+                </p>
+
+                {isLoading && <LoadingState text={t("authenticating")} />}
+
+                {!isLoading && (
+                    <div className="space-y-4">
+                        {fakeDataMode ? (
+                            <div className="space-y-4 text-center">
+                                <p className="text-sm text-base-content bg-warning/10 p-2 rounded-lg border border-warning/20">
+                                    {t("fakeDataModeEnabled")}
+                                </p>
+                                <BrandButton
+                                    variant="primary"
+                                    size="lg"
+                                    fullWidth
+                                    onClick={handleFakeAuth}
+                                    disabled={isLoading}
+                                >
+                                    {t("fakeLogin")}
+                                </BrandButton>
+                                <BrandButton
+                                    variant="outline"
+                                    size="lg"
+                                    fullWidth
+                                    onClick={handleFakeSuperadminAuth}
+                                    disabled={isLoading}
+                                    className="border-primary text-primary hover:bg-primary hover:text-primary-content"
+                                >
+                                    {t("superadminLogin")}
+                                </BrandButton>
+                            </div>
+                        ) : displayedProviders.length > 0 ? (
+                            <div className="space-y-3">
+                                {displayedProviders.map((provider) => (
+                                    <BrandButton
+                                        key={provider.id}
+                                        variant="outline"
+                                        size="md"
+                                        fullWidth
+                                        onClick={() =>
+                                            handleOAuthAuth(provider.id)
+                                        }
+                                        disabled={isLoading}
+                                        className="justify-start pl-6"
+                                    >
+                                        {t("signInWith", {
+                                            provider: provider.name,
+                                        })}
+                                    </BrandButton>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center p-4 bg-error/10 rounded-xl border border-error/20">
+                                <p className="text-sm text-error">
+                                    {t("noAuthenticationProviders")}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+            <div className="mt-8 text-left text-sm text-base-content/70">
+                {t("hint.agreeToTerms")}{" "}
+                <a
+                    href="#"
+                    className="font-medium text-base-content hover:text-brand-primary"
+                >
+                    {t("hint.termsOfService")}
+                </a>{" "}
+                {t("hint.and")}{" "}
+                <a
+                    href="#"
+                    className="font-medium text-base-content hover:text-brand-primary"
+                >
+                    {t("hint.personalData")}
+                </a>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 }

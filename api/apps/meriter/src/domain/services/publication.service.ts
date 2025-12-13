@@ -1,10 +1,23 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { Publication } from '../aggregates/publication/publication.entity';
-import { Publication as PublicationSchema, PublicationDocument } from '../models/publication/publication.schema';
-import { PublicationId, UserId, CommunityId, PublicationContent } from '../value-objects';
-import { PublicationCreatedEvent, PublicationVotedEvent } from '../events';
+import {
+  Publication as PublicationSchema,
+  PublicationDocument,
+} from '../models/publication/publication.schema';
+import {
+  PublicationId,
+  UserId,
+  CommunityId,
+  PublicationContent,
+} from '../value-objects';
+import { PublicationCreatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { PublicationDocument as IPublicationDocument } from '../../common/interfaces/publication-document.interface';
 
@@ -16,6 +29,10 @@ export interface CreatePublicationDto {
   hashtags?: string[];
   imageUrl?: string;
   videoUrl?: string;
+  postType?: 'basic' | 'poll' | 'project';
+  isProject?: boolean;
+  title?: string;
+  description?: string;
 }
 
 @Injectable()
@@ -23,13 +40,19 @@ export class PublicationService {
   private readonly logger = new Logger(PublicationService.name);
 
   constructor(
-    @InjectModel(PublicationSchema.name) private publicationModel: Model<PublicationDocument>,
+    @InjectModel(PublicationSchema.name)
+    private publicationModel: Model<PublicationDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
   ) {}
 
-  async createPublication(userId: string, dto: CreatePublicationDto): Promise<Publication> {
-    this.logger.log(`Creating publication: user=${userId}, community=${dto.communityId}`);
+  async createPublication(
+    userId: string,
+    dto: CreatePublicationDto,
+  ): Promise<Publication> {
+    this.logger.log(
+      `Creating publication: user=${userId}, community=${dto.communityId}`,
+    );
 
     // Validate using value objects
     const authorId = UserId.fromString(userId);
@@ -42,22 +65,38 @@ export class PublicationService {
       dto.content,
       dto.type,
       {
-        beneficiaryId: dto.beneficiaryId ? UserId.fromString(dto.beneficiaryId) : undefined,
+        beneficiaryId: dto.beneficiaryId
+          ? UserId.fromString(dto.beneficiaryId)
+          : undefined,
         hashtags: dto.hashtags,
         imageUrl: dto.imageUrl,
         videoUrl: dto.videoUrl,
-      }
+      },
     );
 
     // Save to database using Mongoose directly
-    await this.publicationModel.create(publication.toSnapshot());
+    // Include additional fields from DTO that are not in the aggregate snapshot
+    const publicationSnapshot = publication.toSnapshot();
+    await this.publicationModel.create({
+      ...publicationSnapshot,
+      postType: dto.postType || 'basic',
+      isProject: dto.isProject || false,
+      title: dto.title,
+      description: dto.description,
+    });
 
     // Publish domain event
     await this.eventBus.publish(
-      new PublicationCreatedEvent(publication.getId.getValue(), userId, dto.communityId)
+      new PublicationCreatedEvent(
+        publication.getId.getValue(),
+        userId,
+        dto.communityId,
+      ),
     );
 
-    this.logger.log(`Publication created successfully: ${publication.getId.getValue()}`);
+    this.logger.log(
+      `Publication created successfully: ${publication.getId.getValue()}`,
+    );
     return publication;
   }
 
@@ -68,20 +107,20 @@ export class PublicationService {
   }
 
   async getPublicationsByCommunity(
-    communityId: string, 
-    limit: number = 20, 
+    communityId: string,
+    limit: number = 20,
     skip: number = 0,
     sortBy?: 'createdAt' | 'score',
-    hashtag?: string
+    hashtag?: string,
   ): Promise<Publication[]> {
     // Build query
     const query: any = { communityId };
-    
+
     // Apply hashtag filter if provided
     if (hashtag) {
       query.hashtags = hashtag;
     }
-    
+
     // Build sort object
     const sort: any = {};
     if (sortBy === 'score') {
@@ -89,7 +128,7 @@ export class PublicationService {
     } else {
       sort.createdAt = -1;
     }
-    
+
     // Direct Mongoose query - no repository wrapper needed
     const docs = await this.publicationModel
       .find(query)
@@ -97,11 +136,16 @@ export class PublicationService {
       .skip(skip)
       .sort(sort)
       .lean();
-    
-    return docs.map(doc => Publication.fromSnapshot(doc as IPublicationDocument));
+
+    return docs.map((doc) =>
+      Publication.fromSnapshot(doc as IPublicationDocument),
+    );
   }
 
-  async getTopPublications(limit: number = 20, skip: number = 0): Promise<Publication[]> {
+  async getTopPublications(
+    limit: number = 20,
+    skip: number = 0,
+  ): Promise<Publication[]> {
     // Direct Mongoose query
     const docs = await this.publicationModel
       .find({})
@@ -109,15 +153,24 @@ export class PublicationService {
       .skip(skip)
       .sort({ 'metrics.score': -1 })
       .lean();
-    
-    return docs.map(doc => Publication.fromSnapshot(doc as IPublicationDocument));
+
+    return docs.map((doc) =>
+      Publication.fromSnapshot(doc as IPublicationDocument),
+    );
   }
 
-  async voteOnPublication(publicationId: string, userId: string, amount: number, direction: 'up' | 'down'): Promise<Publication> {
+  async voteOnPublication(
+    publicationId: string,
+    userId: string,
+    amount: number,
+    direction: 'up' | 'down',
+  ): Promise<Publication> {
     const id = PublicationId.fromString(publicationId);
 
     // Load aggregate using Mongoose directly
-    const doc = await this.publicationModel.findOne({ id: id.getValue() }).lean();
+    const doc = await this.publicationModel
+      .findOne({ id: id.getValue() })
+      .lean();
     if (!doc) {
       throw new NotFoundException('Publication not found');
     }
@@ -131,37 +184,44 @@ export class PublicationService {
     // Save
     await this.publicationModel.updateOne(
       { id: publication.getId.getValue() },
-      { $set: publication.toSnapshot() }
-    );
-
-    // Publish event
-    await this.eventBus.publish(
-      new PublicationVotedEvent(publicationId, userId, amount, direction)
+      { $set: publication.toSnapshot() },
     );
 
     return publication;
   }
 
-  async getPublicationsByAuthor(authorId: string, limit: number = 50, skip: number = 0): Promise<Publication[]> {
+  async getPublicationsByAuthor(
+    authorId: string,
+    limit: number = 50,
+    skip: number = 0,
+  ): Promise<Publication[]> {
     const docs = await this.publicationModel
       .find({ authorId })
       .limit(limit)
       .skip(skip)
       .sort({ createdAt: -1 })
       .lean();
-    
-    return docs.map(doc => Publication.fromSnapshot(doc as IPublicationDocument));
+
+    return docs.map((doc) =>
+      Publication.fromSnapshot(doc as IPublicationDocument),
+    );
   }
 
-  async getPublicationsByHashtag(hashtag: string, limit: number = 50, skip: number = 0): Promise<Publication[]> {
+  async getPublicationsByHashtag(
+    hashtag: string,
+    limit: number = 50,
+    skip: number = 0,
+  ): Promise<Publication[]> {
     const docs = await this.publicationModel
       .find({ hashtags: hashtag })
       .limit(limit)
       .skip(skip)
       .sort({ createdAt: -1 })
       .lean();
-    
-    return docs.map(doc => Publication.fromSnapshot(doc as IPublicationDocument));
+
+    return docs.map((doc) =>
+      Publication.fromSnapshot(doc as IPublicationDocument),
+    );
   }
 
   /**
@@ -180,26 +240,43 @@ export class PublicationService {
    * Check if user can withdraw from a publication
    * User must be the effective beneficiary
    */
-  async canUserWithdraw(publicationId: string, userId: string): Promise<boolean> {
-    const effectiveBeneficiary = await this.getEffectiveBeneficiary(publicationId);
+  async canUserWithdraw(
+    publicationId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const effectiveBeneficiary =
+      await this.getEffectiveBeneficiary(publicationId);
     if (!effectiveBeneficiary) {
       return false;
     }
     return effectiveBeneficiary === userId;
   }
 
-  async updatePublication(publicationId: string, userId: string, updateData: Partial<CreatePublicationDto>): Promise<Publication> {
-    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
+  async updatePublication(
+    publicationId: string,
+    userId: string,
+    updateData: Partial<CreatePublicationDto>,
+  ): Promise<Publication> {
+    // Explicitly reject attempts to change postType or isProject
+    if ('postType' in updateData && updateData.postType !== undefined) {
+      throw new BadRequestException('Cannot change post type when editing a publication');
+    }
+    if ('isProject' in updateData && updateData.isProject !== undefined) {
+      throw new BadRequestException('Cannot change project status when editing a publication');
+    }
+
+    const doc = await this.publicationModel
+      .findOne({ id: publicationId })
+      .lean();
     if (!doc) {
       throw new NotFoundException('Publication not found');
     }
 
     const publication = Publication.fromSnapshot(doc as IPublicationDocument);
-    const userIdObj = UserId.fromString(userId);
-    
-    if (!publication.canBeEditedBy(userIdObj)) {
-      throw new Error('Not authorized to edit this publication');
-    }
+
+    // Authorization is handled by PermissionGuard via PermissionService.canEditPublication()
+    // PermissionService already checks vote count and time window for authors
+    // Leads and superadmins can edit regardless of votes/time, so no additional check needed here
 
     // Update publication fields
     if (updateData.content) {
@@ -209,24 +286,43 @@ export class PublicationService {
       publication.updateHashtags(updateData.hashtags);
     }
 
+    // Build combined update object
+    // Start with snapshot (contains entity-managed fields: content, hashtags, metrics, etc.)
+    const snapshot = publication.toSnapshot();
+    const updatePayload: any = { ...snapshot };
+
+    // Override readonly fields from updateData if provided
+    // These fields are readonly in the entity, so we update them directly
+    if (updateData.title !== undefined) {
+      updatePayload.title = updateData.title;
+    }
+    if (updateData.description !== undefined) {
+      updatePayload.description = updateData.description;
+    }
+    if (updateData.imageUrl !== undefined) {
+      updatePayload.imageUrl = updateData.imageUrl || null;
+    }
+
+    // Single atomic update with all changes
     await this.publicationModel.updateOne(
-      { id: publication.getId },
-      { $set: publication.toSnapshot() }
+      { id: publication.getId.getValue() },
+      { $set: updatePayload },
     );
 
     return publication;
   }
 
-  async deletePublication(publicationId: string, userId: string): Promise<boolean> {
+  async deletePublication(
+    publicationId: string,
+    userId: string,
+  ): Promise<boolean> {
     const publication = await this.getPublication(publicationId);
     if (!publication) {
       throw new NotFoundException('Publication not found');
     }
 
-    const userIdObj = UserId.fromString(userId);
-    if (!publication.canBeDeletedBy(userIdObj)) {
-      throw new Error('Not authorized to delete this publication');
-    }
+    // Authorization is handled by PermissionGuard via PermissionService.canDeletePublication()
+    // No need for redundant check here
 
     await this.publicationModel.deleteOne({ id: publicationId });
     return true;

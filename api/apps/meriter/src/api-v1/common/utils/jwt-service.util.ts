@@ -16,7 +16,8 @@ export class JwtService {
    */
   static generateToken(
     userId: string,
-    telegramId: string,
+    authProvider: string,
+    authId: string,
     communityTags: string[],
     jwtSecret: string
   ): string {
@@ -26,7 +27,8 @@ export class JwtService {
 
     const payload: JwtPayload = {
       uid: userId,
-      telegramId,
+      authProvider,
+      authId,
       communityTags: communityTags || [],
     };
 
@@ -43,7 +45,8 @@ export class JwtService {
    */
   static generateTokenFromConfig(
     userId: string,
-    telegramId: string,
+    authProvider: string,
+    authId: string,
     communityTags: string[],
     configService: ConfigService
   ): string {
@@ -52,7 +55,7 @@ export class JwtService {
       throw new Error('JWT secret not configured');
     }
 
-    return this.generateToken(userId, telegramId, communityTags, jwtSecret);
+    return this.generateToken(userId, authProvider, authId, communityTags, jwtSecret);
   }
 
   /**
@@ -63,18 +66,21 @@ export class JwtService {
   static mapUserToV1Format(user: any): User {
     return {
       id: user.id,
-      telegramId: user.telegramId,
+      authProvider: user.authProvider,
+      authId: user.authId,
       username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
+      globalRole: user.globalRole,
       profile: {
         bio: user.profile?.bio,
         location: user.profile?.location,
         website: user.profile?.website,
         isVerified: user.profile?.isVerified,
       },
+      inviteCode: user.inviteCode,
       communityTags: user.communityTags || [],
       communityMemberships: user.communityMemberships || [],
       createdAt: user.createdAt?.toISOString() || new Date().toISOString(),

@@ -17,7 +17,9 @@ export interface PaginationResult<T> {
 export class PaginationHelper {
   static parseOptions(query: any, maxLimit: number = 100): PaginationOptions {
     const page = Math.max(1, parseInt(query.page) || 1);
-    const limit = Math.min(maxLimit, Math.max(1, parseInt(query.limit) || 20));
+    // Support both 'limit' and 'pageSize' query parameters
+    const limitValue = query.limit || query.pageSize;
+    const limit = Math.min(maxLimit, Math.max(1, parseInt(limitValue) || 20));
     
     return { page, limit, maxLimit };
   }

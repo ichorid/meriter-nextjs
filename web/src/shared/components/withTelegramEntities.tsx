@@ -97,5 +97,5 @@ export const WithTelegramEntities = ({
         return <span key={`seg-${index}`}>{linebr(messageText.substring(start || 0, end || 0))}</span>;
     });
 
-    return <div className={"tttt"}>{decorated}</div>;
+    return <div className="text-base-content">{decorated}</div>;
 };

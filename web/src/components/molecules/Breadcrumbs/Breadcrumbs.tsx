@@ -32,11 +32,11 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
     <div className={`breadcrumbs text-sm mb-4 ${className}`}>
       <ul className="flex flex-wrap items-center gap-1 bg-base-100 rounded-lg p-2 sm:p-3">
         <li className="flex items-center gap-1">
-          <Link href="/meriter/home" className="link link-hover flex items-center gap-1">
+          <Link href="/meriter/profile" className="link link-hover flex items-center gap-1">
             <img
               className="w-5 h-5"
               src={"/meriter/home.svg"}
-              alt="Home"
+              alt="Profile"
             />
             <span>{t('home')}</span>
           </Link>

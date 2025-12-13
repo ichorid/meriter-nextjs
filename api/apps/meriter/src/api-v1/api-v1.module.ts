@@ -7,6 +7,10 @@ import { PollsModule } from './polls/polls.module';
 import { WalletsModule } from './wallets/wallets.module';
 import { UsersModule } from './users/users.module';
 import { ApiV1ConfigModule } from './config/config.module';
+import { InvitesModule } from './invites/invites.module';
+import { UserCommunityRolesModule } from './user-community-roles/user-community-roles.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -18,6 +22,10 @@ import { ApiV1ConfigModule } from './config/config.module';
     WalletsModule,
     UsersModule,
     ApiV1ConfigModule,
+    InvitesModule,
+    UserCommunityRolesModule,
+    NotificationsModule,
+    UploadsModule,
   ],
 })
 export class ApiV1Module {}

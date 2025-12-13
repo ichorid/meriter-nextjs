@@ -21,8 +21,6 @@ export interface UsePublicationVotingProps {
   communityId: string;
   updateWalletBalance?: (communityId: string, change: number) => void;
   updateAll?: () => Promise<void>;
-  activeSlider?: string | null;
-  setActiveSlider?: (slider: string | null) => void;
 }
 
 export function usePublicationVoting({
@@ -36,8 +34,6 @@ export function usePublicationVoting({
   communityId,
   updateWalletBalance,
   updateAll,
-  activeSlider,
-  setActiveSlider,
 }: UsePublicationVotingProps) {
   // State management for optimistic updates
   const [optimisticSum, setOptimisticSum] = useState(sum);

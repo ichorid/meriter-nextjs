@@ -13,6 +13,8 @@ import { CommentDetailsPopup } from "@shared/components/comment-details-popup";
 import { useCommentVoteDisplay } from '../hooks/useCommentVoteDisplay';
 import { useCommentRecipient } from '../hooks/useCommentRecipient';
 import { useCommentWithdrawal } from '../hooks/useCommentWithdrawal';
+import { useCanVote } from '@/hooks/useCanVote';
+import { useFeaturesConfig } from '@/hooks/useConfig';
 
 interface CommentProps {
     _id: string;
@@ -68,8 +70,6 @@ export const Comment: React.FC<CommentProps> = ({
     amountTotal,
     inPublicationSlug,
     activeCommentHook,
-    activeSlider,
-    setActiveSlider,
     myId,
     highlightTransactionId,
     forTransactionId,
@@ -92,6 +92,8 @@ export const Comment: React.FC<CommentProps> = ({
     ...rest
 }) => {
     const t = useTranslations('comments');
+    const features = useFeaturesConfig();
+    const enableCommentVoting = features.commentVoting;
     
     // Use API data directly - no fallbacks
     const authorMeta = meta?.author;
@@ -115,6 +117,7 @@ export const Comment: React.FC<CommentProps> = ({
     // Check if there's a beneficiary and it's different from the author
     const beneficiaryMeta = meta?.beneficiary;
     const hasBeneficiary = beneficiaryMeta && beneficiaryMeta.id !== commentAuthorId;
+    const isBeneficiary = hasBeneficiary && myId === beneficiaryMeta?.id;
     
     // Withdrawal state management (for author's own comments)
     // IMPORTANT: For withdrawal, we only use metrics.score (votes cast ON the comment)
@@ -176,6 +179,27 @@ export const Comment: React.FC<CommentProps> = ({
         currentBalance,
     });
     
+    // Check if community is special group (withdrawals disabled)
+    const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
+    
+    // Check if user can vote on this comment based on community rules
+    const { canVote: canVoteFromHook, reason: voteDisabledReasonFromHook } = useCanVote(
+        _id,
+        'comment',
+        communityId,
+        commentAuthorId,
+        isAuthor,
+        isBeneficiary,
+        hasBeneficiary,
+        false // Comments are not projects
+    );
+    
+    // Override reason if comment voting is disabled via feature flag
+    const canVote = enableCommentVoting ? canVoteFromHook : false;
+    const voteDisabledReason = enableCommentVoting 
+        ? voteDisabledReasonFromHook 
+        : 'voteDisabled.commentVotingDisabled';
+    
     // Get currency icon from community info
     const currencyIcon = communityInfo?.settings?.iconUrl;
     
@@ -187,7 +211,6 @@ export const Comment: React.FC<CommentProps> = ({
         showMinus,
         showComments,
         setShowComments,
-        formCommentProps,
     } = useComments(
         true,
         inPublicationSlug,
@@ -209,20 +232,11 @@ export const Comment: React.FC<CommentProps> = ({
         <div
             className={classList(
                 "comment-vote-wrapper transition-all duration-300",
-                commentUnderReply ? "scale-100 opacity-100" : 
-                activeSlider && activeSlider !== _id ? "scale-95 opacity-60" : "scale-100 opacity-100",
+                commentUnderReply ? "scale-100 opacity-100" : "scale-100 opacity-100",
                 highlightTransactionId == _id ? "highlight" : ""
             )}
             data-comment-id={_id}
             key={_id}
-            onClick={(e) => {
-                if (
-                    activeSlider === _id &&
-                    !(e.target as any)?.className?.match("clickable")
-                ) {
-                    setActiveSlider && setActiveSlider(null);
-                }
-            }}
         >
             <CardCommentVote
                 title={authorName}
@@ -254,17 +268,20 @@ export const Comment: React.FC<CommentProps> = ({
                         if (imgElement) imgElement.src = fallbackUrl;
                     }
                 }}
+                communityId={communityId}
+                publicationSlug={inPublicationSlug}
+                commentId={_id}
                 bottom={
                     // Comments cannot have beneficiaries, so logic is simpler:
-                    // - If author: show withdraw (if balance > 0)
+                    // - If author: show withdraw (if balance > 0) UNLESS special group
                     // - If !author: show vote
-                    isAuthor ? (
+                    isAuthor && !isSpecialGroup ? (
                         <BarWithdraw
                             balance={maxWithdrawAmount}
                             onWithdraw={() => {
                                 useUIStore.getState().openWithdrawPopup(
                                     _id,
-                                    'comment-withdraw',
+                                    'comment-topup',
                                     maxWithdrawAmount,
                                     maxTopUpAmount
                                 );
@@ -284,13 +301,30 @@ export const Comment: React.FC<CommentProps> = ({
                         <BarVoteUnified
                             score={commentScore}
                             onVoteClick={() => {
-                                useUIStore.getState().openVotingPopup(_id, 'comment');
+                                // Set voting mode based on community type
+                                let mode: 'standard' | 'wallet-only' | 'quota-only' = 'quota-only';
+                                if (communityInfo?.typeTag === 'future-vision') {
+                                    // Future Vision: wallet-only (M), no quota (Q)
+                                    mode = 'wallet-only';
+                                } else if (communityInfo?.typeTag === 'marathon-of-good') {
+                                    // Marathon-of-Good: quota-only (Q), no wallet (M)
+                                    mode = 'quota-only';
+                                } else if (communityInfo?.typeTag === 'team') {
+                                    // Team groups: quota-only (Q), no wallet (M)
+                                    mode = 'quota-only';
+                                } else {
+                                    // Non-special groups: quota-only
+                                    mode = 'quota-only';
+                                }
+                                useUIStore.getState().openVotingPopup(_id, 'comment', mode);
                             }}
                             isAuthor={isAuthor}
-                            isBeneficiary={false}
-                            hasBeneficiary={false}
+                            isBeneficiary={isBeneficiary}
+                            hasBeneficiary={hasBeneficiary}
                             commentCount={comments?.length || 0}
                             onCommentClick={() => setShowComments(true)}
+                            canVote={canVote}
+                            disabledReason={voteDisabledReason}
                         />
                     )
                 }
@@ -320,6 +354,8 @@ export const Comment: React.FC<CommentProps> = ({
                 }}
                 communityNeedsSetup={communityInfo?.needsSetup}
                 communityIsAdmin={communityInfo?.isAdmin}
+                authorId={commentAuthorId}
+                beneficiaryId={beneficiaryMeta?.id}
             />
             {showComments && (
                 <div className="transaction-comments">
@@ -334,8 +370,6 @@ export const Comment: React.FC<CommentProps> = ({
                                 spaceSlug={spaceSlug}
                                 inPublicationSlug={inPublicationSlug}
                                 activeCommentHook={activeCommentHook}
-                                activeSlider={activeSlider}
-                                setActiveSlider={setActiveSlider}
                                 highlightTransactionId={highlightTransactionId}
                         wallets={wallets}
                         updateWalletBalance={updateWalletBalance}

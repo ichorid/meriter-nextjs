@@ -50,7 +50,6 @@ export function usePublication({
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [activeCommentHook, setActiveCommentHook] = useState<string | null>(null);
-  const [activeSlider, setActiveSlider] = useState<string | null>(null);
 
   const voteOnPublicationMutation = useVoteOnPublication();
   const voteOnVoteMutation = useVoteOnVote();
@@ -133,15 +132,6 @@ export function usePublication({
           quotaAmount: quotaAmount > 0 ? quotaAmount : undefined,
           walletAmount: walletAmount > 0 ? walletAmount : undefined,
           comment: comment.trim() || undefined,
-          // For backward compatibility, also send amount if only one source is used
-          ...(quotaAmount > 0 && walletAmount === 0 ? {
-            amount: isUpvote ? quotaAmount : -quotaAmount,
-            sourceType: 'quota' as const,
-          } : {}),
-          ...(walletAmount > 0 && quotaAmount === 0 ? {
-            amount: isUpvote ? walletAmount : -walletAmount,
-            sourceType: 'personal' as const,
-          } : {}),
         },
         communityId: publication.communityId,
       });
@@ -160,10 +150,6 @@ export function usePublication({
     }
   }, [publication, voteOnPublicationWithCommentMutation, quotaRemaining, walletBalance, updateAll]);
 
-  const handleSliderToggle = useCallback((sliderId: string | null) => {
-    setActiveSlider(sliderId);
-  }, []);
-
   const handleCommentToggle = useCallback((commentId: string | null) => {
     console.log('🔄 handleCommentToggle called in usePublication:', { commentId, currentValue: activeCommentHook });
     setActiveCommentHook(commentId);
@@ -179,8 +165,6 @@ export function usePublication({
   return {
     // State
     activeCommentHook: [activeCommentHook, handleCommentToggle] as const,
-    activeSlider,
-    setActiveSlider: handleSliderToggle,
     
     // Actions
     handleVote,

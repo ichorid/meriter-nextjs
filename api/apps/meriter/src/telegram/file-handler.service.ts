@@ -13,33 +13,41 @@ export interface FileUploadResult {
 @Injectable()
 export class TelegramFileHandlerService {
   private readonly logger = new Logger(TelegramFileHandlerService.name);
-  private s3Client: S3Client;
-  private readonly bucketName: string;
+  private s3Client: S3Client | null = null;
+  private readonly bucketName?: string;
 
   constructor() {
+    // S3 is completely optional - only initialize if fully configured
     const s3Endpoint = process.env.S3_ENDPOINT;
     const bucketName = process.env.S3_BUCKET_NAME;
+    const s3AccessKeyId = process.env.S3_ACCESS_KEY_ID;
+    const s3SecretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
 
-    if (s3Endpoint && !bucketName) {
-      throw new Error('S3_BUCKET_NAME must be configured when S3_ENDPOINT is set.');
+    const isS3Configured = !!(s3Endpoint && bucketName && s3AccessKeyId && s3SecretAccessKey);
+
+    if (isS3Configured) {
+      this.logger.log('✅ S3 storage is configured for file handling');
+      this.s3Client = new S3Client({
+        region: process.env.S3_REGION || 'us-east-1',
+        endpoint: s3Endpoint,
+        credentials: {
+          accessKeyId: s3AccessKeyId,
+          secretAccessKey: s3SecretAccessKey,
+        },
+      });
+      this.bucketName = bucketName;
+    } else {
+      this.logger.warn('⚠️  S3 storage is not configured - file upload features will be disabled');
+      this.s3Client = null;
+      this.bucketName = undefined;
     }
-
-    if (!bucketName) {
-      throw new Error('S3_BUCKET_NAME must be configured for Telegram file handling.');
-    }
-
-    this.s3Client = new S3Client({
-      region: process.env.S3_REGION || 'us-east-1',
-      endpoint: process.env.S3_ENDPOINT,
-      credentials: {
-        accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
-      },
-    });
-    this.bucketName = bucketName;
   }
 
   async downloadAndProcessImage(fileUrl: string, fileName: string): Promise<FileUploadResult> {
+    if (!this.s3Client || !this.bucketName) {
+      throw new Error('S3 storage is not configured. Cannot process images.');
+    }
+
     this.logger.log(`Downloading and processing image: ${fileName}`);
 
     try {
@@ -70,6 +78,10 @@ export class TelegramFileHandlerService {
   }
 
   async downloadAndProcessVideo(fileUrl: string, fileName: string): Promise<FileUploadResult> {
+    if (!this.s3Client || !this.bucketName) {
+      throw new Error('S3 storage is not configured. Cannot process videos.');
+    }
+
     this.logger.log(`Downloading and processing video: ${fileName}`);
 
     try {
@@ -94,6 +106,10 @@ export class TelegramFileHandlerService {
   }
 
   private async uploadToS3(buffer: Buffer, key: string, contentType: string): Promise<FileUploadResult> {
+    if (!this.s3Client || !this.bucketName) {
+      throw new Error('S3 storage is not configured');
+    }
+
     const upload = new Upload({
       client: this.s3Client,
       params: {
@@ -117,6 +133,11 @@ export class TelegramFileHandlerService {
   }
 
   async deleteFile(key: string): Promise<void> {
+    if (!this.s3Client || !this.bucketName) {
+      this.logger.warn(`Cannot delete file ${key}: S3 storage is not configured`);
+      return;
+    }
+
     this.logger.log(`Deleting file: ${key}`);
 
     try {

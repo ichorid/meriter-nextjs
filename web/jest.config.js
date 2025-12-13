@@ -1,3 +1,9 @@
+const path = require('path');
+
+// Resolve React and React-DOM to ensure single instance
+const reactPath = path.dirname(require.resolve('react/package.json'));
+const reactDomPath = path.dirname(require.resolve('react-dom/package.json'));
+
 module.exports = {
     testEnvironment: 'jsdom',
     testPathIgnorePatterns: [
@@ -27,6 +33,8 @@ module.exports = {
         "<rootDir>"
     ],
     moduleNameMapper: {
+      "^react$": reactPath,
+      "^react-dom$": reactDomPath,
       "^@app/(.*)$": "<rootDir>/src/app/$1",
       "^@features/(.*)$": "<rootDir>/src/features/$1",
       "^@shared/(.*)$": "<rootDir>/src/shared/$1",
@@ -35,6 +43,7 @@ module.exports = {
       "^@styles/(.*)$": "<rootDir>/styles/$1",
       "^@/components/(.*)$": "<rootDir>/src/components/$1",
       "^@/contexts/(.*)$": "<rootDir>/src/contexts/$1",
+      "^@/features/(.*)$": "<rootDir>/src/features/$1",
       "^@/hooks/(.*)$": "<rootDir>/src/hooks/$1",
       "^@/types/(.*)$": "<rootDir>/src/types/$1",
       "^@/lib/(.*)$": "<rootDir>/src/lib/$1",

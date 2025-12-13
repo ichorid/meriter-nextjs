@@ -1,12 +1,20 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { IPollData, IPollCast, IPollUserCastSummary } from "../types";
 import { useTranslations } from 'next-intl';
 import { useCastPoll } from '@/hooks/api/usePolls';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { usePollTimeRemaining } from '../hooks/usePollTimeRemaining';
 import { usePollAmountValidation } from '../hooks/usePollAmountValidation';
+import { useToastStore } from '@/shared/stores/toast.store';
+import { BrandButton } from '@/components/ui/BrandButton';
+import { BrandInput } from '@/components/ui/BrandInput';
+import { BrandFormControl } from '@/components/ui/BrandFormControl';
+import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
+import { useUserRoles } from '@/hooks/api/useProfile';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCommunity } from '@/hooks/api/useCommunities';
 
 interface IPollCastingProps {
     pollData: IPollData;
@@ -30,6 +38,8 @@ export const PollCasting = ({
     initiallyExpanded = false,
 }: IPollCastingProps) => {
     const t = useTranslations('polls');
+    const addToast = useToastStore((state) => state.addToast);
+    const { user } = useAuth();
     const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
     const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
     const [amountInputValue, setAmountInputValue] = useState<string>("1");
@@ -39,17 +49,40 @@ export const PollCasting = ({
 
     const castPollMutation = useCastPoll();
 
+    // Get quota data
+    const { quotasMap } = useCommunityQuotas(communityId ? [communityId] : []);
+    const quotaData = communityId ? quotasMap.get(communityId) : null;
+    const quotaRemaining = quotaData?.remainingToday ?? 0;
+
+    // Get user role to check if quota can be used
+    const { data: userRoles = [] } = useUserRoles(user?.id || '');
+    const { data: community } = useCommunity(communityId || '');
+    
+    // Check if user can use quota (participants/leads/superadmin)
+    const canUseQuota = useMemo(() => {
+        if (!user?.id || !communityId || !community) return false;
+        if (user.globalRole === 'superadmin') return true;
+        if (community.typeTag === 'future-vision') return false; // Future vision doesn't use quota
+        const role = userRoles.find(r => r.communityId === communityId);
+        return role && ['participant', 'lead', 'superadmin'].includes(role.role);
+    }, [user?.id, user?.globalRole, userRoles, communityId, community]);
+
+    // Calculate max amount (quota + wallet)
+    const maxAmount = canUseQuota ? quotaRemaining + balance : balance;
+
     const now = new Date();
     const expiresAt = new Date(pollData.expiresAt);
     const isExpired = now > expiresAt;
     const isCasting = castPollMutation.isPending;
 
     const timeRemaining = usePollTimeRemaining({ expiresAt: pollData.expiresAt });
-    const { validateAmount } = usePollAmountValidation({ balance });
+    const { validateAmount } = usePollAmountValidation({ balance: maxAmount });
 
     const handleCastPoll = async () => {
         if (!selectedOptionId) {
-            setError(t('selectOption'));
+            const message = t('selectOption');
+            setError(message);
+            addToast(message, 'warning');
             return;
         }
 
@@ -57,13 +90,31 @@ export const PollCasting = ({
         const validation = validateAmount(amountInputValue);
         if (!validation.isValid || validation.numValue === null) {
             setAmountValidationError(validation.error);
+            if (validation.error) {
+                addToast(validation.error, 'error');
+            }
             return;
         }
 
-        // Double-check balance (UX validation should prevent this, but safety check)
-        if (validation.numValue > balance) {
-            setAmountValidationError(t('amountInsufficient', { balance }));
+        // Double-check max amount (UX validation should prevent this, but safety check)
+        if (validation.numValue > maxAmount) {
+            const message = t('amountInsufficient', { balance: maxAmount });
+            setAmountValidationError(message);
+            addToast(message, 'error');
             return;
+        }
+
+        // Calculate quota and wallet breakdown
+        let quotaAmount = 0;
+        let walletAmount = 0;
+        
+        if (canUseQuota && quotaRemaining > 0) {
+            // Use quota first, then wallet
+            quotaAmount = Math.min(validation.numValue, quotaRemaining);
+            walletAmount = Math.max(0, validation.numValue - quotaRemaining);
+        } else {
+            // No quota available, use wallet only
+            walletAmount = validation.numValue;
         }
 
         // Clear any previous errors
@@ -75,8 +126,8 @@ export const PollCasting = ({
                 id: pollId,
                 data: {
                     optionId: selectedOptionId,
-                    quotaAmount: 0, // Poll casts only use wallet
-                    walletAmount: validation.numValue,
+                    quotaAmount,
+                    walletAmount,
                 },
                 communityId,
             });
@@ -85,11 +136,13 @@ export const PollCasting = ({
             setCastAmount(1);
             setAmountInputValue("1");
             setSelectedOptionId(null);
-            
+
+            addToast(t('castSuccess'), 'success');
             onCastSuccess && onCastSuccess();
         } catch (err: unknown) {
             const errorMessage = extractErrorMessage(err, t('castError'));
             setError(errorMessage);
+            addToast(errorMessage, 'error');
         }
     };
 
@@ -102,14 +155,14 @@ export const PollCasting = ({
     // Collapsed view
     if (!isExpanded) {
         return (
-            <div 
+            <div
                 className="p-4 bg-accent/5 border-l-4 border-accent cursor-pointer hover:bg-accent/10 transition-all duration-300 ease-in-out"
                 onClick={() => setIsExpanded(true)}
             >
                 <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                            <span className="text-lg">📊</span>
+                            <span className="text-lg"></span>
                             <h3 className="text-base font-bold">{pollData.title}</h3>
                         </div>
                         {pollData.description && (
@@ -125,7 +178,7 @@ export const PollCasting = ({
                         {isExpired ? t('pollFinished') : `${t('timeRemaining')} ${timeRemaining}`}
                     </span>
                     <span className="badge badge-sm badge-ghost">
-                        🗳 {pollData.totalCasts} {t('casts')}
+                        {pollData.totalCasts} {t('casts')}
                     </span>
                     {userCastSummary && userCastSummary.castCount > 0 && (
                         <span className="badge badge-sm badge-primary">
@@ -146,7 +199,7 @@ export const PollCasting = ({
             <div className="mb-5 animate-in fade-in duration-300">
                 <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2 flex-1">
-                        <span className="text-lg">📊</span>
+                        <span className="text-lg"></span>
                         <h3 className="text-lg font-bold">{pollData.title}</h3>
                     </div>
                     <button
@@ -165,7 +218,7 @@ export const PollCasting = ({
                 )}
                 <div className="flex flex-wrap gap-2 text-xs">
                     <span className={`badge ${isExpired ? "badge-error" : "badge-success"}`}>
-                        {isExpired ? `🔴 ${t('finished')}` : `🟢 ${t('active')}`}
+                        {isExpired ? `${t('finished')}` : `${t('active')}`}
                     </span>
                     <span className="badge badge-ghost">
                         {isExpired ? t('pollFinished') : `${t('timeRemaining')}: ${timeRemaining}`}
@@ -185,11 +238,9 @@ export const PollCasting = ({
                     return (
                         <div
                             key={`poll-option-${option.id}`}
-                            className={`card bg-base-200 shadow-md p-4 ${
-                                isSelected ? "ring-2 ring-primary" : ""
-                            } ${userCastAmount > 0 ? "bg-primary/10" : ""} ${
-                                isExpired ? "opacity-70" : "hover:shadow-lg transition-shadow"
-                            }`}
+                            className={`card bg-base-200 shadow-md dark:border dark:border-base-content/20 p-4 ${isSelected ? "ring-2 ring-primary" : ""
+                                } ${userCastAmount > 0 ? "bg-primary/10" : ""} ${isExpired ? "opacity-70" : "hover:shadow-lg transition-shadow"
+                                }`}
                         >
                             <div className="flex justify-between items-start mb-2">
                                 <label className="flex items-center gap-2 cursor-pointer flex-1">
@@ -204,6 +255,7 @@ export const PollCasting = ({
                                             if (!isExpired) {
                                                 setSelectedOptionId(e.target.value);
                                                 setError("");
+                                                setAmountValidationError(null);
                                             }
                                         }}
                                     />
@@ -232,26 +284,30 @@ export const PollCasting = ({
             </div>
 
             {!isExpired && (
-                <div className="card bg-base-200 shadow-md p-4">
+                <div className="card bg-base-200 shadow-md dark:border dark:border-base-content/20 p-4">
                     <div className="form-control mb-3">
                         <label className="label" htmlFor="cast-amount">
                             <span className="label-text">{t('amountLabel')}</span>
-                            <span className="label-text-alt">{t('available')}: {balance}</span>
+                            <span className="label-text-alt">
+                                {canUseQuota && quotaRemaining > 0 && (
+                                    <span className="mr-2">{t('quota')}: {quotaRemaining}</span>
+                                )}
+                                {t('available')}: {maxAmount}
+                            </span>
                         </label>
                         <input
                             id="cast-amount"
                             type="text"
                             inputMode="numeric"
                             value={amountInputValue}
-                            className={`input input-bordered w-full ${amountValidationError ? 'input-error' : ''}`}
                             onChange={(e) => {
                                 const inputValue = e.target.value;
                                 // Always update input value for user to see what they type
                                 setAmountInputValue(inputValue);
-                                
+
                                 // Validate explicitly
                                 const validation = validateAmount(inputValue);
-                                
+
                                 if (validation.isValid && validation.numValue !== null) {
                                     // Valid - update both input and numeric value
                                     setAmountValidationError(null);
@@ -265,7 +321,7 @@ export const PollCasting = ({
                                 // Re-validate on blur explicitly
                                 const inputValue = e.target.value;
                                 const validation = validateAmount(inputValue);
-                                
+
                                 if (validation.isValid && validation.numValue !== null) {
                                     // Valid - clear error and ensure castAmount is set
                                     setAmountValidationError(null);
@@ -283,32 +339,42 @@ export const PollCasting = ({
                                 }
                             }}
                             disabled={isCasting}
+                            className="input input-bordered w-full"
                         />
-                        {amountValidationError && (
-                            <label className="label">
-                                <span className="label-text-alt text-error">{amountValidationError}</span>
-                            </label>
-                        )}
                     </div>
-                    {error && <div className="alert alert-error mb-3 py-2">{error}</div>}
-                    <button
-                        className="btn btn-primary w-full"
-                        onClick={handleCastPoll}
-                        disabled={isCasting || !selectedOptionId || amountValidationError !== null}
-                    >
-                        {isCasting ? t('casting') : t('castPoll')}
-                    </button>
+                    {amountValidationError && (
+                        <div className="label">
+                            <span className="label-text-alt text-error">{amountValidationError}</span>
+                        </div>
+                    )}
+                    {maxAmount === 0 && (
+                        <div className="label">
+                            <span className="label-text-alt text-error">{t('insufficientPoints')}</span>
+                        </div>
+                    )}
+                    <div className="mt-4">
+                        <BrandButton
+                            variant="primary"
+                            size="md"
+                            fullWidth
+                            onClick={handleCastPoll}
+                            isLoading={isCasting}
+                            disabled={isCasting || !selectedOptionId || amountValidationError !== null || maxAmount === 0}
+                        >
+                            {isCasting ? t('casting') : t('castPoll')}
+                        </BrandButton>
+                    </div>
                 </div>
             )}
 
             {userCastSummary && userCastSummary.castCount > 0 && (
-                <div className="alert alert-info">
+                <div className="text-sm text-info p-3 bg-info/10 rounded-lg">
                     <span>{t('youCastSummary', { count: userCastSummary.castCount, amount: userCastSummary.totalAmount })}</span>
                 </div>
             )}
 
             {isExpired && (
-                <div className="alert alert-warning">
+                <div className="text-sm text-warning p-3 bg-warning/10 rounded-lg">
                     <span>{t('pollExpired')}</span>
                 </div>
             )}

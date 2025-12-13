@@ -2,15 +2,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { PublicationHeader } from './PublicationHeader';
 import { PublicationContent } from './PublicationContent';
 import { PublicationActions } from './PublicationActions';
 import { PollCasting } from '@features/polls/components/poll-casting';
 import { usePollCardData } from '@/hooks/usePollCardData';
-import { useWalletBalance } from '@/hooks/api/useWallet';
 import { getWalletBalance } from '@/lib/utils/wallet';
-import { getPublicationIdentifier, isInteractiveElement } from '@/lib/utils/publication';
+import { getPublicationIdentifier } from '@/lib/utils/publication';
 
 import type { FeedItem, PublicationFeedItem, PollFeedItem, Wallet } from '@/types/api-v1';
 
@@ -31,6 +30,10 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  
+  // Check if we're on the community feed page (not the detail page)
+  const isOnCommunityFeedPage = pathname?.match(/^\/meriter\/communities\/[^/]+$/);
   
   // Check if this is a poll
   const isPoll = publication.type === 'poll';
@@ -41,13 +44,13 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   
   // Get wallet balance for polls
   const communityId = publication.communityId;
-  const { data: pollBalance = 0 } = useWalletBalance(isPoll ? communityId : '');
+  // Use wallets array to get balance instead of separate query
+  const pollBalance = getWalletBalance(wallets, communityId);
   
   // For publications, use the publication hook
   // Note: usePublication expects a different Publication type, so we need to adapt
   // For now, skip using usePublication for cards and handle voting/commenting differently
   const [activeCommentHook] = useState<[string | null, React.Dispatch<React.SetStateAction<string | null>>]>([null, () => {}]);
-  const [activeSlider, setActiveSlider] = useState<string | null>(null);
   
   // Placeholder handlers - these should be implemented using React Query mutations
   const handleVote = () => {
@@ -64,31 +67,32 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   const isVoting = false;
   const isCommenting = false;
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Don't navigate if clicking on interactive elements (buttons, links, etc.)
-    // Note: PublicationActions already uses stopPropagation on its buttons,
-    // but we check here as an additional safeguard
-    const target = e.target as HTMLElement;
-    if (isInteractiveElement(target)) {
-      return;
-    }
-
-    // Only navigate if we have a slug or id
+  const handleCardClick = () => {
     const postSlug = getPublicationIdentifier(publication);
-    if (postSlug) {
-      const params = new URLSearchParams(searchParams?.toString() ?? '');
+    const communityId = publication.communityId;
+    if (!postSlug || !communityId) return;
+    
+    // If on community feed page, set query parameter to show side panel
+    if (isOnCommunityFeedPage) {
+      const params = new URLSearchParams(searchParams?.toString() || '');
       params.set('post', postSlug);
-      router.push(`?${params.toString()}`);
+      router.push(`${pathname}?${params.toString()}`);
+    } else {
+      // Otherwise, navigate to detail page
+      router.push(`/meriter/communities/${communityId}/posts/${postSlug}`);
     }
   };
 
   // Render poll card
   if (isPoll && pollData) {
     const pollItem = publication as PollFeedItem;
+    // Get metrics from pollData or use default
+    const pollMetrics = {
+      totalCasts: pollData.totalCasts || 0,
+    };
+    
     return (
-      <article 
-        className={`card bg-base-100 shadow-md rounded-lg p-6 ${className}`}
-      >
+      <div className="bg-base-100 rounded-2xl p-5 border border-base-content/5 hover:border-base-content/10 transition-all duration-200">
         <PublicationHeader
           publication={{
             id: pollItem.id,
@@ -98,6 +102,11 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           }}
           showCommunityAvatar={showCommunityAvatar}
           className="mb-4"
+            authorId={pollItem.authorId}
+          metrics={pollMetrics}
+          publicationId={pollItem.id}
+          communityId={pollItem.communityId}
+          isPoll={true}
         />
         
         <PollCasting
@@ -112,9 +121,10 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           communityId={pollItem.communityId}
           initiallyExpanded={false}
         />
-      </article>
+      </div>
     );
   }
+
 
   // Render publication card
   const pubItem = publication as PublicationFeedItem;
@@ -135,54 +145,64 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   };
   
   return (
-    <article 
-      className={`card bg-base-100 shadow-md rounded-lg p-6 cursor-pointer hover:shadow-lg transition-shadow overflow-hidden ${className}`}
-      onClick={handleCardClick}
-    >
-      <PublicationHeader
-        publication={{
-          id: pubItem.id,
-          slug: pubItem.slug,
-          createdAt: pubItem.createdAt,
-          meta: pubItem.meta,
-        }}
-        showCommunityAvatar={showCommunityAvatar}
-        className="mb-4"
-      />
-      
-      <PublicationContent
-        publication={{
-          id: pubItem.id,
-          createdAt: pubItem.createdAt,
-          content: pubItem.content,
-          meta: transformedMeta,
-        }}
-        className="mb-6"
-      />
-      
-      <PublicationActions
-        publication={{
-          id: pubItem.id,
-          createdAt: pubItem.createdAt,
-          authorId: pubItem.authorId,
-          communityId: pubItem.communityId,
-          slug: pubItem.slug,
-          content: pubItem.content,
-          type: pubItem.type,
-          metrics: pubItem.metrics,
-          meta: transformedMeta,
-        }}
-        onVote={handleVote}
-        onComment={handleComment}
-        activeCommentHook={activeCommentHook}
-        isVoting={isVoting}
-        isCommenting={isCommenting}
-        maxPlus={currentBalance}
-        activeSlider={activeSlider}
-        setActiveSlider={setActiveSlider}
-        wallets={wallets}
-        // maxMinus is calculated in PublicationActions using quota data
-      />
-    </article>
+    <div onClick={handleCardClick} className="cursor-pointer">
+      <article className="bg-base-100 rounded-2xl p-5 border border-base-content/5 hover:border-base-content/10 transition-all duration-200">
+        <PublicationHeader
+          publication={{
+            id: pubItem.id,
+            slug: pubItem.slug,
+            createdAt: pubItem.createdAt,
+            meta: pubItem.meta,
+            postType: (pubItem as any).postType,
+            isProject: (pubItem as any).isProject,
+          }}
+          showCommunityAvatar={showCommunityAvatar}
+          className="mb-3"
+          authorId={pubItem.authorId}
+          metrics={pubItem.metrics}
+          publicationId={pubItem.id || pubItem.slug}
+          communityId={pubItem.communityId}
+          isPoll={false}
+        />
+        
+        <PublicationContent
+          publication={{
+            id: pubItem.id,
+            createdAt: pubItem.createdAt,
+            content: pubItem.content,
+            title: (pubItem as any).title,
+            description: (pubItem as any).description,
+            isProject: (pubItem as any).isProject,
+            imageUrl: (pubItem as any).imageUrl,
+            meta: transformedMeta,
+          }}
+          className="mb-4"
+        />
+        
+        <PublicationActions
+          publication={{
+            id: pubItem.id,
+            createdAt: pubItem.createdAt,
+            authorId: pubItem.authorId,
+            communityId: pubItem.communityId,
+            slug: pubItem.slug,
+            content: pubItem.content,
+            type: pubItem.type,
+            metrics: pubItem.metrics,
+            meta: transformedMeta,
+            postType: (pubItem as any).postType,
+            isProject: (pubItem as any).isProject,
+          }}
+          onVote={handleVote}
+          onComment={handleComment}
+          activeCommentHook={activeCommentHook}
+          isVoting={isVoting}
+          isCommenting={isCommenting}
+          maxPlus={currentBalance}
+          wallets={wallets}
+          // maxMinus is calculated in PublicationActions using quota data
+        />
+      </article>
+    </div>
   );
 };

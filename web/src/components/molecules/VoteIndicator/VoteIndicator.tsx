@@ -13,12 +13,12 @@ export const VoteIndicator: React.FC<VoteIndicatorProps> = ({ amount, className 
 
   const isPositive = amount > 0;
   const variant = isPositive ? 'success' : 'error';
-  const icon = isPositive ? 'add' : 'remove';
+  const iconName = isPositive ? 'add' : 'remove';
   const displayAmount = Math.abs(amount);
 
   return (
     <Badge variant={variant} size="sm" className={`flex items-center gap-1 ${className}`}>
-      <Icon name={icon} size={16} />
+      <Icon name={iconName} size={16} />
       <span>{displayAmount}</span>
     </Badge>
   );

@@ -1,8 +1,22 @@
 'use client';
 
 import React, { Component, ReactNode } from 'react';
-import { Button } from './atoms';
 import { ErrorDisplay } from './atoms/ErrorDisplay';
+import { ErrorBoundaryContent } from './ErrorBoundaryContent';
+
+// Use plain HTML button instead of Gluestack UI Button to avoid SSR issues
+const Button = ({ variant, onClick, children }: { variant?: string; onClick?: () => void; children: ReactNode }) => {
+  const baseClasses = 'px-6 py-3 rounded-lg font-medium transition-colors w-full sm:w-auto';
+  const variantClasses = variant === 'primary' 
+    ? 'bg-primary text-primary-content hover:bg-primary/90' 
+    : 'bg-base-200 text-base-content hover:bg-base-300';
+  
+  return (
+    <button className={`${baseClasses} ${variantClasses}`} onClick={onClick}>
+      {children}
+    </button>
+  );
+};
 
 interface Props {
   children: ReactNode;
@@ -31,29 +45,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return this.props.fallback || (
-        <ErrorDisplay
-          message={this.state.error?.message || 'An unexpected error occurred'}
-          variant="card"
-          fullScreen
-          error={this.state.error || undefined}
-          showDetails={!!this.state.error}
-          actions={
-            <>
-              <Button 
-                variant="primary" 
-                onClick={() => window.location.href = '/meriter/home'}
-              >
-                Go Home
-              </Button>
-              <Button 
-                variant="secondary" 
-                onClick={() => window.location.reload()}
-              >
-                Reload Page
-              </Button>
-            </>
-          }
-        />
+        <ErrorBoundaryContent error={this.state.error} />
       );
     }
 

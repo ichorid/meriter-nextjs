@@ -1,20 +1,38 @@
 services:
   mongodb:
-    image: mongo:8
+    image: mongo:8.0
     container_name: meriter-mongodb
     restart: unless-stopped
-    ports:
-      - "27017:27017"
+    # Security: MongoDB port not exposed to host in production
+    # Access only through Docker network
+    # ports:
+    #   - "27017:27017"
+    env_file:
+      - .env
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ADMIN_PASSWORD}
+      - MONGO_INITDB_DATABASE=meriter
+      # App password for init script (creates meriter_user)
+      - MONGO_APP_PASSWORD=${MONGO_APP_PASSWORD}
     volumes:
       - mongodb_data:/data/db
+      - ./mongodb-init:/docker-entrypoint-initdb.d:ro
     networks:
-      - meriter-network
+      - meriter-database-network
     healthcheck:
       test: mongosh --quiet --eval "db.adminCommand('ping')"
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    security_opt:
+      - no-new-privileges:true
 
   web:
     image: ghcr.io/ichorid/meriter-nextjs-web:${VERSION_WEB:-latest}
@@ -25,20 +43,31 @@ services:
     environment:
       - PORT=8001
       - NODE_ENV=production
-      # Pass DOMAIN as NEXT_PUBLIC_DOMAIN for client-side usage
-      - NEXT_PUBLIC_DOMAIN=${DOMAIN}
+      # Note: DOMAIN is detected at runtime from window.location, no need to pass NEXT_PUBLIC_DOMAIN
       # BOT_USERNAME must be set - passed from .env file or explicitly here
       # If not set, container will fail health checks
-    ports:
-      - "8001:8001"
+    # Security: Web port not exposed to host, only accessible through Caddy
+    # ports:
+    #   - "8001:8001"
     networks:
-      - meriter-network
+      - meriter-frontend-network
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:8001 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
 
   api:
     image: ghcr.io/ichorid/meriter-nextjs-api:${VERSION_API:-latest}
@@ -49,10 +78,14 @@ services:
     environment:
       - PORT=8002
       - NODE_ENV=production
-    ports:
-      - "8002:8002"
+      # MongoDB connection with authentication
+      - MONGO_URL=mongodb://meriter_user:${MONGO_APP_PASSWORD}@mongodb:27017/meriter?authSource=meriter
+    # Security: API port not exposed to host, only accessible through Caddy
+    # ports:
+    #   - "8002:8002"
     networks:
-      - meriter-network
+      - meriter-backend-network
+      - meriter-database-network
     depends_on:
       mongodb:
         condition: service_healthy
@@ -62,6 +95,17 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
 
   bot-webhook-init:
     image: ghcr.io/ichorid/meriter-nextjs-api:${VERSION_API:-latest}
@@ -78,7 +122,14 @@ services:
         condition: service_started
     command: ["node", "scripts/setup-webhook.js", "set"]
     networks:
-      - meriter-network
+      - meriter-backend-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
 
   s3-cors-init:
     image: ghcr.io/ichorid/meriter-nextjs-api:${VERSION_API:-latest}
@@ -96,10 +147,17 @@ services:
         condition: service_started
     command: ["node", "scripts/configure-s3-cors.js", "${S3_BUCKET_NAME}", "${DOMAIN}"]
     networks:
-      - meriter-network
+      - meriter-backend-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
 
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2.7-alpine
     container_name: meriter-caddy
     restart: unless-stopped
     env_file:
@@ -113,19 +171,41 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     networks:
-      - meriter-network
+      - meriter-frontend-network
+      - meriter-backend-network
     depends_on:
       web:
+        condition: service_healthy
+      api:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:80 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    # Caddy needs write access to /data and /config for certificates
+    # read_only: true  # Cannot use read_only due to certificate storage
 
 networks:
-  meriter-network:
+  # Frontend network: web and caddy
+  meriter-frontend-network:
     driver: bridge
+    internal: false
+  # Backend network: api and init containers
+  meriter-backend-network:
+    driver: bridge
+    internal: false
+  # Database network: mongodb and api only
+  meriter-database-network:
+    driver: bridge
+    internal: true  # Isolated from other networks
 
 volumes:
   mongodb_data:

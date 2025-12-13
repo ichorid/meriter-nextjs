@@ -1,7 +1,7 @@
-// Atomic Button component
 'use client';
 
 import React from 'react';
+import { BrandButton } from '@/components/ui/BrandButton';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link';
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
@@ -13,6 +13,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   fullWidth?: boolean;
+  onPress?: () => void;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -24,56 +25,38 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       leftIcon,
       rightIcon,
       fullWidth = false,
-      className = '',
-      disabled,
+      onPress,
+      onClick,
       children,
       ...props
     },
     ref
   ) => {
-    const baseClasses = 'btn';
-    
-    const variantClasses = {
-      primary: 'btn-primary',
-      secondary: 'btn-secondary',
-      ghost: 'btn-ghost',
-      danger: 'btn-error',
-      link: 'btn-link',
+    // Map 'danger' to 'primary' with red styling or just use 'primary' for now as BrandButton doesn't have danger
+    // Actually BrandButton has variants: primary, secondary, outline, ghost.
+    // We'll map 'danger' to 'primary' but maybe add a class if needed, or just accept it.
+    // 'link' -> 'ghost' or 'link' if BrandButton supports it. BrandButton supports 'ghost'.
+
+    const mapVariant = (v: ButtonVariant): any => {
+      if (v === 'danger') return 'primary'; // Fallback
+      if (v === 'link') return 'ghost';
+      return v;
     };
-    
-    const sizeClasses = {
-      xs: 'btn-xs',
-      sm: 'btn-sm',
-      md: 'btn-md',
-      lg: 'btn-lg',
-    };
-    
-    const classes = [
-      baseClasses,
-      variantClasses[variant],
-      sizeClasses[size],
-      fullWidth && 'btn-block',
-      className,
-    ]
-      .filter(Boolean)
-      .join(' ');
-    
-    const isDisabled = disabled || isLoading;
-    
+
     return (
-      <button
+      <BrandButton
         ref={ref}
-        className={classes}
-        disabled={isDisabled}
+        variant={mapVariant(variant)}
+        size={size === 'xs' ? 'sm' : size} // Map xs to sm
+        isLoading={isLoading}
+        leftIcon={leftIcon}
+        rightIcon={rightIcon}
+        fullWidth={fullWidth}
+        onClick={onPress || onClick}
         {...props}
       >
-        {isLoading && (
-          <span className="loading loading-spinner loading-sm mr-2"></span>
-        )}
-        {!isLoading && leftIcon && <span className="mr-2">{leftIcon}</span>}
         {children}
-        {!isLoading && rightIcon && <span className="ml-2">{rightIcon}</span>}
-      </button>
+      </BrandButton>
     );
   }
 );

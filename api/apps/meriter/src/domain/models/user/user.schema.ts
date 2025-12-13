@@ -3,15 +3,15 @@ import { Document } from 'mongoose';
 
 /**
  * User Mongoose Schema
- * 
+ *
  * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - UserSchema (Zod)
- * 
+ *
  * This Mongoose schema implements the User entity defined in shared-types.
  * Any changes to the User entity MUST be made in the Zod schema first,
  * then this Mongoose schema should be updated to match.
- * 
+ *
  * Fields correspond to UserSchema in libs/shared-types/src/schemas.ts:
- * - id, telegramId, username, firstName, lastName, displayName, avatarUrl
+ * - id, authProvider, authId, username, firstName, lastName, displayName, avatarUrl
  * - profile (bio, location, website, isVerified)
  * - communityTags, communityMemberships
  * - createdAt, updatedAt (handled by timestamps: true)
@@ -23,8 +23,11 @@ export class User {
   @Prop({ required: true, unique: true })
   id: string;
 
-  @Prop({ required: true, unique: true })
-  telegramId: string;
+  @Prop({ required: true })
+  authProvider: string;
+
+  @Prop({ required: true })
+  authId: string;
 
   @Prop()
   username?: string;
@@ -44,18 +47,47 @@ export class User {
   @Prop({
     type: {
       bio: String,
-      location: String,
+      location: {
+        region: String,
+        city: String,
+      },
       website: String,
       isVerified: { type: Boolean, default: false },
+      about: String,
+      contacts: {
+        email: String,
+        messenger: String,
+      },
+      educationalInstitution: String,
     },
     default: {},
   })
   profile: {
     bio?: string;
-    location?: string;
+    location?: {
+      region: string;
+      city: string;
+    };
     website?: string;
     isVerified?: boolean;
+    about?: string;
+    contacts?: {
+      email: string;
+      messenger: string;
+    };
+    educationalInstitution?: string;
   };
+
+  @Prop({ enum: ['superadmin'] })
+  globalRole?: 'superadmin';
+
+  @Prop({ type: Object, of: Number, default: {} })
+  meritStats?: {
+    [communityId: string]: number;
+  };
+
+  @Prop()
+  inviteCode?: string;
 
   @Prop({ type: [String], default: [] })
   communityTags: string[];
@@ -73,7 +105,8 @@ export class User {
 export const UserSchema = SchemaFactory.createForClass(User);
 
 // Add indexes for common queries
-// Note: telegramId index is already created by @Prop({ unique: true }) decorator
+// Note: authProvider + authId index is created below
+UserSchema.index({ authProvider: 1, authId: 1 }, { unique: true });
 UserSchema.index({ username: 1 });
 UserSchema.index({ communityTags: 1 });
 

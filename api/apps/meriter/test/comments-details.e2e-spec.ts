@@ -22,13 +22,13 @@ describe('Comment Details Endpoint E2E Tests', () => {
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
   let connection: Connection;
-  
+
   let communityService: CommunityService;
   let voteService: VoteService;
   let publicationService: PublicationService;
   let commentService: CommentService;
   let userService: UserService;
-  
+
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
@@ -45,7 +45,7 @@ describe('Comment Details Endpoint E2E Tests', () => {
 
   beforeAll(async () => {
     jest.setTimeout(30000);
-    
+
     testDb = new TestDatabaseHelper();
     const mongoUri = await testDb.start();
     process.env.MONGO_URL = mongoUri;
@@ -63,9 +63,9 @@ describe('Comment Details Endpoint E2E Tests', () => {
     publicationService = app.get<PublicationService>(PublicationService);
     commentService = app.get<CommentService>(CommentService);
     userService = app.get<UserService>(UserService);
-    
+
     connection = app.get(getConnectionToken());
-    
+
     communityModel = connection.model<CommunityDocument>(Community.name);
     userModel = connection.model<UserDocument>(User.name);
     publicationModel = connection.model<PublicationDocument>(Publication.name);
@@ -128,9 +128,7 @@ describe('Comment Details Endpoint E2E Tests', () => {
     // Create test community
     await communityModel.create({
       id: testCommunityId,
-      telegramChatId: `chat_${testCommunityId}`,
       name: 'Test Community',
-      administrators: [testUserId],
       members: [testUserId, testUserId2, testUserId3],
       settings: {
         iconUrl: 'https://example.com/icon.png',
@@ -219,7 +217,7 @@ describe('Comment Details Endpoint E2E Tests', () => {
     for (const key in collections) {
       const collection = collections[key];
       try {
-        await collection.dropIndex('token_1').catch(() => {});
+        await collection.dropIndex('token_1').catch(() => { });
       } catch (err) {
         // Index doesn't exist, ignore
       }
@@ -261,23 +259,23 @@ describe('Comment Details Endpoint E2E Tests', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.data).toBeDefined();
-      
+
       const data = response.body.data;
       expect(data.comment).toBeDefined();
       expect(data.comment.id).toBe(commentId);
       expect(data.comment.content).toBe('This is a regular comment');
-      
+
       expect(data.author).toBeDefined();
       expect(data.author.id).toBe(testUserId2);
       expect(data.author.name).toBe('Test User 2');
-      
+
       expect(data.voteTransaction).toBeNull();
       expect(data.beneficiary).toBeNull();
-      
+
       expect(data.community).toBeDefined();
       expect(data.community.id).toBe(testCommunityId);
       expect(data.community.name).toBe('Test Community');
-      
+
       expect(data.metrics).toBeDefined();
       expect(data.metrics.upvotes).toBe(1);
       expect(data.metrics.downvotes).toBe(0);
@@ -313,25 +311,25 @@ describe('Comment Details Endpoint E2E Tests', () => {
 
       expect(response.body.success).toBe(true);
       const data = response.body.data;
-      
+
       expect(data.voteTransaction).toBeDefined();
       expect(data.voteTransaction.amountTotal).toBe(10);
       expect(data.voteTransaction.plus).toBe(10);
       expect(data.voteTransaction.minus).toBe(0);
       expect(data.voteTransaction.directionPlus).toBe(true);
-      
+
       // Since publication has no beneficiary, effective beneficiary is author (testUserId)
       // But beneficiary should only be set if different from comment author (testUserId2)
       // Since testUserId !== testUserId2, beneficiary should be set
       expect(data.beneficiary).toBeDefined();
       expect(data.beneficiary.id).toBe(testUserId); // Publication author
       expect(data.beneficiary.name).toBe('Test User 1');
-      
+
       // Verify sender and recipient are different
       expect(data.author.id).toBe(testUserId2);
       expect(data.beneficiary.id).toBe(testUserId);
       expect(data.author.id).not.toBe(data.beneficiary.id);
-      
+
       expect(data.community).toBeDefined();
     });
 
@@ -384,20 +382,20 @@ describe('Comment Details Endpoint E2E Tests', () => {
 
       expect(response.body.success).toBe(true);
       const data = response.body.data;
-      
+
       expect(data.voteTransaction).toBeDefined();
       expect(data.voteTransaction.amountTotal).toBe(15);
-      
+
       // Beneficiary should be testUserId3 (set beneficiary, not author)
       expect(data.beneficiary).toBeDefined();
       expect(data.beneficiary.id).toBe(testUserId3);
       expect(data.beneficiary.name).toBe('Test User 3');
-      
+
       // Verify sender and recipient are different
       expect(data.author.id).toBe(testUserId2);
       expect(data.beneficiary.id).toBe(testUserId3);
       expect(data.author.id).not.toBe(data.beneficiary.id);
-      
+
       expect(data.community).toBeDefined();
     });
 
@@ -431,18 +429,18 @@ describe('Comment Details Endpoint E2E Tests', () => {
 
       expect(response.body.success).toBe(true);
       const data = response.body.data;
-      
+
       expect(data.voteTransaction).toBeDefined();
-      
+
       // Beneficiary should be null since effective beneficiary (testUserId) equals comment author (testUserId)
       expect(data.beneficiary).toBeNull();
-      
+
       expect(data.community).toBeDefined();
     });
 
     it('should return 404 for non-existent comment', async () => {
       const nonExistentId = uid();
-      
+
       await request(app.getHttpServer())
         .get(`/api/v1/comments/${nonExistentId}/details`)
         .set('Authorization', `Bearer ${testToken}`)

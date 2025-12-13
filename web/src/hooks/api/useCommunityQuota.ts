@@ -1,12 +1,19 @@
 // Community quota React Query hooks
-import { useQueries } from '@tanstack/react-query';
-import { useMemo } from 'react';
 import { usersApiV1 } from '@/lib/api/v1';
 import { useAuth } from '@/contexts/AuthContext';
 import { quotaKeys } from './useQuota';
+import { STALE_TIME } from '@/lib/constants/query-config';
+import { useBatchQueries } from './useBatchQueries';
 
 export interface CommunityQuota {
   communityId: string;
+  dailyQuota: number;
+  usedToday: number;
+  remainingToday: number;
+  resetAt: string;
+}
+
+interface QuotaData {
   dailyQuota: number;
   usedToday: number;
   remainingToday: number;
@@ -21,50 +28,32 @@ export interface CommunityQuota {
 export function useCommunityQuotas(communityIds: string[]) {
   const { user } = useAuth();
 
-  // Memoize queries array to prevent infinite loops
-  // useQueries compares the queries array by reference, so we need stable references
-  // Use JSON.stringify to compare array contents instead of reference
-  const communityIdsKey = useMemo(() => JSON.stringify([...communityIds].sort()), [communityIds]);
-  
-  const queriesConfig = useMemo(() => {
-    return communityIds.map((communityId) => ({
-      queryKey: quotaKeys.quota(user?.id, communityId),
-      queryFn: () => usersApiV1.getUserQuota(user?.id || '', communityId),
-      enabled: !!user?.id && !!communityId,
-      staleTime: 1 * 60 * 1000, // 1 minute
-      retry: false, // Don't retry on quota errors (community not configured)
-    }));
-  }, [communityIdsKey, user?.id]); // Depend on stringified key and user.id
-
-  const queries = useQueries({
-    queries: queriesConfig,
-  });
-
-  // Map results to include communityId for easier access
-  const quotasMap = new Map<string, CommunityQuota>();
-  queries.forEach((query, index) => {
-    const communityId = communityIds[index];
-    
-    // Only add to map if query has successful data (not error, not loading)
-    if (query.data && !query.error && communityId) {
-      // Ensure data has the expected structure
-      // Note: remainingToday can be 0, which is a valid number!
-      if (typeof query.data.remainingToday === 'number') {
-        const quotaEntry = {
-          communityId: communityId,
-          dailyQuota: query.data.dailyQuota ?? 0,
-          usedToday: query.data.usedToday ?? 0,
-          remainingToday: query.data.remainingToday, // Keep original value, even if 0
-          resetAt: query.data.resetAt ?? '',
-        };
-        quotasMap.set(communityId, quotaEntry);
-      }
-    }
+  const result = useBatchQueries<QuotaData, string>({
+    ids: communityIds,
+    queryKey: (communityId) => quotaKeys.quota(user?.id, communityId),
+    queryFn: (communityId) => usersApiV1.getUserQuota(user?.id || '', communityId),
+    enabled: (communityId) => !!user?.id && !!communityId,
+    staleTime: STALE_TIME.SHORT,
+    retry: false, // Don't retry on quota errors (community not configured)
+    shouldInclude: (data, _id, query) => {
+      // Only include if data exists, no error, and has valid structure
+      return !!data && !query.error && typeof data.remainingToday === 'number';
+    },
+    transformData: (data, communityId) => {
+      // Transform to include communityId
+      return {
+        communityId,
+        dailyQuota: data.dailyQuota ?? 0,
+        usedToday: data.usedToday ?? 0,
+        remainingToday: data.remainingToday, // Keep original value, even if 0
+        resetAt: data.resetAt ?? '',
+      } as CommunityQuota;
+    },
   });
 
   return {
-    queries,
-    quotasMap,
+    queries: result.queries,
+    quotasMap: result.dataMap as Map<string, CommunityQuota>,
   };
 }
 

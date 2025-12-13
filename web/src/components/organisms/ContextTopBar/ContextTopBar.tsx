@@ -5,20 +5,23 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommunity, useWallets } from '@/hooks/api';
 import { useUserQuota } from '@/hooks/api/useQuota';
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { isFakeDataMode } from '@/config';
 import { publicationsApiV1 } from '@/lib/api/v1';
+import { BrandButton } from '@/components/ui/BrandButton';
+import { BrandInput } from '@/components/ui/BrandInput';
+import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
+import { Clock, TrendingUp, Loader2, Search, X, ArrowLeft } from 'lucide-react';
+import { useProfileTabState } from '@/hooks/useProfileTabState';
+import type { TabSortState } from '@/hooks/useProfileTabState';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 export interface ContextTopBarProps {
   className?: string;
 }
 
-export const ContextTopBar: React.FC<ContextTopBarProps> = ({ className = '' }) => {
+export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user } = useAuth();
-  const t = useTranslations('home');
 
   // Don't show on login page
   if (pathname?.includes('/login')) {
@@ -26,232 +29,211 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = ({ className = '' }) 
   }
 
   // Determine which content to show based on route
-  const isHomePage = pathname === '/meriter/home';
+  const isProfileMainPage = pathname === '/meriter/profile';
+  const isProfileSubPage = pathname?.startsWith('/meriter/profile/');
   const isSettingsPage = pathname === '/meriter/settings';
   const isCommunityPage = pathname?.match(/\/meriter\/communities\/([^\/]+)$/);
   const isPostDetailPage = pathname?.match(/\/meriter\/communities\/([^\/]+)\/posts\/(.+)/);
 
   if (isPostDetailPage) {
-    return <PostDetailTopBar pathname={pathname} className={className} />;
+    return null; // PostDetailTopBar was empty
   }
 
   if (isCommunityPage) {
     const communityId = isCommunityPage[1];
     if (!communityId) return null;
-    return <CommunityTopBar communityId={communityId} className={className} />;
+    return <CommunityTopBar communityId={communityId} />;
   }
 
-  if (isHomePage) {
-    return <HomeTopBar className={className} />;
+  // Only show ProfileTopBar on sub-pages (publications, comments, polls), not on main profile page
+  if (isProfileSubPage) {
+    return <ProfileTopBar />;
+  }
+
+  if (isProfileMainPage) {
+    return null; // Main profile page doesn't need top bar
   }
 
   if (isSettingsPage) {
-    return <SettingsTopBar className={className} />;
+    return null; // SettingsTopBar was empty
   }
 
-  // Default top bar
-  return (
-    <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="px-4 h-full flex items-center">
-        <h1 className="text-xl font-semibold">Meriter</h1>
-      </div>
-    </header>
-  );
+  // Default top bar - empty, no header
+  return null;
 };
 
-// Home Top Bar with Tabs
-const HomeTopBar: React.FC<{ className?: string }> = ({ className }) => {
-  const pathname = usePathname();
-  const hash = typeof window !== 'undefined' ? window.location.hash : '';
+// Profile Top Bar with Tabs
+const ProfileTopBar: React.FC = () => {
   const t = useTranslations('home');
+  const tCommon = useTranslations('common');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [showSearchModal, setShowSearchModal] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState('');
 
-  const [activeTab, setActiveTab] = React.useState<'publications' | 'comments' | 'polls' | 'updates'>('publications');
-  const [sortByTab, setSortByTab] = React.useState<{
-    publications: 'recent' | 'voted';
-    comments: 'recent' | 'voted';
-    polls: 'recent' | 'voted';
-    updates: 'recent' | 'voted';
-  }>({
-    publications: 'recent',
-    comments: 'recent',
-    polls: 'recent',
-    updates: 'recent',
-  });
-
+  // Determine current tab from pathname
+  const currentTab = pathname?.includes('/profile/comments') 
+    ? 'comments' 
+    : pathname?.includes('/profile/polls') 
+    ? 'polls' 
+    : pathname?.includes('/profile/projects')
+    ? 'projects'
+    : 'publications';
+  
+  const { sortByTab, setSortByTab } = useProfileTabState();
+  
+  // Sync sort from URL params
   React.useEffect(() => {
-    // Parse hash for tab
-    let detectedTab: 'publications' | 'comments' | 'polls' | 'updates' = 'publications';
-    if (hash.includes('comments')) {
-      detectedTab = 'comments';
-    } else if (hash.includes('polls')) {
-      detectedTab = 'polls';
-    } else if (hash.includes('updates-frequency')) {
-      detectedTab = 'updates';
-    } else {
-      detectedTab = 'publications';
+    const sortParam = searchParams?.get('sort');
+    if (sortParam === 'voted' || sortParam === 'recent') {
+      setSortByTab((prev) => ({
+        ...prev,
+        [currentTab]: sortParam,
+      }));
     }
-    setActiveTab(detectedTab);
+  }, [searchParams, currentTab, setSortByTab]);
 
-    // Parse hash for sort per tab
-    const urlParams = new URLSearchParams(hash.replace(/^#/, '').split('?')[1] || '');
-    const sortParam = urlParams.get('sort');
-    const sortValue = sortParam === 'voted' ? 'voted' : 'recent';
-    
-    // Update sort for the detected tab
-    setSortByTab(prev => ({
-      ...prev,
-      [detectedTab]: sortValue,
-    }));
-  }, [hash]);
-
-  const handleTabClick = (tab: 'publications' | 'comments' | 'polls' | 'updates') => {
-    setActiveTab(tab);
-    let hashPart = '';
-    if (tab === 'comments') {
-      hashPart = '#comments';
-    } else if (tab === 'polls') {
-      hashPart = '#polls';
-    } else if (tab === 'updates') {
-      hashPart = '#updates-frequency';
-    }
-    // For publications, hashPart stays empty (default)
-
-    // Use the stored sort preference for this tab
-    const urlParams = new URLSearchParams();
-    urlParams.set('sort', sortByTab[tab]);
-    
-    // Set hash: for publications, use empty hash with sort params, for others use hashPart with sort
-    if (tab === 'publications') {
-      window.location.hash = urlParams.toString() ? `?${urlParams.toString()}` : '';
-    } else {
-      window.location.hash = `${hashPart}?${urlParams.toString()}`;
-    }
+  const handleBackClick = () => {
+    router.push('/meriter/profile');
   };
 
   const handleSortClick = (sort: 'recent' | 'voted') => {
     // Update sort for the current active tab
-    setSortByTab(prev => ({
+    setSortByTab((prev: TabSortState) => ({
       ...prev,
-      [activeTab]: sort,
+      [currentTab]: sort,
     }));
+
+    const basePath = '/meriter/profile';
+    const tabPath = currentTab === 'publications' ? basePath : `${basePath}/${currentTab}`;
     
     const urlParams = new URLSearchParams();
     urlParams.set('sort', sort);
     
-    let hashPart = '';
-    if (activeTab === 'comments') {
-      hashPart = '#comments';
-    } else if (activeTab === 'polls') {
-      hashPart = '#polls';
-    } else if (activeTab === 'updates') {
-      hashPart = '#updates-frequency';
-    }
-    // For publications tab, hashPart stays empty (default hash)
-    
-    // Set hash: for publications, use empty hash with sort params, for others use hashPart with sort
-    if (activeTab === 'publications') {
-      window.location.hash = urlParams.toString() ? `?${urlParams.toString()}` : '';
-    } else {
-      window.location.hash = `${hashPart}?${urlParams.toString()}`;
+    router.push(`${tabPath}?${urlParams.toString()}`);
+  };
+
+  const handleSearch = (value: string) => {
+    setSearchQuery(value);
+    if (value.trim()) {
+      router.push(`/meriter/search?q=${encodeURIComponent(value.trim())}`);
+      setShowSearchModal(false);
     }
   };
 
+  const handleSearchClear = () => {
+    setSearchQuery('');
+  };
+
   return (
-    <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="px-4 h-full flex items-center gap-2 justify-start md:justify-between">
-        <h1 className="text-xl font-semibold mr-4 hidden md:block">Home</h1>
-        {/* Tabs: buttons on md+, dropdown on mobile */}
-        <div className="tabs tabs-boxed hidden md:flex">
+    <div className="flex-shrink-0">
+      <div className="sticky top-0 z-30 h-14 bg-base-100/95 backdrop-blur-md border-b border-brand-border px-4 py-2 w-full">
+        <div className="flex items-center justify-between h-full gap-4">
+          {/* Back Button */}
+          <BrandButton
+            variant="ghost"
+            size="sm"
+            onClick={handleBackClick}
+            aria-label={tCommon('backToProfile')}
+            className="px-2"
+          >
+            <ArrowLeft size={18} />
+          </BrandButton>
+
+          {/* Search Button */}
+          <BrandButton
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowSearchModal(true)}
+            aria-label={tCommon('search')}
+            className="px-2"
+          >
+            <Search size={18} />
+          </BrandButton>
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Sort Toggle - contextual to active tab */}
+          <div className="flex gap-1 bg-brand-surface p-1 rounded-md border border-brand-border">
           <button
-            onClick={() => handleTabClick('publications')}
-            className={`tab ${activeTab === 'publications' ? 'tab-active' : ''}`}
-          >
-            {t('tabs.publications')}
-          </button>
-          <button
-            onClick={() => handleTabClick('comments')}
-            className={`tab ${activeTab === 'comments' ? 'tab-active' : ''}`}
-          >
-            {t('tabs.comments')}
-          </button>
-          <button
-            onClick={() => handleTabClick('polls')}
-            className={`tab ${activeTab === 'polls' ? 'tab-active' : ''}`}
-          >
-            {t('tabs.polls')}
-          </button>
-          <button
-            onClick={() => handleTabClick('updates')}
-            className={`tab ${activeTab === 'updates' ? 'tab-active' : ''}`}
-          >
-            {t('tabs.updates')}
-          </button>
-        </div>
-        <div className="md:hidden">
-          <select
-            aria-label="Select tab"
-            className="select select-sm w-36"
-            value={activeTab}
-            onChange={(e) => handleTabClick(e.target.value as any)}
-          >
-            <option value="publications">{t('tabs.publications')}</option>
-            <option value="comments">{t('tabs.comments')}</option>
-            <option value="polls">{t('tabs.polls')}</option>
-            <option value="updates">{t('tabs.updates')}</option>
-          </select>
-        </div>
-        {/* Sort Toggle - contextual to active tab */}
-        <div className="join shadow-sm">
-          <button 
             onClick={() => handleSortClick('recent')}
-            className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-              sortByTab[activeTab] === 'recent' ? 'btn-active btn-primary' : 'btn-ghost'
-            }`}
+            className={`p-2 rounded-md transition-colors ${sortByTab[currentTab] === 'recent'
+                ? 'bg-base-100 text-brand-primary shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
+                : 'text-brand-text-secondary hover:text-brand-text-primary'
+              }`}
           >
-            {t('sort.recent')}
+            <Clock size={16} />
           </button>
-          <button 
+          <button
             onClick={() => handleSortClick('voted')}
-            className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-              sortByTab[activeTab] === 'voted' ? 'btn-active btn-primary' : 'btn-ghost'
-            }`}
+            className={`p-2 rounded-md transition-colors ${sortByTab[currentTab] === 'voted'
+                ? 'bg-base-100 text-brand-primary shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
+                : 'text-brand-text-secondary hover:text-brand-text-primary'
+              }`}
           >
-            {t('sort.voted')}
+            <TrendingUp size={16} />
           </button>
+          </div>
         </div>
       </div>
-    </header>
+
+      {/* Search Modal Portal - only render when open */}
+      {showSearchModal && (
+        <BottomActionSheet
+          isOpen={showSearchModal}
+          onClose={() => setShowSearchModal(false)}
+          title="Search"
+        >
+          <div className="space-y-4">
+            <BrandInput
+              type="text"
+              placeholder={tCommon('searchPlaceholder')}
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              leftIcon={<Search size={18} />}
+              rightIcon={searchQuery ? (
+                <button
+                  type="button"
+                  onClick={handleSearchClear}
+                  className="text-brand-text-muted hover:text-brand-text-primary transition-colors"
+                  aria-label={tCommon('clearSearch')}
+                >
+                  <X size={18} />
+                </button>
+              ) : undefined}
+              className="w-full"
+            />
+          </div>
+        </BottomActionSheet>
+      )}
+    </div>
   );
 };
 
 // Community Top Bar
-const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = ({ communityId, className }) => {
+const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => {
   const { data: community } = useCommunity(communityId);
   const { user } = useAuth();
-  const { data: wallets = [] } = useWallets();
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('pages.communities');
   const [showTagDropdown, setShowTagDropdown] = React.useState(false);
   const [showSnack, setShowSnack] = React.useState(false);
-  
+  const [showSearchModal, setShowSearchModal] = React.useState(false);
+
   // Fake data generation state
   const fakeDataMode = isFakeDataMode();
   const [generatingUserPosts, setGeneratingUserPosts] = React.useState(false);
   const [generatingBeneficiaryPosts, setGeneratingBeneficiaryPosts] = React.useState(false);
   const [fakeDataMessage, setFakeDataMessage] = React.useState('');
 
-  // Get wallet balance for this community
-  const wallet = wallets.find((w: any) => w.communityId === communityId);
-  const balance = wallet?.balance || 0;
-
-  // Get free vote quota using standardized hook
-  const { data: quota, error: quotaError } = useUserQuota(community?.id);
-
-
   // Get sortBy from URL params
   const sortBy = searchParams?.get('sort') || 'recent';
   const selectedTag = searchParams?.get('tag');
+  const searchQuery = searchParams?.get('q') || '';
+  const [localSearchQuery, setLocalSearchQuery] = React.useState(searchQuery);
 
   // Handle sort change
   const handleSortChange = (sort: 'recent' | 'voted') => {
@@ -280,23 +262,40 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
     setShowTagDropdown(false);
   };
 
-  // Handle create poll - set modal state via URL param
-  const handleCreatePoll = () => {
+  // Handle search query change
+  const handleSearchChange = (value: string) => {
+    setLocalSearchQuery(value);
     const params = new URLSearchParams(searchParams?.toString() ?? '');
-    params.set('modal', 'createPoll');
+    if (value.trim()) {
+      params.set('q', value.trim());
+    } else {
+      params.delete('q');
+    }
     router.push(`?${params.toString()}`);
   };
+
+  // Handle search clear
+  const handleSearchClear = () => {
+    setLocalSearchQuery('');
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    params.delete('q');
+    router.push(`?${params.toString()}`);
+  };
+
+  // Sync local search query with URL params
+  React.useEffect(() => {
+    setLocalSearchQuery(searchQuery);
+  }, [searchQuery]);
 
   // Handle fake data generation
   const handleGenerateUserPosts = async () => {
     setGeneratingUserPosts(true);
     setFakeDataMessage('');
-    
+
     try {
       const result = await publicationsApiV1.generateFakeData('user', communityId);
       setFakeDataMessage(`Created ${result.count} user post(s)`);
       setTimeout(() => setFakeDataMessage(''), 3000);
-      // Refresh the page to show new posts
       router.refresh();
     } catch (error) {
       console.error('Generate user posts error:', error);
@@ -310,12 +309,11 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
   const handleGenerateBeneficiaryPosts = async () => {
     setGeneratingBeneficiaryPosts(true);
     setFakeDataMessage('');
-    
+
     try {
       const result = await publicationsApiV1.generateFakeData('beneficiary', communityId);
       setFakeDataMessage(`Created ${result.count} post(s) with beneficiary`);
       setTimeout(() => setFakeDataMessage(''), 3000);
-      // Refresh the page to show new posts
       router.refresh();
     } catch (error) {
       console.error('Generate beneficiary posts error:', error);
@@ -326,224 +324,182 @@ const CommunityTopBar: React.FC<{ communityId: string; className?: string }> = (
     }
   };
 
+  const isMobile = !useMediaQuery('(min-width: 768px)');
+
   // Show mobile snack bar with community title when arriving/switching
   React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const isMobile = window.matchMedia('(max-width: 767px)').matches;
     if (!isMobile) return;
     setShowSnack(true);
     const timeout = setTimeout(() => setShowSnack(false), 2000);
     return () => clearTimeout(timeout);
-  }, [communityId]);
+  }, [communityId, isMobile]);
 
   if (!community) {
     return null;
   }
 
   const hashtags = community.hashtags || [];
-  // Determine admin rights: prefer backend-computed flag, fallback to telegram-based list
+  // Determine admin rights
   const isAdmin = Boolean(
-    community.isAdmin ?? (
-      Array.isArray((community as any).adminsTG) && user?.telegramId
-        ? (community as any).adminsTG.includes(user.telegramId)
-        : false
-    )
+    user?.globalRole === 'superadmin' ||
+    community.isAdmin
   );
-
-  return (
-    <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="px-4 h-full flex items-center gap-2">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold hidden md:block">{community.name}</h1>
-          {isAdmin && (
-            <button
-              onClick={() => router.push(`/meriter/communities/${communityId}/settings`)}
-              className="btn btn-ghost btn-sm btn-circle"
-              title="Community Settings"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-          )}
-          {/* Create Poll Button */}
-          <button
-            onClick={handleCreatePoll}
-            className="btn btn-ghost btn-sm btn-circle"
-            title={t('createPoll')}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-4">
-          {/* Fake Data Generation Buttons - Only shown in fake mode */}
-          {fakeDataMode && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleGenerateUserPosts}
-                disabled={generatingUserPosts || generatingBeneficiaryPosts}
-                className="btn btn-sm btn-ghost"
-                title="Generate User Posts"
-              >
-                {generatingUserPosts ? (
-                  <span className="loading loading-spinner loading-xs"></span>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                )}
-              </button>
-              <button
-                onClick={handleGenerateBeneficiaryPosts}
-                disabled={generatingUserPosts || generatingBeneficiaryPosts}
-                className="btn btn-sm btn-ghost"
-                title="Generate Posts with Beneficiary"
-              >
-                {generatingBeneficiaryPosts ? (
-                  <span className="loading loading-spinner loading-xs"></span>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                )}
-              </button>
-              {fakeDataMessage && (
-                <div className={`text-xs ${fakeDataMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>
-                  {fakeDataMessage}
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* Tag Filter Dropdown */}
-          {hashtags.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={() => setShowTagDropdown(!showTagDropdown)}
-                className="btn btn-sm btn-ghost flex items-center gap-1"
-                title={selectedTag ? `#${selectedTag}` : t('filterByTags')}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-                {selectedTag && <span>#{selectedTag}</span>}
-              </button>
-              
-              {showTagDropdown && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-10" 
-                    onClick={() => setShowTagDropdown(false)}
-                  />
-                  <div className="absolute right-0 top-full mt-2 w-64 max-h-96 overflow-y-auto bg-base-100 shadow-lg rounded-lg border border-base-300 p-3 z-20">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={handleShowAll}
-                        className={`btn btn-xs ${
-                          !selectedTag ? 'btn-primary' : 'btn-ghost'
-                        }`}
-                      >
-                        {t('showAll')}
-                      </button>
-                      {hashtags.map((tag: string) => (
-                        <button
-                          key={tag}
-                          onClick={() => handleTagClick(tag)}
-                          className={`btn btn-xs ${
-                            selectedTag === tag ? 'btn-primary' : 'btn-ghost'
-                          }`}
-                        >
-                          #{tag}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Sort Toggle */}
-          <div className="join shadow-sm">
-            <button 
-              onClick={() => handleSortChange('recent')}
-              className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-                sortBy === 'recent' ? 'btn-active btn-primary' : 'btn-ghost'
-              }`}
-            >
-              {t('byDate')}
-            </button>
-            <button 
-              onClick={() => handleSortChange('voted')}
-              className={`join-item btn btn-sm font-medium transition-all duration-200 ${
-                sortBy === 'voted' ? 'btn-active btn-primary' : 'btn-ghost'
-              }`}
-            >
-              {t('byRating')}
-            </button>
-          </div>
-        </div>
-      </div>
-      {/* Mobile snackbar with community title on navigation */}
-      {showSnack && (
-        <div className="md:hidden fixed bottom-4 left-0 right-0 z-50 flex justify-center">
-          <div className="px-3 py-2 rounded-full shadow-md bg-base-200 text-sm text-base-content border border-base-300 max-w-[80%] truncate">
-            {community.name}
-          </div>
-        </div>
-      )}
-    </header>
-  );
-};
-
-// Settings Top Bar
-const SettingsTopBar: React.FC<{ className?: string }> = ({ className }) => {
-  return (
-    <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="px-4 h-full flex items-center">
-        <h1 className="text-xl font-semibold">Settings</h1>
-      </div>
-    </header>
-  );
-};
-
-// Post Detail Top Bar with Back Button
-const PostDetailTopBar: React.FC<{ pathname: string | null; className?: string }> = ({ pathname, className }) => {
-  const router = useRouter();
-  
-  // Extract community ID from pathname
-  const match = pathname?.match(/\/meriter\/communities\/([^\/]+)\/posts\/(.+)/);
-  const communityId = match?.[1];
-
-  const { data: community } = useCommunity(communityId || '');
 
   const handleBack = () => {
-    router.back();
+    router.push('/meriter/communities');
   };
 
   return (
-    <header className={`sticky top-0 z-30 h-16 bg-base-100 shadow-md ${className}`}>
-      <div className="px-4 h-full flex items-center gap-3">
-        {/* Mobile back button */}
-        <button
-          onClick={handleBack}
-          className="md:hidden btn btn-ghost btn-sm btn-circle"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        {community && (
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold">{community.name}</h1>
+    <div className="flex-shrink-0">
+      <div className="sticky top-0 z-30 bg-base-100 border-b border-base-content/10 w-full">
+        {/* Main Header Row */}
+        <div className="flex items-center gap-3 px-4 h-14">
+          {/* Back Button */}
+          <BrandButton
+            variant="ghost"
+            size="sm"
+            onClick={handleBack}
+            className="px-2 -ml-2"
+          >
+            <ArrowLeft size={20} className="text-base-content" />
+          </BrandButton>
+
+          {/* Community Name */}
+          <h1 className="text-lg font-semibold text-base-content truncate flex-1">
+            {community.name}
+          </h1>
+
+          {/* Search Button */}
+          <BrandButton
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowSearchModal(true)}
+            className="px-2"
+          >
+            <Search size={18} className="text-base-content/70" />
+          </BrandButton>
+
+          {/* Sort Toggle */}
+          <div className="flex gap-0.5 bg-base-200/50 p-0.5 rounded-lg">
+            <button
+              onClick={() => handleSortChange('recent')}
+              className={`p-1.5 rounded-md transition-colors ${sortBy === 'recent'
+                  ? 'bg-base-100 text-base-content shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
+                  : 'text-base-content/50 hover:text-base-content'
+                }`}
+            >
+              <Clock size={16} />
+            </button>
+            <button
+              onClick={() => handleSortChange('voted')}
+              className={`p-1.5 rounded-md transition-colors ${sortBy === 'voted'
+                  ? 'bg-base-100 text-base-content shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
+                  : 'text-base-content/50 hover:text-base-content'
+                }`}
+            >
+              <TrendingUp size={16} />
+            </button>
+          </div>
+
+          {/* Admin Settings */}
+          {isAdmin && (
+            <BrandButton
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push(`/meriter/communities/${communityId}/settings`)}
+              className="px-2"
+            >
+              <svg className="w-5 h-5 text-base-content/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </BrandButton>
+          )}
+        </div>
+
+        {/* Tag Filter Row - only if tags exist */}
+        {hashtags.length > 0 && (
+          <div className="flex items-center gap-2 px-4 pb-3 overflow-x-auto">
+            <button
+              onClick={handleShowAll}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                !selectedTag
+                  ? 'bg-base-content text-base-100'
+                  : 'bg-base-200/50 text-base-content/70 hover:bg-base-200'
+              }`}
+            >
+              All
+            </button>
+            {hashtags.map((tag: string) => (
+              <button
+                key={tag}
+                onClick={() => handleTagClick(tag)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                  selectedTag === tag
+                    ? 'bg-base-content text-base-100'
+                    : 'bg-base-200/50 text-base-content/70 hover:bg-base-200'
+                }`}
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Fake Data Buttons - dev only */}
+        {fakeDataMode && (
+          <div className="flex items-center gap-2 px-4 pb-2">
+            <BrandButton
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateUserPosts}
+              disabled={generatingUserPosts || generatingBeneficiaryPosts}
+            >
+              {generatingUserPosts ? <Loader2 className="animate-spin" size={16} /> : '+'}
+            </BrandButton>
+            <BrandButton
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateBeneficiaryPosts}
+              disabled={generatingUserPosts || generatingBeneficiaryPosts}
+            >
+              {generatingBeneficiaryPosts ? <Loader2 className="animate-spin" size={16} /> : '++'}
+            </BrandButton>
+            {fakeDataMessage && (
+              <span className={`text-xs ${fakeDataMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>
+                {fakeDataMessage}
+              </span>
+            )}
           </div>
         )}
       </div>
-    </header>
+
+      {/* Search Modal */}
+      {showSearchModal && (
+        <BottomActionSheet
+          isOpen={showSearchModal}
+          onClose={() => setShowSearchModal(false)}
+          title={t('searchPlaceholder')}
+        >
+          <BrandInput
+            type="text"
+            placeholder={t('searchPlaceholder')}
+            value={localSearchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            leftIcon={<Search size={18} className="text-base-content/40" />}
+            rightIcon={localSearchQuery ? (
+              <button
+                type="button"
+                onClick={handleSearchClear}
+                className="text-base-content/40 hover:text-base-content transition-colors"
+              >
+                <X size={18} />
+              </button>
+            ) : undefined}
+            autoFocus
+          />
+        </BottomActionSheet>
+      )}
+    </div>
   );
 };
-

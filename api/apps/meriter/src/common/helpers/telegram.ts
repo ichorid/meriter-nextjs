@@ -47,7 +47,7 @@ export function buildDesktopUrl(action: string, params: Record<string, string | 
     case 'login':
       return `${baseUrl}/meriter/login`;
     case 'updates':
-      return `${baseUrl}/meriter/home?updates=1`;
+      return `${baseUrl}/meriter/profile?updates=1`;
     case 'setup':
       return `${baseUrl}`;
     case 'publication': {
@@ -58,7 +58,7 @@ export function buildDesktopUrl(action: string, params: Record<string, string | 
       const slug = params['slug'] ?? params['id'];
       if (communityId && slug) return `${baseUrl}/meriter/communities/${communityId}?post=${slug}`;
       if (params['id']) return `${baseUrl}/meriter/publications/${params['id']}`;
-      return `${baseUrl}/meriter/home`;
+      return `${baseUrl}/meriter/profile`;
     }
     case 'community': {
       const id = params['id'];
@@ -70,12 +70,12 @@ export function buildDesktopUrl(action: string, params: Record<string, string | 
       const communityId = params['communityId'];
       if (id && communityId) return `${baseUrl}/meriter/communities/${communityId}?poll=${id}`;
       if (id) return `${baseUrl}/meriter/communities?poll=${id}`;
-      return `${baseUrl}/meriter/home`;
+      return `${baseUrl}/meriter/profile`;
     }
     default:
       // Fallback: allow passing full or partial desktopPath
       const desktopPath = params['desktopPath'];
-      return desktopPath ? `${baseUrl}${ensure(String(desktopPath))}` : `${baseUrl}/meriter/home`;
+      return desktopPath ? `${baseUrl}${ensure(String(desktopPath))}` : `${baseUrl}/meriter/profile`;
   }
 }
 

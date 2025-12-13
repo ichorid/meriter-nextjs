@@ -56,8 +56,8 @@ describe('Voting quota spending (e2e)', () => {
     for (const key in collections) {
       const collection = collections[key];
       try {
-        await collection.dropIndex('token_1').catch(() => {});
-      } catch {}
+        await collection.dropIndex('token_1').catch(() => { });
+      } catch { }
       await collection.deleteMany({});
     }
   });
@@ -74,7 +74,6 @@ describe('Voting quota spending (e2e)', () => {
 
     await communityModel.create({
       id: communityId,
-      telegramChatId: communityId,
       name: 'Test',
       administrators: [],
       members: [userId],
@@ -110,11 +109,11 @@ describe('Voting quota spending (e2e)', () => {
 
     // Before vote: usedToday should be 0
     const today = new Date();
-    const startOfDay = new Date(today); startOfDay.setHours(0,0,0,0);
-    const endOfDay = new Date(today); endOfDay.setHours(23,59,59,999);
+    const startOfDay = new Date(today); startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(today); endOfDay.setHours(23, 59, 59, 999);
 
     const beforeAgg = await connection.db.collection('votes').aggregate([
-      { $match: { userId, communityId, sourceType: { $in: ['quota','daily_quota'] }, createdAt: { $gte: startOfDay, $lt: endOfDay } } },
+      { $match: { userId, communityId, sourceType: { $in: ['quota', 'daily_quota'] }, createdAt: { $gte: startOfDay, $lt: endOfDay } } },
       { $project: { absAmount: { $abs: '$amount' } } },
       { $group: { _id: null, total: { $sum: '$absAmount' } } },
     ]).toArray();
@@ -125,7 +124,7 @@ describe('Voting quota spending (e2e)', () => {
     await voteService.createVote(userId, 'publication', publicationId, 3, 'quota', communityId);
 
     const afterAgg = await connection.db.collection('votes').aggregate([
-      { $match: { userId, communityId, sourceType: { $in: ['quota','daily_quota'] }, createdAt: { $gte: startOfDay, $lt: endOfDay } } },
+      { $match: { userId, communityId, sourceType: { $in: ['quota', 'daily_quota'] }, createdAt: { $gte: startOfDay, $lt: endOfDay } } },
       { $project: { absAmount: { $abs: '$amount' } } },
       { $group: { _id: null, total: { $sum: '$absAmount' } } },
     ]).toArray();
@@ -141,7 +140,6 @@ describe('Voting quota spending (e2e)', () => {
 
     await communityModel.create({
       id: communityId,
-      telegramChatId: communityId,
       name: 'Test',
       administrators: [],
       members: [userId, authorId],
@@ -173,11 +171,11 @@ describe('Voting quota spending (e2e)', () => {
     const comment = await commentService.createComment(authorId, { targetType: 'publication', targetId: publicationId, content: 'c' });
 
     const today = new Date();
-    const startOfDay = new Date(today); startOfDay.setHours(0,0,0,0);
-    const endOfDay = new Date(today); endOfDay.setHours(23,59,59,999);
+    const startOfDay = new Date(today); startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(today); endOfDay.setHours(23, 59, 59, 999);
 
     const beforeAgg = await connection.db.collection('votes').aggregate([
-      { $match: { userId, communityId, sourceType: { $in: ['quota','daily_quota'] }, createdAt: { $gte: startOfDay, $lt: endOfDay } } },
+      { $match: { userId, communityId, sourceType: { $in: ['quota', 'daily_quota'] }, createdAt: { $gte: startOfDay, $lt: endOfDay } } },
       { $project: { absAmount: { $abs: '$amount' } } },
       { $group: { _id: null, total: { $sum: '$absAmount' } } },
     ]).toArray();
@@ -188,7 +186,7 @@ describe('Voting quota spending (e2e)', () => {
     await voteService.createVote(userId, 'comment', comment.getId, 4, 'quota', communityId);
 
     const afterAgg = await connection.db.collection('votes').aggregate([
-      { $match: { userId, communityId, sourceType: { $in: ['quota','daily_quota'] }, createdAt: { $gte: startOfDay, $lt: endOfDay } } },
+      { $match: { userId, communityId, sourceType: { $in: ['quota', 'daily_quota'] }, createdAt: { $gte: startOfDay, $lt: endOfDay } } },
       { $project: { absAmount: { $abs: '$amount' } } },
       { $group: { _id: null, total: { $sum: '$absAmount' } } },
     ]).toArray();
@@ -203,7 +201,6 @@ describe('Voting quota spending (e2e)', () => {
 
     await communityModel.create({
       id: communityId,
-      telegramChatId: communityId,
       name: 'Test',
       administrators: [],
       members: [userId],
@@ -229,14 +226,14 @@ describe('Voting quota spending (e2e)', () => {
     });
 
     const today = new Date();
-    const startOfDay = new Date(today); startOfDay.setHours(0,0,0,0);
-    const endOfDay = new Date(today); endOfDay.setHours(23,59,59,999);
+    const startOfDay = new Date(today); startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(today); endOfDay.setHours(23, 59, 59, 999);
 
     // Personal vote
     await voteService.createVote(userId, 'publication', publicationId, 5, 'personal', communityId);
 
     const afterAgg = await connection.db.collection('votes').aggregate([
-      { $match: { userId, communityId, sourceType: { $in: ['quota','daily_quota'] }, createdAt: { $gte: startOfDay, $lt: endOfDay } } },
+      { $match: { userId, communityId, sourceType: { $in: ['quota', 'daily_quota'] }, createdAt: { $gte: startOfDay, $lt: endOfDay } } },
       { $project: { absAmount: { $abs: '$amount' } } },
       { $group: { _id: null, total: { $sum: '$absAmount' } } },
     ]).toArray();

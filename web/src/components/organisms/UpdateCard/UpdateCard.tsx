@@ -20,11 +20,11 @@ export const UpdateCard: React.FC<UpdateCardProps> = ({
   const handleClick = () => {
     if (update.communityId && update.publicationId) {
       // Navigate to publication, optionally with comment highlight
-      const path = `/meriter/communities/${update.communityId}/posts/${update.publicationId}`;
-      const params = update.targetType === 'comment' && update.targetId 
+      const basePath = `/meriter/communities/${update.communityId}/posts/${update.publicationId}`;
+      const params = update.targetType === 'comment' && update.targetId
         ? `?highlight=${update.targetId}`
         : '';
-      router.push(path + params);
+      router.push(basePath + params);
     }
   };
 
@@ -37,11 +37,11 @@ export const UpdateCard: React.FC<UpdateCardProps> = ({
       const diffHours = Math.floor(diffMs / 3600000);
       const diffDays = Math.floor(diffMs / 86400000);
 
-      if (diffMins < 1) return t('timeJustNow') || 'just now';
-      if (diffMins < 60) return `${diffMins}${t('timeMinutesAgo') || 'm ago'}`;
-      if (diffHours < 24) return `${diffHours}${t('timeHoursAgo') || 'h ago'}`;
-      if (diffDays < 7) return `${diffDays}${t('timeDaysAgo') || 'd ago'}`;
-      
+      if (diffMins < 1) return t('timeJustNow');
+      if (diffMins < 60) return `${diffMins}${t('timeMinutesAgo')}`;
+      if (diffHours < 24) return `${diffHours}${t('timeHoursAgo')}`;
+      if (diffDays < 7) return `${diffDays}${t('timeDaysAgo')}`;
+
       return date.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -55,13 +55,13 @@ export const UpdateCard: React.FC<UpdateCardProps> = ({
     if (update.eventType === 'vote') {
       return update.direction === 'up' ? '↑' : '↓';
     }
-    return '👤';
+    return '';
   };
 
   const getEventDescription = () => {
-    const targetTypeLabel = update.targetType === 'publication' 
-      ? (t('targetType.post') || 'post')
-      : (t('targetType.comment') || 'comment');
+    const targetTypeLabel = update.targetType === 'publication'
+      ? t('targetType.post')
+      : t('targetType.comment');
 
     if (update.eventType === 'vote') {
       if (update.direction === 'up') {
@@ -70,7 +70,7 @@ export const UpdateCard: React.FC<UpdateCardProps> = ({
         return t('voteDown', { targetType: targetTypeLabel }) || `downvoted your ${targetTypeLabel}`;
       }
     } else {
-      return t('beneficiary') || 'created a post with you as beneficiary';
+      return t('beneficiary');
     }
   };
 

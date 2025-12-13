@@ -1,4 +1,7 @@
+'use client';
+
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { config } from '@/config';
 
 export interface ErrorDisplayProps {
@@ -26,6 +29,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
   error,
   className = '',
 }) => {
+  const tCommon = useTranslations('common');
   const containerClasses = fullScreen
     ? 'flex flex-col justify-center items-center min-h-screen p-4'
     : 'flex flex-col justify-center items-center p-4';
@@ -61,11 +65,11 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
   // Card variant
   return (
     <div className={`${containerClasses} ${className}`}>
-      <div className="card bg-base-200 shadow-xl max-w-md w-full">
+      <div className="card bg-base-200 shadow-xl dark:border dark:border-base-content/20 max-w-md w-full">
         <div className="card-body">
           {errorIcon}
           <h2 className={`${variant === 'card' ? 'card-title' : 'text-xl font-semibold'} text-error text-center mb-2`}>
-            {title || 'Something went wrong'}
+            {title || tCommon('somethingWentWrong')}
           </h2>
           <p className="text-base-content/70 text-center mb-4">
             {message}
@@ -77,7 +81,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
             </details>
           )}
           {actions && (
-            <div className="card-actions justify-center mt-4">
+            <div className="card-actions justify-center mt-4 gap-3">
               {actions}
             </div>
           )}

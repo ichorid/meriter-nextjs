@@ -9,5 +9,5 @@ export * from './useUsers';
 export * from './useWallet';
 export * from './useQuota';
 export * from './useCommunityQuota';
-export * from './useUpdates';
+export * from './useCommunityMembers';
 

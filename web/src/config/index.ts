@@ -15,24 +15,38 @@ import { z } from 'zod';
 /**
  * Derive application URL from DOMAIN
  * Protocol: http:// for localhost, https:// for production
+ * Uses runtime detection on client-side (allows one build for all environments)
  * Falls back to APP_URL for backward compatibility if DOMAIN is not set
+ * REQUIRES: DOMAIN environment variable on server-side (not needed on client)
  */
 function deriveAppUrl(): string {
+  // On client-side, use runtime detection from window.location
+  // This allows one build to work across multiple environments (dev, stage, prod)
+  if (typeof window !== 'undefined') {
+    // Try env var first (if set at build time for specific use cases)
+    const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
+    if (domain) {
+      const protocol = domain === 'localhost' ? 'http://' : 'https://';
+      return `${protocol}${domain}`;
+    }
+    // Runtime fallback: use current location (allows one build for all environments)
+    return `${window.location.protocol}//${window.location.host}`;
+  }
+  
+  // Server-side: require env var (for SSR and API routes)
   const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
   
-  if (domain) {
-    // Use http:// for localhost, https:// for production
-    const protocol = domain === 'localhost' ? 'http://' : 'https://';
-    return `${protocol}${domain}`;
+  if (!domain) {
+    // Backward compatibility: if APP_URL exists but DOMAIN doesn't, use APP_URL
+    if (process.env.APP_URL) {
+      return process.env.APP_URL;
+    }
+    throw new Error('DOMAIN environment variable is required on server-side. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).');
   }
   
-  // Backward compatibility: if APP_URL exists but DOMAIN doesn't, use APP_URL
-  if (process.env.APP_URL) {
-    return process.env.APP_URL;
-  }
-  
-  // Default fallback
-  return 'https://meriter.pro';
+  // Use http:// for localhost, https:// for production
+  const protocol = domain === 'localhost' ? 'http://' : 'https://';
+  return `${protocol}${domain}`;
 }
 
 // Environment variable validation schema
@@ -65,38 +79,15 @@ const envSchema = z.object({
   // Feature Flags
   NEXT_PUBLIC_ENABLE_ANALYTICS: z.string().optional(),
   NEXT_PUBLIC_ENABLE_DEBUG: z.string().optional(),
+  NEXT_PUBLIC_ENABLE_COMMENT_VOTING: z.string().optional(),
+  NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM: z.string().optional(),
   
   // Development Mode
   NEXT_PUBLIC_FAKE_DATA_MODE: z.string().optional(),
-}).superRefine((env, ctx) => {
-  const hasEndpoint = !!env.S3_ENDPOINT;
-  const hasRegion = !!env.S3_REGION;
-  const hasBucket = !!env.S3_BUCKET_NAME;
-
-  if (hasEndpoint && !hasRegion) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'S3_REGION must be configured when S3_ENDPOINT is set.',
-      path: ['S3_REGION'],
-    });
-  }
-
-  if (!hasEndpoint && hasRegion) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'S3_REGION is set but S3_ENDPOINT is missing. Either set both or remove S3_REGION.',
-      path: ['S3_REGION'],
-    });
-  }
-
-  if (hasEndpoint && !hasBucket) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'S3_BUCKET_NAME must be configured when S3_ENDPOINT is set.',
-      path: ['S3_BUCKET_NAME'],
-    });
-  }
 });
+// S3 validation removed - S3 is completely optional
+// If S3_ENDPOINT is set but other params are missing, S3 will simply be disabled
+// This allows the app to run without S3 configuration (S3 is only used for Telegram bot features)
 
 // Validate and parse environment variables
 const env = envSchema.parse({
@@ -111,11 +102,42 @@ const env = envSchema.parse({
   S3_REGION: process.env.S3_REGION,
   NEXT_PUBLIC_ENABLE_ANALYTICS: process.env.NEXT_PUBLIC_ENABLE_ANALYTICS,
   NEXT_PUBLIC_ENABLE_DEBUG: process.env.NEXT_PUBLIC_ENABLE_DEBUG,
+  NEXT_PUBLIC_ENABLE_COMMENT_VOTING: process.env.NEXT_PUBLIC_ENABLE_COMMENT_VOTING,
+  NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM: process.env.NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM,
   NEXT_PUBLIC_FAKE_DATA_MODE: process.env.NEXT_PUBLIC_FAKE_DATA_MODE,
 });
 
 // Derive app URL from DOMAIN
 const appUrl = deriveAppUrl();
+
+/**
+ * Get domain for configuration - validates that domain can be detected
+ * Throws error if domain is undefined when it shouldn't be
+ */
+function getDomainConfig(): string {
+  if (typeof window !== 'undefined') {
+    // Client-side: domain should always be available from window.location
+    const hostname = window.location?.hostname;
+    if (!hostname) {
+      throw new Error(
+        'Failed to detect domain: window.location.hostname is undefined. ' +
+        'This should not happen in a browser environment. Check your deployment configuration.'
+      );
+    }
+    return hostname;
+  }
+  
+  // Server-side: require DOMAIN env var (already validated by deriveAppUrl, but double-check)
+  const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
+  if (!domain) {
+    throw new Error(
+      'DOMAIN environment variable is required on server-side. ' +
+      'Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro). ' +
+      'This is required for proper cookie domain configuration and SSR.'
+    );
+  }
+  return domain;
+}
 
 function normalizeUrl(url?: string | null): string | undefined {
   if (!url) {
@@ -139,15 +161,20 @@ export const config = {
     isProduction: env.NODE_ENV === 'production',
     isTest: env.NODE_ENV === 'test',
     url: appUrl,
-    domain: process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN || undefined,
+    // Domain is detected at runtime on client-side from window.location.hostname
+    // On server-side, it comes from DOMAIN env var
+    // Throws error if domain cannot be determined (fail-fast validation)
+    domain: getDomainConfig(),
   },
   
   // API
   api: {
-    // In production with Caddy, use relative URLs (empty string) when not explicitly set
-    // In development, default to localhost
-    // When explicitly set, always use the provided value
-    baseUrl: env.NEXT_PUBLIC_API_URL ?? (env.NODE_ENV === 'production' ? '' : 'http://localhost:8002'),
+    // Always use relative URLs to go through Next.js rewrites proxy
+    // Next.js rewrites will proxy /api/* to backend API server
+    // In production with Caddy, use empty string (relative URLs)
+    // In development, also use empty string to go through Next.js rewrites
+    // Only use absolute URL if explicitly set via NEXT_PUBLIC_API_URL
+    baseUrl: env.NEXT_PUBLIC_API_URL ?? '',
     endpoints: {
       auth: '/api/v1/auth',
       publications: '/api/v1/publications',
@@ -183,6 +210,8 @@ export const config = {
   features: {
     analytics: env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true',
     debug: env.NEXT_PUBLIC_ENABLE_DEBUG === 'true' || env.NODE_ENV === 'development',
+    commentVoting: env.NEXT_PUBLIC_ENABLE_COMMENT_VOTING === 'true',
+    loginInviteForm: env.NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM === 'true',
   },
   
   // Development Mode

@@ -34,6 +34,9 @@ export class Vote {
   @Prop({ required: true, default: 0, min: 0 })
   amountWallet: number;
 
+  @Prop({ required: true, enum: ['up', 'down'] })
+  direction: 'up' | 'down'; // Explicit vote direction: upvote or downvote
+
   @Prop({ required: true, maxlength: 5000 })
   comment: string; // Required comment text attached to vote
 

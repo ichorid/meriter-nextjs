@@ -6,11 +6,28 @@ const validateSync = (config: Record<string, unknown>) => {
   const nodeEnv = config.NODE_ENV || 'development';
   const fakeDataMode = config.FAKE_DATA_MODE === 'true';
   
+  // Validate DOMAIN is set - required for proper cookie domain scoping
+  // Derive from APP_URL for backward compatibility if DOMAIN is not explicitly set
+  // Exception: In test environment, defaults to localhost for testing
+  let domain = config.DOMAIN as string;
+  if (!domain) {
+    if (config.APP_URL) {
+      try {
+        domain = new URL(config.APP_URL as string).hostname;
+      } catch (error) {
+        throw new Error('DOMAIN is required. Either set DOMAIN environment variable or provide a valid APP_URL to derive it from.');
+      }
+    } else if (nodeEnv === 'test') {
+      // Allow default for test environment only
+      domain = 'localhost';
+    } else {
+      throw new Error('DOMAIN environment variable is required. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).');
+    }
+  }
+  
   // Apply defaults manually before validation
   const configWithDefaults = {
-    // DOMAIN is optional, defaults to meriter.pro
-    // For backward compatibility, derive from APP_URL if DOMAIN is not set
-    DOMAIN: (config.DOMAIN as string) || (config.APP_URL ? new URL(config.APP_URL as string).hostname : 'meriter.pro'),
+    DOMAIN: domain,
     PORT: config.PORT ? Number(config.PORT) : 8002,
     JWT_SECRET: (config.JWT_SECRET as string) || (fakeDataMode ? 'fake-dev-secret' : ''),
     BOT_USERNAME: (config.BOT_USERNAME as string) || '',

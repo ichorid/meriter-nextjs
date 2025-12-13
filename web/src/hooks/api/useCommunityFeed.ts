@@ -3,6 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { communitiesApiV1 } from '@/lib/api/v1';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import type { PaginatedResponse } from '@/types/api-v1';
+import { createGetNextPageParam } from '@/lib/utils/pagination-utils';
 
 interface FeedItem {
   id: string;
@@ -37,12 +38,7 @@ export function useCommunityFeed(
         tag,
       });
     },
-    getNextPageParam: (lastPage: PaginatedResponse<FeedItem>) => {
-      if (!lastPage.meta?.pagination?.hasNext) {
-        return undefined;
-      }
-      return (lastPage.meta?.pagination?.page || 1) + 1;
-    },
+    getNextPageParam: createGetNextPageParam<FeedItem>(),
     initialPageParam: 1,
     enabled: !!communityId,
   });

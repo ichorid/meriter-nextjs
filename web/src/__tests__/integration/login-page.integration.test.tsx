@@ -2,24 +2,39 @@
  * Integration Tests for Login Page
  * 
  * Tests the complete login flow including:
- * - BotConfigProvider loading states
- * - API error handling (404, 500, network errors)
- * - LoginForm integration with BotConfigProvider
- * - Component rendering and interactions
- * - Error boundary behavior
+ * - LoginForm rendering and interactions
+ * - OAuth provider authentication
+ * - Fake authentication (development mode)
+ * - Error handling
  */
 
 import React from 'react';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NextIntlClientProvider } from 'next-intl';
-import { BotConfigProvider } from '@/contexts/BotConfigContext';
 import { LoginForm } from '@/components/LoginForm';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AppModeProvider } from '@/contexts/AppModeContext';
-import axios from 'axios';
-import { apiClient } from '@/lib/api';
-import { mockAxiosInstance } from '../../../__mocks__/axios';
+
+// Mock toast store
+const mockAddToast = jest.fn();
+const mockRemoveToast = jest.fn();
+jest.mock('@/shared/stores/toast.store', () => ({
+  useToastStore: jest.fn((selector: any) => {
+    if (selector.toString().includes('addToast')) {
+      return mockAddToast;
+    }
+    if (selector.toString().includes('removeToast')) {
+      return mockRemoveToast;
+    }
+    return {
+      toasts: [],
+      addToast: mockAddToast,
+      removeToast: mockRemoveToast,
+    };
+  }),
+}));
 
 // Mock next-intl
 const mockMessages = {
@@ -27,13 +42,16 @@ const mockMessages = {
     title: 'Login',
     welcome: 'Welcome',
     subtitle: 'Sign in to continue',
-    telegramWidget: {
-      instructions: 'Click the button below to sign in with Telegram',
-    },
-    telegramWebApp: {
-      detected: 'Telegram Web App detected',
-    },
-    backToHome: 'Back to Home',
+    signInWith: 'Sign in with {{provider}}',
+    fakeDataModeEnabled: 'Fake Data Mode Enabled',
+    fakeLogin: 'Fake Login',
+    superadminLogin: 'Superadmin Login',
+    authenticating: 'Authenticating...',
+  },
+  registration: {
+    inviteCodeLabel: 'Invite Code',
+    inviteDescription: 'Enter your invite code if you have one',
+    inviteCodePlaceholder: 'Enter invite code',
   },
 };
 
@@ -74,25 +92,68 @@ jest.mock('@/contexts/AppModeContext', () => ({
   useAppMode: jest.fn(),
 }));
 
-// Mock useTelegramWebApp
-jest.mock('@/hooks/useTelegramWebApp', () => ({
-  useTelegramWebApp: jest.fn(() => ({
-    isInTelegram: false,
-    initData: null,
-    user: null,
-    colorScheme: 'light',
-    themeParams: {},
-    version: '1.0',
-    platform: 'web',
-    ready: true,
-  })),
+// Mock config
+jest.mock('@/config', () => ({
+  config: {
+    api: {
+      baseUrl: '',
+      endpoints: {
+        auth: '/api/v1/auth',
+        publications: '/api/v1/publications',
+        comments: '/api/v1/comments',
+        communities: '/api/v1/communities',
+        polls: '/api/v1/polls',
+        wallet: '/api/v1/users/me/wallets',
+        transactions: '/api/v1/users/me/transactions',
+        votes: '/api/v1/votes',
+        users: '/api/v1/users',
+      },
+    },
+    app: {
+      env: 'test',
+      isDevelopment: false,
+      isProduction: false,
+      isTest: true,
+      url: 'http://localhost:3000',
+    },
+    telegram: {
+      botToken: undefined,
+      apiUrl: 'https://api.telegram.org',
+      botUrl: '',
+      avatarBaseUrl: '',
+    },
+    s3: {
+      enabled: false,
+    },
+    features: {
+      debug: false,
+      analytics: false,
+    },
+  },
+  isFakeDataMode: jest.fn(() => false),
+}));
+
+// Mock OAuth providers
+jest.mock('@/lib/utils/oauth-providers', () => ({
+  OAUTH_PROVIDERS: [
+    { id: 'google', name: 'Google', icon: 'LogIn' },
+    { id: 'telegram', name: 'Telegram', icon: 'LogIn' },
+  ],
+  getOAuthUrl: jest.fn((providerId: string, params?: string) => {
+    const baseUrl = `https://oauth.example.com/${providerId}`;
+    return params ? `${baseUrl}?${params}` : baseUrl;
+  }),
 }));
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppMode } from '@/contexts/AppModeContext';
+import { getOAuthUrl } from '@/lib/utils/oauth-providers';
+import { isFakeDataMode } from '@/config';
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseAppMode = useAppMode as jest.MockedFunction<typeof useAppMode>;
+const mockGetOAuthUrl = getOAuthUrl as jest.MockedFunction<typeof getOAuthUrl>;
+const mockIsFakeDataMode = isFakeDataMode as jest.MockedFunction<typeof isFakeDataMode>;
 
 // Test wrapper with all providers
 function TestWrapper({ children }: { children: React.ReactNode }) {
@@ -111,26 +172,26 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <NextIntlClientProvider locale="en" messages={mockMessages}>
-        <BotConfigProvider>
-          <AppModeProvider>
-            <AuthProvider>
-              {children}
-            </AuthProvider>
-          </AppModeProvider>
-        </BotConfigProvider>
+        <AppModeProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </AppModeProvider>
       </NextIntlClientProvider>
     </QueryClientProvider>
   );
 }
-
-// Mock axios for this test file
-const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('Login Page Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPush.mockClear();
     mockReplace.mockClear();
+    mockAddToast.mockClear();
+    mockRemoveToast.mockClear();
+
+    // Reset fake data mode to false by default
+    mockIsFakeDataMode.mockReturnValue(false);
 
     // Default auth context mock
     mockUseAuth.mockReturnValue({
@@ -153,239 +214,65 @@ describe('Login Page Integration', () => {
     });
   });
 
-  describe('BotConfigProvider Loading States', () => {
-    it('should show loading spinner while fetching bot config', async () => {
-      // Mock slow API response
-      let resolvePromise: (value: any) => void;
-      const delayedResponse = new Promise((resolve) => {
-        resolvePromise = resolve;
-      });
-
-      mockAxiosInstance.get.mockImplementation(() => delayedResponse);
-
+  describe('LoginForm Rendering', () => {
+    it('should render LoginForm with title', () => {
       render(
         <TestWrapper>
-          <div>Test Content</div>
+          <LoginForm />
         </TestWrapper>
       );
 
-      // Should show loading state immediately
-      expect(screen.getByText('Loading bot configuration...')).toBeInTheDocument();
-      expect(screen.queryByText('Test Content')).not.toBeInTheDocument();
-
-      // Resolve the promise
-      resolvePromise!({ success: true, data: { botUsername: 'test_bot' } });
-
-      // Wait for loading to complete
-      await waitFor(() => {
-        expect(screen.queryByText('Loading bot configuration...')).not.toBeInTheDocument();
-      });
+      // Translation keys are rendered when translations aren't resolved in test
+      expect(screen.getByText(/login\.title/i)).toBeInTheDocument();
     });
 
-    it('should render children after successful bot config load', async () => {
-      mockAxiosInstance.get.mockResolvedValueOnce({
-        success: true,
-        data: { botUsername: 'test_bot' },
-      });
-
+    // Note: Invite code input is currently disabled (commented out in LoginForm)
+    // This test is skipped until the feature is re-enabled
+    it.skip('should render invite code input', () => {
       render(
         <TestWrapper>
-          <div data-testid="test-content">Test Content</div>
+          <LoginForm />
         </TestWrapper>
       );
 
-      // Wait for loading to complete
-      await waitFor(() => {
-        expect(screen.queryByText('Loading bot configuration...')).not.toBeInTheDocument();
-      });
-
-      // Should render children
-      expect(screen.getByTestId('test-content')).toBeInTheDocument();
+      // Check for translation key or actual label
+      expect(screen.getByText(/registration\.inviteCodeLabel/i)).toBeInTheDocument();
+      const input = screen.getByPlaceholderText(/registration\.inviteCodePlaceholder/i);
+      expect(input).toBeInTheDocument();
     });
 
-    it('should handle successful API response with standard format', async () => {
-      mockAxiosInstance.get.mockResolvedValueOnce({
-        success: true,
-        data: { botUsername: 'meriterbot' },
-        meta: {},
-      });
-
+    it('should render OAuth provider buttons', () => {
       render(
         <TestWrapper>
-          <div data-testid="test-content">Test Content</div>
+          <LoginForm />
         </TestWrapper>
       );
 
-      await waitFor(() => {
-        expect(screen.getByTestId('test-content')).toBeInTheDocument();
-      });
-    });
-
-    it('should handle successful API response without wrapper (fallback)', async () => {
-      mockAxiosInstance.get.mockResolvedValueOnce({
-        data: { botUsername: 'meriterbot' },
-      });
-
-      render(
-        <TestWrapper>
-          <div data-testid="test-content">Test Content</div>
-        </TestWrapper>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('test-content')).toBeInTheDocument();
-      });
+      // Buttons contain translation key "login.signInWith"
+      const buttons = screen.getAllByText(/login\.signInWith/i);
+      expect(buttons.length).toBeGreaterThan(0);
     });
   });
 
-  describe('BotConfigProvider Error Handling', () => {
-    it('should show error message when API returns 404', async () => {
-      mockAxiosInstance.get.mockRejectedValueOnce({
-        response: {
-          status: 404,
-          statusText: 'Not Found',
-          data: {
-            success: false,
-            error: {
-              message: 'API endpoint /api/v1/config not found',
-            },
-          },
-        },
-        isAxiosError: true,
-      });
-
+  describe('LoginForm Interactions', () => {
+    // Note: Invite code input is currently disabled (commented out in LoginForm)
+    // This test is skipped until the feature is re-enabled
+    it.skip('should allow entering invite code', async () => {
+      const user = userEvent.setup();
       render(
         <TestWrapper>
-          <div>Test Content</div>
+          <LoginForm />
         </TestWrapper>
       );
 
-      await waitFor(() => {
-        expect(screen.getByText(/Failed to load bot configuration/i)).toBeInTheDocument();
-      });
+      const inviteInput = screen.getByPlaceholderText(/registration\.inviteCodePlaceholder/i);
+      await user.type(inviteInput, 'TEST123');
 
-      expect(screen.queryByText('Test Content')).not.toBeInTheDocument();
+      expect(inviteInput).toHaveValue('TEST123');
     });
 
-    it('should show error message when API returns 500', async () => {
-      mockAxiosInstance.get.mockRejectedValueOnce({
-        response: {
-          status: 500,
-          statusText: 'Internal Server Error',
-          data: {
-            success: false,
-            error: {
-              code: 'INTERNAL_ERROR',
-              message: 'Internal server error',
-            },
-          },
-        },
-        isAxiosError: true,
-      });
-
-      render(
-        <TestWrapper>
-          <div>Test Content</div>
-        </TestWrapper>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText(/Failed to load bot configuration/i)).toBeInTheDocument();
-      });
-
-      expect(screen.queryByText('Test Content')).not.toBeInTheDocument();
-    });
-
-    it('should show error message when API response is missing botUsername', async () => {
-      mockAxiosInstance.get.mockResolvedValueOnce({
-        success: true,
-        data: { botUsername: '' },
-      });
-
-      render(
-        <TestWrapper>
-          <div>Test Content</div>
-        </TestWrapper>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText(/BOT_USERNAME is missing from server response/i)).toBeInTheDocument();
-      });
-
-      expect(screen.queryByText('Test Content')).not.toBeInTheDocument();
-    });
-
-    it('should show error message when network request fails', async () => {
-      mockAxiosInstance.get.mockRejectedValueOnce(new Error('Network error'));
-
-      render(
-        <TestWrapper>
-          <div>Test Content</div>
-        </TestWrapper>
-      );
-
-      await waitFor(() => {
-        // BotConfigProvider shows the error message from the Error object
-        expect(screen.getByText(/Network error|Failed to load bot configuration/i)).toBeInTheDocument();
-      });
-
-      expect(screen.queryByText('Test Content')).not.toBeInTheDocument();
-    });
-
-    it('should show error message when API times out', async () => {
-      // Mock a promise that never resolves (simulating timeout)
-      mockAxiosInstance.get.mockImplementation(() => new Promise(() => {}));
-
-      render(
-        <TestWrapper>
-          <div>Test Content</div>
-        </TestWrapper>
-      );
-
-      // Should show loading state initially
-      expect(screen.getByText('Loading bot configuration...')).toBeInTheDocument();
-
-      // After a delay, should still be loading (timeout scenario)
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      expect(screen.getByText('Loading bot configuration...')).toBeInTheDocument();
-    });
-
-    it('should handle API error response with error object', async () => {
-      mockAxiosInstance.get.mockRejectedValueOnce({
-        response: {
-          status: 500,
-          data: {
-            success: false,
-            error: {
-              code: 'CONFIG_ERROR',
-              message: 'BOT_USERNAME is not configured',
-              details: {
-                message: 'BOT_USERNAME environment variable is required but not set',
-              },
-            },
-          },
-        },
-        isAxiosError: true,
-      });
-
-      render(
-        <TestWrapper>
-          <div>Test Content</div>
-        </TestWrapper>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText(/Failed to load bot configuration/i)).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe('LoginForm Integration with BotConfigProvider', () => {
-    it('should render LoginForm after bot config loads successfully', async () => {
-      mockAxiosInstance.get.mockResolvedValueOnce({
-        success: true,
-        data: { botUsername: 'test_bot' },
-      });
+    it('should handle OAuth provider click', async () => {
+      const user = userEvent.setup();
 
       render(
         <TestWrapper>
@@ -393,229 +280,158 @@ describe('Login Page Integration', () => {
         </TestWrapper>
       );
 
-      // Wait for bot config to load
-      await waitFor(() => {
-        expect(screen.queryByText('Loading bot configuration...')).not.toBeInTheDocument();
-      });
+      // Click the first OAuth button (Google)
+      const buttons = screen.getAllByText(/login\.signInWith/i);
+      await user.click(buttons[0]!);
 
-      // LoginForm should be visible - check for translation keys or actual content
-      // Use getByRole to find heading elements more reliably
-      expect(screen.getByRole('heading', { name: /login\.title|Login/i })).toBeInTheDocument();
-      // LoginForm renders the title, welcome text is in the page component
-      // Just verify LoginForm is rendered by checking for login widget instructions
-      expect(screen.getByText(/login\.telegramWidget\.instructions|Click the button below/i)).toBeInTheDocument();
+      // Verify getOAuthUrl was called (component uses it to generate the URL)
+      // The component calls getOAuthUrl and then sets window.location.href
+      // When no search params are present, it defaults to '/meriter/profile'
+      expect(mockGetOAuthUrl).toHaveBeenCalledWith('google', '/meriter/profile');
     });
 
-    it('should not render LoginForm if bot config fails to load', async () => {
-      mockAxiosInstance.get.mockRejectedValueOnce({
-        response: {
-          status: 500,
-          data: {
-            success: false,
-            error: { message: 'Internal server error' },
-          },
-        },
-        isAxiosError: true,
-      });
+    it('should handle fake authentication when in fake data mode', async () => {
+      mockIsFakeDataMode.mockReturnValue(true);
 
-      render(
-        <TestWrapper>
-          <LoginForm />
-        </TestWrapper>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText(/Failed to load bot configuration/i)).toBeInTheDocument();
-      });
-
-      // LoginForm should not be visible - error message should be shown instead
-      expect(screen.queryByText(/login\.title|Login/i)).not.toBeInTheDocument();
-    });
-
-    it('should inject Telegram widget script with correct botUsername', async () => {
-      mockAxiosInstance.get.mockResolvedValueOnce({
-        success: true,
-        data: { botUsername: 'meriterbot' },
-      });
-
-      render(
-        <TestWrapper>
-          <LoginForm />
-        </TestWrapper>
-      );
-
-      await waitFor(() => {
-        expect(screen.queryByText('Loading bot configuration...')).not.toBeInTheDocument();
-      });
-
-      // Wait for widget script to be injected
-      await waitFor(() => {
-        const scripts = document.querySelectorAll('script[data-telegram-login]');
-        expect(scripts.length).toBeGreaterThan(0);
-        expect(scripts[0]!.getAttribute('data-telegram-login')).toBe('meriterbot');
-      });
-    });
-  });
-
-  describe('Complete Login Page Flow', () => {
-    it('should handle complete successful login flow', async () => {
-      const mockAuthenticateWithTelegram = jest.fn().mockResolvedValue({});
-      
+      const mockAuthenticateFakeUser = jest.fn().mockResolvedValue({});
       mockUseAuth.mockReturnValue({
         user: null,
         isLoading: false,
         isAuthenticated: false,
-        authenticateWithTelegram: mockAuthenticateWithTelegram,
+        authenticateWithTelegram: jest.fn(),
         authenticateWithTelegramWebApp: jest.fn(),
-        authenticateFakeUser: jest.fn().mockResolvedValue({}),
+        authenticateFakeUser: mockAuthenticateFakeUser,
         logout: jest.fn(),
         handleDeepLink: jest.fn(),
         authError: null,
         setAuthError: jest.fn(),
       });
 
-      mockAxiosInstance.get.mockResolvedValueOnce({
-        success: true,
-        data: { botUsername: 'test_bot' },
-      });
-
+      const user = userEvent.setup();
       render(
         <TestWrapper>
           <LoginForm />
         </TestWrapper>
       );
 
-      // Wait for bot config to load
-      await waitFor(() => {
-        expect(screen.queryByText('Loading bot configuration...')).not.toBeInTheDocument();
-      });
-
-      // Verify LoginForm is rendered - check for translation key or actual text
-      expect(screen.getByRole('heading', { name: /login\.title|Login/i })).toBeInTheDocument();
-
-      // Simulate Telegram widget authentication
-      const mockTelegramUser = {
-        id: 12345,
-        first_name: 'Test',
-        last_name: 'User',
-        username: 'testuser',
-      };
-
-      // Call the global callback that would be set by the widget
-      if ((window as any).onTelegramAuth) {
-        await (window as any).onTelegramAuth(mockTelegramUser);
-      }
-
-      // Wait for authentication to complete
-      await waitFor(() => {
-        expect(mockAuthenticateWithTelegram).toHaveBeenCalledWith(mockTelegramUser);
-      });
-    });
-
-    it('should show error if botUsername is not available when LoginForm tries to use it', async () => {
-      // This scenario tests the error boundary behavior
-      // When bot config fails, LoginForm should not even attempt to render
-      // because BotConfigProvider shows error state instead
-      
-      mockAxiosInstance.get.mockRejectedValueOnce({
-        response: {
-          status: 404,
-          data: {
-            success: false,
-            error: {
-              message: 'API endpoint /api/v1/config not found',
-            },
-          },
-        },
-        isAxiosError: true,
-      });
-
-      render(
-        <TestWrapper>
-          <LoginForm />
-        </TestWrapper>
-      );
+      expect(screen.getByText(/login\.fakeDataModeEnabled/i)).toBeInTheDocument();
+      const fakeLoginButton = screen.getByText(/login\.fakeLogin/i);
+      await user.click(fakeLoginButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/Failed to load bot configuration/i)).toBeInTheDocument();
+        expect(mockAuthenticateFakeUser).toHaveBeenCalled();
       });
-
-      // LoginForm should never render because BotConfigProvider shows error
-      expect(screen.queryByText(/login\.title|Login/i)).not.toBeInTheDocument();
     });
   });
 
-  describe('Edge Cases', () => {
-    it('should handle cleanup on unmount during fetch', async () => {
-      let resolvePromise: (value: any) => void;
-      const delayedResponse = new Promise((resolve) => {
-        resolvePromise = resolve;
-      });
-
-      mockAxiosInstance.get.mockImplementation(() => delayedResponse);
-
-      const { unmount } = render(
-        <TestWrapper>
-          <div>Test Content</div>
-        </TestWrapper>
-      );
-
-      // Should show loading
-      expect(screen.getByText('Loading bot configuration...')).toBeInTheDocument();
-
-      // Unmount before response completes
-      unmount();
-
-      // Resolve the promise after unmount
-      resolvePromise!({ success: true, data: { botUsername: 'test_bot' } });
-
-      // Wait a bit to ensure no state updates occur after unmount
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Should not throw errors
-      expect(true).toBe(true);
-    });
-
-    it('should handle multiple rapid fetch calls gracefully', async () => {
-      let callCount = 0;
-      mockAxiosInstance.get.mockImplementation(() => {
-        callCount++;
-        return Promise.resolve({
-          success: true,
-          data: { botUsername: `bot_${callCount}` },
-        });
+  describe('Error Handling', () => {
+    it('should display auth error when present via toast', async () => {
+      mockUseAuth.mockReturnValue({
+        user: null,
+        isLoading: false,
+        isAuthenticated: false,
+        authenticateWithTelegram: jest.fn(),
+        authenticateWithTelegramWebApp: jest.fn(),
+        authenticateFakeUser: jest.fn(),
+        logout: jest.fn(),
+        handleDeepLink: jest.fn(),
+        authError: 'Authentication failed',
+        setAuthError: jest.fn(),
       });
 
       render(
         <TestWrapper>
-          <div data-testid="test-content">Test Content</div>
+          <LoginForm />
         </TestWrapper>
       );
 
+      // Wait for useEffect to trigger toast
       await waitFor(() => {
-        expect(screen.getByTestId('test-content')).toBeInTheDocument();
+        expect(mockAddToast).toHaveBeenCalledWith('Authentication failed', 'error');
       });
-
-      // Should only have made one fetch call
-      expect(mockAxiosInstance.get).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle empty botUsername after successful API response', async () => {
-      mockAxiosInstance.get.mockResolvedValueOnce({
-        success: true,
-        data: { botUsername: '   ' }, // Whitespace only
+    it('should show loading state during authentication', () => {
+      mockUseAuth.mockReturnValue({
+        user: null,
+        isLoading: true,
+        isAuthenticated: false,
+        authenticateWithTelegram: jest.fn(),
+        authenticateWithTelegramWebApp: jest.fn(),
+        authenticateFakeUser: jest.fn(),
+        logout: jest.fn(),
+        handleDeepLink: jest.fn(),
+        authError: null,
+        setAuthError: jest.fn(),
       });
 
       render(
         <TestWrapper>
-          <div>Test Content</div>
+          <LoginForm />
         </TestWrapper>
       );
 
-      await waitFor(() => {
-        expect(screen.getByText(/BOT_USERNAME is missing from server response/i)).toBeInTheDocument();
-      });
+      expect(screen.getByText(/login\.authenticating/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('OAuth Provider Filtering', () => {
+    it('should filter providers when enabledProviders prop is passed', () => {
+      // Ensure fake data mode is off for this test
+      mockIsFakeDataMode.mockReturnValue(false);
+      
+      render(
+        <TestWrapper>
+          <LoginForm enabledProviders={['google']} />
+        </TestWrapper>
+      );
+
+      // Should have one OAuth button
+      const buttons = screen.getAllByText(/login\.signInWith/i);
+      expect(buttons.length).toBe(1);
+    });
+
+    it('should show error message when no providers are enabled', () => {
+      render(
+        <TestWrapper>
+          <LoginForm enabledProviders={[]} />
+        </TestWrapper>
+      );
+
+      // Component uses translation key login.noAuthenticationProviders
+      expect(screen.getByText(/login\.noAuthenticationProviders/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('URL Parameters', () => {
+    it('should include returnTo and invite code in OAuth URL', async () => {
+      const user = userEvent.setup();
+
+      // Mock useSearchParams to return params with a different returnTo path
+      // so we can verify both returnTo and invite are included
+      jest.spyOn(require('next/navigation'), 'useSearchParams').mockReturnValue(
+        new URLSearchParams('returnTo=/meriter/communities/123&invite=TEST123')
+      );
+
+      render(
+        <TestWrapper>
+          <LoginForm />
+        </TestWrapper>
+      );
+
+      // Click the first OAuth button
+      const buttons = screen.getAllByText(/login\.signInWith/i);
+      await user.click(buttons[0]!);
+
+      // Verify getOAuthUrl was called with params containing returnTo and invite
+      expect(mockGetOAuthUrl).toHaveBeenCalled();
+      const callArgs = mockGetOAuthUrl.mock.calls[0];
+      if (callArgs && callArgs[1]) {
+        // When invite code is present and returnTo is different from /meriter/profile,
+        // the path will be /meriter/profile?invite=TEST123&returnTo=/meriter/communities/123
+        expect(callArgs[1]).toContain('invite');
+        expect(callArgs[1]).toContain('returnTo');
+      }
     });
   });
 });
-

@@ -10,8 +10,6 @@ export interface CommentsColumnHelperProps {
   myId?: string;
   highlightTransactionId?: string;
   activeCommentHook: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
-  activeSlider: string | null;
-  setActiveSlider: (id: string | null) => void;
   activeWithdrawPost: string | null;
   setActiveWithdrawPost: (id: string | null) => void;
 }

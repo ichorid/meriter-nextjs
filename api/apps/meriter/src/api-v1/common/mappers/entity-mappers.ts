@@ -7,17 +7,18 @@ import { UserFormatter } from '../utils/user-formatter.util';
  * Utility class for mapping domain entities to API response formats
  */
 export class EntityMappers {
-
   /**
    * Format community for API response (origin format)
    */
-  private static formatCommunityForApi(community: any | null): {
-    telegramChatName?: string;
-  } | undefined {
+  private static formatCommunityForApi(community: any | null):
+    | {
+        telegramChatName?: string;
+      }
+    | undefined {
     if (!community) {
       return undefined;
     }
-    
+
     return {
       telegramChatName: community.name,
     };
@@ -29,7 +30,7 @@ export class EntityMappers {
   static mapPublicationToApi(
     publication: Publication,
     usersMap: Map<string, any>,
-    communitiesMap: Map<string, any>
+    communitiesMap: Map<string, any>,
   ): any {
     const authorId = publication.getAuthorId.getValue();
     const beneficiaryId = publication.getBeneficiaryId?.getValue();
@@ -37,6 +38,7 @@ export class EntityMappers {
     const author = usersMap.get(authorId);
     const beneficiary = beneficiaryId ? usersMap.get(beneficiaryId) : null;
     const community = communitiesMap.get(communityId);
+    const snapshot = publication.toSnapshot();
 
     return {
       id: publication.getId.getValue(),
@@ -48,8 +50,12 @@ export class EntityMappers {
       content: publication.getContent,
       type: publication.getType,
       hashtags: publication.getHashtags,
-      imageUrl: undefined, // Not available in current entity
-      videoUrl: undefined, // Not available in current entity
+      imageUrl: snapshot.imageUrl || undefined,
+      videoUrl: snapshot.videoUrl || undefined,
+      title: publication.getTitle || undefined,
+      description: publication.getDescription || undefined,
+      postType: snapshot.postType || 'basic',
+      isProject: snapshot.isProject || false,
       metrics: {
         upvotes: publication.getMetrics.upvotes,
         downvotes: publication.getMetrics.downvotes,
@@ -60,14 +66,17 @@ export class EntityMappers {
       meta: {
         author: UserFormatter.formatUserForApi(author, authorId),
         ...(beneficiary && {
-          beneficiary: UserFormatter.formatUserForApi(beneficiary, beneficiaryId),
+          beneficiary: UserFormatter.formatUserForApi(
+            beneficiary,
+            beneficiaryId,
+          ),
         }),
         ...(community && {
           origin: this.formatCommunityForApi(community),
         }),
       },
-      createdAt: publication.toSnapshot().createdAt.toISOString(),
-      updatedAt: publication.toSnapshot().updatedAt.toISOString(),
+      createdAt: snapshot.createdAt.toISOString(),
+      updatedAt: snapshot.updatedAt.toISOString(),
     };
   }
 
@@ -77,7 +86,7 @@ export class EntityMappers {
   static mapPollToApi(
     poll: any, // Poll entity (using any since we don't have the exact type)
     usersMap: Map<string, any>,
-    communitiesMap: Map<string, any>
+    communitiesMap: Map<string, any>,
   ): any {
     const snapshot = poll.toSnapshot();
     const authorId = snapshot.authorId;
@@ -124,7 +133,7 @@ export class EntityMappers {
     comment: any, // Comment entity or vote (using any for flexibility)
     usersMap: Map<string, any>,
     publicationSlug?: string,
-    communityId?: string
+    communityId?: string,
   ): any {
     // Handle both Comment entities and Vote objects (votes contain comments)
     const authorId = comment.userId || comment.getAuthorId?.getValue();
@@ -137,8 +146,13 @@ export class EntityMappers {
       targetId: comment.targetId || comment.getTargetId,
       authorId,
       content: comment.comment || comment.content || comment.getContent,
-      createdAt: (comment.createdAt?.toISOString?.() || new Date(comment.createdAt).toISOString()),
-      updatedAt: (comment.updatedAt?.toISOString?.() || comment.createdAt?.toISOString?.() || new Date(comment.createdAt).toISOString()),
+      createdAt:
+        comment.createdAt?.toISOString?.() ||
+        new Date(comment.createdAt).toISOString(),
+      updatedAt:
+        comment.updatedAt?.toISOString?.() ||
+        comment.createdAt?.toISOString?.() ||
+        new Date(comment.createdAt).toISOString(),
       ...(publicationSlug && { publicationSlug }),
       ...(communityId && { communityId }),
       meta: {
@@ -147,12 +161,16 @@ export class EntityMappers {
     };
 
     // Add vote transaction fields if this is a vote
-    if (comment.amountQuota !== undefined || comment.amountWallet !== undefined) {
+    if (
+      comment.amountQuota !== undefined ||
+      comment.amountWallet !== undefined
+    ) {
       const voteAmountQuota = comment.amountQuota || 0;
       const voteAmountWallet = comment.amountWallet || 0;
       const voteAmount = voteAmountQuota + voteAmountWallet;
-      const isUpvote = voteAmountQuota > 0;
-      const isDownvote = voteAmountQuota === 0 && voteAmountWallet > 0;
+      // Use stored direction field instead of inferring from amounts
+      const isUpvote = comment.direction === 'up';
+      const isDownvote = comment.direction === 'down';
 
       return {
         ...baseComment,
@@ -170,10 +188,7 @@ export class EntityMappers {
   /**
    * Map Vote to API format
    */
-  static mapVoteToApi(
-    vote: any,
-    usersMap: Map<string, any>
-  ): any {
+  static mapVoteToApi(vote: any, usersMap: Map<string, any>): any {
     const author = usersMap.get(vote.userId);
 
     return {
@@ -184,4 +199,3 @@ export class EntityMappers {
     };
   }
 }
-

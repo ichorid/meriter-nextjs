@@ -14,9 +14,10 @@ import { classList } from "@lib/classList";
 import { Comment } from "@features/comments/components/comment";
 import { PollCasting } from "@features/polls/components/poll-casting";
 import type { IPollData } from "@features/polls/types";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import type { Publication as PublicationType } from '@/types/api-v1';
+import { useCanVote } from '@/hooks/useCanVote';
 
 export const Publication = ({
     minus,
@@ -31,8 +32,6 @@ export const Publication = ({
     keyword,
     ts,
     activeCommentHook,
-    activeSlider,
-    setActiveSlider,
     beneficiaryName,
     beneficiaryPhotoUrl,
     beneficiaryId,
@@ -60,20 +59,28 @@ export const Publication = ({
     communityId,
     authorId,
     meta,
+    // Sort order for comments
+    commentSortBy,
+    // Cover image for the post
+    imageUrl,
 }: any) => {
+    // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+    // This is required by React's Rules of Hooks
+    
     const t = useTranslations('feed');
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    
+    // Check if we're on the community feed page (not the detail page)
+    const isOnCommunityFeedPage = pathname?.match(/^\/meriter\/communities\/[^/]+$/);
+    
     // Use internal IDs only - no legacy fallbacks
     const displayAuthorName = meta?.author?.name || 'Unknown';
     const displayChatName = meta?.origin?.telegramChatName || '';
     
-    if (!displayChatName && type !== 'poll') return null;
-    const router = useRouter();
-    
-    // Require communityId and authorId - fail gracefully if missing
-    if (!communityId || !authorId) {
-        console.warn('Publication missing required IDs:', { communityId, authorId });
-        return null;
-    }
+    // Create a unique identifier for this post (needed before useComments)
+    const postId = slug || _id;
     
     // Check if current user is the author - use internal IDs for comparison
     const isAuthor = myId === authorId;
@@ -84,19 +91,14 @@ export const Publication = ({
     // Check if current user is the beneficiary (but not the author)
     const isBeneficiary = hasBeneficiary && beneficiaryId === myId;
     
-    // Create a unique identifier for this post (needed before useComments)
-    const postId = slug || _id;
-    
     // Get comments data first (needed for currentPlus/currentMinus)
+    // Always call hooks even if we might return early - React requires consistent hook calls
     const {
         comments,
-        showPlus,
         currentPlus,
         currentMinus,
-        showMinus,
         showComments,
         setShowComments,
-        formCommentProps,
     } = useComments(
         false,
         slug,
@@ -107,18 +109,29 @@ export const Publication = ({
         minus,
         activeCommentHook,
         onlyPublication,
-        communityId,
-        wallets
+        communityId || '',
+        wallets,
+        commentSortBy || 'recent'
     );
     
-    // Mutual exclusivity logic:
-    // Show withdraw if: (isAuthor && !hasBeneficiary) || isBeneficiary
-    // Show vote if: !isAuthor && !isBeneficiary (or if isAuthor && hasBeneficiary - author can vote for beneficiary)
-    // IMPORTANT: If user is beneficiary, NEVER show vote button (even if balance is 0)
-    const showWithdraw = (isAuthor && !hasBeneficiary) || isBeneficiary;
-    const showVote = !isAuthor && !isBeneficiary;
-    const showVoteForAuthor = isAuthor && hasBeneficiary; // Author can vote when there's a beneficiary
-    const currentScore = currentPlus - currentMinus;
+    // Get community info to check typeTag
+    const { data: communityInfo } = useCommunity(communityId || '');
+    const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
+    
+    // Check if this is a PROJECT post (no voting allowed)
+    const isProject = type === 'project' || (meta as any)?.isProject === true;
+    
+    // Check if user can vote based on community rules
+    const { canVote, reason: voteDisabledReason } = useCanVote(
+        postId,
+        'publication',
+        communityId || '',
+        authorId || '',
+        isAuthor,
+        isBeneficiary,
+        hasBeneficiary,
+        isProject
+    );
     
     // Withdrawal state management (for author's own posts)
     const [optimisticSum, setOptimisticSum] = useState(sum);
@@ -135,6 +148,26 @@ export const Publication = ({
         0;
     const [showselector, setShowselector] = useState(false);
     
+    // Additional hooks must be called before any conditional returns
+    useEffect(() => {
+        if (onlyPublication || isDetailPage) {
+            setShowComments(true);
+        }
+    }, [onlyPublication, isDetailPage, setShowComments]);
+    
+    const [showDimensionsEditor, setShowDimensionsEditor] = useState(false);
+    
+    // NOW we can do conditional returns after all hooks are called
+    // Use internal IDs only - no legacy fallbacks
+    if (!displayChatName && type !== 'poll') return null;
+    
+    // Require communityId and authorId - fail gracefully if missing
+    if (!communityId || !authorId) {
+        console.warn('Publication missing required IDs:', { communityId, authorId });
+        return null;
+    }
+    
+    // Calculate derived values after early return checks
     // Rate conversion no longer needed with v1 API - currencies are normalized
     const rate = 1;
     
@@ -152,24 +185,21 @@ export const Publication = ({
         ? Math.floor(10 * currentBalance) / 10
         : 0;
     
-    // Community info - use communityId
-    const { data: communityInfo } = useCommunity(communityId || '');
+    // Mutual exclusivity logic:
+    // Withdrawal feature is disabled - merits are automatically credited on upvote
+    // Topup functionality is still available through the voting popup
+    // Show vote if: !isAuthor && !isBeneficiary (or if isAuthor && hasBeneficiary - author can vote for beneficiary)
+    // IMPORTANT: If user is beneficiary, NEVER show vote button (even if balance is 0)
+    const showWithdraw = false; // Withdrawals disabled
+    const showVote = !isAuthor && !isBeneficiary;
+    const showVoteForAuthor = isAuthor && hasBeneficiary; // Author can vote when there's a beneficiary
+    const currentScore = currentPlus - currentMinus;
+    
+    // Community info already fetched above - reuse it
     const communityIdForRouting = communityInfo?.id || communityId;
     
     // Display title - use meta.author.name
     const displayTitle = displayAuthorName;
-    
-    useEffect(() => {
-        if (onlyPublication || isDetailPage) {
-            showPlus();
-            setShowComments(true);
-        }
-    }, [onlyPublication, isDetailPage]);
-
-    const publicationUnderReply = activeCommentHook[0] == slug;
-    const nobodyUnderReply = activeCommentHook[0] === null;
-    const commentUnderReply = activeCommentHook[0] && activeCommentHook[0] !== slug && activeCommentHook[0] !== null;
-    const [showDimensionsEditor, setShowDimensionsEditor] = useState(false);
     
     const tagsStr = [
         "#" + keyword,
@@ -183,19 +213,8 @@ export const Publication = ({
     return (
         <div
             className={classList(
-                "mb-5 transition-all duration-300",
-                publicationUnderReply ? "scale-100 opacity-100" : 
-                activeSlider && activeSlider !== postId ? "scale-95 opacity-60" : "scale-100 opacity-100"
+                "mb-5 transition-all duration-300"
             )}
-            onClick={(e) => {
-                if (
-                    activeSlider === postId &&
-                    myId !== authorId &&
-                    !(e.target as any)?.className?.match("clickable")
-                ) {
-                    setActiveSlider && setActiveSlider(null);
-                }
-            }}
             key={slug}
         >
             <CardPublication
@@ -225,6 +244,9 @@ export const Publication = ({
                 beneficiaryName={hasBeneficiary ? beneficiaryName : undefined}
                 beneficiaryAvatarUrl={hasBeneficiary ? beneficiaryPhotoUrl : undefined}
                 beneficiarySubtitle={hasBeneficiary ? beneficiaryUsername : undefined}
+                authorId={authorId}
+                beneficiaryId={beneficiaryId}
+                coverImageUrl={imageUrl}
                 bottom={
                     (() => {
                         if (showWithdraw) {
@@ -234,7 +256,7 @@ export const Publication = ({
                                     onWithdraw={() => {
                                         useUIStore.getState().openWithdrawPopup(
                                             postId,
-                                            'publication-withdraw',
+                                            'publication-topup',
                                             maxWithdrawAmount,
                                             maxTopUpAmount
                                         );
@@ -251,13 +273,21 @@ export const Publication = ({
                                     commentCount={!isDetailPage ? comments?.length || 0 : 0}
                         onCommentClick={!isDetailPage ? () => {
                             const routingCommunityId = communityInfo?.id || communityId;
-                            if (routingCommunityId && slug) {
+                            if (!routingCommunityId || !slug) return;
+                            
+                            // If on community feed page, set query parameter to show side panel
+                            if (isOnCommunityFeedPage) {
+                                const params = new URLSearchParams(searchParams?.toString() || '');
+                                params.set('post', slug);
+                                router.push(`${pathname}?${params.toString()}`);
+                            } else {
+                                // Otherwise, navigate to detail page
                                 router.push(`/meriter/communities/${routingCommunityId}/posts/${slug}`);
                             }
                         } : undefined}
                                 />
                             );
-                        } else if (showVote || showVoteForAuthor) {
+                        } else {
                             return (
                                 <BarVoteUnified
                                     score={currentScore}
@@ -268,16 +298,24 @@ export const Publication = ({
                                     isBeneficiary={isBeneficiary}
                                     hasBeneficiary={hasBeneficiary}
                                     commentCount={!isDetailPage ? comments?.length || 0 : 0}
-                        onCommentClick={!isDetailPage ? () => {
-                            const routingCommunityId = communityInfo?.id || communityId;
-                            if (routingCommunityId && slug) {
-                                router.push(`/meriter/communities/${routingCommunityId}/posts/${slug}`);
-                            }
-                        } : undefined}
+                                    onCommentClick={!isDetailPage ? () => {
+                                        const routingCommunityId = communityInfo?.id || communityId;
+                                        if (!routingCommunityId || !slug) return;
+                                        
+                                        // If on community feed page, set query parameter to show side panel
+                                        if (isOnCommunityFeedPage) {
+                                            const params = new URLSearchParams(searchParams?.toString() || '');
+                                            params.set('post', slug);
+                                            router.push(`${pathname}?${params.toString()}`);
+                                        } else {
+                                            // Otherwise, navigate to detail page
+                                            router.push(`/meriter/communities/${routingCommunityId}/posts/${slug}`);
+                                        }
+                                    } : undefined}
+                                    canVote={canVote}
+                                    disabledReason={voteDisabledReason}
                                 />
                             );
-                        } else {
-                            return null;
                         }
                     })()
                 }
@@ -329,6 +367,7 @@ export const Publication = ({
 
             {showComments && (
                 <div className="publication-comments">
+                    {/* Existing Comments */}
                     <div className="comments">
                         {comments?.map((c: any, index: number) => (
                             <Comment
@@ -340,8 +379,6 @@ export const Publication = ({
                                 spaceSlug={spaceSlug}
                                 inPublicationSlug={slug}
                                 activeCommentHook={activeCommentHook}
-                                activeSlider={activeSlider}
-                                setActiveSlider={setActiveSlider}
                                 myId={myId}
                                 highlightTransactionId={highlightTransactionId}
                                 wallets={wallets}

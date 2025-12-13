@@ -60,10 +60,16 @@ export const Poll = ({
     const t = useTranslations('polls');
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-    const [results, setResults] =
-        resultsInit !== undefined && setResultsInit
-            ? [resultsInit, setResultsInit]
-            : useState({});
+    // Always call useState unconditionally to follow Rules of Hooks
+    const [internalResults, setInternalResults] = useState<IPollResults>({});
+    
+    // Use controlled state if provided, otherwise use internal state
+    const results = resultsInit !== undefined && setResultsInit
+        ? resultsInit
+        : internalResults;
+    const setResults = resultsInit !== undefined && setResultsInit
+        ? setResultsInit
+        : setInternalResults;
 
     return (
         <div className="poll">

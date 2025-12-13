@@ -1,0 +1,80 @@
+'use client';
+
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { CommunityRulesEditor } from '@/features/communities/components/CommunityRulesEditor';
+import { useCommunity, useUpdateCommunity } from '@/hooks/api/useCommunities';
+import { Loader2 } from 'lucide-react';
+
+export default function CommunityRulesPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const router = useRouter();
+  const t = useTranslations('communities.rules');
+  const [resolvedParams, setResolvedParams] = React.useState<{ id: string } | null>(null);
+
+  React.useEffect(() => {
+    params.then(setResolvedParams);
+  }, [params]);
+
+  const communityId = resolvedParams?.id;
+  const { data: community, isLoading } = useCommunity(communityId || '');
+  const updateCommunity = useUpdateCommunity();
+
+  const handleSave = async (rules: {
+    postingRules?: any;
+    votingRules?: any;
+    visibilityRules?: any;
+    meritRules?: any;
+    linkedCurrencies?: string[];
+  }) => {
+    if (!communityId) return;
+
+    await updateCommunity.mutateAsync({
+      id: communityId,
+      data: rules,
+    });
+  };
+
+  const pageHeader = (
+    <PageHeader
+      title={t('title')}
+      showBack={true}
+      onBack={() => communityId && router.push(`/meriter/communities/${communityId}`)}
+    />
+  );
+
+  if (!communityId || isLoading) {
+    return (
+      <AdaptiveLayout stickyHeader={pageHeader}>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+        </div>
+      </AdaptiveLayout>
+    );
+  }
+
+  if (!community) {
+    return (
+      <AdaptiveLayout stickyHeader={pageHeader}>
+        <div className="text-brand-text-primary">{t('communityNotFound')}</div>
+      </AdaptiveLayout>
+    );
+  }
+
+  return (
+    <AdaptiveLayout communityId={communityId} stickyHeader={pageHeader}>
+      <div className="space-y-6">
+        <CommunityRulesEditor
+          community={community}
+          onSave={handleSave}
+        />
+      </div>
+    </AdaptiveLayout>
+  );
+}

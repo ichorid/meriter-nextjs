@@ -8,6 +8,7 @@
     ],
     "allowJs": true,
     "skipLibCheck": true,
+    "maxNodeModuleJsDepth": 0,
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -70,6 +71,11 @@
     "types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
   ]
 }

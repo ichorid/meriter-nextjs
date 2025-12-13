@@ -3,13 +3,13 @@ import { Document } from 'mongoose';
 
 /**
  * Publication Mongoose Schema
- * 
+ *
  * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - PublicationSchema (Zod)
- * 
+ *
  * This Mongoose schema implements the Publication entity defined in shared-types.
  * Any changes to the Publication entity MUST be made in the Zod schema first,
  * then this Mongoose schema should be updated to match.
- * 
+ *
  * Fields correspond to PublicationSchema in libs/shared-types/src/schemas.ts
  */
 export type PublicationDocument = Publication & Document;
@@ -28,11 +28,31 @@ export class Publication {
   @Prop()
   beneficiaryId?: string;
 
+  // НОВОЕ: Тип поста (базовый, опрос, проект)
+  @Prop({ enum: ['basic', 'poll', 'project'], default: 'basic' })
+  postType?: 'basic' | 'poll' | 'project';
+
+  // НОВОЕ: Метка проекта (для "Марафон добра")
+  @Prop({ default: false })
+  isProject?: boolean;
+
+  // НОВОЕ: Заголовок (обязательное поле для всех постов)
+  @Prop({ maxlength: 500 })
+  title?: string;
+
+  // НОВОЕ: Описание (обязательное поле)
+  @Prop({ maxlength: 5000 })
+  description?: string;
+
   @Prop({ required: true, maxlength: 10000 })
   content: string;
 
   @Prop({ required: true, enum: ['text', 'image', 'video'] })
-  type: string;
+  type: string; // Медиа-тип (остается для обратной совместимости)
+
+  // НОВОЕ: Автор поста (отображаемое имя, может отличаться от authorId)
+  @Prop()
+  authorDisplay?: string;
 
   @Prop({ type: [String], default: [] })
   hashtags: string[];

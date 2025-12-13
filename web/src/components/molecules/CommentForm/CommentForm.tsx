@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useCallback, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/atoms/Button';
 import Slider from 'rc-slider';
 import { classList } from '@lib/classList';
@@ -26,6 +27,7 @@ export const CommentForm: React.FC<CommentFormProps> = memo(({
   loading = false,
   className = '',
 }) => {
+  const t = useTranslations('comments');
   const [comment, setComment] = useState('');
   const [amount, setAmount] = useState(initialAmount);
 
@@ -93,7 +95,7 @@ export const CommentForm: React.FC<CommentFormProps> = memo(({
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder={amount === 0 ? "Adjust slider to vote" : "Add a comment (optional)"}
+            placeholder={amount === 0 ? t('adjustSliderToVote') : t('addCommentOptional')}
             className="textarea textarea-bordered w-full"
             rows={3}
           />

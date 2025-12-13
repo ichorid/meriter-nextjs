@@ -6,6 +6,8 @@ import { useVoteMutation } from './useVoteMutation';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import { commentsKeys } from './useComments';
 import { useAuth } from '@/contexts/AuthContext';
+import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
+import { invalidateWallet, invalidatePublications, invalidateComments, invalidateCommunities } from '@/lib/api/invalidation-helpers';
 
 // Vote on publication
 export function useVoteOnPublication() {
@@ -45,14 +47,9 @@ export function useRemovePublicationVote() {
   return useMutation({
     mutationFn: (publicationId: string) => votesApiV1.removePublicationVote(publicationId),
     onSuccess: () => {
-      // Invalidate publications to update vote counts (all publication query patterns)
-      queryClient.invalidateQueries({ queryKey: queryKeys.publications.all, exact: false });
-      
-      // Invalidate community feeds to update vote counts on community pages
-      queryClient.invalidateQueries({ queryKey: queryKeys.communities.all, exact: false });
-      
-      // Invalidate wallet queries to update balance
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
+      invalidatePublications(queryClient, { lists: true, exact: false });
+      invalidateCommunities(queryClient, { lists: true, exact: false });
+      invalidateWallet(queryClient);
     },
     onError: (error) => {
       console.error('Remove publication vote error:', error);
@@ -67,11 +64,8 @@ export function useRemoveCommentVote() {
   return useMutation({
     mutationFn: (commentId: string) => votesApiV1.removeCommentVote(commentId),
     onSuccess: () => {
-      // Invalidate comments to update vote counts
-      queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
-      
-      // Invalidate wallet queries to update balance
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
+      invalidateComments(queryClient, { lists: true, exact: false });
+      invalidateWallet(queryClient);
     },
     onError: (error) => {
       console.error('Remove comment vote error:', error);
@@ -91,7 +85,8 @@ export function useVoteOnPublicationWithComment() {
       data: { 
         quotaAmount?: number;
         walletAmount?: number;
-        comment?: string; 
+        comment?: string;
+        direction?: 'up' | 'down';
       }; 
       communityId?: string; 
     }) => votesApiV1.voteOnPublicationWithComment(publicationId, data),
@@ -115,66 +110,20 @@ export function useWithdrawFromPublication() {
   return useMutation({
     mutationFn: ({ publicationId, amount }: { publicationId: string; amount?: number }) => 
       votesApiV1.withdrawFromPublication(publicationId, { amount }),
-    onSuccess: (result) => {
-      // Invalidate publications to update vote counts/balance (all publication query patterns)
-      queryClient.invalidateQueries({ queryKey: queryKeys.publications.all, exact: false });
-      
-      // Invalidate community feeds to update vote counts on community pages
-      queryClient.invalidateQueries({ queryKey: queryKeys.communities.all, exact: false });
-      
-      // Invalidate wallet queries to update balance
-      // Invalidate all balance queries (with and without communityId)
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
-      queryClient.invalidateQueries({ queryKey: [...queryKeys.wallet.all, 'balance'], exact: false });
+    onSuccess: () => {
+      invalidatePublications(queryClient, { lists: true, exact: false });
+      invalidateCommunities(queryClient, { lists: true, exact: false });
+      invalidateWallet(queryClient, { includeBalance: true });
     },
     onError: (error: any) => {
-      // Extract error information from various possible structures
-      let errorMessage = 'Unknown error';
-      let errorCode = 'UNKNOWN';
-      let errorDetails: any = null;
-      
-      // Try to extract error information from various possible structures
-      if (error?.message) {
-        errorMessage = error.message;
-      } else if (error?.details?.message) {
-        errorMessage = error.details.message;
-      } else if (error?.details?.data?.message) {
-        errorMessage = error.details.data.message;
-      } else if (error?.details?.data?.error?.message) {
-        errorMessage = error.details.data.error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else {
-        // Try to extract from error object properties
-        try {
-          const errorStr = JSON.stringify(error, Object.getOwnPropertyNames(error));
-          errorMessage = errorStr !== '{}' ? errorStr : String(error);
-        } catch {
-          errorMessage = String(error);
-        }
-      }
-      
-      if (error?.code) {
-        errorCode = error.code;
-      } else if (error?.details?.status) {
-        errorCode = `HTTP_${error.details.status}`;
-      } else if (error?.details?.code) {
-        errorCode = error.details.code;
-      }
-      
-      if (error?.details) {
-        errorDetails = error.details;
-      }
+      const errorMessage = extractErrorMessage(error, 'Unknown error');
+      const errorCode = error?.code || (error?.details?.status ? `HTTP_${error.details.status}` : 'UNKNOWN');
       
       console.error('Withdraw from publication error:', {
         message: errorMessage,
         code: errorCode,
-        details: errorDetails,
+        details: error?.details,
         fullError: error,
-        errorType: typeof error,
-        errorKeys: error ? Object.keys(error) : [],
-        errorResponse: error?.response,
-        errorRequest: error?.request,
       });
       throw error;
     },
@@ -189,60 +138,19 @@ export function useWithdrawFromVote() {
   return useMutation({
     mutationFn: ({ voteId, amount }: { voteId: string; amount?: number }) => 
       votesApiV1.withdrawFromVote(voteId, { amount }),
-    onSuccess: (result) => {
-      // Invalidate comments to update vote counts/balance
-      queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
-      
-      // Invalidate wallet queries to update balance
-      // Invalidate all balance queries (with and without communityId)
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
-      queryClient.invalidateQueries({ queryKey: [...queryKeys.wallet.all, 'balance'], exact: false });
+    onSuccess: () => {
+      invalidateComments(queryClient, { lists: true, exact: false });
+      invalidateWallet(queryClient, { includeBalance: true });
     },
     onError: (error: any) => {
-      // Log detailed error information - extract all properties properly
-      let errorMessage = 'Unknown error';
-      let errorCode = 'UNKNOWN';
-      let errorDetails: any = null;
-      
-      // Try to extract error information from various possible structures
-      if (error?.message) {
-        errorMessage = error.message;
-      } else if (error?.details?.message) {
-        errorMessage = error.details.message;
-      } else if (error?.details?.data?.message) {
-        errorMessage = error.details.data.message;
-      } else if (error?.details?.data?.error?.message) {
-        errorMessage = error.details.data.error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else {
-        // Try to extract from error object properties
-        try {
-          errorMessage = JSON.stringify(error, Object.getOwnPropertyNames(error));
-        } catch {
-          errorMessage = String(error);
-        }
-      }
-      
-      if (error?.code) {
-        errorCode = error.code;
-      } else if (error?.details?.status) {
-        errorCode = `HTTP_${error.details.status}`;
-      } else if (error?.details?.code) {
-        errorCode = error.details.code;
-      }
-      
-      if (error?.details) {
-        errorDetails = error.details;
-      }
+      const errorMessage = extractErrorMessage(error, 'Unknown error');
+      const errorCode = error?.code || (error?.details?.status ? `HTTP_${error.details.status}` : 'UNKNOWN');
       
       console.error('Withdraw from vote error:', {
         message: errorMessage,
         code: errorCode,
-        details: errorDetails,
+        details: error?.details,
         fullError: error,
-        errorType: typeof error,
-        errorKeys: error ? Object.keys(error) : [],
       });
       throw error;
     },

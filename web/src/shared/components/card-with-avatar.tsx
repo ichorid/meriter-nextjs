@@ -22,7 +22,7 @@ export const CardWithAvatar = ({
 }) => {
     const [retryCount, setRetryCount] = useState(0);
     
-    const baseClasses = "card bg-base-100 shadow-md rounded-2xl mb-5 p-5";
+    const baseClasses = "card bg-base-100 shadow-md dark:border dark:border-base-content/20 rounded-2xl mb-5 p-5";
     const clickableClass = onClick ? " cursor-pointer hover:shadow-lg transition-shadow" : "";
     
     if (!avatarUrl && !iconUrl)

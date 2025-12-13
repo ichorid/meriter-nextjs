@@ -2,6 +2,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
 
@@ -30,6 +31,7 @@ export const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
     },
     ref
   ) => {
+    const tCommon = useTranslations('common');
     const sizeClasses = {
       sm: 'modal-box-sm',
       md: '',
@@ -73,7 +75,7 @@ export const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
                 <button
                   className="btn btn-sm btn-circle btn-ghost"
                   onClick={onClose}
-                  aria-label="Close modal"
+                  aria-label={tCommon('closeModal')}
                 >
                   ✕
                 </button>

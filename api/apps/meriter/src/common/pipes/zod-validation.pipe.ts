@@ -1,9 +1,9 @@
 import { PipeTransform, Injectable, ArgumentMetadata, BadRequestException } from '@nestjs/common';
-import { ZodSchema, ZodError } from 'zod';
+import { z, ZodError } from 'zod';
 
 @Injectable()
 export class ZodValidationPipe implements PipeTransform {
-  constructor(private schema: ZodSchema) {}
+  constructor(private schema: z.ZodTypeAny) {}
 
   transform(value: unknown, metadata: ArgumentMetadata) {
     // Only validate JSON body payloads; leave params and others untouched

@@ -19,8 +19,6 @@ interface CommentsListProps {
   communityId?: string;
   publicationSlug?: string;
   activeCommentHook?: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
-  activeSlider?: string | null;
-  setActiveSlider?: (id: string | null) => void;
   activeWithdrawPost?: string | null;
   setActiveWithdrawPost?: (id: string | null) => void;
   highlightTransactionId?: string;
@@ -48,8 +46,6 @@ export function CommentsList({
   communityId,
   publicationSlug,
   activeCommentHook,
-  activeSlider,
-  setActiveSlider,
   activeWithdrawPost,
   setActiveWithdrawPost,
   highlightTransactionId,
@@ -417,11 +413,11 @@ export function CommentsList({
 
   return (
     <LayoutGroup>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 w-full overflow-hidden">
         {path.length > 0 && (
           <button
             onClick={handleBackClick}
-            className="btn btn-sm btn-ghost mb-2"
+            className="btn btn-sm btn-ghost mb-2 self-start flex-shrink-0"
           >
             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -429,7 +425,7 @@ export function CommentsList({
             Back
           </button>
         )}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 w-full overflow-hidden">
           <AnimatePresence mode="popLayout" initial={false}>
             {items.map((item) => (
               <motion.div
@@ -479,8 +475,6 @@ export function CommentsList({
                   communityId={communityId}
                   publicationSlug={publicationSlug}
                   activeCommentHook={activeCommentHook}
-                  activeSlider={activeSlider}
-                  setActiveSlider={setActiveSlider}
                   activeWithdrawPost={activeWithdrawPost}
                   setActiveWithdrawPost={setActiveWithdrawPost}
                   highlightTransactionId={highlightTransactionId}

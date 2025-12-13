@@ -1,9 +1,11 @@
 export interface AuthenticatedUser {
   id: string;
-  telegramId: string;
+  authProvider: string;
+  authId: string;
   username?: string;
   firstName?: string;
   lastName?: string;
   displayName?: string;
   avatarUrl?: string;
+  globalRole?: 'superadmin';
 }

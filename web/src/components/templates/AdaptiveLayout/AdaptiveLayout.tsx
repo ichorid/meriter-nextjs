@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { VerticalSidebar, ContextTopBar } from '@/components/organisms';
+import { useTranslations } from 'next-intl';
+import { VerticalSidebar, ContextTopBar, BottomNavigation } from '@/components/organisms';
 import { CommentsColumn } from '@/components/organisms/CommentsColumn';
 import { VotingPopup } from '@/components/organisms/VotingPopup';
 import { WithdrawPopup } from '@/components/organisms/WithdrawPopup';
@@ -19,10 +20,10 @@ export interface AdaptiveLayoutProps {
   myId?: string;
   highlightTransactionId?: string;
   activeCommentHook?: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
-  activeSlider?: string | null;
-  setActiveSlider?: (id: string | null) => void;
   activeWithdrawPost?: string | null;
   setActiveWithdrawPost?: (id: string | null) => void;
+  /** Sticky header that stays at top of scroll area */
+  stickyHeader?: React.ReactNode;
 }
 
 /**
@@ -39,15 +40,15 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   wallets = [],
   myId,
   highlightTransactionId,
-  activeCommentHook = [null, () => {}],
-  activeSlider,
-  setActiveSlider = () => {},
+  activeCommentHook = [null, () => { }],
   activeWithdrawPost,
-  setActiveWithdrawPost = () => {},
+  setActiveWithdrawPost = () => { },
+  stickyHeader,
 }) => {
   const searchParams = useSearchParams();
   const selectedPostSlug = searchParams?.get('post');
   const showComments = !!selectedPostSlug;
+  const tCommon = useTranslations('common');
 
   // Comments column shows on desktop (lg) only
   const showCommentsColumn = showComments && selectedPostSlug && communityId;
@@ -60,17 +61,32 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   // - lg+: Expanded
   // - < lg: Avatar-only
   const sidebarExpandedDesktop = !showCommentsColumn;
-  
-  // Calculate minimum required width: sidebar(280) + comments(400) + content(min ~600) = ~1280px
+
+  // Calculate minimum required width: sidebar(336) + comments(400) + content(min ~600) = ~1336px
   // Below xl (1280px), shrink sidebar when comments shown
 
   // Resizable right column state management
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const isXl = useMediaQuery('(min-width: 1280px)');
   const [rightColumnWidth, setRightColumnWidth] = useLocalStorage<number>('adaptive-layout-right-column-width', 400);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartX = useRef<number>(0);
   const dragStartWidth = useRef<number>(400);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Resizable left sidebar state management
+  const [leftSidebarWidth, setLeftSidebarWidth] = useLocalStorage<number>('adaptive-layout-left-sidebar-width', 336);
+  const [isDraggingLeftSidebar, setIsDraggingLeftSidebar] = useState(false);
+  const dragStartXLeftSidebar = useRef<number>(0);
+  const dragStartWidthLeftSidebar = useRef<number>(336);
+  const saveTimeoutRefLeftSidebar = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Calculate actual left sidebar width based on breakpoint and state
+  // xl+: always leftSidebarWidth (always expanded)
+  // lg-xl: leftSidebarWidth when expanded, 72px when collapsed (comments shown)
+  const actualLeftSidebarWidth = isXl 
+    ? leftSidebarWidth 
+    : (showCommentsColumn ? 72 : leftSidebarWidth);
 
   // Constrain width: min 300px, max min(800px, 50vw)
   const clampWidth = useCallback((width: number): number => {
@@ -79,10 +95,16 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
     return Math.max(300, Math.min(maxWidth, width));
   }, []);
 
+  // Constrain left sidebar width: min 200px, max 600px
+  const clampLeftSidebarWidth = useCallback((width: number): number => {
+    if (typeof window === 'undefined') return width;
+    return Math.max(200, Math.min(600, width));
+  }, []);
+
   // Validate and clamp saved width on mount and window resize
   useEffect(() => {
     if (!isDesktop || !showCommentsColumn) return;
-    
+
     const validateWidth = () => {
       const clamped = clampWidth(rightColumnWidth);
       if (clamped !== rightColumnWidth) {
@@ -92,7 +114,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
     // Validate on mount
     validateWidth();
-    
+
     // Validate on window resize
     window.addEventListener('resize', validateWidth);
     return () => window.removeEventListener('resize', validateWidth);
@@ -105,10 +127,41 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
       document.documentElement.style.setProperty('--right-column-width', '400px');
       return;
     }
-    
+
     const clampedWidth = clampWidth(rightColumnWidth);
     document.documentElement.style.setProperty('--right-column-width', `${clampedWidth}px`);
   }, [rightColumnWidth, isDesktop, showCommentsColumn, clampWidth]);
+
+  // Validate and clamp saved left sidebar width on mount and window resize
+  useEffect(() => {
+    if (!isDesktop) return;
+
+    const validateWidth = () => {
+      const clamped = clampLeftSidebarWidth(leftSidebarWidth);
+      if (clamped !== leftSidebarWidth) {
+        setLeftSidebarWidth(clamped);
+      }
+    };
+
+    // Validate on mount
+    validateWidth();
+
+    // Validate on window resize
+    window.addEventListener('resize', validateWidth);
+    return () => window.removeEventListener('resize', validateWidth);
+  }, [isDesktop, leftSidebarWidth, clampLeftSidebarWidth, setLeftSidebarWidth]);
+
+  // Update CSS variable for left sidebar width
+  useEffect(() => {
+    if (!isDesktop) {
+      // Reset to default when not on desktop
+      document.documentElement.style.setProperty('--left-sidebar-width', '336px');
+      return;
+    }
+
+    const clampedWidth = clampLeftSidebarWidth(leftSidebarWidth);
+    document.documentElement.style.setProperty('--left-sidebar-width', `${clampedWidth}px`);
+  }, [leftSidebarWidth, isDesktop, clampLeftSidebarWidth]);
 
   // Debounced localStorage save on drag end
   const saveWidth = useCallback((width: number) => {
@@ -125,13 +178,13 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   // Mouse event handlers for resizing
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!isDesktop || !showCommentsColumn) return;
-    
+
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
     dragStartX.current = e.clientX;
     dragStartWidth.current = rightColumnWidth;
-    
+
     // Prevent text selection during drag
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'col-resize';
@@ -144,7 +197,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
       const deltaX = dragStartX.current - e.clientX; // Negative delta = drag left = increase width
       const newWidth = dragStartWidth.current + deltaX;
       const clampedWidth = clampWidth(newWidth);
-      
+
       // Update CSS variable directly for smooth drag (no state update during drag)
       document.documentElement.style.setProperty('--right-column-width', `${clampedWidth}px`);
     });
@@ -152,21 +205,21 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
   const handleMouseUp = useCallback(() => {
     if (!isDragging) return;
-    
+
     setIsDragging(false);
-    
+
     // Restore cursor and selection
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
-    
+
     // Get current width from CSS variable and update state
     const currentWidth = parseFloat(
       getComputedStyle(document.documentElement).getPropertyValue('--right-column-width')
     ) || rightColumnWidth;
-    
+
     const clamped = clampWidth(currentWidth);
     setRightColumnWidth(clamped);
-    
+
     // Debounced save for persistence
     saveWidth(clamped);
   }, [isDragging, rightColumnWidth, clampWidth, setRightColumnWidth, saveWidth]);
@@ -177,12 +230,86 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    
+
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  // Debounced localStorage save for left sidebar on drag end
+  const saveLeftSidebarWidth = useCallback((width: number) => {
+    if (saveTimeoutRefLeftSidebar.current) {
+      clearTimeout(saveTimeoutRefLeftSidebar.current);
+    }
+    saveTimeoutRefLeftSidebar.current = setTimeout(() => {
+      const clamped = clampLeftSidebarWidth(width);
+      setLeftSidebarWidth(clamped);
+      saveTimeoutRefLeftSidebar.current = null;
+    }, 500);
+  }, [clampLeftSidebarWidth, setLeftSidebarWidth]);
+
+  // Mouse event handlers for resizing left sidebar
+  const handleLeftSidebarMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!isDesktop) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingLeftSidebar(true);
+    dragStartXLeftSidebar.current = e.clientX;
+    dragStartWidthLeftSidebar.current = leftSidebarWidth;
+
+    // Prevent text selection during drag
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+  }, [isDesktop, leftSidebarWidth]);
+
+  const handleLeftSidebarMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDraggingLeftSidebar || !isDesktop) return;
+
+    requestAnimationFrame(() => {
+      const deltaX = e.clientX - dragStartXLeftSidebar.current; // Positive delta = drag right = increase width
+      const newWidth = dragStartWidthLeftSidebar.current + deltaX;
+      const clampedWidth = clampLeftSidebarWidth(newWidth);
+
+      // Update CSS variable directly for smooth drag (no state update during drag)
+      document.documentElement.style.setProperty('--left-sidebar-width', `${clampedWidth}px`);
+    });
+  }, [isDraggingLeftSidebar, isDesktop, clampLeftSidebarWidth]);
+
+  const handleLeftSidebarMouseUp = useCallback(() => {
+    if (!isDraggingLeftSidebar) return;
+
+    setIsDraggingLeftSidebar(false);
+
+    // Restore cursor and selection
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+
+    // Get current width from CSS variable and update state
+    const currentWidth = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--left-sidebar-width')
+    ) || leftSidebarWidth;
+
+    const clamped = clampLeftSidebarWidth(currentWidth);
+    setLeftSidebarWidth(clamped);
+
+    // Debounced save for persistence
+    saveLeftSidebarWidth(clamped);
+  }, [isDraggingLeftSidebar, leftSidebarWidth, clampLeftSidebarWidth, setLeftSidebarWidth, saveLeftSidebarWidth]);
+
+  // Attach/remove mouse event listeners for left sidebar
+  useEffect(() => {
+    if (!isDraggingLeftSidebar) return;
+
+    document.addEventListener('mousemove', handleLeftSidebarMouseMove);
+    document.addEventListener('mouseup', handleLeftSidebarMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleLeftSidebarMouseMove);
+      document.removeEventListener('mouseup', handleLeftSidebarMouseUp);
+    };
+  }, [isDraggingLeftSidebar, handleLeftSidebarMouseMove, handleLeftSidebarMouseUp]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -190,67 +317,96 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
+      if (saveTimeoutRefLeftSidebar.current) {
+        clearTimeout(saveTimeoutRefLeftSidebar.current);
+      }
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
     };
   }, []);
 
   return (
-    <div className={`min-h-screen flex ${className}`}>
+    <div className={`h-screen max-h-screen flex overflow-hidden ${className}`}>
       {/* Left Sidebar - Communities */}
       {/* Responsive behavior:
-          - Mobile small (< 640px): Hide when comments shown (very cramped), show avatar-only otherwise
-          - Mobile/Tablet (640px - lg): always avatar-only, fixed positioning
+          - Mobile/Tablet (< lg): Hidden when BottomNavigation is visible (same breakpoint)
           - Desktop lg-xl (1024-1279px): expanded when no comments, avatar when comments shown
           - Desktop xl+ (≥1280px): always expanded (prioritize full-size on broad windows)
       */}
-      {/* Mobile/Tablet (< lg): avatar-only, fixed positioning */}
-      {/* On small screens (< 640px), hide when comments shown to save space */}
-      {!showCommentsColumn && (
-        <div className="flex lg:hidden flex-shrink-0">
-          <VerticalSidebar isExpanded={false} />
-        </div>
-      )}
-      {showCommentsColumn && (
-        <div className="hidden sm:flex lg:hidden flex-shrink-0">
-          <VerticalSidebar isExpanded={false} />
-        </div>
-      )}
+      {/* Mobile/Tablet sidebar is hidden when BottomNavigation is shown (both use lg:hidden breakpoint) */}
       {/* Desktop lg-xl (1024-1279px): shrink to avatar when comments shown */}
-      <div className="hidden lg:flex xl:hidden flex-shrink-0" style={{ width: sidebarExpandedDesktop ? '280px' : '72px' }}>
+      <div className="hidden lg:flex xl:hidden flex-shrink-0 relative" style={{ width: sidebarExpandedDesktop ? 'var(--left-sidebar-width, 336px)' : '72px' }}>
         <VerticalSidebar isExpanded={sidebarExpandedDesktop} />
+        {/* Resizable Divider - Desktop only, when expanded */}
+        {sidebarExpandedDesktop && isDesktop && (
+          <div
+            role="separator"
+            aria-label={tCommon('resizeSidebar')}
+            aria-orientation="vertical"
+            className={`absolute top-0 bottom-0 right-0 z-30 cursor-col-resize select-none transition-colors ${
+              isDraggingLeftSidebar
+                ? 'bg-base-300/80'
+                : 'bg-transparent hover:bg-base-300/50'
+              }`}
+            style={{
+              marginLeft: '-6px',
+              marginRight: '-6px',
+              width: '12px'
+            }}
+            onMouseDown={handleLeftSidebarMouseDown}
+          />
+        )}
       </div>
       {/* Desktop xl+ (≥1280px): always expanded (default, broad windows) */}
-      <div className="hidden xl:flex flex-shrink-0 w-[280px]">
+      <div className="hidden xl:flex flex-shrink-0 relative" style={{ width: 'var(--left-sidebar-width, 336px)' }}>
         <VerticalSidebar isExpanded={true} />
+        {/* Resizable Divider - Desktop only */}
+        {isDesktop && (
+          <div
+            role="separator"
+            aria-label={tCommon('resizeSidebar')}
+            aria-orientation="vertical"
+            className={`absolute top-0 bottom-0 right-0 z-30 cursor-col-resize select-none transition-colors ${
+              isDraggingLeftSidebar
+                ? 'bg-base-300/80'
+                : 'bg-transparent hover:bg-base-300/50'
+              }`}
+            style={{
+              marginLeft: '-6px',
+              marginRight: '-6px',
+              width: '12px'
+            }}
+            onMouseDown={handleLeftSidebarMouseDown}
+          />
+        )}
       </div>
 
       {/* Main Content Area */}
       {/* Padding needed where sidebar is fixed:
-          - Mobile small (< 640px) with comments: No padding (sidebar hidden)
-          - Mobile/Tablet: 72px (avatar-only sidebar)
+          - Mobile/Tablet (< lg): No padding (sidebar hidden when BottomNavigation is visible)
           - Desktop: sidebar uses sticky positioning, takes natural space (no padding)
       */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${
-        showCommentsColumn 
-          ? 'pl-0 sm:pl-[72px] lg:pl-0' // No padding on small mobile when comments shown (sidebar hidden), 72px on larger mobile/tablet
-          : 'pl-[72px] lg:pl-0' // 72px on mobile/tablet, no padding on desktop
-      }`}>
+      <div className={`flex-1 flex flex-col transition-all duration-300 lg:pl-0 min-w-0 overflow-hidden`}>
         {/* Top Bar */}
         <ContextTopBar />
-        
+
         {/* Content Wrapper - Flex container for posts and comments */}
-        <div className="flex-1 flex relative">
+        <div className="flex-1 flex relative overflow-hidden">
           {/* Center Column - Posts */}
-          <div 
-            className={`transition-all duration-300 flex-1 sm:max-w-2xl lg:max-w-4xl ${
-              showCommentsColumn 
-                ? '' // Make room for comments column when shown via margin
-                : 'mx-auto' // Center content when comments hidden
-            }`}
-            style={showCommentsColumn && isDesktop ? { marginRight: 'var(--right-column-width)' } : undefined}
+          <div
+            className={`transition-all duration-300 flex-1 min-w-0 overflow-y-auto overflow-x-hidden sm:max-w-2xl lg:max-w-4xl ${isDesktop ? '' : 'mx-auto'}`}
+            style={showCommentsColumn && isDesktop ? { 
+              marginLeft: `calc((100vw - var(--right-column-width)) / 2 - ${actualLeftSidebarWidth}px)`,
+              marginRight: 'var(--right-column-width)'
+            } : undefined}
           >
-            <main className="px-4 py-6 max-w-[100vw - 73px]">
+            {/* Sticky Header - rendered outside main for proper sticky behavior */}
+            {stickyHeader && (
+              <div className="sticky top-0 z-20 bg-base-100">
+                {stickyHeader}
+              </div>
+            )}
+            <main className="px-4 py-6 pb-20 lg:pb-6 bg-base-100 max-w-full">
               {children}
             </main>
           </div>
@@ -259,14 +415,13 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
           {showCommentsColumn && isDesktop && (
             <div
               role="separator"
-              aria-label="Resize comments column"
+              aria-label={tCommon('resizeCommentsColumn')}
               aria-orientation="vertical"
-              className={`hidden lg:block absolute top-0 bottom-0 z-30 cursor-col-resize select-none transition-colors ${
-                isDragging 
-                  ? 'bg-base-300/80' 
-                  : 'bg-transparent hover:bg-base-300/50'
-              }`}
-              style={{ 
+              className={`hidden lg:block absolute top-0 bottom-0 z-30 cursor-col-resize select-none transition-colors ${isDragging
+                ? 'bg-base-300/80'
+                : 'bg-transparent hover:bg-base-300/50'
+                }`}
+              style={{
                 right: 'var(--right-column-width)',
                 marginLeft: '-6px',
                 marginRight: '-6px',
@@ -278,10 +433,9 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
           {/* Right Column - Comments (Desktop only) */}
           {showCommentsColumn && (
-            <div 
-              className={`hidden lg:block absolute right-0 top-0 bottom-0 bg-base-100 border-l border-base-300 z-20 ${
-                isDragging ? 'transition-none' : 'transition-all duration-300'
-              }`}
+            <div
+              className={`hidden lg:flex lg:flex-col absolute right-0 top-0 bottom-0 bg-base-100 border-l border-base-300 z-20 overflow-hidden ${isDragging ? 'transition-none' : 'transition-all duration-300'
+                }`}
               style={{ width: 'var(--right-column-width)' }}
             >
               <CommentsColumn
@@ -294,11 +448,9 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
                     wallets: wallets || [],
                     myId,
                     highlightTransactionId,
-                    activeCommentHook: activeCommentHook || [null, () => {}],
-                    activeSlider: activeSlider ?? null,
-                    setActiveSlider: setActiveSlider || (() => {}),
+                    activeCommentHook: activeCommentHook || [null, () => { }],
                     activeWithdrawPost: activeWithdrawPost ?? null,
-                    setActiveWithdrawPost: setActiveWithdrawPost || (() => {}),
+                    setActiveWithdrawPost: setActiveWithdrawPost || (() => { }),
                   }
                 )}
               />
@@ -309,7 +461,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
       {/* Mobile Comments Drawer */}
       {showComments && selectedPostSlug && communityId && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-base-100">
+        <div className="lg:hidden fixed inset-0 z-50 bg-base-100 flex flex-col overflow-hidden">
           <CommentsColumn
             {...createCommentsColumnProps(
               selectedPostSlug,
@@ -320,29 +472,30 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
                 wallets: wallets || [],
                 myId,
                 highlightTransactionId,
-                activeCommentHook: activeCommentHook || [null, () => {}],
-                activeSlider: activeSlider ?? null,
-                setActiveSlider: setActiveSlider || (() => {}),
+                activeCommentHook: activeCommentHook || [null, () => { }],
                 activeWithdrawPost: activeWithdrawPost ?? null,
-                setActiveWithdrawPost: setActiveWithdrawPost || (() => {}),
+                setActiveWithdrawPost: setActiveWithdrawPost || (() => { }),
               }
             )}
           />
         </div>
       )}
-      
+
       {/* Bottom Widget Area - for BottomPortal to render forms */}
       <div className="bottom-widget-area fixed inset-0 z-50 pointer-events-none touch-none" />
-      
+
       {/* Global Voting Popup */}
       <VotingPopup
         communityId={communityId}
       />
-      
+
       {/* Global Withdraw Popup */}
       <WithdrawPopup
         communityId={communityId}
       />
+
+      {/* Mobile Bottom Navigation */}
+      <BottomNavigation />
     </div>
   );
 };

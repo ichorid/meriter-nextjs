@@ -1,10 +1,19 @@
 import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
 import { VotesController } from './votes.controller';
 import { DomainModule } from '../../domain.module';
-import { TgBotsModule } from '../../tg-bots/tg-bots.module';
+import {
+  Publication,
+  PublicationSchema,
+} from '../../domain/models/publication/publication.schema';
 
 @Module({
-  imports: [DomainModule, TgBotsModule],
+  imports: [
+    DomainModule,
+    MongooseModule.forFeature([
+      { name: Publication.name, schema: PublicationSchema },
+    ]),
+  ],
   controllers: [VotesController],
 })
 export class VotesModule {}

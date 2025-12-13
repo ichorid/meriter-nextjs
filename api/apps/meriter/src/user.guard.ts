@@ -30,12 +30,25 @@ export class UserGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const response = context.switchToHttp().getResponse();
     const jwt = request.cookies?.jwt;
+    
+    // Get client IP for security logging
+    const clientIp = request.ip || 
+                     request.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                     request.headers['x-real-ip'] || 
+                     request.connection?.remoteAddress || 
+                     'unknown';
+    const userAgent = request.headers['user-agent'] || 'unknown';
+    const path = request.url;
 
     if (!jwt) {
       // No cookie detected - proactively clear all possible cookie variants
       // This handles cases where old cookies exist but aren't being read due to
       // attribute mismatches (domain, path, secure, sameSite)
       this.logger.debug('No JWT cookie detected, clearing all possible cookie variants');
+      
+      // Security event: Failed authentication attempt (no token)
+      this.logger.warn(`[SECURITY] Authentication failed: No JWT token provided - IP: ${clientIp}, Path: ${path}, User-Agent: ${userAgent.substring(0, 100)}`);
+      
       this.clearJwtCookie(response);
       throw new UnauthorizedException('No JWT token provided');
     }
@@ -65,6 +78,15 @@ export class UserGuard implements CanActivate {
         this.logger.warn(
           'This may indicate a deleted user, invalid token, or database issue',
         );
+        
+        // Security event: Valid token but user not found
+        const clientIp = request.ip || 
+                         request.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                         request.headers['x-real-ip'] || 
+                         request.connection?.remoteAddress || 
+                         'unknown';
+        this.logger.warn(`[SECURITY] Authentication failed: User not found for valid JWT - UID: ${uid}, IP: ${clientIp}, Path: ${path}`);
+        
         // Clear the stale JWT cookie
         this.clearJwtCookie(response);
         throw new UnauthorizedException('User not found');
@@ -84,12 +106,24 @@ export class UserGuard implements CanActivate {
       const errorMessage = e instanceof Error ? e.message : String(e);
       this.logger.error(`Error verifying JWT: ${errorMessage}`, e instanceof Error ? e.stack : undefined);
       
+      // Security event logging for different JWT error types
+      const clientIp = request.ip || 
+                       request.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                       request.headers['x-real-ip'] || 
+                       request.connection?.remoteAddress || 
+                       'unknown';
+      const userAgent = request.headers['user-agent'] || 'unknown';
+      
       // Check for specific JWT errors
       if (errorMessage.includes('invalid signature')) {
         this.logger.error('JWT signature verification failed. This may indicate:');
         this.logger.error('1. JWT_SECRET environment variable is missing or incorrect');
         this.logger.error('2. JWT_SECRET was changed after tokens were issued');
         this.logger.error('3. Tokens were signed with a different secret');
+        
+        // Security event: Invalid JWT signature (potential attack or misconfiguration)
+        this.logger.warn(`[SECURITY] Authentication failed: Invalid JWT signature - IP: ${clientIp}, Path: ${path}, User-Agent: ${userAgent.substring(0, 100)}`);
+        
         // Log diagnostic info (without exposing secret)
         const jwtSecret = this.configService.get<string>('jwt.secret');
         if (jwtSecret) {
@@ -101,11 +135,15 @@ export class UserGuard implements CanActivate {
         this.clearJwtCookie(response);
       } else if (errorMessage.includes('expired') || errorMessage.includes('jwt expired')) {
         this.logger.debug('JWT token has expired');
+        // Security event: Expired token (normal occurrence, but log for monitoring)
+        this.logger.debug(`[SECURITY] Authentication failed: Expired JWT token - IP: ${clientIp}, Path: ${path}`);
         // Clear expired JWT cookie
         this.clearJwtCookie(response);
       } else {
         // For any other JWT error, also clear the cookie
         this.logger.debug(`Other JWT verification error: ${errorMessage}`);
+        // Security event: Other JWT verification error
+        this.logger.warn(`[SECURITY] Authentication failed: JWT verification error - Error: ${errorMessage}, IP: ${clientIp}, Path: ${path}, User-Agent: ${userAgent.substring(0, 100)}`);
         this.clearJwtCookie(response);
       }
       

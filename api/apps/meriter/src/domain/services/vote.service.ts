@@ -5,7 +5,11 @@ import { Vote, VoteDocument } from '../models/vote/vote.schema';
 import { UserId } from '../value-objects';
 import { uid } from 'uid';
 import { PublicationService } from './publication.service';
+import { CommunityService } from './community.service';
+import { PermissionService } from './permission.service';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
+import { EventBus } from '../events/event-bus';
+import { PublicationVotedEvent, CommentVotedEvent } from '../events';
 
 @Injectable()
 export class VoteService {
@@ -15,6 +19,9 @@ export class VoteService {
     @InjectModel(Vote.name) private voteModel: Model<VoteDocument>,
     @InjectConnection() private mongoose: Connection,
     @Inject(forwardRef(() => PublicationService)) private publicationService: PublicationService,
+    private communityService: CommunityService,
+    @Inject(forwardRef(() => PermissionService)) private permissionService: PermissionService,
+    private eventBus: EventBus,
   ) {}
 
   /**
@@ -44,15 +51,36 @@ export class VoteService {
    * Check if user can vote on a publication or vote.
    * Rules:
    * - Cannot vote if user is the effective beneficiary
+   * - Exception: In future-vision groups, participants/leads/superadmins can self-vote
    * - For publications: effective beneficiary = beneficiaryId if set, otherwise authorId
    * - For votes: effective beneficiary = userId of the vote being voted on (cannot vote on your own vote)
    */
-  async canUserVote(userId: string, targetType: 'publication' | 'vote', targetId: string): Promise<boolean> {
+  async canUserVote(userId: string, targetType: 'publication' | 'vote', targetId: string, communityId?: string): Promise<boolean> {
     const effectiveBeneficiary = await this.getEffectiveBeneficiary(targetType, targetId);
     if (!effectiveBeneficiary) {
       return false;
     }
-    return effectiveBeneficiary !== userId;
+
+    // Check if this is self-voting
+    const isSelfVoting = effectiveBeneficiary === userId;
+    if (!isSelfVoting) {
+      return true; // Not self-voting, allow it
+    }
+
+    // Self-voting: check if allowed in future-vision group
+    if (communityId) {
+      const community = await this.communityService.getCommunity(communityId);
+      if (community?.typeTag === 'future-vision') {
+        // Check user role - allow self-voting for participant, lead, or superadmin
+        const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
+        if (userRole === 'participant' || userRole === 'lead' || userRole === 'superadmin') {
+          return true; // Allow self-voting in future-vision group for these roles
+        }
+      }
+    }
+
+    // Default: prevent self-voting
+    return false;
   }
 
   /**
@@ -76,13 +104,23 @@ export class VoteService {
     targetId: string,
     amountQuota: number,
     amountWallet: number,
+    direction: 'up' | 'down',
     comment: string,
     communityId: string
   ): Promise<Vote> {
-    this.logger.log(`Creating vote: user=${userId}, target=${targetType}:${targetId}, amountQuota=${amountQuota}, amountWallet=${amountWallet}, communityId=${communityId}, comment=${comment.substring(0, 50)}...`);
+    this.logger.log(`Creating vote: user=${userId}, target=${targetType}:${targetId}, amountQuota=${amountQuota}, amountWallet=${amountWallet}, direction=${direction}, communityId=${communityId}, comment=${comment.substring(0, 50)}...`);
+
+    // Check feature flag - comment voting is disabled by default
+    const enableCommentVoting = process.env.ENABLE_COMMENT_VOTING === 'true';
+    if (targetType === 'vote' && !enableCommentVoting) {
+      throw new BadRequestException(
+        'Voting on comments is disabled. You can only vote on posts/publications.',
+      );
+    }
 
     // Validate that user can vote (mutual exclusivity check)
-    const canVote = await this.canUserVote(userId, targetType, targetId);
+    // Pass communityId to allow self-voting in future-vision groups
+    const canVote = await this.canUserVote(userId, targetType, targetId, communityId);
     if (!canVote) {
       throw new BadRequestException('Cannot vote: you are the effective beneficiary of this content');
     }
@@ -102,10 +140,105 @@ export class VoteService {
       throw new BadRequestException('Comment is required');
     }
 
+    // Check if community is a special group (marathon-of-good or future-vision)
+    const community = await this.communityService.getCommunity(communityId);
+    const isMarathonOfGood = community?.typeTag === 'marathon-of-good';
+    const isFutureVision = community?.typeTag === 'future-vision';
+    const isSpecialGroup = isMarathonOfGood || isFutureVision;
+
+    // Check user role to enforce viewer restrictions (check BEFORE community-specific rules)
+    const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
+    
+    // Viewers can only vote with quota (no wallet voting) - check this first for clearer error messages
+    if (userRole === 'viewer' && amountWallet > 0) {
+      throw new BadRequestException(
+        'Viewers can only vote using daily quota, not wallet merits.',
+      );
+    }
+
+    // Marathon of Good: Block wallet voting on publications/comments (quota only)
+    // Future Vision: Block quota voting on publications/comments (wallet only)
+    // Polls are handled separately and always use wallet
+    // This check comes BEFORE postType validation to ensure it applies
+    // Note: Viewer check already happened above, so skip if viewer
+    if (targetType === 'publication' || targetType === 'vote') {
+      if (isMarathonOfGood && amountWallet > 0 && userRole !== 'viewer') {
+        throw new BadRequestException(
+          'Marathon of Good only allows quota voting on posts and comments. Please use daily quota to vote.',
+        );
+      }
+      if (isFutureVision && amountQuota > 0) {
+        throw new BadRequestException(
+          'Future Vision only allows wallet voting on posts and comments. Please use wallet merits to vote.',
+        );
+      }
+      // For regular groups (non-special), reject wallet voting
+      if (!isSpecialGroup && amountWallet > 0) {
+        throw new BadRequestException(
+          'Voting with permanent wallet merits is only allowed in special groups (Marathon of Good and Future Vision). Please use daily quota to vote on posts and comments.',
+        );
+      }
+    }
+
+    // Enforce voting rules based on target type
+    if (targetType === 'publication') {
+      const publication = await this.publicationService.getPublication(targetId);
+      if (!publication) {
+        throw new NotFoundException('Publication not found');
+      }
+
+      const postType = publication.getPostType;
+      const isProject = publication.getIsProject;
+
+      // Project (Idea): Voting with wallet (Merits) only
+      if (postType === 'project' || isProject) {
+        if (amountQuota > 0) {
+          throw new BadRequestException(
+            'Projects can only be voted on with Merits (Wallet), not Daily Quota',
+          );
+        }
+        if (amountWallet <= 0) {
+          throw new BadRequestException(
+            'Projects require Merits (Wallet) to vote',
+          );
+        }
+      }
+
+      // Report (Good Deed) / Basic: Voting with Daily Quota only
+      // Marathon of Good: quota only (already enforced above)
+      // Future Vision: wallet only (already enforced above)
+      // Assuming 'basic' implies Report/Good Deed context for now
+      if (postType === 'basic' && !isProject && !isSpecialGroup) {
+        // For non-special groups only, basic posts can only use quota
+        if (amountWallet > 0) {
+          throw new BadRequestException(
+            'Reports (Good Deeds) can only be voted on with Daily Quota',
+          );
+        }
+        if (amountQuota <= 0) {
+          throw new BadRequestException(
+            'Reports require Daily Quota to vote',
+          );
+        }
+      }
+      // For Marathon of Good basic posts, ensure quota is used
+      if (postType === 'basic' && !isProject && isMarathonOfGood && amountQuota <= 0) {
+        throw new BadRequestException(
+          'Reports require Daily Quota to vote',
+        );
+      }
+      // For Future Vision basic posts, ensure wallet is used
+      if (postType === 'basic' && !isProject && isFutureVision && amountWallet <= 0) {
+        throw new BadRequestException(
+          'Reports require Wallet Merits to vote',
+        );
+      }
+    }
+
     // Allow multiple votes on the same content - remove the duplicate check
     // Users can vote multiple times on the same publication/vote
 
-    // Create vote
+    // Create vote with explicit direction
     const voteArray = await this.voteModel.create([{
       id: uid(),
       targetType,
@@ -113,13 +246,29 @@ export class VoteService {
       userId,
       amountQuota,
       amountWallet,
+      direction,
       communityId,
       comment: comment.trim(),
       createdAt: new Date(),
     }]);
 
-    this.logger.log(`Vote created successfully: ${voteArray[0].id}`);
-    return voteArray[0];
+    const vote = voteArray[0];
+    this.logger.log(`Vote created successfully: ${vote.id}`);
+
+    // Publish domain event for notifications
+    const totalAmount = amountQuota + amountWallet;
+    if (targetType === 'publication') {
+      await this.eventBus.publish(
+        new PublicationVotedEvent(targetId, userId, totalAmount, direction),
+      );
+    } else {
+      // Vote on vote = comment vote
+      await this.eventBus.publish(
+        new CommentVotedEvent(vote.id, userId, totalAmount, direction),
+      );
+    }
+
+    return vote;
   }
 
   async removeVote(userId: string, targetType: 'publication' | 'vote', targetId: string): Promise<boolean> {
@@ -128,7 +277,7 @@ export class VoteService {
     const result = await this.voteModel.deleteOne(
       { userId, targetType, targetId }
     );
-    
+
     if (result.deletedCount > 0) {
       this.logger.log(`Vote removed successfully`);
     }
@@ -160,26 +309,26 @@ export class VoteService {
 
   async getVotesOnVotes(voteIds: string[]): Promise<Map<string, Vote[]>> {
     if (voteIds.length === 0) return new Map();
-    
+
     const votes = await this.voteModel
       .find({ targetType: 'vote', targetId: { $in: voteIds } })
       .lean()
       .exec();
-    
+
     const votesMap = new Map<string, Vote[]>();
     votes.forEach(vote => {
       const existing = votesMap.get(vote.targetId) || [];
       existing.push(vote);
       votesMap.set(vote.targetId, existing);
     });
-    
+
     return votesMap;
   }
 
   async getVotesOnPublication(publicationId: string): Promise<Vote[]> {
     return this.voteModel
-      .find({ 
-        targetType: 'publication', 
+      .find({
+        targetType: 'publication',
         targetId: publicationId,
       })
       .lean()
@@ -202,39 +351,39 @@ export class VoteService {
     if (sortField === 'score') {
       // Fetch all votes (we'll sort after calculating scores)
       const allVotes = await this.voteModel
-        .find({ 
-          targetType: 'publication', 
+        .find({
+          targetType: 'publication',
           targetId: publicationId,
         })
         .lean()
         .exec();
-      
+
       // Calculate scores for each vote (sum of votes on votes)
       const voteIds = allVotes.map(v => v.id);
       const votesOnVotesMap = await this.getVotesOnVotes(voteIds);
-      
+
       // Add score to each vote
       const votesWithScores = allVotes.map(vote => ({
         ...vote,
         _score: (votesOnVotesMap.get(vote.id) || []).reduce((sum, r) => sum + (r.amountQuota + r.amountWallet), 0),
       }));
-      
+
       // Sort by score
       votesWithScores.sort((a, b) => {
         return sortOrder === 'asc' ? a._score - b._score : b._score - a._score;
       });
-      
+
       // Apply pagination
       return votesWithScores.slice(skip, skip + limit);
     }
-    
+
     // For other fields, sort in MongoDB query
     const sortValue = sortOrder === 'asc' ? 1 : -1;
     const sort: Record<string, 1 | -1> = { [sortField]: sortValue };
-    
+
     return this.voteModel
-      .find({ 
-        targetType: 'publication', 
+      .find({
+        targetType: 'publication',
         targetId: publicationId,
       })
       .limit(limit)

@@ -4,6 +4,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { Settings } from 'lucide-react';
 import { Avatar } from '@/components/atoms/Avatar';
 import { Button } from '@/components/atoms/Button';
 
@@ -32,6 +33,7 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
   className = ''
 }) => {
   const t = useTranslations('shared');
+  const tCommon = useTranslations('common');
   const router = useRouter();
 
   const handleSettingsClick = (e: React.MouseEvent) => {
@@ -59,7 +61,7 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-1">
           <div className="text-right min-w-0 flex-1">
-            <div className="text-xs sm:text-sm font-medium text-base-content truncate">
+            <div className="text-xs sm:text-sm font-medium text-base-content dark:text-base-content truncate">
               {userName || 'User'}
             </div>
           </div>
@@ -75,10 +77,10 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
               size="sm"
               onClick={handleSettingsClick}
               className="btn-circle btn-xs opacity-60 hover:opacity-100"
-              aria-label="Settings"
-              title="Settings"
+              aria-label={tCommon('settings')}
+              title={tCommon('settings')}
             >
-              <span className="material-symbols-outlined text-xs">settings</span>
+              <Settings className="w-3 h-3" />
             </Button>
           </div>
         </div>

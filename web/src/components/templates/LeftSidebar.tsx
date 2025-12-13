@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
+import { X } from 'lucide-react';
 
 export interface SidebarRoute {
     path: string;
@@ -46,7 +46,7 @@ export function LeftSidebar({
                     className="btn btn-ghost bg-base-300 btn-circle z-50 top-0 right-0 mt-4 mr-2 absolute lg:hidden"
                     onClick={close}
                 >
-                    <XMarkIcon className="h-5 inline-block w-5" />
+                    <X className="h-5 w-5" />
                 </button>
 
                 <li className="mb-2 font-semibold text-xl">

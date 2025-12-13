@@ -9,7 +9,11 @@ import { ErrorPage } from '@/components/ErrorPage';
 import { useDidMount } from '@/hooks/useDidMount';
 import { ThemeProvider } from '@/shared/lib/theme-provider';
 import { useAppMode } from '@/contexts/AppModeContext';
-import { ToastContainer } from '@/shared/components/toast-container';
+import { setGlobalToastHandler } from '@/providers/QueryProvider';
+import { useToastStore } from '@/shared/stores/toast.store';
+
+// Dynamically import ToastContainer to avoid SSR issues
+const ToastContainer = dynamic(() => import('@/shared/components/toast-container').then(mod => ({ default: mod.ToastContainer })), { ssr: false });
 
 import './styles.css';
 
@@ -68,6 +72,12 @@ function DesktopWrapper({ children }: PropsWithChildren) {
 
 function RootInner({ children }: PropsWithChildren) {
   const { isTelegramMiniApp, isReady } = useAppMode();
+  const addToast = useToastStore((state) => state.addToast);
+
+  // Set global toast handler for QueryProvider
+  useEffect(() => {
+    setGlobalToastHandler(addToast);
+  }, [addToast]);
 
   // Wait for detection to complete
   if (!isReady) {

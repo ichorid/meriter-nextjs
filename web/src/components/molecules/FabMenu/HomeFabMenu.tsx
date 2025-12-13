@@ -1,0 +1,154 @@
+'use client';
+
+import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { Plus, FileText, BarChart2, Users } from 'lucide-react';
+import { useWallets } from '@/hooks/api';
+import { useCanCreateCommunity } from '@/hooks/api/useProfile';
+import { useToastStore } from '@/shared/stores/toast.store';
+import { useUIStore } from '@/stores/ui.store';
+
+export const HomeFabMenu: React.FC = () => {
+    const router = useRouter();
+    const t = useTranslations('home');
+    const tCommunities = useTranslations('pages.communities');
+    const { data: wallets = [] } = useWallets();
+    const { canCreate: canCreateCommunity } = useCanCreateCommunity();
+    const addToast = useToastStore((state) => state.addToast);
+    const [isOpen, setIsOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // Check if any popup is active using UI store
+    const { activeVotingTarget, activeWithdrawTarget, activeModal } = useUIStore();
+    const hasActivePopup = activeVotingTarget !== null || activeWithdrawTarget !== null || activeModal !== null;
+
+    // Get first community ID from wallets
+    const firstCommunityId = wallets.length > 0 ? wallets[0]?.communityId : null;
+    const hasCommunities = wallets.length > 0;
+
+    // Calculate available actions
+    // If no communities: only "Create Community" (requires canCreateCommunity === true)
+    // If has communities: always "Create Post" + "Create Poll" (always available, so always show)
+    const hasAvailableActions = hasCommunities || canCreateCommunity;
+
+    const handleCreateCommunity = () => {
+        if (!canCreateCommunity) {
+            addToast(
+                'Only organizers and team leads can create communities. Contact an organizer if you want to create a team.',
+                'info'
+            );
+            setIsOpen(false);
+            return;
+        }
+        router.push('/meriter/communities/create');
+        setIsOpen(false);
+    };
+
+    const handleCreatePost = () => {
+        if (firstCommunityId) {
+            router.push(`/meriter/communities/${firstCommunityId}/create`);
+        } else {
+            router.push('/meriter/communities/create');
+        }
+        setIsOpen(false);
+    };
+
+    const handleCreatePoll = () => {
+        if (firstCommunityId) {
+            router.push(`/meriter/communities/${firstCommunityId}/create-poll`);
+        } else {
+            router.push('/meriter/communities/create');
+        }
+        setIsOpen(false);
+    };
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen]);
+
+    // Hide FAB when any popup is active (unless the FAB menu itself is open)
+    if (hasActivePopup && !isOpen) {
+        return null;
+    }
+
+    // Hide FAB if no actions are available
+    if (!hasAvailableActions) {
+        return null;
+    }
+
+    return (
+        <div className="fixed bottom-20 right-6 z-[60] lg:bottom-6" ref={menuRef}>
+            {/* Menu Items */}
+            {isOpen && (
+                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-xl shadow-xl border border-brand-border dark:border-base-300/50 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+                    <div className="py-1">
+                        {!hasCommunities ? (
+                            // No communities - show create community option only if user has permission
+                            canCreateCommunity && (
+                                <button
+                                    onClick={handleCreateCommunity}
+                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left"
+                                >
+                                    <Users size={18} className="text-brand-primary" />
+                                    <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">
+                                        {t('hero.actions.createCommunity')}
+                                    </span>
+                                </button>
+                            )
+                        ) : (
+                            // Has communities - show create post and poll options
+                            <>
+                                <button
+                                    onClick={handleCreatePost}
+                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left"
+                                >
+                                    <FileText size={18} className="text-brand-primary" />
+                                    <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">
+                                        {tCommunities('createPost')}
+                                    </span>
+                                </button>
+                                <button
+                                    onClick={handleCreatePoll}
+                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-brand-surface transition-colors text-left"
+                                >
+                                    <BarChart2 size={18} className="text-brand-primary" />
+                                    <span className="text-sm font-medium text-brand-text-primary dark:text-base-content">
+                                        {tCommunities('createPoll')}
+                                    </span>
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* FAB Button */}
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={`flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-all duration-200 ${
+                    isOpen
+                        ? 'bg-brand-text-primary text-white rotate-45'
+                        : 'bg-brand-primary text-white hover:bg-brand-primary/90 hover:scale-105'
+                }`}
+                aria-label={isOpen ? 'Close menu' : 'Open menu'}
+            >
+                <Plus size={28} />
+            </button>
+        </div>
+    );
+};
+

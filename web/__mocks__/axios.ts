@@ -19,7 +19,7 @@ const mockAxiosInstance: any = {
   },
 };
 
-const axios = jest.fn(() => mockAxiosInstance);
+const axios = jest.fn(() => mockAxiosInstance) as any;
 axios.create = jest.fn(() => mockAxiosInstance);
 (axios as any).get = mockAxiosInstance.get;
 (axios as any).post = mockAxiosInstance.post;

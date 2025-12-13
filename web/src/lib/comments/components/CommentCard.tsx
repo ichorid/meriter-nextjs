@@ -18,6 +18,14 @@ import { calculatePadding } from '../utils/connections';
 import { useCommentVoteDisplay } from '@/features/comments/hooks/useCommentVoteDisplay';
 import { useCommentRecipient } from '@/features/comments/hooks/useCommentRecipient';
 import { useCommentWithdrawal } from '@/features/comments/hooks/useCommentWithdrawal';
+import { useCanVote } from '@/hooks/useCanVote';
+import { useFeaturesConfig } from '@/hooks/useConfig';
+import { useCanEditDelete } from '@/hooks/useCanEditDelete';
+import { useUpdateComment, useDeleteComment } from '@/hooks/api/useComments';
+import { CommentEditModal } from '@/components/organisms/CommentEditModal/CommentEditModal';
+import { DeleteConfirmationModal } from '@/components/organisms/DeleteConfirmationModal/DeleteConfirmationModal';
+import { Edit, Trash2 } from 'lucide-react';
+import { useToastStore } from '@/shared/stores/toast.store';
 
 interface CommentCardProps {
   node: TreeNode;
@@ -33,8 +41,6 @@ interface CommentCardProps {
   communityId?: string;
   publicationSlug?: string;
   activeCommentHook?: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
-  activeSlider?: string | null;
-  setActiveSlider?: (id: string | null) => void;
   activeWithdrawPost?: string | null;
   setActiveWithdrawPost?: (id: string | null) => void;
   highlightTransactionId?: string;
@@ -61,8 +67,6 @@ export function CommentCard({
   communityId,
   publicationSlug,
   activeCommentHook,
-  activeSlider,
-  setActiveSlider,
   activeWithdrawPost,
   setActiveWithdrawPost,
   highlightTransactionId,
@@ -70,6 +74,8 @@ export function CommentCard({
   isDetailPage = false,
 }: CommentCardProps) {
   const t = useTranslations('comments');
+  const features = useFeaturesConfig();
+  const enableCommentVoting = features.commentVoting;
   const originalComment = node.originalComment;
   const authorMeta = originalComment.meta?.author;
   const authorName = authorMeta?.name || 'Unknown';
@@ -99,6 +105,25 @@ export function CommentCard({
   // Check if there's a beneficiary and it's different from the author
   const beneficiaryMeta = (originalComment.meta as any)?.beneficiary;
   const hasBeneficiary = beneficiaryMeta && beneficiaryMeta.id !== commentAuthorId;
+  const isBeneficiary = hasBeneficiary && myId === beneficiaryMeta?.id;
+  
+  // Check if user can vote on this comment based on community rules
+  const { canVote: canVoteFromHook, reason: voteDisabledReasonFromHook } = useCanVote(
+    node.id,
+    'comment',
+    communityId,
+    commentAuthorId,
+    isAuthor,
+    isBeneficiary,
+    hasBeneficiary,
+    false // Comments are not projects
+  );
+  
+  // Override reason if comment voting is disabled via feature flag
+  const canVote = enableCommentVoting ? canVoteFromHook : false;
+  const voteDisabledReason = enableCommentVoting 
+    ? voteDisabledReasonFromHook 
+    : 'voteDisabled.commentVotingDisabled';
   
   // Withdrawal state management
   const withdrawableBalance = originalComment.metrics?.score ?? 0;
@@ -112,6 +137,9 @@ export function CommentCard({
   // Fetch community info
   const { data: communityInfo } = useCommunity(communityId || '');
   
+  // Check if community is special group (withdrawals disabled)
+  const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
+  
   const currentBalance =
     (Array.isArray(wallets) &&
       wallets.find((w) => w.communityId === communityId)?.balance) ||
@@ -119,6 +147,54 @@ export function CommentCard({
   
   // State for comment details popup
   const [showDetailsPopup, setShowDetailsPopup] = useState(false);
+  
+  // State for edit/delete modals
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  
+  // Check if comment has votes
+  const commentHasVotes = (commentUpvotes + commentDownvotes) > 0;
+  
+  // Permission checks - hook checks vote count and time window for authors, allows admins always
+  const { canEdit, canEditEnabled, canDelete } = useCanEditDelete(
+    commentAuthorId, 
+    communityId,
+    commentHasVotes,
+    commentTimestamp
+  );
+  
+  // Show edit button if user can edit, disable if canEdit but not canEditEnabled
+  const showEditButton = canEdit;
+  const editButtonDisabled = !!(canEdit && !canEditEnabled);
+  
+  // Mutations
+  const updateComment = useUpdateComment();
+  const deleteComment = useDeleteComment();
+  const addToast = useToastStore((state) => state.addToast);
+  
+  // Handlers
+  const handleEdit = async (newContent: string) => {
+    try {
+      await updateComment.mutateAsync({
+        id: node.id,
+        data: { content: newContent },
+      });
+      setShowEditModal(false);
+      addToast('Comment updated successfully', 'success');
+    } catch (error: any) {
+      addToast(error?.message || 'Failed to update comment', 'error');
+    }
+  };
+  
+  const handleDelete = async () => {
+    try {
+      await deleteComment.mutateAsync(node.id);
+      setShowDeleteModal(false);
+      addToast('Comment deleted successfully', 'success');
+    } catch (error: any) {
+      addToast(error?.message || 'Failed to delete comment', 'error');
+    }
+  };
   
   // Calculate direction
   const calculatedDirectionPlus = directionPlus ?? 
@@ -190,13 +266,13 @@ export function CommentCard({
   
   return (
     <div 
-      className="relative"
+      className="relative w-full overflow-hidden"
       style={{ paddingLeft: `${paddingLeft}px` }}
     >
       {/* Connection lines */}
       {needsHorizontalFork && (
         <div
-          className="absolute left-0 top-1/2 w-[20px] h-[1px] -translate-y-1/2 bg-base-300 dark:bg-base-700"
+          className="absolute left-0 top-1/2 w-[20px] h-[1px] -translate-y-1/2 bg-base-300"
           style={{ left: `${paddingLeft - 20}px` }}
         />
       )}
@@ -204,7 +280,7 @@ export function CommentCard({
       {needsSiblingVerticalLine && (
         <div
           className={classList(
-            "absolute left-0 w-[1px] bg-base-300 dark:bg-base-700",
+            "absolute left-0 w-[1px] bg-base-300",
             isFirstSibling ? "top-1/2" : "-top-[12px]",
             isLastSibling ? "bottom-1/2" : "-bottom-[12px]"
           )}
@@ -216,7 +292,7 @@ export function CommentCard({
 
       {needsParentChildLine && !hasSiblings && (
         <div
-          className="absolute left-0 -top-[12px] w-[1px] bg-base-300 dark:bg-base-700"
+          className="absolute left-0 -top-[12px] w-[1px] bg-base-300"
           style={{ 
             left: `${paddingLeft - 20}px`,
             height: 'calc(50% + 12px)',
@@ -227,7 +303,7 @@ export function CommentCard({
       {needsVerticalLineDown && (
         <div
           className={classList(
-            "absolute left-0 w-[1px] bg-base-300 dark:bg-base-700",
+            "absolute left-0 w-[1px] bg-base-300",
             hasSiblings ? "top-1/2 -bottom-[12px]" : "top-1/2 -bottom-[12px]"
           )}
           style={{ left: `${paddingLeft - 20}px` }}
@@ -236,37 +312,65 @@ export function CommentCard({
 
       <div
         className={classList(
-          "comment-vote-wrapper transition-all duration-300 mb-4 relative z-10",
+          "comment-vote-wrapper transition-all duration-300 mb-4 relative z-10 w-full overflow-hidden",
           { 'ring-2 ring-warning': isChainMode },
-          commentUnderReply ? "scale-100 opacity-100" : 
-          activeSlider && activeSlider !== node.id ? "scale-95 opacity-60" : "scale-100 opacity-100",
+          commentUnderReply ? "scale-100 opacity-100" : "scale-100 opacity-100",
           highlightTransactionId === node.id ? "highlight" : ""
         )}
         data-comment-id={node.id}
-        onClick={(e) => {
-          if (
-            activeSlider === node.id &&
-            !(e.target as any)?.className?.match("clickable")
-          ) {
-            setActiveSlider && setActiveSlider(null);
-          }
-        }}
       >
-      {/* Details button - positioned in top right */}
-      <Button
-        variant="ghost"
-        size="xs"
-        className="absolute top-2 right-2 z-10 btn-sm opacity-60 hover:opacity-100"
-        onClick={(e) => {
-          e.stopPropagation();
-          setShowDetailsPopup(true);
-        }}
-        title="View details"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </Button>
+      {/* Action buttons - positioned in top right */}
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+        {(showEditButton || canDelete) && (
+          <>
+            {showEditButton && (
+              <Button
+                variant="ghost"
+                size="xs"
+                className={`btn-sm ${editButtonDisabled ? 'opacity-30 cursor-not-allowed' : 'opacity-60 hover:opacity-100'}`}
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  if (!editButtonDisabled) {
+                    setShowEditModal(true);
+                  }
+                }}
+                disabled={editButtonDisabled}
+                title={editButtonDisabled ? 'Cannot edit: comment has votes or edit window expired' : 'Edit comment'}
+              >
+                <Edit size={14} />
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="xs"
+                className="btn-sm opacity-60 hover:opacity-100 text-error hover:text-error"
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  setShowDeleteModal(true);
+                }}
+                title="Delete comment"
+              >
+                <Trash2 size={14} />
+              </Button>
+            )}
+          </>
+        )}
+        <Button
+          variant="ghost"
+          size="xs"
+          className="btn-sm opacity-60 hover:opacity-100"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            setShowDetailsPopup(true);
+          }}
+          title="View details"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </Button>
+      </div>
       <CardCommentVote
         title={authorName}
         subtitle={new Date(commentTimestamp || '').toLocaleString()}
@@ -291,27 +395,15 @@ export function CommentCard({
             if (imgElement) imgElement.src = fallbackUrl;
           }
         }}
+        communityId={communityId}
+        publicationSlug={publicationSlug}
+        commentId={node.id}
         bottom={
-          isAuthor ? (
+          false ? ( // Withdrawals disabled - merits are automatically credited on upvote
             <BarWithdraw
               balance={maxWithdrawAmount}
               onWithdraw={() => {
-                // Vote-comments can't be withdrawn from (they're synthetic)
-                // Only allow withdrawal from actual comments
-                if (node.id.startsWith('vote_')) {
-                  const { useToastStore } = require('@/shared/stores/toast.store');
-                  useToastStore.getState().addToast(
-                    'Cannot withdraw from votes',
-                    'error'
-                  );
-                  return;
-                }
-                useUIStore.getState().openWithdrawPopup(
-                  node.id,
-                  'comment-withdraw',
-                  maxWithdrawAmount,
-                  maxTopUpAmount
-                );
+                // Withdrawals disabled
               }}
               onTopup={() => {
                 // Vote-comments can't be topped up (they're synthetic)
@@ -337,24 +429,60 @@ export function CommentCard({
                 onNavigate();
               }}
             />
-          ) : (
+          ) : enableCommentVoting ? (
             <BarVoteUnified
               score={commentScore}
               onVoteClick={() => {
                 // If this is a vote-comment (ID starts with 'vote_'), pass the vote-comment ID
                 // The backend will handle creating the proper hierarchy
                 const commentIdToVoteOn = node.id; // Use the node ID directly (includes vote_ prefix if applicable)
-                useUIStore.getState().openVotingPopup(commentIdToVoteOn, 'comment');
+                // Set voting mode based on community type
+                let mode: 'standard' | 'wallet-only' | 'quota-only' = 'quota-only';
+                if (communityInfo?.typeTag === 'future-vision') {
+                  // Future Vision: wallet-only (M), no quota (Q)
+                  mode = 'wallet-only';
+                } else if (communityInfo?.typeTag === 'marathon-of-good') {
+                  // Marathon-of-Good: quota-only (Q), no wallet (M)
+                  mode = 'quota-only';
+                } else if (communityInfo?.typeTag === 'team') {
+                  // Team groups: quota-only (Q), no wallet (M)
+                  mode = 'quota-only';
+                } else {
+                  // Non-special groups: quota-only
+                  mode = 'quota-only';
+                }
+                useUIStore.getState().openVotingPopup(commentIdToVoteOn, 'comment', mode);
               }}
               isAuthor={isAuthor}
-              isBeneficiary={false}
-              hasBeneficiary={false}
+              isBeneficiary={isBeneficiary}
+              hasBeneficiary={hasBeneficiary}
               commentCount={node.children.length || replyComments?.length || 0}
               onCommentClick={() => {
                 // For tree navigation, clicking comment count navigates to show replies
                 onNavigate();
               }}
+              canVote={canVote}
+              disabledReason={voteDisabledReason}
             />
+          ) : (
+            // Vote button and counter are hidden - comments cannot be voted on (feature flag disabled)
+            // Only show comment count for navigation if there are replies
+            (node.children.length || replyComments?.length || 0) > 0 ? (
+              <div className="flex items-center justify-start pt-3 border-t border-base-content/5">
+                <button 
+                  className="flex items-center gap-1.5 text-base-content/40 hover:text-base-content/60 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigate();
+                  }}
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  <span className="text-xs font-medium">{node.children.length || replyComments?.length || 0}</span>
+                </button>
+              </div>
+            ) : null
           )
         }
         showCommunityAvatar={showCommunityAvatar}
@@ -380,6 +508,8 @@ export function CommentCard({
         }}
         communityNeedsSetup={communityInfo?.needsSetup}
         communityIsAdmin={communityInfo?.isAdmin}
+        authorId={commentAuthorId}
+        beneficiaryId={beneficiaryMeta?.id}
       />
       </div>
       <CommentDetailsPopup
@@ -410,6 +540,24 @@ export function CommentCard({
         totalScore={commentDetails?.metrics?.score ?? displaySum}
         totalReceived={commentDetails?.metrics?.totalReceived}
         totalWithdrawn={commentDetails?.withdrawals?.totalWithdrawn}
+      />
+      
+      {/* Edit Modal */}
+      <CommentEditModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onSave={handleEdit}
+        initialContent={commentText}
+        isLoading={updateComment.isPending}
+      />
+      
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        itemType="comment"
+        isLoading={deleteComment.isPending}
       />
     </div>
   );

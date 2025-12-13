@@ -4,6 +4,10 @@ import { classList } from '@lib/classList';
 import { Avatar } from '@/components/atoms';
 import { CommunityAvatar } from '@shared/components/community-avatar';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
+import { routes } from '@/lib/constants/routes';
+import { shareUrl, getCommentUrl } from '../lib/share-utils';
+import { initDataRaw, useSignal, hapticFeedback } from '@telegram-apps/sdk-react';
 
 export const CardCommentVote = ({
     title,
@@ -30,8 +34,31 @@ export const CardCommentVote = ({
     upvotes,
     downvotes,
     onDetailsClick,
+    authorId,
+    beneficiaryId,
+    communityId,
+    publicationSlug,
+    commentId,
 }:any) => {
     const t = useTranslations('comments');
+    const tShared = useTranslations('shared');
+    const router = useRouter();
+    const rawData = useSignal(initDataRaw);
+    const isInTelegram = !!rawData;
+    
+    const handleAuthorAvatarClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (authorId) {
+            router.push(routes.userProfile(authorId));
+        }
+    };
+    
+    const handleBeneficiaryAvatarClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (beneficiaryId) {
+            router.push(routes.userProfile(beneficiaryId));
+        }
+    };
     
     // Determine direction from voteType or rate
     const isUpvote = voteType?.includes('upvote') || (!voteType && rate && !rate.startsWith('-'));
@@ -56,17 +83,28 @@ export const CardCommentVote = ({
             onClick();
         }
     };
+
+    const handleShareClick = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isInTelegram) {
+            hapticFeedback.impactOccurred('light');
+        }
+        if (communityId && publicationSlug && commentId) {
+            const url = getCommentUrl(communityId, publicationSlug, commentId);
+            await shareUrl(url, tShared('urlCopiedToBuffer'));
+        }
+    };
     
     return (
-    <div className="mb-4">
+    <div className="mb-4 w-full overflow-hidden">
         <div 
             className={classList(
-                "card bg-base-100 shadow-md rounded-xl overflow-hidden",
+                "card bg-base-100 shadow-md dark:border dark:border-base-content/20 rounded-xl overflow-hidden w-full",
                 (onDetailsClick || onClick) && "cursor-pointer hover:shadow-lg transition-shadow"
             )}
             onClick={handleCardClick}
         >
-            <div className="flex">
+            <div className="flex min-w-0">
                 <div 
                     className={classList(
                         "font-bold text-center py-2 px-3 min-w-[3rem] flex flex-col items-center justify-center gap-1",
@@ -86,20 +124,21 @@ export const CardCommentVote = ({
                         <span>{rate}</span>
                     </div>
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                     <div className="p-4">
-                        <div className="flex gap-2 mb-2 items-start">
-                            <div className="flex gap-2 flex-1">
+                        <div className="flex gap-2 mb-2 items-start min-w-0">
+                            <div className="flex gap-2 flex-1 min-w-0">
                                 <Avatar
                                     src={avatarUrl}
                                     alt={title}
                                     name={title}
                                     size={32}
                                     onError={onAvatarUrlNotFound}
+                                    onClick={authorId ? handleAuthorAvatarClick : undefined}
                                 />
-                                <div className="info">
-                                    <div className="text-xs font-medium">{title}</div>
-                                    <div className="text-[10px] opacity-60">{subtitle}</div>
+                                <div className="info min-w-0 flex-1">
+                                    <div className="text-xs font-medium break-words">{title}</div>
+                                    <div className="text-[10px] opacity-60 break-words">{subtitle}</div>
                                 </div>
                             </div>
                             {showCommunityAvatar && communityName && (
@@ -119,21 +158,41 @@ export const CardCommentVote = ({
                                 </div>
                             )}
                         </div>
-                        <div className="content text-sm mb-2">{content}</div>
+                        <div className="content text-sm mb-2 break-words">{content}</div>
                         {/* Beneficiary information */}
                         {beneficiaryName && (
-                            <div className="flex items-center gap-2 mb-2 text-xs opacity-70">
-                                <span>to:</span>
+                            <div className="flex items-center gap-2 mb-2 text-xs opacity-70 min-w-0">
+                                <span className="flex-shrink-0">to:</span>
                                 <Avatar
                                     src={beneficiaryAvatarUrl}
                                     alt={beneficiaryName}
                                     name={beneficiaryName}
                                     size={16}
+                                    onClick={beneficiaryId ? handleBeneficiaryAvatarClick : undefined}
                                 />
-                                <span>{beneficiaryName}</span>
+                                <span className="break-words min-w-0">{beneficiaryName}</span>
                             </div>
                         )}
-                        <div className="bottom" onClick={(e) => e.stopPropagation()}>{bottom}</div>
+                        <div className="bottom" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-2">
+                                {bottom}
+                                {communityId && publicationSlug && commentId && (
+                                    <button
+                                        className="flex items-center justify-center h-8 w-8 text-base-content/40 hover:text-base-content/60 transition-colors"
+                                        onClick={handleShareClick}
+                                        title={tShared('share')}
+                                    >
+                                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <circle cx="18" cy="5" r="3"></circle>
+                                            <circle cx="6" cy="12" r="3"></circle>
+                                            <circle cx="18" cy="19" r="3"></circle>
+                                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                                        </svg>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

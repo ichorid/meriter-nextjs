@@ -1,12 +1,16 @@
+'use client';
+
 import React from 'react';
+import { Loader2 } from 'lucide-react';
 
 export type SpinnerSize = 'xs' | 'sm' | 'md' | 'lg';
 
-export interface SpinnerProps extends React.HTMLAttributes<HTMLSpanElement> {
+export interface SpinnerProps {
   size?: SpinnerSize;
+  className?: string;
 }
 
-export const Spinner = React.forwardRef<HTMLSpanElement, SpinnerProps>(
+export const Spinner = React.forwardRef<HTMLDivElement, SpinnerProps>(
   (
     {
       size = 'md',
@@ -15,19 +19,17 @@ export const Spinner = React.forwardRef<HTMLSpanElement, SpinnerProps>(
     },
     ref
   ) => {
-    const sizeClasses = {
-      xs: 'loading-xs',
-      sm: 'loading-sm',
-      md: 'loading-md',
-      lg: 'loading-lg',
+    const sizeMap = {
+      xs: 12,
+      sm: 16,
+      md: 24,
+      lg: 32,
     };
 
-    const classes = ['loading', 'loading-spinner', sizeClasses[size], className]
-      .filter(Boolean)
-      .join(' ');
-
     return (
-      <span ref={ref} className={classes} {...props}></span>
+      <div ref={ref} className={`flex items-center justify-center ${className}`} {...props}>
+        <Loader2 className="animate-spin text-brand-primary" size={sizeMap[size]} />
+      </div>
     );
   }
 );

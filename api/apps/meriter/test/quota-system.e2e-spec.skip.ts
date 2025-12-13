@@ -81,7 +81,6 @@ describe('Quota System Integration (e2e)', () => {
       // Create a test community with daily emission
       await communityModel.create({
         id: testCommunityId,
-        telegramChatId: testCommunityId,
         name: 'Test Community',
         administrators: [],
         members: [],
@@ -123,7 +122,6 @@ describe('Quota System Integration (e2e)', () => {
         updatedAt: new Date(),
       });
 
-      // Create quota votes - use telegramChatId as communityId (as stored in votes collection)
       const today = new Date();
       await voteModel.create({
         id: uid(),
@@ -132,7 +130,6 @@ describe('Quota System Integration (e2e)', () => {
         userId: testUserId1,
         amount: 50,
         sourceType: 'quota',
-        communityId: testCommunityId, // testCommunityId is also the telegramChatId
         createdAt: today,
       });
 
@@ -143,7 +140,6 @@ describe('Quota System Integration (e2e)', () => {
         userId: testUserId1,
         amount: 30,
         sourceType: 'quota',
-        communityId: testCommunityId, // testCommunityId is also the telegramChatId
         createdAt: today,
       });
 
@@ -154,7 +150,6 @@ describe('Quota System Integration (e2e)', () => {
         userId: testUserId2,
         amount: 20,
         sourceType: 'quota',
-        communityId: testCommunityId, // testCommunityId is also the telegramChatId
         createdAt: today,
       });
 
@@ -166,7 +161,6 @@ describe('Quota System Integration (e2e)', () => {
         userId: testUserId1,
         amount: 100,
         sourceType: 'personal',
-        communityId: testCommunityId, // testCommunityId is also the telegramChatId
         createdAt: today,
       });
 
@@ -224,7 +218,6 @@ describe('Quota System Integration (e2e)', () => {
       await communityModel.create([
         {
           id: testCommunityId1,
-          telegramChatId: testCommunityId1,
           name: 'Test Community 1',
           administrators: [],
           members: [],
@@ -236,7 +229,6 @@ describe('Quota System Integration (e2e)', () => {
         },
         {
           id: testCommunityId2,
-          telegramChatId: testCommunityId2,
           name: 'Test Community 2',
           administrators: [],
           members: [],
@@ -336,7 +328,6 @@ describe('Quota System Integration (e2e)', () => {
       // Create community
       await communityModel.create({
         id: testCommunityId,
-        telegramChatId: testCommunityId,
         name: 'Test Community',
         administrators: [],
         members: [],
@@ -437,7 +428,6 @@ describe('Quota System Integration (e2e)', () => {
       // Create community with daily emission of 100
       await communityModel.create({
         id: testCommunityId,
-        telegramChatId: testCommunityId,
         name: 'Test Community',
         administrators: [],
         members: [],
@@ -514,7 +504,6 @@ describe('Quota System Integration (e2e)', () => {
       // Create community
       await communityModel.create({
         id: testCommunityId,
-        telegramChatId: testCommunityId,
         name: 'Test Community',
         administrators: [],
         members: [],

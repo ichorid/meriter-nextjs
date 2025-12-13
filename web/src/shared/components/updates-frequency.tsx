@@ -1,13 +1,15 @@
 'use client';
 
-import { ChangeEvent, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from 'next-intl';
 import { useUpdatesFrequency, useSetUpdatesFrequency } from '@/hooks/api/useUsers';
+import { BrandSelect } from '@/components/ui/BrandSelect';
+import { BrandFormControl } from '@/components/ui/BrandFormControl';
 
 export const UpdatesFrequency = () => {
     const t = useTranslations('pages');
     const [isUpdating, setIsUpdating] = useState(false);
-    
+
     const { data: frequencyData } = useUpdatesFrequency();
     const setFrequencyMutation = useSetUpdatesFrequency();
 
@@ -42,33 +44,20 @@ export const UpdatesFrequency = () => {
         },
     ];
 
+    const currentFrequency = frequency || options.find((o) => o.default)?.frequency || 'daily';
+
     return (
-        <div id={"updates-frequency"} className="form-control w-full">
-            <label className="label">
-                <span className="label-text">{t('updateFrequency.telegramBotFrequency')}</span>
-            </label>
-            <select
-                className="select select-bordered w-full max-w-xs"
-                value={frequency || options.find((o) => o.default)?.frequency}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-                    setFrequency(e.target.value);
-                }}
-                disabled={isUpdating}
-            >
-                {options.map((o, i) => (
-                    <option
-                        key={i}
-                        value={o.frequency}
-                    >
-                        {o.label}
-                    </option>
-                ))}
-            </select>
-            {isUpdating && (
-                <label className="label">
-                    <span className="label-text-alt text-base-content/70">Updating...</span>
-                </label>
-            )}
+        <div id="updates-frequency">
+            <BrandFormControl label={t('updateFrequency.telegramBotFrequency')}>
+                <BrandSelect
+                    value={currentFrequency}
+                    onChange={setFrequency}
+                    options={options.map(o => ({ label: o.label, value: o.frequency }))}
+                    placeholder={options.find(o => o.frequency === currentFrequency)?.label}
+                    disabled={isUpdating}
+                    fullWidth
+                />
+            </BrandFormControl>
         </div>
     );
 };

@@ -41,11 +41,12 @@ export class CommunitySetupHelpers {
     const hasNoSingular = !community.settings?.currencyNames?.singular;
     const hasNoPlural = !community.settings?.currencyNames?.plural;
     const hasNoGenitive = !community.settings?.currencyNames?.genitive;
-    const hasNoDailyEmission = typeof community.settings?.dailyEmission !== 'number' || 
-                                community.settings?.dailyEmission == null;
-    
-    const needsSetup = hasNoHashtags || hasNoSingular || hasNoPlural || hasNoGenitive || hasNoDailyEmission;
-    
+    const hasNoDailyEmission = typeof community.settings?.dailyEmission !== 'number' ||
+      community.settings?.dailyEmission == null;
+
+    // Hashtags are now optional - only check currency and emission settings
+    const needsSetup = hasNoSingular || hasNoPlural || hasNoGenitive || hasNoDailyEmission;
+
     if (detailed) {
       return {
         hasNoHashtags,
@@ -56,7 +57,7 @@ export class CommunitySetupHelpers {
         needsSetup,
       };
     }
-    
+
     return needsSetup;
   }
 

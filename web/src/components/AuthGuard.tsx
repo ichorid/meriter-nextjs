@@ -14,7 +14,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoadingState } from '@/components/atoms/LoadingState';
-import { ErrorDisplay } from '@/components/atoms/ErrorDisplay';
+import { useToastStore } from '@/shared/stores/toast.store';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -31,6 +31,7 @@ export function AuthGuard({
 }: AuthGuardProps) {
   const { user, isLoading, isAuthenticated, authError } = useAuth();
   const router = useRouter();
+  const addToast = useToastStore((state) => state.addToast);
   const [hasChecked, setHasChecked] = useState(false);
   
   useEffect(() => {
@@ -49,29 +50,17 @@ export function AuthGuard({
     }
   }, [isLoading]);
   
+  // Show error toast when authError changes
+  useEffect(() => {
+    if (authError) {
+      addToast(authError, 'error');
+      router.push('/meriter/login');
+    }
+  }, [authError, addToast, router]);
+  
   // Show loading state
   if (isLoading || !hasChecked) {
     return fallback || <LoadingState fullScreen />;
-  }
-  
-  // Show error state
-  if (authError) {
-    return (
-      <ErrorDisplay
-        title="Authentication Error"
-        message={authError}
-        variant="alert"
-        fullScreen
-        actions={
-          <button 
-            className="btn btn-primary mt-4"
-            onClick={() => router.push('/meriter/login')}
-          >
-            Go to Login
-          </button>
-        }
-      />
-    );
   }
   
   // Check authentication requirement

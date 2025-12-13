@@ -14,19 +14,53 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+// Helper function to get initial theme from localStorage (client-side only)
+function getInitialTheme(): Theme {
+    if (typeof window === 'undefined') return 'auto';
+    try {
+        const stored = localStorage.getItem('theme') as Theme | null;
+        if (stored && (stored === 'light' || stored === 'dark' || stored === 'auto')) {
+            return stored;
+        }
+    } catch (e) {
+        // localStorage not available
+    }
+    return 'auto';
+}
+
+// Helper function to get initial resolved theme from data-theme attribute (set by blocking script)
+function getInitialResolvedTheme(): 'light' | 'dark' {
+    if (typeof window === 'undefined') return 'light';
+    try {
+        const dataTheme = document.documentElement.getAttribute('data-theme');
+        if (dataTheme === 'dark' || dataTheme === 'light') {
+            return dataTheme;
+        }
+    } catch (e) {
+        // document not available
+    }
+    return 'light';
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const { isTelegramMiniApp } = useAppMode();
-    const [theme, setThemeState] = useState<Theme>('auto');
-    const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+    // Initialize theme from localStorage (synchronously)
+    const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+    // Initialize resolvedTheme from data-theme attribute (set by blocking script)
+    const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(getInitialResolvedTheme);
     
     // Use SDK signals only in mini app mode
     let rawData;
-    let isDark;
+    let isDark: { value: boolean };
     
     if (isTelegramMiniApp) {
         try {
             rawData = useSignal(initDataRaw);
-            isDark = useSignal(miniApp.isDark);
+            const darkSignal: any = useSignal(miniApp.isDark as any);
+            const darkValue = typeof darkSignal === 'object' && darkSignal !== null
+                ? darkSignal.value
+                : Boolean(darkSignal);
+            isDark = { value: darkValue };
         } catch (error: unknown) {
             console.warn('⚠️ Telegram SDK signals not available');
             rawData = { value: null };
@@ -37,25 +71,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         isDark = { value: false };
     }
 
-    // Initialize theme from localStorage
-    useEffect(() => {
-        if (!isTelegramMiniApp) {
-            const stored = localStorage.getItem('theme') as Theme | null;
-            if (stored && (stored === 'light' || stored === 'dark' || stored === 'auto')) {
-                console.log('🎨 Using stored theme:', stored);
-                setThemeState(stored);
-            } else {
-                // Default to auto (follow system preference)
-                setThemeState('auto');
-            }
-        }
-    }, [isTelegramMiniApp]);
-
     // Use Telegram theme when in Telegram
     useEffect(() => {
         if (isTelegramMiniApp) {
-            console.log('🎨 Using Telegram theme:', isDark ? 'dark' : 'light');
-            setResolvedTheme(isDark ? 'dark' : 'light');
+            const darkMode = isDark?.value ?? false;
+            console.log('🎨 Using Telegram theme:', darkMode ? 'dark' : 'light');
+            setResolvedTheme(darkMode ? 'dark' : 'light');
         }
     }, [isTelegramMiniApp, isDark]);
 
