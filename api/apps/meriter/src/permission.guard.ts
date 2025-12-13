@@ -186,7 +186,19 @@ export class PermissionGuard implements CanActivate {
           this.logger.warn('Missing publicationId for vote:publication');
           return false;
         }
-        return this.permissionService.canVote(userId, resourceIds.publicationId);
+        this.logger.log(
+          `[PermissionGuard] vote:publication check: userId=${userId}, publicationId=${resourceIds.publicationId}`,
+        );
+        const canVoteResult = await this.permissionService.canVote(userId, resourceIds.publicationId);
+        this.logger.log(
+          `[PermissionGuard] vote:publication result: userId=${userId}, publicationId=${resourceIds.publicationId}, result=${canVoteResult}`,
+        );
+        if (!canVoteResult) {
+          this.logger.warn(
+            `[PermissionGuard] vote:publication DENIED: userId=${userId}, publicationId=${resourceIds.publicationId}`,
+          );
+        }
+        return canVoteResult;
 
       case 'comment:publication':
         if (!resourceIds.publicationId) {

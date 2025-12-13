@@ -27,6 +27,9 @@ module.exports = {
       }],
       "^.+\\.(js|jsx)$": "babel-jest"
     },
+    transformIgnorePatterns: [
+      "node_modules/(?!(@gluestack-ui|@gluestack-style|@gluestack|@react-native-aria)/)"
+    ],
     setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
     moduleDirectories: [
         "node_modules",
@@ -35,6 +38,7 @@ module.exports = {
     moduleNameMapper: {
       "^react$": reactPath,
       "^react-dom$": reactDomPath,
+      "^@gluestack-ui/themed$": "<rootDir>/src/__mocks__/@gluestack-ui/themed.tsx",
       "^@app/(.*)$": "<rootDir>/src/app/$1",
       "^@features/(.*)$": "<rootDir>/src/features/$1",
       "^@shared/(.*)$": "<rootDir>/src/shared/$1",

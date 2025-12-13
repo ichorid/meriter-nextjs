@@ -9,26 +9,12 @@ export class ConfigController {
 
   @Get()
   getConfig() {
-    // Get BOT_USERNAME from environment
-    const botUsername = process.env.BOT_USERNAME;
-
-    // Fail fast - no fallbacks
-    if (!botUsername || botUsername.trim() === '') {
-      this.logger.error('BOT_USERNAME environment variable is not set or is empty');
-      throw new HttpException(
-        {
-          code: 'CONFIG_ERROR',
-          message: 'BOT_USERNAME is not configured',
-          details: {
-            message: 'BOT_USERNAME environment variable is required but not set',
-          },
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    // Get BOT_USERNAME from environment (optional)
+    const botUsername = process.env.BOT_USERNAME?.trim() || null;
 
     // Return in standard API response format
     // ApiResponseInterceptor will wrap this automatically
+    // botUsername is optional - Telegram bot is not required
     return {
       botUsername,
     };

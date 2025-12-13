@@ -51,6 +51,7 @@ export interface CommentSnapshot {
     score?: number; // Optional since it can be calculated
   };
   parentCommentId?: string;
+  images?: string[]; // Array of image URLs
   createdAt: Date;
   updatedAt: Date;
 }
@@ -64,6 +65,7 @@ export class Comment implements EditableEntity {
     private readonly content: string,
     private metrics: CommentMetrics,
     private readonly parentCommentId: string | null,
+    private readonly images: string[],
     private readonly createdAt: Date,
     private updatedAt: Date,
   ) {}
@@ -73,7 +75,8 @@ export class Comment implements EditableEntity {
     targetType: 'publication' | 'comment',
     targetId: string,
     content: string,
-    parentCommentId?: string
+    parentCommentId?: string,
+    images?: string[]
   ): Comment {
     const { uid } = require('uid');
     
@@ -85,6 +88,7 @@ export class Comment implements EditableEntity {
       content,
       CommentMetrics.zero(),
       parentCommentId || null,
+      images || [],
       new Date(),
       new Date(),
     );
@@ -99,6 +103,7 @@ export class Comment implements EditableEntity {
       snapshot.content,
       CommentMetrics.fromSnapshot(snapshot.metrics),
       snapshot.parentCommentId || null,
+      snapshot.images || [],
       snapshot.createdAt,
       snapshot.updatedAt,
     );
@@ -163,6 +168,10 @@ export class Comment implements EditableEntity {
     return this.parentCommentId;
   }
 
+  get getImages(): string[] {
+    return this.images;
+  }
+
   get hasParent(): boolean {
     return this.parentCommentId !== null;
   }
@@ -177,6 +186,7 @@ export class Comment implements EditableEntity {
       content: this.content,
       metrics: this.metrics.toSnapshot(),
       parentCommentId: this.parentCommentId || undefined,
+      images: this.images.length > 0 ? this.images : undefined,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

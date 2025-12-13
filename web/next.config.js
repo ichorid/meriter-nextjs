@@ -28,12 +28,19 @@ const nextConfig = {
         '@telegram-apps/sdk-react', 
         '@telegram-apps/telegram-ui', 
         '@meriter/shared-types',
-        '@gluestack-ui',
-        '@gluestack-style',
+        '@gluestack-ui/themed',
+        '@gluestack-ui/config',
+        '@gluestack-ui/overlay',
+        '@gluestack-ui/provider',
+        '@gluestack-ui/toast',
+        '@gluestack-ui/slider',
+        '@gluestack-style/react',
+        '@gluestack/ui-next-adapter',
         '@expo/html-elements',
-        '@react-native/assets-registry', // Add this to transpilePackages so Next.js processes it
+        '@react-native/assets-registry',
         'react-native',
         'react-native-web',
+        'react-native-safe-area-context',
     ],
     output: 'standalone',
     // Fix monorepo/workspace output tracing root
@@ -138,6 +145,22 @@ const nextConfig = {
                 loader: 'babel-loader',
                 options: {
                     presets: ['@babel/preset-env', '@babel/preset-typescript', '@babel/preset-react'],
+                },
+            },
+        });
+
+        // Add rule to handle @gluestack-ui/* packages with JSX
+        config.module.rules.push({
+            test: /\.(tsx?|jsx?)$/,
+            include: /node_modules\/@gluestack-ui/,
+            use: {
+                loader: 'babel-loader',
+                options: {
+                    presets: [
+                        '@babel/preset-env',
+                        ['@babel/preset-react', { runtime: 'automatic' }],
+                        '@babel/preset-typescript',
+                    ],
                 },
             },
         });

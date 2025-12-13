@@ -167,6 +167,7 @@ export const UserSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   profile: UserProfileSchema.default({ isVerified: false }),
   meritStats: z.record(z.string(), z.number().int().min(0)).optional(), // Статистика меритов по коммьюнити (только для lead)
   inviteCode: z.string().optional(), // Код, использованный при регистрации
+  teamId: z.string().optional(), // ID команды, к которой принадлежит пользователь
   communityTags: z.array(z.string()).default([]),
   communityMemberships: z.array(z.string()).default([]),
 });
@@ -178,6 +179,8 @@ export const CommunitySchema = IdentifiableSchema.merge(
   description: z.string().optional(),
   avatarUrl: z.string().url().optional(),
   coverImageUrl: z.string().url().optional(),
+  // IDs of administrators (internal User IDs) - УСТАРЕВШЕЕ, использовать UserCommunityRole
+  adminIds: z.array(z.string()).default([]),
   members: z.array(z.string()).default([]), // УСТАРЕВШЕЕ, использовать UserCommunityRole
   // НОВОЕ: Метка типа (опциональная, только для удобства)
   typeTag: z
@@ -350,6 +353,7 @@ export const CreateCommentDtoSchema = z.object({
   targetId: z.string().min(1),
   content: z.string().max(5000),
   parentCommentId: z.string().optional(),
+  images: z.array(z.string().url()).optional(),
 });
 
 export const UpdateCommentDtoSchema = CreateCommentDtoSchema.partial();
@@ -501,6 +505,7 @@ export const VoteWithCommentDtoSchema = PolymorphicReferenceSchema.partial()
     walletAmount: z.number().int().min(0).optional(),
     comment: z.string().optional(),
     direction: z.enum(["up", "down"]).optional(),
+    images: z.array(z.string().url()).optional(),
   })
   .refine(
     (data) => {

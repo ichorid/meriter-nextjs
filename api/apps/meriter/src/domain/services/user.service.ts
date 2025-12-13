@@ -523,8 +523,8 @@ export class UserService implements OnModuleInit {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
 
-    if (role === 'superadmin') {
-      user.globalRole = 'superadmin';
+    if (role === GLOBAL_ROLE_SUPERADMIN) {
+      user.globalRole = GLOBAL_ROLE_SUPERADMIN;
     } else {
       user.globalRole = undefined;
     }

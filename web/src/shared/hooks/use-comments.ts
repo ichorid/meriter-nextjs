@@ -2,11 +2,9 @@ import { useState } from "react";
 import { useQuery } from '@tanstack/react-query';
 import { commentsApiV1 } from '@/lib/api/v1';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTranslations } from 'next-intl';
 import type { Dispatch, SetStateAction } from 'react';
 import { commentsKeys } from '@/hooks/api/useComments';
 import { useUserQuota } from '@/hooks/api/useQuota';
-import { useFeaturesConfig } from '@/hooks/useConfig';
 
 const { round } = Math;
 
@@ -79,6 +77,9 @@ export const useComments = (
     // Use quota data directly
     const freePlus = quotaData?.remainingToday || 0;
     const freeMinus = 0;
+    const dailyQuota = quotaData?.dailyQuota || 0;
+    const usedToday = quotaData?.usedToday || 0;
+    const quotaRemaining = freePlus;
 
     const currentPlus = round(plusGiven || 0);
     const currentMinus = round(minusGiven || 0);
@@ -95,7 +96,6 @@ export const useComments = (
             activeCommentHook[1](uid);
         }
     };
-
 
     return {
         comments,

@@ -13,12 +13,12 @@ import { BrandInput } from '@/components/ui/BrandInput';
 import { BrandSelect } from '@/components/ui/BrandSelect';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { BrandCheckbox } from '@/components/ui/BrandCheckbox';
-import { HashtagInput } from '@/shared/components/HashtagInput';
+import { HashtagInput } from '@/shared/components/hashtag-input';
 import { PublicationContent } from '@/components/organisms/Publication/PublicationContent';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { FileText } from 'lucide-react';
 import { RichTextEditor } from '@/components/molecules/RichTextEditor';
-import { ImageUploader } from '@/components/ui/ImageUploader';
+import { ImageGallery } from '@/components/ui/ImageGallery';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project';
 
@@ -27,7 +27,8 @@ interface PublicationDraft {
   description: string;
   postType: PublicationPostType;
   hashtags: string[];
-  imageUrl: string;
+  imageUrl?: string; // Legacy support
+  images?: string[]; // New multi-image support
   isProject: boolean;
   savedAt: string;
 }
@@ -81,7 +82,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [description, setDescription] = useState(initialData?.description || initialData?.content || '');
   const [postType, setPostType] = useState<PublicationPostType>(initialData?.postType || defaultPostType);
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
-  const [imageUrl, setImageUrl] = useState(initialData?.imageUrl || '');
+  // Support both legacy single image and new multi-image
+  const initialImages = initialData?.imageUrl 
+    ? [initialData.imageUrl] 
+    : ((initialData as any)?.images || []);
+  const [images, setImages] = useState<string[]>(initialImages);
   const [isProject, setIsProject] = useState(initialData?.isProject || false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,7 +129,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         setDescription(draft.description || '');
         setPostType(draft.postType || defaultPostType);
         setHashtags(draft.hashtags || []);
-        setImageUrl(draft.imageUrl || '');
+        setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
         setIsProject(draft.isProject || false);
         setHasDraft(true);
         setShowDraftAlert(true);
@@ -149,14 +154,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       description,
       postType,
       hashtags,
-      imageUrl,
+      images,
       isProject,
       savedAt: new Date().toISOString(),
     };
 
     const draftKey = getDraftKey(communityId);
     localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [title, description, postType, hashtags, imageUrl, isProject, communityId, isEditMode]);
+  }, [title, description, postType, hashtags, images, isProject, communityId, isEditMode]);
 
   const saveDraft = () => {
     const draft: PublicationDraft = {
@@ -164,7 +169,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       description,
       postType,
       hashtags,
-      imageUrl,
+      images,
       isProject,
       savedAt: new Date().toISOString(),
     };
@@ -185,7 +190,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         setDescription(draft.description || '');
         setPostType(draft.postType || defaultPostType);
         setHashtags(draft.hashtags || []);
-        setImageUrl(draft.imageUrl || '');
+        setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
         setIsProject(draft.isProject || false);
         addToast(t('draftLoaded'), 'success');
       } catch (error) {
@@ -202,7 +207,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     setTitle('');
     setDescription('');
     setHashtags([]);
-    setImageUrl('');
+    setImages([]);
     setIsProject(false);
     addToast(t('draftCleared'), 'success');
   };
@@ -242,7 +247,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             description: description.trim(),
             content: description.trim(), // Оставляем для обратной совместимости
             hashtags,
-            imageUrl: imageUrl || undefined,
+            imageUrl: images.length > 0 ? images[0] : undefined, // Legacy: use first image
+            images: images.length > 0 ? images : undefined, // New: support multiple images
           },
         });
       } else {
@@ -259,7 +265,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           postType: finalPostType,
           isProject: isProject,
           hashtags,
-          imageUrl: imageUrl || undefined,
+          imageUrl: images.length > 0 ? images[0] : undefined, // Legacy: use first image
+          images: images.length > 0 ? images : undefined, // New: support multiple images
           quotaAmount: quotaAmount > 0 ? quotaAmount : undefined,
           walletAmount: walletAmount > 0 ? walletAmount : undefined,
         });
@@ -433,22 +440,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         )}
 
         <BrandFormControl
-          label={t('fields.imageUrl')}
-          error={errors.imageUrl}
-          helperText={t('fields.imageUrlHelp')}
+          label={t('fields.images') || 'Images'}
+          error={errors.images}
+          helperText={t('fields.imagesHelp') || 'Upload up to 10 images for your post'}
         >
-          <ImageUploader
-            value={imageUrl}
-            onUpload={(url) => setImageUrl(url)}
-            onRemove={() => setImageUrl('')}
+          <ImageGallery
+            images={images}
+            onImagesChange={setImages}
             disabled={isSubmitting}
-            aspectRatio={16 / 9}
-            placeholder={t('fields.imageUrlPlaceholder')}
-            labels={{
-              placeholder: t('fields.imageUploadPlaceholder') || 'Drop image here or click to upload',
-              uploading: t('fields.imageUploading') || 'Uploading...',
-              uploadFailed: t('fields.imageUploadFailed') || 'Upload failed',
-            }}
           />
         </BrandFormControl>
 
@@ -487,7 +486,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                   title,
                   description,
                   content: description,
-                  imageUrl,
+                  imageUrl: images.length > 0 ? images[0] : undefined,
+                  images: images.length > 0 ? images : undefined,
                   isProject,
                   meta: {},
                 }}

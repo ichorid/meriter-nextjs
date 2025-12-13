@@ -148,6 +148,7 @@ export const useCreatePublication = createMutation({
         publications: {
             lists: true,
             exact: false,
+            communityId: (_result: any, variables: CreatePublicationDto) => variables.communityId,
         },
         communities: {
             feed: true,

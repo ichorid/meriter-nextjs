@@ -79,7 +79,10 @@ export class Publication {
   };
 
   @Prop()
-  imageUrl?: string;
+  imageUrl?: string; // Legacy single image support
+
+  @Prop({ type: [String], default: [] })
+  images?: string[]; // Array of image URLs for multi-image support
 
   @Prop()
   videoUrl?: string;

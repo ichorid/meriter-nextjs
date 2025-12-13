@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { FormCommentVoteBase } from './form-comment-vote-base';
+import { FormCommentVoteBase } from "./form-comment-vote-base";
 
 interface iFormCommentVoteProps {
     comment: string;
@@ -17,5 +17,5 @@ interface iFormCommentVoteProps {
 }
 
 export const FormCommentVote = (props: iFormCommentVoteProps) => {
-    return <FormCommentVoteBase {...props} orientation="horizontal" />;
+    return <FormCommentVoteBase {...props} />;
 };

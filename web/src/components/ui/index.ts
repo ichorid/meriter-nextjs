@@ -17,3 +17,5 @@ export * from "./PageTransition";
 export * from "./PullToRefresh";
 export * from "./Logo";
 export * from "./Tabs";
+export * from "./slider";
+export * from "./ImageGallery";

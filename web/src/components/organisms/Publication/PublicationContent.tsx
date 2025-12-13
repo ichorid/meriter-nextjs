@@ -1,11 +1,12 @@
-// Publication content component
 'use client';
 
-import React, { useMemo } from 'react';
-import { WithTelegramEntities } from '@shared/components/withTelegramEntities';
+import React, { useMemo, useState } from 'react';
+import { WithTelegramEntities } from '@shared/components/with-telegram-entities';
 import DOMPurify from 'dompurify';
+import { ImageLightbox } from '@shared/components/image-lightbox';
+import { ImageViewer } from '@/components/ui/ImageViewer/ImageViewer';
+import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
 
-// Local Publication type definition
 interface Publication {
   id: string;
   slug?: string;
@@ -50,19 +51,20 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
   const title = (publication as any).title;
   const description = (publication as any).description;
   const isProject = (publication as any).isProject;
-  const imageUrl = publication.imageUrl || (publication as any).imageUrl;
+  const coverImageUrl = publication.imageUrl || (publication as any).imageUrl;
+  const galleryImages = (publication as any).images || [];
+  
+  const [viewingImageIndex, setViewingImageIndex] = useState<number | null>(null);
   const content = typeof publication.meta?.comment === 'string'
     ? publication.meta.comment
     : typeof publication.content === 'string'
       ? publication.content
       : '';
 
-  // Check if content is HTML (from RichTextEditor)
   const isHtmlContent = useMemo(() => {
     return content.includes('<') && content.includes('>');
   }, [content]);
 
-  // Sanitize HTML content
   const sanitizedHtml = useMemo(() => {
     if (isHtmlContent && typeof window !== 'undefined') {
       return DOMPurify.sanitize(content, {
@@ -75,18 +77,24 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
 
   return (
     <div className={`prose prose-sm dark:prose-invert max-w-none text-base-content ${className}`}>
-      {/* Cover Image */}
-      {imageUrl && (
-        <div className="mb-4 -mx-5 -mt-5">
-          <div className="relative aspect-video overflow-hidden rounded-t-2xl">
-            <img
-              src={imageUrl}
-              alt={title || 'Publication cover'}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          </div>
-        </div>
+      {coverImageUrl && galleryImages.length === 0 && (
+        <ImageGalleryDisplay
+          images={[coverImageUrl]}
+          altPrefix={title ? `${title} - Cover` : 'Publication cover'}
+          initialIndex={viewingImageIndex}
+          onClose={() => setViewingImageIndex(null)}
+          onImageClick={(index) => setViewingImageIndex(index)}
+        />
+      )}
+      
+      {galleryImages.length > 0 && (
+        <ImageGalleryDisplay
+          images={galleryImages}
+          altPrefix={title ? `${title} - Image` : 'Publication image'}
+          initialIndex={viewingImageIndex}
+          onClose={() => setViewingImageIndex(null)}
+          onImageClick={(index) => setViewingImageIndex(index)}
+        />
       )}
       {isProject && (
         <div className="mb-2">

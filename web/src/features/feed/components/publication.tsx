@@ -7,7 +7,7 @@ import { useCommunity, usePoll } from '@/hooks/api';
 import { dateVerbose } from "@shared/lib/date";
 import { BarVoteUnified } from "@shared/components/bar-vote-unified";
 import { BarWithdraw } from "@shared/components/bar-withdraw";
-import { WithTelegramEntities } from "@shared/components/withTelegramEntities";
+import { WithTelegramEntities } from "@shared/components/with-telegram-entities";
 import { FormDimensionsEditor } from "@shared/components/form-dimensions-editor";
 import { useUIStore } from "@/stores/ui.store";
 import { classList } from "@lib/classList";
@@ -19,51 +19,50 @@ import { useTranslations } from 'next-intl';
 import type { Publication as PublicationType } from '@/types/api-v1';
 import { useCanVote } from '@/hooks/useCanVote';
 
-export const Publication = ({
-    minus,
-    plus,
-    sum,
-    slug,
-    spaceSlug,
-    balance,
-    updBalance = () => {}, // Default no-op function
-    messageText,
-    authorPhotoUrl,
-    keyword,
-    ts,
-    activeCommentHook,
-    beneficiaryName,
-    beneficiaryPhotoUrl,
-    beneficiaryId,
-    beneficiaryUsername,
-    dimensions,
-    dimensionConfig,
-    myId,
-    onlyPublication,
-    entities,
-    highlightTransactionId,
-    type,
-    content,
-    _id,
-    isDetailPage,
-    showCommunityAvatar,
-    // New props for author withdraw functionality
-    wallets,
-    updateWalletBalance,
-    updateAll,
-    currency,
-    inMerits,
-    currencyOfCommunityTgChatId,
-    fromTgChatId,
-    // Internal IDs (required)
-    communityId,
-    authorId,
-    meta,
-    // Sort order for comments
-    commentSortBy,
-    // Cover image for the post
-    imageUrl,
-}: any) => {
+export const Publication = (props: any) => {
+    const {
+        minus,
+        plus,
+        sum,
+        slug,
+        spaceSlug,
+        balance,
+        updBalance = () => {},
+        messageText,
+        authorPhotoUrl,
+        keyword,
+        ts,
+        activeCommentHook,
+        beneficiaryName,
+        beneficiaryPhotoUrl,
+        beneficiaryId,
+        beneficiaryUsername,
+        dimensions,
+        dimensionConfig,
+        myId,
+        onlyPublication,
+        entities,
+        highlightTransactionId,
+        type,
+        content,
+        _id,
+        isDetailPage,
+        showCommunityAvatar,
+        wallets,
+        updateWalletBalance,
+        updateAll,
+        currency,
+        inMerits,
+        currencyOfCommunityTgChatId,
+        fromTgChatId,
+        communityId,
+        authorId,
+        meta,
+        commentSortBy,
+        imageUrl,
+    } = props;
+    
+    const originalPublication = props;
     // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     // This is required by React's Rules of Hooks
     
@@ -247,6 +246,7 @@ export const Publication = ({
                 authorId={authorId}
                 beneficiaryId={beneficiaryId}
                 coverImageUrl={imageUrl}
+                galleryImages={originalPublication?.images || []}
                 bottom={
                     (() => {
                         if (showWithdraw) {

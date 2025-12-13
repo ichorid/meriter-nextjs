@@ -1,7 +1,0 @@
---- api/apps/meriter/src/domain/models/community/community.schema.ts
-+++ api/apps/meriter/src/domain/models/community/community.schema.ts
-@@ -207,4 +330,4 @@ export const CommunitySchema = SchemaFactory.createForClass(Community);
- // Note: id index is already created by @Prop({ unique: true }) decorator
- 
- CommunitySchema.index({ adminIds: 1 });
--CommunitySchema.index({ isActive: 1 });+CommunitySchema.index({ isActive: 1 });

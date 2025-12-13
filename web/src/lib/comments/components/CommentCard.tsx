@@ -385,6 +385,7 @@ export function CommentCard({
         beneficiaryAvatarUrl={recipientAvatar}
         upvotes={voteDisplay.displayUpvotes}
         downvotes={voteDisplay.displayDownvotes}
+        images={(originalComment as any).images || []}
         onClick={() => {
           onNavigate();
         }}

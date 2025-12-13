@@ -94,12 +94,11 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   const { formData, handleCommentChange } = usePopupFormData({
     isOpen,
     formData: activeVotingFormData,
-    defaultFormData: { comment: '', delta: 0, error: '' },
+    defaultFormData: { comment: '', delta: 0, error: '', images: [] },
     updateFormData: updateVotingFormData,
   });
 
   const handleAmountChange = (amount: number) => {
-    // Amount can be signed (positive for upvotes, negative for downvotes)
     updateVotingFormData({ delta: amount, error: '' });
   };
 
@@ -147,7 +146,11 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   const handleClose = () => {
     closeVotingPopup();
-    updateVotingFormData({ comment: '', delta: 0, error: '' });
+    updateVotingFormData({ comment: '', delta: 0, error: '', images: [] });
+  };
+
+  const handleImagesChange = (images: string[]) => {
+    updateVotingFormData({ images });
   };
 
   const handleSubmit = async (directionPlus: boolean) => {
@@ -213,6 +216,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
             walletAmount,
             comment: formData.comment.trim() || undefined,
             direction: isUpvote ? 'up' : 'down',
+            images: formData.images && formData.images.length > 0 ? formData.images : undefined,
           },
           communityId: targetCommunityId,
         });
@@ -226,6 +230,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
             walletAmount,
             comment: formData.comment.trim() || undefined,
             direction: isUpvote ? 'up' : 'down',
+            images: formData.images && formData.images.length > 0 ? formData.images : undefined,
           },
           communityId: targetCommunityId,
         });
@@ -265,6 +270,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           usedToday={usedToday}
           error={formData.error}
           isViewer={isViewer}
+          images={formData.images || []}
+          onImagesChange={handleImagesChange}
         />
       </div>
     </BottomPortal>

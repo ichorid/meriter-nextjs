@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { classList } from '@lib/classList';
 import { Avatar } from '@/components/atoms';
 import { CommunityAvatar } from '@shared/components/community-avatar';
@@ -7,7 +8,9 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
 import { shareUrl, getCommentUrl } from '../lib/share-utils';
-import { initDataRaw, useSignal, hapticFeedback } from '@telegram-apps/sdk-react';
+import { ImageLightbox } from '@shared/components/image-lightbox';
+import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
+import { hapticImpact } from '@shared/lib/utils/haptic-utils';
 
 export const CardCommentVote = ({
     title,
@@ -39,12 +42,12 @@ export const CardCommentVote = ({
     communityId,
     publicationSlug,
     commentId,
+    images = [],
 }:any) => {
     const t = useTranslations('comments');
     const tShared = useTranslations('shared');
     const router = useRouter();
-    const rawData = useSignal(initDataRaw);
-    const isInTelegram = !!rawData;
+    const [viewingImageIndex, setViewingImageIndex] = useState<number | null>(null);
     
     const handleAuthorAvatarClick = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -86,9 +89,7 @@ export const CardCommentVote = ({
 
     const handleShareClick = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (isInTelegram) {
-            hapticFeedback.impactOccurred('light');
-        }
+        hapticImpact('light');
         if (communityId && publicationSlug && commentId) {
             const url = getCommentUrl(communityId, publicationSlug, commentId);
             await shareUrl(url, tShared('urlCopiedToBuffer'));
@@ -99,35 +100,35 @@ export const CardCommentVote = ({
     <div className="mb-4 w-full overflow-hidden">
         <div 
             className={classList(
-                "card bg-base-100 shadow-md dark:border dark:border-base-content/20 rounded-xl overflow-hidden w-full",
-                (onDetailsClick || onClick) && "cursor-pointer hover:shadow-lg transition-shadow"
+                "bg-base-100 shadow-sm dark:border dark:border-base-content/10 rounded-2xl overflow-hidden w-full",
+                (onDetailsClick || onClick) && "cursor-pointer hover:shadow-md transition-all duration-200"
             )}
             onClick={handleCardClick}
         >
             <div className="flex min-w-0">
                 <div 
                     className={classList(
-                        "font-bold text-center py-2 px-3 min-w-[3rem] flex flex-col items-center justify-center gap-1",
-                        // Default styling if no voteType
-                        !voteType ? "bg-secondary text-secondary-content" : "",
-                        // Upvote styles
-                        voteType === 'upvote-wallet' ? "bg-success text-success-content" : "",
-                        voteType === 'upvote-quota' ? "bg-transparent border-2 border-success text-success" : "",
-                        voteType === 'upvote-mixed' ? "bg-gradient-to-r from-success/80 to-success text-success-content" : "",
-                        // Downvote styles
-                        voteType === 'downvote-wallet' ? "bg-error text-error-content" : "",
-                        voteType === 'downvote-quota' ? "bg-transparent border-2 border-error text-error" : "",
-                        voteType === 'downvote-mixed' ? "bg-gradient-to-r from-error/80 to-error text-error-content" : ""
+                        "font-semibold text-center py-4 px-5 min-w-[4rem] flex flex-col items-center justify-center",
+                        // Default styling if no voteType - gluestack style with subtle border
+                        !voteType ? "bg-base-200/50 text-base-content border-r border-base-300/50" : "",
+                        // Upvote styles - clean solid colors with subtle borders
+                        voteType === 'upvote-wallet' ? "bg-success text-success-content border-r border-success/30" : "",
+                        voteType === 'upvote-quota' ? "bg-success/10 text-success border-r-2 border-success/50 border-r border-success/30" : "",
+                        voteType === 'upvote-mixed' ? "bg-success text-success-content border-r border-success/30" : "",
+                        // Downvote styles - clean solid colors with subtle borders
+                        voteType === 'downvote-wallet' ? "bg-error text-error-content border-r border-error/30" : "",
+                        voteType === 'downvote-quota' ? "bg-error/10 text-error border-r-2 border-error/50 border-r border-error/30" : "",
+                        voteType === 'downvote-mixed' ? "bg-error text-error-content border-r border-error/30" : ""
                     )}
                 >
-                    <div className="flex items-center justify-center">
+                    <div className="flex items-center justify-center text-xl font-bold tabular-nums tracking-tight">
                         <span>{rate}</span>
                     </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                    <div className="p-4">
-                        <div className="flex gap-2 mb-2 items-start min-w-0">
-                            <div className="flex gap-2 flex-1 min-w-0">
+                <div className="flex-1 min-w-0 bg-transparent">
+                    <div className="p-5">
+                        <div className="flex gap-3 mb-3 items-start min-w-0">
+                            <div className="flex gap-3 flex-1 min-w-0">
                                 <Avatar
                                     src={avatarUrl}
                                     alt={title}
@@ -137,13 +138,13 @@ export const CardCommentVote = ({
                                     onClick={authorId ? handleAuthorAvatarClick : undefined}
                                 />
                                 <div className="info min-w-0 flex-1">
-                                    <div className="text-xs font-medium break-words">{title}</div>
-                                    <div className="text-[10px] opacity-60 break-words">{subtitle}</div>
+                                    <div className="text-sm font-semibold text-base-content break-words leading-tight">{title}</div>
+                                    <div className="text-xs text-base-content/60 break-words mt-0.5">{subtitle}</div>
                                 </div>
                             </div>
                             {showCommunityAvatar && communityName && (
                                 <div 
-                                    className="cursor-pointer hover:opacity-80 transition-opacity"
+                                    className="cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         if (onCommunityClick) onCommunityClick();
@@ -158,27 +159,40 @@ export const CardCommentVote = ({
                                 </div>
                             )}
                         </div>
-                        <div className="content text-sm mb-2 break-words">{content}</div>
+                        <div className="content text-sm text-base-content/90 mb-3 leading-relaxed break-words">{content}</div>
+                        {/* Images gallery - показываем превью, при клике открывается лайтбокс */}
+                        {Array.isArray(images) && images.length > 0 && (
+                            <div className="mb-4 -mx-1" onClick={(e) => e.stopPropagation()}>
+                                <ImageGalleryDisplay
+                                    images={images}
+                                    altPrefix="Comment image"
+                                    maxColumns={3}
+                                    onImageClick={(index) => {
+                                        setViewingImageIndex(index);
+                                    }}
+                                />
+                            </div>
+                        )}
                         {/* Beneficiary information */}
                         {beneficiaryName && (
-                            <div className="flex items-center gap-2 mb-2 text-xs opacity-70 min-w-0">
-                                <span className="flex-shrink-0">to:</span>
+                            <div className="flex items-center gap-2 mb-3 text-xs text-base-content/70 min-w-0 py-1.5 px-2 bg-base-200/50 rounded-lg">
+                                <span className="flex-shrink-0 font-medium">to:</span>
                                 <Avatar
                                     src={beneficiaryAvatarUrl}
                                     alt={beneficiaryName}
                                     name={beneficiaryName}
-                                    size={16}
+                                    size={20}
                                     onClick={beneficiaryId ? handleBeneficiaryAvatarClick : undefined}
                                 />
-                                <span className="break-words min-w-0">{beneficiaryName}</span>
+                                <span className="break-words min-w-0 font-medium">{beneficiaryName}</span>
                             </div>
                         )}
-                        <div className="bottom" onClick={(e) => e.stopPropagation()}>
+                        <div className="bottom border-t border-base-300/50 pt-3 mt-3" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-2">
                                 {bottom}
                                 {communityId && publicationSlug && commentId && (
                                     <button
-                                        className="flex items-center justify-center h-8 w-8 text-base-content/40 hover:text-base-content/60 transition-colors"
+                                        className="flex items-center justify-center h-8 w-8 rounded-lg text-base-content/50 hover:text-base-content/70 hover:bg-base-200/50 transition-all duration-200"
                                         onClick={handleShareClick}
                                         title={tShared('share')}
                                     >
@@ -197,6 +211,17 @@ export const CardCommentVote = ({
                 </div>
             </div>
         </div>
+        
+        {/* Lightbox для изображений комментария */}
+        {Array.isArray(images) && images.length > 0 && viewingImageIndex !== null && (
+            <ImageLightbox
+                images={images}
+                altPrefix="Comment image"
+                initialIndex={viewingImageIndex}
+                isOpen={viewingImageIndex !== null}
+                onClose={() => setViewingImageIndex(null)}
+            />
+        )}
     </div>
     );
 };

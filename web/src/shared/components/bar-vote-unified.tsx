@@ -1,7 +1,7 @@
 'use client';
 
-import { initDataRaw, useSignal, hapticFeedback } from '@telegram-apps/sdk-react';
 import { useTranslations } from 'next-intl';
+import { hapticImpact } from '@shared/lib/utils/haptic-utils';
 import { shareUrl, getPostUrl } from '../lib/share-utils';
 
 interface BarVoteUnifiedProps {
@@ -32,30 +32,22 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
     slug
 }) => {
     const t = useTranslations('shared');
-    const rawData = useSignal(initDataRaw);
-    const isInTelegram = !!rawData;
     
     const handleVoteClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (isInTelegram) {
-            hapticFeedback.impactOccurred('soft');
-        }
+        hapticImpact('soft');
         onVoteClick();
     };
 
     const handleCommentClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (isInTelegram) {
-            hapticFeedback.impactOccurred('light');
-        }
+        hapticImpact('light');
         onCommentClick && onCommentClick();
     };
 
     const handleShareClick = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (isInTelegram) {
-            hapticFeedback.impactOccurred('light');
-        }
+        hapticImpact('light');
         if (communityId && slug) {
             const url = getPostUrl(communityId, slug);
             await shareUrl(url, t('urlCopiedToBuffer'));

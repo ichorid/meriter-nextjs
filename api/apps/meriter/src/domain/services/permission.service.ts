@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CommunityService } from './community.service';
 import { PublicationService } from './publication.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { CommentService } from './comment.service';
 import { PollService } from './poll.service';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_PARTICIPANT, COMMUNITY_ROLE_VIEWER } from '../common/constants/roles.constants';
 
 /**
  * PermissionService
@@ -14,6 +15,8 @@ import { PollService } from './poll.service';
  */
 @Injectable()
 export class PermissionService {
+  private readonly logger = new Logger(PermissionService.name);
+
   constructor(
     private userService: UserService,
     private communityService: CommunityService,
@@ -33,14 +36,22 @@ export class PermissionService {
   ): Promise<'superadmin' | 'lead' | 'participant' | 'viewer' | null> {
     // 1. Check global superadmin role
     const user = await this.userService.getUserById(userId);
-    if (user?.globalRole === 'superadmin') {
-      return 'superadmin';
+    this.logger.log(
+      `[getUserRoleInCommunity] userId=${userId}, communityId=${communityId}, user.globalRole=${user?.globalRole}`,
+    );
+    if (user?.globalRole === GLOBAL_ROLE_SUPERADMIN) {
+      this.logger.log(`[getUserRoleInCommunity] User ${userId} is superadmin (globalRole)`);
+      return COMMUNITY_ROLE_SUPERADMIN;
     }
 
     // 2. Get role from UserCommunityRole
     const userRole = await this.userCommunityRoleService.getRole(
       userId,
       communityId,
+    );
+
+    this.logger.log(
+      `[getUserRoleInCommunity] userRole from UserCommunityRole=${userRole?.role}`,
     );
 
     if (userRole?.role) {
@@ -61,7 +72,7 @@ export class PermissionService {
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
     // Superadmin always can
-    if (userRole === 'superadmin') return true;
+    if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
 
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
@@ -70,7 +81,7 @@ export class PermissionService {
     const isSpecialCommunity =
       community.typeTag === 'marathon-of-good' ||
       community.typeTag === 'future-vision';
-    if (isSpecialCommunity && userRole === 'participant') {
+    if (isSpecialCommunity && userRole === COMMUNITY_ROLE_PARTICIPANT) {
       return true;
     }
 
@@ -89,7 +100,7 @@ export class PermissionService {
       const hasTeamMembership = await this.userHasTeamMembership(userId);
       if (!hasTeamMembership) return false;
     }
-    if (rules.onlyTeamLead && userRole !== 'lead') return false;
+    if (rules.onlyTeamLead && userRole !== COMMUNITY_ROLE_LEAD) return false;
 
     return true;
   }
@@ -105,7 +116,7 @@ export class PermissionService {
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
     // Superadmin always can
-    if (userRole === 'superadmin') return true;
+    if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
 
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
@@ -114,13 +125,13 @@ export class PermissionService {
     const isSpecialCommunity =
       community.typeTag === 'marathon-of-good' ||
       community.typeTag === 'future-vision';
-    if (isSpecialCommunity && userRole === 'participant') {
+    if (isSpecialCommunity && userRole === COMMUNITY_ROLE_PARTICIPANT) {
       return true;
     }
 
     // Allow participants in team groups to create polls
     // This overrides postingRules if they exist and are restrictive
-    if (community.typeTag === 'team' && ['participant', 'lead'].includes(userRole)) {
+    if (community.typeTag === 'team' && [COMMUNITY_ROLE_PARTICIPANT, COMMUNITY_ROLE_LEAD].includes(userRole)) {
       return true;
     }
 
@@ -139,7 +150,7 @@ export class PermissionService {
       const hasTeamMembership = await this.userHasTeamMembership(userId);
       if (!hasTeamMembership) return false;
     }
-    if (rules.onlyTeamLead && userRole !== 'lead') return false;
+    if (rules.onlyTeamLead && userRole !== COMMUNITY_ROLE_LEAD) return false;
 
     return true;
   }
@@ -188,74 +199,112 @@ export class PermissionService {
    * Uses votingRules from community configuration
    */
   async canVote(userId: string, publicationId: string): Promise<boolean> {
-    const publication =
-      await this.publicationService.getPublication(publicationId);
-    if (!publication) return false;
+    this.logger.log(`[canVote] START: userId=${userId}, publicationId=${publicationId}`);
+
+    // STEP 1: Get user and check superadmin status FIRST
+    const user = await this.userService.getUserById(userId);
+    if (!user) {
+      this.logger.warn(`[canVote] User ${userId} not found`);
+      return false;
+    }
+
+    const isSuperadmin = user.globalRole === GLOBAL_ROLE_SUPERADMIN;
+    this.logger.log(`[canVote] User: id=${userId}, globalRole=${user.globalRole}, isSuperadmin=${isSuperadmin}`);
+
+    // STEP 2: Get publication
+    const publication = await this.publicationService.getPublication(publicationId);
+    if (!publication) {
+      this.logger.warn(`[canVote] Publication ${publicationId} not found`);
+      return false;
+    }
 
     const communityId = publication.getCommunityId.getValue();
     const authorId = publication.getAuthorId.getValue();
+    this.logger.log(`[canVote] Publication: communityId=${communityId}, authorId=${authorId}`);
 
-    const userRole = await this.getUserRoleInCommunity(
-      userId,
-      communityId,
-    );
+    // STEP 3: SUPERADMIN CHECK - If superadmin, allow voting on all posts EXCEPT own posts
+    if (isSuperadmin) {
+      this.logger.log(`[canVote] SUPERADMIN DETECTED`);
+      if (authorId === userId) {
+        this.logger.log(`[canVote] Superadmin DENIED: cannot vote for own post`);
+        return false;
+      }
+      this.logger.log(`[canVote] Superadmin ALLOWED: voting for another user's post`);
+      return true;
+    }
+
+    // STEP 4: Regular user logic (non-superadmin)
+    this.logger.log(`[canVote] Regular user check: userId=${userId}`);
 
     const community = await this.communityService.getCommunity(communityId);
-    if (!community) return false;
+    if (!community) {
+      this.logger.warn(`[canVote] Community ${communityId} not found`);
+      return false;
+    }
+
+    const userRole = await this.getUserRoleInCommunity(userId, communityId);
+    this.logger.log(`[canVote] User role in community: ${userRole}`);
 
     // Check if publication is in a team community
     const isTeamCommunity = await this.isPublicationInTeamCommunity(publicationId);
+    this.logger.log(`[canVote] Is team community: ${isTeamCommunity}`);
 
     if (isTeamCommunity) {
       // Inside Team Communities: Only team members can vote, and they can vote for each other but not themselves
       const isTeamMember = await this.isUserTeamMember(userId, communityId);
       if (!isTeamMember) {
-        return false; // Non-team members cannot vote in team communities
+        this.logger.log(`[canVote] DENIED: Not a team member`);
+        return false;
       }
       
       // Team members can vote for each other, but not themselves
       if (authorId === userId) {
-        return false; // Cannot vote for own post in team community
+        this.logger.log(`[canVote] DENIED: Cannot vote for own post in team community`);
+        return false;
       }
       
-      return true; // Team member voting for another team member
+      this.logger.log(`[canVote] ALLOWED: Team member voting for another team member`);
+      return true;
     }
 
     // Outside Team Communities: Apply regular voting rules
     const rules = community.votingRules;
+    
     if (!rules) {
       // Fallback: if no rules configured, allow everyone (backward compatibility)
       // But still check for own posts
       if (authorId === userId) {
-        return false; // Cannot vote for own post by default
+        this.logger.log(`[canVote] DENIED: Cannot vote for own post by default (no rules)`);
+        return false;
       }
+      this.logger.log(`[canVote] ALLOWED: No rules configured, allowing vote`);
       return true;
     }
 
     // Check if role is allowed
-    if (!userRole || !rules.allowedRoles.includes(userRole)) return false;
-
-    // Check if voting for own post is allowed
-    // Superadmin still cannot vote for own posts unless explicitly allowed
-    if (authorId === userId && !rules.canVoteForOwnPosts) {
+    if (!userRole || !rules.allowedRoles.includes(userRole)) {
+      this.logger.log(`[canVote] DENIED: Role ${userRole} not in allowedRoles [${rules.allowedRoles.join(', ')}]`);
       return false;
     }
 
-    // Superadmin can vote for anything except own posts (already checked above)
-    if (userRole === 'superadmin') return true;
+    // Check if voting for own post is allowed
+    if (authorId === userId && !rules.canVoteForOwnPosts) {
+      this.logger.log(`[canVote] DENIED: Cannot vote for own post (rules disallow)`);
+      return false;
+    }
 
     // For viewers: Only allow voting in marathon-of-good communities
-    // Check this before other role checks to ensure proper restriction
-    if (userRole === 'viewer') {
+    if (userRole === COMMUNITY_ROLE_VIEWER) {
       if (community.typeTag !== 'marathon-of-good') {
-        return false; // Viewers can only vote in marathon-of-good communities
+        this.logger.log(`[canVote] DENIED: Viewers can only vote in marathon-of-good communities`);
+        return false;
       }
-      // Viewers can vote in marathon-of-good (already checked own posts above)
+      this.logger.log(`[canVote] ALLOWED: Viewer voting in marathon-of-good`);
       return true;
     }
 
     // For participants: Check team-based restrictions
-    if (userRole === 'participant') {
+    if (userRole === COMMUNITY_ROLE_PARTICIPANT) {
       // Check if voter and author are in the same team-type community
       const voterRoles = await this.userCommunityRoleService.getUserRoles(userId);
       const authorRoles = await this.userCommunityRoleService.getUserRoles(authorId);
@@ -286,7 +335,7 @@ export class PermissionService {
           authorId,
           communityId,
         );
-        if (authorRole === 'lead') {
+        if (authorRole === COMMUNITY_ROLE_LEAD) {
           return false; // Cannot vote for lead from same team
         }
       }
@@ -312,7 +361,7 @@ export class PermissionService {
     );
 
     // Superadmin always can
-    if (userRole === 'superadmin') return true;
+    if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
 
     const community = await this.communityService.getCommunity(
       publication.getCommunityId.getValue(),
@@ -340,13 +389,13 @@ export class PermissionService {
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
     // Superadmin always sees
-    if (userRole === 'superadmin') return true;
+    if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
 
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
 
     // Special handling for Team groups: viewers cannot see them (R:n)
-    if (community.typeTag === 'team' && userRole === 'viewer') {
+    if (community.typeTag === 'team' && userRole === COMMUNITY_ROLE_VIEWER) {
       return false;
     }
 
@@ -354,7 +403,7 @@ export class PermissionService {
     if (!rules) {
       // Fallback: if no rules configured, check if user is member (backward compatibility)
       // For Team groups without rules, exclude viewers
-      if (community.typeTag === 'team' && userRole === 'viewer') {
+      if (community.typeTag === 'team' && userRole === COMMUNITY_ROLE_VIEWER) {
         return false;
       }
       return (
@@ -399,7 +448,6 @@ export class PermissionService {
     const communityId = publication.getCommunityId.getValue();
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
-    // Log in development/test to help debug permission issues
     if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
       const authorIdType = typeof authorId;
       const userIdType = typeof userId;
@@ -408,16 +456,14 @@ export class PermissionService {
       console.log(`[canEditPublication] Check: userId=${userId} (${userIdType}), authorId=${authorId} (${authorIdType}), userRole=${userRole}, publicationId=${publicationId}, idsMatch=${idsMatch}, idsMatchStrict=${idsMatchStrict}`);
     }
 
-    // Superadmin can edit any publication (no restrictions)
-    if (userRole === 'superadmin') {
+    if (userRole === COMMUNITY_ROLE_SUPERADMIN) {
       if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
         console.log(`[canEditPublication] Allowed: superadmin`);
       }
       return true;
     }
 
-    // Lead can edit publications in their community (no restrictions)
-    if (userRole === 'lead') {
+    if (userRole === COMMUNITY_ROLE_LEAD) {
       if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
         console.log(`[canEditPublication] Allowed: lead`);
       }
@@ -518,14 +564,14 @@ export class PermissionService {
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
     // Superadmin always can
-    if (userRole === 'superadmin') return true;
+    if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
 
     // Author can delete
     const authorId = publication.getAuthorId.getValue();
     if (authorId === userId) return true;
 
     // Lead can delete publications in their community
-    if (userRole === 'lead') return true;
+    if (userRole === COMMUNITY_ROLE_LEAD) return true;
 
     return false;
   }
@@ -542,11 +588,9 @@ export class PermissionService {
       await this.commentService.resolveCommentCommunityId(commentId);
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
-    // Superadmin can edit any comment (no restrictions)
-    if (userRole === 'superadmin') return true;
+    if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
 
-    // Lead can edit comments in their community (no restrictions)
-    if (userRole === 'lead') return true;
+    if (userRole === COMMUNITY_ROLE_LEAD) return true;
 
     // For authors: check vote count and time window
     if (authorId === userId) {
@@ -593,13 +637,13 @@ export class PermissionService {
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
     // Superadmin always can
-    if (userRole === 'superadmin') return true;
+    if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
 
     // Authors cannot delete their own comments
     // Removed: if (authorId === userId) return true;
 
     // Lead can delete comments in their community
-    if (userRole === 'lead') return true;
+    if (userRole === COMMUNITY_ROLE_LEAD) return true;
 
     return false;
   }
@@ -620,10 +664,10 @@ export class PermissionService {
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
     // Superadmin can edit any poll
-    if (userRole === 'superadmin') return true;
+    if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
 
     // Lead can edit polls in their community
-    if (userRole === 'lead') return true;
+    if (userRole === COMMUNITY_ROLE_LEAD) return true;
 
     return false;
   }
@@ -639,14 +683,14 @@ export class PermissionService {
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
     // Superadmin always can
-    if (userRole === 'superadmin') return true;
+    if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
 
     // Author can delete
     const authorId = poll.getAuthorId;
     if (authorId === userId) return true;
 
     // Lead can delete polls in their community
-    if (userRole === 'lead') return true;
+    if (userRole === COMMUNITY_ROLE_LEAD) return true;
 
     return false;
   }

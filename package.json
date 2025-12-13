@@ -18,9 +18,6 @@
     "lint": "pnpm --filter @meriter/api lint && pnpm --filter @meriter/web lint"
   },
   "pnpm": {
-    "patchedDependencies": {
-      "@react-native/assets-registry@0.76.9": "web/patches/@react-native__assets-registry@0.76.9.patch"
-    },
     "onlyBuiltDependencies": [
       "@nestjs/core",
       "bcrypt",

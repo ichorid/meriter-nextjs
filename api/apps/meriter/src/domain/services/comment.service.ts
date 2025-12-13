@@ -16,6 +16,7 @@ export interface CreateCommentDto {
   targetId: string;
   parentCommentId?: string;
   content: string;
+  images?: string[]; // Array of image URLs
 }
 
 @Injectable()
@@ -74,7 +75,8 @@ export class CommentService {
       dto.targetType,
       dto.targetId,
       dto.content,
-      dto.parentCommentId
+      dto.parentCommentId,
+      dto.images
     );
 
     // Save using Mongoose directly
