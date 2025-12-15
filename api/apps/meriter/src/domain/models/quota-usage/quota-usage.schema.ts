@@ -46,3 +46,7 @@ QuotaUsageSchema.index({ userId: 1, communityId: 1, createdAt: -1 });
 QuotaUsageSchema.index({ userId: 1, communityId: 1 });
 QuotaUsageSchema.index({ usageType: 1, referenceId: 1 });
 
+
+
+
+
