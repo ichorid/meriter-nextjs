@@ -253,11 +253,7 @@ export class UsersController {
 
   @Get(':userId/roles')
   async getUserRoles(@Param('userId') userId: string, @Req() req: any) {
-    // Users can only see their own roles
-    if (userId !== 'me' && userId !== req.user.id) {
-      throw new NotFoundError('User', userId);
-    }
-
+    // Allow viewing any user's roles for profile pages
     const actualUserId = userId === 'me' ? req.user.id : userId;
     const roles =
       await this.userCommunityRoleService.getUserRoles(actualUserId);
