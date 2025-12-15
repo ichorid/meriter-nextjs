@@ -59,6 +59,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   const showCommentsColumn = showComments && selectedPostSlug && communityId;
 
   // Breakpoints: overlay on most screens; dock only on very wide
+  const isDesktop = useMediaQuery('(min-width: 1024px)'); // lg breakpoint
   const isUltraWide = useMediaQuery('(min-width: 1600px)');
   const inspectorMode = isUltraWide ? 'docked' : 'overlay';
 
@@ -125,8 +126,8 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
         )}
       </div>
 
-      {/* Overlay inspector (used on most screens) */}
-      {inspectorMode === 'overlay' && (
+      {/* Overlay inspector (used on desktop, but not ultra-wide) */}
+      {inspectorMode === 'overlay' && isDesktop && (
         <>
           <div 
             className="inspectorOverlay" 

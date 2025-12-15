@@ -82,7 +82,7 @@ export default function EditPublicationPage({
           initialData={publication}
           onSuccess={(pub) => {
             const postIdentifier = pub.slug || pub.id;
-            router.push(`/meriter/communities/${communityId}/posts/${postIdentifier}`);
+            router.push(`/meriter/communities/${communityId}?post=${postIdentifier}`);
           }}
           onCancel={() => {
             router.push(`/meriter/communities/${communityId}`);

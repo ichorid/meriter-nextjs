@@ -174,16 +174,27 @@ export const useUpdatePublication = createMutation({
         },
         communities: {
             feed: true,
+            detail: (result: any) => result?.communityId,
         },
     },
 } as any);
 
-export const useDeletePublication = createMutation({
-    mutationFn: (id: string) => publicationsApiV1.deletePublication(id),
+export const useDeletePublication = createMutation<{ success: boolean }, string | { id: string; communityId?: string }>({
+    mutationFn: (variables) => {
+        const id = typeof variables === 'string' ? variables : variables.id;
+        return publicationsApiV1.deletePublication(id);
+    },
     errorContext: "Delete publication error",
     invalidations: {
         publications: {
             lists: true,
+        },
+        communities: {
+            feed: true,
+            detail: (_result: any, variables: any) => {
+                const communityId = typeof variables === 'string' ? undefined : variables.communityId;
+                return communityId;
+            },
         },
     },
 });

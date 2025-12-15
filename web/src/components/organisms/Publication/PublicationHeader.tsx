@@ -136,13 +136,17 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
       if (isPoll) {
         await deletePoll.mutateAsync(publicationId!);
       } else {
-        await deletePublication.mutateAsync(publicationId!);
+        await deletePublication.mutateAsync({ id: publicationId!, communityId });
       }
       setShowDeleteModal(false);
       addToast(isPoll ? 'Poll deleted successfully' : 'Post deleted successfully', 'success');
       // Navigate away after deletion
       if (communityId) {
         router.push(`/meriter/communities/${communityId}`);
+        // Scroll to top after navigation completes
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
       } else {
         router.push(routes.profile);
       }

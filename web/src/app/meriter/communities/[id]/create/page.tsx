@@ -49,7 +49,7 @@ export default function CreatePublicationPage({
           communityId={communityId}
           onSuccess={(publication) => {
             const postIdentifier = publication.slug || publication.id;
-            router.push(`/meriter/communities/${communityId}/posts/${postIdentifier}`);
+            router.push(`/meriter/communities/${communityId}?post=${postIdentifier}`);
           }}
           onCancel={() => {
             router.push(`/meriter/communities/${communityId}`);
