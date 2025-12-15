@@ -78,22 +78,35 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
             )}
 
             {filteredMembers.length > 0 ? (
-                filteredMembers.map((member) => (
-                    <InfoCard
-                        key={member.id}
-                        title={member.displayName || member.username || tCommon('unknownUser')}
-                        subtitle={member.username ? `@${member.username}` : undefined}
-                        icon={
-                            <BrandAvatar
-                                src={member.avatarUrl}
-                                fallback={member.displayName || member.username || tCommon('user')}
-                                size="sm"
-                                className="bg-transparent"
-                            />
-                        }
-                        onClick={() => router.push(routes.userProfile(member.id))}
-                    />
-                ))
+                filteredMembers.map((member) => {
+                    // Determine display role: superadmin from globalRole, otherwise community role
+                    const displayRole = member.globalRole === 'superadmin' 
+                        ? 'superadmin' 
+                        : member.role;
+                    
+                    // Get translated role label if role exists
+                    const roleBadge = displayRole 
+                        ? tCommon(displayRole as 'superadmin' | 'lead' | 'participant' | 'viewer')
+                        : undefined;
+                    
+                    return (
+                        <InfoCard
+                            key={member.id}
+                            title={member.displayName || member.username || tCommon('unknownUser')}
+                            subtitle={member.username ? `@${member.username}` : undefined}
+                            icon={
+                                <BrandAvatar
+                                    src={member.avatarUrl}
+                                    fallback={member.displayName || member.username || tCommon('user')}
+                                    size="sm"
+                                    className="bg-transparent"
+                                />
+                            }
+                            badges={roleBadge ? [roleBadge] : undefined}
+                            onClick={() => router.push(routes.userProfile(member.id))}
+                        />
+                    );
+                })
             ) : searchQuery ? (
                 <div className="text-center py-12 text-base-content/60">
                     <Users className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
