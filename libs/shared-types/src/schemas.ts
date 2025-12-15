@@ -246,6 +246,16 @@ export const CommentAuthorMetaSchema = z.object({
   photoUrl: z.string().url().optional(),
 });
 
+export const ResourcePermissionsSchema = z.object({
+  canVote: z.boolean(),
+  canEdit: z.boolean(),
+  canDelete: z.boolean(),
+  canComment: z.boolean(),
+  voteDisabledReason: z.string().optional(),
+  editDisabledReason: z.string().optional(),
+  deleteDisabledReason: z.string().optional(),
+});
+
 export const CommentSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   targetType: z.enum(["publication", "comment"]),
   targetId: z.string(),
@@ -258,6 +268,7 @@ export const CommentSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
       author: CommentAuthorMetaSchema,
     })
     .optional(),
+  permissions: ResourcePermissionsSchema.optional(),
 });
 
 export const VoteSchema = PolymorphicReferenceSchema.extend({
@@ -698,6 +709,7 @@ export type VotingRules = z.infer<typeof VotingRulesSchema>;
 export type VisibilityRules = z.infer<typeof VisibilityRulesSchema>;
 export type MeritRules = z.infer<typeof MeritRulesSchema>;
 export type MeritConversion = z.infer<typeof MeritConversionSchema>;
+export type ResourcePermissions = z.infer<typeof ResourcePermissionsSchema>;
 
 export type CreatePublicationDto = z.infer<typeof CreatePublicationDtoSchema>;
 export type CreateCommentDto = z.infer<typeof CreateCommentDtoSchema>;
