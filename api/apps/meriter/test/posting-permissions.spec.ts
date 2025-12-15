@@ -58,6 +58,7 @@ describe('Posting Permissions', () => {
   let visionCommunityId: string;
   let regularCommunityId: string;
   let restrictedCommunityId: string;
+  let supportCommunityId: string;
 
   beforeAll(async () => {
     testDb = new TestDatabaseHelper();
@@ -99,6 +100,7 @@ describe('Posting Permissions', () => {
     visionCommunityId = uid();
     regularCommunityId = uid();
     restrictedCommunityId = uid();
+    supportCommunityId = uid();
   });
 
   beforeEach(async () => {
@@ -109,9 +111,10 @@ describe('Posting Permissions', () => {
       await collection.deleteMany({});
     }
 
-    // Ensure Future Vision and Marathon communities don't exist
+    // Ensure Future Vision, Marathon, and Support communities don't exist
     await communityModel.deleteMany({ typeTag: 'future-vision' });
     await communityModel.deleteMany({ typeTag: 'marathon-of-good' });
+    await communityModel.deleteMany({ typeTag: 'support' });
 
     // Create Communities
     await communityModel.create([
@@ -168,6 +171,19 @@ describe('Posting Permissions', () => {
         },
         createdAt: new Date(),
         updatedAt: new Date(),
+      },
+      {
+        id: supportCommunityId,
+        name: 'Support',
+        typeTag: 'support',
+        members: [],
+        postingRules: {
+          allowedRoles: ['superadmin', 'lead', 'participant'],
+          requiresTeamMembership: false, // Fixed: should be false to allow participants to post
+          onlyTeamLead: false,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
       }
     ]);
 
@@ -215,6 +231,7 @@ describe('Posting Permissions', () => {
       { id: uid(), userId: participant1Id, communityId: visionCommunityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: participant1Id, communityId: regularCommunityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: participant1Id, communityId: restrictedCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+      { id: uid(), userId: participant1Id, communityId: supportCommunityId, role: 'participant', createdAt: now, updatedAt: now },
       
       { id: uid(), userId: lead1Id, communityId: marathonCommunityId, role: 'lead', createdAt: now, updatedAt: now },
       { id: uid(), userId: lead1Id, communityId: visionCommunityId, role: 'lead', createdAt: now, updatedAt: now },
@@ -269,6 +286,23 @@ describe('Posting Permissions', () => {
     it('should allow superadmin to create publication anywhere', async () => {
         const canCreate = await permissionService.canCreatePublication(superadminId, restrictedCommunityId);
         expect(canCreate).toBe(true);
+    });
+  });
+
+  describe('Support Group', () => {
+    it('should allow participant to create publication in support group', async () => {
+      const canCreate = await permissionService.canCreatePublication(participant1Id, supportCommunityId);
+      expect(canCreate).toBe(true);
+    });
+
+    it('should allow participant to create poll in support group', async () => {
+      const canCreate = await permissionService.canCreatePoll(participant1Id, supportCommunityId);
+      expect(canCreate).toBe(true);
+    });
+
+    it('should NOT allow viewer to create publication in support group', async () => {
+      const canCreate = await permissionService.canCreatePublication(viewerId, supportCommunityId);
+      expect(canCreate).toBe(false);
     });
   });
 });

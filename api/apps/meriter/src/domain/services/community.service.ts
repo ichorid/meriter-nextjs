@@ -246,11 +246,11 @@ export class CommunityService {
       defaultMeritRules.quotaRecipients = ['superadmin', 'lead', 'participant'];
     }
 
-    // Special rules for "Support" (same as Team)
+    // Special rules for "Support"
     if (dto.typeTag === 'support') {
-      // Posting: Only Team Members and Lead
+      // Posting: Participants, Leads, and Superadmins can post (no team membership required)
       defaultPostingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
-      defaultPostingRules.requiresTeamMembership = true;
+      defaultPostingRules.requiresTeamMembership = false;
       // Voting: Team Members can vote
       defaultVotingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
       // Merit rules: Viewers do NOT get daily quota in support groups
