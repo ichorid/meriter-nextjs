@@ -65,8 +65,10 @@
         "backToCommunity": "Back to Community",
         "urlPlaceholder": "https://...",
         "selectOption": "Select an option",
-        "hashtagPlaceholder": "Type hashtag and press Enter",
-        "hashtagRules": "English only, lowercase, numbers, underscore",
+        "hashtagPlaceholder": "Type hashtag and press Enter (e.g., #mytag or mytag)",
+        "hashtagRules": "Allowed: letters, numbers, underscore. # is optional and will be removed automatically",
+        "hashtagInvalidChars": "Invalid characters will be removed",
+        "hashtagPreview": "Preview",
         "deleteConfirmation": {
             "title": "Confirm Deletion",
             "message": "Are you sure you want to delete this {itemType}? This action cannot be undone."

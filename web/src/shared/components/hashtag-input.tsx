@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, KeyboardEvent } from 'react';
+import React, { useState, KeyboardEvent, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { BrandInput } from '@/components/ui/BrandInput';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
-import { X, Hash } from 'lucide-react';
+import { X, Hash, AlertCircle } from 'lucide-react';
 
 interface HashtagInputProps {
     value: string[];
@@ -18,6 +18,7 @@ interface HashtagInputProps {
 /**
  * Hashtag input component with tag chips
  * Allows users to add/remove hashtags with visual feedback
+ * Follows social media best practices: allows # during typing, strips it on save
  */
 export const HashtagInput = ({
     value = [],
@@ -31,6 +32,28 @@ export const HashtagInput = ({
     const defaultPlaceholder = placeholder ?? tCommon('hashtagPlaceholder');
     const hashtagRules = tCommon('hashtagRules');
     const [inputValue, setInputValue] = useState('');
+
+    // Check if current input contains invalid characters (excluding # which is allowed)
+    const hasInvalidChars = useMemo(() => {
+        if (!inputValue.trim()) return false;
+        // Remove # prefix for validation check
+        const textWithoutHash = inputValue.replace(/^#/, '');
+        // Check if there are any invalid characters (not a-z, A-Z, 0-9, _)
+        return /[^a-z0-9_]/i.test(textWithoutHash);
+    }, [inputValue]);
+
+    // Compute preview of how the hashtag will look when saved
+    const previewTag = useMemo(() => {
+        if (!inputValue.trim()) return null;
+        
+        // Apply the same cleaning logic as addHashtag
+        let cleanTag = inputValue.replace(/^#+/, ''); // Remove one or more leading # symbols
+        cleanTag = cleanTag.toLowerCase();
+        cleanTag = cleanTag.replace(/[^a-z0-9_]/g, ''); // Filter invalid characters
+        
+        // Only show preview if there's at least one valid character
+        return cleanTag.length > 0 ? cleanTag : null;
+    }, [inputValue]);
 
     const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && inputValue.trim()) {
@@ -46,21 +69,30 @@ export const HashtagInput = ({
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const raw = e.target.value;
-        // Remove # prefix, convert to lowercase, filter only valid chars (a-z, 0-9, _)
-        const filtered = raw
-            .replace(/^#/, '') // Remove leading #
-            .toLowerCase()
-            .replace(/[^a-z0-9_]/g, ''); // Keep only valid characters
-        setInputValue(filtered);
+        // Allow users to type freely, including # and any characters
+        // Validation happens when adding the tag, not during typing
+        setInputValue(e.target.value);
     };
 
     const addHashtag = (tag: string) => {
-        // Remove # if user typed it
-        const cleanTag = tag.replace(/^#/, '').toLowerCase();
+        // Strip # prefix if user typed it (it's optional)
+        let cleanTag = tag.replace(/^#+/, ''); // Remove one or more leading # symbols
+        
+        // Convert to lowercase
+        cleanTag = cleanTag.toLowerCase();
+        
+        // Filter out invalid characters (keep only a-z, 0-9, _)
+        cleanTag = cleanTag.replace(/[^a-z0-9_]/g, '');
+
+        // Validate: must have at least one valid character after cleaning
+        if (!cleanTag || cleanTag.length === 0) {
+            setInputValue('');
+            return;
+        }
 
         // Validate: English lowercase letters, numbers, and underscores only
         if (!/^[a-z0-9_]+$/.test(cleanTag)) {
+            setInputValue('');
             return;
         }
 
@@ -72,6 +104,7 @@ export const HashtagInput = ({
 
         // Check max limit
         if (value.length >= maxTags) {
+            setInputValue('');
             return;
         }
 
@@ -83,9 +116,24 @@ export const HashtagInput = ({
         onChange(value.filter(t => t !== tag));
     };
 
-    const combinedHelperText = helperText 
-        ? `${helperText}. ${hashtagRules} (${value.length}/${maxTags})`
-        : `${hashtagRules} (${value.length}/${maxTags})`;
+    // Build helper text with validation feedback
+    const combinedHelperText = useMemo(() => {
+        const parts: string[] = [];
+        
+        if (helperText) {
+            parts.push(helperText);
+        }
+        
+        parts.push(hashtagRules);
+        
+        if (hasInvalidChars && inputValue.trim()) {
+            parts.push(tCommon('hashtagInvalidChars') || 'Invalid characters will be removed');
+        }
+        
+        parts.push(`(${value.length}/${maxTags})`);
+        
+        return parts.join('. ');
+    }, [helperText, hashtagRules, hasInvalidChars, inputValue, value.length, maxTags, tCommon]);
 
     return (
         <BrandFormControl
@@ -117,13 +165,30 @@ export const HashtagInput = ({
 
                 {/* Input field */}
                 {value.length < maxTags && (
-                    <BrandInput
-                        value={inputValue}
-                        onChange={handleInputChange}
-                        onKeyDown={handleKeyDown}
-                        placeholder={defaultPlaceholder}
-                        fullWidth
-                    />
+                    <div className="space-y-2">
+                        <BrandInput
+                            value={inputValue}
+                            onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
+                            placeholder={defaultPlaceholder}
+                            fullWidth
+                            className={hasInvalidChars && inputValue.trim() ? 'border-warning focus-visible:ring-warning/30' : ''}
+                            rightIcon={hasInvalidChars && inputValue.trim() ? <AlertCircle size={16} className="text-warning" /> : undefined}
+                        />
+                        
+                        {/* Dynamic preview of how the hashtag will look */}
+                        {previewTag && !value.includes(previewTag) && (
+                            <div className="flex items-center gap-2 text-sm">
+                                <span className="text-base-content/60">
+                                    {tCommon('hashtagPreview') || 'Preview:'}
+                                </span>
+                                <div className="flex items-center gap-1 px-2 py-1 bg-base-200 text-base-content rounded-md border border-base-300 opacity-75">
+                                    <Hash size={12} />
+                                    <span className="text-sm font-medium">{previewTag}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 )}
             </div>
         </BrandFormControl>
