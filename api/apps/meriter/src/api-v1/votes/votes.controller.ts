@@ -480,6 +480,8 @@ export class VotesController {
     communityId: string;
     direction: 'up' | 'down';
     absoluteAmount: number;
+    quotaAmount: number;
+    walletAmount: number;
   }> {
     // Get community ID based on target type
     let communityId: string;
@@ -545,7 +547,7 @@ export class VotesController {
       images,
     );
 
-    return { vote, communityId, direction, absoluteAmount };
+    return { vote, communityId, direction, absoluteAmount, quotaAmount, walletAmount };
   }
 
   @Post('publications/:id/votes')
@@ -578,7 +580,7 @@ export class VotesController {
       throw new NotFoundError('Publication', id);
     }
 
-    const { vote, communityId, direction, absoluteAmount } =
+    const { vote, communityId, direction, absoluteAmount, quotaAmount, walletAmount } =
       await this.handleVoteCreation('publication', id, createDto, req, {
         sendNotification: true,
         updatePublicationMetrics: true,
@@ -595,14 +597,15 @@ export class VotesController {
     // Award merits to beneficiary if this is an upvote
     // According to concept: "All merits collected by posts with good deeds go to the wallet of the Team Representative who published the post"
     // Note: Self-votes (when voter is the effective beneficiary) do not award merits
-    if (direction === 'up' && absoluteAmount > 0) {
+    // CRITICAL: Only walletAmount should be credited to permanent wallet, not quotaAmount (quota is free daily quota)
+    if (direction === 'up' && walletAmount > 0) {
       // Get community for currency info
       const community = await this.communityService.getCommunity(communityId);
       if (community) {
         await this.awardMeritsToBeneficiary(
           publication,
           communityId,
-          absoluteAmount,
+          walletAmount,
           community,
           req.user.id, // Pass voter ID to check for self-votes
         );
