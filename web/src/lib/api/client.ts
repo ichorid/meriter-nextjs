@@ -5,7 +5,7 @@ import { config } from '@/config';
 import { transformAxiosError } from './errors';
 import { ValidationError as ZodValidationError } from './validation';
 import { formatValidationError, logValidationError } from './validation-error-handler';
-import { clearAuthStorage } from '@/lib/utils/auth';
+import { clearAuthStorage, hasPreviousSession } from '@/lib/utils/auth';
 import { invalidateAuthQueries } from '@/lib/utils/query-client-cache';
 import { useToastStore } from '@/shared/stores/toast.store';
 
@@ -78,11 +78,15 @@ export class ApiClient {
             // Invalidate React Query cache to remove stale auth data
             invalidateAuthQueries();
 
-            // Show toast notification with server message or fallback
-            const serverMessage = (error.response?.data as any)?.error?.message ||
-              (error.response?.data as any)?.message ||
-              'Session expired. Please login again.';
-            useToastStore.getState().addToast(serverMessage, 'error');
+            // Only show toast if user has had a previous session
+            // This prevents scary error messages for first-time visitors
+            if (hasPreviousSession()) {
+              // Show toast notification with server message or fallback
+              const serverMessage = (error.response?.data as any)?.error?.message ||
+                (error.response?.data as any)?.message ||
+                'Session expired. Please login again.';
+              useToastStore.getState().addToast(serverMessage, 'error');
+            }
           }
         }
 
