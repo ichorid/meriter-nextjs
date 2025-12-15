@@ -60,6 +60,14 @@
     --loading-spinner-bg: #f3f3f3;
     --loading-spinner-active: #0474bf;
     --loading-text: #ffffff;
+    
+    /* Layout dimensions */
+    --header-h: 56px;
+    --nav-w: 280px;
+    --inspector-w: 360px;
+    --content-max: 920px;
+    --gutter: 24px;
+    --radius: 12px;
   }
   
   [data-theme="dark"] {
@@ -612,4 +620,139 @@
 
 [data-theme="dark"] .daily-quota-ring__number {
   color: var(--base-content);
+}
+
+/* App Shell Layout Styles */
+@layer components {
+  /* Shell */
+  .appShell {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  .appHeader {
+    height: var(--header-h);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background-color: var(--base-100);
+    border-bottom: 1px solid var(--base-300);
+  }
+
+  /* Body grid */
+  .appBody {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: var(--nav-w) 1fr; /* default: no docked inspector */
+  }
+
+  /* Left nav */
+  .leftNav {
+    overflow: auto;
+    min-height: 0;
+    border-right: 1px solid var(--base-300);
+  }
+
+  /* Main scroll container */
+  .mainWrap {
+    overflow: auto;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .main {
+    max-width: var(--content-max);
+    margin-inline: auto;
+    padding: var(--gutter) clamp(16px, 3vw, 32px);
+  }
+
+  /* FAB: anchor to the content column, not viewport */
+  .fabSlot {
+    position: sticky;
+    bottom: 24px;
+    display: flex;
+    justify-content: flex-end;
+    pointer-events: none; /* so only the button gets clicks */
+    margin-top: 24px;
+  }
+
+  .fab {
+    pointer-events: auto;
+    width: 48px;
+    height: 48px;
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Overlay inspector (default behavior) */
+  .inspectorOverlay {
+    position: fixed;
+    top: var(--header-h);
+    right: 0;
+    height: calc(100dvh - var(--header-h));
+    width: min(var(--inspector-w), 92vw);
+    transform: translateX(100%);
+    transition: transform 180ms ease;
+    z-index: 50;
+    background-color: var(--base-100);
+    border-left: 1px solid var(--base-300);
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Scrim for overlay */
+  .scrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+    z-index: 40;
+  }
+
+  /* Toggle open */
+  .appShell[data-comments-open="true"] .inspectorOverlay {
+    transform: translateX(0);
+  }
+
+  .appShell[data-comments-open="true"] .scrim {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Docked mode on ultra-wide screens */
+  @media (min-width: 1600px) {
+    .appShell[data-inspector-mode="docked"] .appBody {
+      grid-template-columns: var(--nav-w) 1fr var(--inspector-w);
+    }
+
+    .inspectorDock {
+      overflow: auto;
+      min-height: 0;
+      border-left: 1px solid var(--base-300);
+    }
+
+    /* In docked mode, disable overlay+scrim */
+    .appShell[data-inspector-mode="docked"] .inspectorOverlay,
+    .appShell[data-inspector-mode="docked"] .scrim {
+      display: none;
+    }
+  }
+
+  /* Tablet/mobile: collapse nav to a drawer/rail (outline only) */
+  @media (max-width: 900px) {
+    .appBody {
+      grid-template-columns: 1fr;
+    }
+
+    .leftNav {
+      display: none; /* replace with a drawer */
+    }
+  }
 }
