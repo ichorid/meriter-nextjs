@@ -415,7 +415,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               options={[
                 { label: t('postTypes.basic'), value: 'basic' },
                 { label: t('postTypes.poll'), value: 'poll' },
-                ...(isGoodDeedsMarathon ? [] : [{ label: t('postTypes.project'), value: 'project' }]),
               ]}
               placeholder={t('fields.postTypePlaceholder')}
               disabled={isSubmitting}

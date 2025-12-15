@@ -12,7 +12,6 @@ import type { User } from '@/types/api-v1';
 interface ProfileHeroProps {
   user: User | null | undefined;
   stats?: {
-    projects: number;
     merits: number;
   };
   onEdit?: () => void;

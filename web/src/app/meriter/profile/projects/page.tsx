@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { useProfileTabState } from '@/hooks/useProfileTabState';
 import { ProfileProjectsTab } from '@/components/organisms/Profile/ProfileProjectsTab';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProjects } from '@/hooks/api/useProfile';
@@ -17,7 +16,6 @@ export default function ProfileProjectsPage() {
   const searchParams = useSearchParams();
   const t = useTranslations('profile');
   const { user, isLoading: userLoading, isAuthenticated } = useAuth();
-  const { sortByTab, setSortByTab } = useProfileTabState();
   const { data: wallets = [] } = useWallets();
 
   const {
@@ -35,15 +33,11 @@ export default function ProfileProjectsPage() {
     return (projectsData?.pages ?? []).flatMap((page) => page.data || []);
   }, [projectsData?.pages]);
 
-  useEffect(() => {
+  // Get sort order from URL params, default to 'recent'
+  const sortOrder = (() => {
     const sortParam = searchParams?.get('sort');
-    if (sortParam === 'voted' || sortParam === 'recent') {
-      setSortByTab((prev) => ({
-        ...prev,
-        projects: sortParam,
-      }));
-    }
-  }, [searchParams, setSortByTab]);
+    return sortParam === 'voted' || sortParam === 'recent' ? sortParam : 'recent';
+  })();
 
   const pageHeader = (
     <PageHeader
@@ -62,8 +56,6 @@ export default function ProfileProjectsPage() {
       </AdaptiveLayout>
     );
   }
-
-  const sortOrder = sortByTab.projects;
 
   return (
     <AdaptiveLayout
