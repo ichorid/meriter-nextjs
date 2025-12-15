@@ -597,18 +597,42 @@ export class VotesController {
     // Award merits to beneficiary if this is an upvote
     // According to concept: "All merits collected by posts with good deeds go to the wallet of the Team Representative who published the post"
     // Note: Self-votes (when voter is the effective beneficiary) do not award merits
-    // CRITICAL: Only walletAmount should be credited to permanent wallet, not quotaAmount (quota is free daily quota)
-    if (direction === 'up' && walletAmount > 0) {
+    // CRITICAL: For marathon-of-good, quota votes also award merits to Future Vision wallet
+    // For regular communities, quota votes also award merits to the community wallet
+    if (direction === 'up') {
       // Get community for currency info
       const community = await this.communityService.getCommunity(communityId);
       if (community) {
-        await this.awardMeritsToBeneficiary(
-          publication,
-          communityId,
-          walletAmount,
-          community,
-          req.user.id, // Pass voter ID to check for self-votes
-        );
+        // For marathon-of-good, award merits for quota votes (they go to Future Vision wallet)
+        if (community.typeTag === 'marathon-of-good' && quotaAmount > 0) {
+          await this.awardMeritsToBeneficiary(
+            publication,
+            communityId,
+            quotaAmount,
+            community,
+            req.user.id, // Pass voter ID to check for self-votes
+          );
+        }
+        // For regular communities (not marathon-of-good, not future-vision), award merits for quota votes
+        if (community.typeTag !== 'marathon-of-good' && community.typeTag !== 'future-vision' && quotaAmount > 0) {
+          await this.awardMeritsToBeneficiary(
+            publication,
+            communityId,
+            quotaAmount,
+            community,
+            req.user.id, // Pass voter ID to check for self-votes
+          );
+        }
+        // For all communities, award merits for wallet votes
+        if (walletAmount > 0) {
+          await this.awardMeritsToBeneficiary(
+            publication,
+            communityId,
+            walletAmount,
+            community,
+            req.user.id, // Pass voter ID to check for self-votes
+          );
+        }
       }
     }
 

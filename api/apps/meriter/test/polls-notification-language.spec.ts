@@ -13,6 +13,11 @@ import { QuotaUsageService } from '../src/domain/services/quota-usage.service';
 import { TgBotsService } from '../src/tg-bots/tg-bots.service';
 import { UserEnrichmentService } from '../src/api-v1/common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../src/api-v1/common/services/community-enrichment.service';
+import { PermissionsHelperService } from '../src/api-v1/common/services/permissions-helper.service';
+import { VoteService } from '../src/domain/services/vote.service';
+import { VoteCommentResolverService } from '../src/api-v1/common/services/vote-comment-resolver.service';
+import { CommentService } from '../src/domain/services/comment.service';
+import { PollService as PollServiceDomain } from '../src/domain/services/poll.service';
 import { UserGuard } from '../src/user.guard';
 import { CreatePollDto } from '@meriter/shared-types';
 import { uid } from 'uid';
@@ -145,6 +150,33 @@ describe('PollsController - Notification Language', () => {
           },
         },
         {
+          provide: PermissionsHelperService,
+          useValue: {
+            calculatePollPermissions: jest.fn().mockResolvedValue({
+              canVote: true,
+              canEdit: false,
+              canDelete: false,
+              canComment: false,
+            }),
+          },
+        },
+        {
+          provide: VoteService,
+          useValue: {},
+        },
+        {
+          provide: VoteCommentResolverService,
+          useValue: {},
+        },
+        {
+          provide: CommentService,
+          useValue: {},
+        },
+        {
+          provide: PollServiceDomain,
+          useValue: {},
+        },
+        {
           provide: getConnectionToken(),
           useValue: mockConnection,
         },
@@ -155,9 +187,18 @@ describe('PollsController - Notification Language', () => {
       .compile();
 
     controller = module.get<PollsController>(PollsController);
-    pollService = module.get(PollService) as jest.Mocked<PollService>;
-    communityService = module.get(CommunityService) as jest.Mocked<CommunityService>;
-    tgBotsService = module.get(TgBotsService) as jest.Mocked<TgBotsService>;
+    // Get the actual mock instances that were provided
+    pollService = module.get(PollService) as any;
+    communityService = module.get(CommunityService) as any;
+    tgBotsService = module.get(TgBotsService) as any;
+    
+    // Ensure the mocks are properly set up
+    if (!pollService.createPoll) {
+      pollService.createPoll = jest.fn();
+    }
+    if (!communityService.getCommunity) {
+      communityService.getCommunity = jest.fn();
+    }
   });
 
   afterEach(async () => {
@@ -230,7 +271,12 @@ describe('PollsController - Notification Language', () => {
       toSnapshot: () => mockPollSnapshot,
     } as any;
 
-    // Setup mocks
+    // Setup mocks - ensure they exist
+    expect(pollService).toBeDefined();
+    expect(pollService.createPoll).toBeDefined();
+    expect(communityService).toBeDefined();
+    expect(communityService.getCommunity).toBeDefined();
+    
     pollService.createPoll.mockResolvedValue(mockPoll);
     communityService.getCommunity.mockResolvedValue(mockCommunity as any);
 
@@ -313,7 +359,12 @@ describe('PollsController - Notification Language', () => {
       toSnapshot: () => mockPollSnapshot,
     } as any;
 
-    // Setup mocks
+    // Setup mocks - ensure they exist
+    expect(pollService).toBeDefined();
+    expect(pollService.createPoll).toBeDefined();
+    expect(communityService).toBeDefined();
+    expect(communityService.getCommunity).toBeDefined();
+    
     pollService.createPoll.mockResolvedValue(mockPoll);
     communityService.getCommunity.mockResolvedValue(mockCommunity as any);
 

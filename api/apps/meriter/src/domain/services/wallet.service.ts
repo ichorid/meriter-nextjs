@@ -67,6 +67,7 @@ export class WalletService {
   ): Promise<Wallet> {
     // Get or create wallet
     let wallet = await this.getWallet(userId, communityId);
+    const isNewWallet = !wallet;
     
     if (!wallet) {
       wallet = Wallet.create(
@@ -83,12 +84,16 @@ export class WalletService {
       wallet.deduct(amount);
     }
 
-    // Save wallet
-    await this.walletModel.updateOne(
-      { id: wallet.getId.getValue() },
-      { $set: wallet.toSnapshot() },
-      { upsert: true }
-    );
+    // Save wallet - use create for new wallets, updateOne for existing ones
+    const walletSnapshot = wallet.toSnapshot();
+    if (isNewWallet) {
+      await this.walletModel.create(walletSnapshot);
+    } else {
+      await this.walletModel.updateOne(
+        { id: walletSnapshot.id },
+        { $set: walletSnapshot }
+      );
+    }
 
     // Map transaction type: credit -> deposit/withdrawal, debit -> withdrawal
     // The actual transaction type depends on referenceType (e.g., 'publication_withdrawal' -> 'withdrawal')
