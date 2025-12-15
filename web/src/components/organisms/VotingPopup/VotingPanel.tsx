@@ -91,6 +91,19 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
 
     const isPositive = voteDirection === "positive";
     const absAmount = Math.abs(amount);
+    
+    // Calculate if button should be disabled
+    const isButtonDisabled = absAmount === 0 || (isPositive && !comment.trim());
+    
+    // Calculate which error message to show
+    const getButtonError = (): string | null => {
+        if (!isButtonDisabled) return null;
+        if (absAmount === 0) return t("requiresVoteAmount");
+        if (isPositive && !comment.trim()) return t("requiresComment");
+        return null;
+    };
+    
+    const buttonError = getButtonError();
 
     return (
         <div
@@ -340,46 +353,64 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             {/* Slider Container */}
             {max > 0 ? (
                 <div
-                    className="relative flex items-center px-2"
-                    style={{ width: "304px", height: "40px", margin: "0 auto" }}
+                    className="flex flex-col gap-1"
+                    style={{ width: "304px", margin: "0 auto" }}
                 >
-                    <Slider
-                        value={sliderValue}
-                        minValue={min}
-                        maxValue={max}
-                        onChange={handleSliderChange}
-                        style={{ width: "100%" }}
+                    <div
+                        className="relative flex items-center px-2"
+                        style={{ width: "100%", height: "40px" }}
                     >
-                        <SliderTrack
-                            style={{
-                                height: 8,
-                                borderRadius: 8,
-                                backgroundColor: "var(--base-200)",
-                            }}
+                        <Slider
+                            value={sliderValue}
+                            minValue={min}
+                            maxValue={max}
+                            onChange={handleSliderChange}
+                            style={{ width: "100%" }}
                         >
-                            <SliderFilledTrack
+                            <SliderTrack
                                 style={{
                                     height: 8,
                                     borderRadius: 8,
-                                    backgroundColor: isPositive
-                                        ? "var(--fallback-su,oklch(var(--su)/1))"
-                                        : "var(--fallback-er,oklch(var(--er)/1))",
+                                    backgroundColor: "var(--base-200)",
+                                }}
+                            >
+                                <SliderFilledTrack
+                                    style={{
+                                        height: 8,
+                                        borderRadius: 8,
+                                        backgroundColor: isPositive
+                                            ? "var(--fallback-su,oklch(var(--su)/1))"
+                                            : "var(--fallback-er,oklch(var(--er)/1))",
+                                    }}
+                                />
+                            </SliderTrack>
+                            <SliderThumb
+                                style={{
+                                    width: 24,
+                                    height: 24,
+                                    borderRadius: 12,
+                                    backgroundColor: "var(--base-content)",
+                                    borderWidth: 3,
+                                    borderColor: "var(--base-100)",
+                                    boxShadow:
+                                        "0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 3px var(--fallback-bc,oklch(var(--bc)/0.15))",
                                 }}
                             />
-                        </SliderTrack>
-                        <SliderThumb
-                            style={{
-                                width: 24,
-                                height: 24,
-                                borderRadius: 12,
-                                backgroundColor: "var(--base-content)",
-                                borderWidth: 3,
-                                borderColor: "var(--base-100)",
-                                boxShadow:
-                                    "0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 3px var(--fallback-bc,oklch(var(--bc)/0.15))",
-                            }}
-                        />
-                    </Slider>
+                        </Slider>
+                    </div>
+                    {/* Max value indicator */}
+                    <div
+                        className="text-base-content opacity-60 text-right"
+                        style={{
+                            fontSize: "12px",
+                            fontFamily: "Roboto, sans-serif",
+                            fontWeight: 400,
+                            lineHeight: "120%",
+                            letterSpacing: "0.374px",
+                        }}
+                    >
+                        {t("maxVoteAmount", { max })}
+                    </div>
                 </div>
             ) : (
                 <div
@@ -441,35 +472,52 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             )}
 
             {/* Submit Button */}
-            <button
-                onClick={() => onSubmit(isPositive)}
-                className={classList(
-                    "flex justify-center items-center border rounded-[8px] sticky bottom-0",
-                    isPositive
-                        ? "border-success bg-success hover:bg-success/90"
-                        : "border-error bg-error hover:bg-error/90",
-                    absAmount === 0 ? "opacity-50 cursor-not-allowed" : ""
-                )}
-                style={{
-                    width: "304px",
-                    height: "40px",
-                    padding: "11px 15px",
-                    gap: "10px",
-                    boxSizing: "border-box",
-                }}
-                disabled={absAmount === 0}
-            >
-                <span
-                    className="text-base-100 text-center leading-[120%]"
+            <div className="flex flex-col gap-1" style={{ width: "304px" }}>
+                <button
+                    onClick={() => onSubmit(isPositive)}
+                    className={classList(
+                        "flex justify-center items-center border rounded-[8px] sticky bottom-0",
+                        isPositive
+                            ? "border-success bg-success hover:bg-success/90"
+                            : "border-error bg-error hover:bg-error/90",
+                        isButtonDisabled ? "opacity-50 cursor-not-allowed" : ""
+                    )}
                     style={{
-                        fontSize: "15px",
-                        fontFamily: "Roboto, sans-serif",
-                        fontWeight: 400,
+                        width: "100%",
+                        height: "40px",
+                        padding: "11px 15px",
+                        gap: "10px",
+                        boxSizing: "border-box",
                     }}
+                    disabled={isButtonDisabled}
                 >
-                    {t("submit")}
-                </span>
-            </button>
+                    <span
+                        className="text-base-100 text-center leading-[120%]"
+                        style={{
+                            fontSize: "15px",
+                            fontFamily: "Roboto, sans-serif",
+                            fontWeight: 400,
+                        }}
+                    >
+                        {t("submit")}
+                    </span>
+                </button>
+                {/* Error text when button is disabled or server error */}
+                {(buttonError || error) && (
+                    <div
+                        className="text-error text-center"
+                        style={{
+                            fontSize: "12px",
+                            fontFamily: "Roboto, sans-serif",
+                            fontWeight: 400,
+                            lineHeight: "120%",
+                            letterSpacing: "0.374px",
+                        }}
+                    >
+                        {error || buttonError}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
