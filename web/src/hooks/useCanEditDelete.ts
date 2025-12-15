@@ -16,6 +16,10 @@ import { useCommunity } from '@/hooks/api/useCommunities';
  * - Authors can delete their own posts/comments if no votes and no comments
  * - Leads can delete any post/comment in their community
  * - Superadmins can delete any post/comment
+ * 
+ * @deprecated This hook is deprecated. Use API permissions from publication.permissions or comment.permissions instead.
+ * Permissions are now calculated server-side and embedded in API responses.
+ * This hook will be removed in a future major version.
  */
 export function useCanEditDelete(
   authorId: string | undefined,
@@ -24,6 +28,14 @@ export function useCanEditDelete(
   createdAt?: string | Date,
   hasComments: boolean = false
 ) {
+  // Deprecation warning
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(
+      'useCanEditDelete is deprecated. Use API permissions from publication.permissions or comment.permissions instead. ' +
+      'Permissions are now calculated server-side and embedded in API responses.'
+    );
+  }
+
   const { user } = useAuth();
   const { data: userRoles } = useUserRoles(user?.id || '');
   const { data: community } = useCommunity(communityId || '');

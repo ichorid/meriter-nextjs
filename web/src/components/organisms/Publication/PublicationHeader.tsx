@@ -10,11 +10,12 @@ import { BrandButton } from '@/components/ui/BrandButton';
 import { dateVerbose } from '@shared/lib/date';
 import { useAuth } from '@/contexts/AuthContext';
 import { routes } from '@/lib/constants/routes';
-import { useCanEditDelete } from '@/hooks/useCanEditDelete';
 import { useDeletePublication } from '@/hooks/api/usePublications';
 import { useDeletePoll } from '@/hooks/api/usePolls';
 import { DeleteConfirmationModal } from '@/components/organisms/DeleteConfirmationModal/DeleteConfirmationModal';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { ResourcePermissions } from '@/types/api-v1';
+import { useTranslations } from 'next-intl';
 
 // Local Publication type definition
 interface Publication {
@@ -44,6 +45,7 @@ interface Publication {
     };
     hashtagName?: string;
   };
+  permissions?: ResourcePermissions;
   [key: string]: unknown;
 }
 
@@ -77,6 +79,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   const { user } = useAuth();
   const currentUserId = user?.id;
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const t = useTranslations('shared');
   
   const deletePublication = useDeletePublication();
   const deletePoll = useDeletePoll();
@@ -95,24 +98,17 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     username: publication.meta.beneficiary.username,
   } : null;
 
-  // Check if there are votes
-  const hasVotes = isPoll
-    ? (metrics?.totalCasts || 0) > 0
-    : ((metrics?.upvotes || 0) + (metrics?.downvotes || 0)) > 0;
+  // Use API permissions instead of calculating on frontend
+  const canEdit = publication.permissions?.canEdit ?? false;
+  const canDelete = publication.permissions?.canDelete ?? false;
   
-  // Check if there are comments
-  const commentCount = publication.metrics?.commentCount || metrics?.commentCount || 0;
-  const hasComments = commentCount > 0;
+  // Determine if edit/delete is enabled (not disabled by reason)
+  // If canEdit/canDelete is true, it's enabled. If false, check if there's a disabled reason
+  const canEditEnabled = canEdit && !publication.permissions?.editDisabledReason;
+  const canDeleteEnabled = canDelete && !publication.permissions?.deleteDisabledReason;
   
-  // Check permissions (author, lead, superadmin)
-  // Hook checks vote count, comment count, and time window for authors, allows admins always
-  const { canEdit, canEditEnabled, canDelete, canDeleteEnabled, isAuthor } = useCanEditDelete(
-    author.id, 
-    communityId, 
-    hasVotes,
-    publication.createdAt,
-    hasComments
-  );
+  // Check if current user is the author (for navigation purposes)
+  const isAuthor = author.id && currentUserId && author.id === currentUserId;
   
   // Show edit button if user can edit, disable if canEdit but not canEditEnabled
   const showEditButton = canEdit && publicationId && communityId;
@@ -203,7 +199,9 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             onClick={handleEdit}
             disabled={editButtonDisabled}
             className={`p-1.5 h-auto min-h-0 ${editButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title={editButtonDisabled ? 'Cannot edit: post has votes or comments' : 'Edit'}
+            title={editButtonDisabled && publication.permissions?.editDisabledReason 
+              ? t(publication.permissions.editDisabledReason) 
+              : 'Edit'}
           >
             <Edit size={16} />
           </BrandButton>
@@ -220,7 +218,9 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             }}
             disabled={deleteButtonDisabled}
             className={`p-1.5 h-auto min-h-0 text-error hover:text-error ${deleteButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title={deleteButtonDisabled ? 'Cannot delete: post has votes or comments' : 'Delete'}
+            title={deleteButtonDisabled && publication.permissions?.deleteDisabledReason 
+              ? t(publication.permissions.deleteDisabledReason) 
+              : 'Delete'}
           >
             <Trash2 size={16} />
           </BrandButton>

@@ -17,7 +17,7 @@ import type { IPollData } from "@features/polls/types";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import type { Publication as PublicationType } from '@/types/api-v1';
-import { useCanVote } from '@/hooks/useCanVote';
+import { ResourcePermissions } from '@/types/api-v1';
 
 export const Publication = (props: any) => {
     const {
@@ -120,17 +120,9 @@ export const Publication = (props: any) => {
     // Check if this is a PROJECT post (no voting allowed)
     const isProject = type === 'project' || (meta as any)?.isProject === true;
     
-    // Check if user can vote based on community rules
-    const { canVote, reason: voteDisabledReason } = useCanVote(
-        postId,
-        'publication',
-        communityId || '',
-        authorId || '',
-        isAuthor,
-        isBeneficiary,
-        hasBeneficiary,
-        isProject
-    );
+    // Use API permissions instead of calculating on frontend
+    const canVote = (originalPublication as any).permissions?.canVote ?? false;
+    const voteDisabledReason = (originalPublication as any).permissions?.voteDisabledReason;
     
     // Withdrawal state management (for author's own posts)
     const [optimisticSum, setOptimisticSum] = useState(sum);

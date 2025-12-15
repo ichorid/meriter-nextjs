@@ -289,6 +289,12 @@ export class PermissionService {
 
     // Check if voting for own post is allowed
     if (authorId === userId && !rules.canVoteForOwnPosts) {
+      // Exception: future-vision allows self-voting for participants, leads, and superadmins
+      if (community.typeTag === 'future-vision' && 
+          (userRole === COMMUNITY_ROLE_PARTICIPANT || userRole === COMMUNITY_ROLE_LEAD || userRole === COMMUNITY_ROLE_SUPERADMIN)) {
+        this.logger.log(`[canVote] ALLOWED: Future-vision allows self-voting`);
+        return true;
+      }
       this.logger.log(`[canVote] DENIED: Cannot vote for own post (rules disallow)`);
       return false;
     }
@@ -471,10 +477,12 @@ export class PermissionService {
     }
 
     // For authors: check vote count and time window
-    // Use strict equality check - both should be strings
-    const isAuthor = authorId === userId;
+    // Normalize IDs to strings for comparison
+    const normalizedAuthorId = String(authorId).trim();
+    const normalizedUserId = String(userId).trim();
+    const isAuthor = normalizedAuthorId === normalizedUserId;
     if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-      console.log(`[canEditPublication] Author comparison: authorId="${authorId}" === userId="${userId}" = ${isAuthor}`);
+      console.log(`[canEditPublication] Author comparison: authorId="${normalizedAuthorId}" === userId="${normalizedUserId}" = ${isAuthor}`);
     }
     
     if (isAuthor) {
@@ -612,7 +620,10 @@ export class PermissionService {
     if (userRole === COMMUNITY_ROLE_LEAD) return true;
 
     // For authors: check vote count and time window
-    if (authorId === userId) {
+    // Normalize IDs to strings for comparison
+    const normalizedAuthorId = String(authorId).trim();
+    const normalizedUserId = String(userId).trim();
+    if (normalizedAuthorId === normalizedUserId) {
       // Check if comment has any votes
       const metrics = comment.getMetrics;
       const metricsSnapshot = metrics.toSnapshot();

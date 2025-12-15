@@ -219,6 +219,16 @@
         "inReplyTo": "In reply to:",
         "thisPost": "this post",
         "logout": "Logout",
+        "editDisabled": {
+            "hasVotes": "Cannot edit: post has votes",
+            "hasComments": "Cannot edit: post has comments",
+            "timeWindowExpired": "Cannot edit: time window expired or insufficient permissions"
+        },
+        "deleteDisabled": {
+            "hasVotes": "Cannot delete: post has votes",
+            "hasComments": "Cannot delete: post has comments",
+            "insufficientPermissions": "Cannot delete: insufficient permissions"
+        },
         "voteDisabled": {
             "default": "You do not have permission to vote on this content",
             "notLoggedIn": "You must be logged in to vote",

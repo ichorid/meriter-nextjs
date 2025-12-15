@@ -10,8 +10,8 @@ import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { getWalletBalance } from '@/lib/utils/wallet';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
-import { useCanVote } from '@/hooks/useCanVote';
 import { useCommunity } from '@/hooks/api/useCommunities';
+import { ResourcePermissions } from '@/types/api-v1';
 
 // Local Publication type definition
 interface Publication {
@@ -44,6 +44,7 @@ interface Publication {
     };
     hashtagName?: string;
   };
+  permissions?: ResourcePermissions;
   [key: string]: unknown;
 }
 
@@ -128,17 +129,9 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
 
   const publicationId = getPublicationIdentifier(publication);
 
-  // Check if user can vote based on community rules
-  const { canVote, reason: voteDisabledReason } = useCanVote(
-    publicationId,
-    'publication',
-    communityId,
-    authorId,
-    isAuthor,
-    isBeneficiary,
-    hasBeneficiary,
-    isProject
-  );
+  // Use API permissions instead of calculating on frontend
+  const canVote = publication.permissions?.canVote ?? false;
+  const voteDisabledReason = publication.permissions?.voteDisabledReason;
 
   const handleVoteClick = () => {
     let mode: 'standard' | 'wallet-only' | 'quota-only' = 'standard';

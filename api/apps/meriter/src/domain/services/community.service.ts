@@ -23,6 +23,7 @@ import { UserCommunityRoleService } from './user-community-role.service';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
 
 export interface CreateCommunityDto {
+  id?: string;
   name: string;
   description?: string;
   avatarUrl?: string;
@@ -86,12 +87,12 @@ export class CommunityService {
   async getCommunity(communityId: string): Promise<Community | null> {
     // Query by internal ID only
     const doc = await this.communityModel.findOne({ id: communityId }).lean();
-    return (doc as unknown) as Community;
+    return doc ? (doc as unknown as Community) : null;
   }
 
   async getCommunityByTypeTag(typeTag: string): Promise<Community | null> {
     const doc = await this.communityModel.findOne({ typeTag }).lean();
-    return (doc as unknown) as Community;
+    return doc ? (doc as unknown as Community) : null;
   }
 
   async onModuleInit() {
@@ -269,7 +270,7 @@ export class CommunityService {
     }
 
     const community = {
-      id: uid(),
+      id: dto.id || uid(),
       name: dto.name,
       description: dto.description,
       avatarUrl: dto.avatarUrl,

@@ -2,12 +2,10 @@ import React from 'react';
 import { render } from '@testing-library/react';
 import { Comment } from '@/features/comments/components/comment';
 import { useCommunity } from '@/hooks/api/useCommunities';
-import { useCanVote } from '@/hooks/useCanVote';
 import { useFeaturesConfig } from '@/hooks/useConfig';
 
 // Mock dependencies
 jest.mock('@/hooks/api/useCommunities');
-jest.mock('@/hooks/useCanVote');
 jest.mock('@/hooks/useConfig');
 jest.mock('@/shared/hooks/use-comments', () => ({
   useComments: () => ({
@@ -45,7 +43,6 @@ jest.mock('@/features/comments/hooks/useCommentVoteDisplay', () => ({
 }));
 
 const mockUseCommunity = useCommunity as jest.MockedFunction<typeof useCommunity>;
-const mockUseCanVote = useCanVote as jest.MockedFunction<typeof useCanVote>;
 const mockUseFeaturesConfig = useFeaturesConfig as jest.MockedFunction<typeof useFeaturesConfig>;
 
 describe('Comment Voting Mode Restrictions', () => {
@@ -65,12 +62,17 @@ describe('Comment Voting Mode Restrictions', () => {
         name: 'Author',
       },
     },
+    permissions: {
+      canVote: true,
+      canEdit: true,
+      canDelete: true,
+      canComment: true,
+    },
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
     
-    mockUseCanVote.mockReturnValue({ canVote: true });
     mockUseFeaturesConfig.mockReturnValue({ commentVoting: true } as any);
   });
 

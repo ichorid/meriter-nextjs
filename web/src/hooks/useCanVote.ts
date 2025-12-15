@@ -6,6 +6,10 @@ import { useCommunity } from './api';
 /**
  * Hook to check if user can vote on a publication or comment
  * Checks community voting rules, user roles, and mutual exclusivity
+ * 
+ * @deprecated This hook is deprecated. Use API permissions from publication.permissions or comment.permissions instead.
+ * Permissions are now calculated server-side and embedded in API responses.
+ * This hook will be removed in a future major version.
  */
 export function useCanVote(
   targetId: string,
@@ -17,6 +21,14 @@ export function useCanVote(
   hasBeneficiary?: boolean,
   isProject?: boolean
 ): { canVote: boolean; reason?: string } {
+  // Deprecation warning
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(
+      'useCanVote is deprecated. Use API permissions from publication.permissions or comment.permissions instead. ' +
+      'Permissions are now calculated server-side and embedded in API responses.'
+    );
+  }
+
   const { user } = useAuth();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const { data: community } = useCommunity(communityId || '');

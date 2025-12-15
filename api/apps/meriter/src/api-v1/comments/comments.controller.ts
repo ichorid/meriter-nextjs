@@ -19,6 +19,7 @@ import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { PermissionService } from '../../domain/services/permission.service';
 import { UserEnrichmentService } from '../common/services/user-enrichment.service';
+import { PermissionsHelperService } from '../common/services/permissions-helper.service';
 import { EntityMappers } from '../common/mappers/entity-mappers';
 import { UserFormatter } from '../common/utils/user-formatter.util';
 import { VoteCommentResolverService } from '../common/services/vote-comment-resolver.service';
@@ -57,6 +58,7 @@ export class CommentsController {
     private readonly voteCommentResolver: VoteCommentResolverService,
     private readonly commentEnrichment: CommentEnrichmentService,
     private readonly permissionService: PermissionService,
+    private readonly permissionsHelperService: PermissionsHelperService,
   ) {}
 
   @Get()
@@ -176,6 +178,12 @@ export class CommentsController {
     const voteTransactionData =
       VoteTransactionCalculatorService.calculate(vote);
 
+    // Calculate permissions
+    const permissions = await this.permissionsHelperService.calculateCommentPermissions(
+      req.user?.id,
+      id,
+    );
+
     const commentData = {
       ...snapshot,
       createdAt: snapshot.createdAt.toISOString(),
@@ -185,6 +193,8 @@ export class CommentsController {
       },
       // Add vote transaction fields if comment is associated with a vote
       ...voteTransactionData,
+      // Add permissions
+      permissions,
     };
 
     return ApiResponseHelper.successResponse(commentData);
@@ -395,6 +405,18 @@ export class CommentsController {
       };
     });
 
+    // Batch calculate permissions for all comments (votes)
+    const commentIds = enrichedComments.map((comment) => comment.id);
+    const permissionsMap = await this.permissionsHelperService.batchCalculateCommentPermissions(
+      req.user?.id,
+      commentIds,
+    );
+
+    // Add permissions to each comment
+    enrichedComments.forEach((comment) => {
+      comment.permissions = permissionsMap.get(comment.id);
+    });
+
     // Get total count for pagination
     const totalVotes =
       await this.voteService.getVotesOnPublication(publicationId);
@@ -482,6 +504,18 @@ export class CommentsController {
           replyCount,
         },
       };
+    });
+
+    // Batch calculate permissions for all replies (votes)
+    const replyIds = enrichedReplies.map((reply) => reply.id);
+    const permissionsMap = await this.permissionsHelperService.batchCalculateCommentPermissions(
+      req.user?.id,
+      replyIds,
+    );
+
+    // Add permissions to each reply
+    enrichedReplies.forEach((reply) => {
+      reply.permissions = permissionsMap.get(reply.id);
     });
 
     return {

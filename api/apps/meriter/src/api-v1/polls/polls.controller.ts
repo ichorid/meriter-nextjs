@@ -23,6 +23,7 @@ import { PermissionService } from '../../domain/services/permission.service';
 import { QuotaUsageService } from '../../domain/services/quota-usage.service';
 import { UserEnrichmentService } from '../common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../common/services/community-enrichment.service';
+import { PermissionsHelperService } from '../common/services/permissions-helper.service';
 import { EntityMappers } from '../common/mappers/entity-mappers';
 import { Wallet } from '../../domain/aggregates/wallet/wallet.entity';
 import { UserGuard } from '../../user.guard';
@@ -52,6 +53,7 @@ export class PollsController {
     private readonly quotaUsageService: QuotaUsageService,
     private readonly userEnrichmentService: UserEnrichmentService,
     private readonly communityEnrichmentService: CommunityEnrichmentService,
+    private readonly permissionsHelperService: PermissionsHelperService,
     @InjectConnection() private readonly connection: Connection,
   ) {}
 
@@ -81,6 +83,19 @@ export class PollsController {
       // Transform domain Polls to API format with enriched metadata
       const apiPolls = result.map(poll => EntityMappers.mapPollToApi(poll, usersMap, communitiesMap));
       
+      // Batch calculate permissions for all polls
+      const pollIds = apiPolls.map((poll) => poll.id);
+      const permissionsMap = await Promise.all(
+        pollIds.map((pollId) => 
+          this.permissionsHelperService.calculatePollPermissions(req.user?.id, pollId)
+        )
+      );
+
+      // Add permissions to each poll
+      apiPolls.forEach((poll, index) => {
+        poll.permissions = permissionsMap[index];
+      });
+      
     return ApiResponseHelper.successResponse({ data: apiPolls, total: apiPolls.length, skip, limit: pagination.limit || 20 });
     }
     
@@ -95,6 +110,12 @@ export class PollsController {
       throw new NotFoundError('Poll', id);
     }
     const snapshot = poll.toSnapshot();
+    
+    // Calculate permissions
+    const permissions = await this.permissionsHelperService.calculatePollPermissions(
+      req.user?.id,
+      id,
+    );
     
     // Transform domain Poll to API Poll format
     const apiPoll: Poll = {
@@ -115,6 +136,7 @@ export class PollsController {
       isActive: snapshot.isActive,
       createdAt: snapshot.createdAt.toISOString(),
       updatedAt: snapshot.updatedAt.toISOString(),
+      permissions,
     };
     
     return ApiResponseHelper.successResponse(apiPoll);
@@ -574,6 +596,19 @@ export class PollsController {
         createdAt: snapshot.createdAt.toISOString(),
         updatedAt: snapshot.updatedAt.toISOString(),
       };
+    });
+
+    // Batch calculate permissions for all polls
+    const pollIds = apiPolls.map((poll) => poll.id);
+    const permissionsMap = await Promise.all(
+      pollIds.map((pollId) => 
+        this.permissionsHelperService.calculatePollPermissions(req.user?.id, pollId)
+      )
+    );
+
+    // Add permissions to each poll
+    apiPolls.forEach((poll, index) => {
+      poll.permissions = permissionsMap[index];
     });
     
     return { 

@@ -33,6 +33,7 @@ export interface CreateUserDto {
   location?: string;
   website?: string;
   isVerified?: boolean;
+  globalRole?: 'superadmin';
 }
 
 @Injectable()
@@ -118,6 +119,10 @@ export class UserService implements OnModuleInit {
         updatedAt: new Date(),
       };
 
+      if (dto.globalRole !== undefined) {
+        updateData.globalRole = dto.globalRole;
+      }
+
       if (token) {
         updateData.token = token;
       }
@@ -151,7 +156,7 @@ export class UserService implements OnModuleInit {
         .lean();
     } else {
       // Create new user
-      const newUser = {
+      const newUser: any = {
         id: uid(),
         authProvider: dto.authProvider,
         authId: dto.authId,
@@ -173,6 +178,11 @@ export class UserService implements OnModuleInit {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
+
+      // Only set globalRole if provided and is 'superadmin' (enum only allows 'superadmin')
+      if (dto.globalRole === 'superadmin') {
+        newUser.globalRole = 'superadmin';
+      }
 
       await this.userModel.create([newUser]);
       user = await this.userModel.findOne({ id: newUser.id }).lean();

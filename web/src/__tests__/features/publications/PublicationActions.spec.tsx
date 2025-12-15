@@ -3,18 +3,15 @@ import { render, screen } from '@testing-library/react';
 import { PublicationActions } from '@/components/organisms/Publication/PublicationActions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommunity } from '@/hooks/api/useCommunities';
-import { useCanVote } from '@/hooks/useCanVote';
 import { useUIStore } from '@/stores/ui.store';
 
 // Mock dependencies
 jest.mock('@/contexts/AuthContext');
 jest.mock('@/hooks/api/useCommunities');
-jest.mock('@/hooks/useCanVote');
 jest.mock('@/stores/ui.store');
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseCommunity = useCommunity as jest.MockedFunction<typeof useCommunity>;
-const mockUseCanVote = useCanVote as jest.MockedFunction<typeof useCanVote>;
 const mockUseUIStore = useUIStore as jest.MockedFunction<typeof useUIStore>;
 
 describe('PublicationActions - Special Groups Withdrawal', () => {
@@ -25,6 +22,12 @@ describe('PublicationActions - Special Groups Withdrawal', () => {
     metrics: {
       score: 10,
       commentCount: 0,
+    },
+    permissions: {
+      canVote: true,
+      canEdit: true,
+      canDelete: true,
+      canComment: true,
     },
   };
 
@@ -38,8 +41,6 @@ describe('PublicationActions - Special Groups Withdrawal', () => {
       isAuthenticated: true,
       isLoading: false,
     } as any);
-
-    mockUseCanVote.mockReturnValue({ canVote: true });
     
     mockUseUIStore.mockReturnValue({
       openVotingPopup: jest.fn(),

@@ -13,8 +13,8 @@ import { CommentDetailsPopup } from "@shared/components/comment-details-popup";
 import { useCommentVoteDisplay } from '../hooks/useCommentVoteDisplay';
 import { useCommentRecipient } from '../hooks/useCommentRecipient';
 import { useCommentWithdrawal } from '../hooks/useCommentWithdrawal';
-import { useCanVote } from '@/hooks/useCanVote';
 import { useFeaturesConfig } from '@/hooks/useConfig';
+import { ResourcePermissions } from '@/types/api-v1';
 
 interface CommentProps {
     _id: string;
@@ -182,22 +182,14 @@ export const Comment: React.FC<CommentProps> = ({
     // Check if community is special group (withdrawals disabled)
     const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
     
-    // Check if user can vote on this comment based on community rules
-    const { canVote: canVoteFromHook, reason: voteDisabledReasonFromHook } = useCanVote(
-        _id,
-        'comment',
-        communityId,
-        commentAuthorId,
-        isAuthor,
-        isBeneficiary,
-        hasBeneficiary,
-        false // Comments are not projects
-    );
+    // Use API permissions instead of calculating on frontend
+    const canVoteFromApi = (rest as any).permissions?.canVote ?? false;
+    const voteDisabledReasonFromApi = (rest as any).permissions?.voteDisabledReason;
     
     // Override reason if comment voting is disabled via feature flag
-    const canVote = enableCommentVoting ? canVoteFromHook : false;
+    const canVote = enableCommentVoting ? canVoteFromApi : false;
     const voteDisabledReason = enableCommentVoting 
-        ? voteDisabledReasonFromHook 
+        ? voteDisabledReasonFromApi 
         : 'voteDisabled.commentVotingDisabled';
     
     // Get currency icon from community info
