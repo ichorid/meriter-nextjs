@@ -24,6 +24,7 @@ interface Publication {
   createdAt: string;
   metrics?: {
     score?: number;
+    commentCount?: number;
   };
   meta?: {
     commentTgEntities?: any[];
@@ -55,6 +56,7 @@ interface PublicationHeaderProps {
     upvotes?: number;
     downvotes?: number;
     totalCasts?: number;
+    commentCount?: number;
   };
   publicationId?: string;
   communityId?: string;
@@ -98,18 +100,27 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     ? (metrics?.totalCasts || 0) > 0
     : ((metrics?.upvotes || 0) + (metrics?.downvotes || 0)) > 0;
   
+  // Check if there are comments
+  const commentCount = publication.metrics?.commentCount || metrics?.commentCount || 0;
+  const hasComments = commentCount > 0;
+  
   // Check permissions (author, lead, superadmin)
-  // Hook checks vote count and time window for authors, allows admins always
-  const { canEdit, canEditEnabled, canDelete, isAuthor } = useCanEditDelete(
+  // Hook checks vote count, comment count, and time window for authors, allows admins always
+  const { canEdit, canEditEnabled, canDelete, canDeleteEnabled, isAuthor } = useCanEditDelete(
     author.id, 
     communityId, 
     hasVotes,
-    publication.createdAt
+    publication.createdAt,
+    hasComments
   );
   
   // Show edit button if user can edit, disable if canEdit but not canEditEnabled
   const showEditButton = canEdit && publicationId && communityId;
   const editButtonDisabled = !!(canEdit && !canEditEnabled);
+  
+  // Show delete button if user can delete, disable if canDelete but not canDeleteEnabled
+  const showDeleteButton = canDelete && publicationId && communityId;
+  const deleteButtonDisabled = !!(canDelete && !canDeleteEnabled);
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -188,21 +199,24 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             onClick={handleEdit}
             disabled={editButtonDisabled}
             className={`p-1.5 h-auto min-h-0 ${editButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title={editButtonDisabled ? 'Cannot edit: post has votes or edit window expired' : 'Edit'}
+            title={editButtonDisabled ? 'Cannot edit: post has votes or comments' : 'Edit'}
           >
             <Edit size={16} />
           </BrandButton>
         )}
-        {canDelete && (
+        {showDeleteButton && (
           <BrandButton
             variant="ghost"
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              setShowDeleteModal(true);
+              if (!deleteButtonDisabled) {
+                setShowDeleteModal(true);
+              }
             }}
-            className="p-1.5 h-auto min-h-0 text-error hover:text-error"
-            title="Delete"
+            disabled={deleteButtonDisabled}
+            className={`p-1.5 h-auto min-h-0 text-error hover:text-error ${deleteButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title={deleteButtonDisabled ? 'Cannot delete: post has votes or comments' : 'Delete'}
           >
             <Trash2 size={16} />
           </BrandButton>

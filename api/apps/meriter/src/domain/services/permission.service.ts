@@ -478,13 +478,14 @@ export class PermissionService {
     }
     
     if (isAuthor) {
-      // Check if publication has any votes
+      // Check if publication has any votes or comments
       const metrics = publication.getMetrics;
       const metricsSnapshot = metrics.toSnapshot();
       const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
+      const commentCount = metricsSnapshot.commentCount || 0;
       
       if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Author check: totalVotes=${totalVotes}, upvotes=${metricsSnapshot.upvotes}, downvotes=${metricsSnapshot.downvotes}`);
+        console.log(`[canEditPublication] Author check: totalVotes=${totalVotes}, upvotes=${metricsSnapshot.upvotes}, downvotes=${metricsSnapshot.downvotes}, commentCount=${commentCount}`);
       }
       
       if (totalVotes > 0) {
@@ -492,6 +493,13 @@ export class PermissionService {
           console.log(`[canEditPublication] Denied: has votes`);
         }
         return false; // Cannot edit if votes exist
+      }
+      
+      if (commentCount > 0) {
+        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+          console.log(`[canEditPublication] Denied: has comments`);
+        }
+        return false; // Cannot edit if comments exist
       }
 
       // Check time window from community settings
@@ -566,12 +574,23 @@ export class PermissionService {
     // Superadmin always can
     if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
 
-    // Author can delete
-    const authorId = publication.getAuthorId.getValue();
-    if (authorId === userId) return true;
-
     // Lead can delete publications in their community
     if (userRole === COMMUNITY_ROLE_LEAD) return true;
+
+    // Author can delete only if no votes and no comments
+    const authorId = publication.getAuthorId.getValue();
+    if (authorId === userId) {
+      // Check if publication has any votes or comments
+      const metrics = publication.getMetrics;
+      const metricsSnapshot = metrics.toSnapshot();
+      const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
+      const commentCount = metricsSnapshot.commentCount || 0;
+      
+      if (totalVotes > 0 || commentCount > 0) {
+        return false; // Cannot delete if votes or comments exist
+      }
+      return true;
+    }
 
     return false;
   }

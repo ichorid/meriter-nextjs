@@ -155,17 +155,24 @@ export function CommentCard({
   // Check if comment has votes
   const commentHasVotes = (commentUpvotes + commentDownvotes) > 0;
   
-  // Permission checks - hook checks vote count and time window for authors, allows admins always
-  const { canEdit, canEditEnabled, canDelete } = useCanEditDelete(
+  // Check if comment has replies (frozen if has votes or replies)
+  const hasReplies = (node.children?.length || 0) > 0 || (originalComment.metrics?.replyCount || 0) > 0;
+  
+  // Permission checks - hook checks vote count, reply count, and time window for authors, allows admins always
+  const { canEdit, canEditEnabled, canDelete, canDeleteEnabled } = useCanEditDelete(
     commentAuthorId, 
     communityId,
     commentHasVotes,
-    commentTimestamp
+    commentTimestamp,
+    hasReplies
   );
   
   // Show edit button if user can edit, disable if canEdit but not canEditEnabled
   const showEditButton = canEdit;
   const editButtonDisabled = !!(canEdit && !canEditEnabled);
+  
+  // Show delete button if user can delete, disable if canDelete but not canDeleteEnabled
+  const deleteButtonDisabled = !!(canDelete && !canDeleteEnabled);
   
   // Mutations
   const updateComment = useUpdateComment();
@@ -335,7 +342,7 @@ export function CommentCard({
                   }
                 }}
                 disabled={editButtonDisabled}
-                title={editButtonDisabled ? 'Cannot edit: comment has votes or edit window expired' : 'Edit comment'}
+                title={editButtonDisabled ? 'Cannot edit: comment has votes or replies' : 'Edit comment'}
               >
                 <Edit size={14} />
               </Button>
@@ -344,12 +351,15 @@ export function CommentCard({
               <Button
                 variant="ghost"
                 size="xs"
-                className="btn-sm opacity-60 hover:opacity-100 text-error hover:text-error"
+                className={`btn-sm ${deleteButtonDisabled ? 'opacity-30 cursor-not-allowed' : 'opacity-60 hover:opacity-100'} text-error hover:text-error`}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
-                  setShowDeleteModal(true);
+                  if (!deleteButtonDisabled) {
+                    setShowDeleteModal(true);
+                  }
                 }}
-                title="Delete comment"
+                disabled={deleteButtonDisabled}
+                title={deleteButtonDisabled ? 'Cannot delete: comment has votes or replies' : 'Delete comment'}
               >
                 <Trash2 size={14} />
               </Button>

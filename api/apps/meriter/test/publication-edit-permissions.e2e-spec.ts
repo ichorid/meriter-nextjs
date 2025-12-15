@@ -283,6 +283,77 @@ describe('Publication and Comment Edit Permissions', () => {
         .expect(403);
     });
 
+    it('should NOT allow author to edit own publication with comments', async () => {
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const pubDto = createTestPublication(communityId, authorId, {});
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/publications')
+        .send(pubDto)
+        .expect(201);
+
+      const publicationId = createRes.body.data.id;
+
+      // Add a comment
+      (global as any).testUserId = participantId;
+      const commentDto = createTestComment('publication', publicationId);
+      await request(app.getHttpServer())
+        .post('/api/v1/comments')
+        .send(commentDto)
+        .expect(201);
+
+      // Author should NOT be able to edit
+      (global as any).testUserId = authorId;
+      const updateDto = {
+        content: 'Updated content',
+      };
+
+      await request(app.getHttpServer())
+        .put(`/api/v1/publications/${publicationId}`)
+        .send(updateDto)
+        .expect(403);
+    });
+
+    it('should NOT allow author to edit own publication with both votes and comments', async () => {
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const pubDto = createTestPublication(communityId, authorId, {});
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/publications')
+        .send(pubDto)
+        .expect(201);
+
+      const publicationId = createRes.body.data.id;
+
+      // Add a vote
+      (global as any).testUserId = participantId;
+      await request(app.getHttpServer())
+        .post(`/api/v1/publications/${publicationId}/vote`)
+        .send({
+          amount: 1,
+          direction: 'up',
+        })
+        .expect(201);
+
+      // Add a comment
+      const commentDto = createTestComment('publication', publicationId);
+      await request(app.getHttpServer())
+        .post('/api/v1/comments')
+        .send(commentDto)
+        .expect(201);
+
+      // Author should NOT be able to edit
+      (global as any).testUserId = authorId;
+      const updateDto = {
+        content: 'Updated content',
+      };
+
+      await request(app.getHttpServer())
+        .put(`/api/v1/publications/${publicationId}`)
+        .send(updateDto)
+        .expect(403);
+    });
+
     it('should NOT allow author to edit own publication after edit window expires', async () => {
       // Create publication as author with old date (8 days ago)
       (global as any).testUserId = authorId;
@@ -443,6 +514,270 @@ describe('Publication and Comment Edit Permissions', () => {
 
       expect(updateRes.body.success).toBe(true);
       expect(updateRes.body.data.content).toBe('Updated content by superadmin');
+    });
+
+    it('should allow superadmin to edit any publication with comments', async () => {
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const pubDto = createTestPublication(communityId, authorId, {});
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/publications')
+        .send(pubDto)
+        .expect(201);
+
+      const publicationId = createRes.body.data.id;
+
+      // Add a comment
+      (global as any).testUserId = participantId;
+      const commentDto = createTestComment('publication', publicationId);
+      await request(app.getHttpServer())
+        .post('/api/v1/comments')
+        .send(commentDto)
+        .expect(201);
+
+      // Superadmin should be able to edit even with comments
+      (global as any).testUserId = superadminId;
+      const updateDto = {
+        content: 'Updated content by superadmin',
+      };
+
+      const updateRes = await request(app.getHttpServer())
+        .put(`/api/v1/publications/${publicationId}`)
+        .send(updateDto)
+        .expect(200);
+
+      expect(updateRes.body.success).toBe(true);
+      expect(updateRes.body.data.content).toBe('Updated content by superadmin');
+    });
+  });
+
+  describe('Author Delete Permissions - Publications', () => {
+    it('should allow author to delete own publication with no votes and no comments', async () => {
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const pubDto = createTestPublication(communityId, authorId, {});
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/publications')
+        .send(pubDto)
+        .expect(201);
+
+      const publicationId = createRes.body.data.id;
+
+      // Author should be able to delete
+      const deleteRes = await request(app.getHttpServer())
+        .delete(`/api/v1/publications/${publicationId}`)
+        .expect(200);
+
+      expect(deleteRes.body.success).toBe(true);
+    });
+
+    it('should NOT allow author to delete own publication with votes', async () => {
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const pubDto = createTestPublication(communityId, authorId, {});
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/publications')
+        .send(pubDto)
+        .expect(201);
+
+      const publicationId = createRes.body.data.id;
+
+      // Add a vote
+      (global as any).testUserId = participantId;
+      await request(app.getHttpServer())
+        .post(`/api/v1/publications/${publicationId}/vote`)
+        .send({
+          amount: 1,
+          direction: 'up',
+        })
+        .expect(201);
+
+      // Author should NOT be able to delete
+      (global as any).testUserId = authorId;
+      await request(app.getHttpServer())
+        .delete(`/api/v1/publications/${publicationId}`)
+        .expect(403);
+    });
+
+    it('should NOT allow author to delete own publication with comments', async () => {
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const pubDto = createTestPublication(communityId, authorId, {});
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/publications')
+        .send(pubDto)
+        .expect(201);
+
+      const publicationId = createRes.body.data.id;
+
+      // Add a comment
+      (global as any).testUserId = participantId;
+      const commentDto = createTestComment('publication', publicationId);
+      await request(app.getHttpServer())
+        .post('/api/v1/comments')
+        .send(commentDto)
+        .expect(201);
+
+      // Author should NOT be able to delete
+      (global as any).testUserId = authorId;
+      await request(app.getHttpServer())
+        .delete(`/api/v1/publications/${publicationId}`)
+        .expect(403);
+    });
+
+    it('should NOT allow author to delete own publication with both votes and comments', async () => {
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const pubDto = createTestPublication(communityId, authorId, {});
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/publications')
+        .send(pubDto)
+        .expect(201);
+
+      const publicationId = createRes.body.data.id;
+
+      // Add a vote
+      (global as any).testUserId = participantId;
+      await request(app.getHttpServer())
+        .post(`/api/v1/publications/${publicationId}/vote`)
+        .send({
+          amount: 1,
+          direction: 'up',
+        })
+        .expect(201);
+
+      // Add a comment
+      const commentDto = createTestComment('publication', publicationId);
+      await request(app.getHttpServer())
+        .post('/api/v1/comments')
+        .send(commentDto)
+        .expect(201);
+
+      // Author should NOT be able to delete
+      (global as any).testUserId = authorId;
+      await request(app.getHttpServer())
+        .delete(`/api/v1/publications/${publicationId}`)
+        .expect(403);
+    });
+  });
+
+  describe('Lead Delete Permissions - Publications', () => {
+    it('should allow lead to delete publication in their community with votes', async () => {
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const pubDto = createTestPublication(communityId, authorId, {});
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/publications')
+        .send(pubDto)
+        .expect(201);
+
+      const publicationId = createRes.body.data.id;
+
+      // Add votes
+      (global as any).testUserId = participantId;
+      await request(app.getHttpServer())
+        .post(`/api/v1/publications/${publicationId}/vote`)
+        .send({
+          amount: 1,
+          direction: 'up',
+        })
+        .expect(201);
+
+      // Lead should be able to delete even with votes
+      (global as any).testUserId = leadId;
+      const deleteRes = await request(app.getHttpServer())
+        .delete(`/api/v1/publications/${publicationId}`)
+        .expect(200);
+
+      expect(deleteRes.body.success).toBe(true);
+    });
+
+    it('should allow lead to delete publication in their community with comments', async () => {
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const pubDto = createTestPublication(communityId, authorId, {});
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/publications')
+        .send(pubDto)
+        .expect(201);
+
+      const publicationId = createRes.body.data.id;
+
+      // Add a comment
+      (global as any).testUserId = participantId;
+      const commentDto = createTestComment('publication', publicationId);
+      await request(app.getHttpServer())
+        .post('/api/v1/comments')
+        .send(commentDto)
+        .expect(201);
+
+      // Lead should be able to delete even with comments
+      (global as any).testUserId = leadId;
+      const deleteRes = await request(app.getHttpServer())
+        .delete(`/api/v1/publications/${publicationId}`)
+        .expect(200);
+
+      expect(deleteRes.body.success).toBe(true);
+    });
+  });
+
+  describe('Superadmin Delete Permissions - Publications', () => {
+    it('should allow superadmin to delete any publication with votes', async () => {
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const pubDto = createTestPublication(communityId, authorId, {});
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/publications')
+        .send(pubDto)
+        .expect(201);
+
+      const publicationId = createRes.body.data.id;
+
+      // Add votes
+      (global as any).testUserId = participantId;
+      await request(app.getHttpServer())
+        .post(`/api/v1/publications/${publicationId}/vote`)
+        .send({
+          amount: 1,
+          direction: 'up',
+        })
+        .expect(201);
+
+      // Superadmin should be able to delete even with votes
+      (global as any).testUserId = superadminId;
+      const deleteRes = await request(app.getHttpServer())
+        .delete(`/api/v1/publications/${publicationId}`)
+        .expect(200);
+
+      expect(deleteRes.body.success).toBe(true);
+    });
+
+    it('should allow superadmin to delete any publication with comments', async () => {
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const pubDto = createTestPublication(communityId, authorId, {});
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/publications')
+        .send(pubDto)
+        .expect(201);
+
+      const publicationId = createRes.body.data.id;
+
+      // Add a comment
+      (global as any).testUserId = participantId;
+      const commentDto = createTestComment('publication', publicationId);
+      await request(app.getHttpServer())
+        .post('/api/v1/comments')
+        .send(commentDto)
+        .expect(201);
+
+      // Superadmin should be able to delete even with comments
+      (global as any).testUserId = superadminId;
+      const deleteRes = await request(app.getHttpServer())
+        .delete(`/api/v1/publications/${publicationId}`)
+        .expect(200);
+
+      expect(deleteRes.body.success).toBe(true);
     });
   });
 
