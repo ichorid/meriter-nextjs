@@ -18,20 +18,6 @@ export class MeriterController {
 
   @Get('health')
   health(): string {
-    // Fail fast - validate BOT_USERNAME in production
-    const nodeEnv = this.configService.get<string>('app.env');
-    const isProduction = nodeEnv === 'production';
-    
-    if (isProduction) {
-      const botUsername = process.env.BOT_USERNAME;
-      if (!botUsername || botUsername.trim() === '') {
-        throw new HttpException(
-          'BOT_USERNAME is not configured',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-    }
-    
     return 'ok';
   }
 
