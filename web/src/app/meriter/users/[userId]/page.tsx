@@ -11,6 +11,7 @@ import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { Badge } from '@/components/atoms';
 import { Mail, MessageCircle, Globe, MapPin, GraduationCap, User as UserIcon, Users } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { MeritsAndQuotaSection } from './MeritsAndQuotaSection';
 
 export default function UserProfilePage({ params }: { params: Promise<{ userId: string }> }) {
   const t = useTranslations('profile');
@@ -20,6 +21,11 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
 
   const { data: user, isLoading, error } = useUserProfile(userId);
   const { data: userRoles = [], isLoading: rolesLoading } = useUserRoles(userId);
+
+  // Get unique community IDs from user roles
+  const communityIds = useMemo(() => {
+    return Array.from(new Set(userRoles.map(role => role.communityId)));
+  }, [userRoles]);
 
   if (isLoading) {
     return (
@@ -180,6 +186,11 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
               })}
             </div>
           </div>
+        )}
+
+        {/* Merits & Quota per Community */}
+        {!rolesLoading && communityIds.length > 0 && (
+          <MeritsAndQuotaSection userId={userId} communityIds={communityIds} userRoles={userRoles} />
         )}
 
         {/* Empty State if no profile info */}

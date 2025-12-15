@@ -4,12 +4,13 @@ import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useCommunityMembers } from '@/hooks/api/useCommunityMembers';
-import { InfoCard } from '@/components/ui/InfoCard';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { SearchInput } from '@/components/molecules/SearchInput';
 import { Loader2, Users } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
+import { MemberInfoCard } from './MemberInfoCard';
+import { useCanViewUserMerits } from '@/hooks/useCanViewUserMerits';
 
 interface MembersTabProps {
     communityId: string;
@@ -22,6 +23,7 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
     const tSearch = useTranslations('search');
     const { data: membersData, isLoading: membersLoading } = useCommunityMembers(communityId);
     const [searchQuery, setSearchQuery] = useState('');
+    const { canView: canViewMerits } = useCanViewUserMerits(communityId);
 
     const members = useMemo(() => {
         return membersData?.data || [];
@@ -90,8 +92,9 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                         : undefined;
                     
                     return (
-                        <InfoCard
+                        <MemberInfoCard
                             key={member.id}
+                            memberId={member.id}
                             title={member.displayName || member.username || tCommon('unknownUser')}
                             subtitle={member.username ? `@${member.username}` : undefined}
                             icon={
@@ -103,6 +106,8 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                                 />
                             }
                             badges={roleBadge ? [roleBadge] : undefined}
+                            communityId={communityId}
+                            canViewMerits={canViewMerits}
                             onClick={() => router.push(routes.userProfile(member.id))}
                         />
                     );
