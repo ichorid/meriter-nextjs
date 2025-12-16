@@ -15,7 +15,7 @@ export class FeatureFlagsService {
    * Returns true only if TELEGRAM_BOT_ENABLED is explicitly set to 'true'
    */
   isTelegramBotEnabled(): boolean {
-    return this.configService.get<boolean>('features.telegramBotEnabled', false);
+    return this.configService.get('features')?.telegramBotEnabled ?? false;
   }
 
   /**
@@ -23,7 +23,7 @@ export class FeatureFlagsService {
    * Returns true only if OAUTH_TELEGRAM_ENABLED is explicitly set to 'true'
    */
   isTelegramAuthEnabled(): boolean {
-    return this.configService.get<boolean>('features.telegramAuthEnabled', false);
+    return this.configService.get('features')?.telegramAuthEnabled ?? false;
   }
 }
 
