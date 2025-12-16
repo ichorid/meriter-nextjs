@@ -35,7 +35,8 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
     const { activeVotingTarget, activeWithdrawTarget, activeModal } = useUIStore();
     const hasActivePopup = activeVotingTarget !== null || activeWithdrawTarget !== null || activeModal !== null;
 
-    const handleCreatePost = () => {
+    const handleCreatePost = (e: React.MouseEvent) => {
+        e.stopPropagation();
         if (!canCreate) {
             addToast(
                 reason || t('noPermission'),
@@ -44,11 +45,13 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
             setIsOpen(false);
             return;
         }
+        // Navigate immediately, then close menu
         router.push(`/meriter/communities/${communityId}/create`);
         setIsOpen(false);
     };
 
-    const handleCreatePoll = () => {
+    const handleCreatePoll = (e: React.MouseEvent) => {
+        e.stopPropagation();
         if (!canCreate) {
             addToast(
                 reason || t('noPermission'),
@@ -57,6 +60,7 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
             setIsOpen(false);
             return;
         }
+        // Navigate immediately, then close menu
         router.push(`/meriter/communities/${communityId}/create-poll`);
         setIsOpen(false);
     };
@@ -64,18 +68,26 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
     // Close menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
+            const target = event.target as Node;
+            // Don't close if clicking inside the menu (including buttons)
+            if (menuRef.current && menuRef.current.contains(target)) {
+                return;
             }
+            // Close if clicking outside
+            setIsOpen(false);
         };
 
         if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
+            // Use mousedown with a delay to allow button clicks to process first
+            const timeoutId = setTimeout(() => {
+                document.addEventListener('mousedown', handleClickOutside);
+            }, 200);
 
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
+            return () => {
+                clearTimeout(timeoutId);
+                document.removeEventListener('mousedown', handleClickOutside);
+            };
+        }
     }, [isOpen]);
 
     // Hide FAB when any popup is active (unless the FAB menu itself is open)
@@ -92,11 +104,12 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
         <div className="fabSlot" ref={menuRef}>
             {/* Menu Items */}
             {isOpen && !permissionLoading && (
-                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-2xl shadow-2xl border border-base-content/10 overflow-hidden z-50">
+                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-2xl shadow-2xl border border-base-content/10 overflow-hidden z-50 pointer-events-auto">
                     <div className="py-2">
                         {canCreate ? (
                             <>
                                 <button
+                                    type="button"
                                     onClick={handleCreatePost}
                                     className="w-full px-4 py-3 flex items-center gap-3 hover:bg-base-content/5 transition-colors text-left"
                                 >
@@ -107,6 +120,7 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
                                 </button>
                                 {!isFutureVision && (
                                     <button
+                                        type="button"
                                         onClick={handleCreatePoll}
                                         className="w-full px-4 py-3 flex items-center gap-3 hover:bg-base-content/5 transition-colors text-left"
                                     >
@@ -120,6 +134,7 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
                         ) : (
                             <>
                                 <button
+                                    type="button"
                                     disabled
                                     className="w-full px-4 py-3 flex items-center gap-3 text-left opacity-40 cursor-not-allowed"
                                 >
@@ -130,6 +145,7 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
                                 </button>
                                 {!isFutureVision && (
                                     <button
+                                        type="button"
                                         disabled
                                         className="w-full px-4 py-3 flex items-center gap-3 text-left opacity-40 cursor-not-allowed"
                                     >

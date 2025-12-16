@@ -109,13 +109,14 @@ export function useCanCreatePost(communityId?: string): {
     if (userRole === 'participant' || userRole === 'viewer') {
       const rules = community.postingRules;
       
-      // Special handling for marathon-of-good and future-vision communities
+      // Special handling for marathon-of-good, future-vision, and support communities
       // According to MARATHON_OF_GOOD.md, participants can post in these communities
-      const isSpecialCommunity = community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision';
+      // Support communities also allow participants to post (backend allows: superadmin, lead, participant)
+      const isSpecialCommunity = community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision' || community.typeTag === 'support';
       
       if (userRole === 'participant' && isSpecialCommunity) {
-        // Participants can always post in marathon-of-good and future-vision
-        // This matches the documented behavior in MARATHON_OF_GOOD.md
+        // Participants can always post in marathon-of-good, future-vision, and support communities
+        // This matches the documented behavior and backend implementation
         return {
           canCreate: true,
           isLoading: false,
