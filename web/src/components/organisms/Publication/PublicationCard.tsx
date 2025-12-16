@@ -155,6 +155,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             meta: pubItem.meta,
             postType: (pubItem as any).postType,
             isProject: (pubItem as any).isProject,
+            permissions: (pubItem as any).permissions,
           }}
           showCommunityAvatar={showCommunityAvatar}
           className="mb-3"
