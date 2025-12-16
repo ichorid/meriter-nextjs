@@ -82,12 +82,17 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
             {filteredMembers.length > 0 ? (
                 filteredMembers.map((member) => {
                     // Determine display role: superadmin from globalRole, otherwise community role
-                    const displayRole = member.globalRole === 'superadmin' 
-                        ? 'superadmin' 
-                        : member.role;
+                    // Ensure both are strings and handle fake mode edge cases
+                    const globalRoleStr = typeof member.globalRole === 'string' ? member.globalRole : '';
+                    const communityRoleStr = typeof member.role === 'string' ? member.role : '';
                     
-                    // Get translated role label if role exists
-                    const roleBadge = displayRole 
+                    const displayRole = globalRoleStr === 'superadmin' 
+                        ? 'superadmin' 
+                        : communityRoleStr;
+                    
+                    // Get translated role label if role exists and is a valid role type
+                    const validRoles = ['superadmin', 'lead', 'participant', 'viewer'] as const;
+                    const roleBadge = displayRole && validRoles.includes(displayRole as typeof validRoles[number])
                         ? tCommon(displayRole as 'superadmin' | 'lead' | 'participant' | 'viewer')
                         : undefined;
                     

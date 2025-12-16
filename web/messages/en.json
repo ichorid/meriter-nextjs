@@ -657,7 +657,9 @@
                 "hashtags": "Hashtags",
                 "hashtagsPlaceholder": "Add hashtags",
                 "hashtagsHelp": "Add up to 10 hashtags",
-                "characters": "characters"
+                "characters": "characters",
+                "images": "Images",
+                "imagesHelp": "Upload up to 10 images for your post"
             },
             "postTypes": {
                 "basic": "Basic",

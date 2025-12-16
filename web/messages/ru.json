@@ -659,7 +659,9 @@
                 "hashtags": "Хештеги",
                 "hashtagsPlaceholder": "Добавьте хештеги",
                 "hashtagsHelp": "Добавьте до 10 хештегов",
-                "characters": "символов"
+                "characters": "символов",
+                "images": "Изображения",
+                "imagesHelp": "Загрузите до 10 изображений для вашего поста"
             },
             "postTypes": {
                 "basic": "Обычный",
