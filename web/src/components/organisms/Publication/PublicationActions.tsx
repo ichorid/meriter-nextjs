@@ -145,7 +145,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
       permissions: publication.permissions,
       canVote,
       voteDisabledReason,
-      communityTypeTag: publication.community?.typeTag,
+      communityTypeTag: community?.typeTag,
       fullPublication: Object.keys(publication)
     }, null, 2));
   }
