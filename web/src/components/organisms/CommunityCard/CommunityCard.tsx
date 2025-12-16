@@ -211,6 +211,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                         className="w-5 h-5 flex-shrink-0"
                         asDiv={true}
                         variant={isMarathonOfGood ? 'golden' : 'default'}
+                        inverted={isActive}
                       />
                     )}
                   </div>

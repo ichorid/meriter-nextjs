@@ -561,9 +561,17 @@
   transition: transform 0.2s ease-out;
 }
 
+.daily-quota-ring__number--inverted {
+  color: var(--base-100);
+}
+
 .daily-quota-ring__checkmark {
   color: var(--base-content);
   stroke-width: 3;
+}
+
+.daily-quota-ring--inverted .daily-quota-ring__checkmark {
+  color: var(--base-100);
 }
 
 /* Idle subtle pulse animation */

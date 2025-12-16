@@ -60,6 +60,7 @@ export class PermissionGuard implements CanActivate {
         permission,
         userId,
         resourceIds,
+        req,
       );
 
       if (!allowed) {
@@ -159,6 +160,7 @@ export class PermissionGuard implements CanActivate {
     permission: PermissionMetadata,
     userId: string,
     resourceIds: ResourceIds,
+    req?: any,
   ): Promise<boolean> {
     const { action, resource } = permission;
 
@@ -221,13 +223,22 @@ export class PermissionGuard implements CanActivate {
           this.logger.warn('Missing publicationId for edit:publication');
           return false;
         }
+        // Log user info for debugging
+        const user = req.user;
+        this.logger.log(
+          `[PermissionGuard] edit:publication check - userId: ${userId}, publicationId: ${resourceIds.publicationId}, user.globalRole: ${user?.globalRole}`,
+        );
         const canEdit = await this.permissionService.canEditPublication(
           userId,
           resourceIds.publicationId,
         );
         if (!canEdit) {
-          this.logger.debug(
-            `Permission denied for edit:publication - userId: ${userId}, publicationId: ${resourceIds.publicationId}`,
+          this.logger.warn(
+            `[PermissionGuard] Permission denied for edit:publication - userId: ${userId}, publicationId: ${resourceIds.publicationId}, user.globalRole: ${user?.globalRole}`,
+          );
+        } else {
+          this.logger.log(
+            `[PermissionGuard] Permission granted for edit:publication - userId: ${userId}, publicationId: ${resourceIds.publicationId}`,
           );
         }
         return canEdit;

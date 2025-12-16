@@ -37,7 +37,7 @@ export class PermissionService {
     // 1. Check global superadmin role
     const user = await this.userService.getUserById(userId);
     this.logger.log(
-      `[getUserRoleInCommunity] userId=${userId}, communityId=${communityId}, user.globalRole=${user?.globalRole}`,
+      `[getUserRoleInCommunity] userId=${userId}, communityId=${communityId}, user=${user ? 'found' : 'not found'}, user.globalRole=${user?.globalRole}, GLOBAL_ROLE_SUPERADMIN=${GLOBAL_ROLE_SUPERADMIN}`,
     );
     if (user?.globalRole === GLOBAL_ROLE_SUPERADMIN) {
       this.logger.log(`[getUserRoleInCommunity] User ${userId} is superadmin (globalRole)`);
@@ -466,6 +466,10 @@ export class PermissionService {
     const communityId = publication.getCommunityId.getValue();
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
+    this.logger.log(
+      `[canEditPublication] Check: userId=${userId}, authorId=${authorId}, userRole=${userRole}, publicationId=${publicationId}, COMMUNITY_ROLE_SUPERADMIN=${COMMUNITY_ROLE_SUPERADMIN}`,
+    );
+
     if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
       const authorIdType = typeof authorId;
       const userIdType = typeof userId;
@@ -475,6 +479,7 @@ export class PermissionService {
     }
 
     if (userRole === COMMUNITY_ROLE_SUPERADMIN) {
+      this.logger.log(`[canEditPublication] Allowed: superadmin (userRole=${userRole})`);
       if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
         console.log(`[canEditPublication] Allowed: superadmin`);
       }
@@ -697,11 +702,6 @@ export class PermissionService {
     const poll = await this.pollService.getPoll(pollId);
     if (!poll) return false;
 
-    // Author can edit their own polls
-    const authorId = poll.getAuthorId;
-    if (authorId === userId) return true;
-
-    // If not author, check if user is superadmin or lead
     const communityId = poll.getCommunityId;
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
@@ -710,6 +710,10 @@ export class PermissionService {
 
     // Lead can edit polls in their community
     if (userRole === COMMUNITY_ROLE_LEAD) return true;
+
+    // Author can edit their own polls
+    const authorId = poll.getAuthorId;
+    if (authorId === userId) return true;
 
     return false;
   }
@@ -727,12 +731,12 @@ export class PermissionService {
     // Superadmin always can
     if (userRole === COMMUNITY_ROLE_SUPERADMIN) return true;
 
+    // Lead can delete polls in their community
+    if (userRole === COMMUNITY_ROLE_LEAD) return true;
+
     // Author can delete
     const authorId = poll.getAuthorId;
     if (authorId === userId) return true;
-
-    // Lead can delete polls in their community
-    if (userRole === COMMUNITY_ROLE_LEAD) return true;
 
     return false;
   }

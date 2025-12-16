@@ -12,6 +12,7 @@ export interface DailyQuotaRingProps {
     asDiv?: boolean; // If true, render as div instead of button (for use inside other buttons)
     flashTrigger?: number; // Incrementing number that triggers flash animation when changed
     variant?: "default" | "golden";
+    inverted?: boolean; // If true, use inverted colors (for use on dark/colored backgrounds)
 }
 
 export const DailyQuotaRing: React.FC<DailyQuotaRingProps> = ({
@@ -23,6 +24,7 @@ export const DailyQuotaRing: React.FC<DailyQuotaRingProps> = ({
     asDiv = false,
     flashTrigger,
     variant = "default",
+    inverted = false,
 }) => {
     const prevRemainingRef = useRef(remaining);
     const numberRef = useRef<HTMLSpanElement>(null);
@@ -143,6 +145,7 @@ export const DailyQuotaRing: React.FC<DailyQuotaRingProps> = ({
         className: `
       daily-quota-ring
       ${showPulse ? "daily-quota-ring--pulse" : ""}
+      ${inverted ? "daily-quota-ring--inverted" : ""}
       ${className}
     `,
         style: { ...style },
@@ -200,6 +203,8 @@ export const DailyQuotaRing: React.FC<DailyQuotaRingProps> = ({
                     className={`daily-quota-ring__number ${
                         variant === "golden"
                             ? "!text-[#D97706] dark:!text-[#FBBF24]"
+                            : inverted
+                            ? "daily-quota-ring__number--inverted"
                             : ""
                     }`}
                 >
