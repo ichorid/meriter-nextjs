@@ -51,11 +51,11 @@ function deriveAppUrl(): string {
 export default (): AppConfig => ({
   app: {
     url: deriveAppUrl(),
-    port: parseInt(process.env.PORT, 10) || 8002,
+    port: parseInt(process.env.PORT || '8002', 10) || 8002,
     env: process.env.NODE_ENV || 'development',
   },
   jwt: {
-    secret: process.env.JWT_SECRET,
+    secret: process.env.JWT_SECRET || '',
   },
   bot: {
     username: process.env.BOT_USERNAME || 'meriterbot',

@@ -4,7 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { DomainModule } from '../../domain.module';
-import { Community, CommunitySchema } from '../../domain/models/community/community.schema';
+import { CommunitySchemaClass, CommunitySchema } from '../../domain/models/community/community.schema';
 
 // Conditionally import GoogleStrategy only if Google OAuth is configured
 // Google is one of many possible auth providers - it's optional
@@ -51,7 +51,7 @@ const GoogleStrategy = getGoogleStrategy();
     DomainModule,
     PassportModule,
     MongooseModule.forFeature([
-      { name: Community.name, schema: CommunitySchema }
+      { name: CommunitySchemaClass.name, schema: CommunitySchema }
     ]),
   ],
   controllers: [AuthController],

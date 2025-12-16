@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
-import { Community, CommunitySchema } from '../models/community/community.schema';
-import { UserCommunityRole, UserCommunityRoleSchema } from '../models/user-community-role/user-community-role.schema';
+import { CommunitySchemaClass, CommunitySchema } from '../models/community/community.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleSchema } from '../models/user-community-role/user-community-role.schema';
 import { QuotaResetService } from './quota-reset.service';
 import { DomainModule } from '../../domain.module';
 import { DatabaseModule } from '../../common/database/database.module';
@@ -12,8 +12,8 @@ import { DatabaseModule } from '../../common/database/database.module';
     ScheduleModule.forRoot(),
     DatabaseModule,
     MongooseModule.forFeature([
-      { name: Community.name, schema: CommunitySchema },
-      { name: UserCommunityRole.name, schema: UserCommunityRoleSchema },
+      { name: CommunitySchemaClass.name, schema: CommunitySchema },
+      { name: UserCommunityRoleSchemaClass.name, schema: UserCommunityRoleSchema },
     ]),
     DomainModule,
   ],

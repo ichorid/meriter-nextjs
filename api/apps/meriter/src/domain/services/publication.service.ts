@@ -8,9 +8,10 @@ import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { Publication } from '../aggregates/publication/publication.entity';
 import {
-  Publication as PublicationSchema,
+  PublicationSchemaClass,
   PublicationDocument,
 } from '../models/publication/publication.schema';
+import type { Publication } from '../models/publication/publication.schema';
 import {
   PublicationId,
   UserId,
@@ -40,7 +41,7 @@ export class PublicationService {
   private readonly logger = new Logger(PublicationService.name);
 
   constructor(
-    @InjectModel(PublicationSchema.name)
+    @InjectModel(PublicationSchemaClass.name)
     private publicationModel: Model<PublicationDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,

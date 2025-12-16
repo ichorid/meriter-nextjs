@@ -8,11 +8,13 @@ import {
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
-import { User, UserDocument } from '../models/user/user.schema';
+import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
+import type { User } from '../models/user/user.schema';
 import {
-  Community,
+  CommunitySchemaClass,
   CommunityDocument,
 } from '../models/community/community.schema';
+import type { Community } from '../models/community/community.schema';
 import { UserId } from '../value-objects';
 import { EventBus } from '../events/event-bus';
 import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
@@ -41,8 +43,8 @@ export class UserService implements OnModuleInit {
   private readonly logger = new Logger(UserService.name);
 
   constructor(
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(Community.name)
+    @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
+    @InjectModel(CommunitySchemaClass.name)
     private communityModel: Model<CommunityDocument>,
     @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,

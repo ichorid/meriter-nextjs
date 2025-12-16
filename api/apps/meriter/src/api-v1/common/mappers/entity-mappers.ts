@@ -65,7 +65,7 @@ export class EntityMappers {
       },
       meta: {
         author: UserFormatter.formatUserForApi(author, authorId),
-        ...(beneficiary && {
+        ...(beneficiary && beneficiaryId && {
           beneficiary: UserFormatter.formatUserForApi(
             beneficiary,
             beneficiaryId,

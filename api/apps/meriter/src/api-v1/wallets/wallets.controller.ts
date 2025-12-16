@@ -28,10 +28,12 @@ import {
 } from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import {
-  Community,
+  CommunitySchemaClass,
   CommunityDocument,
 } from '../../domain/models/community/community.schema';
-import { User, UserDocument } from '../../domain/models/user/user.schema';
+import type { Community } from '../../domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../../domain/models/user/user.schema';
+import type { User } from '../../domain/models/user/user.schema';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_VIEWER, COMMUNITY_ROLE_LEAD } from '../../domain/common/constants/roles.constants';
 
 @Controller('api/v1')
@@ -43,9 +45,9 @@ export class WalletsController {
     private readonly walletsService: WalletService,
     private readonly communityService: CommunityService,
     private readonly permissionService: PermissionService,
-    @InjectModel(Community.name)
+    @InjectModel(CommunitySchemaClass.name)
     private communityModel: Model<CommunityDocument>,
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
     @InjectConnection() private mongoose: Connection,
   ) {}
 
@@ -253,7 +255,7 @@ export class WalletsController {
     const result = await this.walletsService.getUserTransactions(
       actualUserId,
       'all',
-      pagination.limit,
+      pagination.limit || 20,
       skip,
     );
     return {
@@ -368,7 +370,7 @@ export class WalletsController {
     // Query votes, poll casts, and quota usage with amountQuota > 0 for this user in this community created after quotaStartTime
     // Use absolute value of amountQuota - both upvotes and downvotes consume quota
     const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
-      this.mongoose.db
+      (this.mongoose as any).db
         .collection('votes')
         .aggregate([
           {
@@ -392,7 +394,7 @@ export class WalletsController {
           },
         ])
         .toArray(),
-      this.mongoose.db
+      (this.mongoose as any).db
         .collection('poll_casts')
         .aggregate([
           {
@@ -416,7 +418,7 @@ export class WalletsController {
           },
         ])
         .toArray(),
-      this.mongoose.db
+      (this.mongoose as any).db
         .collection('quota_usage')
         .aggregate([
           {

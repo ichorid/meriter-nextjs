@@ -189,10 +189,12 @@ export class CommunitiesController {
         language: community.settings?.language ?? 'en',
         postCost: community.settings?.postCost ?? 1,
         pollCost: community.settings?.pollCost ?? 1,
+        editWindowDays: community.settings?.editWindowDays ?? 7,
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
       ) || {},
+      adminIds: community.adminIds || [],
       isAdmin: await this.communityService.isUserAdmin(id, req.user.id),
       needsSetup,
       createdAt: community.createdAt.toISOString(),
@@ -275,10 +277,12 @@ export class CommunitiesController {
         language: community.settings?.language ?? 'en',
         postCost: community.settings?.postCost ?? 1,
         pollCost: community.settings?.pollCost ?? 1,
+        editWindowDays: community.settings?.editWindowDays ?? 7,
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
       ) || {},
+      adminIds: community.adminIds || [],
       isAdmin: true, // Creator is admin
       needsSetup,
       createdAt: community.createdAt.toISOString(),
@@ -338,10 +342,12 @@ export class CommunitiesController {
         language: community.settings?.language ?? 'en',
         postCost: community.settings?.postCost ?? 1,
         pollCost: community.settings?.pollCost ?? 1,
+        editWindowDays: community.settings?.editWindowDays ?? 7,
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
       ) || {},
+      adminIds: community.adminIds || [],
       isAdmin: await this.communityService.isUserAdmin(id, req.user.id),
       needsSetup,
       createdAt: community.createdAt.toISOString(),

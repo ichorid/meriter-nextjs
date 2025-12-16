@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import {
-  UpdatesConductor,
+  UpdatesConductorSchemaClass,
   UpdatesConductorDocument,
 } from './model/updates-conductor.schema';
+import type { UpdatesConductor } from './model/updates-conductor.schema';
 import { Model } from 'mongoose';
 import { fillDefined } from '@common/lambdas/pure/objects';
 import { Cron, SchedulerRegistry } from '@nestjs/schedule';
@@ -13,9 +14,9 @@ import { UserSettingsService } from '../domain/services/user-settings.service';
 import { UserUpdatesService } from '../domain/services/user-updates.service';
 
 export class PushUpdateDto {
-  actorUri: string;
-  currencyOfTgChatId: string;
-  amount: number;
+  actorUri!: string;
+  currencyOfTgChatId!: string;
+  amount!: number;
   forTransactionUid?: string;
   forPublicationUid?: string;
   fromActorUri?: string;
@@ -27,7 +28,7 @@ export class UpdatesConductorsService {
   model: Model<UpdatesConductorDocument>;
 
   constructor(
-    @InjectModel(UpdatesConductor.name)
+    @InjectModel(UpdatesConductorSchemaClass.name)
     updatesConductorModel: Model<UpdatesConductorDocument>,
 
     private readonly userSettingsService: UserSettingsService,

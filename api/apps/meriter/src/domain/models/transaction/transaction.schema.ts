@@ -12,10 +12,21 @@ import { Document } from 'mongoose';
  * 
  * Fields correspond to TransactionSchema in libs/shared-types/src/schemas.ts
  */
-export type TransactionDocument = Transaction & Document;
+
+export interface Transaction {
+  id: string;
+  walletId: string;
+  type: 'vote' | 'comment' | 'poll_cast' | 'withdrawal' | 'deposit';
+  amount: number;
+  description: string;
+  referenceType?: string;
+  referenceId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 @Schema({ collection: 'transactions', timestamps: true })
-export class Transaction {
+export class TransactionSchemaClass implements Transaction {
   @Prop({ required: true, unique: true })
   id: string;
 
@@ -44,7 +55,8 @@ export class Transaction {
   updatedAt: Date;
 }
 
-export const TransactionSchema = SchemaFactory.createForClass(Transaction);
+export const TransactionSchema = SchemaFactory.createForClass(TransactionSchemaClass);
+export type TransactionDocument = TransactionSchemaClass & Document;
 
 // Add indexes for common queries
 TransactionSchema.index({ walletId: 1 });

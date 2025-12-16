@@ -1,8 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-export type NotificationDocument = Notification & Document;
-
 export type NotificationType =
   | 'vote'
   | 'beneficiary'
@@ -20,8 +18,23 @@ export interface NotificationMetadata {
   [key: string]: any;
 }
 
+export interface Notification {
+  id: string;
+  userId: string; // recipient
+  type: NotificationType;
+  source: NotificationSource;
+  sourceId?: string; // ID of the source (user/community)
+  metadata: NotificationMetadata;
+  title: string;
+  message: string;
+  read: boolean;
+  readAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 @Schema({ collection: 'notifications', timestamps: true })
-export class Notification {
+export class NotificationSchemaClass implements Notification {
   @Prop({ required: true, unique: true })
   id: string;
 
@@ -66,9 +79,9 @@ export class Notification {
   updatedAt: Date;
 }
 
-export const NotificationSchema = SchemaFactory.createForClass(Notification);
+export const NotificationSchema = SchemaFactory.createForClass(NotificationSchemaClass);
+export type NotificationDocument = NotificationSchemaClass & Document;
 
 // Compound indexes for efficient queries
 NotificationSchema.index({ userId: 1, createdAt: -1 });
 NotificationSchema.index({ userId: 1, read: 1 });
-

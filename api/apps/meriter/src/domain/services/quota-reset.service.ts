@@ -2,8 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
 import { Cron } from '@nestjs/schedule';
-import { Community, CommunityDocument } from '../models/community/community.schema';
-import { UserCommunityRole, UserCommunityRoleDocument } from '../models/user-community-role/user-community-role.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../models/community/community.schema';
+import type { Community } from '../models/community/community.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../models/user-community-role/user-community-role.schema';
+import type { UserCommunityRole } from '../models/user-community-role/user-community-role.schema';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { NotificationService, CreateNotificationDto } from './notification.service';
@@ -21,9 +23,9 @@ export class QuotaResetService {
   private readonly logger = new Logger(QuotaResetService.name);
 
   constructor(
-    @InjectModel(Community.name)
+    @InjectModel(CommunitySchemaClass.name)
     private readonly communityModel: Model<CommunityDocument>,
-    @InjectModel(UserCommunityRole.name)
+    @InjectModel(UserCommunityRoleSchemaClass.name)
     private readonly userCommunityRoleModel: Model<UserCommunityRoleDocument>,
     @InjectConnection() private readonly mongoose: Connection,
     private readonly communityService: CommunityService,

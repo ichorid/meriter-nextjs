@@ -29,7 +29,8 @@ export class PaginationHelper {
     total: number,
     options: PaginationOptions,
   ): PaginationResult<T> {
-    const { page, limit } = options;
+    const page = options.page ?? 1;
+    const limit = options.limit ?? 20;
     const hasMore = page * limit < total;
 
     return {
@@ -44,6 +45,8 @@ export class PaginationHelper {
   }
 
   static getSkip(options: PaginationOptions): number {
-    return (options.page - 1) * options.limit;
+    const page = options.page ?? 1;
+    const limit = options.limit ?? 20;
+    return (page - 1) * limit;
   }
 }

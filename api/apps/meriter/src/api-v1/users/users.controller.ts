@@ -71,7 +71,7 @@ export class UsersController {
     const total = validUserIds.length;
 
     // Apply pagination to valid user IDs
-    const paginatedUserIds = validUserIds.slice(skip, skip + pagination.limit);
+    const paginatedUserIds = validUserIds.slice(skip, skip + (pagination.limit || 20));
     
     // Enrich users with total merits and lead communities
     const enrichedUsers = await Promise.all(
@@ -298,7 +298,7 @@ export class UsersController {
     const publicationDocs = await this.mongoose.db
       .collection('publications')
       .find({ authorId: actualUserId, isProject: true })
-      .limit(pagination.limit)
+      .limit(pagination.limit || 20)
       .skip(skip)
       .sort({ createdAt: -1 })
       .toArray();

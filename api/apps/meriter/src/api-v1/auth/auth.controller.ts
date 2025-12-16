@@ -147,7 +147,8 @@ export class AuthController {
       if (error instanceof ForbiddenException) {
         throw error;
       }
-      this.logger.error('Fake authentication error', error.stack);
+      const errorStack = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Fake authentication error', errorStack);
       throw new UnauthorizedError('Fake authentication failed');
     }
   }
@@ -214,7 +215,8 @@ export class AuthController {
       if (error instanceof ForbiddenException) {
         throw error;
       }
-      this.logger.error('Fake superadmin authentication error', error.stack);
+      const errorStack = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Fake superadmin authentication error', errorStack);
       throw new UnauthorizedError('Fake superadmin authentication failed');
     }
   }
@@ -272,7 +274,8 @@ export class AuthController {
       this.logger.log(`Redirecting to Google OAuth with return_url: ${returnTo}`);
       res.redirect(googleAuthUrl);
     } catch (error) {
-      this.logger.error('Google OAuth initiation error', error.stack);
+      const errorStack = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Google OAuth initiation error', errorStack);
       throw new InternalServerError('Failed to initiate Google OAuth');
     }
   }
@@ -342,8 +345,10 @@ export class AuthController {
       this.logger.log(`Google authentication successful, isNewUser: ${result.isNewUser}, redirecting to: ${redirectUrl}`);
       res.redirect(redirectUrl);
     } catch (error) {
-      this.logger.error('Google OAuth callback error', error.stack);
-      res.redirect(this.buildWebUrl(`/meriter/login?error=${encodeURIComponent(error.message || 'Authentication failed')}`));
+      const errorStack = error instanceof Error ? error.stack : String(error);
+      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      this.logger.error('Google OAuth callback error', errorStack);
+      res.redirect(this.buildWebUrl(`/meriter/login?error=${encodeURIComponent(errorMessage)}`));
     }
   }
 
@@ -388,7 +393,8 @@ export class AuthController {
       this.logger.log(`Redirecting to Yandex OAuth with return_url: ${returnTo}`);
       res.redirect(yandexAuthUrl);
     } catch (error) {
-      this.logger.error('Yandex OAuth initiation error', error.stack);
+      const errorStack = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Yandex OAuth initiation error', errorStack);
       throw new InternalServerError('Failed to initiate Yandex OAuth');
     }
   }
@@ -439,8 +445,10 @@ export class AuthController {
       this.logger.log(`Yandex authentication successful, isNewUser: ${result.isNewUser}, redirecting to: ${redirectUrl}`);
       res.redirect(redirectUrl);
     } catch (error) {
-      this.logger.error('Yandex OAuth callback error', error.stack);
-      res.redirect(this.buildWebUrl(`/meriter/login?error=${encodeURIComponent(error.message || 'Authentication failed')}`));
+      const errorStack = error instanceof Error ? error.stack : String(error);
+      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      this.logger.error('Yandex OAuth callback error', errorStack);
+      res.redirect(this.buildWebUrl(`/meriter/login?error=${encodeURIComponent(errorMessage)}`));
     }
   }
 
@@ -451,7 +459,8 @@ export class AuthController {
       const user = await this.authService.getCurrentUser(req.user);
       res.json({ success: true, data: user });
     } catch (error) {
-      this.logger.error('Get current user error', error.stack);
+      const errorStack = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Get current user error', errorStack);
       throw new InternalServerError('Failed to get user information');
     }
   }

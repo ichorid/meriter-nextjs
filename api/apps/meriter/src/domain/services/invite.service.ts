@@ -5,7 +5,8 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Invite, InviteDocument } from '../models/invite/invite.schema';
+import { InviteSchemaClass, InviteDocument } from '../models/invite/invite.schema';
+import type { Invite } from '../models/invite/invite.schema';
 import { uid } from 'uid';
 
 /**
@@ -17,7 +18,7 @@ import { uid } from 'uid';
 @Injectable()
 export class InviteService {
   constructor(
-    @InjectModel(Invite.name)
+    @InjectModel(InviteSchemaClass.name)
     private inviteModel: Model<InviteDocument>,
   ) {}
 

@@ -2,8 +2,10 @@ import { Injectable, Logger, NotFoundException, forwardRef, Inject } from '@nest
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { Comment } from '../aggregates/comment/comment.entity';
-import { Comment as CommentSchema, CommentDocument } from '../models/comment/comment.schema';
-import { Publication as PublicationSchema, PublicationDocument } from '../models/publication/publication.schema';
+import { CommentSchemaClass, CommentDocument } from '../models/comment/comment.schema';
+import type { Comment } from '../models/comment/comment.schema';
+import { PublicationSchemaClass, PublicationDocument } from '../models/publication/publication.schema';
+import type { Publication } from '../models/publication/publication.schema';
 import { UserId } from '../value-objects';
 import { CommentAddedEvent, CommentVotedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
@@ -24,8 +26,8 @@ export class CommentService {
   private readonly logger = new Logger(CommentService.name);
 
   constructor(
-    @InjectModel(CommentSchema.name) private commentModel: Model<CommentDocument>,
-    @InjectModel(PublicationSchema.name) private publicationModel: Model<PublicationDocument>,
+    @InjectModel(CommentSchemaClass.name) private commentModel: Model<CommentDocument>,
+    @InjectModel(PublicationSchemaClass.name) private publicationModel: Model<PublicationDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
     @Inject(forwardRef(() => PublicationService)) private publicationService: PublicationService,

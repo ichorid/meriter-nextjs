@@ -38,9 +38,10 @@ import {
 } from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import {
-  Publication as PublicationSchema,
+  PublicationSchemaClass,
   PublicationDocument,
 } from '../../domain/models/publication/publication.schema';
+import type { Publication } from '../../domain/models/publication/publication.schema';
 
 @Controller('api/v1')
 @UseGuards(UserGuard, PermissionGuard)
@@ -57,7 +58,7 @@ export class VotesController {
     private readonly userUpdatesService: UserUpdatesService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     @InjectConnection() private readonly connection: Connection,
-    @InjectModel(PublicationSchema.name)
+    @InjectModel(PublicationSchemaClass.name)
     private readonly publicationModel: Model<PublicationDocument>,
   ) {}
 
@@ -127,8 +128,8 @@ export class VotesController {
         .toArray(),
     ]);
 
-    const votesTotal = votesUsed.length > 0 ? votesUsed[0].total : 0;
-    const quotaUsageTotal = quotaUsageUsed.length > 0 ? quotaUsageUsed[0].total : 0;
+    const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
+    const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
     const used = votesTotal + quotaUsageTotal;
     return Math.max(0, dailyQuota - used);
   }
@@ -717,7 +718,7 @@ export class VotesController {
 
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
-    const limit = pagination.limit;
+    const limit = pagination.limit || 20;
 
     // Get votes on this vote
     const votes = await this.voteService.getVotesOnVote(id);

@@ -1,40 +1,57 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
+export interface UpdatesConductor {
+  actorUri?: string;
+  currencyOfTgChatId?: string;
+  counterPlus: number;
+  counterMinus: number;
+  counterSum: number;
+  publicationUids?: string[];
+  commentsUids?: string[];
+  votersActorUris?: string[];
+  updateFrequencyMs?: number;
+  nextUpdateAfter: Date;
+}
+
 @Schema()
-export class UpdatesConductor {
+export class UpdatesConductorSchemaClass implements UpdatesConductor {
   @Prop()
-  actorUri: string;
+  actorUri?: string;
 
   @Prop()
-  currencyOfTgChatId: string;
+  currencyOfTgChatId?: string;
 
   @Prop({ type: Number, default: 0 })
   counterPlus: number;
+  
   @Prop({ type: Number, default: 0 })
   counterMinus: number;
+  
   @Prop({ type: Number, default: 0 })
   counterSum: number;
 
   @Prop()
-  publicationUids: string[];
+  publicationUids?: string[];
 
   @Prop()
-  commentsUids: string[];
+  commentsUids?: string[];
 
   @Prop()
-  votersActorUris: string[];
+  votersActorUris?: string[];
 
   @Prop({ type: Number })
-  updateFrequencyMs: number;
+  updateFrequencyMs?: number;
 
   @Prop({
     type: Date,
+    default: () => new Date(),
   })
   nextUpdateAfter: Date;
 }
-export type UpdatesConductorDocument = Document & UpdatesConductor;
+
+export type UpdatesConductorDocument = Document & UpdatesConductorSchemaClass;
 
 export const UpdatesConductorSchema = SchemaFactory.createForClass(
-  UpdatesConductor,
+  UpdatesConductorSchemaClass,
 );

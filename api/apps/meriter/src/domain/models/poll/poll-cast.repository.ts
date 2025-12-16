@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { PollCast, PollCastDocument } from './poll-cast.schema';
+import { PollCastSchemaClass, PollCastDocument } from './poll-cast.schema';
+import type { PollCast } from './poll-cast.schema';
 
 @Injectable()
 export class PollCastRepository {
-  constructor(@InjectModel(PollCast.name) private readonly model: Model<PollCastDocument>) {}
+  constructor(@InjectModel(PollCastSchemaClass.name) private readonly model: Model<PollCastDocument>) {}
 
   async findByPoll(pollId: string): Promise<PollCast[]> {
     return this.model.find({ pollId }).lean().exec();

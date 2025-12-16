@@ -2,7 +2,8 @@ import { Injectable, Logger, BadRequestException, NotFoundException } from '@nes
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { Poll } from '../aggregates/poll/poll.entity';
-import { Poll as PollSchema, PollDocument } from '../models/poll/poll.schema';
+import { PollSchemaClass, PollDocument } from '../models/poll/poll.schema';
+import type { Poll } from '../models/poll/poll.schema';
 import { PollCastRepository } from '../models/poll/poll-cast.repository';
 import { PollCreatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
@@ -13,7 +14,7 @@ export class PollService {
   private readonly logger = new Logger(PollService.name);
 
   constructor(
-    @InjectModel(PollSchema.name) private pollModel: Model<PollDocument>,
+    @InjectModel(PollSchemaClass.name) private pollModel: Model<PollDocument>,
     private pollCastRepository: PollCastRepository,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,

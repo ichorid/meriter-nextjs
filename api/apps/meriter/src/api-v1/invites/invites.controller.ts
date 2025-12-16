@@ -28,9 +28,10 @@ import { uid } from 'uid';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
-  User as UserModel,
+  UserSchemaClass,
   UserDocument,
 } from '../../domain/models/user/user.schema';
+import type { User as UserEntity } from '../../domain/models/user/user.schema';
 
 const CreateInviteDtoSchema = z.object({
   targetUserId: z.string().optional(),
@@ -56,7 +57,7 @@ export class InvitesController {
     private communityService: CommunityService,
     private userService: UserService,
     private walletService: WalletService,
-    @InjectModel(UserModel.name) private userModel: Model<UserDocument>,
+    @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
   ) {}
 
   /**
@@ -252,11 +253,11 @@ export class InvitesController {
               `${typeTag} community not found. User will be added to other communities but not to ${typeTag}.`,
             );
           }
-        } catch (error) {
+        } catch (error: unknown) {
           // Log error but don't fail the invite process
           this.logger.error(
-            `Failed to add user ${user.id} to ${typeTag} community: ${error.message}`,
-            error.stack,
+            `Failed to add user ${user.id} to ${typeTag} community: ${(error as Error).message}`,
+            (error as Error).stack,
           );
         }
       }
@@ -396,11 +397,11 @@ export class InvitesController {
               `${typeTag} community not found. User will be added to other communities but not to ${typeTag}.`,
             );
           }
-        } catch (error) {
+        } catch (error: unknown) {
           // Log error but don't fail the invite process
           this.logger.error(
-            `Failed to add user ${user.id} to ${typeTag} community: ${error.message}`,
-            error.stack,
+            `Failed to add user ${user.id} to ${typeTag} community: ${(error as Error).message}`,
+            (error as Error).stack,
           );
         }
       }

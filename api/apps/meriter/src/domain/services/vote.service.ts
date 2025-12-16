@@ -1,7 +1,8 @@
 import { Injectable, Logger, BadRequestException, NotFoundException, forwardRef, Inject } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
-import { Vote, VoteDocument } from '../models/vote/vote.schema';
+import { VoteSchemaClass, VoteDocument } from '../models/vote/vote.schema';
+import type { Vote } from '../models/vote/vote.schema';
 import { UserId } from '../value-objects';
 import { uid } from 'uid';
 import { PublicationService } from './publication.service';
@@ -18,7 +19,7 @@ export class VoteService {
   private readonly logger = new Logger(VoteService.name);
 
   constructor(
-    @InjectModel(Vote.name) private voteModel: Model<VoteDocument>,
+    @InjectModel(VoteSchemaClass.name) private voteModel: Model<VoteDocument>,
     @InjectConnection() private mongoose: Connection,
     @Inject(forwardRef(() => PublicationService)) private publicationService: PublicationService,
     private communityService: CommunityService,

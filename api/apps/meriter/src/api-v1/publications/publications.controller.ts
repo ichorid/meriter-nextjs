@@ -284,9 +284,9 @@ export class PublicationsController {
         .toArray(),
     ]);
 
-    const votesTotal = votesUsed.length > 0 ? votesUsed[0].total : 0;
-    const pollCastsTotal = pollCastsUsed.length > 0 ? pollCastsUsed[0].total : 0;
-    const quotaUsageTotal = quotaUsageUsed.length > 0 ? quotaUsageUsed[0].total : 0;
+    const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
+    const pollCastsTotal = pollCastsUsed.length > 0 && pollCastsUsed[0] ? (pollCastsUsed[0].total as number) : 0;
+    const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
     const used = votesTotal + pollCastsTotal + quotaUsageTotal;
 
     return Math.max(0, dailyQuota - used);

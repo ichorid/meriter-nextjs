@@ -36,7 +36,8 @@ export class CommentEnrichmentService {
     try {
       return await this.userService.getUser(authorId);
     } catch (error) {
-      this.logger.warn(`Failed to fetch author ${authorId}:`, error.message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Failed to fetch author ${authorId}:`, errorMessage);
       return null;
     }
   }
@@ -70,7 +71,8 @@ export class CommentEnrichmentService {
                 beneficiary = UserFormatter.formatUserForApi(beneficiaryUser, beneficiaryId);
               }
             } catch (error) {
-              this.logger.warn(`Failed to fetch beneficiary ${beneficiaryId}:`, error.message);
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              this.logger.warn(`Failed to fetch beneficiary ${beneficiaryId}:`, errorMessage);
             }
           }
 
@@ -92,7 +94,8 @@ export class CommentEnrichmentService {
                 beneficiary = UserFormatter.formatUserForApi(beneficiaryUser, targetAuthorId);
               }
             } catch (error) {
-              this.logger.warn(`Failed to fetch beneficiary ${targetAuthorId}:`, error.message);
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              this.logger.warn(`Failed to fetch beneficiary ${targetAuthorId}:`, errorMessage);
             }
           }
 
@@ -103,8 +106,8 @@ export class CommentEnrichmentService {
           }
         }
       }
-    } catch (error) {
-      this.logger.warn(`Failed to fetch beneficiary/community for vote:`, error.message);
+    } catch (error: unknown) {
+      this.logger.warn(`Failed to fetch beneficiary/community for vote:`, (error as Error).message);
     }
 
     return { beneficiary, community };
@@ -124,8 +127,8 @@ export class CommentEnrichmentService {
           iconUrl: communityData.settings?.iconUrl,
         };
       }
-    } catch (error) {
-      this.logger.warn(`Failed to fetch community ${communityId}:`, error.message);
+    } catch (error: unknown) {
+      this.logger.warn(`Failed to fetch community ${communityId}:`, (error as Error).message);
     }
     return null;
   }

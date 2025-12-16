@@ -12,10 +12,37 @@ import { Document } from 'mongoose';
  *
  * Fields correspond to PublicationSchema in libs/shared-types/src/schemas.ts
  */
-export type PublicationDocument = Publication & Document;
+
+export interface PublicationMetrics {
+  upvotes: number;
+  downvotes: number;
+  score: number;
+  commentCount: number;
+}
+
+export interface Publication {
+  id: string;
+  communityId: string;
+  authorId: string;
+  beneficiaryId?: string;
+  postType?: 'basic' | 'poll' | 'project';
+  isProject?: boolean;
+  title?: string;
+  description?: string;
+  content: string;
+  type: 'text' | 'image' | 'video';
+  authorDisplay?: string;
+  hashtags: string[];
+  metrics: PublicationMetrics;
+  imageUrl?: string; // Legacy single image support
+  images?: string[]; // Array of image URLs for multi-image support
+  videoUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 @Schema({ collection: 'publications', timestamps: true })
-export class Publication {
+export class PublicationSchemaClass implements Publication {
   @Prop({ required: true, unique: true })
   id: string;
 
@@ -48,7 +75,7 @@ export class Publication {
   content: string;
 
   @Prop({ required: true, enum: ['text', 'image', 'video'] })
-  type: string; // Медиа-тип (остается для обратной совместимости)
+  type: 'text' | 'image' | 'video'; // Медиа-тип (остается для обратной совместимости)
 
   // НОВОЕ: Автор поста (отображаемое имя, может отличаться от authorId)
   @Prop()
@@ -71,12 +98,7 @@ export class Publication {
       commentCount: 0,
     },
   })
-  metrics: {
-    upvotes: number;
-    downvotes: number;
-    score: number;
-    commentCount: number;
-  };
+  metrics: PublicationMetrics;
 
   @Prop()
   imageUrl?: string; // Legacy single image support
@@ -94,7 +116,8 @@ export class Publication {
   updatedAt: Date;
 }
 
-export const PublicationSchema = SchemaFactory.createForClass(Publication);
+export const PublicationSchema = SchemaFactory.createForClass(PublicationSchemaClass);
+export type PublicationDocument = PublicationSchemaClass & Document;
 
 // Add indexes for common queries
 PublicationSchema.index({ communityId: 1, createdAt: -1 });

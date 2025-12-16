@@ -295,6 +295,7 @@ export const PollSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   expiresAt: z.string().datetime(),
   isActive: z.boolean().default(true),
   metrics: PollMetricsSchema,
+  permissions: ResourcePermissionsSchema.optional(),
 });
 
 export const PollCastSchema = IdentifiableSchema.merge(TimestampsSchema)

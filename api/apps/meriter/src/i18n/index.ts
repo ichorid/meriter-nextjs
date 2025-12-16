@@ -17,13 +17,14 @@ export function t(key: TranslationKeys, lang: Lang = 'en', params?: Record<strin
 
 // Simple community language resolver with in-memory cache
 import { InjectModel } from '@nestjs/mongoose';
-import { Community, CommunityDocument } from '../domain/models/community/community.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../domain/models/community/community.schema';
+import type { Community } from '../domain/models/community/community.schema';
 import { Model } from 'mongoose';
 
 const communityLangCache = new Map<string, Lang>();
 
 export class CommunityLanguageResolver {
-  constructor(@InjectModel(Community.name) private communityModel: Model<CommunityDocument>) { }
+  constructor(@InjectModel(CommunitySchemaClass.name) private communityModel: Model<CommunityDocument>) { }
 
   async getLanguageByChatId(chatId: string): Promise<Lang> {
     // Always return default language since community lookup by chatId is no longer supported

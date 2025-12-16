@@ -2,7 +2,8 @@ import { Injectable, Logger, BadRequestException, NotFoundException } from '@nes
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { Wallet } from '../aggregates/wallet/wallet.entity';
-import { Wallet as WalletSchema, WalletDocument } from '../models/wallet/wallet.schema';
+import { WalletSchemaClass, WalletDocument } from '../models/wallet/wallet.schema';
+import type { Wallet } from '../models/wallet/wallet.schema';
 import { Transaction } from '../models/transaction/transaction.schema';
 import { UserId, CommunityId, WalletId } from '../value-objects';
 import { WalletBalanceChangedEvent } from '../events';
@@ -15,7 +16,7 @@ export class WalletService {
   private readonly logger = new Logger(WalletService.name);
 
   constructor(
-    @InjectModel(WalletSchema.name) private walletModel: Model<WalletDocument>,
+    @InjectModel(WalletSchemaClass.name) private walletModel: Model<WalletDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
   ) {}

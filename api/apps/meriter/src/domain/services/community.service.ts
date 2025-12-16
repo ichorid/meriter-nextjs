@@ -10,10 +10,12 @@ import {
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
 import {
-  Community,
+  CommunitySchemaClass,
   CommunityDocument,
 } from '../models/community/community.schema';
-import { User, UserDocument } from '../models/user/user.schema';
+import type { Community, CommunityVisibilityRules } from '../models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
+import type { User } from '../models/user/user.schema';
 import { CommunityId, UserId } from '../value-objects';
 import { EventBus } from '../events/event-bus';
 import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
@@ -37,6 +39,7 @@ export interface CreateCommunityDto {
     | 'volunteer'
     | 'corporate'
     | 'custom';
+  visibilityRules?: CommunityVisibilityRules;
   settings?: {
     iconUrl?: string;
     currencyNames?: {
@@ -73,9 +76,9 @@ export class CommunityService {
   private readonly logger = new Logger(CommunityService.name);
 
   constructor(
-    @InjectModel(Community.name)
+    @InjectModel(CommunitySchemaClass.name)
     private communityModel: Model<CommunityDocument>,
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
     @Inject(forwardRef(() => UserService))

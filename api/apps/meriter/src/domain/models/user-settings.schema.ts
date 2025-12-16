@@ -1,16 +1,22 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-export type UserSettingsDocument = UserSettings & Document;
+export interface UserSettings {
+  userId: string;
+  updatesFrequency: 'immediate' | 'hourly' | 'daily' | 'never';
+  lastHourlyDeliveredAt?: Date;
+  lastDailyDeliveredAt?: Date;
+  notificationsReadUpToId?: string;
+}
 
 @Schema({ collection: 'user_settings', timestamps: true })
-export class UserSettings {
+export class UserSettingsSchemaClass implements UserSettings {
   @Prop({ required: true, unique: true })
   userId: string;
 
   // immediate | hourly | daily | never
   @Prop({ required: true, default: 'daily' })
-  updatesFrequency: string;
+  updatesFrequency: 'immediate' | 'hourly' | 'daily' | 'never';
 
   // Track last delivered periods for batching
   @Prop()
@@ -24,6 +30,5 @@ export class UserSettings {
   notificationsReadUpToId?: string;
 }
 
-export const UserSettingsSchema = SchemaFactory.createForClass(UserSettings);
-
-
+export const UserSettingsSchema = SchemaFactory.createForClass(UserSettingsSchemaClass);
+export type UserSettingsDocument = UserSettingsSchemaClass & Document;

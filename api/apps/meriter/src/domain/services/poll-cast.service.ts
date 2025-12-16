@@ -2,8 +2,9 @@ import { Injectable, Logger, BadRequestException, NotFoundException } from '@nes
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { PollCastRepository } from '../models/poll/poll-cast.repository';
-import { Poll, PollDocument } from '../models/poll/poll.schema';
-import { PollCast } from '../models/poll/poll-cast.schema';
+import { PollSchemaClass, PollDocument } from '../models/poll/poll.schema';
+import type { Poll } from '../models/poll/poll.schema';
+import type { PollCast } from '../models/poll/poll-cast.schema';
 import { PollCastedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { uid } from 'uid';
@@ -14,7 +15,7 @@ export class PollCastService {
 
   constructor(
     private pollCastRepository: PollCastRepository,
-    @InjectModel(Poll.name) private pollModel: Model<PollDocument>,
+    @InjectModel(PollSchemaClass.name) private pollModel: Model<PollDocument>,
     private eventBus: EventBus,
   ) {}
 

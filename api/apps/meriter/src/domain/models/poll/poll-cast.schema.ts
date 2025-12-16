@@ -12,10 +12,20 @@ import { Document } from 'mongoose';
  * 
  * Fields correspond to PollCastSchema in libs/shared-types/src/schemas.ts
  */
-export type PollCastDocument = PollCast & Document;
+
+export interface PollCast {
+  id: string;
+  pollId: string;
+  userId: string;
+  optionId: string; // Changed from optionIndex to optionId
+  amountQuota: number;
+  amountWallet: number;
+  communityId: string; // Added for consistency
+  createdAt: Date;
+}
 
 @Schema({ collection: 'poll_casts', timestamps: true })
-export class PollCast {
+export class PollCastSchemaClass implements PollCast {
   @Prop({ required: true, unique: true })
   id: string;
 
@@ -41,7 +51,8 @@ export class PollCast {
   createdAt: Date;
 }
 
-export const PollCastSchema = SchemaFactory.createForClass(PollCast);
+export const PollCastSchema = SchemaFactory.createForClass(PollCastSchemaClass);
+export type PollCastDocument = PollCastSchemaClass & Document;
 
 // Add indexes for common queries
 PollCastSchema.index({ pollId: 1, createdAt: -1 });

@@ -16,10 +16,50 @@ import { Document } from 'mongoose';
  * - communityTags, communityMemberships
  * - createdAt, updatedAt (handled by timestamps: true)
  */
-export type UserDocument = User & Document;
+
+export interface UserProfileLocation {
+  region: string;
+  city: string;
+}
+
+export interface UserProfileContacts {
+  email: string;
+  messenger: string;
+}
+
+export interface UserProfile {
+  bio?: string;
+  location?: UserProfileLocation;
+  website?: string;
+  isVerified?: boolean;
+  about?: string;
+  contacts?: UserProfileContacts;
+  educationalInstitution?: string;
+}
+
+export interface User {
+  id: string;
+  authProvider: string;
+  authId: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  displayName: string;
+  avatarUrl?: string;
+  profile: UserProfile;
+  globalRole?: 'superadmin';
+  meritStats?: {
+    [communityId: string]: number;
+  };
+  inviteCode?: string;
+  communityTags: string[];
+  communityMemberships: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 @Schema({ collection: 'users', timestamps: true })
-export class User {
+export class UserSchemaClass implements User {
   @Prop({ required: true, unique: true })
   id: string;
 
@@ -62,21 +102,7 @@ export class User {
     },
     default: {},
   })
-  profile: {
-    bio?: string;
-    location?: {
-      region: string;
-      city: string;
-    };
-    website?: string;
-    isVerified?: boolean;
-    about?: string;
-    contacts?: {
-      email: string;
-      messenger: string;
-    };
-    educationalInstitution?: string;
-  };
+  profile: UserProfile;
 
   @Prop({ enum: ['superadmin'] })
   globalRole?: 'superadmin';
@@ -102,7 +128,8 @@ export class User {
   updatedAt: Date;
 }
 
-export const UserSchema = SchemaFactory.createForClass(User);
+export const UserSchema = SchemaFactory.createForClass(UserSchemaClass);
+export type UserDocument = UserSchemaClass & Document;
 
 // Add indexes for common queries
 // Note: authProvider + authId index is created below

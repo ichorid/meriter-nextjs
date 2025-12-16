@@ -12,15 +12,28 @@ import { Document } from 'mongoose';
  * 
  * Fields correspond to VoteSchema in libs/shared-types/src/schemas.ts
  */
-export type VoteDocument = Vote & Document;
+
+export interface Vote {
+  id: string;
+  targetType: 'publication' | 'vote';
+  targetId: string;
+  userId: string;
+  amountQuota: number;
+  amountWallet: number;
+  direction: 'up' | 'down'; // Explicit vote direction: upvote or downvote
+  comment: string; // Required comment text attached to vote
+  images?: string[]; // Array of image URLs for vote attachments
+  communityId: string; // Made required for consistency
+  createdAt: Date;
+}
 
 @Schema({ collection: 'votes', timestamps: true })
-export class Vote {
+export class VoteSchemaClass implements Vote {
   @Prop({ required: true, unique: true })
   id: string;
 
   @Prop({ required: true, enum: ['publication', 'vote'] })
-  targetType: string;
+  targetType: 'publication' | 'vote';
 
   @Prop({ required: true })
   targetId: string;
@@ -50,7 +63,8 @@ export class Vote {
   createdAt: Date;
 }
 
-export const VoteSchema = SchemaFactory.createForClass(Vote);
+export const VoteSchema = SchemaFactory.createForClass(VoteSchemaClass);
+export type VoteDocument = VoteSchemaClass & Document;
 
 // Add indexes for common queries
 VoteSchema.index({ targetType: 1, targetId: 1 });
