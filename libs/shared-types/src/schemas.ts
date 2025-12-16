@@ -668,6 +668,7 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   hashtags: z.array(z.string()).default([]),
   metrics: PublicationMetricsSchema,
   meta: FeedItemMetaSchema,
+  permissions: ResourcePermissionsSchema.optional(),
 });
 
 export const PollFeedItemSchema = IdentifiableSchema.merge(

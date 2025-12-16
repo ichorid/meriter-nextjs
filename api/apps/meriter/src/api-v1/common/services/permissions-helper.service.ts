@@ -8,7 +8,7 @@ import { UserService } from '../../../domain/services/user.service';
 import { VoteService } from '../../../domain/services/vote.service';
 import { VoteCommentResolverService } from './vote-comment-resolver.service';
 import { ResourcePermissions } from '../interfaces/resource-permissions.interface';
-import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_VIEWER } from '../../../domain/common/constants/roles.constants';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_PARTICIPANT, COMMUNITY_ROLE_VIEWER } from '../../../domain/common/constants/roles.constants';
 
 /**
  * Service to calculate and batch-calculate permissions for resources
@@ -411,8 +411,13 @@ export class PermissionsHelperService {
     }
 
     // Check role restrictions
+    // Special handling for support communities: participants can always vote
+    // This matches the logic in permission.service.ts canVote method
+    const isSupportCommunityParticipant = community.typeTag === 'support' && userRole === COMMUNITY_ROLE_PARTICIPANT;
+    
     if (userRole && community.votingRules) {
-      if (!community.votingRules.allowedRoles.includes(userRole)) {
+      // Skip allowedRoles check for support community participants
+      if (!isSupportCommunityParticipant && !community.votingRules.allowedRoles.includes(userRole)) {
         return 'voteDisabled.roleNotAllowed';
       }
 

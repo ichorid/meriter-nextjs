@@ -187,6 +187,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             communityId: pubItem.communityId,
             slug: pubItem.slug,
             content: pubItem.content,
+            permissions: (pubItem as any).permissions,
             type: pubItem.type,
             metrics: pubItem.metrics,
             meta: transformedMeta,

@@ -20,6 +20,7 @@ import { WalletService } from '../../domain/services/wallet.service';
 import { UserCommunityRoleService } from '../../domain/services/user-community-role.service';
 import { PermissionService } from '../../domain/services/permission.service';
 import { QuotaResetService } from '../../domain/services/quota-reset.service';
+import { PermissionsHelperService } from '../common/services/permissions-helper.service';
 import { UserGuard } from '../../user.guard';
 import { User } from '../../decorators/user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
@@ -60,6 +61,7 @@ export class CommunitiesController {
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly permissionService: PermissionService,
     private readonly quotaResetService: QuotaResetService,
+    private readonly permissionsHelperService: PermissionsHelperService,
   ) {}
 
   /**
@@ -727,6 +729,45 @@ export class CommunitiesController {
       sort,
       tag,
     });
+
+    // Calculate permissions for all publications in the feed
+    const publicationIds = result.data
+      .filter((item) => item.type === 'publication')
+      .map((item) => item.id);
+
+    this.logger.log(`[getCommunityFeed] Found ${publicationIds.length} publications in feed, userId=${req.user?.id}`);
+
+    if (publicationIds.length > 0) {
+      const permissionsMap = await this.permissionsHelperService.batchCalculatePublicationPermissions(
+        req.user?.id,
+        publicationIds,
+      );
+
+      this.logger.log(`[getCommunityFeed] Calculated permissions for ${permissionsMap.size} publications`);
+
+      // Add permissions to each publication in the feed
+      result.data.forEach((item) => {
+        if (item.type === 'publication') {
+          const permissions = permissionsMap.get(item.id);
+          this.logger.log(`[getCommunityFeed] Adding permissions to publication ${item.id}: canVote=${permissions?.canVote}, permissions=${JSON.stringify(permissions)}`);
+          // Explicitly set permissions property
+          (item as any).permissions = permissions;
+          this.logger.log(`[getCommunityFeed] After setting: item.permissions=${JSON.stringify((item as any).permissions)}`);
+        }
+      });
+      
+      // Verify permissions were added
+      const publicationsWithPermissions = result.data.filter((item) => item.type === 'publication' && (item as any).permissions);
+      this.logger.log(`[getCommunityFeed] Final check: ${publicationsWithPermissions.length} publications have permissions attached`);
+    }
+
+    // Final verification before returning
+    const finalCheck = result.data.filter((item) => item.type === 'publication').map((item) => ({
+      id: item.id,
+      hasPermissions: !!(item as any).permissions,
+      canVote: (item as any).permissions?.canVote
+    }));
+    this.logger.log(`[getCommunityFeed] Final response check: ${JSON.stringify(finalCheck)}`);
 
     return {
       success: true,

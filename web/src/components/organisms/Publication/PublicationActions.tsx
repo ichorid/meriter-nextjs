@@ -132,6 +132,23 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   // Use API permissions instead of calculating on frontend
   const canVote = publication.permissions?.canVote ?? false;
   const voteDisabledReason = publication.permissions?.voteDisabledReason;
+  
+  // Debug logging
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[PublicationActions] DEBUG', JSON.stringify({
+      publicationId: publication.id,
+      authorId,
+      myId,
+      isAuthor,
+      communityId,
+      hasPermissions: !!publication.permissions,
+      permissions: publication.permissions,
+      canVote,
+      voteDisabledReason,
+      communityTypeTag: publication.community?.typeTag,
+      fullPublication: Object.keys(publication)
+    }, null, 2));
+  }
 
   const handleVoteClick = () => {
     let mode: 'standard' | 'wallet-only' | 'quota-only' = 'standard';

@@ -35,6 +35,9 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
     
     const handleVoteClick = (e: React.MouseEvent) => {
         e.stopPropagation();
+        if (!canVote) {
+            return;
+        }
         hapticImpact('soft');
         onVoteClick();
     };

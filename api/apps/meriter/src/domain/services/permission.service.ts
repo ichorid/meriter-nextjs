@@ -242,6 +242,8 @@ export class PermissionService {
       return false;
     }
 
+    this.logger.log(`[canVote] Community: id=${communityId}, typeTag=${community.typeTag}, name=${community.name}`);
+
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
     this.logger.log(`[canVote] User role in community: ${userRole}`);
 
@@ -281,10 +283,19 @@ export class PermissionService {
       return true;
     }
 
-    // Check if role is allowed
-    if (!userRole || !rules.allowedRoles.includes(userRole)) {
-      this.logger.log(`[canVote] DENIED: Role ${userRole} not in allowedRoles [${rules.allowedRoles.join(', ')}]`);
-      return false;
+    // Special handling for support communities: participants can always vote
+    // This matches the posting rules behavior where participants can post in support communities
+    const isSupportCommunityParticipant = community.typeTag === 'support' && userRole === COMMUNITY_ROLE_PARTICIPANT;
+    this.logger.log(`[canVote] Support community check: typeTag="${community.typeTag}", userRole="${userRole}", COMMUNITY_ROLE_PARTICIPANT="${COMMUNITY_ROLE_PARTICIPANT}", isSupportCommunityParticipant=${isSupportCommunityParticipant}`);
+    
+    // Check if role is allowed (skip for support community participants)
+    if (!isSupportCommunityParticipant) {
+      if (!userRole || !rules.allowedRoles.includes(userRole)) {
+        this.logger.log(`[canVote] DENIED: Role ${userRole} not in allowedRoles [${rules.allowedRoles.join(', ')}]`);
+        return false;
+      }
+    } else {
+      this.logger.log(`[canVote] ALLOWED: Participant voting in support community (special handling, skipping allowedRoles check)`);
     }
 
     // Check if voting for own post is allowed
@@ -310,7 +321,8 @@ export class PermissionService {
     }
 
     // For participants: Check team-based restrictions
-    if (userRole === COMMUNITY_ROLE_PARTICIPANT) {
+    // Skip team restrictions for support communities (participants can vote freely)
+    if (userRole === COMMUNITY_ROLE_PARTICIPANT && community.typeTag !== 'support') {
       // Check if voter and author are in the same team-type community
       const voterRoles = await this.userCommunityRoleService.getUserRoles(userId);
       const authorRoles = await this.userCommunityRoleService.getUserRoles(authorId);

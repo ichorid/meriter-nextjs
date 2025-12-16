@@ -293,7 +293,14 @@ export class VotesController {
     community: any,
     voterId: string,
   ): Promise<void> {
-    const beneficiaryId = publication.getEffectiveBeneficiary()?.getValue();
+    try {
+      this.logger.log(`[awardMeritsToBeneficiary] START: publicationId=${publication?.getId?.getValue()}, amount=${amount}, voterId=${voterId}`);
+      const effectiveBeneficiary = publication.getEffectiveBeneficiary();
+      if (!effectiveBeneficiary) {
+        this.logger.warn(`[awardMeritsToBeneficiary] No effective beneficiary found for publication ${publication?.getId?.getValue()}`);
+        return;
+      }
+      const beneficiaryId = effectiveBeneficiary.getValue();
     if (!beneficiaryId) {
       return;
     }
@@ -352,17 +359,23 @@ export class VotesController {
       return;
     }
 
-    // For other communities (not marathon-of-good, not future-vision), use normal merit awarding
-    // This will credit the original community wallet
-    await this.creditUserWithConversion(
-      beneficiaryId,
-      communityId,
-      amount,
-      community,
-      'publication_vote',
-      publication.getId.getValue(),
-      `Merits from vote on publication ${publication.getId.getValue()}`,
-    );
+      // For other communities (not marathon-of-good, not future-vision), use normal merit awarding
+      // This will credit the original community wallet
+      this.logger.log(`[awardMeritsToBeneficiary] Crediting user with conversion: beneficiaryId=${beneficiaryId}, amount=${amount}`);
+      await this.creditUserWithConversion(
+        beneficiaryId,
+        communityId,
+        amount,
+        community,
+        'publication_vote',
+        publication.getId.getValue(),
+        `Merits from vote on publication ${publication.getId.getValue()}`,
+      );
+      this.logger.log(`[awardMeritsToBeneficiary] SUCCESS: Awarded ${amount} merits to ${beneficiaryId}`);
+    } catch (error) {
+      this.logger.error(`[awardMeritsToBeneficiary] ERROR: ${error?.message || 'Unknown error'}`, error?.stack);
+      throw error; // Re-throw to be caught by caller
+    }
   }
 
   /**
@@ -413,8 +426,11 @@ export class VotesController {
 
     // Marathon of Good: Block wallet voting on publications/comments (quota only)
     // Future Vision: Block quota voting on publications/comments (wallet only)
+    // Support communities: Allow both quota and wallet voting (like regular communities)
     // Polls are handled separately and always use wallet
     if (targetType && (targetType === 'publication' || targetType === 'vote')) {
+      const isSupportCommunity = community?.typeTag === 'support';
+      
       if (isMarathonOfGood && walletAmount > 0) {
         throw new BadRequestException(
           'Marathon of Good only allows quota voting on posts and comments. Please use daily quota to vote.',
@@ -425,8 +441,9 @@ export class VotesController {
           'Future Vision only allows wallet voting on posts and comments. Please use wallet merits to vote.',
         );
       }
-      // For regular groups (non-special), reject wallet voting
-      if (!isSpecialGroup && walletAmount > 0) {
+      // For regular groups (non-special, non-support), reject wallet voting
+      // Support communities are treated like regular communities for voting purposes
+      if (!isSpecialGroup && !isSupportCommunity && walletAmount > 0) {
         throw new BadRequestException(
           'Voting with permanent wallet merits is only allowed in special groups (Marathon of Good and Future Vision). Please use daily quota to vote on posts and comments.',
         );
@@ -514,14 +531,17 @@ export class VotesController {
     }
 
     // Validate comment is provided
+    // Note: Comment is optional in the schema but required by business logic
     const comment = (createDto as any).comment?.trim() || '';
     const commentRequiredMessage =
       targetType === 'publication'
         ? 'Comment is required'
         : 'Comment is required when voting on a vote';
     if (!comment) {
+      this.logger.warn(`[handleVoteCreation] Missing comment: targetType=${targetType}, targetId=${targetId}, userId=${req.user?.id}, dto=${JSON.stringify(createDto)}`);
       throw new BadRequestException(commentRequiredMessage);
     }
+    this.logger.log(`[handleVoteCreation] Comment validated: length=${comment.length}, targetType=${targetType}, targetId=${targetId}`);
     
     // Get images from DTO
     const images = (createDto as any).images || [];
@@ -563,6 +583,7 @@ export class VotesController {
     @Body() createDto: VoteWithCommentDto,
     @Req() req: any,
   ) {
+    this.logger.log(`[votePublication] START: publicationId=${id}, userId=${req.user?.id}, dto=${JSON.stringify(createDto)}`);
     // Get publication document directly from DB to check postType and isProject
     const publicationDoc = await this.publicationModel.findOne({ id }).lean();
     if (!publicationDoc) {
@@ -585,19 +606,34 @@ export class VotesController {
       throw new NotFoundError('Publication', id);
     }
 
-    const { vote, communityId, direction, absoluteAmount, quotaAmount, walletAmount } =
-      await this.handleVoteCreation('publication', id, createDto, req, {
-        sendNotification: true,
-        updatePublicationMetrics: true,
-      });
+    let vote, communityId, direction, absoluteAmount, quotaAmount, walletAmount;
+    try {
+      this.logger.log(`[votePublication] Calling handleVoteCreation for publicationId=${id}, userId=${req.user?.id}`);
+      ({ vote, communityId, direction, absoluteAmount, quotaAmount, walletAmount } =
+        await this.handleVoteCreation('publication', id, createDto, req, {
+          sendNotification: true,
+          updatePublicationMetrics: true,
+        }));
+      this.logger.log(`[votePublication] handleVoteCreation succeeded: voteId=${vote?.id}, direction=${direction}, absoluteAmount=${absoluteAmount}, quotaAmount=${quotaAmount}, walletAmount=${walletAmount}`);
+    } catch (error) {
+      this.logger.error(`[votePublication] handleVoteCreation failed: ${error?.message || 'Unknown error'}`, error?.stack);
+      throw error;
+    }
 
     // Update publication metrics to reflect the vote immediately
-    await this.publicationService.voteOnPublication(
-      id,
-      req.user.id,
-      absoluteAmount,
-      direction,
-    );
+    try {
+      this.logger.log(`[votePublication] Calling publicationService.voteOnPublication for publicationId=${id}`);
+      await this.publicationService.voteOnPublication(
+        id,
+        req.user.id,
+        absoluteAmount,
+        direction,
+      );
+      this.logger.log(`[votePublication] publicationService.voteOnPublication succeeded`);
+    } catch (error) {
+      this.logger.error(`[votePublication] publicationService.voteOnPublication failed: ${error.message}`, error.stack);
+      throw error;
+    }
 
     // Award merits to beneficiary if this is an upvote
     // According to concept: "All merits collected by posts with good deeds go to the wallet of the Team Representative who published the post"
@@ -605,45 +641,59 @@ export class VotesController {
     // CRITICAL: For marathon-of-good, quota votes also award merits to Future Vision wallet
     // For regular communities, quota votes also award merits to the community wallet
     if (direction === 'up') {
-      // Get community for currency info
-      const community = await this.communityService.getCommunity(communityId);
-      if (community) {
-        // For marathon-of-good, award merits for quota votes (they go to Future Vision wallet)
-        if (community.typeTag === 'marathon-of-good' && quotaAmount > 0) {
-          await this.awardMeritsToBeneficiary(
-            publication,
-            communityId,
-            quotaAmount,
-            community,
-            req.user.id, // Pass voter ID to check for self-votes
-          );
+      try {
+        this.logger.log(`[votePublication] Awarding merits: direction=${direction}, quotaAmount=${quotaAmount}, walletAmount=${walletAmount}, communityId=${communityId}`);
+        // Get community for currency info
+        const community = await this.communityService.getCommunity(communityId);
+        if (community) {
+          this.logger.log(`[votePublication] Community found: typeTag=${community.typeTag}, name=${community.name}`);
+          // For marathon-of-good, award merits for quota votes (they go to Future Vision wallet)
+          if (community.typeTag === 'marathon-of-good' && quotaAmount > 0) {
+            this.logger.log(`[votePublication] Awarding merits for marathon-of-good: quotaAmount=${quotaAmount}`);
+            await this.awardMeritsToBeneficiary(
+              publication,
+              communityId,
+              quotaAmount,
+              community,
+              req.user.id, // Pass voter ID to check for self-votes
+            );
+          }
+          // For regular communities (not marathon-of-good, not future-vision), award merits for quota votes
+          if (community.typeTag !== 'marathon-of-good' && community.typeTag !== 'future-vision' && quotaAmount > 0) {
+            this.logger.log(`[votePublication] Awarding merits for regular community: quotaAmount=${quotaAmount}`);
+            await this.awardMeritsToBeneficiary(
+              publication,
+              communityId,
+              quotaAmount,
+              community,
+              req.user.id, // Pass voter ID to check for self-votes
+            );
+          }
+          // For all communities, award merits for wallet votes
+          if (walletAmount > 0) {
+            this.logger.log(`[votePublication] Awarding merits for wallet vote: walletAmount=${walletAmount}`);
+            await this.awardMeritsToBeneficiary(
+              publication,
+              communityId,
+              walletAmount,
+              community,
+              req.user.id, // Pass voter ID to check for self-votes
+            );
+          }
+        } else {
+          this.logger.warn(`[votePublication] Community not found: communityId=${communityId}`);
         }
-        // For regular communities (not marathon-of-good, not future-vision), award merits for quota votes
-        if (community.typeTag !== 'marathon-of-good' && community.typeTag !== 'future-vision' && quotaAmount > 0) {
-          await this.awardMeritsToBeneficiary(
-            publication,
-            communityId,
-            quotaAmount,
-            community,
-            req.user.id, // Pass voter ID to check for self-votes
-          );
-        }
-        // For all communities, award merits for wallet votes
-        if (walletAmount > 0) {
-          await this.awardMeritsToBeneficiary(
-            publication,
-            communityId,
-            walletAmount,
-            community,
-            req.user.id, // Pass voter ID to check for self-votes
-          );
-        }
+      } catch (error) {
+        this.logger.error(`[votePublication] Error awarding merits: ${error?.message || 'Unknown error'}`, error?.stack);
+        // Don't throw - merit awarding is not critical for vote creation
+        // The vote has already been created successfully
       }
     }
 
     // Immediate notification if enabled for beneficiary
     try {
-      const beneficiaryId = publication.getEffectiveBeneficiary()?.getValue();
+      const effectiveBeneficiary = publication.getEffectiveBeneficiary();
+      const beneficiaryId = effectiveBeneficiary ? effectiveBeneficiary.getValue() : null;
       if (beneficiaryId) {
         const settings =
           await this.userSettingsService.getOrCreate(beneficiaryId);
