@@ -12,6 +12,7 @@ import { PublicationSchemaClass, PublicationDocument } from '../src/domain/model
 import { CommentSchemaClass, CommentDocument } from '../src/domain/models/comment/comment.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { UserGuard } from '../src/user.guard';
+import { ApiResponseInterceptor } from '../src/common/interceptors/api-response.interceptor';
 import { uid } from 'uid';
 
 class AllowAllGuard implements CanActivate {
@@ -66,6 +67,7 @@ describe('Publication and Comment Edit Permissions', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalInterceptors(new ApiResponseInterceptor());
     await app.init();
 
     // Wait for onModuleInit

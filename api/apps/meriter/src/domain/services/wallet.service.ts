@@ -4,7 +4,7 @@ import { Connection, Model } from 'mongoose';
 import { Wallet } from '../aggregates/wallet/wallet.entity';
 import { WalletSchemaClass, WalletDocument } from '../models/wallet/wallet.schema';
 import type { Wallet as WalletSchema } from '../models/wallet/wallet.schema';
-import { Transaction } from '../models/transaction/transaction.schema';
+import { Transaction, TransactionSchemaClass, TransactionDocument } from '../models/transaction/transaction.schema';
 import { UserId, CommunityId, WalletId } from '../value-objects';
 import { WalletBalanceChangedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
@@ -17,6 +17,7 @@ export class WalletService {
 
   constructor(
     @InjectModel(WalletSchemaClass.name) private walletModel: Model<WalletDocument>,
+    @InjectModel(TransactionSchemaClass.name) private transactionModel: Model<TransactionDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
   ) {}
@@ -114,7 +115,7 @@ export class WalletService {
     }
     
     // Create transaction record
-    await this.mongoose.models.Transaction.create([{
+    await this.transactionModel.create([{
       id: uid(),
       walletId: wallet.getId.getValue(),
       type: transactionType,
@@ -142,7 +143,7 @@ export class WalletService {
 
   async getTransactions(walletId: string, limit: number = 50, skip: number = 0): Promise<Transaction[]> {
     // Direct Mongoose query
-    const transactions = await this.mongoose.models.Transaction
+    const transactions = await this.transactionModel
       .find({ walletId })
       .limit(limit)
       .skip(skip)
@@ -231,7 +232,7 @@ export class WalletService {
    * Aggregates by referenceType and referenceId to avoid N+1.
    */
   async getTotalWithdrawnByReference(referenceType: string, referenceId: string): Promise<number> {
-    const result = await this.mongoose.models.Transaction.aggregate([
+    const result = await this.transactionModel.aggregate([
       { $match: { referenceType, referenceId, type: 'withdrawal' } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]).exec();
