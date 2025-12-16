@@ -169,9 +169,8 @@ services:
       - caddy_config:/config
     networks:
       - meriter-network
-    depends_on:
-      web:
-        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: [ "CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:80 || exit 1" ]
       interval: 30s

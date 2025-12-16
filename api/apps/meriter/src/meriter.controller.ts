@@ -1,6 +1,7 @@
-import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MeriterService } from './meriter.service';
+import { Response } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -40,5 +41,40 @@ export class MeriterController {
   @Get('api/version')
   getVersionApi(): { version: string } {
     return this.getVersion();
+  }
+
+  // Serve favicon
+  @Get('favicon.ico')
+  favicon(@Res() res: Response): void {
+    try {
+      // Try multiple possible paths for favicon
+      const possiblePaths = [
+        // Production: /app/public/favicon.ico
+        path.join(process.cwd(), 'public', 'favicon.ico'),
+        // Development: from dist/apps/meriter, go to source public directory
+        path.join(__dirname, '../../../apps/meriter/public', 'favicon.ico'),
+        // Alternative: from api directory root
+        path.join(process.cwd(), 'apps', 'meriter', 'public', 'favicon.ico'),
+      ];
+
+      let faviconPath: string | null = null;
+      for (const possiblePath of possiblePaths) {
+        if (fs.existsSync(possiblePath)) {
+          faviconPath = possiblePath;
+          break;
+        }
+      }
+
+      if (faviconPath) {
+        const favicon = fs.readFileSync(faviconPath);
+        res.setHeader('Content-Type', 'image/x-icon');
+        res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+        res.send(favicon);
+      } else {
+        res.status(HttpStatus.NOT_FOUND).send();
+      }
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    }
   }
 }

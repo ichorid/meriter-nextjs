@@ -19,7 +19,14 @@
       "entryFile": "main",
       "sourceRoot": "apps/meriter/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/meriter/tsconfig.app.json"
+        "tsConfigPath": "apps/meriter/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../public/**/*",
+            "outDir": "dist/apps/meriter",
+            "watchAssets": true
+          }
+        ]
       }
     },
 

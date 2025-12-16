@@ -37,7 +37,9 @@ RUN mkdir -p /out && \
     # Copy shared-types built output
     mkdir -p /out/libs/shared-types && \
     cp -R libs/shared-types/dist /out/libs/shared-types/dist && \
-    cp libs/shared-types/package.json /out/libs/shared-types/package.json
+    cp libs/shared-types/package.json /out/libs/shared-types/package.json && \
+    # Copy public directory (favicon)
+    cp -R api/apps/meriter/public /out/public
 
 # --- run ---
 FROM node:22.11-alpine AS runner

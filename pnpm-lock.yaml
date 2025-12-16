@@ -61,6 +61,9 @@ importers:
       cyrillic-to-translit-js:
         specifier: ^3.2.1
         version: 3.2.1
+      express:
+        specifier: ^4.21.2
+        version: 4.21.2
       js-yaml:
         specifier: ^4.1.1
         version: 4.1.1

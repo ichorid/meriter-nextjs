@@ -6,7 +6,7 @@
     admin localhost:20190
 }
 
-:8080 {
+:80 {
     # Enable access logs
     log {
         output stdout
@@ -45,8 +45,11 @@
 	# Note: Caddy v2 doesn't have built-in rate limiting - requires caddy-ratelimit plugin
 	# For local dev, rate limiting is optional but recommended
 	handle /_next* {
-		reverse_proxy localhost:8001 {
+		reverse_proxy host.docker.internal:8001 {
 			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-Proto "http"
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-For {remote_host}
 		}
 		encode gzip
 	}
@@ -68,8 +71,11 @@
             X-RateLimit-Window "60"
         }
         
-        reverse_proxy localhost:8002 {
+        reverse_proxy host.docker.internal:8002 {
             header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto "http"
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-For {remote_host}
         }
         encode gzip
     }
@@ -92,8 +98,11 @@
             X-RateLimit-Window "60"
         }
         
-        reverse_proxy localhost:8001 {
+        reverse_proxy host.docker.internal:8001 {
             header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto "http"
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-For {remote_host}
         }
         encode gzip
     }
