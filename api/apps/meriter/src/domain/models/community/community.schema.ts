@@ -89,10 +89,10 @@ export interface Community {
 @Schema({ collection: 'communities', timestamps: true })
 export class CommunitySchemaClass implements Community {
   @Prop({ required: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true })
-  name: string;
+  name!: string;
 
   @Prop()
   description?: string;
@@ -104,7 +104,7 @@ export class CommunitySchemaClass implements Community {
   coverImageUrl?: string;
 
   @Prop({ type: [String], default: [] })
-  members: string[]; // УСТАРЕВШЕЕ, использовать UserCommunityRole
+  members!: string[]; // УСТАРЕВШЕЕ, использовать UserCommunityRole
 
   // НОВОЕ: Метка типа (опциональная, только для удобства)
   @Prop({
@@ -214,28 +214,28 @@ export class CommunitySchemaClass implements Community {
     },
     default: {},
   })
-  settings: CommunitySettings;
+  settings!: CommunitySettings;
 
   @Prop({ type: [String], default: [] })
-  hashtags: string[];
+  hashtags!: string[];
 
   @Prop({ type: Object, of: String, default: {}, required: false })
   hashtagDescriptions?: Record<string, string>; // Changed from Map to plain object
 
   @Prop({ default: true })
-  isActive: boolean;
+  isActive!: boolean;
 
   @Prop({ default: false })
-  isPriority: boolean; // Приоритетные сообщества отображаются первыми
+  isPriority!: boolean; // Приоритетные сообщества отображаются первыми
 
   @Prop({ type: Date, required: false })
   lastQuotaResetAt?: Date;
 
   @Prop({ required: true })
-  createdAt: Date;
+  createdAt!: Date;
 
   @Prop({ required: true })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
 
 export const CommunitySchema = SchemaFactory.createForClass(CommunitySchemaClass);

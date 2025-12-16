@@ -179,6 +179,10 @@ export class CommunitiesController {
       iconUrl: community.settings?.iconUrl,
     });
 
+    // Get admin IDs (users with 'lead' role)
+    const adminRoles = await this.userCommunityRoleService.getUsersByRole(id, 'lead');
+    const adminIds = adminRoles.map(role => role.userId);
+
     return {
       ...community,
       // Ensure settings.language is provided to match type expectations
@@ -194,7 +198,7 @@ export class CommunitiesController {
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
       ) || {},
-      adminIds: community.adminIds || [],
+      adminIds,
       isAdmin: await this.communityService.isUserAdmin(id, req.user.id),
       needsSetup,
       createdAt: community.createdAt.toISOString(),
@@ -267,6 +271,10 @@ export class CommunitiesController {
       false,
     );
 
+    // Get admin IDs (users with 'lead' role)
+    const adminRoles = await this.userCommunityRoleService.getUsersByRole(community.id, 'lead');
+    const adminIds = adminRoles.map(role => role.userId);
+
     return {
       ...community,
       avatarUrl: community.avatarUrl,
@@ -282,7 +290,7 @@ export class CommunitiesController {
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
       ) || {},
-      adminIds: community.adminIds || [],
+      adminIds,
       isAdmin: true, // Creator is admin
       needsSetup,
       createdAt: community.createdAt.toISOString(),
@@ -347,7 +355,7 @@ export class CommunitiesController {
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
       ) || {},
-      adminIds: community.adminIds || [],
+      adminIds: (await this.userCommunityRoleService.getUsersByRole(id, 'lead')).map(role => role.userId),
       isAdmin: await this.communityService.isUserAdmin(id, req.user.id),
       needsSetup,
       createdAt: community.createdAt.toISOString(),

@@ -226,6 +226,10 @@ export class PublicationsController {
       ? new Date(community.lastQuotaResetAt)
       : today;
 
+    if (!this.connection.db) {
+      throw new Error('Database connection not available');
+    }
+
     // Aggregate quota used from votes, poll casts, and quota usage
     const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
       this.connection.db
@@ -334,7 +338,7 @@ export class PublicationsController {
     @Query('skip') skip?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
-    @User() user: AuthenticatedUser | null,
+    @User() user?: AuthenticatedUser | null,
   ) {
     // Support both pagination formats: limit/skip and page/pageSize
     let parsedLimit = 20;

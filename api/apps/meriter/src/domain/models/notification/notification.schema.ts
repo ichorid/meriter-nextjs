@@ -36,47 +36,47 @@ export interface Notification {
 @Schema({ collection: 'notifications', timestamps: true })
 export class NotificationSchemaClass implements Notification {
   @Prop({ required: true, unique: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true, index: true })
-  userId: string; // recipient
+  userId!: string; // recipient
 
   @Prop({
     required: true,
     enum: ['vote', 'beneficiary', 'mention', 'reply', 'comment', 'publication', 'poll', 'system', 'quota'],
     index: true,
   })
-  type: NotificationType;
+  type!: NotificationType;
 
   @Prop({
     required: true,
     enum: ['user', 'system', 'community'],
   })
-  source: NotificationSource;
+  source!: NotificationSource;
 
   @Prop()
   sourceId?: string; // ID of the source (user/community)
 
   @Prop({ type: Object, required: true })
-  metadata: NotificationMetadata;
+  metadata!: NotificationMetadata;
 
   @Prop({ required: true })
-  title: string;
+  title!: string;
 
   @Prop({ required: true })
-  message: string;
+  message!: string;
 
   @Prop({ required: true, default: false, index: true })
-  read: boolean;
+  read!: boolean;
 
   @Prop()
   readAt?: Date;
 
   @Prop({ required: true })
-  createdAt: Date;
+  createdAt!: Date;
 
   @Prop({ required: true })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
 
 export const NotificationSchema = SchemaFactory.createForClass(NotificationSchemaClass);

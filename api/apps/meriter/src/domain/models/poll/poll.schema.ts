@@ -44,16 +44,16 @@ export interface Poll {
 @Schema({ collection: 'polls', timestamps: true })
 export class PollSchemaClass implements Poll {
   @Prop({ required: true, unique: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true })
-  communityId: string;
+  communityId!: string;
 
   @Prop({ required: true })
-  authorId: string;
+  authorId!: string;
 
   @Prop({ required: true })
-  question: string;
+  question!: string;
 
   @Prop()
   description?: string;
@@ -68,13 +68,13 @@ export class PollSchemaClass implements Poll {
     }],
     required: true,
   })
-  options: PollOption[];
+  options!: PollOption[];
 
   @Prop({ required: true })
-  expiresAt: Date;
+  expiresAt!: Date;
 
   @Prop({ default: true })
-  isActive: boolean;
+  isActive!: boolean;
 
   @Prop({
     type: {
@@ -88,13 +88,13 @@ export class PollSchemaClass implements Poll {
       totalAmount: 0,
     },
   })
-  metrics: PollMetrics;
+  metrics!: PollMetrics;
 
   @Prop({ required: true })
-  createdAt: Date;
+  createdAt!: Date;
 
   @Prop({ required: true })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
 
 export const PollSchema = SchemaFactory.createForClass(PollSchemaClass);

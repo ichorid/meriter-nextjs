@@ -31,19 +31,19 @@ export interface Invite {
 @Schema({ collection: 'invites', timestamps: true })
 export class InviteSchemaClass implements Invite {
   @Prop({ required: true, unique: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true })
-  code: string;
+  code!: string;
 
   @Prop({
     required: true,
     enum: ['superadmin-to-lead', 'lead-to-participant'],
   })
-  type: 'superadmin-to-lead' | 'lead-to-participant';
+  type!: 'superadmin-to-lead' | 'lead-to-participant';
 
   @Prop({ required: true })
-  createdBy: string; // ID создателя (суперадмин или лид)
+  createdBy!: string; // ID создателя (суперадмин или лид)
 
   @Prop()
   targetUserId?: string; // Optional informational field - not enforced, invites work for anyone
@@ -61,16 +61,16 @@ export class InviteSchemaClass implements Invite {
   expiresAt?: Date;
 
   @Prop({ required: true, default: false })
-  isUsed: boolean; // Инвайты одноразовые
+  isUsed!: boolean; // Инвайты одноразовые
 
   @Prop()
   communityId?: string; // Сообщество, в котором будет назначена роль (optional for superadmin-to-lead invites)
 
   @Prop({ required: true })
-  createdAt: Date;
+  createdAt!: Date;
 
   @Prop({ required: true })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
 
 export const InviteSchema = SchemaFactory.createForClass(InviteSchemaClass);

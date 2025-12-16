@@ -169,8 +169,9 @@ export class PollsController {
     const effectiveQuotaAmount = quotaAmount === 0 && walletAmount === 0 ? pollCost : quotaAmount;
     const effectiveWalletAmount = walletAmount;
     
-    // Validate payment (skip for future-vision communities and if cost is 0)
-    if (community.typeTag !== 'future-vision' && pollCost > 0) {
+    // Validate payment (skip if cost is 0)
+    // Note: future-vision check already done above, so we can proceed with payment validation
+    if (pollCost > 0) {
       // Validate that at least one payment method is provided
       if (effectiveQuotaAmount === 0 && effectiveWalletAmount === 0) {
         throw new ValidationError(
@@ -214,8 +215,9 @@ export class PollsController {
     const snapshot = poll.toSnapshot();
     const pollId = snapshot.id;
     
-    // Process payment after successful creation (skip for future-vision communities and if cost is 0)
-    if (community.typeTag !== 'future-vision' && pollCost > 0) {
+    // Process payment after successful creation (skip if cost is 0)
+    // Note: future-vision check already done above, so we can proceed with payment processing
+    if (pollCost > 0) {
       // Record quota usage if quota was used
       if (effectiveQuotaAmount > 0) {
         try {
@@ -344,6 +346,10 @@ export class PollsController {
     const quotaStartTime = community.lastQuotaResetAt
       ? new Date(community.lastQuotaResetAt)
       : today;
+
+    if (!this.connection.db) {
+      throw new Error('Database connection not available');
+    }
 
     // Aggregate quota used from votes, poll casts, and quota usage
     const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([

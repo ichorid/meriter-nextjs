@@ -89,6 +89,10 @@ export class VotesController {
       ? new Date(community.lastQuotaResetAt)
       : today;
 
+    if (!this.connection.db) {
+      throw new Error('Database connection not available');
+    }
+
     const [votesUsed, quotaUsageUsed] = await Promise.all([
       this.connection.db
         .collection('votes')

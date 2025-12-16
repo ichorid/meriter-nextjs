@@ -36,19 +36,19 @@ export interface Comment {
 @Schema({ collection: 'comments', timestamps: true })
 export class CommentSchemaClass implements Comment {
   @Prop({ required: true, unique: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true, enum: ['publication', 'comment'] })
-  targetType: 'publication' | 'comment';
+  targetType!: 'publication' | 'comment';
 
   @Prop({ required: true })
-  targetId: string;
+  targetId!: string;
 
   @Prop({ required: true })
-  authorId: string;
+  authorId!: string;
 
   @Prop({ required: true, maxlength: 5000 })
-  content: string;
+  content!: string;
 
   @Prop({
     type: {
@@ -64,7 +64,7 @@ export class CommentSchemaClass implements Comment {
       replyCount: 0,
     },
   })
-  metrics: CommentMetrics;
+  metrics!: CommentMetrics;
 
   @Prop()
   parentCommentId?: string;
@@ -73,10 +73,10 @@ export class CommentSchemaClass implements Comment {
   images?: string[]; // Array of image URLs for comment attachments
 
   @Prop({ required: true })
-  createdAt: Date;
+  createdAt!: Date;
 
   @Prop({ required: true })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
 
 export const CommentSchema = SchemaFactory.createForClass(CommentSchemaClass);

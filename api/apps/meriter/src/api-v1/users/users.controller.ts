@@ -294,6 +294,10 @@ export class UsersController {
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
 
+    if (!this.mongoose.db) {
+      throw new Error('Database connection not available');
+    }
+
     // Get publications directly from MongoDB to access isProject field
     const publicationDocs = await this.mongoose.db
       .collection('publications')
@@ -441,16 +445,6 @@ export class UsersController {
     return {
       meritStats,
     };
-  }
-
-
-  @Get('search')
-  async searchUsers(@Query('q') query: string, @Query('limit') limit: number) {
-    if (!query || query.length < 2) {
-      return [];
-    }
-    const users = await this.userService.searchUsers(query, limit || 20);
-    return users.map((u) => this.mapUserToV1Format(u));
   }
 
   @Put(':userId/global-role')

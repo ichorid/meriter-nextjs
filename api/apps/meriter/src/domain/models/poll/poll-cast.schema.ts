@@ -27,28 +27,28 @@ export interface PollCast {
 @Schema({ collection: 'poll_casts', timestamps: true })
 export class PollCastSchemaClass implements PollCast {
   @Prop({ required: true, unique: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true })
-  pollId: string;
+  pollId!: string;
 
   @Prop({ required: true })
-  userId: string;
+  userId!: string;
 
   @Prop({ required: true })
-  optionId: string; // Changed from optionIndex to optionId
+  optionId!: string; // Changed from optionIndex to optionId
 
   @Prop({ required: true, default: 0, min: 0 })
-  amountQuota: number;
+  amountQuota!: number;
 
   @Prop({ required: true, default: 0, min: 0 })
-  amountWallet: number;
+  amountWallet!: number;
 
   @Prop({ required: true })
-  communityId: string; // Added for consistency
+  communityId!: string; // Added for consistency
 
   @Prop({ required: true })
-  createdAt: Date;
+  createdAt!: Date;
 }
 
 export const PollCastSchema = SchemaFactory.createForClass(PollCastSchemaClass);
