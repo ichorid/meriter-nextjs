@@ -9,10 +9,10 @@ import { UserService } from '../src/domain/services/user.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { Poll, PollDocument } from '../src/domain/models/poll/poll.schema';
-import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { PollSchemaClass, PollDocument } from '../src/domain/models/poll/poll.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 import { createTestPoll } from './helpers/fixtures';
 
@@ -70,10 +70,10 @@ describe('Poll Permissions', () => {
     
     connection = app.get(getConnectionToken());
     
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    pollModel = connection.model<PollDocument>(Poll.name);
-    userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRole.name);
+    communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
+    userModel = connection.model<UserDocument>(UserSchemaClass.name);
+    pollModel = connection.model<PollDocument>(PollSchemaClass.name);
+    userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
 
     // Initialize test IDs
     authorId = uid();

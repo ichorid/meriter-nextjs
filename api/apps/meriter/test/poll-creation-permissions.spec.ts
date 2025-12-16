@@ -5,9 +5,9 @@ import { MeriterModule } from '../src/meriter.module';
 import { PermissionService } from '../src/domain/services/permission.service';
 import { Connection, Model } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 
 describe('Poll Creation Permissions', () => {
@@ -46,9 +46,9 @@ describe('Poll Creation Permissions', () => {
     permissionService = app.get<PermissionService>(PermissionService);
     connection = app.get(getConnectionToken());
     
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRole.name);
+    communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
+    userModel = connection.model<UserDocument>(UserSchemaClass.name);
+    userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
 
     participantId = uid();
     teamCommunityId = uid();

@@ -9,14 +9,14 @@ import { WalletService } from '../src/domain/services/wallet.service';
 import { VoteService } from '../src/domain/services/vote.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
-import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
+import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { Wallet as WalletEntity } from '../src/domain/aggregates/wallet/wallet.entity';
-import { Vote, VoteDocument } from '../src/domain/models/vote/vote.schema';
-import { Transaction, TransactionDocument } from '../src/domain/models/transaction/transaction.schema';
-import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { VoteSchemaClass, VoteDocument } from '../src/domain/models/vote/vote.schema';
+import { TransactionSchemaClass, TransactionDocument } from '../src/domain/models/transaction/transaction.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 import * as request from 'supertest';
 
@@ -94,13 +94,13 @@ describe('Special Groups Merit Accumulation', () => {
     voteService = app.get<VoteService>(VoteService);
 
     connection = app.get<Connection>(getConnectionToken());
-    communityModel = connection.model('Community');
-    userModel = connection.model('User');
-    publicationModel = connection.model('Publication');
-    walletModel = connection.model('Wallet');
-    voteModel = connection.model('Vote');
-    transactionModel = connection.model('Transaction');
-    userCommunityRoleModel = connection.model('UserCommunityRole');
+    communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
+    userModel = connection.model<UserDocument>(UserSchemaClass.name);
+    publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
+    walletModel = connection.model<WalletDocument>(WalletSchemaClass.name);
+    voteModel = connection.model<VoteDocument>(VoteSchemaClass.name);
+    transactionModel = connection.model<TransactionDocument>(TransactionSchemaClass.name);
+    userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
 
     // Generate test IDs
     authorId = uid();

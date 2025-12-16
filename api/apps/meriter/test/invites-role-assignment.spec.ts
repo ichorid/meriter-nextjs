@@ -10,11 +10,11 @@ import { UserCommunityRoleService } from '../src/domain/services/user-community-
 import { WalletService } from '../src/domain/services/wallet.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { Invite, InviteDocument } from '../src/domain/models/invite/invite.schema';
-import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
-import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { InviteSchemaClass, InviteDocument } from '../src/domain/models/invite/invite.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { uid } from 'uid';
 import * as request from 'supertest';
 
@@ -91,11 +91,11 @@ describe('Invites - New Role Assignment Logic', () => {
     walletService = app.get<WalletService>(WalletService);
 
     connection = app.get<Connection>(getConnectionToken());
-    communityModel = connection.model('Community');
-    userModel = connection.model('User');
-    inviteModel = connection.model('Invite');
-    userCommunityRoleModel = connection.model('UserCommunityRole');
-    walletModel = connection.model('Wallet');
+    communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
+    userModel = connection.model<UserDocument>(UserSchemaClass.name);
+    inviteModel = connection.model<InviteDocument>(InviteSchemaClass.name);
+    userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
+    walletModel = connection.model<WalletDocument>(WalletSchemaClass.name);
 
     // Generate test IDs
     superadminId = uid();

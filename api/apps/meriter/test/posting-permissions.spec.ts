@@ -9,10 +9,10 @@ import { UserService } from '../src/domain/services/user.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
-import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 
 class AllowAllGuard implements CanActivate {
@@ -85,10 +85,10 @@ describe('Posting Permissions', () => {
     
     connection = app.get(getConnectionToken());
     
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    publicationModel = connection.model<PublicationDocument>(Publication.name);
-    userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRole.name);
+    communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
+    userModel = connection.model<UserDocument>(UserSchemaClass.name);
+    publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
+    userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
 
     // Initialize test IDs
     participant1Id = uid();

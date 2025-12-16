@@ -5,7 +5,7 @@ import { MeriterModule } from '../src/meriter.module';
 import { QuotaUsageService } from '../src/domain/services/quota-usage.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
-import { QuotaUsage, QuotaUsageDocument } from '../src/domain/models/quota-usage/quota-usage.schema';
+import { QuotaUsageSchemaClass, QuotaUsageDocument } from '../src/domain/models/quota-usage/quota-usage.schema';
 import { uid } from 'uid';
 
 describe('QuotaUsageService', () => {
@@ -35,7 +35,7 @@ describe('QuotaUsageService', () => {
 
     quotaUsageService = app.get<QuotaUsageService>(QuotaUsageService);
     connection = app.get(getConnectionToken());
-    quotaUsageModel = connection.model<QuotaUsageDocument>(QuotaUsage.name);
+    quotaUsageModel = connection.model<QuotaUsageDocument>(QuotaUsageSchemaClass.name);
 
     testUserId = uid();
     testCommunityId = uid();
@@ -250,6 +250,8 @@ describe('QuotaUsageService', () => {
     });
   });
 });
+
+
 
 
 

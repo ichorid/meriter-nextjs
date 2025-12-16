@@ -12,6 +12,7 @@ import { UserService } from '../src/domain/services/user.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { uid } from 'uid';
 
 describe('PermissionsHelperService', () => {
@@ -128,7 +129,7 @@ describe('PermissionsHelperService', () => {
 
   beforeEach(async () => {
     // Ensure Future Vision and Marathon communities don't exist (onModuleInit might have created them)
-    const communityModel = connection.model('Community');
+    const communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
     await communityModel.deleteMany({ typeTag: 'future-vision' });
     await communityModel.deleteMany({ typeTag: 'marathon-of-good' });
 

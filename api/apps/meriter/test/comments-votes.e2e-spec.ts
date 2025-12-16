@@ -9,12 +9,12 @@ import { CommentService } from '../src/domain/services/comment.service';
 import { UserService } from '../src/domain/services/user.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { Vote, VoteDocument } from '../src/domain/models/vote/vote.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
-import { Comment, CommentDocument } from '../src/domain/models/comment/comment.schema';
-import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { VoteSchemaClass, VoteDocument } from '../src/domain/models/vote/vote.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
+import { CommentSchemaClass, CommentDocument } from '../src/domain/models/comment/comment.schema';
+import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { uid } from 'uid';
 
 describe('Comments and Votes Integration Tests', () => {
@@ -63,12 +63,12 @@ describe('Comments and Votes Integration Tests', () => {
 
     connection = app.get(getConnectionToken());
 
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    publicationModel = connection.model<PublicationDocument>(Publication.name);
-    commentModel = connection.model<CommentDocument>(Comment.name);
-    voteModel = connection.model<VoteDocument>(Vote.name);
-    walletModel = connection.model<WalletDocument>(Wallet.name);
+    communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
+    userModel = connection.model<UserDocument>(UserSchemaClass.name);
+    publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
+    commentModel = connection.model<CommentDocument>(CommentSchemaClass.name);
+    voteModel = connection.model<VoteDocument>(VoteSchemaClass.name);
+    walletModel = connection.model<WalletDocument>(WalletSchemaClass.name);
   });
 
   beforeEach(async () => {
