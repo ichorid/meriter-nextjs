@@ -67,10 +67,20 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   const isVoting = false;
   const isCommenting = false;
 
-  const handleCardClick = () => {
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't navigate if clicking on interactive elements (buttons, links, etc.)
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('a') || target.closest('[role="button"]')) {
+      return;
+    }
+    
     const postSlug = getPublicationIdentifier(publication);
     const communityId = publication.communityId;
-    if (!postSlug || !communityId) return;
+    
+    if (!postSlug || !communityId) {
+      console.warn('[PublicationCard] Cannot navigate: missing postSlug or communityId', { postSlug, communityId, publication });
+      return;
+    }
     
     // If on community feed page, set query parameter to show side panel
     if (isOnCommunityFeedPage) {
@@ -145,8 +155,10 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   };
   
   return (
-    <div onClick={handleCardClick} className="cursor-pointer">
-      <article className="bg-base-100 rounded-2xl p-5 border border-base-content/5 hover:border-base-content/10 transition-all duration-200">
+    <article 
+      onClick={handleCardClick} 
+      className="bg-base-100 rounded-2xl p-5 border border-base-content/5 hover:border-base-content/10 transition-all duration-200 cursor-pointer"
+    >
         <PublicationHeader
           publication={{
             id: pubItem.id,
@@ -204,7 +216,6 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           wallets={wallets}
           // maxMinus is calculated in PublicationActions using quota data
         />
-      </article>
-    </div>
+    </article>
   );
 };

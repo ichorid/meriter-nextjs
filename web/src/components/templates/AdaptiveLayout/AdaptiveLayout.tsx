@@ -53,15 +53,43 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   const tCommon = useTranslations('common');
 
   // Comments state - controlled by URL param
-  const commentsOpen = showComments && selectedPostSlug && communityId;
+  const commentsOpen = !!(showComments && selectedPostSlug && communityId);
 
   // Comments column shows on desktop (lg) only
-  const showCommentsColumn = showComments && selectedPostSlug && communityId;
+  const showCommentsColumn = !!(showComments && selectedPostSlug && communityId);
 
   // Breakpoints: overlay on most screens; dock only on very wide
-  const isDesktop = useMediaQuery('(min-width: 1024px)'); // lg breakpoint
+  // Note: CSS hides overlay at max-width: 1023px, so tablet is 768px - 1023px
+  const isDesktop = useMediaQuery('(min-width: 1024px)'); // lg breakpoint ≥1024px
+  const isMobile = useMediaQuery('(max-width: 767px)'); // < 768px
+  const isTablet = !isDesktop && !isMobile; // 768px - 1023px
   const isUltraWide = useMediaQuery('(min-width: 1600px)');
   const inspectorMode = isUltraWide ? 'docked' : 'overlay';
+
+  // In tablet mode (768-1023px), if comments are open, replace center content with comments
+  // CSS hides the overlay at max-width: 1023px, so tablet needs center replacement
+  const showCommentsInCenter = isTablet && showComments && selectedPostSlug && communityId;
+  
+  // Overlay should only show on desktop (≥1024px), not on tablet where CSS hides it anyway
+  const canShowOverlay = isDesktop && !isTablet;
+
+  // Debug logging
+  if (process.env.NODE_ENV !== 'production' && selectedPostSlug) {
+    console.log('[AdaptiveLayout] Comments sidebar state:', JSON.stringify({
+      selectedPostSlug,
+      showComments,
+      commentsOpen: !!commentsOpen,
+      showCommentsColumn: !!showCommentsColumn,
+      communityId,
+      isDesktop,
+      isTablet,
+      isMobile,
+      isUltraWide,
+      inspectorMode,
+      showCommentsInCenter,
+      windowWidth: typeof window !== 'undefined' ? window.innerWidth : 'SSR',
+    }, null, 2));
+  }
 
 
   // Handler to close comments (remove post param from URL)
@@ -94,12 +122,32 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
         <div className="mainWrap">
           <div className="main">
             {/* Sticky Header - rendered inside main for proper sticky behavior */}
-            {stickyHeader && (
+            {stickyHeader && !showCommentsInCenter && (
               <div className="sticky top-0 z-20 bg-base-100 -mx-4 -mt-6 mb-4 px-4 pt-6">
                 {stickyHeader}
               </div>
             )}
-            {children}
+            {/* In tablet mode, replace content with comments when post is selected */}
+            {showCommentsInCenter ? (
+              <CommentsColumn
+                {...createCommentsColumnProps(
+                  selectedPostSlug!,
+                  communityId!,
+                  searchParams,
+                  {
+                    balance: balance!,
+                    wallets: wallets || [],
+                    myId,
+                    highlightTransactionId,
+                    activeCommentHook: activeCommentHook || [null, () => { }],
+                    activeWithdrawPost: activeWithdrawPost ?? null,
+                    setActiveWithdrawPost: setActiveWithdrawPost || (() => { }),
+                  }
+                )}
+              />
+            ) : (
+              children
+            )}
           </div>
         </div>
 
@@ -126,8 +174,9 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
         )}
       </div>
 
-      {/* Overlay inspector (used on desktop, but not ultra-wide) */}
-      {inspectorMode === 'overlay' && isDesktop && (
+      {/* Overlay inspector (used on desktop ≥1024px, but not ultra-wide) */}
+      {/* Note: CSS hides overlay at max-width: 1023px, so this only renders when visible */}
+      {inspectorMode === 'overlay' && canShowOverlay && (
         <>
           <div 
             className="inspectorOverlay" 
@@ -161,9 +210,9 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
         </>
       )}
 
-      {/* Mobile Comments Drawer */}
-      {showComments && selectedPostSlug && communityId && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-base-100 flex flex-col overflow-hidden">
+      {/* Mobile Comments Drawer (only on mobile, not tablet) */}
+      {isMobile && showComments && selectedPostSlug && communityId && (
+        <div className="fixed inset-0 z-50 bg-base-100 flex flex-col overflow-hidden">
           <CommentsColumn
             {...createCommentsColumnProps(
               selectedPostSlug,
