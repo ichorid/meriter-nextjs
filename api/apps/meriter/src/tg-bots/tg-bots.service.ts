@@ -35,6 +35,7 @@ import * as stream from "stream";
 import { encodeTelegramDeepLink, formatDualLinksFromEncoded, formatDualLinks, escapeMarkdownV2 } from '../common/helpers/telegram';
 import { t } from '../i18n';
 import { UpdateEventItem } from '../domain/services/user-updates.service';
+import { FeatureFlagsService } from '../common/services/feature-flags.service';
 
 @Injectable()
 export class TgBotsService {
@@ -47,6 +48,7 @@ export class TgBotsService {
     @InjectModel(PublicationSchemaClass.name) private publicationModel: Model<PublicationDocument>,
     @InjectModel(CommunitySchemaClass.name) private communityModel: Model<CommunityDocument>,
     private userCommunityRoleService: UserCommunityRoleService,
+    private featureFlagsService: FeatureFlagsService,
   ) {
     // S3 is completely optional - only initialize if fully configured
     const s3Endpoint = process.env.S3_ENDPOINT;
@@ -77,6 +79,10 @@ export class TgBotsService {
   }
 
   async sendUserUpdates(userId: string, events: UpdateEventItem[], locale: 'en' | 'ru' = 'en') {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; skipping sendUserUpdates');
+      return;
+    }
     try {
       const user = await this.userModel.findOne({ id: userId }).lean();
       const tgChatId = user?.authId;
@@ -127,6 +133,10 @@ export class TgBotsService {
     direction: 'up' | 'down';
     createdAt?: Date;
   }, locale: 'en' | 'ru' = 'en') {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; skipping sendImmediateVoteNotification');
+      return;
+    }
     this.logger.log(`Preparing immediate vote notification: toUser=${userId}, from=${data.actorUsername || data.actorName}, amount=${data.amount}, dir=${data.direction}, targetType=${data.targetType}`);
     const event: UpdateEventItem = {
       id: `vote-${Date.now()}`,
@@ -147,6 +157,10 @@ export class TgBotsService {
     await this.sendUserUpdates(userId, [event], locale);
   }
   async processHookBody(body: TelegramTypes.Update, botUsername: string) {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; ignoring webhook update');
+      return;
+    }
     // Log all incoming updates for debugging
     this.logger.log('📨 Received Telegram update:', JSON.stringify(body, null, 2));
 
@@ -238,11 +252,19 @@ export class TgBotsService {
   }
 
   async processAddedToChat({ chatId, chat_username }: { chatId: string | number; chat_username?: string }) {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; skipping processAddedToChat');
+      return;
+    }
     this.logger.log(`🤖 Bot added to chat ${chatId} (${chat_username || 'no username'})`);
     this.logger.log(`ℹ️  Community auto-creation is disabled. Communities must be created manually through the API.`);
   }
 
   async processRemovedFromChat({ chatId, chat_username }: { chatId: string; chat_username?: string }) {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; skipping processRemovedFromChat');
+      return;
+    }
     try {
       this.logger.log(`🚪 Processing bot removed from chat ${chatId}`);
 
@@ -408,6 +430,10 @@ export class TgBotsService {
     lastName?: string;
     entities?: any[];
   }) {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; skipping processRecieveMessageFromGroup');
+      return;
+    }
     const tgChatId = String(numTgChatId);
     const tgUserId = String(numTgUserId);
 
@@ -541,6 +567,10 @@ export class TgBotsService {
   }
 
   async processRecieveMessageFromUser({ tgUserId, messageText, tgUserName }: { tgUserId: string | number; messageText: string; tgUserName?: string }) {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; skipping processRecieveMessageFromUser');
+      return;
+    }
     const referal = await this.tgMessageTextParseReferal({ messageText });
     this.logger.log(`👤 Processing direct message from user ${tgUserId}: "${messageText}"`);
     this.logger.log(`🔍 Parsed referral: ${referal || 'none'}`);
@@ -696,6 +726,10 @@ export class TgBotsService {
   }
 
   async tgSend({ tgChatId, text }: { tgChatId: string | number; text: string }) {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; skipping tgSend');
+      return "ok";
+    }
     //console.log(tgChatId, text )
     if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
     if (!process.env.BOT_TOKEN) {

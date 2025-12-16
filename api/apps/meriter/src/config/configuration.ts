@@ -15,6 +15,10 @@ export interface AppConfig {
     mongoUrl: string;
     mongoUrlSecondary: string;
   };
+  features: {
+    telegramBotEnabled: boolean;
+    telegramAuthEnabled: boolean;
+  };
 }
 
 /**
@@ -67,6 +71,10 @@ export default (): AppConfig => ({
   database: {
     mongoUrl: process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/meriter',
     mongoUrlSecondary: process.env.MONGO_URL_SECONDARY || 'mongodb://127.0.0.1:27017/meriter_test',
+  },
+  features: {
+    telegramBotEnabled: process.env.TELEGRAM_BOT_ENABLED === 'true',
+    telegramAuthEnabled: process.env.OAUTH_TELEGRAM_ENABLED === 'true',
   },
 });
 

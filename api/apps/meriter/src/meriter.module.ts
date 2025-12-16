@@ -13,6 +13,8 @@ import { validationSchema } from './config/validation.schema';
 import { UpdatesConductorsService } from './updates-conductors/updates-conductors.service';
 import { UpdatesConductorsModule } from './updates-conductors/updates-conductors.module';
 import { QuotaResetModule } from './domain/services/quota-reset.module';
+import { CommonServicesModule } from './common/services/common-services.module';
+import { TgBotsModule } from './tg-bots/tg-bots.module';
 
 // Import the new domain module
 import { DomainModule } from './domain.module';
@@ -21,6 +23,12 @@ import { DomainModule } from './domain.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: [
+        join(process.cwd(), '.env'), // Root .env file (when running from root)
+        join(__dirname, '../../../../.env'), // Root .env from compiled location
+        join(__dirname, '../../../.env'), // API .env file (if exists)
+        '.env', // Current working directory .env (fallback)
+      ],
       load: [configuration],
       validationSchema,
       validationOptions: {
@@ -29,10 +37,14 @@ import { DomainModule } from './domain.module';
       },
     }),
     DatabaseModule,
+    CommonServicesModule, // Feature flags and common services
     ApiV1Module,
     DomainModule, // Domain layer with domain services
     UpdatesConductorsModule,
     QuotaResetModule,
+    // TgBotsModule is always registered, but TgBotsService checks TELEGRAM_BOT_ENABLED flag internally
+    // This allows the module to be available but the service methods will return early if disabled
+    TgBotsModule,
   ],
   controllers: [MeriterController],
   providers: [MeriterService],
