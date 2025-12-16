@@ -267,7 +267,7 @@ export class TgBotsService {
    * Returns { beneficiary: {...}, cleanedText: "...", error: null } 
    *      or { beneficiary: null, cleanedText: "...", error: "error message" }
    */
-  async parseBeneficiary(messageText: string, tgChatId: string): Promise<{ beneficiary: string | null; cleanedText: string; error: string | null }> {
+  async parseBeneficiary(messageText: string, tgChatId: string): Promise<{ beneficiary: { telegramId: string; name: string; photoUrl?: string | null; username?: string } | null; cleanedText: string; error: string | null }> {
     if (!messageText) return { beneficiary: null, cleanedText: messageText, error: null };
 
     // Match /ben:@username or /ben:123456
@@ -457,7 +457,7 @@ export class TgBotsService {
     }
 
     // Parse and validate beneficiary
-    const { beneficiary, cleanedText, error } = await this.parseBeneficiary(messageText, tgChatId);
+    const { beneficiary, cleanedText, error } = await this.parseBeneficiary(messageText || '', tgChatId);
 
     // If there's an error with the beneficiary, send error message and abort
     if (error) {

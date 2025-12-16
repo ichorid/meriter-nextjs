@@ -131,7 +131,7 @@ export class PermissionService {
 
     // Allow participants in team groups to create polls
     // This overrides postingRules if they exist and are restrictive
-    if (community.typeTag === 'team' && userRole && [COMMUNITY_ROLE_PARTICIPANT, COMMUNITY_ROLE_LEAD].includes(userRole)) {
+    if (community.typeTag === 'team' && userRole && (userRole === COMMUNITY_ROLE_PARTICIPANT || userRole === COMMUNITY_ROLE_LEAD)) {
       return true;
     }
 

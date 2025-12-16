@@ -52,7 +52,7 @@ export class TelegramPublicationCreatorService {
     }).lean();
     if (!user) {
       this.logger.log(`Creating new user: ${message.userId}`);
-      const newUser = await this.userModel.create({
+      await this.userModel.create({
         id: uid(),
         authProvider: 'telegram',
         authId: String(message.userId),
@@ -64,7 +64,14 @@ export class TelegramPublicationCreatorService {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      user = newUser.toObject();
+      user = await this.userModel.findOne({ 
+        authProvider: 'telegram', 
+        authId: String(message.userId) 
+      }).lean();
+      if (!user) {
+        this.logger.error(`Failed to create user: ${message.userId}`);
+        return;
+      }
     }
 
     // Find beneficiary if specified
