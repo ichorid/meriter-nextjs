@@ -207,7 +207,7 @@ export default function NotificationsPage() {
 
   return (
     <AdaptiveLayout
-      stickyHeader={<PageHeader title={t('title')} showBack={true} />}
+      stickyHeader={<PageHeader title={t('title')} showBack={false} />}
     >
       <div className="space-y-4">
           {/* Filters and Actions */}

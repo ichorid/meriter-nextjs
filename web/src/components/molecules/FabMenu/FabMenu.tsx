@@ -88,6 +88,9 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
                 document.removeEventListener('mousedown', handleClickOutside);
             };
         }
+
+        // Explicit return for the case when isOpen is false
+        return undefined;
     }, [isOpen]);
 
     // Hide FAB when any popup is active (unless the FAB menu itself is open)

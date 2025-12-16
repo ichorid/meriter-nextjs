@@ -40,9 +40,8 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
   }
 
   if (isCommunityPage) {
-    const communityId = isCommunityPage[1];
-    if (!communityId) return null;
-    return <CommunityTopBar communityId={communityId} />;
+    // Community pages use stickyHeader in AdaptiveLayout instead
+    return null;
   }
 
   // Only show ProfileTopBar on sub-pages (publications, comments, polls), not on main profile page
@@ -126,19 +125,23 @@ const ProfileTopBar: React.FC = () => {
 
   return (
     <div className="flex-shrink-0">
-      <div className="sticky top-0 z-30 h-14 bg-base-100/95 backdrop-blur-md border-b border-brand-border px-4 py-2 w-full">
-        <div className="flex items-center justify-between h-full gap-4">
+      <div className="sticky top-0 z-30 bg-base-100/95 backdrop-blur-md border-b border-base-content/10 px-4 h-14 w-full">
+        <div className="flex items-center justify-between gap-2 h-full">
+          <div className="flex items-center flex-1 min-w-0 gap-2">
           {/* Back Button */}
           <BrandButton
             variant="ghost"
             size="sm"
             onClick={handleBackClick}
             aria-label={tCommon('backToProfile')}
-            className="px-2"
+            className="px-2 -ml-2"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={20} className="text-base-content" />
           </BrandButton>
+          </div>
 
+          {/* Right Actions */}
+          <div className="flex items-center gap-2 flex-shrink-0">
           {/* Search Button */}
           <BrandButton
             variant="ghost"
@@ -147,32 +150,30 @@ const ProfileTopBar: React.FC = () => {
             aria-label={tCommon('search')}
             className="px-2"
           >
-            <Search size={18} />
+            <Search size={18} className="text-base-content/70" />
           </BrandButton>
 
-          {/* Spacer */}
-          <div className="flex-1" />
-
           {/* Sort Toggle - contextual to active tab */}
-          <div className="flex gap-1 bg-brand-surface p-1 rounded-md border border-brand-border">
+          <div className="flex gap-0.5 bg-base-200/50 p-0.5 rounded-lg">
           <button
             onClick={() => handleSortClick('recent')}
-            className={`p-2 rounded-md transition-colors ${sortByTab[currentTab] === 'recent'
-                ? 'bg-base-100 text-brand-primary shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
-                : 'text-brand-text-secondary hover:text-brand-text-primary'
+            className={`p-1.5 rounded-md transition-colors ${sortByTab[currentTab] === 'recent'
+                ? 'bg-base-100 text-base-content shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
+                : 'text-base-content/50 hover:text-base-content'
               }`}
           >
             <Clock size={16} />
           </button>
           <button
             onClick={() => handleSortClick('voted')}
-            className={`p-2 rounded-md transition-colors ${sortByTab[currentTab] === 'voted'
-                ? 'bg-base-100 text-brand-primary shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
-                : 'text-brand-text-secondary hover:text-brand-text-primary'
+            className={`p-1.5 rounded-md transition-colors ${sortByTab[currentTab] === 'voted'
+                ? 'bg-base-100 text-base-content shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
+                : 'text-base-content/50 hover:text-base-content'
               }`}
           >
             <TrendingUp size={16} />
           </button>
+          </div>
           </div>
         </div>
       </div>
@@ -211,7 +212,7 @@ const ProfileTopBar: React.FC = () => {
 };
 
 // Community Top Bar
-const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => {
+export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: boolean }> = ({ communityId, asStickyHeader = false }) => {
   const { data: community } = useCommunity(communityId);
   const { user } = useAuth();
   const router = useRouter();
@@ -323,6 +324,8 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
   };
 
   const isMobile = !useMediaQuery('(min-width: 768px)');
+  // Left nav is hidden below lg breakpoint (1024px), so show back button when nav is hidden
+  const isLeftNavHidden = !useMediaQuery('(min-width: 1024px)');
 
   // Show mobile snack bar with community title when arriving/switching
   React.useEffect(() => {
@@ -347,26 +350,31 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
     router.push('/meriter/communities');
   };
 
-  return (
-    <div className="flex-shrink-0">
-      <div className="sticky top-0 z-30 bg-base-100 border-b border-base-content/10 w-full">
+  const headerContent = (
+    <div className={asStickyHeader ? "bg-base-100/95 backdrop-blur-md border-b border-base-content/10 -mx-4 px-4" : "sticky top-0 z-30 bg-base-100/95 backdrop-blur-md border-b border-base-content/10 w-full"}>
         {/* Main Header Row */}
-        <div className="flex items-center gap-3 px-4 h-14">
-          {/* Back Button */}
-          <BrandButton
-            variant="ghost"
-            size="sm"
-            onClick={handleBack}
-            className="px-2 -ml-2"
-          >
-            <ArrowLeft size={20} className="text-base-content" />
-          </BrandButton>
+        <div className="flex items-center justify-between gap-2 h-14">
+          <div className="flex items-center flex-1 min-w-0 gap-2">
+          {/* Back Button - only show when left nav is hidden (mobile/tablet) */}
+          {isLeftNavHidden && (
+            <BrandButton
+              variant="ghost"
+              size="sm"
+              onClick={handleBack}
+              className="px-2 -ml-2"
+            >
+              <ArrowLeft size={20} className="text-base-content" />
+            </BrandButton>
+          )}
 
           {/* Community Name */}
-          <h1 className="text-lg font-semibold text-base-content truncate flex-1">
+          <h1 className="text-lg font-semibold text-base-content truncate">
             {community.name}
           </h1>
+          </div>
 
+          {/* Right Actions */}
+          <div className="flex items-center gap-2 flex-shrink-0">
           {/* Search Button */}
           <BrandButton
             variant="ghost"
@@ -399,6 +407,37 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
             </button>
           </div>
 
+          {/* Fake Data Buttons - dev only */}
+          {fakeDataMode && (
+            <>
+              <BrandButton
+                variant="ghost"
+                size="sm"
+                onClick={handleGenerateUserPosts}
+                disabled={generatingUserPosts || generatingBeneficiaryPosts}
+                className="px-2"
+                title="Generate user post"
+              >
+                {generatingUserPosts ? <Loader2 className="animate-spin" size={16} /> : <span>+</span>}
+              </BrandButton>
+              <BrandButton
+                variant="ghost"
+                size="sm"
+                onClick={handleGenerateBeneficiaryPosts}
+                disabled={generatingUserPosts || generatingBeneficiaryPosts}
+                className="px-2"
+                title="Generate post with beneficiary"
+              >
+                {generatingBeneficiaryPosts ? <Loader2 className="animate-spin" size={16} /> : <span>++</span>}
+              </BrandButton>
+              {fakeDataMessage && (
+                <span className={`text-xs ${fakeDataMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>
+                  {fakeDataMessage}
+                </span>
+              )}
+            </>
+          )}
+
           {/* Admin Settings */}
           {isAdmin && (
             <BrandButton
@@ -413,11 +452,12 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
               </svg>
             </BrandButton>
           )}
+          </div>
         </div>
 
         {/* Tag Filter Row - only if tags exist */}
         {hashtags.length > 0 && (
-          <div className="flex items-center gap-2 px-4 pb-3 overflow-x-auto">
+          <div className="flex items-center gap-2 pb-3 overflow-x-auto">
             <button
               onClick={handleShowAll}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
@@ -443,34 +483,16 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
             ))}
           </div>
         )}
+    </div>
+  );
 
-        {/* Fake Data Buttons - dev only */}
-        {fakeDataMode && (
-          <div className="flex items-center gap-2 px-4 pb-2">
-            <BrandButton
-              variant="outline"
-              size="sm"
-              onClick={handleGenerateUserPosts}
-              disabled={generatingUserPosts || generatingBeneficiaryPosts}
-            >
-              {generatingUserPosts ? <Loader2 className="animate-spin" size={16} /> : '+'}
-            </BrandButton>
-            <BrandButton
-              variant="outline"
-              size="sm"
-              onClick={handleGenerateBeneficiaryPosts}
-              disabled={generatingUserPosts || generatingBeneficiaryPosts}
-            >
-              {generatingBeneficiaryPosts ? <Loader2 className="animate-spin" size={16} /> : '++'}
-            </BrandButton>
-            {fakeDataMessage && (
-              <span className={`text-xs ${fakeDataMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>
-                {fakeDataMessage}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+  return (
+    <>
+      {asStickyHeader ? headerContent : (
+        <div className="flex-shrink-0">
+          {headerContent}
+        </div>
+      )}
 
       {/* Search Modal */}
       {showSearchModal && (
@@ -498,6 +520,6 @@ const CommunityTopBar: React.FC<{ communityId: string }> = ({ communityId }) => 
           />
         </BottomActionSheet>
       )}
-    </div>
+    </>
   );
 };

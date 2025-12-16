@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
@@ -42,13 +43,7 @@ export default function CommunitiesPage() {
 
     return (
         <AdaptiveLayout
-            stickyHeader={
-                <header className="px-4 pt-4 pb-3 border-b border-base-content/10">
-                    <h1 className="text-xl font-semibold text-base-content">
-                        Communities
-                    </h1>
-                </header>
-            }
+            stickyHeader={<PageHeader title="Communities" showBack={false} />}
         >
             {/* Content */}
             <div>

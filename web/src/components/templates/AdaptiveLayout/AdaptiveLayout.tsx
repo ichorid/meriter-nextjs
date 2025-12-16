@@ -100,16 +100,36 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
     router.push(newUrl);
   }, [searchParams, pathname, router]);
 
+  // Determine if header should be shown (same logic as ContextTopBar)
+  // Community pages use stickyHeader prop instead, so exclude them from appHeader
+  const shouldShowHeader = React.useMemo(() => {
+    if (!pathname || pathname.includes('/login')) return false;
+    
+    const isProfileMainPage = pathname === '/meriter/profile';
+    const isProfileSubPage = pathname?.startsWith('/meriter/profile/');
+    const isSettingsPage = pathname === '/meriter/settings';
+    const isCommunityPage = pathname?.match(/\/meriter\/communities\/([^\/]+)$/);
+    const isPostDetailPage = pathname?.match(/\/meriter\/communities\/([^\/]+)\/posts\/(.+)/);
+
+    if (isPostDetailPage || isProfileMainPage || isSettingsPage || isCommunityPage) return false;
+    if (isProfileSubPage) return true;
+    
+    return false;
+  }, [pathname]);
+
   return (
     <div 
       className={`appShell ${className}`}
       data-inspector-mode={inspectorMode}
       data-comments-open={commentsOpen}
+      data-header-visible={shouldShowHeader}
     >
-      {/* Header */}
-      <div className="appHeader">
-        <ContextTopBar />
-      </div>
+      {/* Header - only render when ContextTopBar has content */}
+      {shouldShowHeader && (
+        <div className="appHeader">
+          <ContextTopBar />
+        </div>
+      )}
 
       {/* Body grid */}
       <div className="appBody">

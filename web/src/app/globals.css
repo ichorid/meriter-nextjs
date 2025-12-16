@@ -63,7 +63,8 @@
     
     /* Layout dimensions */
     --header-h: 56px;
-    --nav-w: 280px;
+    --nav-w: 336px; /* Match --left-sidebar-width default */
+    --left-sidebar-width: 336px; /* Explicitly define for consistency */
     --inspector-w: 360px;
     --content-max: 920px;
     --gutter: 24px;
@@ -701,6 +702,12 @@
     border-left: 1px solid var(--base-300);
     box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
     overflow: hidden;
+  }
+
+  /* Adjust overlay when header is not visible */
+  .appShell[data-header-visible="false"] .inspectorOverlay {
+    top: 0;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
   }
