@@ -23,13 +23,13 @@ export class UpdatesConductorSchemaClass implements UpdatesConductor {
   currencyOfTgChatId?: string;
 
   @Prop({ type: Number, default: 0 })
-  counterPlus: number;
+  counterPlus!: number;
   
   @Prop({ type: Number, default: 0 })
-  counterMinus: number;
+  counterMinus!: number;
   
   @Prop({ type: Number, default: 0 })
-  counterSum: number;
+  counterSum!: number;
 
   @Prop()
   publicationUids?: string[];
@@ -47,7 +47,7 @@ export class UpdatesConductorSchemaClass implements UpdatesConductor {
     type: Date,
     default: () => new Date(),
   })
-  nextUpdateAfter: Date;
+  nextUpdateAfter!: Date;
 }
 
 export type UpdatesConductorDocument = Document & UpdatesConductorSchemaClass;

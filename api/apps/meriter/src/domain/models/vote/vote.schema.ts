@@ -30,37 +30,37 @@ export interface Vote {
 @Schema({ collection: 'votes', timestamps: true })
 export class VoteSchemaClass implements Vote {
   @Prop({ required: true, unique: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true, enum: ['publication', 'vote'] })
-  targetType: 'publication' | 'vote';
+  targetType!: 'publication' | 'vote';
 
   @Prop({ required: true })
-  targetId: string;
+  targetId!: string;
 
   @Prop({ required: true })
-  userId: string;
+  userId!: string;
 
   @Prop({ required: true, default: 0, min: 0 })
-  amountQuota: number;
+  amountQuota!: number;
 
   @Prop({ required: true, default: 0, min: 0 })
-  amountWallet: number;
+  amountWallet!: number;
 
   @Prop({ required: true, enum: ['up', 'down'] })
-  direction: 'up' | 'down'; // Explicit vote direction: upvote or downvote
+  direction!: 'up' | 'down'; // Explicit vote direction: upvote or downvote
 
   @Prop({ required: true, maxlength: 5000 })
-  comment: string; // Required comment text attached to vote
+  comment!: string; // Required comment text attached to vote
 
   @Prop({ type: [String], default: [] })
   images?: string[]; // Array of image URLs for vote attachments
 
   @Prop({ required: true })
-  communityId: string; // Made required for consistency
+  communityId!: string; // Made required for consistency
 
   @Prop({ required: true })
-  createdAt: Date;
+  createdAt!: Date;
 }
 
 export const VoteSchema = SchemaFactory.createForClass(VoteSchemaClass);

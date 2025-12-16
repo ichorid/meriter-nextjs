@@ -96,7 +96,7 @@ export class QuotaResetService {
 
     // Query votes and poll casts with amountQuota > 0 for this user in this community created after quotaStartTime
     const [votesUsed, pollCastsUsed] = await Promise.all([
-      this.mongoose.db
+      this.mongoose.db!
         .collection('votes')
         .aggregate([
           {
@@ -120,7 +120,7 @@ export class QuotaResetService {
           },
         ])
         .toArray(),
-      this.mongoose.db
+      this.mongoose.db!
         .collection('poll_casts')
         .aggregate([
           {
@@ -209,8 +209,8 @@ export class QuotaResetService {
     // Create notifications for users whose quota changed
     let notificationsCreated = 0;
     for (const userId of userIds) {
-      const quotaBefore = quotaBeforeMap.get(userId);
-      const quotaAfter = quotaAfterMap.get(userId);
+      const quotaBefore = quotaBeforeMap.get(userId) ?? null;
+      const quotaAfter = quotaAfterMap.get(userId) ?? null;
 
       if (this.shouldCreateNotification(quotaBefore, quotaAfter)) {
         const amountBefore = quotaBefore?.remainingToday ?? 0;

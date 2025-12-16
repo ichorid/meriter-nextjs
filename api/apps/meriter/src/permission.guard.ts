@@ -78,9 +78,11 @@ export class PermissionGuard implements CanActivate {
       }
 
       // Log unexpected errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(
-        `Error checking permission: ${error.message}`,
-        error.stack,
+        `Error checking permission: ${errorMessage}`,
+        errorStack,
       );
       throw new ForbiddenException(
         'An error occurred while checking permissions',

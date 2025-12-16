@@ -11,7 +11,7 @@ import {
   PublicationSchemaClass,
   PublicationDocument,
 } from '../models/publication/publication.schema';
-import type { Publication } from '../models/publication/publication.schema';
+import type { Publication as PublicationSchema } from '../models/publication/publication.schema';
 import {
   PublicationId,
   UserId,

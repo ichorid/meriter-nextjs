@@ -68,7 +68,7 @@ export class QuotaUsageService {
     communityId: string,
     since: Date,
   ): Promise<number> {
-    const result = await this.connection.db
+    const result = await this.connection.db!
       .collection('quota_usage')
       .aggregate([
         {

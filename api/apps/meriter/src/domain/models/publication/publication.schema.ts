@@ -44,13 +44,13 @@ export interface Publication {
 @Schema({ collection: 'publications', timestamps: true })
 export class PublicationSchemaClass implements Publication {
   @Prop({ required: true, unique: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true })
-  communityId: string;
+  communityId!: string;
 
   @Prop({ required: true })
-  authorId: string;
+  authorId!: string;
 
   @Prop()
   beneficiaryId?: string;
@@ -72,17 +72,17 @@ export class PublicationSchemaClass implements Publication {
   description?: string;
 
   @Prop({ required: true, maxlength: 10000 })
-  content: string;
+  content!: string;
 
   @Prop({ required: true, enum: ['text', 'image', 'video'] })
-  type: 'text' | 'image' | 'video'; // Медиа-тип (остается для обратной совместимости)
+  type!: 'text' | 'image' | 'video'; // Медиа-тип (остается для обратной совместимости)
 
   // НОВОЕ: Автор поста (отображаемое имя, может отличаться от authorId)
   @Prop()
   authorDisplay?: string;
 
   @Prop({ type: [String], default: [] })
-  hashtags: string[];
+  hashtags!: string[];
 
   @Prop({
     type: {
@@ -98,7 +98,7 @@ export class PublicationSchemaClass implements Publication {
       commentCount: 0,
     },
   })
-  metrics: PublicationMetrics;
+  metrics!: PublicationMetrics;
 
   @Prop()
   imageUrl?: string; // Legacy single image support
@@ -110,10 +110,10 @@ export class PublicationSchemaClass implements Publication {
   videoUrl?: string;
 
   @Prop({ required: true })
-  createdAt: Date;
+  createdAt!: Date;
 
   @Prop({ required: true })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
 
 export const PublicationSchema = SchemaFactory.createForClass(PublicationSchemaClass);

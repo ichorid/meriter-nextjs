@@ -27,26 +27,26 @@ export interface UserCommunityRole {
 @Schema({ collection: 'user_community_roles', timestamps: true })
 export class UserCommunityRoleSchemaClass implements UserCommunityRole {
   @Prop({ required: true, unique: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true, index: true })
-  userId: string;
+  userId!: string;
 
   @Prop({ required: true, index: true })
-  communityId: string;
+  communityId!: string;
 
   @Prop({
     required: true,
     enum: ['lead', 'participant', 'viewer'],
     index: true,
   })
-  role: 'lead' | 'participant' | 'viewer';
+  role!: 'lead' | 'participant' | 'viewer';
 
   @Prop({ required: true })
-  createdAt: Date;
+  createdAt!: Date;
 
   @Prop({ required: true })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
 
 export const UserCommunityRoleSchema =

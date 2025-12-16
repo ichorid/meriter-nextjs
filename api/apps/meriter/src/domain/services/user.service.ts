@@ -22,6 +22,7 @@ import { uid } from 'uid';
 import { CommunityService } from './community.service';
 import { WalletService } from './wallet.service';
 import { UserCommunityRoleService } from './user-community-role.service';
+import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 
 export interface CreateUserDto {
   authProvider: string;
@@ -62,13 +63,15 @@ export class UserService implements OnModuleInit {
         await this.userModel.collection.dropIndex('telegramId_1');
         this.logger.log('Legacy index dropped successfully');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // Ignore error if index doesn't exist (though indexExists check should prevent this)
       // or if other error occurs, just log it
-      if (error.code !== 27) {
-        // 27 is IndexNotFound
-        this.logger.warn(`Failed to drop legacy index: ${error.message}`);
+      if (error && typeof error === 'object' && 'code' in error && error.code === 27) {
+        // 27 is IndexNotFound - ignore
+        return;
       }
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Failed to drop legacy index: ${errorMessage}`);
     }
   }
 
@@ -188,6 +191,13 @@ export class UserService implements OnModuleInit {
 
       await this.userModel.create([newUser]);
       user = await this.userModel.findOne({ id: newUser.id }).lean();
+      if (!user) {
+        throw new Error(`Failed to create user with id ${newUser.id}`);
+      }
+    }
+
+    if (!user) {
+      throw new Error(`User not found after createOrUpdateUser`);
     }
 
     return user;

@@ -35,12 +35,15 @@ function deriveAppUrl(): string {
       return process.env.APP_URL;
     }
     
-    // Allow default for test environment only
-    if (nodeEnv === 'test') {
+    // Allow default for test and development environments
+    if (nodeEnv === 'test' || nodeEnv === 'development') {
       return 'http://localhost';
     }
     
-    throw new Error('DOMAIN environment variable is required. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).');
+    throw new Error(
+      'DOMAIN environment variable is required. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).\n' +
+      'For local development, you can set DOMAIN=localhost or leave it unset (defaults to http://localhost).'
+    );
   }
   
   // Use http:// for localhost, https:// for production

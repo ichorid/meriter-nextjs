@@ -61,13 +61,13 @@ export interface User {
 @Schema({ collection: 'users', timestamps: true })
 export class UserSchemaClass implements User {
   @Prop({ required: true, unique: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true })
-  authProvider: string;
+  authProvider!: string;
 
   @Prop({ required: true })
-  authId: string;
+  authId!: string;
 
   @Prop()
   username?: string;
@@ -79,7 +79,7 @@ export class UserSchemaClass implements User {
   lastName?: string;
 
   @Prop({ required: true })
-  displayName: string;
+  displayName!: string;
 
   @Prop()
   avatarUrl?: string;
@@ -102,7 +102,7 @@ export class UserSchemaClass implements User {
     },
     default: {},
   })
-  profile: UserProfile;
+  profile!: UserProfile;
 
   @Prop({ enum: ['superadmin'] })
   globalRole?: 'superadmin';
@@ -116,16 +116,16 @@ export class UserSchemaClass implements User {
   inviteCode?: string;
 
   @Prop({ type: [String], default: [] })
-  communityTags: string[];
+  communityTags!: string[];
 
   @Prop({ type: [String], default: [] })
-  communityMemberships: string[];
+  communityMemberships!: string[];
 
   @Prop({ required: true })
-  createdAt: Date;
+  createdAt!: Date;
 
   @Prop({ required: true })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserSchemaClass);

@@ -3,7 +3,7 @@ import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { Wallet } from '../aggregates/wallet/wallet.entity';
 import { WalletSchemaClass, WalletDocument } from '../models/wallet/wallet.schema';
-import type { Wallet } from '../models/wallet/wallet.schema';
+import type { Wallet as WalletSchema } from '../models/wallet/wallet.schema';
 import { Transaction } from '../models/transaction/transaction.schema';
 import { UserId, CommunityId, WalletId } from '../value-objects';
 import { WalletBalanceChangedEvent } from '../events';

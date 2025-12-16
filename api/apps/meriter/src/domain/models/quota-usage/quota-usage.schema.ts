@@ -24,28 +24,28 @@ export interface QuotaUsage {
 @Schema({ collection: 'quota_usage', timestamps: true })
 export class QuotaUsageSchemaClass implements QuotaUsage {
   @Prop({ required: true, unique: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true })
-  userId: string;
+  userId!: string;
 
   @Prop({ required: true })
-  communityId: string;
+  communityId!: string;
 
   @Prop({ required: true, default: 0, min: 0 })
-  amountQuota: number;
+  amountQuota!: number;
 
   @Prop({
     required: true,
     enum: ['vote', 'poll_cast', 'publication_creation', 'poll_creation'],
   })
-  usageType: 'vote' | 'poll_cast' | 'publication_creation' | 'poll_creation';
+  usageType!: 'vote' | 'poll_cast' | 'publication_creation' | 'poll_creation';
 
   @Prop({ required: true })
-  referenceId: string; // ID of publication, poll, vote, or poll_cast
+  referenceId!: string; // ID of publication, poll, vote, or poll_cast
 
   @Prop({ required: true })
-  createdAt: Date;
+  createdAt!: Date;
 }
 
 export const QuotaUsageSchema = SchemaFactory.createForClass(QuotaUsageSchemaClass);

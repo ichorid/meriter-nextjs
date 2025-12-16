@@ -31,16 +31,16 @@ export interface Wallet {
 @Schema({ collection: 'wallets', timestamps: true })
 export class WalletSchemaClass implements Wallet {
   @Prop({ required: true, unique: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true })
-  userId: string;
+  userId!: string;
 
   @Prop({ required: true })
-  communityId: string;
+  communityId!: string;
 
   @Prop({ required: true, default: 0 })
-  balance: number;
+  balance!: number;
 
   @Prop({
     type: {
@@ -50,10 +50,10 @@ export class WalletSchemaClass implements Wallet {
     },
     required: true,
   })
-  currency: WalletCurrency;
+  currency!: WalletCurrency;
 
   @Prop({ required: true })
-  lastUpdated: Date;
+  lastUpdated!: Date;
 }
 
 export const WalletSchema = SchemaFactory.createForClass(WalletSchemaClass);

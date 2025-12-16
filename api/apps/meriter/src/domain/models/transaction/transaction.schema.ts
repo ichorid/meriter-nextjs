@@ -28,19 +28,19 @@ export interface Transaction {
 @Schema({ collection: 'transactions', timestamps: true })
 export class TransactionSchemaClass implements Transaction {
   @Prop({ required: true, unique: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true })
-  walletId: string;
+  walletId!: string;
 
   @Prop({ required: true })
-  type: 'vote' | 'comment' | 'poll_cast' | 'withdrawal' | 'deposit';
+  type!: 'vote' | 'comment' | 'poll_cast' | 'withdrawal' | 'deposit';
 
   @Prop({ required: true })
-  amount: number;
+  amount!: number;
 
   @Prop({ required: true })
-  description: string;
+  description!: string;
 
   @Prop()
   referenceType?: string;
@@ -49,10 +49,10 @@ export class TransactionSchemaClass implements Transaction {
   referenceId?: string;
 
   @Prop({ required: true })
-  createdAt: Date;
+  createdAt!: Date;
 
   @Prop({ required: true })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
 
 export const TransactionSchema = SchemaFactory.createForClass(TransactionSchemaClass);

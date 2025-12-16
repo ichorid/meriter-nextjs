@@ -237,7 +237,7 @@ export class TgBotsService {
     }
   }
 
-  async processAddedToChat({ chatId, chat_username }) {
+  async processAddedToChat({ chatId, chat_username }: { chatId: string | number; chat_username?: string }) {
     this.logger.log(`🤖 Bot added to chat ${chatId} (${chat_username || 'no username'})`);
     this.logger.log(`ℹ️  Community auto-creation is disabled. Communities must be created manually through the API.`);
   }
@@ -267,7 +267,7 @@ export class TgBotsService {
    * Returns { beneficiary: {...}, cleanedText: "...", error: null } 
    *      or { beneficiary: null, cleanedText: "...", error: "error message" }
    */
-  async parseBeneficiary(messageText: string, tgChatId: string) {
+  async parseBeneficiary(messageText: string, tgChatId: string): Promise<{ beneficiary: string | null; cleanedText: string; error: string | null }> {
     if (!messageText) return { beneficiary: null, cleanedText: messageText, error: null };
 
     // Match /ben:@username or /ben:123456
@@ -462,15 +462,17 @@ export class TgBotsService {
     // If there's an error with the beneficiary, send error message and abort
     if (error) {
       this.logger.warn(`❌ Beneficiary error, sending error message to chat`);
-      await this.tgReplyMessage({
-        reply_to_message_id: messageId,
-        chat_id: tgChatId,
-        text: error,
-      });
+      if (messageId !== undefined) {
+        await this.tgReplyMessage({
+          reply_to_message_id: messageId,
+          chat_id: tgChatId,
+          text: error,
+        });
+      }
       return; // Don't create the publication
     }
 
-    const finalMessageText = cleanedText || messageText;
+    const finalMessageText = cleanedText || messageText || '';
 
     const tgAuthorId = tgUserId;
     const authorPhotoUrl = await this.telegramGetChatPhotoUrl(
@@ -502,8 +504,8 @@ export class TgBotsService {
       fromTgChatId: tgChatId,
       tgAuthorId,
       tgAuthorUsername: tgChatUsername,
-      tgAuthorName: tgAuthorName,
-      tgMessageId: messageId,
+      tgAuthorName: tgAuthorName || '',
+      tgMessageId: messageId || 0,
       keyword: kw,
       tgChatUsername,
       tgChatName: tgChatName,
@@ -529,11 +531,13 @@ export class TgBotsService {
     const text = `${escapeMarkdownV2(t('updates.publication.saved', 'en'))} \: ${dualLinks}`;
     this.logger.log(`💬 Sending reply to group ${tgChatId} with text: ${text}`);
 
-    await this.tgReplyMessage({
-      reply_to_message_id: messageId,
-      chat_id: tgChatId,
-      text,
-    });
+    if (messageId !== undefined) {
+      await this.tgReplyMessage({
+        reply_to_message_id: messageId,
+        chat_id: tgChatId,
+        text,
+      });
+    }
   }
 
   async processRecieveMessageFromUser({ tgUserId, messageText, tgUserName }: { tgUserId: string | number; messageText: string; tgUserName?: string }) {
@@ -631,7 +635,7 @@ export class TgBotsService {
   }
 
   async tgGetChat(tgChatId: string | number) {
-    if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
+    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
     const params = { chat_id: tgChatId };
     if (process.env.noAxios) return null;
     return await Axios.get(BOT_URL + "/getChat", {
@@ -693,7 +697,7 @@ export class TgBotsService {
 
   async tgSend({ tgChatId, text }: { tgChatId: string | number; text: string }) {
     //console.log(tgChatId, text )
-    if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
+    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
     if (!process.env.BOT_TOKEN) {
       this.logger.warn('BOT_TOKEN is empty; Telegram send skipped');
       return "ok";
@@ -726,7 +730,7 @@ export class TgBotsService {
   */
 
   async tgChatGetAdmins({ tgChatId }: { tgChatId: string | number }) {
-    if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
+    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
     if (process.env.noAxios) return [{ id: "1" }];
 
     return Axios.get(BOT_URL + "/getChatAdministrators", {
@@ -740,7 +744,7 @@ export class TgBotsService {
   }
 
   async tgChatIsAdmin({ tgChatId, tgUserId }: { tgChatId: string | number; tgUserId: string | number }) {
-    if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
+    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
     if (process.env.noAxios) return process.env.admin == "true" ? true : false;
     const admins = await this.tgChatGetAdmins({ tgChatId });
     if (!admins) return false;
@@ -750,7 +754,7 @@ export class TgBotsService {
   }
 
   async tgChatGetKeywords({ tgChatId }: { tgChatId: string | number }) {
-    if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
+    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
     const chat = await this.communityModel.findOne({
 
     });
@@ -839,8 +843,9 @@ export class TgBotsService {
         await promise2;
 
         return `${avatarBaseUrl}/${chat_id}.jpg`;
-      } catch (err) {
-        this.logger.warn(`Failed to generate avatar for ${chat_id} (no photo):`, err.message);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Failed to generate avatar for ${chat_id} (no photo):`, errorMessage);
         return null;
       }
     }
@@ -868,8 +873,9 @@ export class TgBotsService {
       await Promise.all([promise, promise2]);
 
       return `${avatarBaseUrl}/${chat_id}.jpg`;
-    } catch (e) {
-      this.logger.warn(`Failed to download photo for ${chat_id}, generating fallback avatar:`, e.message);
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`Failed to download photo for ${chat_id}, generating fallback avatar:`, errorMessage);
       // If photo download fails (410, 403, etc), generate a fallback avatar
       try {
         const photoUrl2 = `telegram_small_avatars/${chat_id}.jpg`;

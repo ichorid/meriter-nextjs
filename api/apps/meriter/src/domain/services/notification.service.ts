@@ -89,7 +89,7 @@ export class NotificationService {
       .find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(pagination.limit)
+      .limit(pagination.limit ?? 10)
       .lean<Notification[]>()
       .exec();
 

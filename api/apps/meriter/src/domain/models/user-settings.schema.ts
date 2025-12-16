@@ -12,11 +12,11 @@ export interface UserSettings {
 @Schema({ collection: 'user_settings', timestamps: true })
 export class UserSettingsSchemaClass implements UserSettings {
   @Prop({ required: true, unique: true })
-  userId: string;
+  userId!: string;
 
   // immediate | hourly | daily | never
   @Prop({ required: true, default: 'daily' })
-  updatesFrequency: 'immediate' | 'hourly' | 'daily' | 'never';
+  updatesFrequency!: 'immediate' | 'hourly' | 'daily' | 'never';
 
   // Track last delivered periods for batching
   @Prop()

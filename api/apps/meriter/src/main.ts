@@ -91,7 +91,7 @@ async function bootstrap() {
 
   app.use(cookieParser());
   
-  const port = configService.get<number>('app.port');
+  const port = configService.get<number>('app.port') ?? 8002;
   await app.listen(port);
   logger.log(`Application is running on: http://localhost:${port}`);
 
