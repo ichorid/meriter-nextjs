@@ -72,11 +72,11 @@ export const BarWithdraw: React.FC<BarWithdrawProps> = ({
                     {isLoading ? (
                         <>
                             <span className="loading loading-spinner loading-xs"></span>
-                            {t('withdraw')} <span className="font-bold">{displayBalance}</span>
+                            {t('withdraw')}
                         </>
                     ) : (
                         <>
-                            {t('withdraw')} <span className="font-bold">{displayBalance}</span>
+                            {t('withdraw')}
                         </>
                     )}
                 </button>
