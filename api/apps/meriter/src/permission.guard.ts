@@ -129,7 +129,16 @@ export class PermissionGuard implements CanActivate {
       case 'edit:publication':
       case 'delete:publication':
         // publicationId comes from route params
-        result.publicationId = req.params?.id;
+        const paramId = req.params?.id;
+        // Check if ID is undefined or the string "undefined"
+        if (!paramId || paramId === 'undefined' || paramId === 'null') {
+          this.logger.error(
+            `[PermissionGuard] Invalid publicationId in route params: ${paramId}, req.params: ${JSON.stringify(req.params)}, req.url: ${req.url}`,
+          );
+          result.publicationId = undefined;
+        } else {
+          result.publicationId = paramId;
+        }
         break;
 
       case 'edit:comment':
@@ -220,8 +229,14 @@ export class PermissionGuard implements CanActivate {
 
       case 'edit:publication':
         if (!resourceIds.publicationId) {
-          this.logger.warn('Missing publicationId for edit:publication');
-          return false;
+          // Log detailed info about why publicationId is missing
+          const user = req.user;
+          this.logger.error(
+            `[PermissionGuard] Missing publicationId for edit:publication - userId: ${userId}, user.globalRole: ${user?.globalRole}, req.params: ${JSON.stringify(req.params)}, req.body: ${JSON.stringify(req.body)}, URL: ${req.url}`,
+          );
+          throw new ForbiddenException(
+            'Publication ID is required to edit a publication',
+          );
         }
         // Log user info for debugging
         const user = req.user;

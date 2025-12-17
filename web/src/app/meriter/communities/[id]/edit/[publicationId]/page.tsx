@@ -6,10 +6,16 @@ import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { use, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { usePublication } from '@/hooks/api/usePublications';
 import { Loader2 } from 'lucide-react';
+
+function normalizeEntityId(id: string | undefined | null): string | null {
+  const trimmed = (id ?? '').trim();
+  if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return null;
+  return trimmed;
+}
 
 export default function EditPublicationPage({
   params,
@@ -19,25 +25,29 @@ export default function EditPublicationPage({
   const router = useRouter();
   const t = useTranslations('publications.create');
   const { isAuthenticated, isLoading: userLoading } = useAuth();
-  const [communityId, setCommunityId] = React.useState<string>('');
-  const [publicationId, setPublicationId] = React.useState<string>('');
 
-  React.useEffect(() => {
-    params.then((p) => {
-      setCommunityId(p.id);
-      setPublicationId(p.publicationId);
-    });
-  }, [params]);
+  const resolvedParams = use(params);
+  const communityId = normalizeEntityId(resolvedParams.id);
+  const routePublicationId = normalizeEntityId(resolvedParams.publicationId);
 
-  const { data: publication, isLoading: publicationLoading } = usePublication(publicationId);
+  const { data: publication, isLoading: publicationLoading } = usePublication(
+    routePublicationId ?? '',
+  );
 
   useEffect(() => {
     if (!userLoading && !isAuthenticated) {
-      router.push(`/meriter/login?returnTo=${encodeURIComponent(`/meriter/communities/${communityId}/edit/${publicationId}`)}`);
+      const returnTo = `/meriter/communities/${resolvedParams.id}/edit/${resolvedParams.publicationId}`;
+      router.push(`/meriter/login?returnTo=${encodeURIComponent(returnTo)}`);
     }
-  }, [isAuthenticated, userLoading, router, communityId, publicationId]);
+  }, [
+    isAuthenticated,
+    userLoading,
+    router,
+    resolvedParams.id,
+    resolvedParams.publicationId,
+  ]);
 
-  if (!isAuthenticated || !communityId || !publicationId) {
+  if (!isAuthenticated || !communityId || !routePublicationId) {
     return null;
   }
 
@@ -69,9 +79,20 @@ export default function EditPublicationPage({
     );
   }
 
-  // Use the actual publication ID from the fetched publication, not the slug from URL
-  // The URL parameter might be a slug, but the API needs the actual ID
-  const actualPublicationId = publication?.id || publicationId;
+  // IMPORTANT: only use the actual publication ID from the API response.
+  // Do not fall back to the URL param; otherwise we can end up calling /publications/undefined.
+  const actualPublicationId = normalizeEntityId(publication.id);
+  if (!actualPublicationId) {
+    return (
+      <AdaptiveLayout communityId={communityId} stickyHeader={pageHeader}>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-base-content/60">
+            Cannot edit: publication ID is missing
+          </div>
+        </div>
+      </AdaptiveLayout>
+    );
+  }
 
   return (
     <AdaptiveLayout communityId={communityId} stickyHeader={pageHeader}>

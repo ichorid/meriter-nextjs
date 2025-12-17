@@ -59,7 +59,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const { data: community } = useCommunity(communityId);
   const { data: quotaData } = useUserQuota(communityId);
   const { data: wallet } = useWallet(communityId);
-  const isEditMode = !!publicationId && !!initialData;
+
+  const normalizeEntityId = (id: string | undefined): string | null => {
+    const trimmed = (id ?? '').trim();
+    if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return null;
+    return trimmed;
+  };
+  const normalizedPublicationId = normalizeEntityId(publicationId);
+  const isEditMode = !!initialData;
 
   // Check if this is Good Deeds Marathon community
   const isGoodDeedsMarathon = community?.typeTag === 'marathon-of-good';
@@ -223,6 +230,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       return;
     }
 
+    // In edit mode, we must have a real publication ID.
+    if (isEditMode && !normalizedPublicationId) {
+      const message = 'Publication ID is required for editing';
+      addToast(message, 'error');
+      setErrors({ submit: message });
+      return;
+    }
+
     // Set both ref and state immediately to prevent double submission
     isSubmittingRef.current = true;
     setIsSubmitting(true);
@@ -233,15 +248,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       const finalPostType = isProject ? 'project' : postType;
 
       let publication;
-      if (isEditMode && publicationId) {
-        // Validate publicationId is defined and not empty
-        if (!publicationId || publicationId === 'undefined') {
-          throw new Error('Publication ID is required for editing');
-        }
-        
+      if (isEditMode) {
         // Update existing publication
         publication = await updatePublication.mutateAsync({
-          id: publicationId,
+          id: normalizedPublicationId!,
           data: {
             title: title.trim(),
             description: description.trim(),
@@ -535,7 +545,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                   e.stopPropagation();
                   handleSubmit();
                 }}
-                disabled={!title.trim() || !description.trim() || isSubmitting || isSubmittingRef.current || hasInsufficientPayment}
+                disabled={
+                  !title.trim() ||
+                  !description.trim() ||
+                  isSubmitting ||
+                  isSubmittingRef.current ||
+                  hasInsufficientPayment ||
+                  (isEditMode && !normalizedPublicationId)
+                }
                 isLoading={isSubmitting || isSubmittingRef.current}
               >
                 {isEditMode ? (t('update') || 'Update') : t('create')}
