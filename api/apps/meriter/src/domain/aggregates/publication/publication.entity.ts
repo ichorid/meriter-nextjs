@@ -133,6 +133,11 @@ export class Publication implements EditableEntity {
     this.updatedAt = new Date();
   }
 
+  reduceScore(amount: number): void {
+    this.metrics = this.metrics.reduceScore(amount);
+    this.updatedAt = new Date();
+  }
+
   addComment(): void {
     this.metrics = this.metrics.incrementComment();
     this.updatedAt = new Date();

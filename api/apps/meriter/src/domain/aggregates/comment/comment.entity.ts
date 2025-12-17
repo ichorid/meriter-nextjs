@@ -115,6 +115,11 @@ export class Comment implements EditableEntity {
     this.updatedAt = new Date();
   }
 
+  reduceScore(amount: number): void {
+    this.metrics = this.metrics.reduceScore(amount);
+    this.updatedAt = new Date();
+  }
+
   addReply(): void {
     this.metrics = this.metrics.incrementReply();
     this.updatedAt = new Date();

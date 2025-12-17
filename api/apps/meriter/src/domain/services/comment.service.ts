@@ -222,6 +222,27 @@ export class CommentService {
     return comment;
   }
 
+  async reduceScore(commentId: string, amount: number): Promise<Comment> {
+    // Load aggregate
+    const doc = await this.commentModel.findOne({ id: commentId }).lean();
+    if (!doc) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    const comment = Comment.fromSnapshot(doc as ICommentDocument);
+
+    // Reduce score
+    comment.reduceScore(amount);
+
+    // Save
+    await this.commentModel.updateOne(
+      { id: comment.getId },
+      { $set: comment.toSnapshot() }
+    );
+
+    return comment;
+  }
+
   async updateComment(
     commentId: string,
     userId: string,

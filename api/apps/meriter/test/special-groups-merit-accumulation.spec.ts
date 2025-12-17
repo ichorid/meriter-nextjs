@@ -265,32 +265,40 @@ describe('Special Groups Merit Accumulation', () => {
     }
   });
 
-  describe('Withdrawal Prevention', () => {
-    it('should prevent withdrawal from publication in marathon-of-good', async () => {
-      // Add a vote to create balance
+  describe('Withdrawal Functionality', () => {
+    it('should allow withdrawal from publication in marathon-of-good and credit Future Vision wallet', async () => {
+      // Add a vote using HTTP endpoint to update publication metrics
       (global as any).testUserId = voterId;
-      await voteService.createVote(
-        voterId,
-        'publication',
-        marathonPubId,
-        5,
-        0,
-        'up',
-        'Test comment',
-        marathonCommunityId
-      );
+      await request(app.getHttpServer())
+        .post(`/api/v1/publications/${marathonPubId}/votes`)
+        .send({
+          quotaAmount: 5,
+          walletAmount: 0,
+          comment: 'Test comment',
+        })
+        .expect(201);
 
-      // Try to withdraw as author
+      // Get the Future Vision community
+      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
+      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
+
+      // Withdraw as author - should succeed
       (global as any).testUserId = authorId;
       const response = await request(app.getHttpServer())
         .post(`/api/v1/publications/${marathonPubId}/withdraw`)
         .send({ amount: 5 })
-        .expect(400);
+        .expect(201);
 
-      expect(response.body.message).toContain('Withdrawal from publications is disabled');
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.amount).toBe(5);
+
+      // Check that Future Vision wallet was credited
+      const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
+      expect(fvWallet).toBeTruthy();
+      expect(fvWallet?.getBalance()).toBe(5);
     });
 
-    it('should prevent withdrawal from publication in future-vision', async () => {
+    it('should allow withdrawal from publication in future-vision', async () => {
       // Create wallet with balance for voter (Future Vision requires wallet voting)
       await walletService.addTransaction(
         voterId,
@@ -320,17 +328,18 @@ describe('Special Groups Merit Accumulation', () => {
       }
       expect(voteResponse.status).toBe(201);
 
-      // Try to withdraw as author
+      // Withdraw as author - should succeed
       (global as any).testUserId = authorId;
       const response = await request(app.getHttpServer())
         .post(`/api/v1/publications/${visionPubId}/withdraw`)
         .send({ amount: 5 })
-        .expect(400);
+        .expect(201);
 
-      expect(response.body.message).toContain('Withdrawal from publications is disabled');
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.amount).toBe(5);
     });
 
-    it('should prevent withdrawal from publication in regular community (withdrawals disabled)', async () => {
+    it('should allow withdrawal from publication in regular community', async () => {
       // Add a vote to create balance using HTTP endpoint (which updates publication metrics)
       (global as any).testUserId = voterId;
       await request(app.getHttpServer())
@@ -342,19 +351,20 @@ describe('Special Groups Merit Accumulation', () => {
         })
         .expect(201);
 
-      // Try to withdraw as author - should fail since withdrawals are disabled
+      // Withdraw as author - should succeed
       (global as any).testUserId = authorId;
       const withdrawResponse = await request(app.getHttpServer())
         .post(`/api/v1/publications/${regularPubId}/withdraw`)
         .send({ amount: 5 })
-        .expect(400);
+        .expect(201);
       
-      expect(withdrawResponse.body.message).toContain('Withdrawal from publications is disabled');
+      expect(withdrawResponse.body.success).toBe(true);
+      expect(withdrawResponse.body.data.amount).toBe(5);
     });
   });
 
   describe('Merit Awarding for Marathon of Good', () => {
-    it('should credit Future Vision wallet when voting on marathon-of-good publication', async () => {
+    it('should NOT automatically credit Future Vision wallet when voting on marathon-of-good publication (automatic crediting disabled)', async () => {
       (global as any).testUserId = voterId;
 
       // Vote on marathon publication
@@ -373,64 +383,79 @@ describe('Special Groups Merit Accumulation', () => {
       expect(voteResponse.status).toBe(201);
 
       // Wait a bit for async operations
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Get the Future Vision community that was actually used by the code
-      // The code uses getCommunityByTypeTag('future-vision'), so we need to check that one
+      // Get the Future Vision community
       const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      
-      // If onModuleInit created a Future Vision community, use that ID; otherwise use our test one
       const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
 
       // Verify Future Vision community exists
       expect(fvCommunityUsed).toBeTruthy();
       expect(fvCommunityUsed?.typeTag).toBe('future-vision');
 
-      // Check that Future Vision wallet was credited
-      // Use WalletService for consistency - ensure wallet exists by using createOrGetWallet if needed
+      // Check that Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
       let fvWallet = await walletService.getWallet(authorId, fvCommunityId);
       
-      // If wallet doesn't exist yet, it might be because addTransaction hasn't completed
-      // Try waiting a bit more and check again, or check the database directly
+      // Wallet should not exist or have 0 balance (no automatic crediting)
+      if (fvWallet) {
+        expect(fvWallet.getBalance()).toBe(0);
+      }
+    });
+
+    it('should credit Future Vision wallet when withdrawing from marathon-of-good publication', async () => {
+      (global as any).testUserId = voterId;
+
+      // Vote on marathon publication
+      const voteResponse = await request(app.getHttpServer())
+        .post(`/api/v1/publications/${marathonPubId}/votes`)
+        .send({
+          quotaAmount: 5,
+          walletAmount: 0,
+          comment: 'Test vote',
+        });
+
+      expect(voteResponse.status).toBe(201);
+
+      // Wait a bit for vote to process
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Get the Future Vision community
+      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
+      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
+
+      // Withdraw as author - should credit Future Vision wallet
+      (global as any).testUserId = authorId;
+      const withdrawResponse = await request(app.getHttpServer())
+        .post(`/api/v1/publications/${marathonPubId}/withdraw`)
+        .send({ amount: 5 })
+        .expect(201);
+
+      expect(withdrawResponse.body.success).toBe(true);
+      expect(withdrawResponse.body.data.amount).toBe(5);
+
+      // Check that Future Vision wallet was credited
+      let fvWallet = await walletService.getWallet(authorId, fvCommunityId);
+      
+      if (!fvWallet) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        fvWallet = await walletService.getWallet(authorId, fvCommunityId);
+      }
+
+      expect(fvWallet).toBeTruthy();
+      expect(fvWallet?.getBalance()).toBe(5);
+
+      // Check transaction - withdrawal creates transaction with referenceType 'publication_withdrawal'
+      // Transactions are linked by walletId, so we need to get the wallet first
       if (!fvWallet) {
         await new Promise(resolve => setTimeout(resolve, 500));
         fvWallet = await walletService.getWallet(authorId, fvCommunityId);
       }
       
-      // If still not found, check database directly to see if wallet exists
-      if (!fvWallet) {
-        const walletDoc = await walletModel.findOne({ userId: authorId, communityId: fvCommunityId });
-        if (walletDoc) {
-          fvWallet = WalletEntity.fromSnapshot(walletDoc.toObject());
-        }
-      }
-
       expect(fvWallet).toBeTruthy();
-      expect(fvWallet?.getBalance()).toBe(5);
-
-      // If wallet still doesn't exist, try to find it via transaction
-      if (!fvWallet) {
-        const transaction = await transactionModel.findOne({
-          userId: authorId,
-          communityId: fvCommunityId,
-          referenceType: 'merit_transfer_gdm_to_fv',
-        });
-        if (transaction) {
-          // Find wallet by walletId from transaction
-          const walletDoc = await walletModel.findOne({ id: transaction.walletId });
-          if (walletDoc) {
-            fvWallet = WalletEntity.fromSnapshot(walletDoc.toObject());
-          }
-        }
-      }
-
-      expect(fvWallet).toBeTruthy();
-      expect(fvWallet?.getBalance()).toBe(5);
-
-      // Check transaction - transactions are linked by walletId, not userId/communityId
       const transaction = await transactionModel.findOne({
         walletId: fvWallet.getId.getValue(),
-        referenceType: 'merit_transfer_gdm_to_fv',
+        referenceType: 'publication_withdrawal',
+        referenceId: marathonPubId,
       });
 
       expect(transaction).toBeTruthy();
@@ -462,7 +487,7 @@ describe('Special Groups Merit Accumulation', () => {
       }
     });
 
-    it('should credit Future Vision wallet for beneficiary when voting on marathon publication with beneficiary', async () => {
+    it('should NOT automatically credit Future Vision wallet for beneficiary when voting on marathon publication with beneficiary (automatic crediting disabled)', async () => {
       // Update publication to have beneficiary
       await publicationModel.updateOne(
         { id: marathonPubId },
@@ -482,31 +507,19 @@ describe('Special Groups Merit Accumulation', () => {
         .expect(201);
 
       // Wait a bit for async operations
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Get the Future Vision community that was actually used by the code
+      // Get the Future Vision community
       const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
       const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
 
-      // Check that Future Vision wallet was credited to beneficiary
+      // Check that Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
       let fvWallet = await walletService.getWallet(beneficiaryId, fvCommunityId);
       
-      // If wallet doesn't exist yet, wait a bit more
-      if (!fvWallet) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        fvWallet = await walletService.getWallet(beneficiaryId, fvCommunityId);
+      // Wallet should not exist or have 0 balance (no automatic crediting)
+      if (fvWallet) {
+        expect(fvWallet.getBalance()).toBe(0);
       }
-      
-      // If still not found, check database directly
-      if (!fvWallet) {
-        const walletDoc = await walletModel.findOne({ userId: beneficiaryId, communityId: fvCommunityId });
-        if (walletDoc) {
-          fvWallet = WalletEntity.fromSnapshot(walletDoc.toObject());
-        }
-      }
-
-      expect(fvWallet).toBeTruthy();
-      expect(fvWallet?.getBalance()).toBe(5);
     });
 
     it('should NOT credit marathon-of-good wallet when voting on marathon publication (comprehensive check)', async () => {
@@ -556,27 +569,15 @@ describe('Special Groups Merit Accumulation', () => {
 
       expect(gdmTransactions.length).toBe(0);
 
-      // Verify Future Vision wallet WAS credited
+      // Verify Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
       const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
       const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
       let fvWallet = await walletService.getWallet(authorId, fvCommunityId);
       
-      // If wallet doesn't exist yet, wait a bit more
-      if (!fvWallet) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        fvWallet = await walletService.getWallet(authorId, fvCommunityId);
+      // Wallet should not exist or have 0 balance (no automatic crediting)
+      if (fvWallet) {
+        expect(fvWallet.getBalance()).toBe(0);
       }
-      
-      // If still not found, check database directly
-      if (!fvWallet) {
-        const walletDoc = await walletModel.findOne({ userId: authorId, communityId: fvCommunityId });
-        if (walletDoc) {
-          fvWallet = WalletEntity.fromSnapshot(walletDoc.toObject());
-        }
-      }
-
-      expect(fvWallet).toBeTruthy();
-      expect(fvWallet?.getBalance()).toBeGreaterThanOrEqual(10);
     });
 
     it('should NOT credit any other groups when voting on marathon publication', async () => {
@@ -624,25 +625,13 @@ describe('Special Groups Merit Accumulation', () => {
       const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
       const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
 
-      // Verify Future Vision wallet was credited
+      // Verify Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
       let fvWallet = await walletService.getWallet(authorId, fvCommunityId);
       
-      // If wallet doesn't exist yet, wait a bit more
-      if (!fvWallet) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        fvWallet = await walletService.getWallet(authorId, fvCommunityId);
+      // Wallet should not exist or have 0 balance (no automatic crediting)
+      if (fvWallet) {
+        expect(fvWallet.getBalance()).toBe(0);
       }
-      
-      // If still not found, check database directly
-      if (!fvWallet) {
-        const walletDoc = await walletModel.findOne({ userId: authorId, communityId: fvCommunityId });
-        if (walletDoc) {
-          fvWallet = WalletEntity.fromSnapshot(walletDoc.toObject());
-        }
-      }
-      
-      expect(fvWallet).toBeTruthy();
-      expect(fvWallet?.getBalance()).toBeGreaterThan(0);
 
       // Verify NO credits went to the other community
       const otherWallet = await walletModel.findOne({
@@ -738,25 +727,13 @@ describe('Special Groups Merit Accumulation', () => {
 
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Verify Future Vision wallet has the correct total (5 + 7 = 12)
+      // Verify Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
       let fvWallet = await walletService.getWallet(authorId, fvCommunityId);
       
-      // If wallet doesn't exist yet, wait a bit more
-      if (!fvWallet) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        fvWallet = await walletService.getWallet(authorId, fvCommunityId);
+      // Wallet should not exist or have 0 balance (no automatic crediting)
+      if (fvWallet) {
+        expect(fvWallet.getBalance()).toBe(0);
       }
-      
-      // If still not found, check database directly
-      if (!fvWallet) {
-        const walletDoc = await walletModel.findOne({ userId: authorId, communityId: fvCommunityId });
-        if (walletDoc) {
-          fvWallet = WalletEntity.fromSnapshot(walletDoc.toObject());
-        }
-      }
-
-      expect(fvWallet).toBeTruthy();
-      expect(fvWallet?.getBalance()).toBe(12);
 
       // Verify marathon-of-good wallet has NO credits
       const gdmWallet = await walletModel.findOne({
@@ -768,16 +745,16 @@ describe('Special Groups Merit Accumulation', () => {
         expect(gdmWallet.balance).toBe(0);
       }
 
-      // Verify all transactions are for Future Vision, not marathon-of-good
+      // With automatic crediting disabled, no transactions should be created on vote
+      // Transactions are only created when withdrawing
       const fvTransactions = await transactionModel.find({
-        walletId: fvWallet.id,
+        userId: authorId,
+        communityId: fvCommunityId,
         referenceType: 'merit_transfer_gdm_to_fv',
         referenceId: newMarathonPubId,
       });
 
-      expect(fvTransactions.length).toBe(2);
-      const amounts = fvTransactions.map(t => t.amount).sort((a, b) => a - b);
-      expect(amounts).toEqual([5, 7]);
+      expect(fvTransactions.length).toBe(0);
 
       // Verify no transactions for marathon-of-good
       const gdmTransactions = await transactionModel.find({
@@ -846,7 +823,7 @@ describe('Special Groups Merit Accumulation', () => {
   });
 
   describe('Regular Community Behavior', () => {
-    it('should credit regular community wallet when voting on regular publication', async () => {
+    it('should NOT automatically credit regular community wallet when voting on regular publication (automatic crediting disabled)', async () => {
       (global as any).testUserId = voterId;
 
       // Vote on regular publication
@@ -860,27 +837,15 @@ describe('Special Groups Merit Accumulation', () => {
         .expect(201);
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Check that regular community wallet was credited
+      // Check that regular community wallet was NOT automatically credited (automatic crediting is disabled)
       let wallet = await walletService.getWallet(authorId, regularCommunityId);
       
-      // If wallet doesn't exist yet, wait a bit more
-      if (!wallet) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        wallet = await walletService.getWallet(authorId, regularCommunityId);
+      // Wallet should not exist or have 0 balance (no automatic crediting)
+      if (wallet) {
+        expect(wallet.getBalance()).toBe(0);
       }
-      
-      // If still not found, check database directly
-      if (!wallet) {
-        const walletDoc = await walletModel.findOne({ userId: authorId, communityId: regularCommunityId });
-        if (walletDoc) {
-          wallet = WalletEntity.fromSnapshot(walletDoc.toObject());
-        }
-      }
-
-      expect(wallet).toBeTruthy();
-      expect(wallet?.getBalance()).toBe(5);
     });
   });
 
@@ -904,31 +869,18 @@ describe('Special Groups Merit Accumulation', () => {
         .expect(201);
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Check that wallet was credited (upvotes award merits)
+      // Check that wallet was NOT automatically credited (automatic crediting is disabled)
       let wallet = await walletService.getWallet(authorId, regularCommunityId);
       
-      // If wallet doesn't exist yet, wait a bit more
-      if (!wallet) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        wallet = await walletService.getWallet(authorId, regularCommunityId);
-      }
-      
-      // If still not found, check database directly
-      if (!wallet) {
-        const walletDoc = await walletModel.findOne({ userId: authorId, communityId: regularCommunityId });
-        if (walletDoc) {
-          wallet = WalletEntity.fromSnapshot(walletDoc.toObject());
-        }
+      // Wallet should not exist or have 0 balance (no automatic crediting)
+      if (wallet) {
+        expect(wallet.getBalance()).toBe(0);
       }
 
-      expect(wallet).toBeTruthy();
-      expect(wallet?.getBalance()).toBe(5);
-
-      // The code logic ensures that only upvotes (direction === 'up') award merits
-      // Downvotes would have direction === 'down' and would not trigger awardMeritsToBeneficiary
-      // This is verified by the implementation: awardMeritsToBeneficiary is only called when direction === 'up'
+      // With automatic crediting disabled, no merits are awarded on any votes (upvotes or downvotes)
+      // Merits can only be obtained through manual withdrawal
     });
 
     it('should handle Future Vision community not found gracefully', async () => {

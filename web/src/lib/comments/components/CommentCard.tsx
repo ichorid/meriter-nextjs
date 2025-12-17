@@ -119,6 +119,8 @@ export function CommentCard({
   
   // Withdrawal state management
   const withdrawableBalance = originalComment.metrics?.score ?? 0;
+  const totalWithdrawn = (originalComment as any).withdrawals?.totalWithdrawn || 0;
+  const availableForWithdrawal = Math.max(0, withdrawableBalance - totalWithdrawn);
   const [optimisticSum, setOptimisticSum] = useState(withdrawableBalance);
   
   useEffect(() => {
@@ -129,7 +131,7 @@ export function CommentCard({
   // Fetch community info
   const { data: communityInfo } = useCommunity(communityId || '');
   
-  // Check if community is special group (withdrawals disabled)
+  // Withdrawals are now enabled
   const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
   
   const currentBalance =
@@ -211,11 +213,13 @@ export function CommentCard({
     beneficiaryMeta,
   });
 
-  const { maxWithdrawAmount, maxTopUpAmount } = useCommentWithdrawal({
-    isAuthor,
-    withdrawableBalance,
-    currentBalance,
-  });
+  // Calculate withdrawal amounts
+  const maxWithdrawAmount = isAuthor
+    ? Math.floor(10 * availableForWithdrawal) / 10
+    : 0;
+  const maxTopUpAmount = isAuthor
+    ? Math.floor(10 * currentBalance) / 10
+    : 0;
 
   const voteType = voteDisplay.voteType;
   const currencyIcon = communityInfo?.settings?.iconUrl;
@@ -399,11 +403,16 @@ export function CommentCard({
         publicationSlug={publicationSlug}
         commentId={node.id}
         bottom={
-          false ? ( // Withdrawals disabled - merits are automatically credited on upvote
+          (isAuthor && maxWithdrawAmount > 0) ? ( // Show withdraw button if user is author and has withdrawable balance
             <BarWithdraw
               balance={maxWithdrawAmount}
               onWithdraw={() => {
-                // Withdrawals disabled
+                useUIStore.getState().openWithdrawPopup(
+                  node.id,
+                  'comment',
+                  maxWithdrawAmount,
+                  maxTopUpAmount
+                );
               }}
               onTopup={() => {
                 // Vote-comments can't be topped up (they're synthetic)

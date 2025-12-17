@@ -21,6 +21,18 @@ export abstract class BaseMetrics {
   }
 
   /**
+   * Reduce score by withdrawing merits
+   * Reduces upvotes by the specified amount (cannot reduce below 0)
+   */
+  reduceScore(amount: number): this {
+    if (amount <= 0) {
+      return this;
+    }
+    const newUpvotes = Math.max(0, this.upvotes - amount);
+    return this.createNew(newUpvotes, this.downvotes);
+  }
+
+  /**
    * Calculate score as difference between upvotes and downvotes
    */
   get score(): number {

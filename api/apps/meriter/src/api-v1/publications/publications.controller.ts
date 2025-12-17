@@ -326,6 +326,24 @@ export class PublicationsController {
     // Add permissions to response
     mappedPublication.permissions = permissions;
     
+    // Add withdrawals data
+    let totalWithdrawn = 0;
+    try {
+      totalWithdrawn = await this.walletService.getTotalWithdrawnByReference(
+        'publication_withdrawal',
+        id,
+      );
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `Failed to aggregate withdrawals for publication ${id}:`,
+        errorMessage,
+      );
+    }
+    mappedPublication.withdrawals = {
+      totalWithdrawn,
+    };
+    
     return ApiResponseHelper.successResponse(mappedPublication);
   }
 

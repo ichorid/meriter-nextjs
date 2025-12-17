@@ -191,6 +191,31 @@ export class PublicationService {
     return publication;
   }
 
+  async reduceScore(publicationId: string, amount: number): Promise<Publication> {
+    const id = PublicationId.fromString(publicationId);
+
+    // Load aggregate
+    const doc = await this.publicationModel
+      .findOne({ id: id.getValue() })
+      .lean();
+    if (!doc) {
+      throw new NotFoundException('Publication not found');
+    }
+
+    const publication = Publication.fromSnapshot(doc as IPublicationDocument);
+
+    // Reduce score
+    publication.reduceScore(amount);
+
+    // Save
+    await this.publicationModel.updateOne(
+      { id: publication.getId.getValue() },
+      { $set: publication.toSnapshot() },
+    );
+
+    return publication;
+  }
+
   async getPublicationsByAuthor(
     authorId: string,
     limit: number = 50,

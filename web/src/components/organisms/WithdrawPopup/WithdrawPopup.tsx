@@ -5,8 +5,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { FormWithdrawVertical } from '@/shared/components/form-withdraw-vertical';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
-// Withdrawals are disabled - removed withdrawal hooks
-import { useVoteOnPublicationWithComment, useVoteOnVote } from '@/hooks/api/useVotes';
+import { useVoteOnPublicationWithComment, useVoteOnVote, useWithdrawFromPublication, useWithdrawFromVote } from '@/hooks/api/useVotes';
 import { BasePopup } from '../BasePopup/BasePopup';
 import { usePopupCommunityData } from '@/hooks/usePopupCommunityData';
 import { usePopupFormData } from '@/hooks/usePopupFormData';
@@ -28,9 +27,11 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
     updateWithdrawFormData,
   } = useUIStore();
 
-  // Use mutation hooks - withdrawals are disabled, only topups are supported
+  // Use mutation hooks for both withdrawals and topups
   const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
   const voteOnVoteMutation = useVoteOnVote();
+  const withdrawFromPublicationMutation = useWithdrawFromPublication();
+  const withdrawFromVoteMutation = useWithdrawFromVote();
 
   const isOpen = !!activeWithdrawTarget && !!withdrawTargetType;
 
@@ -67,8 +68,21 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
       updateWithdrawFormData({ error: '' });
 
       const targetId = activeWithdrawTarget;
-      // Withdrawals are disabled - only handle topups
-      if (withdrawTargetType === 'publication-topup') {
+      
+      // Handle withdrawals
+      if (withdrawTargetType === 'publication') {
+        await withdrawFromPublicationMutation.mutateAsync({
+          publicationId: targetId,
+          amount,
+        });
+      } else if (withdrawTargetType === 'comment' || withdrawTargetType === 'vote') {
+        await withdrawFromVoteMutation.mutateAsync({
+          voteId: targetId,
+          amount,
+        });
+      }
+      // Handle topups
+      else if (withdrawTargetType === 'publication-topup') {
         // Handle top-up (adding votes) - use vote mutation
         // Top-ups use wallet only (quotaAmount = 0)
         await voteOnPublicationWithCommentMutation.mutateAsync({
@@ -110,7 +124,7 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
   // For now, we'll use wallet balance as fallback
   const maxWithdrawAmount = formData.maxWithdrawAmount || 0;
   const maxTopUpAmount = formData.maxTopUpAmount || walletBalance;
-  const isWithdrawal = false; // Withdrawals are disabled
+  const isWithdrawal = withdrawTargetType === 'publication' || withdrawTargetType === 'comment' || withdrawTargetType === 'vote';
 
   return (
     <BasePopup isOpen={isOpen} onClose={handleClose}>
@@ -124,7 +138,12 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
         onSubmit={handleSubmit}
         onClose={handleClose}
         isWithdrawal={isWithdrawal}
-        isLoading={voteOnPublicationWithCommentMutation.isPending || voteOnVoteMutation.isPending}
+        isLoading={
+          voteOnPublicationWithCommentMutation.isPending || 
+          voteOnVoteMutation.isPending || 
+          withdrawFromPublicationMutation.isPending || 
+          withdrawFromVoteMutation.isPending
+        }
         currencyIconUrl={currencyIconUrl}
       />
     </BasePopup>

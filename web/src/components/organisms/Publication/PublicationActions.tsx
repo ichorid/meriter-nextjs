@@ -45,6 +45,9 @@ interface Publication {
     hashtagName?: string;
   };
   permissions?: ResourcePermissions;
+  withdrawals?: {
+    totalWithdrawn?: number;
+  };
   [key: string]: unknown;
 }
 
@@ -107,8 +110,10 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const currentScore = publication.metrics?.score || 0;
 
   // Calculate withdraw amounts
-  const maxWithdrawAmount = (isAuthor && !hasBeneficiary) || isBeneficiary
-    ? Math.floor(10 * currentScore) / 10
+  const totalWithdrawn = publication.withdrawals?.totalWithdrawn || 0;
+  const availableForWithdrawal = Math.max(0, currentScore - totalWithdrawn);
+  const maxWithdrawAmount = ((isAuthor && !hasBeneficiary) || isBeneficiary)
+    ? Math.floor(10 * availableForWithdrawal) / 10
     : 0;
 
   // Get current wallet balance for topup
@@ -121,9 +126,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const isSpecialGroup = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
 
   // Mutual exclusivity logic
-  // Withdrawal feature is disabled - merits are automatically credited on upvote
-  // Topup functionality is still available through the voting popup
-  const showWithdraw = false; // Withdrawals disabled
+  // Withdrawal is enabled - users can manually withdraw accumulated votes to permanent merits
+  const showWithdraw = ((isAuthor && !hasBeneficiary) || isBeneficiary) && maxWithdrawAmount > 0;
   const showVote = !isAuthor && !isBeneficiary;
   const showVoteForAuthor = isAuthor && hasBeneficiary;
 
@@ -188,7 +192,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const handleWithdrawClick = () => {
     useUIStore.getState().openWithdrawPopup(
       publicationId,
-      'publication-topup',
+      'publication',
       maxWithdrawAmount,
       maxTopUpAmount
     );

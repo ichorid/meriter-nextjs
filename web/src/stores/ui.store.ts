@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 
 export type VotingTargetType = 'publication' | 'comment' | null;
-export type WithdrawTargetType = 'publication-topup' | 'comment-topup' | null;
+export type WithdrawTargetType = 'publication' | 'comment' | 'vote' | 'publication-topup' | 'comment-topup' | null;
 
 interface VotingFormData {
   comment: string;
