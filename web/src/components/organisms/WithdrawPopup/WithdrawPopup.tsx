@@ -2,13 +2,13 @@
 
 import React from 'react';
 import { useUIStore } from '@/stores/ui.store';
-import { FormWithdrawVertical } from '@/shared/components/form-withdraw-vertical';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
 import { useVoteOnPublicationWithComment, useVoteOnVote, useWithdrawFromPublication, useWithdrawFromVote } from '@/hooks/api/useVotes';
-import { BasePopup } from '../BasePopup/BasePopup';
 import { usePopupCommunityData } from '@/hooks/usePopupCommunityData';
 import { usePopupFormData } from '@/hooks/usePopupFormData';
+import { VotingPanel } from '../VotingPopup/VotingPanel';
+import { BottomPortal } from '@/shared/components/bottom-portal';
 
 interface WithdrawPopupProps {
   communityId?: string;
@@ -47,7 +47,9 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
   });
 
   const handleAmountChange = (amount: number) => {
-    updateWithdrawFormData({ amount, error: '' });
+    // Ensure amount is always positive for withdrawals
+    const positiveAmount = Math.abs(amount);
+    updateWithdrawFormData({ amount: positiveAmount, error: '' });
   };
 
   const handleClose = () => {
@@ -121,32 +123,53 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
   }
 
   // Get max amounts - this should come from the component that opened the popup
-  // For now, we'll use wallet balance as fallback
   const maxWithdrawAmount = formData.maxWithdrawAmount || 0;
   const maxTopUpAmount = formData.maxTopUpAmount || walletBalance;
   const isWithdrawal = withdrawTargetType === 'publication' || withdrawTargetType === 'comment' || withdrawTargetType === 'vote';
+  
+  // Calculate maxPlus based on withdrawal or topup mode
+  const maxPlus = isWithdrawal ? maxWithdrawAmount : maxTopUpAmount;
+  
+  // Determine title based on mode
+  const popupTitle = isWithdrawal 
+    ? t('withdraw') 
+    : t('addCommunityPoints', { amount: 0 }).replace(': {amount}', '').replace('{amount}', '');
+
+  const isLoading = 
+    voteOnPublicationWithCommentMutation.isPending || 
+    voteOnVoteMutation.isPending || 
+    withdrawFromPublicationMutation.isPending || 
+    withdrawFromVoteMutation.isPending;
 
   return (
-    <BasePopup isOpen={isOpen} onClose={handleClose}>
-      <FormWithdrawVertical
-        comment={formData.comment}
-        setComment={handleCommentChange}
-        amount={formData.amount}
-        setAmount={handleAmountChange}
-        maxWithdrawAmount={maxWithdrawAmount}
-        maxTopUpAmount={maxTopUpAmount}
-        onSubmit={handleSubmit}
-        onClose={handleClose}
-        isWithdrawal={isWithdrawal}
-        isLoading={
-          voteOnPublicationWithCommentMutation.isPending || 
-          voteOnVoteMutation.isPending || 
-          withdrawFromPublicationMutation.isPending || 
-          withdrawFromVoteMutation.isPending
-        }
-        currencyIconUrl={currencyIconUrl}
-      />
-    </BasePopup>
+    <BottomPortal>
+      <div className="fixed inset-0 z-50 pointer-events-auto flex items-end justify-center">
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" 
+          onClick={handleClose}
+        />
+        <VotingPanel
+          onClose={handleClose}
+          amount={formData.amount}
+          setAmount={handleAmountChange}
+          comment={formData.comment}
+          setComment={handleCommentChange}
+          onSubmit={() => {}} // Not used when onSubmitSimple is provided
+          onSubmitSimple={handleSubmit}
+          maxPlus={maxPlus}
+          maxMinus={0}
+          quotaRemaining={0}
+          dailyQuota={0}
+          usedToday={0}
+          error={formData.error}
+          hideComment={true}
+          hideQuota={true}
+          hideDirectionToggle={true}
+          hideImages={true}
+          title={popupTitle}
+        />
+      </div>
+    </BottomPortal>
   );
 };
 

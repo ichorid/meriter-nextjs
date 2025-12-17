@@ -28,6 +28,13 @@ interface VotingPanelProps {
     inline?: boolean;
     images?: string[];
     onImagesChange?: (images: string[]) => void;
+    // Withdraw mode props
+    hideComment?: boolean;
+    hideQuota?: boolean;
+    hideDirectionToggle?: boolean;
+    hideImages?: boolean;
+    title?: string;
+    onSubmitSimple?: () => void;
 }
 
 export const VotingPanel: React.FC<VotingPanelProps> = ({
@@ -47,15 +54,23 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     inline = false,
     images = [],
     onImagesChange,
+    hideComment = false,
+    hideQuota = false,
+    hideDirectionToggle = false,
+    hideImages = false,
+    title,
+    onSubmitSimple,
 }) => {
     const t = useTranslations("comments");
+    const tShared = useTranslations("shared");
+    // In withdraw mode, force positive direction
     const [voteDirection, setVoteDirection] = useState<"positive" | "negative">(
-        "positive"
+        hideDirectionToggle ? "positive" : "positive"
     );
     const prevDirectionRef = React.useRef<"positive" | "negative">("positive");
 
-    // Check if downvote is available
-    const canDownvote = maxMinus > 0 && !isViewer;
+    // Check if downvote is available (disabled in withdraw mode)
+    const canDownvote = !hideDirectionToggle && maxMinus > 0 && !isViewer;
 
     // Calculate slider range - now only goes from 0 to max (right only)
     const max = voteDirection === "positive" ? maxPlus : maxMinus;
@@ -89,17 +104,26 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         }
     }, [canDownvote, voteDirection, setAmount]);
 
+    // Force positive direction in withdraw mode
+    useEffect(() => {
+        if (hideDirectionToggle && voteDirection === "negative") {
+            setVoteDirection("positive");
+            setAmount(Math.abs(amount));
+        }
+    }, [hideDirectionToggle, voteDirection, amount, setAmount]);
+
     const isPositive = voteDirection === "positive";
     const absAmount = Math.abs(amount);
     
     // Calculate if button should be disabled
-    const isButtonDisabled = absAmount === 0 || (isPositive && !comment.trim());
+    // In withdraw mode (hideComment), don't require comment
+    const isButtonDisabled = absAmount === 0 || (!hideComment && isPositive && !comment.trim());
     
     // Calculate which error message to show
     const getButtonError = (): string | null => {
         if (!isButtonDisabled) return null;
-        if (absAmount === 0) return t("requiresVoteAmount");
-        if (isPositive && !comment.trim()) return t("requiresComment");
+        if (absAmount === 0) return hideComment ? (tShared("pleaseAdjustSlider") || t("requiresVoteAmount")) : t("requiresVoteAmount");
+        if (!hideComment && isPositive && !comment.trim()) return t("requiresComment");
         return null;
     };
     
@@ -126,25 +150,27 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     fontWeight: 700,
                 }}
             >
-                {t("voteTitle")}
+                {title || t("voteTitle")}
             </h2>
 
             {/* Description */}
-            <p
-                className="text-base-content leading-[120%] flex items-center"
-                style={{
-                    width: "304px",
-                    height: "36px",
-                    fontSize: "15px",
-                    fontFamily: "Roboto, sans-serif",
-                    fontWeight: 400,
-                }}
-            >
-                {t("sliderHint")}
-            </p>
+            {!hideComment && (
+                <p
+                    className="text-base-content leading-[120%] flex items-center"
+                    style={{
+                        width: "304px",
+                        height: "36px",
+                        fontSize: "15px",
+                        fontFamily: "Roboto, sans-serif",
+                        fontWeight: 400,
+                    }}
+                >
+                    {t("sliderHint")}
+                </p>
+            )}
 
             {/* Vote Direction Toggle */}
-            {canDownvote && (
+            {canDownvote && !hideDirectionToggle && (
                 <div
                     className="flex items-center justify-center gap-3"
                     style={{ width: "304px" }}
@@ -235,7 +261,11 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     lineHeight: "120%",
                 }}
             >
-                {isPositive ? (
+                {hideDirectionToggle ? (
+                    <>
+                        {absAmount > 0 ? `+${absAmount}` : absAmount}
+                    </>
+                ) : isPositive ? (
                     <>
                         👍 {t("voteUp")}: +{absAmount}
                     </>
@@ -247,6 +277,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             </div>
 
             {/* Limit / Quota Indicator */}
+            {!hideQuota && (
             <div
                 className="flex flex-col gap-[5px]"
                 style={{ width: "304px", height: "40px" }}
@@ -349,6 +380,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     </span>
                 </div>
             </div>
+            )}
 
             {/* Slider Container */}
             {max > 0 ? (
@@ -422,6 +454,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             )}
 
             {/* Comment Input */}
+            {!hideComment && (
             <div className="flex flex-col gap-1" style={{ width: "304px" }}>
                 <label
                     className="text-base-content opacity-60"
@@ -458,9 +491,10 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     />
                 </div>
             </div>
+            )}
 
             {/* Image Gallery */}
-            {onImagesChange && (
+            {onImagesChange && !hideImages && (
                 <div className="flex flex-col gap-1" style={{ width: "304px" }}>
                     <ImageGallery
                         images={images}
@@ -474,7 +508,13 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             {/* Submit Button */}
             <div className="flex flex-col gap-1" style={{ width: "304px" }}>
                 <button
-                    onClick={() => onSubmit(isPositive)}
+                    onClick={() => {
+                        if (onSubmitSimple) {
+                            onSubmitSimple();
+                        } else {
+                            onSubmit(isPositive);
+                        }
+                    }}
                     className={classList(
                         "flex justify-center items-center border rounded-[8px] sticky bottom-0",
                         isPositive
