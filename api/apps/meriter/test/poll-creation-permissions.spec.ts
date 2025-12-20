@@ -95,7 +95,7 @@ describe('Poll Creation Permissions', () => {
       postingRules: {
         allowedRoles: ['superadmin', 'lead'], // Participant excluded
         requiresTeamMembership: false,
-        onlyTeamLead: false,
+        onlyTeamLead: true, // This actually restricts participants
       },
       createdAt: new Date(),
       updatedAt: new Date(),

@@ -78,18 +78,17 @@ export class PermissionService {
     if (!community) return false;
 
     // Participants can always post by default (unless explicitly restricted)
-    // allowedRoles does NOT restrict participants - it's ignored for them
     if (userRole === COMMUNITY_ROLE_PARTICIPANT) {
-      const rules = community.postingRules;
+      const rules = this.communityService.getEffectivePostingRules(community);
       
       // Check explicit restrictions that would deny participants
-      if (rules?.onlyTeamLead) {
+      if (rules.onlyTeamLead) {
         // If only team leads can post, participants cannot
         return false;
       }
       
       // Check additional restrictions
-      if (rules?.requiresTeamMembership) {
+      if (rules.requiresTeamMembership) {
         const hasTeamMembership = await this.userHasTeamMembership(userId);
         if (!hasTeamMembership) return false;
       }
@@ -98,11 +97,8 @@ export class PermissionService {
       return true;
     }
 
-    const rules = community.postingRules;
-    if (!rules) {
-      // If no rules configured, only participants can post (already handled above)
-      return false;
-    }
+    // For other roles (lead, viewer), check effective rules
+    const rules = this.communityService.getEffectivePostingRules(community);
 
     // Check if role is allowed
     if (!userRole || !rules.allowedRoles.includes(userRole)) return false;
@@ -136,16 +132,16 @@ export class PermissionService {
 
     // Participants can always create polls by default (unless explicitly restricted)
     if (userRole === COMMUNITY_ROLE_PARTICIPANT) {
-      const rules = community.postingRules;
+      const rules = this.communityService.getEffectivePostingRules(community);
       
       // Check explicit restrictions that would deny participants
-      if (rules?.onlyTeamLead) {
+      if (rules.onlyTeamLead) {
         // If only team leads can create polls, participants cannot
         return false;
       }
       
       // Check additional restrictions
-      if (rules?.requiresTeamMembership) {
+      if (rules.requiresTeamMembership) {
         const hasTeamMembership = await this.userHasTeamMembership(userId);
         if (!hasTeamMembership) return false;
       }
@@ -154,12 +150,8 @@ export class PermissionService {
       return true;
     }
 
-    // For other roles (lead, viewer), check postingRules
-    const rules = community.postingRules;
-    if (!rules) {
-      // If no rules configured, only participants can create polls (already handled above)
-      return false;
-    }
+    // For other roles (lead, viewer), check effective rules
+    const rules = this.communityService.getEffectivePostingRules(community);
 
     // Check if role is allowed
     if (!userRole || !rules.allowedRoles.includes(userRole)) return false;
@@ -290,18 +282,7 @@ export class PermissionService {
     }
 
     // Outside Team Communities: Apply regular voting rules
-    const rules = community.votingRules;
-    
-    if (!rules) {
-      // Fallback: if no rules configured, allow everyone (backward compatibility)
-      // But still check for own posts
-      if (authorId === userId) {
-        this.logger.log(`[canVote] DENIED: Cannot vote for own post by default (no rules)`);
-        return false;
-      }
-      this.logger.log(`[canVote] ALLOWED: No rules configured, allowing vote`);
-      return true;
-    }
+    const rules = this.communityService.getEffectiveVotingRules(community);
 
     // Special handling for support communities: participants can always vote
     // This matches the posting rules behavior where participants can post in support communities
@@ -407,11 +388,7 @@ export class PermissionService {
     if (!community) return false;
 
     // Use votingRules for comments (can be extended with separate commentRules)
-    const rules = community.votingRules;
-    if (!rules) {
-      // Fallback: if no rules configured, allow everyone (backward compatibility)
-      return true;
-    }
+    const rules = this.communityService.getEffectiveVotingRules(community);
 
     return userRole ? rules.allowedRoles.includes(userRole) : false;
   }
@@ -437,18 +414,7 @@ export class PermissionService {
       return false;
     }
 
-    const rules = community.visibilityRules;
-    if (!rules) {
-      // Fallback: if no rules configured, check if user is member (backward compatibility)
-      // For Team groups without rules, exclude viewers
-      if (community.typeTag === 'team' && userRole === COMMUNITY_ROLE_VIEWER) {
-        return false;
-      }
-      return (
-        community.members?.includes(userId) ||
-        false
-      );
-    }
+    const rules = this.communityService.getEffectiveVisibilityRules(community);
 
     // Check if hidden
     if (rules.isHidden) return false;

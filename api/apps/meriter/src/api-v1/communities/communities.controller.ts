@@ -89,12 +89,20 @@ export class CommunitiesController {
 
     // Superadmins can see all communities
     if (user.globalRole === GLOBAL_ROLE_SUPERADMIN) {
-    const result = await this.communityService.getAllCommunities(
+      const result = await this.communityService.getAllCommunities(
         pagination.limit || 20,
         skip,
       );
+      // Add effective rules to each community
+      const communitiesWithEffectiveRules = result.map((community) => ({
+        ...community,
+        postingRules: this.communityService.getEffectivePostingRules(community),
+        votingRules: this.communityService.getEffectiveVotingRules(community),
+        visibilityRules: this.communityService.getEffectiveVisibilityRules(community),
+        meritRules: this.communityService.getEffectiveMeritRules(community),
+      }));
       return {
-        data: result,
+        data: communitiesWithEffectiveRules,
         total: result.length,
         skip,
         limit: pagination.limit || 20,
@@ -142,8 +150,17 @@ export class CommunitiesController {
       skip + (pagination.limit || 20),
     );
 
+    // Add effective rules to each community
+    const communitiesWithEffectiveRules = paginatedResult.map((community) => ({
+      ...community,
+      postingRules: this.communityService.getEffectivePostingRules(community),
+      votingRules: this.communityService.getEffectiveVotingRules(community),
+      visibilityRules: this.communityService.getEffectiveVisibilityRules(community),
+      meritRules: this.communityService.getEffectiveMeritRules(community),
+    }));
+
     return {
-      data: paginatedResult,
+      data: communitiesWithEffectiveRules,
       total: validCommunities.length,
       skip,
       limit: pagination.limit || 20,
@@ -185,8 +202,19 @@ export class CommunitiesController {
     const adminRoles = await this.userCommunityRoleService.getUsersByRole(id, 'lead');
     const adminIds = adminRoles.map(role => role.userId);
 
+    // Get effective rules (defaults merged with overrides)
+    const effectivePostingRules = this.communityService.getEffectivePostingRules(community);
+    const effectiveVotingRules = this.communityService.getEffectiveVotingRules(community);
+    const effectiveVisibilityRules = this.communityService.getEffectiveVisibilityRules(community);
+    const effectiveMeritRules = this.communityService.getEffectiveMeritRules(community);
+
     return {
       ...community,
+      // Return effective rules instead of stored rules
+      postingRules: effectivePostingRules,
+      votingRules: effectiveVotingRules,
+      visibilityRules: effectiveVisibilityRules,
+      meritRules: effectiveMeritRules,
       // Ensure settings.language is provided to match type expectations
       settings: {
         currencyNames: community.settings?.currencyNames,
@@ -277,8 +305,19 @@ export class CommunitiesController {
     const adminRoles = await this.userCommunityRoleService.getUsersByRole(community.id, 'lead');
     const adminIds = adminRoles.map(role => role.userId);
 
+    // Get effective rules (defaults merged with overrides)
+    const effectivePostingRules = this.communityService.getEffectivePostingRules(community);
+    const effectiveVotingRules = this.communityService.getEffectiveVotingRules(community);
+    const effectiveVisibilityRules = this.communityService.getEffectiveVisibilityRules(community);
+    const effectiveMeritRules = this.communityService.getEffectiveMeritRules(community);
+
     return {
       ...community,
+      // Return effective rules instead of stored rules
+      postingRules: effectivePostingRules,
+      votingRules: effectiveVotingRules,
+      visibilityRules: effectiveVisibilityRules,
+      meritRules: effectiveMeritRules,
       avatarUrl: community.avatarUrl,
       settings: {
         currencyNames: community.settings?.currencyNames,
