@@ -211,6 +211,7 @@ export class CommunityService {
           name: 'Образ Будущего',
           description: 'Группа для публикации и обсуждения образов будущего.',
           typeTag: 'future-vision',
+          isPriority: true,
           settings: {
             currencyNames: {
               singular: 'merit',
@@ -223,6 +224,10 @@ export class CommunityService {
       } catch (e) {
         this.logger.error('Failed to create Future Vision', e);
       }
+    } else if (!futureVision.isPriority) {
+      // Update existing community to ensure it's marked as priority
+      this.logger.log('Updating "Future Vision" community to set isPriority=true...');
+      await this.updateCommunity(futureVision.id, { isPriority: true });
     }
 
     // 2. Marathon of Good
@@ -234,6 +239,7 @@ export class CommunityService {
           name: 'Марафон Добра',
           description: 'Группа для отчетов о добрых делах.',
           typeTag: 'marathon-of-good',
+          isPriority: true,
           settings: {
             currencyNames: {
               singular: 'merit',
@@ -246,6 +252,10 @@ export class CommunityService {
       } catch (e) {
         this.logger.error('Failed to create Marathon of Good', e);
       }
+    } else if (!marathon.isPriority) {
+      // Update existing community to ensure it's marked as priority
+      this.logger.log('Updating "Marathon of Good" community to set isPriority=true...');
+      await this.updateCommunity(marathon.id, { isPriority: true });
     }
 
     // 3. Support
@@ -257,6 +267,7 @@ export class CommunityService {
           name: 'Поддержка',
           description: 'Группа поддержки.',
           typeTag: 'support',
+          isPriority: true,
           settings: {
             currencyNames: {
               singular: 'merit',
@@ -269,6 +280,10 @@ export class CommunityService {
       } catch (e) {
         this.logger.error('Failed to create Support', e);
       }
+    } else if (!support.isPriority) {
+      // Update existing community to ensure it's marked as priority
+      this.logger.log('Updating "Support" community to set isPriority=true...');
+      await this.updateCommunity(support.id, { isPriority: true });
     }
   }
 
