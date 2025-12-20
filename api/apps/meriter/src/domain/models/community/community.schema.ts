@@ -30,31 +30,9 @@ export interface CommunitySettings {
   editWindowDays?: number;
 }
 
-export interface CommunityPostingRules {
-  allowedRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
-  requiresTeamMembership?: boolean;
-  onlyTeamLead?: boolean;
-  autoMembership?: boolean;
-}
-
 export interface CommunityMeritConversion {
   targetCommunityId: string;
   ratio: number;
-}
-
-export interface CommunityVotingRules {
-  allowedRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
-  canVoteForOwnPosts: boolean;
-  participantsCannotVoteForLead?: boolean;
-  spendsMerits: boolean;
-  awardsMerits: boolean;
-  meritConversion?: CommunityMeritConversion;
-}
-
-export interface CommunityVisibilityRules {
-  visibleToRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
-  isHidden?: boolean;
-  teamOnly?: boolean;
 }
 
 // Merit settings (configuration, not permissions)

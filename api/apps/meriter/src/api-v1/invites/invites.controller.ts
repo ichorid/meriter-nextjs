@@ -271,11 +271,8 @@ export class InvitesController {
         name: teamName,
         description: `Team group for ${userData?.displayName || 'Representative'}`,
         typeTag: 'team',
-        visibilityRules: {
-          visibleToRoles: ['superadmin', 'lead', 'participant'], // Viewers cannot see Team groups (R:n)
-          isHidden: false,
-          teamOnly: false,
-        },
+        // Visibility rules are now handled by permissionRules (defaults from CommunityDefaultsService)
+        // Viewers cannot see Team groups - this is handled by default permission rules
       });
 
       // Add user to team community and assign lead role

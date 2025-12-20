@@ -411,25 +411,11 @@ export class PermissionsHelperService {
     }
 
     // Check role restrictions
-    // Special handling for support communities: participants can always vote
-    // This matches the logic in permission.service.ts canVote method
-    const isSupportCommunityParticipant = community.typeTag === 'support' && userRole === COMMUNITY_ROLE_PARTICIPANT;
-    
-    if (userRole && community.votingRules) {
-      // Skip allowedRoles check for support community participants
-      if (!isSupportCommunityParticipant && !community.votingRules.allowedRoles.includes(userRole)) {
-        return 'voteDisabled.roleNotAllowed';
-      }
-
-      // Check own post restriction
-      if (isAuthor && !community.votingRules.canVoteForOwnPosts) {
-        // Exception: future-vision allows self-voting
-        if (community.typeTag === 'future-vision' && 
-            (userRole === 'participant' || userRole === 'lead' || userRole === 'superadmin')) {
-          return undefined as any;
-        }
-        return 'voteDisabled.ownPostNotAllowed';
-      }
+    // Note: Permission rules are now handled by PermissionService.canVote()
+    // This helper just provides reasons for UI display
+    // The actual permission check is done by the rule engine
+    if (!userRole) {
+      return 'voteDisabled.roleNotAllowed';
     }
 
     // Check viewer restrictions

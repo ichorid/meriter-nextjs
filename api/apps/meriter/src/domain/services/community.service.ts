@@ -303,11 +303,8 @@ export class CommunityService {
         },
         dailyEmission: dto.settings?.dailyEmission || 10,
       },
-      // Don't store default rules - they come from code via CommunityDefaultsService
-      postingRules: undefined,
-      votingRules: undefined,
-      visibilityRules: undefined,
-      meritRules: undefined,
+      // Don't store default permission rules - they come from code via CommunityDefaultsService
+      // Default meritSettings and votingSettings are also provided by CommunityDefaultsService
       hashtags: [],
       hashtagDescriptions: {},
       isActive: true, // Default to active
