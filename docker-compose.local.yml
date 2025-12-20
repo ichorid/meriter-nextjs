@@ -141,6 +141,11 @@ services:
       - MONGO_URL_SECONDARY=${MONGO_URL_SECONDARY:-}
       # Backward compatibility: APP_URL (used for domain derivation if DOMAIN is not set)
       - APP_URL=${APP_URL:-}
+      # WebAuthn / Passkeys
+      - AUTHN_ENABLED=${AUTHN_ENABLED:-false}
+      - RP_ID=${RP_ID:-localhost}
+      - RP_NAME=${RP_NAME:-Meriter}
+      - RP_ORIGIN=${RP_ORIGIN:-https://localhost:8443}
     ports:
       - "8002:8002"
     networks:

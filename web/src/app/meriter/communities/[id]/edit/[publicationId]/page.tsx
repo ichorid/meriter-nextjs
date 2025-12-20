@@ -3,7 +3,7 @@
 import React from 'react';
 import { PublicationCreateForm } from '@/features/publications/components/PublicationCreateForm';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { use, useEffect } from 'react';
@@ -52,10 +52,11 @@ export default function EditPublicationPage({
   }
 
   const pageHeader = (
-    <PageHeader
+    <SimpleStickyHeader
       title={t('editTitle') || 'Edit Publication'}
       showBack={true}
       onBack={() => router.push(`/meriter/communities/${communityId}`)}
+      asStickyHeader={true}
     />
   );
 

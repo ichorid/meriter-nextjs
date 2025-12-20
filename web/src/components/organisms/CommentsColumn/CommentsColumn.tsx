@@ -8,7 +8,8 @@ import { CommentsList } from '@/lib/comments/components/CommentsList';
 import { buildTree } from '@/lib/comments/tree';
 import { transformComments } from '@/lib/comments/utils/transform';
 import { BrandButton } from '@/components/ui/BrandButton';
-import { ArrowLeft, X } from 'lucide-react';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
+import { SortToggle } from '@/components/ui/SortToggle';
 
 export interface CommentsColumnProps {
   publicationSlug: string;
@@ -43,10 +44,11 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
 }) => {
   const router = useRouter();
   const t = useTranslations('home');
-  
+  const tCommon = useTranslations('common');
+
   // Sort state for comments
   const [sortBy, setSortBy] = useState<'recent' | 'voted'>('recent');
-  
+
   // Get comments data - useComments hook manages comment state
   // API provides enriched data (author, vote transaction fields)
   const {
@@ -56,7 +58,7 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
     publicationSlug,
     '', // transactionId
     balance,
-    async () => {}, // updBalance - mutations handle invalidation
+    async () => { }, // updBalance - mutations handle invalidation
     0, // plusGiven - not used for display only
     0, // minusGiven - not used for display only
     activeCommentHook,
@@ -84,7 +86,7 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
     }
     // Transform comments from Meriter format to template format
     const transformedComments = transformComments(comments as any);
-    
+
     // Build tree structure from flat list
     const tree = buildTree(transformedComments);
     return tree;
@@ -93,57 +95,25 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
   return (
     <div className="h-full flex flex-col bg-base-100 border-l border-base-300 overflow-hidden w-full">
       {/* Header with close/back button and sort toggle */}
-      <div className="flex-shrink-0 border-b border-base-300 bg-base-200">
-        <div className="flex items-center gap-2 p-4 w-full">
-          {(showBackButton || onBack) ? (
-            <>
-              <BrandButton
-                variant="ghost"
-                size="sm"
-                onClick={handleBack}
-                leftIcon={<ArrowLeft size={16} />}
-                className="dark:text-base-content"
-              >
-                Back
-              </BrandButton>
-              <h2 className="text-lg font-semibold flex-1 text-base-content dark:text-base-content">Comments</h2>
-              <BrandButton
-                variant="ghost"
-                size="sm"
-                onClick={handleBack}
-                leftIcon={<X size={16} />}
-                className="dark:text-base-content"
-              />
-            </>
-          ) : (
-            <h2 className="text-lg font-semibold flex-1">Comments</h2>
-          )}
-        </div>
-        {/* Sort Toggle */}
-        <div className="flex justify-end gap-2 px-4 pb-3">
-          <div className="flex gap-1">
-            <BrandButton
-              variant={sortBy === 'recent' ? 'primary' : 'outline'}
-              size="sm"
-              onClick={() => setSortBy('recent')}
-            >
-              {t('sort.recent')}
-            </BrandButton>
-            <BrandButton
-              variant={sortBy === 'voted' ? 'primary' : 'outline'}
-              size="sm"
-              onClick={() => setSortBy('voted')}
-            >
-              {t('sort.voted')}
-            </BrandButton>
-          </div>
-        </div>
-      </div>
+      <SimpleStickyHeader
+        title={tCommon('comments')}
+        showBack={!!(showBackButton || onBack)}
+        onBack={handleBack}
+        rightAction={
+          <SortToggle
+            value={sortBy}
+            onChange={setSortBy}
+            compact={true}
+          />
+        }
+        className="border-b border-base-300"
+        asStickyHeader={false}
+      />
 
       {/* Comments list with tree navigation */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-h-0">
         {commentTree.length > 0 ? (
-          <CommentsList 
+          <CommentsList
             roots={commentTree}
             myId={myId}
             balance={balance}

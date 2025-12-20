@@ -24,6 +24,8 @@ export interface AdaptiveLayoutProps {
   setActiveWithdrawPost?: (id: string | null) => void;
   /** Sticky header that stays at top of scroll area */
   stickyHeader?: React.ReactNode;
+  /** Custom tabs for mobile bottom navigation */
+  bottomNavTabs?: any[];
 }
 
 /**
@@ -44,6 +46,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   activeWithdrawPost,
   setActiveWithdrawPost = () => { },
   stickyHeader,
+  bottomNavTabs,
 }) => {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -69,7 +72,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   // In tablet mode (768-1023px), if comments are open, replace center content with comments
   // CSS hides the overlay at max-width: 1023px, so tablet needs center replacement
   const showCommentsInCenter = isTablet && showComments && selectedPostSlug && communityId;
-  
+
   // Overlay should only show on desktop (≥1024px), not on tablet where CSS hides it anyway
   const canShowOverlay = isDesktop && !isTablet;
 
@@ -104,21 +107,20 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   // Community pages use stickyHeader prop instead, so exclude them from appHeader
   const shouldShowHeader = React.useMemo(() => {
     if (!pathname || pathname.includes('/login')) return false;
-    
+
     const isProfileMainPage = pathname === '/meriter/profile';
     const isProfileSubPage = pathname?.startsWith('/meriter/profile/');
     const isSettingsPage = pathname === '/meriter/settings';
     const isCommunityPage = pathname?.match(/\/meriter\/communities\/([^\/]+)$/);
     const isPostDetailPage = pathname?.match(/\/meriter\/communities\/([^\/]+)\/posts\/(.+)/);
 
-    if (isPostDetailPage || isProfileMainPage || isSettingsPage || isCommunityPage) return false;
-    if (isProfileSubPage) return true;
-    
+    if (isPostDetailPage || isProfileMainPage || isSettingsPage || isCommunityPage || isProfileSubPage) return false;
+
     return false;
   }, [pathname]);
 
   return (
-    <div 
+    <div
       className={`appShell ${className}`}
       data-inspector-mode={inspectorMode}
       data-comments-open={commentsOpen}
@@ -140,10 +142,10 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
         {/* Main scroll container */}
         <div className="mainWrap">
-          <div className="main">
+          <div className="main pb-24 lg:pb-0">
             {/* Sticky Header - rendered inside main for proper sticky behavior */}
             {stickyHeader && !showCommentsInCenter && (
-              <div className="sticky top-0 z-20 bg-base-100 -mx-4 -mt-6 mb-4 px-4 pt-6">
+              <div className="sticky top-0 z-20 bg-base-100 -mx-4 -mt-6 mb-4 px-4">
                 {stickyHeader}
               </div>
             )}
@@ -198,9 +200,9 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
       {/* Note: CSS hides overlay at max-width: 1023px, so this only renders when visible */}
       {inspectorMode === 'overlay' && canShowOverlay && (
         <>
-          <div 
-            className="inspectorOverlay" 
-            role="dialog" 
+          <div
+            className="inspectorOverlay"
+            role="dialog"
             aria-hidden={!commentsOpen}
           >
             {showCommentsColumn && (
@@ -222,8 +224,8 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
               />
             )}
           </div>
-          <div 
-            className="scrim" 
+          <div
+            className="scrim"
             onClick={handleCloseComments}
             aria-hidden={!commentsOpen}
           />
@@ -266,7 +268,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
       />
 
       {/* Mobile Bottom Navigation */}
-      <BottomNavigation />
+      <BottomNavigation customTabs={bottomNavTabs} />
     </div>
   );
 };

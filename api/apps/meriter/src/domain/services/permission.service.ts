@@ -77,19 +77,42 @@ export class PermissionService {
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
 
-    // Special handling for marathon-of-good and future-vision communities
-    const isSpecialCommunity =
-      community.typeTag === 'marathon-of-good' ||
-      community.typeTag === 'future-vision';
-    if (isSpecialCommunity && userRole === COMMUNITY_ROLE_PARTICIPANT) {
+    // Participants can always post by default (unless explicitly restricted)
+    if (userRole === COMMUNITY_ROLE_PARTICIPANT) {
+      const rules = this.communityService.getEffectivePostingRules(community);
+      
+      // Check explicit restrictions that would deny participants
+      if (rules.onlyTeamLead) {
+        // If only team leads can post, participants cannot
+        return false;
+      }
+      
+      // Check additional restrictions
+      if (rules.requiresTeamMembership) {
+        const hasTeamMembership = await this.userHasTeamMembership(userId);
+        if (!hasTeamMembership) return false;
+      }
+      
+      // For custom communities, check if participant is in allowedRoles
+      // Special communities (marathon-of-good, future-vision, support, team) allow participants regardless
+      const isSpecialCommunity = community.typeTag === 'marathon-of-good' 
+        || community.typeTag === 'future-vision' 
+        || community.typeTag === 'support'
+        || community.typeTag === 'team';
+      
+      if (!isSpecialCommunity) {
+        // For custom communities, check allowedRoles
+        if (!rules.allowedRoles.includes(COMMUNITY_ROLE_PARTICIPANT)) {
+          return false;
+        }
+      }
+      
+      // Participants can post by default for special communities, or if allowedRoles includes participant
       return true;
     }
 
-    const rules = community.postingRules;
-    if (!rules) {
-      // If no rules configured, deny by default
-      return false;
-    }
+    // For other roles (lead, viewer), check effective rules
+    const rules = this.communityService.getEffectivePostingRules(community);
 
     // Check if role is allowed
     if (!userRole || !rules.allowedRoles.includes(userRole)) return false;
@@ -121,25 +144,42 @@ export class PermissionService {
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
 
-    // Special handling for marathon-of-good and future-vision communities
-    const isSpecialCommunity =
-      community.typeTag === 'marathon-of-good' ||
-      community.typeTag === 'future-vision';
-    if (isSpecialCommunity && userRole === COMMUNITY_ROLE_PARTICIPANT) {
+    // Participants can always create polls by default (unless explicitly restricted)
+    if (userRole === COMMUNITY_ROLE_PARTICIPANT) {
+      const rules = this.communityService.getEffectivePostingRules(community);
+      
+      // Check explicit restrictions that would deny participants
+      if (rules.onlyTeamLead) {
+        // If only team leads can create polls, participants cannot
+        return false;
+      }
+      
+      // Check additional restrictions
+      if (rules.requiresTeamMembership) {
+        const hasTeamMembership = await this.userHasTeamMembership(userId);
+        if (!hasTeamMembership) return false;
+      }
+      
+      // For custom communities, check if participant is in allowedRoles
+      // Special communities (marathon-of-good, future-vision, support, team) allow participants regardless
+      const isSpecialCommunity = community.typeTag === 'marathon-of-good' 
+        || community.typeTag === 'future-vision' 
+        || community.typeTag === 'support'
+        || community.typeTag === 'team';
+      
+      if (!isSpecialCommunity) {
+        // For custom communities, check allowedRoles
+        if (!rules.allowedRoles.includes(COMMUNITY_ROLE_PARTICIPANT)) {
+          return false;
+        }
+      }
+      
+      // Participants can create polls by default for special communities, or if allowedRoles includes participant
       return true;
     }
 
-    // Allow participants in team groups to create polls
-    // This overrides postingRules if they exist and are restrictive
-    if (community.typeTag === 'team' && userRole && (userRole === COMMUNITY_ROLE_PARTICIPANT || userRole === COMMUNITY_ROLE_LEAD)) {
-      return true;
-    }
-
-    const rules = community.postingRules;
-    if (!rules) {
-      // If no rules configured, deny by default
-      return false;
-    }
+    // For other roles (lead, viewer), check effective rules
+    const rules = this.communityService.getEffectivePostingRules(community);
 
     // Check if role is allowed
     if (!userRole || !rules.allowedRoles.includes(userRole)) return false;
@@ -270,18 +310,7 @@ export class PermissionService {
     }
 
     // Outside Team Communities: Apply regular voting rules
-    const rules = community.votingRules;
-    
-    if (!rules) {
-      // Fallback: if no rules configured, allow everyone (backward compatibility)
-      // But still check for own posts
-      if (authorId === userId) {
-        this.logger.log(`[canVote] DENIED: Cannot vote for own post by default (no rules)`);
-        return false;
-      }
-      this.logger.log(`[canVote] ALLOWED: No rules configured, allowing vote`);
-      return true;
-    }
+    const rules = this.communityService.getEffectiveVotingRules(community);
 
     // Special handling for support communities: participants can always vote
     // This matches the posting rules behavior where participants can post in support communities
@@ -387,11 +416,7 @@ export class PermissionService {
     if (!community) return false;
 
     // Use votingRules for comments (can be extended with separate commentRules)
-    const rules = community.votingRules;
-    if (!rules) {
-      // Fallback: if no rules configured, allow everyone (backward compatibility)
-      return true;
-    }
+    const rules = this.communityService.getEffectiveVotingRules(community);
 
     return userRole ? rules.allowedRoles.includes(userRole) : false;
   }
@@ -417,18 +442,7 @@ export class PermissionService {
       return false;
     }
 
-    const rules = community.visibilityRules;
-    if (!rules) {
-      // Fallback: if no rules configured, check if user is member (backward compatibility)
-      // For Team groups without rules, exclude viewers
-      if (community.typeTag === 'team' && userRole === COMMUNITY_ROLE_VIEWER) {
-        return false;
-      }
-      return (
-        community.members?.includes(userId) ||
-        false
-      );
-    }
+    const rules = this.communityService.getEffectiveVisibilityRules(community);
 
     // Check if hidden
     if (rules.isHidden) return false;
@@ -455,10 +469,6 @@ export class PermissionService {
     const publication =
       await this.publicationService.getPublication(publicationId);
     if (!publication) {
-      // Log in development/test to help debug permission issues
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Publication not found: publicationId=${publicationId}, userId=${userId}`);
-      }
       return false;
     }
 
@@ -466,30 +476,11 @@ export class PermissionService {
     const communityId = publication.getCommunityId.getValue();
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
-    this.logger.log(
-      `[canEditPublication] Check: userId=${userId}, authorId=${authorId}, userRole=${userRole}, publicationId=${publicationId}, COMMUNITY_ROLE_SUPERADMIN=${COMMUNITY_ROLE_SUPERADMIN}`,
-    );
-
-    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-      const authorIdType = typeof authorId;
-      const userIdType = typeof userId;
-      const idsMatch = authorId === userId;
-      const idsMatchStrict = authorId === userId && authorIdType === userIdType;
-      console.log(`[canEditPublication] Check: userId=${userId} (${userIdType}), authorId=${authorId} (${authorIdType}), userRole=${userRole}, publicationId=${publicationId}, idsMatch=${idsMatch}, idsMatchStrict=${idsMatchStrict}`);
-    }
-
     if (userRole === COMMUNITY_ROLE_SUPERADMIN) {
-      this.logger.log(`[canEditPublication] Allowed: superadmin (userRole=${userRole})`);
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Allowed: superadmin`);
-      }
       return true;
     }
 
     if (userRole === COMMUNITY_ROLE_LEAD) {
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Allowed: lead`);
-      }
       return true;
     }
 
@@ -498,9 +489,6 @@ export class PermissionService {
     const normalizedAuthorId = String(authorId).trim();
     const normalizedUserId = String(userId).trim();
     const isAuthor = normalizedAuthorId === normalizedUserId;
-    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-      console.log(`[canEditPublication] Author comparison: authorId="${normalizedAuthorId}" === userId="${normalizedUserId}" = ${isAuthor}`);
-    }
     
     if (isAuthor) {
       // Check if publication has any votes or comments
@@ -509,44 +497,24 @@ export class PermissionService {
       const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
       const commentCount = metricsSnapshot.commentCount || 0;
       
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Author check: totalVotes=${totalVotes}, upvotes=${metricsSnapshot.upvotes}, downvotes=${metricsSnapshot.downvotes}, commentCount=${commentCount}`);
-      }
-      
       if (totalVotes > 0) {
-        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-          console.log(`[canEditPublication] Denied: has votes`);
-        }
         return false; // Cannot edit if votes exist
       }
       
       if (commentCount > 0) {
-        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-          console.log(`[canEditPublication] Denied: has comments`);
-        }
         return false; // Cannot edit if comments exist
       }
 
       // Check time window from community settings
       const community = await this.communityService.getCommunity(communityId);
       if (!community) {
-        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-          console.log(`[canEditPublication] Denied: community not found: ${communityId}`);
-        }
         return false;
       }
 
       const editWindowDays = community.settings?.editWindowDays ?? 7;
       
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Edit window: ${editWindowDays} days`);
-      }
-      
       if (editWindowDays === 0) {
         // 0 means no time limit
-        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-          console.log(`[canEditPublication] Allowed: no time limit`);
-        }
         return true;
       }
 
@@ -560,25 +528,14 @@ export class PermissionService {
       const millisecondsSinceCreation = now.getTime() - createdAt.getTime();
       const daysSinceCreation = Math.floor(millisecondsSinceCreation / (1000 * 60 * 60 * 24));
 
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Date check: createdAt=${createdAt.toISOString()}, now=${now.toISOString()}, daysSinceCreation=${daysSinceCreation}, editWindowDays=${editWindowDays}`);
-      }
-
       // editWindowDays of 7 means can edit for 7 days (days 0-6), not including day 7+
       // So if daysSinceCreation is 8 and editWindowDays is 7, should return false
       // Use < instead of <= to be strict: if it's been 7 full days, that's the limit
       const canEdit = daysSinceCreation < editWindowDays;
       
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Result: ${canEdit}`);
-      }
-      
       return canEdit;
     }
 
-    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-      console.log(`[canEditPublication] Denied: not author (authorId=${authorId}, userId=${userId})`);
-    }
     return false;
   }
 

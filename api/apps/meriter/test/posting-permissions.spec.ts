@@ -167,7 +167,7 @@ describe('Posting Permissions', () => {
         postingRules: {
           allowedRoles: ['lead'],
           requiresTeamMembership: false,
-          onlyTeamLead: false,
+          onlyTeamLead: true, // This actually restricts participants
         },
         createdAt: new Date(),
         updatedAt: new Date(),

@@ -12,14 +12,26 @@ import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { WalletChip } from '@/components/molecules/WalletChip';
 import { routes } from '@/lib/constants/routes';
 
-export const BottomNavigation = () => {
+export interface NavTab {
+    name: string;
+    icon: React.ElementType;
+    path: string;
+    isActive: (path: string) => boolean;
+    badge?: number;
+}
+
+export interface BottomNavigationProps {
+    customTabs?: NavTab[];
+}
+
+export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
     const pathname = usePathname();
     const router = useRouter();
     const { data: unreadCount = 0 } = useUnreadCount();
-    
+
     // Calculate total merits balance (permanent and daily)
     const { totalWalletBalance, totalDailyQuota, wallets } = useUserMeritsBalance();
-    
+
     // Detect community context from pathname
     const communityContextId = useMemo(() => {
         if (!pathname) return null;
@@ -27,16 +39,16 @@ export const BottomNavigation = () => {
         const match = pathname.match(/\/meriter\/communities\/([^\/]+)/);
         return match ? match[1] : null;
     }, [pathname]);
-    
+
     // Get marathon-of-good quota for global context
     const { remaining: marathonQuotaRemaining, max: marathonQuotaMax, isLoading: marathonQuotaLoading } = useMarathonOfGoodQuota();
-    
+
     // Get community-specific quota when in community context
     const { data: communityQuota, isLoading: communityQuotaLoading } = useUserQuota(communityContextId || undefined);
-    
+
     // Determine which quota to use and loading state
     const isInCommunityContext = !!communityContextId;
-    const quotaRemaining = isInCommunityContext 
+    const quotaRemaining = isInCommunityContext
         ? (communityQuota?.remainingToday ?? 0)
         : marathonQuotaRemaining;
     const quotaMax = isInCommunityContext
@@ -45,42 +57,42 @@ export const BottomNavigation = () => {
     const quotaLoading = isInCommunityContext
         ? communityQuotaLoading
         : marathonQuotaLoading;
-    
+
     // Track previous context mode to detect changes
     const prevContextModeRef = useRef<'global' | 'community' | null>(null);
     const [flashTrigger, setFlashTrigger] = useState(0);
-    
+
     // Detect context mode changes and trigger flash
     useEffect(() => {
         const currentMode: 'global' | 'community' = isInCommunityContext ? 'community' : 'global';
         const prevMode = prevContextModeRef.current;
-        
+
         // Only trigger flash if mode actually changed (not on initial load)
         if (prevMode !== null && prevMode !== currentMode) {
             setFlashTrigger(prev => prev + 1);
         }
-        
+
         prevContextModeRef.current = currentMode;
     }, [isInCommunityContext]);
-    
+
     // Get marathon-of-good community ID for navigation
     const { communities: userCommunities } = useUserCommunities();
     const marathonOfGoodCommunityId = useMemo(() => {
         const marathonCommunity = userCommunities.find((c: any) => c?.typeTag === 'marathon-of-good');
         return marathonCommunity?.id || null;
     }, [userCommunities]);
-    
+
     // Get current community or first community ID for currency icon
     const communityIdForIcon = useMemo(() => {
         if (communityContextId) return communityContextId;
         const walletWithCommunity = wallets.find((w: any) => w?.communityId);
         return walletWithCommunity?.communityId;
     }, [communityContextId, wallets]);
-    
+
     // Fetch community to get currency icon
     const { data: communityForIcon } = useCommunity(communityIdForIcon || '');
     const currencyIconUrl = communityForIcon?.settings?.iconUrl;
-    
+
     // Determine if we should show golden variant (marathon-of-good)
     // If not in community context, we show marathon quota by default -> golden
     // If in community context, we check if it is marathon-of-good -> golden
@@ -100,7 +112,7 @@ export const BottomNavigation = () => {
         }
     };
 
-    const tabs = [
+    const defaultTabs: NavTab[] = [
         {
             name: 'Communities',
             icon: Users,
@@ -127,6 +139,8 @@ export const BottomNavigation = () => {
             isActive: (path: string) => path === routes.about,
         },
     ];
+
+    const tabs = customTabs || defaultTabs;
 
     return (
         <div className="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 pb-[env(safe-area-inset-bottom)] z-40 lg:hidden w-full" style={{ maxWidth: '100vw' }}>
@@ -162,7 +176,7 @@ export const BottomNavigation = () => {
                         </button>
                     );
                 })}
-                
+
                 {/* Wallet Chip - centered overlay, 50% overlap with nav bar, 50% protruding upward */}
                 {/* Nav bar height is 64px (h-16), chip height is ~32px, so bottom = 64 - 16 = 48px */}
                 {!quotaLoading && (

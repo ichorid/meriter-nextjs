@@ -36,11 +36,7 @@ export class MeritService {
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
 
-    const rules = community.meritRules;
-    if (!rules) {
-      // Fallback: if no rules configured, allow spending (backward compatibility)
-      return true;
-    }
+    const rules = this.communityService.getEffectiveMeritRules(community);
 
     // Check if role can spend
     if (!rules.canSpend) return false;
@@ -65,11 +61,7 @@ export class MeritService {
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
 
-    const rules = community.meritRules;
-    if (!rules) {
-      // Fallback: if no rules configured, allow earning (backward compatibility)
-      return true;
-    }
+    const rules = this.communityService.getEffectiveMeritRules(community);
 
     return rules.canEarn;
   }
@@ -87,11 +79,7 @@ export class MeritService {
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return 0;
 
-    const rules = community.meritRules;
-    if (!rules) {
-      // Fallback: use settings.dailyEmission (backward compatibility)
-      return community.settings?.dailyEmission || 0;
-    }
+    const rules = this.communityService.getEffectiveMeritRules(community);
 
     // Check if role is in quotaRecipients
     if (!rules.quotaRecipients.includes(userRole as any)) {
@@ -117,7 +105,7 @@ export class MeritService {
       throw new Error('Source community not found');
     }
 
-    const rules = sourceCommunity.votingRules;
+    const rules = this.communityService.getEffectiveVotingRules(sourceCommunity);
     if (!rules?.meritConversion) {
       throw new Error('Merit conversion not configured for this community');
     }

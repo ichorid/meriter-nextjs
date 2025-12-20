@@ -37,6 +37,7 @@ export interface CreateUserDto {
   website?: string;
   isVerified?: boolean;
   globalRole?: 'superadmin';
+  authenticators?: any[];
 }
 
 @Injectable()
@@ -100,6 +101,18 @@ export class UserService implements OnModuleInit {
     const doc = await this.userModel.findOne({ token }).lean();
     return doc;
   }
+
+  async getUserByCredentialId(credentialId: string): Promise<User | null> {
+    const doc = await this.userModel.findOne({ 'authenticators.credentialID': credentialId }).lean();
+    return doc;
+  }
+
+  async getUserByUsername(username: string): Promise<User | null> {
+    const doc = await this.userModel.findOne({ username }).lean();
+    return doc;
+  }
+
+
 
   async createOrUpdateUser(dto: CreateUserDto, token?: string): Promise<User> {
     // Check if user exists
@@ -180,9 +193,12 @@ export class UserService implements OnModuleInit {
         },
         communityTags: [],
         token: token || uid(),
+        authenticators: dto.authenticators || [],
         createdAt: new Date(),
         updatedAt: new Date(),
       };
+
+      this.logger.log(`Creating new user with authenticators count: ${newUser.authenticators?.length}`);
 
       // Only set globalRole if provided and is 'superadmin' (enum only allows 'superadmin')
       if (dto.globalRole === 'superadmin') {
@@ -191,7 +207,10 @@ export class UserService implements OnModuleInit {
 
       await this.userModel.create([newUser]);
       user = await this.userModel.findOne({ id: newUser.id }).lean();
+
+      this.logger.log(`Created user found in DB: ${user ? 'yes' : 'no'}`);
       if (!user) {
+        this.logger.error(`Failed to create user with id ${newUser.id}`);
         throw new Error(`Failed to create user with id ${newUser.id}`);
       }
     }
@@ -253,12 +272,12 @@ export class UserService implements OnModuleInit {
           userId,
           futureVision.id,
         );
-        
+
         // 2. Add user to community's members list
         await this.communityService.addMember(futureVision.id, userId);
         // 3. Add community to user's memberships
         await this.addCommunityMembership(userId, futureVision.id);
-        
+
         // 4. Assign viewer role if user has no role (joining without invite)
         if (!existingRole) {
           await this.userCommunityRoleService.setRole(
@@ -271,7 +290,7 @@ export class UserService implements OnModuleInit {
             `Assigned viewer role to user ${userId} in Future Vision (no invite)`,
           );
         }
-        
+
         // 5. Create wallet for user in community
         const currency = futureVision.settings?.currencyNames || {
           singular: 'merit',
@@ -300,12 +319,12 @@ export class UserService implements OnModuleInit {
           userId,
           marathonOfGood.id,
         );
-        
+
         // 2. Add user to community's members list
         await this.communityService.addMember(marathonOfGood.id, userId);
         // 3. Add community to user's memberships
         await this.addCommunityMembership(userId, marathonOfGood.id);
-        
+
         // 4. Assign viewer role if user has no role (joining without invite)
         if (!existingRole) {
           await this.userCommunityRoleService.setRole(
@@ -318,7 +337,7 @@ export class UserService implements OnModuleInit {
             `Assigned viewer role to user ${userId} in Marathon of Good (no invite)`,
           );
         }
-        
+
         // 5. Create wallet for user in community
         const currency = marathonOfGood.settings?.currencyNames || {
           singular: 'merit',
@@ -349,12 +368,12 @@ export class UserService implements OnModuleInit {
           userId,
           support.id,
         );
-        
+
         // 2. Add user to community's members list
         await this.communityService.addMember(support.id, userId);
         // 3. Add community to user's memberships
         await this.addCommunityMembership(userId, support.id);
-        
+
         // 4. Assign participant role if user has no role (joining without invite)
         if (!existingRole) {
           await this.userCommunityRoleService.setRole(
@@ -367,7 +386,7 @@ export class UserService implements OnModuleInit {
             `Assigned participant role to user ${userId} in Support (no invite)`,
           );
         }
-        
+
         // 5. Create wallet for user in community
         const currency = support.settings?.currencyNames || {
           singular: 'merit',
@@ -518,6 +537,13 @@ export class UserService implements OnModuleInit {
       );
     }
     return updatedUser;
+  }
+
+  async updateUser(userId: string, updateData: Partial<User>): Promise<User> {
+    await this.userModel.updateOne({ id: userId }, { $set: updateData });
+    const user = await this.userModel.findOne({ id: userId }).lean();
+    if (!user) throw new NotFoundException('User not found');
+    return user;
   }
 
   async searchUsers(query: string, limit: number = 20): Promise<User[]> {

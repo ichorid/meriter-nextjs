@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { CommunityRulesEditor } from '@/features/communities/components/CommunityRulesEditor';
 import { useCommunity, useUpdateCommunity } from '@/hooks/api/useCommunities';
 import { Loader2 } from 'lucide-react';
@@ -42,10 +42,11 @@ export default function CommunityRulesPage({
   };
 
   const pageHeader = (
-    <PageHeader
+    <SimpleStickyHeader
       title={t('title')}
       showBack={true}
       onBack={() => communityId && router.push(`/meriter/communities/${communityId}`)}
+      asStickyHeader={true}
     />
   );
 

@@ -7,7 +7,7 @@ import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLeadCommunities } from '@/hooks/api/useProfile';
 import { useCreateInvite } from '@/hooks/api/useInvites';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandInput } from '@/components/ui/BrandInput';
 import { BrandCheckbox } from '@/components/ui/BrandCheckbox';
@@ -80,7 +80,7 @@ export default function CreateInvitePage() {
 
   return (
     <AdaptiveLayout
-      stickyHeader={<PageHeader title={t('title')} showBack={true} />}
+      stickyHeader={<SimpleStickyHeader title={t('title')} showBack={true} asStickyHeader={true} />}
     >
       <div className="space-y-6">
         {!communitiesLoading && !hasPermission && (

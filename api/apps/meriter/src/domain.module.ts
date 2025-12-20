@@ -54,6 +54,7 @@ import {
   QuotaUsageSchema,
 } from './domain/models/quota-usage/quota-usage.schema';
 import type { QuotaUsage } from './domain/models/quota-usage/quota-usage.schema';
+import { PasskeyChallenge, PasskeyChallengeSchema } from './domain/models/auth/passkey-challenge.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -77,6 +78,7 @@ import { MeritService } from './domain/services/merit.service';
 import { NotificationService } from './domain/services/notification.service';
 import { NotificationHandlersService } from './domain/services/notification-handlers.service';
 import { QuotaUsageService } from './domain/services/quota-usage.service';
+import { CommunityDefaultsService } from './domain/services/community-defaults.service';
 
 // Import event bus
 import { EventBus } from './domain/events/event-bus';
@@ -99,6 +101,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: InviteSchemaClass.name, schema: InviteSchema },
       { name: NotificationSchemaClass.name, schema: NotificationSchema },
       { name: QuotaUsageSchemaClass.name, schema: QuotaUsageSchema },
+      { name: PasskeyChallenge.name, schema: PasskeyChallengeSchema },
     ]),
   ],
   providers: [
@@ -114,6 +117,7 @@ import { EventBus } from './domain/events/event-bus';
     PollCastService,
     UserService,
     CommunityService,
+    CommunityDefaultsService,
     UserUpdatesService,
     UserSettingsService,
     CommentService,
@@ -141,6 +145,7 @@ import { EventBus } from './domain/events/event-bus';
     PollCastService,
     UserService,
     CommunityService,
+    CommunityDefaultsService,
     UserUpdatesService,
     UserSettingsService,
     CommentService,
@@ -156,4 +161,4 @@ import { EventBus } from './domain/events/event-bus';
     EventBus,
   ],
 })
-export class DomainModule {}
+export class DomainModule { }

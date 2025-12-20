@@ -13,7 +13,13 @@ import {
   CommunitySchemaClass,
   CommunityDocument,
 } from '../models/community/community.schema';
-import type { Community, CommunityVisibilityRules } from '../models/community/community.schema';
+import type {
+  Community,
+  CommunityPostingRules,
+  CommunityVotingRules,
+  CommunityVisibilityRules,
+  CommunityMeritRules,
+} from '../models/community/community.schema';
 import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
 import type { User } from '../models/user/user.schema';
 import { CommunityId, UserId } from '../value-objects';
@@ -22,6 +28,7 @@ import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.hel
 import { uid } from 'uid';
 import { UserService } from './user.service';
 import { UserCommunityRoleService } from './user-community-role.service';
+import { CommunityDefaultsService } from './community-defaults.service';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
 
 export interface CreateCommunityDto {
@@ -85,12 +92,110 @@ export class CommunityService {
     private userService: UserService,
     @Inject(forwardRef(() => UserCommunityRoleService))
     private userCommunityRoleService: UserCommunityRoleService,
+    private communityDefaultsService: CommunityDefaultsService,
   ) {}
 
   async getCommunity(communityId: string): Promise<Community | null> {
     // Query by internal ID only
     const doc = await this.communityModel.findOne({ id: communityId }).lean();
     return doc ? (doc as unknown as Community) : null;
+  }
+
+  /**
+   * Get effective posting rules (defaults merged with custom overrides)
+   */
+  getEffectivePostingRules(
+    community: Community,
+  ): CommunityPostingRules {
+    const defaults = this.communityDefaultsService.getDefaultPostingRules(
+      community.typeTag,
+    );
+
+    if (!community.postingRules) {
+      return defaults;
+    }
+
+    // Merge stored rules with defaults (stored rules override defaults)
+    return {
+      ...defaults,
+      ...community.postingRules,
+      // Ensure allowedRoles is properly handled (array override)
+      allowedRoles:
+        community.postingRules.allowedRoles ?? defaults.allowedRoles,
+    };
+  }
+
+  /**
+   * Get effective voting rules (defaults merged with custom overrides)
+   */
+  getEffectiveVotingRules(
+    community: Community,
+  ): CommunityVotingRules {
+    const defaults = this.communityDefaultsService.getDefaultVotingRules(
+      community.typeTag,
+    );
+
+    if (!community.votingRules) {
+      return defaults;
+    }
+
+    // Merge stored rules with defaults (stored rules override defaults)
+    return {
+      ...defaults,
+      ...community.votingRules,
+      // Ensure allowedRoles is properly handled (array override)
+      allowedRoles:
+        community.votingRules.allowedRoles ?? defaults.allowedRoles,
+      // Handle optional nested object
+      meritConversion:
+        community.votingRules.meritConversion ?? defaults.meritConversion,
+    };
+  }
+
+  /**
+   * Get effective visibility rules (defaults merged with custom overrides)
+   */
+  getEffectiveVisibilityRules(
+    community: Community,
+  ): CommunityVisibilityRules {
+    const defaults = this.communityDefaultsService.getDefaultVisibilityRules(
+      community.typeTag,
+    );
+
+    if (!community.visibilityRules) {
+      return defaults;
+    }
+
+    // Merge stored rules with defaults (stored rules override defaults)
+    return {
+      ...defaults,
+      ...community.visibilityRules,
+      // Ensure visibleToRoles is properly handled (array override)
+      visibleToRoles:
+        community.visibilityRules.visibleToRoles ?? defaults.visibleToRoles,
+    };
+  }
+
+  /**
+   * Get effective merit rules (defaults merged with custom overrides)
+   */
+  getEffectiveMeritRules(community: Community): CommunityMeritRules {
+    const defaults = this.communityDefaultsService.getDefaultMeritRules(
+      community.typeTag,
+    );
+
+    if (!community.meritRules) {
+      return defaults;
+    }
+
+    // Merge stored rules with defaults (stored rules override defaults)
+    return {
+      ...defaults,
+      ...community.meritRules,
+      // Ensure quotaRecipients is properly handled (array override)
+      quotaRecipients:
+        community.meritRules.quotaRecipients ?? defaults.quotaRecipients,
+    };
   }
 
   async getCommunityByTypeTag(typeTag: string): Promise<Community | null> {
@@ -188,90 +293,8 @@ export class CommunityService {
       }
     }
 
-    // Set default voting rules based on community type
-    const defaultVotingRules = {
-      allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'] as (
-        | 'superadmin'
-        | 'lead'
-        | 'participant'
-        | 'viewer'
-      )[],
-      canVoteForOwnPosts: false, // Default: cannot vote for own posts
-      participantsCannotVoteForLead: false,
-      spendsMerits: true,
-      awardsMerits: true,
-    };
-
-    // Set default posting rules
-    const defaultPostingRules = {
-      allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'] as (
-        | 'superadmin'
-        | 'lead'
-        | 'participant'
-        | 'viewer'
-      )[],
-      requiresTeamMembership: false,
-      onlyTeamLead: false,
-      autoMembership: false,
-    };
-
-    // Set default merit rules (quota recipients)
-    const defaultMeritRules = {
-      dailyQuota: 100,
-      quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'] as (
-        | 'superadmin'
-        | 'lead'
-        | 'participant'
-        | 'viewer'
-      )[],
-      canEarn: true,
-      canSpend: true,
-    };
-
-    // Special rules for "Marathon of Good"
-    if (dto.typeTag === 'marathon-of-good') {
-      // Voting: Members cannot vote for Representative posts
-      defaultVotingRules.participantsCannotVoteForLead = true;
-      // Posting: Representatives (leads) and Participants can post
-      defaultPostingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
-      defaultPostingRules.onlyTeamLead = false;
-      // Merit rules: Viewers get daily quota
-      defaultMeritRules.quotaRecipients = ['superadmin', 'lead', 'participant', 'viewer'];
-    }
-
-    // Special rules for "Future Vision"
-    if (dto.typeTag === 'future-vision') {
-      // Voting: Representatives CAN vote for own posts (exception)
-      defaultVotingRules.canVoteForOwnPosts = true;
-      // Posting: Representatives (leads) and Participants can post
-      defaultPostingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
-      defaultPostingRules.onlyTeamLead = false;
-      // Merit rules: Viewers do NOT get daily quota (wallet voting only)
-      defaultMeritRules.quotaRecipients = ['superadmin', 'lead', 'participant'];
-    }
-
-    // Special rules for "Support"
-    if (dto.typeTag === 'support') {
-      // Posting: Participants, Leads, and Superadmins can post (no team membership required)
-      defaultPostingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
-      defaultPostingRules.requiresTeamMembership = false;
-      // Voting: Team Members can vote
-      defaultVotingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
-      // Merit rules: Viewers do NOT get daily quota in support groups
-      defaultMeritRules.quotaRecipients = ['superadmin', 'lead', 'participant'];
-    }
-
-    // Special rules for "Team"
-    if (dto.typeTag === 'team') {
-      // Posting: Only Team Members and Lead
-      defaultPostingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
-      defaultPostingRules.requiresTeamMembership = true;
-      // Voting: Team Members can vote
-      defaultVotingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
-      // Merit rules: Viewers do NOT get daily quota in team groups
-      defaultMeritRules.quotaRecipients = ['superadmin', 'lead', 'participant'];
-    }
-
+    // Defaults are now provided by CommunityDefaultsService at runtime
+    // Only store custom overrides if provided in DTO (not implemented yet - always undefined for now)
     const community = {
       id: dto.id || uid(),
       name: dto.name,
@@ -288,19 +311,11 @@ export class CommunityService {
         },
         dailyEmission: dto.settings?.dailyEmission || 10,
       },
-      postingRules: defaultPostingRules,
-      votingRules: defaultVotingRules,
-      visibilityRules: {
-        visibleToRoles: ['superadmin', 'lead', 'participant', 'viewer'] as (
-          | 'superadmin'
-          | 'lead'
-          | 'participant'
-          | 'viewer'
-        )[],
-        isHidden: false,
-        teamOnly: false,
-      },
-      meritRules: defaultMeritRules,
+      // Don't store default rules - they come from code via CommunityDefaultsService
+      postingRules: undefined,
+      votingRules: undefined,
+      visibilityRules: undefined,
+      meritRules: undefined,
       hashtags: [],
       hashtagDescriptions: {},
       isActive: true, // Default to active

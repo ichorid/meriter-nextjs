@@ -9,6 +9,7 @@ import { LoadingState } from "@/components/atoms/LoadingState";
 interface AuthWrapperProps {
     children: React.ReactNode;
     enabledProviders?: string[];
+    authnEnabled?: boolean;
 }
 
 // Set to true to disable AuthWrapper temporarily for debugging
@@ -25,7 +26,7 @@ const DEBUG_MODE = process.env.NODE_ENV === "development";
  * - If authenticated but no invite used (and no roles): shows invite entry page
  * - If authenticated and valid: shows home or requested page
  */
-export function AuthWrapper({ children, enabledProviders }: AuthWrapperProps) {
+export function AuthWrapper({ children, enabledProviders, authnEnabled }: AuthWrapperProps) {
     const router = useRouter();
     const pathname = usePathname();
     const { user, isLoading, isAuthenticated } = useAuth();
@@ -119,7 +120,7 @@ export function AuthWrapper({ children, enabledProviders }: AuthWrapperProps) {
     if (!isAuthenticated && !pathname?.startsWith("/api")) {
         return (
             <div className="min-h-screen bg-base-100 px-4 py-8 flex items-center justify-between flex-col min-h-screen">
-                <LoginForm enabledProviders={enabledProviders} />
+                <LoginForm enabledProviders={enabledProviders} authnEnabled={authnEnabled} />
             </div>
         );
     }

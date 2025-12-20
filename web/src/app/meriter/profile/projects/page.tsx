@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { ProfileProjectsTab } from '@/components/organisms/Profile/ProfileProjectsTab';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProjects } from '@/hooks/api/useProfile';
@@ -40,11 +40,7 @@ export default function ProfileProjectsPage() {
   })();
 
   const pageHeader = (
-    <PageHeader
-      title={t('tabs.projects')}
-      showBack={true}
-      onBack={() => router.push('/meriter/profile')}
-    />
+    <ProfileTopBar asStickyHeader={true} />
   );
 
   if (userLoading || !isAuthenticated) {
