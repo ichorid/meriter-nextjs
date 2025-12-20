@@ -638,6 +638,7 @@
     height: 100dvh;
     display: flex;
     flex-direction: column;
+    width: 100%; /* Ensure shell takes full width */
   }
 
   /* Header */
@@ -655,7 +656,8 @@
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: var(--nav-w) 1fr; /* default: no docked inspector */
+    grid-template-columns: var(--nav-w) minmax(0, 1fr); /* default: no docked inspector - use minmax to ensure expansion */
+    width: 100%; /* Ensure grid takes full width */
   }
 
   /* Left nav */
@@ -673,9 +675,13 @@
   }
 
   .main {
+    display: block;
+    width: 100%;
     max-width: var(--content-max);
     margin-inline: auto;
     padding: var(--gutter) clamp(16px, 3vw, 32px);
+    box-sizing: border-box; /* Include padding in width calculation */
+    min-width: 0; /* Allow shrinking below content size if needed */
   }
 
   /* FAB: anchor to the content column, not viewport */
@@ -758,7 +764,7 @@
   /* Docked mode on ultra-wide screens */
   @media (min-width: 1600px) {
     .appShell[data-inspector-mode="docked"] .appBody {
-      grid-template-columns: var(--nav-w) 1fr var(--inspector-w);
+      grid-template-columns: var(--nav-w) minmax(0, 1fr) var(--inspector-w);
     }
 
     .inspectorDock {
@@ -774,8 +780,10 @@
     }
   }
 
-  /* Tablet/mobile: collapse nav to a drawer/rail (outline only) */
-  @media (max-width: 900px) {
+  /* Tablet/mobile: collapse nav to a drawer/rail (outline only)
+     NOTE: Tailwind `lg` starts at 1024px, and `.leftNav` is hidden below that via `hidden lg:block`.
+     Keep CSS in sync so we don't leave an empty 336px grid column on tablet widths. */
+  @media (max-width: 1023px) {
     .appBody {
       grid-template-columns: 1fr;
     }

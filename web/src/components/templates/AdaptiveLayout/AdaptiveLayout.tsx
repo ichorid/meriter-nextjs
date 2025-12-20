@@ -76,25 +76,6 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   // Overlay should only show on desktop (≥1024px), not on tablet where CSS hides it anyway
   const canShowOverlay = isDesktop && !isTablet;
 
-  // Debug logging
-  if (process.env.NODE_ENV !== 'production' && selectedPostSlug) {
-    console.log('[AdaptiveLayout] Comments sidebar state:', JSON.stringify({
-      selectedPostSlug,
-      showComments,
-      commentsOpen: !!commentsOpen,
-      showCommentsColumn: !!showCommentsColumn,
-      communityId,
-      isDesktop,
-      isTablet,
-      isMobile,
-      isUltraWide,
-      inspectorMode,
-      showCommentsInCenter,
-      windowWidth: typeof window !== 'undefined' ? window.innerWidth : 'SSR',
-    }, null, 2));
-  }
-
-
   // Handler to close comments (remove post param from URL)
   const handleCloseComments = useCallback(() => {
     const params = new URLSearchParams(searchParams?.toString() ?? '');
