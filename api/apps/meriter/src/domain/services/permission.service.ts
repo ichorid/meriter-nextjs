@@ -77,17 +77,30 @@ export class PermissionService {
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
 
-    // Special handling for marathon-of-good and future-vision communities
-    const isSpecialCommunity =
-      community.typeTag === 'marathon-of-good' ||
-      community.typeTag === 'future-vision';
-    if (isSpecialCommunity && userRole === COMMUNITY_ROLE_PARTICIPANT) {
+    // Participants can always post by default (unless explicitly restricted)
+    // allowedRoles does NOT restrict participants - it's ignored for them
+    if (userRole === COMMUNITY_ROLE_PARTICIPANT) {
+      const rules = community.postingRules;
+      
+      // Check explicit restrictions that would deny participants
+      if (rules?.onlyTeamLead) {
+        // If only team leads can post, participants cannot
+        return false;
+      }
+      
+      // Check additional restrictions
+      if (rules?.requiresTeamMembership) {
+        const hasTeamMembership = await this.userHasTeamMembership(userId);
+        if (!hasTeamMembership) return false;
+      }
+      
+      // Participants can post by default, regardless of allowedRoles
       return true;
     }
 
     const rules = community.postingRules;
     if (!rules) {
-      // If no rules configured, deny by default
+      // If no rules configured, only participants can post (already handled above)
       return false;
     }
 
@@ -121,23 +134,30 @@ export class PermissionService {
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
 
-    // Special handling for marathon-of-good and future-vision communities
-    const isSpecialCommunity =
-      community.typeTag === 'marathon-of-good' ||
-      community.typeTag === 'future-vision';
-    if (isSpecialCommunity && userRole === COMMUNITY_ROLE_PARTICIPANT) {
+    // Participants can always create polls by default (unless explicitly restricted)
+    if (userRole === COMMUNITY_ROLE_PARTICIPANT) {
+      const rules = community.postingRules;
+      
+      // Check explicit restrictions that would deny participants
+      if (rules?.onlyTeamLead) {
+        // If only team leads can create polls, participants cannot
+        return false;
+      }
+      
+      // Check additional restrictions
+      if (rules?.requiresTeamMembership) {
+        const hasTeamMembership = await this.userHasTeamMembership(userId);
+        if (!hasTeamMembership) return false;
+      }
+      
+      // Participants can create polls by default
       return true;
     }
 
-    // Allow participants in team groups to create polls
-    // This overrides postingRules if they exist and are restrictive
-    if (community.typeTag === 'team' && userRole && (userRole === COMMUNITY_ROLE_PARTICIPANT || userRole === COMMUNITY_ROLE_LEAD)) {
-      return true;
-    }
-
+    // For other roles (lead, viewer), check postingRules
     const rules = community.postingRules;
     if (!rules) {
-      // If no rules configured, deny by default
+      // If no rules configured, only participants can create polls (already handled above)
       return false;
     }
 
