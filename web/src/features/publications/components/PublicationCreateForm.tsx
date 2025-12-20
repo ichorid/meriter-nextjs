@@ -253,9 +253,19 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
       let publication;
       if (isEditMode) {
+        // Double-check that we have a valid publication ID before updating
+        if (!normalizedPublicationId) {
+          const message = 'Publication ID is required for editing';
+          addToast(message, 'error');
+          setErrors({ submit: message });
+          isSubmittingRef.current = false;
+          setIsSubmitting(false);
+          return;
+        }
+        
         // Update existing publication
         publication = await updatePublication.mutateAsync({
-          id: normalizedPublicationId!,
+          id: normalizedPublicationId,
           data: {
             title: title.trim(),
             description: description.trim(),
@@ -304,10 +314,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       // Don't reset state here - navigation will unmount component
       // If navigation doesn't happen, state will remain but that's okay since we're navigating away
     } catch (error: any) {
-      console.error('Publication creation error:', error);
+      const errorMessage = error?.message || t('errors.submitFailed');
+      console.error(isEditMode ? 'Publication update error:' : 'Publication creation error:', error);
       setErrors({
-        submit: error?.message || t('errors.submitFailed'),
+        submit: errorMessage,
       });
+      addToast(errorMessage, 'error');
       // Reset state on error so user can retry
       isSubmittingRef.current = false;
       setIsSubmitting(false);
