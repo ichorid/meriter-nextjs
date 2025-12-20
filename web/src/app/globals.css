@@ -718,6 +718,21 @@
     box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
     overflow: hidden;
   }
+  
+  /* Resize handle styling */
+  .resize-handle {
+    transition: background-color 150ms ease;
+  }
+  
+  .resize-handle:hover {
+    background-color: var(--primary);
+    opacity: 0.6;
+  }
+  
+  .resize-handle:active {
+    background-color: var(--primary);
+    opacity: 0.8;
+  }
 
   /* Adjust overlay when header is not visible */
   .appShell[data-header-visible="false"] .inspectorOverlay {
@@ -772,6 +787,7 @@
       overflow: auto;
       min-height: 0;
       border-left: 1px solid var(--base-300);
+      position: relative;
     }
 
     /* In docked mode, disable overlay+scrim */

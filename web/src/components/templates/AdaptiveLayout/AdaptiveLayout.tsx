@@ -7,8 +7,10 @@ import { VerticalSidebar, ContextTopBar, BottomNavigation } from '@/components/o
 import { CommentsColumn } from '@/components/organisms/CommentsColumn';
 import { VotingPopup } from '@/components/organisms/VotingPopup';
 import { WithdrawPopup } from '@/components/organisms/WithdrawPopup';
+import { ResizeHandle } from '@/components/atoms';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useInspectorWidth } from '@/hooks/useInspectorWidth';
 import { createCommentsColumnProps } from './helpers';
 
 export interface AdaptiveLayoutProps {
@@ -60,6 +62,9 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
   // Comments column shows on desktop (lg) only
   const showCommentsColumn = !!(showComments && selectedPostSlug && communityId);
+
+  // Inspector width management with resize capability
+  const { width: inspectorWidth, setWidth: setInspectorWidth, minWidth, maxWidth } = useInspectorWidth();
 
   // Breakpoints: overlay on most screens; dock only on very wide
   // Note: CSS hides overlay at max-width: 1023px, so tablet is 768px - 1023px
@@ -157,6 +162,13 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
         {/* Docked inspector column (only used on ultra-wide) */}
         {inspectorMode === 'docked' && showCommentsColumn && (
           <aside className="inspectorDock">
+            <ResizeHandle
+              direction="left"
+              initialWidth={inspectorWidth}
+              minWidth={minWidth}
+              maxWidth={maxWidth}
+              onResize={setInspectorWidth}
+            />
             <CommentsColumn
               {...createCommentsColumnProps(
                 selectedPostSlug!,
@@ -187,22 +199,31 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
             aria-hidden={!commentsOpen}
           >
             {showCommentsColumn && (
-              <CommentsColumn
-                {...createCommentsColumnProps(
-                  selectedPostSlug!,
-                  communityId!,
-                  searchParams,
-                  {
-                    balance: balance!,
-                    wallets: wallets || [],
-                    myId,
-                    highlightTransactionId,
-                    activeCommentHook: activeCommentHook || [null, () => { }],
-                    activeWithdrawPost: activeWithdrawPost ?? null,
-                    setActiveWithdrawPost: setActiveWithdrawPost || (() => { }),
-                  }
-                )}
-              />
+              <>
+                <ResizeHandle
+                  direction="left"
+                  initialWidth={inspectorWidth}
+                  minWidth={minWidth}
+                  maxWidth={maxWidth}
+                  onResize={setInspectorWidth}
+                />
+                <CommentsColumn
+                  {...createCommentsColumnProps(
+                    selectedPostSlug!,
+                    communityId!,
+                    searchParams,
+                    {
+                      balance: balance!,
+                      wallets: wallets || [],
+                      myId,
+                      highlightTransactionId,
+                      activeCommentHook: activeCommentHook || [null, () => { }],
+                      activeWithdrawPost: activeWithdrawPost ?? null,
+                      setActiveWithdrawPost: setActiveWithdrawPost || (() => { }),
+                    }
+                  )}
+                />
+              </>
             )}
           </div>
           <div
