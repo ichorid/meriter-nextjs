@@ -93,7 +93,21 @@ export class PermissionService {
         if (!hasTeamMembership) return false;
       }
       
-      // Participants can post by default, regardless of allowedRoles
+      // For custom communities, check if participant is in allowedRoles
+      // Special communities (marathon-of-good, future-vision, support, team) allow participants regardless
+      const isSpecialCommunity = community.typeTag === 'marathon-of-good' 
+        || community.typeTag === 'future-vision' 
+        || community.typeTag === 'support'
+        || community.typeTag === 'team';
+      
+      if (!isSpecialCommunity) {
+        // For custom communities, check allowedRoles
+        if (!rules.allowedRoles.includes(COMMUNITY_ROLE_PARTICIPANT)) {
+          return false;
+        }
+      }
+      
+      // Participants can post by default for special communities, or if allowedRoles includes participant
       return true;
     }
 
@@ -146,7 +160,21 @@ export class PermissionService {
         if (!hasTeamMembership) return false;
       }
       
-      // Participants can create polls by default
+      // For custom communities, check if participant is in allowedRoles
+      // Special communities (marathon-of-good, future-vision, support, team) allow participants regardless
+      const isSpecialCommunity = community.typeTag === 'marathon-of-good' 
+        || community.typeTag === 'future-vision' 
+        || community.typeTag === 'support'
+        || community.typeTag === 'team';
+      
+      if (!isSpecialCommunity) {
+        // For custom communities, check allowedRoles
+        if (!rules.allowedRoles.includes(COMMUNITY_ROLE_PARTICIPANT)) {
+          return false;
+        }
+      }
+      
+      // Participants can create polls by default for special communities, or if allowedRoles includes participant
       return true;
     }
 
@@ -441,10 +469,6 @@ export class PermissionService {
     const publication =
       await this.publicationService.getPublication(publicationId);
     if (!publication) {
-      // Log in development/test to help debug permission issues
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Publication not found: publicationId=${publicationId}, userId=${userId}`);
-      }
       return false;
     }
 
@@ -452,30 +476,11 @@ export class PermissionService {
     const communityId = publication.getCommunityId.getValue();
     const userRole = await this.getUserRoleInCommunity(userId, communityId);
 
-    this.logger.log(
-      `[canEditPublication] Check: userId=${userId}, authorId=${authorId}, userRole=${userRole}, publicationId=${publicationId}, COMMUNITY_ROLE_SUPERADMIN=${COMMUNITY_ROLE_SUPERADMIN}`,
-    );
-
-    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-      const authorIdType = typeof authorId;
-      const userIdType = typeof userId;
-      const idsMatch = authorId === userId;
-      const idsMatchStrict = authorId === userId && authorIdType === userIdType;
-      console.log(`[canEditPublication] Check: userId=${userId} (${userIdType}), authorId=${authorId} (${authorIdType}), userRole=${userRole}, publicationId=${publicationId}, idsMatch=${idsMatch}, idsMatchStrict=${idsMatchStrict}`);
-    }
-
     if (userRole === COMMUNITY_ROLE_SUPERADMIN) {
-      this.logger.log(`[canEditPublication] Allowed: superadmin (userRole=${userRole})`);
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Allowed: superadmin`);
-      }
       return true;
     }
 
     if (userRole === COMMUNITY_ROLE_LEAD) {
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Allowed: lead`);
-      }
       return true;
     }
 
@@ -484,9 +489,6 @@ export class PermissionService {
     const normalizedAuthorId = String(authorId).trim();
     const normalizedUserId = String(userId).trim();
     const isAuthor = normalizedAuthorId === normalizedUserId;
-    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-      console.log(`[canEditPublication] Author comparison: authorId="${normalizedAuthorId}" === userId="${normalizedUserId}" = ${isAuthor}`);
-    }
     
     if (isAuthor) {
       // Check if publication has any votes or comments
@@ -495,44 +497,24 @@ export class PermissionService {
       const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
       const commentCount = metricsSnapshot.commentCount || 0;
       
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Author check: totalVotes=${totalVotes}, upvotes=${metricsSnapshot.upvotes}, downvotes=${metricsSnapshot.downvotes}, commentCount=${commentCount}`);
-      }
-      
       if (totalVotes > 0) {
-        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-          console.log(`[canEditPublication] Denied: has votes`);
-        }
         return false; // Cannot edit if votes exist
       }
       
       if (commentCount > 0) {
-        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-          console.log(`[canEditPublication] Denied: has comments`);
-        }
         return false; // Cannot edit if comments exist
       }
 
       // Check time window from community settings
       const community = await this.communityService.getCommunity(communityId);
       if (!community) {
-        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-          console.log(`[canEditPublication] Denied: community not found: ${communityId}`);
-        }
         return false;
       }
 
       const editWindowDays = community.settings?.editWindowDays ?? 7;
       
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Edit window: ${editWindowDays} days`);
-      }
-      
       if (editWindowDays === 0) {
         // 0 means no time limit
-        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-          console.log(`[canEditPublication] Allowed: no time limit`);
-        }
         return true;
       }
 
@@ -546,25 +528,14 @@ export class PermissionService {
       const millisecondsSinceCreation = now.getTime() - createdAt.getTime();
       const daysSinceCreation = Math.floor(millisecondsSinceCreation / (1000 * 60 * 60 * 24));
 
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Date check: createdAt=${createdAt.toISOString()}, now=${now.toISOString()}, daysSinceCreation=${daysSinceCreation}, editWindowDays=${editWindowDays}`);
-      }
-
       // editWindowDays of 7 means can edit for 7 days (days 0-6), not including day 7+
       // So if daysSinceCreation is 8 and editWindowDays is 7, should return false
       // Use < instead of <= to be strict: if it's been 7 full days, that's the limit
       const canEdit = daysSinceCreation < editWindowDays;
       
-      if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-        console.log(`[canEditPublication] Result: ${canEdit}`);
-      }
-      
       return canEdit;
     }
 
-    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
-      console.log(`[canEditPublication] Denied: not author (authorId=${authorId}, userId=${userId})`);
-    }
     return false;
   }
 
