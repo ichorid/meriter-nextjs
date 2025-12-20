@@ -65,8 +65,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return null;
     return trimmed;
   };
-  const normalizedPublicationId = normalizeEntityId(publicationId);
   const isEditMode = !!initialData;
+  
+  // In edit mode, we must have a publication ID.
+  // Prefer the publicationId prop, but if missing, use initialData.id (which should always be present from API)
+  const effectivePublicationId = publicationId || initialData?.id;
+  const normalizedPublicationId = normalizeEntityId(effectivePublicationId);
 
   // Check if this is Good Deeds Marathon community
   const isGoodDeedsMarathon = community?.typeTag === 'marathon-of-good';

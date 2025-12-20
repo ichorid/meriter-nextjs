@@ -173,7 +173,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           className="mb-3"
           authorId={pubItem.authorId}
           metrics={pubItem.metrics}
-          publicationId={pubItem.id || pubItem.slug}
+          publicationId={pubItem.id}
           communityId={pubItem.communityId}
           isPoll={false}
         />

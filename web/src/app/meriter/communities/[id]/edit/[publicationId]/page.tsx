@@ -81,19 +81,20 @@ export default function EditPublicationPage({
   }
 
   // IMPORTANT: only use the actual publication ID from the API response.
-  // Do not fall back to the URL param; otherwise we can end up calling /publications/undefined.
-  const actualPublicationId = normalizeEntityId(publication.id);
-  if (!actualPublicationId) {
+  // The API always returns the id field, so we should always have it.
+  if (!publication.id) {
     return (
       <AdaptiveLayout communityId={communityId} stickyHeader={pageHeader}>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-base-content/60">
-            Cannot edit: publication ID is missing
+            Cannot edit: publication ID is missing from API response
           </div>
         </div>
       </AdaptiveLayout>
     );
   }
+  
+  const actualPublicationId = publication.id;
 
   return (
     <AdaptiveLayout communityId={communityId} stickyHeader={pageHeader}>

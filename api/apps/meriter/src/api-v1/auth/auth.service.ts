@@ -662,15 +662,20 @@ export class AuthService {
   private getRpId(requestRpId?: string): string {
     // If requestRpId provided (from host header), use it (stripping port if needed)
     if (requestRpId) {
-      return requestRpId.split(':')[0];
+      const cleaned = requestRpId.split(':')[0];
+      this.logger.debug(`RP ID computed: ${cleaned} (from request: ${requestRpId})`);
+      return cleaned;
     }
     const rpId = process.env.RP_ID || 'localhost';
     // Remove protocol and port if present, though users should provide clean domains
-    return rpId.replace(/^https?:\/\//, '').split(':')[0];
+    const cleaned = rpId.replace(/^https?:\/\//, '').split(':')[0];
+    this.logger.debug(`RP ID computed: ${cleaned} (from env: ${process.env.RP_ID || 'default'})`);
+    return cleaned;
   }
 
   private getOrigin(requestOrigin?: string): string {
     if (requestOrigin) {
+      this.logger.debug(`Origin computed: ${requestOrigin} (from request)`);
       return requestOrigin;
     }
     let origin = process.env.RP_ORIGIN || process.env.APP_URL || 'http://localhost:3000';
@@ -678,7 +683,9 @@ export class AuthService {
     if (!origin.startsWith('http')) {
       origin = `https://${origin}`;
     }
-    return origin.replace(/\/$/, ''); // Remove trailing slash
+    const cleaned = origin.replace(/\/$/, ''); // Remove trailing slash
+    this.logger.debug(`Origin computed: ${cleaned} (from env: ${process.env.RP_ORIGIN || process.env.APP_URL || 'default'})`);
+    return cleaned;
   }
 
   private getRpName(): string {
@@ -702,9 +709,10 @@ export class AuthService {
 
     const authenticators: Authenticator[] = user?.authenticators || [];
 
+    const rpId = this.getRpId();
     const options = await generateRegistrationOptions({
       rpName: process.env.RP_NAME || 'Meriter',
-      rpID: this.getRpId(),
+      rpID: rpId,
       userID: new Uint8Array(Buffer.from(user ? user.id : username)), // Use UserID if exists, else generic
       userName: username,
       // Don't exclude credentials yet, we handle duplicate checks manually or let browser handle it
@@ -715,10 +723,23 @@ export class AuthService {
       // })),
       attestationType: 'none',
       authenticatorSelection: {
-        residentKey: 'preferred',
+        // Prefer platform authenticators (passkeys) but allow fallback to cross-platform
+        authenticatorAttachment: 'platform',
+        residentKey: 'required', // Required for discoverable credentials (passkeys)
         userVerification: 'preferred',
-        authenticatorAttachment: 'cross-platform',
       },
+      // Explicitly include ES256 (required for passkeys)
+      supportedAlgorithmIDs: [-7], // ES256
+    });
+
+    // Log options for debugging (without sensitive data)
+    this.logger.log(`Registration options generated:`, {
+      rpId: options.rpID,
+      rpName: options.rp.name,
+      userName: username,
+      authenticatorAttachment: 'platform',
+      residentKey: 'required',
+      challengeLength: options.challenge?.length || 0,
     });
 
     // Save challenge
@@ -1207,12 +1228,21 @@ export class AuthService {
    * Browser shows existing Passkeys or offers to create new one
    */
   async generatePasskeyAuthenticationOptions(requestRpId?: string) {
+    const rpId = this.getRpId(requestRpId);
     // Use authentication options with empty allowCredentials
     // This enables conditional UI (Passkey autocomplete)
     const options = await generateAuthenticationOptions({
-      rpID: this.getRpId(requestRpId),
+      rpID: rpId,
       allowCredentials: [], // Empty = conditional UI, shows all user's passkeys
       userVerification: 'preferred',
+    });
+
+    // Log options for debugging
+    this.logger.log(`Authentication options generated:`, {
+      rpId: options.rpID,
+      allowCredentialsCount: 0,
+      userVerification: 'preferred',
+      challengeLength: options.challenge?.length || 0,
     });
 
     // Save challenge
