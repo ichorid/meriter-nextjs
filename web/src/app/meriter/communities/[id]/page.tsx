@@ -16,7 +16,8 @@ import { useCommunityFeed } from '@/hooks/api/useCommunityFeed';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { routes } from '@/lib/constants/routes';
-import type { FeedItem } from '@meriter/shared-types';
+import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
+import type { CommunityWithComputedFields } from '@/types/api-v1';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
@@ -235,15 +236,15 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
     // Determine eligibility for permanent merits and quota
     const canEarnPermanentMerits = useMemo(() => {
-        if (!comms?.meritRules) return false;
-        return comms.meritRules.canEarn === true && balance !== undefined;
-    }, [comms?.meritRules, balance]);
+        if (!comms?.meritSettings) return false;
+        return comms.meritSettings.canEarn === true && balance !== undefined;
+    }, [comms?.meritSettings, balance]);
 
     const hasQuota = useMemo(() => {
-        if (!comms?.meritRules || !userRoleInCommunity) return false;
-        const { dailyQuota, quotaRecipients } = comms.meritRules;
-        return dailyQuota > 0 && quotaRecipients?.includes(userRoleInCommunity as any);
-    }, [comms?.meritRules, userRoleInCommunity]);
+        if (!comms?.meritSettings || !userRoleInCommunity) return false;
+        const { dailyQuota, quotaRecipients } = comms.meritSettings;
+        return dailyQuota > 0 && quotaRecipients.includes(userRoleInCommunity);
+    }, [comms?.meritSettings, userRoleInCommunity]);
 
     const quotaRemaining = quotaData?.remainingToday ?? 0;
     const quotaMax = quotaData?.dailyQuota ?? 0;
@@ -334,18 +335,18 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             const query = searchQuery.toLowerCase().trim();
             filtered = filtered.filter((p: FeedItem) => {
                 if (p.type === 'publication') {
-                    const content = (p.content || '').toLowerCase();
-                    const title = ((p as any).title || '').toLowerCase();
-                    const authorName = (p.meta?.author?.name || '').toLowerCase();
-                    const hashtags = (p.hashtags || []).join(' ').toLowerCase();
+                    const pub = p as PublicationFeedItem;
+                    const content = (pub.content || '').toLowerCase();
+                    const authorName = (pub.meta?.author?.name || '').toLowerCase();
+                    const hashtags = (pub.hashtags || []).join(' ').toLowerCase();
                     
                     return content.includes(query) ||
-                           title.includes(query) ||
                            authorName.includes(query) ||
                            hashtags.includes(query);
                 } else if (p.type === 'poll') {
-                    const question = ((p as any).question || '').toLowerCase();
-                    const authorName = (p.meta?.author?.name || '').toLowerCase();
+                    const poll = p as PollFeedItem;
+                    const question = (poll.question || '').toLowerCase();
+                    const authorName = (poll.meta?.author?.name || '').toLowerCase();
                     
                     return question.includes(query) || authorName.includes(query);
                 }
@@ -378,18 +379,18 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             const query = searchQuery.toLowerCase().trim();
             filtered = filtered.filter((p: FeedItem) => {
                 if (p.type === 'publication') {
-                    const content = (p.content || '').toLowerCase();
-                    const title = ((p as any).title || '').toLowerCase();
-                    const authorName = (p.meta?.author?.name || '').toLowerCase();
-                    const hashtags = (p.hashtags || []).join(' ').toLowerCase();
+                    const pub = p as PublicationFeedItem;
+                    const content = (pub.content || '').toLowerCase();
+                    const authorName = (pub.meta?.author?.name || '').toLowerCase();
+                    const hashtags = (pub.hashtags || []).join(' ').toLowerCase();
                     
                     return content.includes(query) ||
-                           title.includes(query) ||
                            authorName.includes(query) ||
                            hashtags.includes(query);
                 } else if (p.type === 'poll') {
-                    const question = ((p as any).question || '').toLowerCase();
-                    const authorName = (p.meta?.author?.name || '').toLowerCase();
+                    const poll = p as PollFeedItem;
+                    const question = (poll.question || '').toLowerCase();
+                    const authorName = (poll.meta?.author?.name || '').toLowerCase();
                     
                     return question.includes(query) || authorName.includes(query);
                 }
@@ -420,7 +421,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 <div className="mb-6">
                     <CommunityHeroCard
                         community={{
-                            ...(comms as any),
+                            ...comms,
                             id: comms.id || chatId,
                         }}
                     />

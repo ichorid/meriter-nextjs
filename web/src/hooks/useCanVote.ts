@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from './api/useProfile';
 import { useCommunity } from './api';
+import type { CommunityWithComputedFields } from '@/types/api-v1';
 
 /**
  * Hook to check if user can vote on a publication or comment
@@ -122,7 +123,7 @@ export function useCanVote(
     }
 
     // Check if role is allowed
-    if (!rules.allowedRoles.includes(userRole as any)) {
+    if (!userRole || !rules.allowedRoles.includes(userRole)) {
       return { canVote: false, reason: 'voteDisabled.roleNotAllowed' };
     }
 

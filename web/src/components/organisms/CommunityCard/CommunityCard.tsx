@@ -81,17 +81,17 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
   // Check if user can earn permanent merits based on community rules
   const canEarnPermanentMerits = React.useMemo(() => {
-    if (!community?.meritRules) return false;
+    if (!community?.meritSettings) return false;
     // User can earn permanent merits only if canEarn is true
-    return community.meritRules.canEarn === true;
-  }, [community?.meritRules]);
+    return community.meritSettings.canEarn === true;
+  }, [community?.meritSettings]);
 
   const hasQuota = React.useMemo(() => {
-    if (!community?.meritRules || !userRole) return false;
-    const { dailyQuota, quotaRecipients } = community.meritRules;
+    if (!community?.meritSettings || !userRole) return false;
+    const { dailyQuota, quotaRecipients } = community.meritSettings;
     // User has quota if dailyQuota > 0 and their role is in quotaRecipients
-    return dailyQuota > 0 && quotaRecipients?.includes(userRole as any);
-  }, [community?.meritRules, userRole]);
+    return dailyQuota > 0 && quotaRecipients.includes(userRole);
+  }, [community?.meritSettings, userRole]);
 
   // Check if it's marathon-of-good
   const isMarathonOfGood = community?.typeTag === 'marathon-of-good';
@@ -131,7 +131,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const currencyIconUrl = community.settings?.iconUrl;
 
   // Get cover image from community
-  const coverImageUrl = (community as any).coverImageUrl;
+  const coverImageUrl = community.coverImageUrl;
   const hasCover = !!coverImageUrl;
 
   // Expanded version (desktop)

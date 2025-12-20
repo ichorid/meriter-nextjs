@@ -127,7 +127,63 @@ export class PermissionRuleEngine {
       return true;
     }
 
-    // STEP 8: Evaluate conditions
+    // STEP 7.5: Check if lead is trying to vote for own post (outside team communities)
+    if (action === ActionType.VOTE && userRole === 'lead' && context?.isAuthor) {
+      // Exception: future-vision allows self-voting
+      if (community.typeTag === 'future-vision') {
+        this.logger.debug(
+          `[canPerformAction] ALLOWED: Lead can vote for own post in future-vision`,
+        );
+        return true;
+      }
+      this.logger.debug(
+        `[canPerformAction] DENIED: Lead cannot vote for own post`,
+      );
+      return false;
+    }
+
+    // STEP 7.6: Check if participant is trying to vote for lead from same team
+    // This restriction applies to all communities when participants and leads share a team
+    if (action === ActionType.VOTE && userRole === 'participant' && 
+        context?.authorRole === 'lead' && 
+        context?.sharedTeamCommunities && 
+        context.sharedTeamCommunities.length > 0) {
+      // Exception: future-vision allows this
+      if (community.typeTag === 'future-vision') {
+        this.logger.debug(
+          `[canPerformAction] ALLOWED: Participant can vote for lead from same team in future-vision`,
+        );
+        return true;
+      }
+      // Check if the condition explicitly allows it (matchingRule is already found above)
+      if (matchingRule?.conditions?.participantsCannotVoteForLead === false) {
+        // Explicitly allowed by rule
+        this.logger.debug(
+          `[canPerformAction] ALLOWED: Rule explicitly allows participant to vote for lead from same team`,
+        );
+        return true;
+      }
+      // Default: deny if they share a team (unless explicitly allowed)
+      this.logger.debug(
+        `[canPerformAction] DENIED: Participant cannot vote for lead from same team`,
+      );
+      return false;
+    }
+
+    // STEP 8: Check author requirement for edit/delete actions (participants can only edit/delete their own resources)
+    if ((action === ActionType.EDIT_PUBLICATION || action === ActionType.DELETE_PUBLICATION ||
+         action === ActionType.EDIT_POLL || action === ActionType.DELETE_POLL ||
+         action === ActionType.EDIT_COMMENT || action === ActionType.DELETE_COMMENT) &&
+        userRole === 'participant') {
+      if (!context?.isAuthor) {
+        this.logger.debug(
+          `[canPerformAction] DENIED: Participant can only ${action} their own resources`,
+        );
+        return false;
+      }
+    }
+
+    // STEP 9: Evaluate conditions
     if (matchingRule.conditions) {
       const conditionsMet = await this.evaluateConditions(
         userId,

@@ -7,16 +7,16 @@ import { BrandInput } from '@/components/ui/BrandInput';
 import { BrandCheckbox } from '@/components/ui/BrandCheckbox';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { Check, RotateCcw, Eye, EyeOff, Download, Upload, History, Loader2 } from 'lucide-react';
-import type { Community } from '@/types/api-v1';
+import type { CommunityWithComputedFields, LegacyPostingRules, LegacyVotingRules, LegacyVisibilityRules, LegacyMeritRules } from '@/types/api-v1';
 import { useToastStore } from '@/shared/stores/toast.store';
 
 interface CommunityRulesEditorProps {
-  community: Community;
+  community: CommunityWithComputedFields;
   onSave: (rules: {
-    postingRules?: any;
-    votingRules?: any;
-    visibilityRules?: any;
-    meritRules?: any;
+    postingRules?: LegacyPostingRules;
+    votingRules?: LegacyVotingRules;
+    visibilityRules?: LegacyVisibilityRules;
+    meritRules?: LegacyMeritRules;
     linkedCurrencies?: string[];
   }) => Promise<void>;
 }
@@ -27,14 +27,14 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 }) => {
   const t = useTranslations('communities.rules');
 
-  const [postingRules, setPostingRules] = useState<any>(community.postingRules || {
+  const [postingRules, setPostingRules] = useState<LegacyPostingRules>(community.postingRules || {
     allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
     requiresTeamMembership: false,
     onlyTeamLead: false,
     autoMembership: false,
   });
 
-  const [votingRules, setVotingRules] = useState<any>(community.votingRules || {
+  const [votingRules, setVotingRules] = useState<LegacyVotingRules>(community.votingRules || {
     allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
     canVoteForOwnPosts: false,
     participantsCannotVoteForLead: false,
@@ -42,13 +42,13 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     awardsMerits: true,
   });
 
-  const [visibilityRules, setVisibilityRules] = useState<any>(community.visibilityRules || {
+  const [visibilityRules, setVisibilityRules] = useState<LegacyVisibilityRules>(community.visibilityRules || {
     visibleToRoles: ['superadmin', 'lead', 'participant', 'viewer'],
     isHidden: false,
     teamOnly: false,
   });
 
-  const [meritRules, setMeritRules] = useState<any>(community.meritRules || {
+  const [meritRules, setMeritRules] = useState<LegacyMeritRules>(community.meritRules || {
     dailyQuota: 100,
     quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
     canEarn: true,
@@ -356,12 +356,12 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => (
               <BrandCheckbox
                 key={role}
-                checked={postingRules.allowedRoles?.includes(role as any)}
+                checked={postingRules.allowedRoles.includes(role)}
                 onChange={(checked) => {
                   if (checked) {
                     const currentRoles = postingRules.allowedRoles || [];
-                    if (!currentRoles.includes(role as any)) {
-                      setPostingRules({ ...postingRules, allowedRoles: [...currentRoles, role as any] });
+                    if (!currentRoles.includes(role)) {
+                      setPostingRules({ ...postingRules, allowedRoles: [...currentRoles, role] });
                     }
                   } else {
                     const currentRoles = postingRules.allowedRoles || [];
@@ -405,12 +405,12 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => (
               <BrandCheckbox
                 key={role}
-                checked={votingRules.allowedRoles?.includes(role as any)}
+                checked={votingRules.allowedRoles.includes(role)}
                 onChange={(checked) => {
                   if (checked) {
                     const currentRoles = votingRules.allowedRoles || [];
-                    if (!currentRoles.includes(role as any)) {
-                      setVotingRules({ ...votingRules, allowedRoles: [...currentRoles, role as any] });
+                    if (!currentRoles.includes(role)) {
+                      setVotingRules({ ...votingRules, allowedRoles: [...currentRoles, role] });
                     }
                   } else {
                     const currentRoles = votingRules.allowedRoles || [];
@@ -460,12 +460,12 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => (
               <BrandCheckbox
                 key={role}
-                checked={visibilityRules.visibleToRoles?.includes(role as any)}
+                checked={visibilityRules.visibleToRoles.includes(role)}
                 onChange={(checked) => {
                   if (checked) {
                     const currentRoles = visibilityRules.visibleToRoles || [];
-                    if (!currentRoles.includes(role as any)) {
-                      setVisibilityRules({ ...visibilityRules, visibleToRoles: [...currentRoles, role as any] });
+                    if (!currentRoles.includes(role)) {
+                      setVisibilityRules({ ...visibilityRules, visibleToRoles: [...currentRoles, role] });
                     }
                   } else {
                     const currentRoles = visibilityRules.visibleToRoles || [];
@@ -509,12 +509,12 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => (
               <BrandCheckbox
                 key={role}
-                checked={meritRules.quotaRecipients?.includes(role as any)}
+                checked={meritRules.quotaRecipients.includes(role)}
                 onChange={(checked) => {
                   if (checked) {
                     const currentRoles = meritRules.quotaRecipients || [];
-                    if (!currentRoles.includes(role as any)) {
-                      setMeritRules({ ...meritRules, quotaRecipients: [...currentRoles, role as any] });
+                    if (!currentRoles.includes(role)) {
+                      setMeritRules({ ...meritRules, quotaRecipients: [...currentRoles, role] });
                     }
                   } else {
                     const currentRoles = meritRules.quotaRecipients || [];

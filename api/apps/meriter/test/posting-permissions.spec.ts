@@ -14,6 +14,7 @@ import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.sc
 import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
+import { ActionType } from '../src/domain/common/constants/action-types.constants';
 
 class AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -123,12 +124,6 @@ describe('Posting Permissions', () => {
         name: 'Marathon of Good',
         typeTag: 'marathon-of-good',
         members: [],
-        postingRules: {
-            // Even if we restrict roles here, participants should be allowed by override
-            allowedRoles: ['lead'], 
-            requiresTeamMembership: false,
-            onlyTeamLead: false,
-        },
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -137,12 +132,6 @@ describe('Posting Permissions', () => {
         name: 'Future Vision',
         typeTag: 'future-vision',
         members: [],
-        postingRules: {
-            // Even if we restrict roles here, participants should be allowed by override
-            allowedRoles: ['lead'],
-            requiresTeamMembership: false,
-            onlyTeamLead: false,
-        },
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -151,11 +140,6 @@ describe('Posting Permissions', () => {
         name: 'Regular Community',
         typeTag: 'custom',
         members: [],
-        postingRules: {
-          allowedRoles: ['superadmin', 'lead', 'participant'],
-          requiresTeamMembership: false,
-          onlyTeamLead: false,
-        },
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -164,11 +148,18 @@ describe('Posting Permissions', () => {
         name: 'Restricted Community',
         typeTag: 'custom',
         members: [],
-        postingRules: {
-          allowedRoles: ['lead'],
-          requiresTeamMembership: false,
-          onlyTeamLead: true, // This actually restricts participants
-        },
+        permissionRules: [
+          {
+            role: 'participant',
+            action: ActionType.POST_PUBLICATION,
+            allowed: false,
+          },
+          {
+            role: 'participant',
+            action: ActionType.CREATE_POLL,
+            allowed: false,
+          },
+        ],
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -177,11 +168,6 @@ describe('Posting Permissions', () => {
         name: 'Support',
         typeTag: 'support',
         members: [],
-        postingRules: {
-          allowedRoles: ['superadmin', 'lead', 'participant'],
-          requiresTeamMembership: false, // Fixed: should be false to allow participants to post
-          onlyTeamLead: false,
-        },
         createdAt: new Date(),
         updatedAt: new Date(),
       }

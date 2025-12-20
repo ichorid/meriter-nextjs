@@ -6,7 +6,7 @@ import {
 import { communitiesApiV1 } from "@/lib/api/v1";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import { STALE_TIME } from "@/lib/constants/query-config";
-import type { PaginatedResponse, Community } from "@/types/api-v1";
+import type { PaginatedResponse, Community, CommunityWithComputedFields } from "@/types/api-v1";
 import { createGetNextPageParam } from "@/lib/utils/pagination-utils";
 import { createMutation } from "@/lib/api/mutation-factory";
 import { useBatchQueries } from "./useBatchQueries";
@@ -69,7 +69,7 @@ export const useInfiniteCommunities = (pageSize: number = 20) => {
 };
 
 export const useCommunity = (id: string) => {
-    return useQuery({
+    return useQuery<CommunityWithComputedFields>({
         queryKey: queryKeys.communities.detail(id),
         queryFn: () => communitiesApiV1.getCommunity(id),
         enabled: !!id && id !== "create",
@@ -82,7 +82,7 @@ export const useCommunity = (id: string) => {
  * @returns Object with queries array and communitiesMap for easy access
  */
 export function useCommunitiesBatch(communityIds: string[]) {
-    const result = useBatchQueries<Community, string>({
+    const result = useBatchQueries<CommunityWithComputedFields, string>({
         ids: communityIds,
         queryKey: (id) => queryKeys.communities.detail(id),
         queryFn: (id) => communitiesApiV1.getCommunity(id),
@@ -99,7 +99,7 @@ export function useCommunitiesBatch(communityIds: string[]) {
     };
 }
 
-export const useCreateCommunity = createMutation<Community, CreateCommunityDto>({
+export const useCreateCommunity = createMutation<CommunityWithComputedFields, CreateCommunityDto>({
     mutationFn: (data) => communitiesApiV1.createCommunity(data),
     errorContext: "Create community error",
     invalidations: {
@@ -114,7 +114,7 @@ export const useCreateCommunity = createMutation<Community, CreateCommunityDto>(
 });
 
 export const useUpdateCommunity = createMutation<
-    Community,
+    CommunityWithComputedFields,
     { id: string; data: Partial<UpdateCommunityDto> }
 >({
     mutationFn: ({ id, data }) => communitiesApiV1.updateCommunity(id, data),
