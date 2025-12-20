@@ -40,7 +40,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const targetPollId = searchParams?.get('poll');
 
     // Get sort state from URL params
-    const sortBy = searchParams?.get('sort') || 'recent';
+    const sortBy = searchParams?.get('sort') || 'voted';
     const selectedTag = searchParams?.get('tag');
     const searchQuery = searchParams?.get('q') || '';
     

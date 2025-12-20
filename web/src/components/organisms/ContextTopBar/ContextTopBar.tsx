@@ -284,7 +284,7 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
   const [fakeDataMessage, setFakeDataMessage] = React.useState('');
 
   // Get sortBy from URL params
-  const sortBy = searchParams?.get('sort') === 'voted' ? 'voted' : 'recent';
+  const sortBy = searchParams?.get('sort') === 'recent' ? 'recent' : 'voted';
   const selectedTag = searchParams?.get('tag');
   const searchQuery = searchParams?.get('q') || '';
   const [localSearchQuery, setLocalSearchQuery] = React.useState(searchQuery);
