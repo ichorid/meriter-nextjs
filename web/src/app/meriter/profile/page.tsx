@@ -15,7 +15,9 @@ import { BrandButton } from '@/components/ui/BrandButton';
 import { routes } from '@/lib/constants/routes';
 import { InviteHandler } from '@/components/InviteHandler';
 import Link from 'next/link';
-import { Loader2, Settings } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
+import { LogoutBlock } from '@/components/organisms/LogoutBlock';
 
 export default function ProfilePage() {
   const t = useTranslations('profile');
@@ -24,7 +26,7 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
 
   const { data: roles } = useUserRoles(user?.id || '');
-  
+
   // Get profile content data for cards
   const {
     myPublications,
@@ -60,21 +62,7 @@ export default function ProfilePage() {
   return (
     <AdaptiveLayout
       stickyHeader={
-        <header className="px-4 pt-4 pb-3 border-b border-base-content/10 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-base-content">
-            {t('title')}
-          </h1>
-          <Link href={routes.settings}>
-            <BrandButton
-              variant="ghost"
-              size="sm"
-              className="px-2"
-                aria-label={tCommon('ariaLabels.settings')}
-            >
-              <Settings size={18} className="text-base-content/70" />
-            </BrandButton>
-          </Link>
-        </header>
+        <ProfileTopBar asStickyHeader={true} />
       }
     >
       <InviteHandler />
@@ -123,6 +111,11 @@ export default function ProfilePage() {
 
         {/* Use Invite Section (for viewers) */}
         <UseInvite />
+
+        {/* Logout Block */}
+        <div className="pt-4 pb-8">
+          <LogoutBlock />
+        </div>
       </div>
     </AdaptiveLayout>
   );

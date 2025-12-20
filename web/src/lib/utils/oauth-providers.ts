@@ -92,11 +92,11 @@ export const OAUTH_PROVIDERS: OAuthProvider[] = [
  */
 export function getOAuthUrl(providerId: string, returnTo?: string): string {
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/meriter/profile';
-  
+
   // Parse returnTo if it contains query parameters
   let returnPath: string = currentPath;
   let queryParams = '';
-  
+
   if (returnTo && returnTo.length > 0) {
     if (returnTo.includes('?')) {
       const [path, query] = returnTo.split('?');
@@ -123,6 +123,25 @@ export function getOAuthUrl(providerId: string, returnTo?: string): string {
     : `/api/v1/auth/${providerId}?returnTo=${encodeURIComponent(returnUrl)}`;
 
   return oauthUrl;
+}
+
+/**
+ * Get authentication environment variables
+ * Централизованный доступ к env переменным для OAuth и Authn
+ */
+export function getAuthEnv(): Record<string, string | undefined> {
+  return {
+    OAUTH_GOOGLE_ENABLED: process.env.OAUTH_GOOGLE_ENABLED,
+    OAUTH_YANDEX_ENABLED: process.env.OAUTH_YANDEX_ENABLED,
+    OAUTH_VK_ENABLED: process.env.OAUTH_VK_ENABLED,
+    OAUTH_TELEGRAM_ENABLED: process.env.OAUTH_TELEGRAM_ENABLED,
+    OAUTH_APPLE_ENABLED: process.env.OAUTH_APPLE_ENABLED,
+    OAUTH_TWITTER_ENABLED: process.env.OAUTH_TWITTER_ENABLED,
+    OAUTH_INSTAGRAM_ENABLED: process.env.OAUTH_INSTAGRAM_ENABLED,
+    OAUTH_SBER_ENABLED: process.env.OAUTH_SBER_ENABLED,
+    OAUTH_MAILRU_ENABLED: process.env.OAUTH_MAILRU_ENABLED,
+    AUTHN_ENABLED: process.env.AUTHN_ENABLED,
+  };
 }
 
 

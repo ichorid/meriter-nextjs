@@ -76,7 +76,9 @@
         },
         "ariaLabels": {
             "settings": "Настройки"
-        }
+        },
+        "profile": "Профиль",
+        "account": "Аккаунт"
     },
     "home": {
         "breadcrumb": "Главная",
@@ -291,7 +293,17 @@
             "and": "и",
             "personalData": "обработкой персональных данных"
         },
-        "fillProfile": "Заполнить профиль"
+        "fillProfile": "Заполнить профиль",
+        "username": "Имя пользователя",
+        "usernamePlaceholder": "имя пользователя",
+        "creating": "Создание...",
+        "createAccount": "Создать аккаунт",
+        "signInWithPasskey": "Войти с помощью Passkey",
+        "noAccountRegisterPasskey": "Нет аккаунта? Зарегистрируйтесь с помощью Passkey",
+        "usernameRequired": "Имя пользователя обязательно",
+        "passkeyLoginFailed": "Ошибка входа с Passkey",
+        "registrationSuccessSignIn": "Регистрация успешна! Пожалуйста, войдите с помощью вашего Passkey.",
+        "passkeyRegistrationFailed": "Ошибка регистрации Passkey"
     },
     "polls": {
         "createTitle": "Создать опрос",

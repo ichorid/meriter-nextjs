@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { CommunityForm } from '@/features/communities/components';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useCommunity } from '@/hooks/api/useCommunities';
 
 interface PageProps {
@@ -35,10 +35,11 @@ export default function CommunitySettingsPage({ params }: PageProps) {
         <AdaptiveLayout
             communityId={communityId}
             stickyHeader={
-                <PageHeader
+                <SimpleStickyHeader
                     title={pageTitle}
                     showBack={true}
                     onBack={() => router.push(`/meriter/communities/${communityId}`)}
+                    asStickyHeader={true}
                 />
             }
         >

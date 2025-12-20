@@ -4,9 +4,10 @@ import React, { useMemo } from 'react';
 import { use } from 'react';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useUserProfile } from '@/hooks/api/useUsers';
 import { useUserRoles } from '@/hooks/api/useProfile';
-import { PageHeader } from '@/components/ui/PageHeader';
+
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { Badge } from '@/components/atoms';
 import { Mail, MessageCircle, Globe, MapPin, GraduationCap, User as UserIcon, Users } from 'lucide-react';
@@ -30,7 +31,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
   if (isLoading) {
     return (
       <AdaptiveLayout
-        stickyHeader={<PageHeader title={tCommon('userProfile')} showBack={true} />}
+        stickyHeader={<SimpleStickyHeader title={tCommon('userProfile')} showBack={true} asStickyHeader={true} />}
       >
         <div className="space-y-4">
           <CardSkeleton />
@@ -43,7 +44,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
   if (error || !user) {
     return (
       <AdaptiveLayout
-        stickyHeader={<PageHeader title={tCommon('userProfile')} showBack={true} />}
+        stickyHeader={<SimpleStickyHeader title={tCommon('userProfile')} showBack={true} asStickyHeader={true} />}
       >
         <div className="text-center py-12 text-base-content/60">
           <UserIcon className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
@@ -59,7 +60,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
 
   return (
     <AdaptiveLayout
-      stickyHeader={<PageHeader title={tCommon('userProfile')} showBack={true} />}
+      stickyHeader={<SimpleStickyHeader title={tCommon('userProfile')} showBack={true} asStickyHeader={true} />}
     >
       <div className="space-y-6">
         {/* Profile Header */}
@@ -164,16 +165,16 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
             </h2>
             <div className="flex flex-wrap gap-2">
               {userRoles.map((userRole) => {
-                const roleVariant = 
+                const roleVariant =
                   userRole.role === 'lead' ? 'accent' :
-                  userRole.role === 'participant' ? 'info' :
-                  'secondary';
-                
-                const roleLabel = 
+                    userRole.role === 'participant' ? 'info' :
+                      'secondary';
+
+                const roleLabel =
                   userRole.role === 'lead' ? tCommon('lead') :
-                  userRole.role === 'participant' ? tCommon('participant') :
-                  tCommon('viewer');
-                
+                    userRole.role === 'participant' ? tCommon('participant') :
+                      tCommon('viewer');
+
                 return (
                   <Badge
                     key={userRole.id}
@@ -194,19 +195,19 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
         )}
 
         {/* Empty State if no profile info */}
-        {!profile.bio && 
-         !contacts.email && 
-         !contacts.messenger && 
-         !profile.website && 
-         !profile.location && 
-         !profile.educationalInstitution && 
-         !profile.about && (
-          <div className="text-center py-12 text-base-content/60">
-            <UserIcon className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
-            <p className="font-medium">{tCommon('noProfileInformation')}</p>
-            <p className="text-sm mt-1">{tCommon('noProfileInformationDescription')}</p>
-          </div>
-        )}
+        {!profile.bio &&
+          !contacts.email &&
+          !contacts.messenger &&
+          !profile.website &&
+          !profile.location &&
+          !profile.educationalInstitution &&
+          !profile.about && (
+            <div className="text-center py-12 text-base-content/60">
+              <UserIcon className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
+              <p className="font-medium">{tCommon('noProfileInformation')}</p>
+              <p className="text-sm mt-1">{tCommon('noProfileInformationDescription')}</p>
+            </div>
+          )}
       </div>
     </AdaptiveLayout>
   );

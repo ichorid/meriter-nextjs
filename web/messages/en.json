@@ -6,16 +6,16 @@
         "logout": "Logout",
         "loading": "Loading...",
         "error": "Error",
-            "unexpectedError": "An unexpected error occurred",
-            "somethingWentWrong": "Something went wrong",
-            "somethingWentWrongMessage": "An unexpected error occurred. Please try refreshing the page.",
-            "goHome": "Go Home",
-            "reloadPage": "Reload Page",
-            "loggingOut": "Logging out...",
+        "unexpectedError": "An unexpected error occurred",
+        "somethingWentWrong": "Something went wrong",
+        "somethingWentWrongMessage": "An unexpected error occurred. Please try refreshing the page.",
+        "goHome": "Go Home",
+        "reloadPage": "Reload Page",
+        "loggingOut": "Logging out...",
         "save": "Save",
-            "authenticationFailed": "Authentication failed",
-            "logoutFailed": "Logout failed",
-            "cancel": "Cancel",
+        "authenticationFailed": "Authentication failed",
+        "logoutFailed": "Logout failed",
+        "cancel": "Cancel",
         "delete": "Delete",
         "edit": "Edit",
         "close": "Close",
@@ -75,7 +75,9 @@
         },
         "ariaLabels": {
             "settings": "Settings"
-        }
+        },
+        "profile": "Profile",
+        "account": "Account"
     },
     "home": {
         "breadcrumb": "Home",
@@ -290,7 +292,17 @@
             "and": "and",
             "personalData": "processing of personal data"
         },
-        "fillProfile": "Fill Profile"
+        "fillProfile": "Fill Profile",
+        "username": "Username",
+        "usernamePlaceholder": "username",
+        "creating": "Creating...",
+        "createAccount": "Create Account",
+        "signInWithPasskey": "Sign in with Passkey",
+        "noAccountRegisterPasskey": "No account? Register with Passkey",
+        "usernameRequired": "Username is required",
+        "passkeyLoginFailed": "Passkey login failed",
+        "registrationSuccessSignIn": "Registration successful! Please sign in with your Passkey.",
+        "passkeyRegistrationFailed": "Passkey registration failed"
     },
     "polls": {
         "createTitle": "Create Poll",

@@ -14,7 +14,7 @@ import { ToastContainer } from '@/shared/components/toast-container';
 import { AppModeProvider } from '@/contexts/AppModeContext';
 import StyledJsxRegistry from '@/registry';
 
-import { getEnabledProviders } from '@/lib/utils/oauth-providers';
+import { getEnabledProviders, getAuthEnv } from '@/lib/utils/oauth-providers';
 
 export const metadata: Metadata = {
     title: 'Meriter',
@@ -53,18 +53,9 @@ export default async function RootLayout({
 
     const messages = await getMessages({ locale });
 
-    // Get enabled providers from env (explicitly accessing process.env for Next.js)
-    const env = {
-        OAUTH_GOOGLE_ENABLED: process.env.OAUTH_GOOGLE_ENABLED,
-        OAUTH_YANDEX_ENABLED: process.env.OAUTH_YANDEX_ENABLED,
-        OAUTH_VK_ENABLED: process.env.OAUTH_VK_ENABLED,
-        OAUTH_TELEGRAM_ENABLED: process.env.OAUTH_TELEGRAM_ENABLED,
-        OAUTH_APPLE_ENABLED: process.env.OAUTH_APPLE_ENABLED,
-        OAUTH_TWITTER_ENABLED: process.env.OAUTH_TWITTER_ENABLED,
-        OAUTH_INSTAGRAM_ENABLED: process.env.OAUTH_INSTAGRAM_ENABLED,
-        OAUTH_SBER_ENABLED: process.env.OAUTH_SBER_ENABLED,
-    };
+    const env = getAuthEnv();
     const enabledProviders = getEnabledProviders(env);
+    const authnEnabled = process.env.AUTHN_ENABLED === 'true';
 
     return (
         <html lang={locale} suppressHydrationWarning>
@@ -110,7 +101,7 @@ export default async function RootLayout({
                                 <NextIntlClientProvider messages={messages}>
                                     <AuthProvider>
                                         {/* Temporarily disable AuthWrapper for debugging - set DISABLE_AUTH_WRAPPER = true in AuthWrapper.tsx */}
-                                        <AuthWrapper enabledProviders={enabledProviders}>
+                                        <AuthWrapper enabledProviders={enabledProviders} authnEnabled={authnEnabled}>
                                             <Root>{children}</Root>
                                         </AuthWrapper>
                                         <ToastContainer />

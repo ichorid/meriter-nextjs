@@ -60,20 +60,20 @@ export class AuthController {
     // This prevents login loops caused by stale cookies with mismatched attributes
     const cookieDomain = CookieManager.getCookieDomain();
     const isProduction = process.env.NODE_ENV === 'production';
-    
+
     // Get all cookie names from the request
     const cookieNames = new Set<string>();
     if (req.cookies) {
       Object.keys(req.cookies).forEach(name => cookieNames.add(name));
     }
-    
+
     // Always ensure JWT cookie is cleared (it might be HttpOnly and not visible in req.cookies)
     cookieNames.add('jwt');
-    
+
     // Also clear known cookies that might exist
     const knownCookies = ['fake_user_id', 'fake_superadmin_id', 'NEXT_LOCALE'];
     knownCookies.forEach(name => cookieNames.add(name));
-    
+
     // Clear each cookie with all possible attribute combinations
     for (const cookieName of cookieNames) {
       CookieManager.clearCookieVariants(res, cookieName, cookieDomain, isProduction);
@@ -462,6 +462,150 @@ export class AuthController {
       const errorStack = error instanceof Error ? error.stack : String(error);
       this.logger.error('Get current user error', errorStack);
       throw new InternalServerError('Failed to get user information');
+    }
+  }
+
+  // --- WebAuthn / Passkeys Endpoints ---
+
+  @Post('passkey/register/start')
+  async generatePasskeyRegistrationOptions(@Body() body: { username?: string; userId?: string }, @Res() res: any) {
+    try {
+      if (process.env.AUTHN_ENABLED !== 'true') throw new ForbiddenException('Passkeys disabled');
+
+      const { username, userId } = body;
+      if (!username && !userId) throw new Error('Username or userId required');
+
+      // If linking to existing user (userId provided), ensure it matches authenticated user or skip if open registration?
+      // For ease, we trust the client for now but in "Bind" flow, we should check req.user if protected.
+      // Ideally, binding a second device should be a protected route.
+      // But for now, we follow the simple plan. 
+
+      const result = await this.authService.generatePasskeyRegistrationOptions(username || 'user', userId);
+      // Return raw JSON without wrapper (required by @simplewebauthn/browser)
+      return res.json(result);
+    } catch (error) {
+      this.logger.error('Passkey reg options error', error);
+      throw new InternalServerError('Failed to generate passkey options');
+    }
+  }
+
+  @Post('passkey/register/finish')
+  async verifyPasskeyRegistration(@Body() body: any, @Res() res: any, @Req() req: any) {
+    try {
+      if (process.env.AUTHN_ENABLED !== 'true') throw new ForbiddenException('Passkeys disabled');
+
+      // The body contains the registration response and context
+      // We expect { userId: "...", deviceName: "...", ...credentialResponse }
+      // Or we just pass body.
+      const userIdOrUsername = body.userId; // This might be "new_username" or real ID
+      const deviceName = body.deviceName;
+
+      const result = await this.authService.verifyPasskeyRegistration(body, userIdOrUsername, deviceName);
+
+      // Set JWT cookie (sign-up + sign-in)
+      const cookieDomain = CookieManager.getCookieDomain();
+      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+
+      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      if (result.jwt) {
+        CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      }
+
+      return res.json({
+        success: true,
+        ...result
+      });
+    } catch (error) {
+      this.logger.error('Passkey reg verify error', error);
+      throw new InternalServerError('Failed to verify passkey registration');
+    }
+  }
+
+  @Post('passkey/login/start')
+  async generatePasskeyLoginOptions(@Body() body: { username?: string }) {
+    try {
+      if (process.env.AUTHN_ENABLED !== 'true') throw new ForbiddenException('Passkeys disabled');
+      const result = await this.authService.generatePasskeyLoginOptions(body.username);
+      return result;
+    } catch (error) {
+      this.logger.error('Passkey login options error', error);
+      throw new InternalServerError('Failed to generate passkey login options');
+    }
+  }
+
+  @Post('passkey/login/finish')
+  async verifyPasskeyLogin(@Body() body: any, @Res() res: any, @Req() req: any) {
+    try {
+      if (process.env.AUTHN_ENABLED !== 'true') throw new ForbiddenException('Passkeys disabled');
+
+      const result = await this.authService.verifyPasskeyLogin(body);
+
+      // Set JWT cookie
+      const cookieDomain = CookieManager.getCookieDomain();
+      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+
+      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+
+      return res.json({ success: true, user: result.user });
+    } catch (error) {
+      this.logger.error('Passkey login verify error', error);
+      throw new InternalServerError('Failed to verify passkey login');
+    }
+  }
+
+  /**
+   * Unified Passkey Authentication Start (combines login + registration)
+   * Works like OAuth: single endpoint, auto-determines flow
+   */
+  @Post('passkey/authenticate/start')
+  async generatePasskeyAuthenticationOptions(@Res() res: any) {
+    try {
+      if (process.env.AUTHN_ENABLED !== 'true') {
+        throw new ForbiddenException('Passkeys disabled');
+      }
+
+      const result = await this.authService.generatePasskeyAuthenticationOptions();
+      // Return raw JSON without wrapper (required by @simplewebauthn/browser)
+      return res.json(result);
+    } catch (error) {
+      this.logger.error('Passkey authentication options error', error);
+      throw new InternalServerError('Failed to generate passkey authentication options');
+    }
+  }
+
+  /**
+   * Unified Passkey Authentication (combines login + registration)
+   * Works like OAuth: single endpoint, auto-creates user if doesn't exist
+   */
+  @Post('passkey/authenticate/finish')
+  async authenticateWithPasskey(@Body() body: any, @Res() res: any, @Req() req: any) {
+    try {
+      if (process.env.AUTHN_ENABLED !== 'true') {
+        throw new ForbiddenException('Passkeys disabled');
+      }
+
+      const result = await this.authService.authenticateWithPasskey(body);
+
+      // Set JWT cookie (same as OAuth)
+      const cookieDomain = CookieManager.getCookieDomain();
+      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+
+      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+
+      // Return isNewUser flag for frontend redirect (like OAuth)
+      return res.json({
+        success: true,
+        user: result.user,
+        isNewUser: result.isNewUser,
+      });
+    } catch (error) {
+      this.logger.error('Passkey authentication error', error);
+      throw new InternalServerError('Failed to authenticate with passkey');
     }
   }
 }

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Bell, Check, CheckCheck, Filter, Settings } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandSelect } from '@/components/ui/BrandSelect';
 import { InfoCard } from '@/components/ui/InfoCard';
@@ -14,11 +14,11 @@ import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { Loader2 } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
-import { 
+import {
   useNotifications,
   useInfiniteNotifications,
-  useMarkAsRead, 
-  useMarkAllAsRead, 
+  useMarkAsRead,
+  useMarkAllAsRead,
   useNotificationPreferences,
   useUpdatePreferences as useUpdatePrefs,
 } from '@/hooks/api/useNotifications';
@@ -37,7 +37,7 @@ export default function NotificationsPage() {
 
   const isMobile = useMediaQuery('(max-width: 640px)');
   const pageSize = isMobile ? 15 : 30; // Меньше данных на mobile
-  
+
   const {
     data: notificationsData,
     isLoading,
@@ -63,28 +63,28 @@ export default function NotificationsPage() {
     }
 
     isAutoFetchingRef.current = true;
-    
+
     try {
       // Keep fetching while there are more pages
       let attempts = 0;
       const maxAttempts = 100; // Safety limit
-      
+
       while (attempts < maxAttempts) {
         // Check current state - wait if currently fetching
         if (isFetchingNextPage) {
           await new Promise(resolve => setTimeout(resolve, 100));
           continue;
         }
-        
+
         // Check if there's a next page
         if (!hasNextPage) {
           break;
         }
-        
+
         // Fetch the next page
         await fetchNextPage();
         attempts++;
-        
+
         // Wait for the fetch to complete before checking again
         await new Promise(resolve => setTimeout(resolve, 400));
       }
@@ -109,7 +109,7 @@ export default function NotificationsPage() {
   // Watch for when mutations succeed and auto-fetch remaining pages after refetch
   useEffect(() => {
     const mutationSucceeded = markAsRead.isSuccess || markAllAsRead.isSuccess;
-    
+
     if (mutationSucceeded && !isAutoFetchingRef.current) {
       // First refetch the infinite query to get fresh data
       refetch().then(() => {
@@ -118,7 +118,7 @@ export default function NotificationsPage() {
           fetchAllRemainingPages();
         }, 500);
       });
-      
+
       // Reset mutation success flags
       if (markAsRead.isSuccess) markAsRead.reset();
       if (markAllAsRead.isSuccess) markAllAsRead.reset();
@@ -207,128 +207,128 @@ export default function NotificationsPage() {
 
   return (
     <AdaptiveLayout
-      stickyHeader={<PageHeader title={t('title')} showBack={false} />}
+      stickyHeader={<SimpleStickyHeader title={t('title')} showBack={false} asStickyHeader={true} />}
     >
       <div className="space-y-4">
-          {/* Filters and Actions */}
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-            <div className="flex items-center gap-2 flex-1">
-              <Filter size={18} className="text-brand-text-secondary" />
-              <BrandSelect
-                value={filter}
-                onChange={(value) => setFilter(value as typeof filter)}
-                options={filterOptions}
-                className="flex-1 sm:max-w-xs"
-                fullWidth
-              />
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {unreadCount > 0 && (
-                <BrandButton
-                  variant="outline"
-                  size="sm"
-                  onClick={handleMarkAllAsRead}
-                  disabled={markAllAsRead.isPending}
-                  className="w-fit"
-                >
-                  <CheckCheck size={16} className="mr-1" />
-                  {t('markAllRead')}
-                </BrandButton>
-              )}
+        {/* Filters and Actions */}
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+          <div className="flex items-center gap-2 flex-1">
+            <Filter size={18} className="text-brand-text-secondary" />
+            <BrandSelect
+              value={filter}
+              onChange={(value) => setFilter(value as typeof filter)}
+              options={filterOptions}
+              className="flex-1 sm:max-w-xs"
+              fullWidth
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
               <BrandButton
                 variant="outline"
                 size="sm"
-                onClick={() => setShowPreferences(!showPreferences)}
+                onClick={handleMarkAllAsRead}
+                disabled={markAllAsRead.isPending}
                 className="w-fit"
               >
-                <Settings size={16} />
+                <CheckCheck size={16} className="mr-1" />
+                {t('markAllRead')}
               </BrandButton>
-            </div>
+            )}
+            <BrandButton
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPreferences(!showPreferences)}
+              className="w-fit"
+            >
+              <Settings size={16} />
+            </BrandButton>
           </div>
+        </div>
 
-          {/* Notification Preferences (collapsible) */}
-          {showPreferences && (
-            <NotificationPreferencesPanel />
-          )}
+        {/* Notification Preferences (collapsible) */}
+        {showPreferences && (
+          <NotificationPreferencesPanel />
+        )}
 
-          {/* Notifications List */}
-                    {isLoading ? (
-                        <div className="space-y-2">
-                            <CardSkeleton />
-                            <CardSkeleton />
-                            <CardSkeleton />
-                        </div>
-                    ) : notifications.length > 0 ? (
-                        <div className="space-y-2">
-                            {notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={`relative ${!notification.read ? 'bg-blue-50/50' : ''}`}
-                >
-                  <InfoCard
-                    title={notification.title}
-                    subtitle={
-                      [
-                        notification.message,
-                        notification.actor?.name,
-                        notification.community?.name,
-                        formatDate(notification.createdAt),
-                      ]
-                        .filter(Boolean)
-                        .join(' • ')
-                    }
-                    icon={
-                      <div className="text-2xl">
-                        {getNotificationIcon(notification.type)}
-                      </div>
-                    }
-                    rightElement={
-                      <div className="flex items-center gap-1">
-                        {notification.actor?.avatarUrl && (
-                          <BrandAvatar
-                            src={notification.actor.avatarUrl}
-                            fallback={notification.actor.name}
-                            size="sm"
-                            className="mr-2"
-                          />
-                        )}
-                        {!notification.read && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              markAsRead.mutate(notification.id);
-                            }}
-                            className="p-1 hover:bg-base-200 rounded-full transition-colors"
-                            aria-label={t('ariaLabels.markAsRead')}
-                          >
-                            <Check size={16} className="text-base-content/60" />
-                          </button>
-                        )}
-                      </div>
-                    }
-                    onClick={() => handleNotificationClick(notification)}
-                    className={!notification.read ? 'border-blue-200' : ''}
-                  />
-                </div>
-              ))}
-              
-              {/* Infinite scroll trigger */}
-              <div ref={observerTarget} className="h-4" />
-              
-              {/* Loading indicator */}
-              {isFetchingNextPage && (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
-                </div>
-              )}
-            </div>
+        {/* Notifications List */}
+        {isLoading ? (
+          <div className="space-y-2">
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+          </div>
+        ) : notifications.length > 0 ? (
+          <div className="space-y-2">
+            {notifications.map((notification) => (
+              <div
+                key={notification.id}
+                className={`relative ${!notification.read ? 'bg-blue-50/50' : ''}`}
+              >
+                <InfoCard
+                  title={notification.title}
+                  subtitle={
+                    [
+                      notification.message,
+                      notification.actor?.name,
+                      notification.community?.name,
+                      formatDate(notification.createdAt),
+                    ]
+                      .filter(Boolean)
+                      .join(' • ')
+                  }
+                  icon={
+                    <div className="text-2xl">
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                  }
+                  rightElement={
+                    <div className="flex items-center gap-1">
+                      {notification.actor?.avatarUrl && (
+                        <BrandAvatar
+                          src={notification.actor.avatarUrl}
+                          fallback={notification.actor.name}
+                          size="sm"
+                          className="mr-2"
+                        />
+                      )}
+                      {!notification.read && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markAsRead.mutate(notification.id);
+                          }}
+                          className="p-1 hover:bg-base-200 rounded-full transition-colors"
+                          aria-label={t('ariaLabels.markAsRead')}
+                        >
+                          <Check size={16} className="text-base-content/60" />
+                        </button>
+                      )}
+                    </div>
+                  }
+                  onClick={() => handleNotificationClick(notification)}
+                  className={!notification.read ? 'border-blue-200' : ''}
+                />
+              </div>
+            ))}
+
+            {/* Infinite scroll trigger */}
+            <div ref={observerTarget} className="h-4" />
+
+            {/* Loading indicator */}
+            {isFetchingNextPage && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+              </div>
+            )}
+          </div>
         ) : (
           <div className="text-center py-12 text-base-content/60">
             <Bell className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
             <p className="font-medium">{t('noNotifications')}</p>
             <p className="text-sm mt-1">
-              {filter === 'unread' 
+              {filter === 'unread'
                 ? t('noUnreadNotifications')
                 : t('noNotificationsDescription')}
             </p>

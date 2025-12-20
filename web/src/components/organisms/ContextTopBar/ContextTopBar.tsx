@@ -11,10 +11,11 @@ import { publicationsApiV1 } from '@/lib/api/v1';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandInput } from '@/components/ui/BrandInput';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
-import { Clock, TrendingUp, Loader2, Search, X, ArrowLeft } from 'lucide-react';
+import { Clock, TrendingUp, Loader2, Search, X, ArrowLeft, Settings } from 'lucide-react';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import type { TabSortState } from '@/hooks/useProfileTabState';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { SortToggle } from '@/components/ui/SortToggle';
 
 export interface ContextTopBarProps {
   className?: string;
@@ -62,8 +63,7 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
 };
 
 // Profile Top Bar with Tabs
-const ProfileTopBar: React.FC = () => {
-  const t = useTranslations('home');
+export const ProfileTopBar: React.FC<{ asStickyHeader?: boolean }> = ({ asStickyHeader = false }) => {
   const tCommon = useTranslations('common');
   const router = useRouter();
   const pathname = usePathname();
@@ -72,14 +72,14 @@ const ProfileTopBar: React.FC = () => {
   const [searchQuery, setSearchQuery] = React.useState('');
 
   // Determine current tab from pathname
-  const currentTab = pathname?.includes('/profile/comments') 
-    ? 'comments' 
-    : pathname?.includes('/profile/polls') 
-    ? 'polls' 
-    : 'publications';
-  
+  const currentTab = pathname?.includes('/profile/comments')
+    ? 'comments'
+    : pathname?.includes('/profile/polls')
+      ? 'polls'
+      : 'publications';
+
   const { sortByTab, setSortByTab } = useProfileTabState();
-  
+
   // Sync sort from URL params
   React.useEffect(() => {
     const sortParam = searchParams?.get('sort');
@@ -104,10 +104,10 @@ const ProfileTopBar: React.FC = () => {
 
     const basePath = '/meriter/profile';
     const tabPath = currentTab === 'publications' ? basePath : `${basePath}/${currentTab}`;
-    
+
     const urlParams = new URLSearchParams();
     urlParams.set('sort', sort);
-    
+
     router.push(`${tabPath}?${urlParams.toString()}`);
   };
 
@@ -123,67 +123,51 @@ const ProfileTopBar: React.FC = () => {
     setSearchQuery('');
   };
 
+  const rightAction = (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <BrandButton
+        variant="ghost"
+        size="sm"
+        onClick={() => setShowSearchModal(true)}
+        aria-label={tCommon('search')}
+        className="px-2"
+      >
+        <Search size={18} className="text-base-content/70" />
+      </BrandButton>
+
+      <SortToggle
+        value={sortByTab[currentTab]}
+        onChange={handleSortClick}
+        compact={true}
+      />
+      <BrandButton
+        variant="ghost"
+        size="sm"
+        onClick={() => router.push('/meriter/settings')}
+        aria-label={tCommon('settings')}
+        className="px-2"
+      >
+        <Settings size={20} className="text-base-content/70" />
+      </BrandButton>
+    </div>
+  );
+
   return (
-    <div className="flex-shrink-0">
-      <div className="sticky top-0 z-30 bg-base-100/95 backdrop-blur-md border-b border-base-content/10 px-4 h-14 w-full">
-        <div className="flex items-center justify-between gap-2 h-full">
-          <div className="flex items-center flex-1 min-w-0 gap-2">
-          {/* Back Button */}
-          <BrandButton
-            variant="ghost"
-            size="sm"
-            onClick={handleBackClick}
-            aria-label={tCommon('backToProfile')}
-            className="px-2 -ml-2"
-          >
-            <ArrowLeft size={20} className="text-base-content" />
-          </BrandButton>
-          </div>
-
-          {/* Right Actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Search Button */}
-          <BrandButton
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowSearchModal(true)}
-            aria-label={tCommon('search')}
-            className="px-2"
-          >
-            <Search size={18} className="text-base-content/70" />
-          </BrandButton>
-
-          {/* Sort Toggle - contextual to active tab */}
-          <div className="flex gap-0.5 bg-base-200/50 p-0.5 rounded-lg">
-          <button
-            onClick={() => handleSortClick('recent')}
-            className={`p-1.5 rounded-md transition-colors ${sortByTab[currentTab] === 'recent'
-                ? 'bg-base-100 text-base-content shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
-                : 'text-base-content/50 hover:text-base-content'
-              }`}
-          >
-            <Clock size={16} />
-          </button>
-          <button
-            onClick={() => handleSortClick('voted')}
-            className={`p-1.5 rounded-md transition-colors ${sortByTab[currentTab] === 'voted'
-                ? 'bg-base-100 text-base-content shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
-                : 'text-base-content/50 hover:text-base-content'
-              }`}
-          >
-            <TrendingUp size={16} />
-          </button>
-          </div>
-          </div>
-        </div>
-      </div>
+    <>
+      <SimpleStickyHeader
+        title={tCommon('profile')}
+        showBack={true}
+        onBack={() => router.push('/meriter/profile')}
+        rightAction={rightAction}
+        asStickyHeader={asStickyHeader}
+      />
 
       {/* Search Modal Portal - only render when open */}
       {showSearchModal && (
         <BottomActionSheet
           isOpen={showSearchModal}
           onClose={() => setShowSearchModal(false)}
-          title="Search"
+          title={tCommon('search')}
         >
           <div className="space-y-4">
             <BrandInput
@@ -207,9 +191,80 @@ const ProfileTopBar: React.FC = () => {
           </div>
         </BottomActionSheet>
       )}
-    </div>
+    </>
   );
 };
+
+// Simple Sticky Header for generic pages
+export const SimpleStickyHeader: React.FC<{
+  title: React.ReactNode;
+  onBack?: () => void;
+  showBack?: boolean;
+  rightAction?: React.ReactNode;
+  className?: string;
+  asStickyHeader?: boolean;
+}> = ({
+  title,
+  onBack,
+  showBack = true,
+  rightAction,
+  className = '',
+  asStickyHeader = false
+}) => {
+    const router = useRouter();
+    const tCommon = useTranslations('common');
+
+    const handleBack = () => {
+      if (onBack) {
+        onBack();
+      } else {
+        router.back();
+      }
+    };
+
+    const headerContent = (
+      <div className={`${asStickyHeader ? "bg-base-100/95 backdrop-blur-md border-b border-base-content/10" : "sticky top-0 z-30 bg-base-100/95 backdrop-blur-md border-b border-base-content/10 w-full"} ${className}`}>
+        <div className="flex items-center justify-between h-14">
+          <div className="flex items-center flex-1 min-w-0">
+            {/* Back Button */}
+            {showBack && (
+              <BrandButton
+                variant="ghost"
+                size="sm"
+                onClick={handleBack}
+                aria-label={tCommon('goBack')}
+                className="px-2"
+              >
+                <ArrowLeft size={20} className="text-base-content" />
+              </BrandButton>
+            )}
+
+            {/* Title */}
+            <h1 className="text-lg font-semibold text-base-content truncate px-2">
+              {title}
+            </h1>
+          </div>
+
+          {/* Right Actions */}
+          {rightAction && (
+            <div className="flex items-center flex-shrink-0">
+              {rightAction}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+
+    return (
+      <>
+        {asStickyHeader ? headerContent : (
+          <div className="flex-shrink-0">
+            {headerContent}
+          </div>
+        )}
+      </>
+    );
+  };
 
 // Community Top Bar
 export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: boolean }> = ({ communityId, asStickyHeader = false }) => {
@@ -229,7 +284,7 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
   const [fakeDataMessage, setFakeDataMessage] = React.useState('');
 
   // Get sortBy from URL params
-  const sortBy = searchParams?.get('sort') || 'recent';
+  const sortBy = searchParams?.get('sort') === 'voted' ? 'voted' : 'recent';
   const selectedTag = searchParams?.get('tag');
   const searchQuery = searchParams?.get('q') || '';
   const [localSearchQuery, setLocalSearchQuery] = React.useState(searchQuery);
@@ -323,6 +378,7 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
     }
   };
 
+
   const isMobile = !useMediaQuery('(min-width: 768px)');
   // Left nav is hidden below lg breakpoint (1024px), so show back button when nav is hidden
   const isLeftNavHidden = !useMediaQuery('(min-width: 1024px)');
@@ -351,30 +407,13 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
   };
 
   const headerContent = (
-    <div className={asStickyHeader ? "bg-base-100/95 backdrop-blur-md border-b border-base-content/10 -mx-4 px-4" : "sticky top-0 z-30 bg-base-100/95 backdrop-blur-md border-b border-base-content/10 w-full"}>
-        {/* Main Header Row */}
-        <div className="flex items-center justify-between gap-2 h-14">
-          <div className="flex items-center flex-1 min-w-0 gap-2">
-          {/* Back Button - only show when left nav is hidden (mobile/tablet) */}
-          {isLeftNavHidden && (
-            <BrandButton
-              variant="ghost"
-              size="sm"
-              onClick={handleBack}
-              className="px-2 -ml-2"
-            >
-              <ArrowLeft size={20} className="text-base-content" />
-            </BrandButton>
-          )}
-
-          {/* Community Name */}
-          <h1 className="text-lg font-semibold text-base-content truncate">
-            {community.name}
-          </h1>
-          </div>
-
-          {/* Right Actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+    <SimpleStickyHeader
+      title={community.name}
+      showBack={isLeftNavHidden}
+      onBack={handleBack}
+      asStickyHeader={asStickyHeader}
+      rightAction={
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* Search Button */}
           <BrandButton
             variant="ghost"
@@ -387,24 +426,11 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
 
           {/* Sort Toggle */}
           <div className="flex gap-0.5 bg-base-200/50 p-0.5 rounded-lg">
-            <button
-              onClick={() => handleSortChange('recent')}
-              className={`p-1.5 rounded-md transition-colors ${sortBy === 'recent'
-                  ? 'bg-base-100 text-base-content shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
-                  : 'text-base-content/50 hover:text-base-content'
-                }`}
-            >
-              <Clock size={16} />
-            </button>
-            <button
-              onClick={() => handleSortChange('voted')}
-              className={`p-1.5 rounded-md transition-colors ${sortBy === 'voted'
-                  ? 'bg-base-100 text-base-content shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
-                  : 'text-base-content/50 hover:text-base-content'
-                }`}
-            >
-              <TrendingUp size={16} />
-            </button>
+            <SortToggle
+              value={sortBy}
+              onChange={handleSortChange}
+              compact={true}
+            />
           </div>
 
           {/* Fake Data Buttons - dev only */}
@@ -452,38 +478,9 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
               </svg>
             </BrandButton>
           )}
-          </div>
         </div>
-
-        {/* Tag Filter Row - only if tags exist */}
-        {hashtags.length > 0 && (
-          <div className="flex items-center gap-2 pb-3 overflow-x-auto">
-            <button
-              onClick={handleShowAll}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
-                !selectedTag
-                  ? 'bg-base-content text-base-100'
-                  : 'bg-base-200/50 text-base-content/70 hover:bg-base-200'
-              }`}
-            >
-              All
-            </button>
-            {hashtags.map((tag: string) => (
-              <button
-                key={tag}
-                onClick={() => handleTagClick(tag)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
-                  selectedTag === tag
-                    ? 'bg-base-content text-base-100'
-                    : 'bg-base-200/50 text-base-content/70 hover:bg-base-200'
-                }`}
-              >
-                #{tag}
-              </button>
-            ))}
-          </div>
-        )}
-    </div>
+      }
+    />
   );
 
   return (

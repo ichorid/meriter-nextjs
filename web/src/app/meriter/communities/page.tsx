@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
@@ -14,15 +14,15 @@ import Link from 'next/link';
 export default function CommunitiesPage() {
     const pathname = usePathname();
     const { user, isLoading: userLoading } = useAuth();
-    
+
     // Get user's communities with wallets and quotas (handles both regular users and superadmin)
     const { communities: allCommunities, walletsMap, quotasMap, isLoading: communitiesLoading } = useUserCommunities();
-    
+
     // Group communities into special and non-special
     const { specialCommunities, userCommunities } = useMemo(() => {
         const special: typeof allCommunities = [];
         const userComms: typeof allCommunities = [];
-        
+
         allCommunities.forEach(community => {
             const isSpecial = community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision' || community.typeTag === 'support';
             if (isSpecial) {
@@ -31,7 +31,7 @@ export default function CommunitiesPage() {
                 userComms.push(community);
             }
         });
-        
+
         return {
             specialCommunities: special,
             userCommunities: userComms,
@@ -43,7 +43,7 @@ export default function CommunitiesPage() {
 
     return (
         <AdaptiveLayout
-            stickyHeader={<PageHeader title="Communities" showBack={false} />}
+            stickyHeader={<SimpleStickyHeader title="Communities" showBack={false} asStickyHeader={true} />}
         >
             {/* Content */}
             <div>
@@ -64,7 +64,7 @@ export default function CommunitiesPage() {
                                         pathname={pathname}
                                         isExpanded={true}
                                         wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
-                                        quota={quota && typeof quota.remainingToday === 'number' ? { 
+                                        quota={quota && typeof quota.remainingToday === 'number' ? {
                                             remainingToday: quota.remainingToday,
                                             dailyQuota: quota.dailyQuota ?? 0
                                         } : undefined}
@@ -85,8 +85,8 @@ export default function CommunitiesPage() {
                                 </h3>
                                 <p className="text-sm text-base-content/60">
                                     To join a team, contact one of the{' '}
-                                    <Link 
-                                        href="/meriter/about#leads" 
+                                    <Link
+                                        href="/meriter/about#leads"
                                         className="text-base-content/80 hover:text-base-content underline font-medium"
                                     >
                                         leads
@@ -123,7 +123,7 @@ export default function CommunitiesPage() {
                                             pathname={pathname}
                                             isExpanded={true}
                                             wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
-                                            quota={quota && typeof quota.remainingToday === 'number' ? { 
+                                            quota={quota && typeof quota.remainingToday === 'number' ? {
                                                 remainingToday: quota.remainingToday,
                                                 dailyQuota: quota.dailyQuota ?? 0
                                             } : undefined}

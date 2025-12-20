@@ -16,6 +16,7 @@ interface PageHeaderProps {
     className?: string;
     showSearch?: boolean;
     onSearch?: (query: string) => void;
+    asStickyHeader?: boolean;
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = ({
@@ -26,6 +27,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     className = '',
     showSearch = false,
     onSearch,
+    asStickyHeader = false,
 }) => {
     const router = useRouter();
     const t = useTranslations('common');
@@ -59,14 +61,14 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         }
     };
 
+    const headerClasses = asStickyHeader
+        ? `bg-base-100/95 backdrop-blur-md border-b border-base-content/10 flex items-center justify-between -mx-4 px-4 h-14 flex-shrink-0 w-[calc(100%+2rem)] ${className}`
+        : `sticky top-0 z-20 bg-base-100/95 backdrop-blur-md border-b border-base-content/10 flex items-center justify-between px-4 h-14 flex-shrink-0 w-full ${className}`;
+
     return (
         <>
             <header
-                className={`
-                    sticky top-0 z-20 bg-base-100/95 backdrop-blur-md border-b border-base-content/10
-                    flex items-center justify-between px-4 h-14 flex-shrink-0 w-full
-                    ${className}
-                `}
+                className={headerClasses}
             >
                 <div className="flex items-center flex-1 min-w-0">
                     {showBack && (
