@@ -43,7 +43,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 
   return (
     <aside 
-      className={`flex fixed lg:sticky left-0 top-0 h-screen bg-base-200 border-r border-base-300 z-40 flex-col py-4 pb-16 lg:pb-4 transition-all duration-300 ${className}`}
+      className={`flex fixed lg:sticky left-0 top-0 h-screen bg-base-200 border-r border-base-300 z-40 flex-col py-4 pb-16 lg:pb-4 transition-all duration-300 overflow-hidden ${className}`}
       style={widthStyle}
     >
       {/* All Communities Button */}
@@ -190,9 +190,9 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         </div>
       )}
 
-      <div className={`flex-1 overflow-y-auto w-full ${paddingClass} py-4`}>
+      <div className={`flex-1 overflow-y-auto overflow-x-hidden min-w-0 ${paddingClass} py-4`}>
         {/* Community Cards or Avatars */}
-        <div className="flex flex-col gap-2 w-full">
+        <div className="flex flex-col gap-2 min-w-0">
           {isAuthenticated && !communitiesLoading && communityIds.length === 0 && wallets.length > 0 && (
             <div className="text-xs text-base-content/50 px-2">
               {t('noCommunitiesFound')}

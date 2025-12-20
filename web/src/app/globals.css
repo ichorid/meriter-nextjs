@@ -662,8 +662,9 @@
 
   /* Left nav */
   .leftNav {
-    overflow: auto;
+    overflow: hidden; /* Let sidebar handle its own scrolling */
     min-height: 0;
+    min-width: 0; /* Allow shrinking */
     border-right: 1px solid var(--base-300);
   }
 
