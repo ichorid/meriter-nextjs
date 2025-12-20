@@ -2,8 +2,9 @@ import { Injectable, Logger, BadRequestException, NotFoundException } from '@nes
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { Wallet } from '../aggregates/wallet/wallet.entity';
-import { Wallet as WalletSchema, WalletDocument } from '../models/wallet/wallet.schema';
-import { Transaction } from '../models/transaction/transaction.schema';
+import { WalletSchemaClass, WalletDocument } from '../models/wallet/wallet.schema';
+import type { Wallet as WalletSchema } from '../models/wallet/wallet.schema';
+import { Transaction, TransactionSchemaClass, TransactionDocument } from '../models/transaction/transaction.schema';
 import { UserId, CommunityId, WalletId } from '../value-objects';
 import { WalletBalanceChangedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
@@ -15,7 +16,8 @@ export class WalletService {
   private readonly logger = new Logger(WalletService.name);
 
   constructor(
-    @InjectModel(WalletSchema.name) private walletModel: Model<WalletDocument>,
+    @InjectModel(WalletSchemaClass.name) private walletModel: Model<WalletDocument>,
+    @InjectModel(TransactionSchemaClass.name) private transactionModel: Model<TransactionDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
   ) {}
@@ -67,6 +69,7 @@ export class WalletService {
   ): Promise<Wallet> {
     // Get or create wallet
     let wallet = await this.getWallet(userId, communityId);
+    const isNewWallet = !wallet;
     
     if (!wallet) {
       wallet = Wallet.create(
@@ -83,12 +86,16 @@ export class WalletService {
       wallet.deduct(amount);
     }
 
-    // Save wallet
-    await this.walletModel.updateOne(
-      { id: wallet.getId.getValue() },
-      { $set: wallet.toSnapshot() },
-      { upsert: true }
-    );
+    // Save wallet - use create for new wallets, updateOne for existing ones
+    const walletSnapshot = wallet.toSnapshot();
+    if (isNewWallet) {
+      await this.walletModel.create(walletSnapshot);
+    } else {
+      await this.walletModel.updateOne(
+        { id: walletSnapshot.id },
+        { $set: walletSnapshot }
+      );
+    }
 
     // Map transaction type: credit -> deposit/withdrawal, debit -> withdrawal
     // The actual transaction type depends on referenceType (e.g., 'publication_withdrawal' -> 'withdrawal')
@@ -108,7 +115,7 @@ export class WalletService {
     }
     
     // Create transaction record
-    await this.mongoose.models.Transaction.create([{
+    await this.transactionModel.create([{
       id: uid(),
       walletId: wallet.getId.getValue(),
       type: transactionType,
@@ -136,7 +143,7 @@ export class WalletService {
 
   async getTransactions(walletId: string, limit: number = 50, skip: number = 0): Promise<Transaction[]> {
     // Direct Mongoose query
-    const transactions = await this.mongoose.models.Transaction
+    const transactions = await this.transactionModel
       .find({ walletId })
       .limit(limit)
       .skip(skip)
@@ -225,7 +232,7 @@ export class WalletService {
    * Aggregates by referenceType and referenceId to avoid N+1.
    */
   async getTotalWithdrawnByReference(referenceType: string, referenceId: string): Promise<number> {
-    const result = await this.mongoose.models.Transaction.aggregate([
+    const result = await this.transactionModel.aggregate([
       { $match: { referenceType, referenceId, type: 'withdrawal' } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]).exec();

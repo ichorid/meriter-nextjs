@@ -12,15 +12,87 @@ import { Document } from 'mongoose';
  *
  * Fields correspond to CommunitySchema in libs/shared-types/src/schemas.ts
  */
-export type CommunityDocument = Community & Document;
+
+export interface CommunityCurrencyNames {
+  singular: string;
+  plural: string;
+  genitive: string;
+}
+
+export interface CommunitySettings {
+  iconUrl?: string;
+  currencyNames: CommunityCurrencyNames;
+  dailyEmission: number;
+  language?: 'en' | 'ru';
+  postCost?: number;
+  pollCost?: number;
+  editWindowDays?: number;
+}
+
+export interface CommunityPostingRules {
+  allowedRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+  requiresTeamMembership?: boolean;
+  onlyTeamLead?: boolean;
+  autoMembership?: boolean;
+}
+
+export interface CommunityMeritConversion {
+  targetCommunityId: string;
+  ratio: number;
+}
+
+export interface CommunityVotingRules {
+  allowedRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+  canVoteForOwnPosts: boolean;
+  participantsCannotVoteForLead?: boolean;
+  spendsMerits: boolean;
+  awardsMerits: boolean;
+  meritConversion?: CommunityMeritConversion;
+}
+
+export interface CommunityVisibilityRules {
+  visibleToRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+  isHidden?: boolean;
+  teamOnly?: boolean;
+}
+
+export interface CommunityMeritRules {
+  dailyQuota: number;
+  quotaRecipients: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+  canEarn: boolean;
+  canSpend: boolean;
+}
+
+export interface Community {
+  id: string;
+  name: string;
+  description?: string;
+  avatarUrl?: string;
+  coverImageUrl?: string;
+  members: string[]; // УСТАРЕВШЕЕ, использовать UserCommunityRole
+  typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom';
+  linkedCurrencies?: string[];
+  postingRules?: CommunityPostingRules;
+  votingRules?: CommunityVotingRules;
+  visibilityRules?: CommunityVisibilityRules;
+  meritRules?: CommunityMeritRules;
+  settings: CommunitySettings;
+  hashtags: string[];
+  hashtagDescriptions?: Record<string, string>;
+  isActive: boolean;
+  isPriority: boolean; // Приоритетные сообщества отображаются первыми
+  lastQuotaResetAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 @Schema({ collection: 'communities', timestamps: true })
-export class Community {
+export class CommunitySchemaClass implements Community {
   @Prop({ required: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true })
-  name: string;
+  name!: string;
 
   @Prop()
   description?: string;
@@ -32,7 +104,7 @@ export class Community {
   coverImageUrl?: string;
 
   @Prop({ type: [String], default: [] })
-  members: string[]; // УСТАРЕВШЕЕ, использовать UserCommunityRole
+  members!: string[]; // УСТАРЕВШЕЕ, использовать UserCommunityRole
 
   // НОВОЕ: Метка типа (опциональная, только для удобства)
   @Prop({
@@ -48,16 +120,7 @@ export class Community {
       'custom',
     ],
   })
-  typeTag?:
-    | 'future-vision'
-    | 'marathon-of-good'
-    | 'support'
-    | 'team'
-    | 'political'
-    | 'housing'
-    | 'volunteer'
-    | 'corporate'
-    | 'custom';
+  typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom';
 
   // НОВОЕ: Связанные валюты (настраивается)
   @Prop({ type: [String], default: [] })
@@ -78,12 +141,7 @@ export class Community {
       autoMembership: false,
     },
   })
-  postingRules?: {
-    allowedRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
-    requiresTeamMembership?: boolean;
-    onlyTeamLead?: boolean;
-    autoMembership?: boolean;
-  };
+  postingRules?: CommunityPostingRules;
 
   // НОВОЕ: Правила голосования (НАСТРАИВАЕМЫЕ)
   @Prop({
@@ -106,17 +164,7 @@ export class Community {
       awardsMerits: true,
     },
   })
-  votingRules?: {
-    allowedRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
-    canVoteForOwnPosts: boolean;
-    participantsCannotVoteForLead?: boolean;
-    spendsMerits: boolean;
-    awardsMerits: boolean;
-    meritConversion?: {
-      targetCommunityId: string;
-      ratio: number;
-    };
-  };
+  votingRules?: CommunityVotingRules;
 
   // НОВОЕ: Правила видимости (НАСТРАИВАЕМЫЕ)
   @Prop({
@@ -131,11 +179,7 @@ export class Community {
       teamOnly: false,
     },
   })
-  visibilityRules?: {
-    visibleToRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
-    isHidden?: boolean;
-    teamOnly?: boolean;
-  };
+  visibilityRules?: CommunityVisibilityRules;
 
   // НОВОЕ: Правила меритов (НАСТРАИВАЕМЫЕ)
   @Prop({
@@ -152,12 +196,7 @@ export class Community {
       canSpend: true,
     },
   })
-  meritRules?: {
-    dailyQuota: number;
-    quotaRecipients: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
-    canEarn: boolean;
-    canSpend: boolean;
-  };
+  meritRules?: CommunityMeritRules;
 
   @Prop({
     type: {
@@ -175,43 +214,32 @@ export class Community {
     },
     default: {},
   })
-  settings: {
-    iconUrl?: string;
-    currencyNames: {
-      singular: string;
-      plural: string;
-      genitive: string;
-    };
-    dailyEmission: number;
-    language?: 'en' | 'ru';
-    postCost?: number;
-    pollCost?: number;
-    editWindowDays?: number;
-  };
+  settings!: CommunitySettings;
 
   @Prop({ type: [String], default: [] })
-  hashtags: string[];
+  hashtags!: string[];
 
   @Prop({ type: Object, of: String, default: {}, required: false })
   hashtagDescriptions?: Record<string, string>; // Changed from Map to plain object
 
   @Prop({ default: true })
-  isActive: boolean;
+  isActive!: boolean;
 
   @Prop({ default: false })
-  isPriority: boolean; // Приоритетные сообщества отображаются первыми
+  isPriority!: boolean; // Приоритетные сообщества отображаются первыми
 
   @Prop({ type: Date, required: false })
   lastQuotaResetAt?: Date;
 
   @Prop({ required: true })
-  createdAt: Date;
+  createdAt!: Date;
 
   @Prop({ required: true })
-  updatedAt: Date;
+  updatedAt!: Date;
 }
 
-export const CommunitySchema = SchemaFactory.createForClass(Community);
+export const CommunitySchema = SchemaFactory.createForClass(CommunitySchemaClass);
+export type CommunityDocument = CommunitySchemaClass & Document;
 
 // Add indexes for common queries
 // Note: id index is already created by @Prop({ unique: true }) decorator

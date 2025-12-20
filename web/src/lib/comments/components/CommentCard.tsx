@@ -18,10 +18,9 @@ import { calculatePadding } from '../utils/connections';
 import { useCommentVoteDisplay } from '@/features/comments/hooks/useCommentVoteDisplay';
 import { useCommentRecipient } from '@/features/comments/hooks/useCommentRecipient';
 import { useCommentWithdrawal } from '@/features/comments/hooks/useCommentWithdrawal';
-import { useCanVote } from '@/hooks/useCanVote';
 import { useFeaturesConfig } from '@/hooks/useConfig';
-import { useCanEditDelete } from '@/hooks/useCanEditDelete';
 import { useUpdateComment, useDeleteComment } from '@/hooks/api/useComments';
+import { ResourcePermissions } from '@/types/api-v1';
 import { CommentEditModal } from '@/components/organisms/CommentEditModal/CommentEditModal';
 import { DeleteConfirmationModal } from '@/components/organisms/DeleteConfirmationModal/DeleteConfirmationModal';
 import { Edit, Trash2 } from 'lucide-react';
@@ -74,6 +73,7 @@ export function CommentCard({
   isDetailPage = false,
 }: CommentCardProps) {
   const t = useTranslations('comments');
+  const tShared = useTranslations('shared');
   const features = useFeaturesConfig();
   const enableCommentVoting = features.commentVoting;
   const originalComment = node.originalComment;
@@ -107,26 +107,20 @@ export function CommentCard({
   const hasBeneficiary = beneficiaryMeta && beneficiaryMeta.id !== commentAuthorId;
   const isBeneficiary = hasBeneficiary && myId === beneficiaryMeta?.id;
   
-  // Check if user can vote on this comment based on community rules
-  const { canVote: canVoteFromHook, reason: voteDisabledReasonFromHook } = useCanVote(
-    node.id,
-    'comment',
-    communityId,
-    commentAuthorId,
-    isAuthor,
-    isBeneficiary,
-    hasBeneficiary,
-    false // Comments are not projects
-  );
+  // Use API permissions instead of calculating on frontend
+  const canVoteFromApi = originalComment.permissions?.canVote ?? false;
+  const voteDisabledReasonFromApi = originalComment.permissions?.voteDisabledReason;
   
   // Override reason if comment voting is disabled via feature flag
-  const canVote = enableCommentVoting ? canVoteFromHook : false;
+  const canVote = enableCommentVoting ? canVoteFromApi : false;
   const voteDisabledReason = enableCommentVoting 
-    ? voteDisabledReasonFromHook 
+    ? voteDisabledReasonFromApi 
     : 'voteDisabled.commentVotingDisabled';
   
   // Withdrawal state management
   const withdrawableBalance = originalComment.metrics?.score ?? 0;
+  const totalWithdrawn = (originalComment as any).withdrawals?.totalWithdrawn || 0;
+  const availableForWithdrawal = Math.max(0, withdrawableBalance - totalWithdrawn);
   const [optimisticSum, setOptimisticSum] = useState(withdrawableBalance);
   
   useEffect(() => {
@@ -137,7 +131,7 @@ export function CommentCard({
   // Fetch community info
   const { data: communityInfo } = useCommunity(communityId || '');
   
-  // Check if community is special group (withdrawals disabled)
+  // Withdrawals are now enabled
   const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
   
   const currentBalance =
@@ -152,20 +146,20 @@ export function CommentCard({
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   
-  // Check if comment has votes
-  const commentHasVotes = (commentUpvotes + commentDownvotes) > 0;
+  // Use API permissions instead of calculating on frontend
+  const canEdit = originalComment.permissions?.canEdit ?? false;
+  const canDelete = originalComment.permissions?.canDelete ?? false;
   
-  // Permission checks - hook checks vote count and time window for authors, allows admins always
-  const { canEdit, canEditEnabled, canDelete } = useCanEditDelete(
-    commentAuthorId, 
-    communityId,
-    commentHasVotes,
-    commentTimestamp
-  );
+  // Determine if edit/delete is enabled (not disabled by reason)
+  const canEditEnabled = canEdit && !originalComment.permissions?.editDisabledReason;
+  const canDeleteEnabled = canDelete && !originalComment.permissions?.deleteDisabledReason;
   
   // Show edit button if user can edit, disable if canEdit but not canEditEnabled
   const showEditButton = canEdit;
   const editButtonDisabled = !!(canEdit && !canEditEnabled);
+  
+  // Show delete button if user can delete, disable if canDelete but not canDeleteEnabled
+  const deleteButtonDisabled = !!(canDelete && !canDeleteEnabled);
   
   // Mutations
   const updateComment = useUpdateComment();
@@ -219,11 +213,13 @@ export function CommentCard({
     beneficiaryMeta,
   });
 
-  const { maxWithdrawAmount, maxTopUpAmount } = useCommentWithdrawal({
-    isAuthor,
-    withdrawableBalance,
-    currentBalance,
-  });
+  // Calculate withdrawal amounts
+  const maxWithdrawAmount = isAuthor
+    ? Math.floor(10 * availableForWithdrawal) / 10
+    : 0;
+  const maxTopUpAmount = isAuthor
+    ? Math.floor(10 * currentBalance) / 10
+    : 0;
 
   const voteType = voteDisplay.voteType;
   const currencyIcon = communityInfo?.settings?.iconUrl;
@@ -335,7 +331,9 @@ export function CommentCard({
                   }
                 }}
                 disabled={editButtonDisabled}
-                title={editButtonDisabled ? 'Cannot edit: comment has votes or edit window expired' : 'Edit comment'}
+                title={editButtonDisabled && originalComment.permissions?.editDisabledReason 
+                  ? tShared(originalComment.permissions.editDisabledReason) 
+                  : 'Edit comment'}
               >
                 <Edit size={14} />
               </Button>
@@ -344,12 +342,17 @@ export function CommentCard({
               <Button
                 variant="ghost"
                 size="xs"
-                className="btn-sm opacity-60 hover:opacity-100 text-error hover:text-error"
+                className={`btn-sm ${deleteButtonDisabled ? 'opacity-30 cursor-not-allowed' : 'opacity-60 hover:opacity-100'} text-error hover:text-error`}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
-                  setShowDeleteModal(true);
+                  if (!deleteButtonDisabled) {
+                    setShowDeleteModal(true);
+                  }
                 }}
-                title="Delete comment"
+                disabled={deleteButtonDisabled}
+                title={deleteButtonDisabled && originalComment.permissions?.deleteDisabledReason 
+                  ? tShared(originalComment.permissions.deleteDisabledReason) 
+                  : 'Delete comment'}
               >
                 <Trash2 size={14} />
               </Button>
@@ -385,6 +388,7 @@ export function CommentCard({
         beneficiaryAvatarUrl={recipientAvatar}
         upvotes={voteDisplay.displayUpvotes}
         downvotes={voteDisplay.displayDownvotes}
+        images={(originalComment as any).images || []}
         onClick={() => {
           onNavigate();
         }}
@@ -399,11 +403,16 @@ export function CommentCard({
         publicationSlug={publicationSlug}
         commentId={node.id}
         bottom={
-          false ? ( // Withdrawals disabled - merits are automatically credited on upvote
+          (isAuthor && maxWithdrawAmount > 0) ? ( // Show withdraw button if user is author and has withdrawable balance
             <BarWithdraw
               balance={maxWithdrawAmount}
               onWithdraw={() => {
-                // Withdrawals disabled
+                useUIStore.getState().openWithdrawPopup(
+                  node.id,
+                  'comment',
+                  maxWithdrawAmount,
+                  maxTopUpAmount
+                );
               }}
               onTopup={() => {
                 // Vote-comments can't be topped up (they're synthetic)

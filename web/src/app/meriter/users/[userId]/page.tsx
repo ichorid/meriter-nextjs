@@ -1,25 +1,31 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { use } from 'react';
-import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useUserProfile } from '@/hooks/api/useUsers';
+import { useUserRoles } from '@/hooks/api/useProfile';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
-import { InfoCard } from '@/components/ui/InfoCard';
-import { Loader2, Mail, MessageCircle, Globe, MapPin, GraduationCap, User as UserIcon } from 'lucide-react';
+import { Badge } from '@/components/atoms';
+import { Mail, MessageCircle, Globe, MapPin, GraduationCap, User as UserIcon, Users } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { MeritsAndQuotaSection } from './MeritsAndQuotaSection';
 
 export default function UserProfilePage({ params }: { params: Promise<{ userId: string }> }) {
-  const router = useRouter();
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const resolvedParams = use(params);
   const userId = resolvedParams.userId;
 
   const { data: user, isLoading, error } = useUserProfile(userId);
+  const { data: userRoles = [], isLoading: rolesLoading } = useUserRoles(userId);
+
+  // Get unique community IDs from user roles
+  const communityIds = useMemo(() => {
+    return Array.from(new Set(userRoles.map(role => role.communityId)));
+  }, [userRoles]);
 
   if (isLoading) {
     return (
@@ -147,6 +153,44 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
               )}
             </div>
           </div>
+        )}
+
+        {/* Teams & Roles */}
+        {!rolesLoading && userRoles.length > 0 && (
+          <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
+            <h2 className="text-lg font-bold text-brand-text-primary mb-4 flex items-center gap-2">
+              <Users size={20} className="text-brand-primary" />
+              {t('teamsAndRoles') || 'Teams & Roles'}
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {userRoles.map((userRole) => {
+                const roleVariant = 
+                  userRole.role === 'lead' ? 'accent' :
+                  userRole.role === 'participant' ? 'info' :
+                  'secondary';
+                
+                const roleLabel = 
+                  userRole.role === 'lead' ? tCommon('lead') :
+                  userRole.role === 'participant' ? tCommon('participant') :
+                  tCommon('viewer');
+                
+                return (
+                  <Badge
+                    key={userRole.id}
+                    variant={roleVariant}
+                    size="sm"
+                  >
+                    {userRole.communityName || userRole.communityId} - {roleLabel}
+                  </Badge>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Merits & Quota per Community */}
+        {!rolesLoading && communityIds.length > 0 && (
+          <MeritsAndQuotaSection userId={userId} communityIds={communityIds} userRoles={userRoles} />
         )}
 
         {/* Empty State if no profile info */}

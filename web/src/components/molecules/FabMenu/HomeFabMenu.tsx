@@ -91,10 +91,10 @@ export const HomeFabMenu: React.FC = () => {
     }
 
     return (
-        <div className="fixed bottom-20 right-6 z-[60] lg:bottom-6" ref={menuRef}>
+        <div className="fabSlot" ref={menuRef}>
             {/* Menu Items */}
             {isOpen && (
-                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-xl shadow-xl border border-brand-border dark:border-base-300/50 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-xl shadow-xl border border-brand-border dark:border-base-300/50 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200 z-50">
                     <div className="py-1">
                         {!hasCommunities ? (
                             // No communities - show create community option only if user has permission
@@ -139,7 +139,7 @@ export const HomeFabMenu: React.FC = () => {
             {/* FAB Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-all duration-200 ${
+                className={`fab flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-all duration-200 ${
                     isOpen
                         ? 'bg-brand-text-primary text-white rotate-45'
                         : 'bg-brand-primary text-white hover:bg-brand-primary/90 hover:scale-105'

@@ -13,12 +13,12 @@ import { BrandInput } from '@/components/ui/BrandInput';
 import { BrandSelect } from '@/components/ui/BrandSelect';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { BrandCheckbox } from '@/components/ui/BrandCheckbox';
-import { HashtagInput } from '@/shared/components/HashtagInput';
+import { HashtagInput } from '@/shared/components/hashtag-input';
 import { PublicationContent } from '@/components/organisms/Publication/PublicationContent';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { FileText } from 'lucide-react';
 import { RichTextEditor } from '@/components/molecules/RichTextEditor';
-import { ImageUploader } from '@/components/ui/ImageUploader';
+import { ImageGallery } from '@/components/ui/ImageGallery';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project';
 
@@ -27,7 +27,8 @@ interface PublicationDraft {
   description: string;
   postType: PublicationPostType;
   hashtags: string[];
-  imageUrl: string;
+  imageUrl?: string; // Legacy support
+  images?: string[]; // New multi-image support
   isProject: boolean;
   savedAt: string;
 }
@@ -58,7 +59,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const { data: community } = useCommunity(communityId);
   const { data: quotaData } = useUserQuota(communityId);
   const { data: wallet } = useWallet(communityId);
-  const isEditMode = !!publicationId && !!initialData;
+
+  const normalizeEntityId = (id: string | undefined): string | null => {
+    const trimmed = (id ?? '').trim();
+    if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return null;
+    return trimmed;
+  };
+  const normalizedPublicationId = normalizeEntityId(publicationId);
+  const isEditMode = !!initialData;
 
   // Check if this is Good Deeds Marathon community
   const isGoodDeedsMarathon = community?.typeTag === 'marathon-of-good';
@@ -81,7 +89,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [description, setDescription] = useState(initialData?.description || initialData?.content || '');
   const [postType, setPostType] = useState<PublicationPostType>(initialData?.postType || defaultPostType);
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
-  const [imageUrl, setImageUrl] = useState(initialData?.imageUrl || '');
+  // Support both legacy single image and new multi-image
+  const initialImages = initialData?.imageUrl 
+    ? [initialData.imageUrl] 
+    : ((initialData as any)?.images || []);
+  const [images, setImages] = useState<string[]>(initialImages);
   const [isProject, setIsProject] = useState(initialData?.isProject || false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,7 +136,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         setDescription(draft.description || '');
         setPostType(draft.postType || defaultPostType);
         setHashtags(draft.hashtags || []);
-        setImageUrl(draft.imageUrl || '');
+        setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
         setIsProject(draft.isProject || false);
         setHasDraft(true);
         setShowDraftAlert(true);
@@ -149,14 +161,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       description,
       postType,
       hashtags,
-      imageUrl,
+      images,
       isProject,
       savedAt: new Date().toISOString(),
     };
 
     const draftKey = getDraftKey(communityId);
     localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [title, description, postType, hashtags, imageUrl, isProject, communityId, isEditMode]);
+  }, [title, description, postType, hashtags, images, isProject, communityId, isEditMode]);
 
   const saveDraft = () => {
     const draft: PublicationDraft = {
@@ -164,7 +176,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       description,
       postType,
       hashtags,
-      imageUrl,
+      images,
       isProject,
       savedAt: new Date().toISOString(),
     };
@@ -185,7 +197,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         setDescription(draft.description || '');
         setPostType(draft.postType || defaultPostType);
         setHashtags(draft.hashtags || []);
-        setImageUrl(draft.imageUrl || '');
+        setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
         setIsProject(draft.isProject || false);
         addToast(t('draftLoaded'), 'success');
       } catch (error) {
@@ -202,7 +214,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     setTitle('');
     setDescription('');
     setHashtags([]);
-    setImageUrl('');
+    setImages([]);
     setIsProject(false);
     addToast(t('draftCleared'), 'success');
   };
@@ -218,6 +230,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       return;
     }
 
+    // In edit mode, we must have a real publication ID.
+    if (isEditMode && !normalizedPublicationId) {
+      const message = 'Publication ID is required for editing';
+      addToast(message, 'error');
+      setErrors({ submit: message });
+      return;
+    }
+
     // Set both ref and state immediately to prevent double submission
     isSubmittingRef.current = true;
     setIsSubmitting(true);
@@ -228,21 +248,17 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       const finalPostType = isProject ? 'project' : postType;
 
       let publication;
-      if (isEditMode && publicationId) {
-        // Validate publicationId is defined and not empty
-        if (!publicationId || publicationId === 'undefined') {
-          throw new Error('Publication ID is required for editing');
-        }
-        
+      if (isEditMode) {
         // Update existing publication
         publication = await updatePublication.mutateAsync({
-          id: publicationId,
+          id: normalizedPublicationId!,
           data: {
             title: title.trim(),
             description: description.trim(),
             content: description.trim(), // Оставляем для обратной совместимости
             hashtags,
-            imageUrl: imageUrl || undefined,
+            imageUrl: images.length > 0 ? images[0] : undefined, // Legacy: use first image
+            images: images.length > 0 ? images : undefined, // New: support multiple images
           },
         });
       } else {
@@ -259,7 +275,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           postType: finalPostType,
           isProject: isProject,
           hashtags,
-          imageUrl: imageUrl || undefined,
+          imageUrl: images.length > 0 ? images[0] : undefined, // Legacy: use first image
+          images: images.length > 0 ? images : undefined, // New: support multiple images
           quotaAmount: quotaAmount > 0 ? quotaAmount : undefined,
           walletAmount: walletAmount > 0 ? walletAmount : undefined,
         });
@@ -304,238 +321,243 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   };
 
   return (
-    <div className="flex-1">
-      <div className="space-y-6">
-        {/* Draft restore button */}
-        {hasDraft && (
-          <div className="flex justify-end">
-            <BrandButton variant="outline" size="sm" onClick={loadDraft} leftIcon={<FileText size={16} />}>
-              {t('loadDraft')}
-            </BrandButton>
-          </div>
-        )}
+    <div className="flex-1 flex flex-col min-h-0">
+      {/* Scrollable form content */}
+      <div className="flex-1 overflow-y-auto pb-24 min-h-0">
+        <div className="space-y-6">
+          {/* Draft restore button */}
+          {hasDraft && (
+            <div className="flex justify-end">
+              <BrandButton variant="outline" size="sm" onClick={loadDraft} leftIcon={<FileText size={16} />}>
+                {t('loadDraft')}
+              </BrandButton>
+            </div>
+          )}
 
-        {showDraftAlert && hasDraft && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4 flex items-center justify-between">
-            <p className="text-blue-700">{t('draftRestored')}</p>
-            <button
-              onClick={() => setShowDraftAlert(false)}
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-            >
-              {t('dismiss')}
-            </button>
-          </div>
-        )}
+          {showDraftAlert && hasDraft && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4 flex items-center justify-between">
+              <p className="text-blue-700">{t('draftRestored')}</p>
+              <button
+                onClick={() => setShowDraftAlert(false)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                {t('dismiss')}
+              </button>
+            </div>
+          )}
 
-        {!isEditMode && requiresPayment && (
-          <div className={`p-3 rounded-lg border ${
-            hasInsufficientPayment
-              ? 'bg-red-50 border-red-200'
-              : 'bg-blue-50 border-blue-200'
-          }`}>
-                    {hasInsufficientPayment ? (
-                        <p className="text-red-700 text-sm">
-                            {t('insufficientPayment', { cost: postCost })}
-                        </p>
-                    ) : postCost > 0 ? (
-                        <p className="text-blue-700 text-sm">
-                            {willUseQuota 
-                                ? t('willPayWithQuota', { remaining: quotaRemaining, cost: postCost })
-                                : t('willPayWithWallet', { balance: walletBalance, cost: postCost })}
-                        </p>
-                    ) : (
-                        <p className="text-blue-700 text-sm">
-                            {t('postIsFree')}
-                        </p>
-                    )}
-          </div>
-        )}
+          {!isEditMode && requiresPayment && (
+            <div className={`p-3 rounded-lg border ${
+              hasInsufficientPayment
+                ? 'bg-red-50 border-red-200'
+                : 'bg-blue-50 border-blue-200'
+            }`}>
+                      {hasInsufficientPayment ? (
+                          <p className="text-red-700 text-sm">
+                              {t('insufficientPayment', { cost: postCost })}
+                          </p>
+                      ) : postCost > 0 ? (
+                          <p className="text-blue-700 text-sm">
+                              {willUseQuota 
+                                  ? t('willPayWithQuota', { remaining: quotaRemaining, cost: postCost })
+                                  : t('willPayWithWallet', { balance: walletBalance, cost: postCost })}
+                          </p>
+                      ) : (
+                          <p className="text-blue-700 text-sm">
+                              {t('postIsFree')}
+                          </p>
+                      )}
+            </div>
+          )}
 
-        <BrandFormControl
-          label={t('fields.title')}
-          error={errors.title}
-          helperText={`${title.length}/200 ${t('fields.characters')}`}
-          required
-        >
-          <BrandInput
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={t('fields.titlePlaceholder')}
-            disabled={isSubmitting}
-            maxLength={200}
-            fullWidth
-          />
-        </BrandFormControl>
-
-        <BrandFormControl
-          label={t('fields.description')}
-          error={errors.description}
-          helperText={`${description.length}/5000 ${t('fields.characters')}`}
-          required
-        >
-          <RichTextEditor
-            content={description}
-            onChange={(content) => setDescription(content)}
-            placeholder={t('fields.descriptionPlaceholder')}
-            className={isSubmitting ? 'opacity-50 pointer-events-none' : ''}
-          />
-        </BrandFormControl>
-
-        {/* PROJECT checkbox - only for Good Deeds Marathon */}
-        {isGoodDeedsMarathon && (
-          <BrandFormControl helperText={t('fields.markAsProjectHelp')}>
-            <BrandCheckbox
-              checked={isProject}
-              onChange={handleProjectChange}
-              label={t('fields.markAsProject')}
-              disabled={isSubmitting}
-            />
-          </BrandFormControl>
-        )}
-
-        {/* Post Type selector - hide if PROJECT checkbox is checked (in marathon communities) or when editing */}
-        {!isProject && !isEditMode && (
           <BrandFormControl
-            label={t('fields.postType')}
-            helperText={t('fields.postTypeHelp')}
+            label={t('fields.title')}
+            error={errors.title}
+            helperText={`${title.length}/200 ${t('fields.characters')}`}
+            required
           >
-            <BrandSelect
-              value={postType}
-              onChange={(value) => {
-                const newType = value as PublicationPostType;
-                setPostType(newType);
-              }}
-              options={[
-                { label: t('postTypes.basic'), value: 'basic' },
-                { label: t('postTypes.poll'), value: 'poll' },
-                ...(isGoodDeedsMarathon ? [] : [{ label: t('postTypes.project'), value: 'project' }]),
-              ]}
-              placeholder={t('fields.postTypePlaceholder')}
+            <BrandInput
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={t('fields.titlePlaceholder')}
               disabled={isSubmitting}
+              maxLength={200}
               fullWidth
             />
           </BrandFormControl>
-        )}
 
-        {/* Show poll creation prompt when poll type is selected */}
-        {postType === 'poll' && !isProject && (
-          <div className="p-4 bg-info/10 border border-info/20 rounded-xl">
-            <p className="text-sm text-base-content mb-3">
-              {t('pollCreatePrompt')}
-            </p>
-            <BrandButton
-              variant="primary"
-              onClick={() => router.push(`/meriter/communities/${communityId}/create-poll`)}
-            >
-              {t('goToPollCreate')}
-            </BrandButton>
-          </div>
-        )}
+          <BrandFormControl
+            label={t('fields.description')}
+            error={errors.description}
+            helperText={`${description.length}/5000 ${t('fields.characters')}`}
+            required
+          >
+            <RichTextEditor
+              content={description}
+              onChange={(content) => setDescription(content)}
+              placeholder={t('fields.descriptionPlaceholder')}
+              className={isSubmitting ? 'opacity-50 pointer-events-none' : ''}
+            />
+          </BrandFormControl>
 
-        <BrandFormControl
-          label={t('fields.imageUrl')}
-          error={errors.imageUrl}
-          helperText={t('fields.imageUrlHelp')}
-        >
-          <ImageUploader
-            value={imageUrl}
-            onUpload={(url) => setImageUrl(url)}
-            onRemove={() => setImageUrl('')}
-            disabled={isSubmitting}
-            aspectRatio={16 / 9}
-            placeholder={t('fields.imageUrlPlaceholder')}
-            labels={{
-              placeholder: t('fields.imageUploadPlaceholder') || 'Drop image here or click to upload',
-              uploading: t('fields.imageUploading') || 'Uploading...',
-              uploadFailed: t('fields.imageUploadFailed') || 'Upload failed',
-            }}
-          />
-        </BrandFormControl>
-
-        <HashtagInput
-          value={hashtags}
-          onChange={setHashtags}
-          label={t('fields.hashtags')}
-          placeholder={t('fields.hashtagsPlaceholder')}
-          helperText={t('fields.hashtagsHelp')}
-        />
-
-        {errors.submit && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600">{errors.submit}</p>
-          </div>
-        )}
-
-        {/* Preview Toggle */}
-        <BrandButton
-          variant="outline"
-          onClick={() => setShowPreview(!showPreview)}
-          className="self-start"
-        >
-          {showPreview ? t('hidePreview') : t('showPreview')}
-        </BrandButton>
-
-        {/* Preview */}
-        {showPreview && (title.trim() || description.trim()) && (
-          <div className="border border-brand-border rounded-xl overflow-hidden bg-base-100">
-            <div className="p-4 space-y-4">
-              <h3 className="text-lg font-semibold text-brand-text-primary">{t('preview')}</h3>
-              <PublicationContent
-                publication={{
-                  id: 'preview',
-                  createdAt: new Date().toISOString(),
-                  title,
-                  description,
-                  content: description,
-                  imageUrl,
-                  isProject,
-                  meta: {},
-                }}
+          {/* PROJECT checkbox - only for Good Deeds Marathon */}
+          {isGoodDeedsMarathon && (
+            <BrandFormControl helperText={t('fields.markAsProjectHelp')}>
+              <BrandCheckbox
+                checked={isProject}
+                onChange={handleProjectChange}
+                label={t('fields.markAsProject')}
+                disabled={isSubmitting}
               />
-              {hashtags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {hashtags.map((tag) => (
-                    <div
-                      key={tag}
-                      className="px-2 py-1 bg-blue-100 rounded-md text-sm text-blue-600"
-                    >
-                      #{tag}
-                    </div>
-                  ))}
-                </div>
+            </BrandFormControl>
+          )}
+
+          {/* Post Type selector - hide if PROJECT checkbox is checked (in marathon communities) or when editing */}
+          {!isProject && !isEditMode && (
+            <BrandFormControl
+              label={t('fields.postType')}
+              helperText={t('fields.postTypeHelp')}
+            >
+              <BrandSelect
+                value={postType}
+                onChange={(value) => {
+                  const newType = value as PublicationPostType;
+                  setPostType(newType);
+                }}
+                options={[
+                  { label: t('postTypes.basic'), value: 'basic' },
+                  { label: t('postTypes.poll'), value: 'poll' },
+                ]}
+                placeholder={t('fields.postTypePlaceholder')}
+                disabled={isSubmitting}
+                fullWidth
+              />
+            </BrandFormControl>
+          )}
+
+          {/* Show poll creation prompt when poll type is selected */}
+          {postType === 'poll' && !isProject && (
+            <div className="p-4 bg-info/10 border border-info/20 rounded-xl">
+              <p className="text-sm text-base-content mb-3">
+                {t('pollCreatePrompt')}
+              </p>
+              <BrandButton
+                variant="primary"
+                onClick={() => router.push(`/meriter/communities/${communityId}/create-poll`)}
+              >
+                {t('goToPollCreate')}
+              </BrandButton>
+            </div>
+          )}
+
+          <BrandFormControl
+            label={t('fields.images') || 'Images'}
+            error={errors.images}
+            helperText={t('fields.imagesHelp') || 'Upload up to 10 images for your post'}
+          >
+            <ImageGallery
+              images={images}
+              onImagesChange={setImages}
+              disabled={isSubmitting}
+            />
+          </BrandFormControl>
+
+          <HashtagInput
+            value={hashtags}
+            onChange={setHashtags}
+            label={t('fields.hashtags')}
+            placeholder={t('fields.hashtagsPlaceholder')}
+            helperText={t('fields.hashtagsHelp')}
+          />
+
+          {errors.submit && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600">{errors.submit}</p>
+            </div>
+          )}
+
+          {/* Preview Toggle */}
+          <BrandButton
+            variant="outline"
+            onClick={() => setShowPreview(!showPreview)}
+            className="self-start"
+          >
+            {showPreview ? t('hidePreview') : t('showPreview')}
+          </BrandButton>
+
+          {/* Preview */}
+          {showPreview && (title.trim() || description.trim()) && (
+            <div className="border border-brand-border rounded-xl overflow-hidden bg-base-100">
+              <div className="p-4 space-y-4">
+                <h3 className="text-lg font-semibold text-brand-text-primary">{t('preview')}</h3>
+                <PublicationContent
+                  publication={{
+                    id: 'preview',
+                    createdAt: new Date().toISOString(),
+                    title,
+                    description,
+                    content: description,
+                    imageUrl: images.length > 0 ? images[0] : undefined,
+                    images: images.length > 0 ? images : undefined,
+                    isProject,
+                    meta: {},
+                  }}
+                />
+                {hashtags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {hashtags.map((tag) => (
+                      <div
+                        key={tag}
+                        className="px-2 py-1 bg-blue-100 rounded-md text-sm text-blue-600"
+                      >
+                        #{tag}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Sticky footer with action buttons */}
+      <div className="sticky bottom-0 z-10 bg-base-100 border-t border-brand-border shadow-lg mt-auto">
+        <div className="px-4 py-4 safe-area-inset-bottom">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex gap-2">
+              {hasDraft && (
+                <BrandButton variant="outline" onClick={clearDraft} disabled={isSubmitting}>
+                  {t('clearDraft')}
+                </BrandButton>
               )}
             </div>
-          </div>
-        )}
-
-        <div className="h-px bg-brand-border my-6" />
-
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex gap-2">
-            {hasDraft && (
-              <BrandButton variant="outline" onClick={clearDraft} disabled={isSubmitting}>
-                {t('clearDraft')}
+            <div className="flex gap-2">
+              {onCancel && (
+                <BrandButton variant="outline" onClick={onCancel} disabled={isSubmitting}>
+                  {t('cancel')}
+                </BrandButton>
+              )}
+              <BrandButton
+                variant="primary"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSubmit();
+                }}
+                disabled={
+                  !title.trim() ||
+                  !description.trim() ||
+                  isSubmitting ||
+                  isSubmittingRef.current ||
+                  hasInsufficientPayment ||
+                  (isEditMode && !normalizedPublicationId)
+                }
+                isLoading={isSubmitting || isSubmittingRef.current}
+              >
+                {isEditMode ? (t('update') || 'Update') : t('create')}
               </BrandButton>
-            )}
-          </div>
-          <div className="flex gap-2">
-            {onCancel && (
-              <BrandButton variant="outline" onClick={onCancel} disabled={isSubmitting}>
-                {t('cancel')}
-              </BrandButton>
-            )}
-            <BrandButton
-              variant="primary"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleSubmit();
-              }}
-              disabled={!title.trim() || !description.trim() || isSubmitting || isSubmittingRef.current || hasInsufficientPayment}
-              isLoading={isSubmitting || isSubmittingRef.current}
-            >
-              {isEditMode ? (t('update') || 'Update') : t('create')}
-            </BrandButton>
+            </div>
           </div>
         </div>
       </div>

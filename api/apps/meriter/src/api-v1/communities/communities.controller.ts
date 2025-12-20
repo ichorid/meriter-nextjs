@@ -20,9 +20,11 @@ import { WalletService } from '../../domain/services/wallet.service';
 import { UserCommunityRoleService } from '../../domain/services/user-community-role.service';
 import { PermissionService } from '../../domain/services/permission.service';
 import { QuotaResetService } from '../../domain/services/quota-reset.service';
+import { PermissionsHelperService } from '../common/services/permissions-helper.service';
 import { UserGuard } from '../../user.guard';
 import { User } from '../../decorators/user.decorator';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_VIEWER, COMMUNITY_ROLE_LEAD } from '../../domain/common/constants/roles.constants';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import {
   NotFoundError,
@@ -59,6 +61,7 @@ export class CommunitiesController {
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly permissionService: PermissionService,
     private readonly quotaResetService: QuotaResetService,
+    private readonly permissionsHelperService: PermissionsHelperService,
   ) {}
 
   /**
@@ -85,7 +88,7 @@ export class CommunitiesController {
     const skip = PaginationHelper.getSkip(pagination);
 
     // Superadmins can see all communities
-    if (user.globalRole === 'superadmin') {
+    if (user.globalRole === GLOBAL_ROLE_SUPERADMIN) {
     const result = await this.communityService.getAllCommunities(
         pagination.limit || 20,
         skip,
@@ -178,6 +181,10 @@ export class CommunitiesController {
       iconUrl: community.settings?.iconUrl,
     });
 
+    // Get admin IDs (users with 'lead' role)
+    const adminRoles = await this.userCommunityRoleService.getUsersByRole(id, 'lead');
+    const adminIds = adminRoles.map(role => role.userId);
+
     return {
       ...community,
       // Ensure settings.language is provided to match type expectations
@@ -188,10 +195,12 @@ export class CommunitiesController {
         language: community.settings?.language ?? 'en',
         postCost: community.settings?.postCost ?? 1,
         pollCost: community.settings?.pollCost ?? 1,
+        editWindowDays: community.settings?.editWindowDays ?? 7,
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
       ) || {},
+      adminIds,
       isAdmin: await this.communityService.isUserAdmin(id, req.user.id),
       needsSetup,
       createdAt: community.createdAt.toISOString(),
@@ -213,13 +222,13 @@ export class CommunitiesController {
 
     // Check if user is a viewer - viewers cannot create communities
     const userRoles = await this.userCommunityRoleService.getUserRoles(req.user.id);
-    const hasViewerRole = userRoles.some(role => role.role === 'viewer');
+    const hasViewerRole = userRoles.some(role => role.role === COMMUNITY_ROLE_VIEWER);
     if (hasViewerRole) {
       throw new ForbiddenError('Viewer users cannot create communities');
     }
 
     // Only superadmin can set isPriority
-    const isSuperadmin = req.user.globalRole === 'superadmin';
+    const isSuperadmin = req.user.globalRole === GLOBAL_ROLE_SUPERADMIN;
     if (createDto.isPriority && !isSuperadmin) {
       throw new ForbiddenError('Only superadmin can set community priority');
     }
@@ -264,6 +273,10 @@ export class CommunitiesController {
       false,
     );
 
+    // Get admin IDs (users with 'lead' role)
+    const adminRoles = await this.userCommunityRoleService.getUsersByRole(community.id, 'lead');
+    const adminIds = adminRoles.map(role => role.userId);
+
     return {
       ...community,
       avatarUrl: community.avatarUrl,
@@ -274,10 +287,12 @@ export class CommunitiesController {
         language: community.settings?.language ?? 'en',
         postCost: community.settings?.postCost ?? 1,
         pollCost: community.settings?.pollCost ?? 1,
+        editWindowDays: community.settings?.editWindowDays ?? 7,
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
       ) || {},
+      adminIds,
       isAdmin: true, // Creator is admin
       needsSetup,
       createdAt: community.createdAt.toISOString(),
@@ -293,7 +308,7 @@ export class CommunitiesController {
     @Req() req: any,
   ): Promise<Community> {
     const isAdmin = await this.communityService.isUserAdmin(id, req.user.id);
-    const isSuperadmin = req.user.globalRole === 'superadmin';
+    const isSuperadmin = req.user.globalRole === GLOBAL_ROLE_SUPERADMIN;
 
     if (!isAdmin && !isSuperadmin) {
       throw new ForbiddenError(
@@ -337,10 +352,12 @@ export class CommunitiesController {
         language: community.settings?.language ?? 'en',
         postCost: community.settings?.postCost ?? 1,
         pollCost: community.settings?.pollCost ?? 1,
+        editWindowDays: community.settings?.editWindowDays ?? 7,
       },
       hashtagDescriptions: this.convertHashtagDescriptions(
         community.hashtagDescriptions,
       ) || {},
+      adminIds: (await this.userCommunityRoleService.getUsersByRole(id, 'lead')).map(role => role.userId),
       isAdmin: await this.communityService.isUserAdmin(id, req.user.id),
       needsSetup,
       createdAt: community.createdAt.toISOString(),
@@ -362,14 +379,14 @@ export class CommunitiesController {
   @Post(':id/reset-quota')
   async resetDailyQuota(@Param('id') id: string, @Req() req: any) {
     // Check if user is superadmin (can reset quota in any community)
-    const isSuperadmin = req.user.globalRole === 'superadmin';
+    const isSuperadmin = req.user.globalRole === GLOBAL_ROLE_SUPERADMIN;
     
     // Check if user has lead role in this community
     const userRole = await this.permissionService.getUserRoleInCommunity(
       req.user.id,
       id,
     );
-    const isLead = userRole === 'lead';
+    const isLead = userRole === COMMUNITY_ROLE_LEAD;
 
     // Only superadmin or lead can reset daily quota
     if (!isSuperadmin && !isLead) {
@@ -712,6 +729,45 @@ export class CommunitiesController {
       sort,
       tag,
     });
+
+    // Calculate permissions for all publications in the feed
+    const publicationIds = result.data
+      .filter((item) => item.type === 'publication')
+      .map((item) => item.id);
+
+    this.logger.log(`[getCommunityFeed] Found ${publicationIds.length} publications in feed, userId=${req.user?.id}`);
+
+    if (publicationIds.length > 0) {
+      const permissionsMap = await this.permissionsHelperService.batchCalculatePublicationPermissions(
+        req.user?.id,
+        publicationIds,
+      );
+
+      this.logger.log(`[getCommunityFeed] Calculated permissions for ${permissionsMap.size} publications`);
+
+      // Add permissions to each publication in the feed
+      result.data.forEach((item) => {
+        if (item.type === 'publication') {
+          const permissions = permissionsMap.get(item.id);
+          this.logger.log(`[getCommunityFeed] Adding permissions to publication ${item.id}: canVote=${permissions?.canVote}, permissions=${JSON.stringify(permissions)}`);
+          // Explicitly set permissions property
+          (item as any).permissions = permissions;
+          this.logger.log(`[getCommunityFeed] After setting: item.permissions=${JSON.stringify((item as any).permissions)}`);
+        }
+      });
+      
+      // Verify permissions were added
+      const publicationsWithPermissions = result.data.filter((item) => item.type === 'publication' && (item as any).permissions);
+      this.logger.log(`[getCommunityFeed] Final check: ${publicationsWithPermissions.length} publications have permissions attached`);
+    }
+
+    // Final verification before returning
+    const finalCheck = result.data.filter((item) => item.type === 'publication').map((item) => ({
+      id: item.id,
+      hasPermissions: !!(item as any).permissions,
+      canVote: (item as any).permissions?.canVote
+    }));
+    this.logger.log(`[getCommunityFeed] Final response check: ${JSON.stringify(finalCheck)}`);
 
     return {
       success: true,

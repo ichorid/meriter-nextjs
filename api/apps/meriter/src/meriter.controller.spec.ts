@@ -50,12 +50,12 @@ describe('MeriterController', () => {
       delete process.env.BOT_USERNAME;
     });
 
-    it('should throw error in production when BOT_USERNAME is not set', () => {
+    it('should return "ok" in production when BOT_USERNAME is not set (optional)', () => {
       jest.spyOn(configService, 'get').mockReturnValue('production');
       const originalBotUsername = process.env.BOT_USERNAME;
       delete process.env.BOT_USERNAME;
       
-      expect(() => meriterController.health()).toThrow(HttpException);
+      expect(meriterController.health()).toBe('ok');
       
       if (originalBotUsername) {
         process.env.BOT_USERNAME = originalBotUsername;

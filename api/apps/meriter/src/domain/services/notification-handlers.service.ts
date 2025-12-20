@@ -11,6 +11,7 @@ import { NotificationService, CreateNotificationDto } from './notification.servi
 import { PublicationService } from './publication.service';
 import { VoteService } from './vote.service';
 import { UserService } from './user.service';
+import type { Vote } from '../models/vote/vote.schema';
 
 @Injectable()
 export class NotificationHandlersService implements OnModuleInit {
@@ -122,7 +123,7 @@ export class NotificationHandlersService implements OnModuleInit {
       const message = `${voterName} ${action} your post${amountStr}`;
 
       // Get the vote to find targetId (for metadata)
-      const votes = await this.mongoose.db
+      const votes = await this.mongoose.db!
         .collection('votes')
         .find({
           userId: voterId,
@@ -192,12 +193,12 @@ export class NotificationHandlersService implements OnModuleInit {
       }
 
       // Traverse vote chain to find root publication
-      let currentVote = targetVote;
+      let currentVote: Vote | null = targetVote;
       let depth = 0;
       let publicationId: string | undefined;
       let communityId: string | undefined;
 
-      while (currentVote.targetType === 'vote' && depth < 20) {
+      while (currentVote && currentVote.targetType === 'vote' && depth < 20) {
         currentVote = await this.voteService.getVoteById(currentVote.targetId);
         if (!currentVote) break;
         depth++;

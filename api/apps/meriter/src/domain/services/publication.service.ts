@@ -8,9 +8,10 @@ import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { Publication } from '../aggregates/publication/publication.entity';
 import {
-  Publication as PublicationSchema,
+  PublicationSchemaClass,
   PublicationDocument,
 } from '../models/publication/publication.schema';
+import type { Publication as PublicationSchema } from '../models/publication/publication.schema';
 import {
   PublicationId,
   UserId,
@@ -40,7 +41,7 @@ export class PublicationService {
   private readonly logger = new Logger(PublicationService.name);
 
   constructor(
-    @InjectModel(PublicationSchema.name)
+    @InjectModel(PublicationSchemaClass.name)
     private publicationModel: Model<PublicationDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
@@ -180,6 +181,31 @@ export class PublicationService {
     // Business logic in domain
     const voteAmount = direction === 'up' ? amount : -amount;
     publication.vote(voteAmount);
+
+    // Save
+    await this.publicationModel.updateOne(
+      { id: publication.getId.getValue() },
+      { $set: publication.toSnapshot() },
+    );
+
+    return publication;
+  }
+
+  async reduceScore(publicationId: string, amount: number): Promise<Publication> {
+    const id = PublicationId.fromString(publicationId);
+
+    // Load aggregate
+    const doc = await this.publicationModel
+      .findOne({ id: id.getValue() })
+      .lean();
+    if (!doc) {
+      throw new NotFoundException('Publication not found');
+    }
+
+    const publication = Publication.fromSnapshot(doc as IPublicationDocument);
+
+    // Reduce score
+    publication.reduceScore(amount);
 
     // Save
     await this.publicationModel.updateOne(

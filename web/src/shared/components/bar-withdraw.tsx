@@ -1,7 +1,7 @@
 'use client';
 
-import { initDataRaw, useSignal, hapticFeedback } from '@telegram-apps/sdk-react';
 import { useTranslations } from 'next-intl';
+import { hapticImpact } from '@shared/lib/utils/haptic-utils';
 
 interface BarWithdrawProps {
     onWithdraw: () => void;
@@ -25,8 +25,6 @@ export const BarWithdraw: React.FC<BarWithdrawProps> = ({
     onCommentClick
 }) => {
     const t = useTranslations('shared');
-    const rawData = useSignal(initDataRaw);
-    const isInTelegram = !!rawData;
     // Handle NaN, null, and undefined values
     const displayBalance = (typeof balance === 'number' && !isNaN(balance)) ? balance : 0;
     
@@ -40,9 +38,7 @@ export const BarWithdraw: React.FC<BarWithdrawProps> = ({
 
     const handleCommentClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (isInTelegram) {
-            hapticFeedback.impactOccurred('light');
-        }
+        hapticImpact('light');
         onCommentClick && onCommentClick();
     };
     
@@ -76,11 +72,11 @@ export const BarWithdraw: React.FC<BarWithdrawProps> = ({
                     {isLoading ? (
                         <>
                             <span className="loading loading-spinner loading-xs"></span>
-                            {t('withdraw')} <span className="font-bold">{displayBalance}</span>
+                            {t('withdraw')}
                         </>
                     ) : (
                         <>
-                            {t('withdraw')} <span className="font-bold">{displayBalance}</span>
+                            {t('withdraw')}
                         </>
                     )}
                 </button>

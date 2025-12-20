@@ -42,8 +42,7 @@ export default function ProfilePublicationsPage() {
   const pageHeader = (
     <PageHeader
       title={t('tabs.publications')}
-      showBack={true}
-      onBack={() => router.push('/meriter/profile')}
+      showBack={false}
     />
   );
 

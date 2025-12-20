@@ -65,7 +65,7 @@ export class EntityMappers {
       },
       meta: {
         author: UserFormatter.formatUserForApi(author, authorId),
-        ...(beneficiary && {
+        ...(beneficiary && beneficiaryId && {
           beneficiary: UserFormatter.formatUserForApi(
             beneficiary,
             beneficiaryId,
@@ -139,6 +139,13 @@ export class EntityMappers {
     const authorId = comment.userId || comment.getAuthorId?.getValue();
     const author = usersMap.get(authorId);
 
+    // Get images from entity or schema - check multiple sources
+    const images = comment.images || 
+                   comment.getImages?.() || 
+                   (comment.snapshot?.images) || 
+                   (comment.toSnapshot?.()?.images) ||
+                   [];
+    
     const baseComment = {
       id: comment.id || comment.getId?.getValue(),
       _id: comment.id || comment.getId?.getValue(),
@@ -146,6 +153,7 @@ export class EntityMappers {
       targetId: comment.targetId || comment.getTargetId,
       authorId,
       content: comment.comment || comment.content || comment.getContent,
+      ...(images && Array.isArray(images) && images.length > 0 && { images }),
       createdAt:
         comment.createdAt?.toISOString?.() ||
         new Date(comment.createdAt).toISOString(),
@@ -172,6 +180,9 @@ export class EntityMappers {
       const isUpvote = comment.direction === 'up';
       const isDownvote = comment.direction === 'down';
 
+      // Use images from baseComment (already extracted above)
+      // Don't duplicate - images are already in baseComment if they exist
+      
       return {
         ...baseComment,
         amountTotal: voteAmount,
@@ -179,6 +190,7 @@ export class EntityMappers {
         minus: isDownvote ? voteAmount : 0,
         directionPlus: isUpvote,
         sum: isUpvote ? voteAmount : -voteAmount,
+        // Images are already included in baseComment if they exist
       };
     }
 

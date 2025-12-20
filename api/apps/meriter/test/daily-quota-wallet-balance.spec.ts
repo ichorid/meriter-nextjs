@@ -9,11 +9,11 @@ import { VoteService } from '../src/domain/services/vote.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { Vote, VoteDocument } from '../src/domain/models/vote/vote.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
-import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { VoteSchemaClass, VoteDocument } from '../src/domain/models/vote/vote.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
+import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { uid } from 'uid';
 import * as request from 'supertest';
 import { UserGuard } from '../src/user.guard';
@@ -80,11 +80,11 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
     
     connection = app.get(getConnectionToken());
     
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    voteModel = connection.model<VoteDocument>(Vote.name);
-    walletModel = connection.model<WalletDocument>(Wallet.name);
-    publicationModel = connection.model<PublicationDocument>(Publication.name);
+    communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
+    userModel = connection.model<UserDocument>(UserSchemaClass.name);
+    voteModel = connection.model<VoteDocument>(VoteSchemaClass.name);
+    walletModel = connection.model<WalletDocument>(WalletSchemaClass.name);
+    publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
 
     // Initialize test IDs (will be used in beforeEach)
     testUserId = uid();

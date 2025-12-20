@@ -42,8 +42,7 @@ export default function ProfilePollsPage() {
   const pageHeader = (
     <PageHeader
       title={t('tabs.polls')}
-      showBack={true}
-      onBack={() => router.push('/meriter/profile')}
+      showBack={false}
     />
   );
 

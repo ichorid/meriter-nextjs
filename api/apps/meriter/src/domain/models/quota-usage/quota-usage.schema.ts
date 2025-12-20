@@ -10,39 +10,48 @@ import { Document } from 'mongoose';
  * - publication_creation: Quota used for creating publications/posts
  * - poll_creation: Quota used for creating polls
  */
-export type QuotaUsageDocument = QuotaUsage & Document;
+
+export interface QuotaUsage {
+  id: string;
+  userId: string;
+  communityId: string;
+  amountQuota: number;
+  usageType: 'vote' | 'poll_cast' | 'publication_creation' | 'poll_creation';
+  referenceId: string; // ID of publication, poll, vote, or poll_cast
+  createdAt: Date;
+}
 
 @Schema({ collection: 'quota_usage', timestamps: true })
-export class QuotaUsage {
+export class QuotaUsageSchemaClass implements QuotaUsage {
   @Prop({ required: true, unique: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true })
-  userId: string;
+  userId!: string;
 
   @Prop({ required: true })
-  communityId: string;
+  communityId!: string;
 
   @Prop({ required: true, default: 0, min: 0 })
-  amountQuota: number;
+  amountQuota!: number;
 
   @Prop({
     required: true,
     enum: ['vote', 'poll_cast', 'publication_creation', 'poll_creation'],
   })
-  usageType: string;
+  usageType!: 'vote' | 'poll_cast' | 'publication_creation' | 'poll_creation';
 
   @Prop({ required: true })
-  referenceId: string; // ID of publication, poll, vote, or poll_cast
+  referenceId!: string; // ID of publication, poll, vote, or poll_cast
 
   @Prop({ required: true })
-  createdAt: Date;
+  createdAt!: Date;
 }
 
-export const QuotaUsageSchema = SchemaFactory.createForClass(QuotaUsage);
+export const QuotaUsageSchema = SchemaFactory.createForClass(QuotaUsageSchemaClass);
+export type QuotaUsageDocument = QuotaUsageSchemaClass & Document;
 
 // Add indexes for common queries
 QuotaUsageSchema.index({ userId: 1, communityId: 1, createdAt: -1 });
 QuotaUsageSchema.index({ userId: 1, communityId: 1 });
 QuotaUsageSchema.index({ usageType: 1, referenceId: 1 });
-

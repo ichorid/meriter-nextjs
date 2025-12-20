@@ -3,7 +3,7 @@
  * Protocol: http:// for localhost, https:// for production
  * Falls back to APP_URL for backward compatibility if DOMAIN is not set
  * REQUIRES: DOMAIN environment variable must be set (validated by validation schema)
- * Exception: In test environment, defaults to localhost for testing
+ * Exception: In test and development environments, defaults to localhost for testing
  */
 function deriveAppUrl(): string {
   const domain = process.env.DOMAIN;
@@ -16,8 +16,8 @@ function deriveAppUrl(): string {
       return process.env.APP_URL;
     }
     
-    // Allow default for test environment only
-    if (nodeEnv === 'test') {
+    // Allow default for test and development environments
+    if (nodeEnv === 'test' || nodeEnv === 'development') {
       return 'http://localhost';
     }
     

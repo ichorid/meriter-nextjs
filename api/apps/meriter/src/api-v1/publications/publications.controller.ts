@@ -22,6 +22,7 @@ import { QuotaUsageService } from '../../domain/services/quota-usage.service';
 import { WalletService } from '../../domain/services/wallet.service';
 import { UserEnrichmentService } from '../common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../common/services/community-enrichment.service';
+import { PermissionsHelperService } from '../common/services/permissions-helper.service';
 import { EntityMappers } from '../common/mappers/entity-mappers';
 import { ApiResponseHelper } from '../common/helpers/api-response.helper';
 import { User } from '../../decorators/user.decorator';
@@ -51,6 +52,7 @@ export class PublicationsController {
     private walletService: WalletService,
     private userEnrichmentService: UserEnrichmentService,
     private communityEnrichmentService: CommunityEnrichmentService,
+    private permissionsHelperService: PermissionsHelperService,
     @InjectConnection() private readonly connection: Connection,
   ) {}
 
@@ -224,6 +226,10 @@ export class PublicationsController {
       ? new Date(community.lastQuotaResetAt)
       : today;
 
+    if (!this.connection.db) {
+      throw new Error('Database connection not available');
+    }
+
     // Aggregate quota used from votes, poll casts, and quota usage
     const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
       this.connection.db
@@ -282,16 +288,16 @@ export class PublicationsController {
         .toArray(),
     ]);
 
-    const votesTotal = votesUsed.length > 0 ? votesUsed[0].total : 0;
-    const pollCastsTotal = pollCastsUsed.length > 0 ? pollCastsUsed[0].total : 0;
-    const quotaUsageTotal = quotaUsageUsed.length > 0 ? quotaUsageUsed[0].total : 0;
+    const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
+    const pollCastsTotal = pollCastsUsed.length > 0 && pollCastsUsed[0] ? (pollCastsUsed[0].total as number) : 0;
+    const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
     const used = votesTotal + pollCastsTotal + quotaUsageTotal;
 
     return Math.max(0, dailyQuota - used);
   }
 
   @Get(':id')
-  async getPublication(@Param('id') id: string) {
+  async getPublication(@Param('id') id: string, @User() user: AuthenticatedUser | null) {
     const publication = await this.publicationService.getPublication(id);
 
     if (!publication) {
@@ -305,9 +311,10 @@ export class PublicationsController {
 
     // Batch fetch users and communities
     const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : [])];
-    const [usersMap, communitiesMap] = await Promise.all([
+    const [usersMap, communitiesMap, permissions] = await Promise.all([
       this.userEnrichmentService.batchFetchUsers(userIds),
       this.communityEnrichmentService.batchFetchCommunities([communityId]),
+      this.permissionsHelperService.calculatePublicationPermissions(user?.id, id),
     ]);
 
     const mappedPublication = EntityMappers.mapPublicationToApi(
@@ -315,6 +322,28 @@ export class PublicationsController {
       usersMap,
       communitiesMap,
     );
+    
+    // Add permissions to response
+    mappedPublication.permissions = permissions;
+    
+    // Add withdrawals data
+    let totalWithdrawn = 0;
+    try {
+      totalWithdrawn = await this.walletService.getTotalWithdrawnByReference(
+        'publication_withdrawal',
+        id,
+      );
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `Failed to aggregate withdrawals for publication ${id}:`,
+        errorMessage,
+      );
+    }
+    mappedPublication.withdrawals = {
+      totalWithdrawn,
+    };
+    
     return ApiResponseHelper.successResponse(mappedPublication);
   }
 
@@ -327,6 +356,7 @@ export class PublicationsController {
     @Query('skip') skip?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @User() user?: AuthenticatedUser | null,
   ) {
     // Support both pagination formats: limit/skip and page/pageSize
     let parsedLimit = 20;
@@ -344,16 +374,45 @@ export class PublicationsController {
       parsedSkip = parseInt(skip, 10);
     }
 
+    let publications: any[];
+    let mappedPublications: any[];
+
     if (communityId) {
-      return this.publicationService.getPublicationsByCommunity(
+      publications = await this.publicationService.getPublicationsByCommunity(
         communityId,
         parsedLimit,
         parsedSkip,
       );
-    }
 
-    if (authorId) {
-      const publications =
+      // Extract unique user IDs (authors and beneficiaries) and community IDs
+      const userIds = new Set<string>();
+      const communityIds = new Set<string>();
+      publications.forEach((pub) => {
+        userIds.add(pub.getAuthorId.getValue());
+        if (pub.getBeneficiaryId) {
+          userIds.add(pub.getBeneficiaryId.getValue());
+        }
+        communityIds.add(pub.getCommunityId.getValue());
+      });
+
+      // Batch fetch all users and communities
+      const [usersMap, communitiesMap] = await Promise.all([
+        this.userEnrichmentService.batchFetchUsers(Array.from(userIds)),
+        this.communityEnrichmentService.batchFetchCommunities(
+          Array.from(communityIds),
+        ),
+      ]);
+
+      // Convert domain entities to DTOs with enriched user metadata
+      mappedPublications = publications.map((publication) =>
+        EntityMappers.mapPublicationToApi(
+          publication,
+          usersMap,
+          communitiesMap,
+        ),
+      );
+    } else if (authorId) {
+      publications =
         await this.publicationService.getPublicationsByAuthor(
           authorId,
           parsedLimit,
@@ -380,26 +439,95 @@ export class PublicationsController {
       ]);
 
       // Convert domain entities to DTOs with enriched user metadata
-      const mappedPublications = publications.map((publication) =>
+      mappedPublications = publications.map((publication) =>
         EntityMappers.mapPublicationToApi(
           publication,
           usersMap,
           communitiesMap,
         ),
       );
-
-      return ApiResponseHelper.successResponse(mappedPublications);
-    }
-
-    if (hashtag) {
-      return this.publicationService.getPublicationsByHashtag(
+    } else if (hashtag) {
+      publications = await this.publicationService.getPublicationsByHashtag(
         hashtag,
         parsedLimit,
         parsedSkip,
       );
+
+      // Extract unique user IDs (authors and beneficiaries) and community IDs
+      const userIds = new Set<string>();
+      const communityIds = new Set<string>();
+      publications.forEach((pub) => {
+        userIds.add(pub.getAuthorId.getValue());
+        if (pub.getBeneficiaryId) {
+          userIds.add(pub.getBeneficiaryId.getValue());
+        }
+        communityIds.add(pub.getCommunityId.getValue());
+      });
+
+      // Batch fetch all users and communities
+      const [usersMap, communitiesMap] = await Promise.all([
+        this.userEnrichmentService.batchFetchUsers(Array.from(userIds)),
+        this.communityEnrichmentService.batchFetchCommunities(
+          Array.from(communityIds),
+        ),
+      ]);
+
+      // Convert domain entities to DTOs with enriched user metadata
+      mappedPublications = publications.map((publication) =>
+        EntityMappers.mapPublicationToApi(
+          publication,
+          usersMap,
+          communitiesMap,
+        ),
+      );
+    } else {
+      publications = await this.publicationService.getTopPublications(
+        parsedLimit,
+        parsedSkip,
+      );
+
+      // Extract unique user IDs (authors and beneficiaries) and community IDs
+      const userIds = new Set<string>();
+      const communityIds = new Set<string>();
+      publications.forEach((pub) => {
+        userIds.add(pub.getAuthorId.getValue());
+        if (pub.getBeneficiaryId) {
+          userIds.add(pub.getBeneficiaryId.getValue());
+        }
+        communityIds.add(pub.getCommunityId.getValue());
+      });
+
+      // Batch fetch all users and communities
+      const [usersMap, communitiesMap] = await Promise.all([
+        this.userEnrichmentService.batchFetchUsers(Array.from(userIds)),
+        this.communityEnrichmentService.batchFetchCommunities(
+          Array.from(communityIds),
+        ),
+      ]);
+
+      // Convert domain entities to DTOs with enriched user metadata
+      mappedPublications = publications.map((publication) =>
+        EntityMappers.mapPublicationToApi(
+          publication,
+          usersMap,
+          communitiesMap,
+        ),
+      );
     }
 
-    return this.publicationService.getTopPublications(parsedLimit, parsedSkip);
+    // Batch calculate permissions for all publications
+    const publicationIds = mappedPublications.map((pub) => pub.id);
+    const permissionsMap = await this.permissionsHelperService.batchCalculatePublicationPermissions(
+      user?.id,
+      publicationIds,
+    );
+
+    // Add permissions to each publication
+    mappedPublications.forEach((pub) => {
+      pub.permissions = permissionsMap.get(pub.id);
+    });
+
+    return ApiResponseHelper.successResponse(mappedPublications);
   }
 
   @Put(':id')

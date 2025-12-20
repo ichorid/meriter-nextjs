@@ -1,26 +1,30 @@
 import { Injectable, Logger, BadRequestException, NotFoundException, forwardRef, Inject } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
-import { Vote, VoteDocument } from '../models/vote/vote.schema';
+import { VoteSchemaClass, VoteDocument } from '../models/vote/vote.schema';
+import type { Vote } from '../models/vote/vote.schema';
 import { UserId } from '../value-objects';
 import { uid } from 'uid';
 import { PublicationService } from './publication.service';
 import { CommunityService } from './community.service';
 import { PermissionService } from './permission.service';
+import { UserService } from './user.service';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { EventBus } from '../events/event-bus';
 import { PublicationVotedEvent, CommentVotedEvent } from '../events';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_PARTICIPANT, COMMUNITY_ROLE_VIEWER } from '../common/constants/roles.constants';
 
 @Injectable()
 export class VoteService {
   private readonly logger = new Logger(VoteService.name);
 
   constructor(
-    @InjectModel(Vote.name) private voteModel: Model<VoteDocument>,
+    @InjectModel(VoteSchemaClass.name) private voteModel: Model<VoteDocument>,
     @InjectConnection() private mongoose: Connection,
     @Inject(forwardRef(() => PublicationService)) private publicationService: PublicationService,
     private communityService: CommunityService,
     @Inject(forwardRef(() => PermissionService)) private permissionService: PermissionService,
+    private userService: UserService,
     private eventBus: EventBus,
   ) {}
 
@@ -50,12 +54,20 @@ export class VoteService {
   /**
    * Check if user can vote on a publication or vote.
    * Rules:
-   * - Cannot vote if user is the effective beneficiary
+   * - Superadmin can always vote (including self-votes)
+   * - Cannot vote if user is the effective beneficiary (for regular users)
    * - Exception: In future-vision groups, participants/leads/superadmins can self-vote
    * - For publications: effective beneficiary = beneficiaryId if set, otherwise authorId
    * - For votes: effective beneficiary = userId of the vote being voted on (cannot vote on your own vote)
    */
   async canUserVote(userId: string, targetType: 'publication' | 'vote', targetId: string, communityId?: string): Promise<boolean> {
+    // Check if user is superadmin - superadmins can always vote (including self-votes)
+    const user = await this.userService.getUserById(userId);
+    if (user?.globalRole === GLOBAL_ROLE_SUPERADMIN) {
+      this.logger.log(`[canUserVote] Superadmin ${userId} can vote on any content (including self-votes)`);
+      return true;
+    }
+
     const effectiveBeneficiary = await this.getEffectiveBeneficiary(targetType, targetId);
     if (!effectiveBeneficiary) {
       return false;
@@ -73,7 +85,7 @@ export class VoteService {
       if (community?.typeTag === 'future-vision') {
         // Check user role - allow self-voting for participant, lead, or superadmin
         const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
-        if (userRole === 'participant' || userRole === 'lead' || userRole === 'superadmin') {
+        if (userRole === COMMUNITY_ROLE_PARTICIPANT || userRole === COMMUNITY_ROLE_LEAD || userRole === COMMUNITY_ROLE_SUPERADMIN) {
           return true; // Allow self-voting in future-vision group for these roles
         }
       }
@@ -106,7 +118,8 @@ export class VoteService {
     amountWallet: number,
     direction: 'up' | 'down',
     comment: string,
-    communityId: string
+    communityId: string,
+    images?: string[]
   ): Promise<Vote> {
     this.logger.log(`Creating vote: user=${userId}, target=${targetType}:${targetId}, amountQuota=${amountQuota}, amountWallet=${amountWallet}, direction=${direction}, communityId=${communityId}, comment=${comment.substring(0, 50)}...`);
 
@@ -150,7 +163,7 @@ export class VoteService {
     const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
     
     // Viewers can only vote with quota (no wallet voting) - check this first for clearer error messages
-    if (userRole === 'viewer' && amountWallet > 0) {
+    if (userRole === COMMUNITY_ROLE_VIEWER && amountWallet > 0) {
       throw new BadRequestException(
         'Viewers can only vote using daily quota, not wallet merits.',
       );
@@ -162,7 +175,7 @@ export class VoteService {
     // This check comes BEFORE postType validation to ensure it applies
     // Note: Viewer check already happened above, so skip if viewer
     if (targetType === 'publication' || targetType === 'vote') {
-      if (isMarathonOfGood && amountWallet > 0 && userRole !== 'viewer') {
+      if (isMarathonOfGood && amountWallet > 0 && userRole !== COMMUNITY_ROLE_VIEWER) {
         throw new BadRequestException(
           'Marathon of Good only allows quota voting on posts and comments. Please use daily quota to vote.',
         );
@@ -249,6 +262,7 @@ export class VoteService {
       direction,
       communityId,
       comment: comment.trim(),
+      images: images || [],
       createdAt: new Date(),
     }]);
 

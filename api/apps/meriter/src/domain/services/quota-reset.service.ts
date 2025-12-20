@@ -2,12 +2,15 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
 import { Cron } from '@nestjs/schedule';
-import { Community, CommunityDocument } from '../models/community/community.schema';
-import { UserCommunityRole, UserCommunityRoleDocument } from '../models/user-community-role/user-community-role.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../models/community/community.schema';
+import type { Community } from '../models/community/community.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../models/user-community-role/user-community-role.schema';
+import type { UserCommunityRole } from '../models/user-community-role/user-community-role.schema';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { NotificationService, CreateNotificationDto } from './notification.service';
 import { PermissionService } from './permission.service';
+import { COMMUNITY_ROLE_VIEWER } from '../common/constants/roles.constants';
 
 interface QuotaInfo {
   dailyQuota: number;
@@ -20,9 +23,9 @@ export class QuotaResetService {
   private readonly logger = new Logger(QuotaResetService.name);
 
   constructor(
-    @InjectModel(Community.name)
+    @InjectModel(CommunitySchemaClass.name)
     private readonly communityModel: Model<CommunityDocument>,
-    @InjectModel(UserCommunityRole.name)
+    @InjectModel(UserCommunityRoleSchemaClass.name)
     private readonly userCommunityRoleModel: Model<UserCommunityRoleDocument>,
     @InjectConnection() private readonly mongoose: Connection,
     private readonly communityService: CommunityService,
@@ -74,7 +77,7 @@ export class QuotaResetService {
     // Viewers get zero quota in all communities EXCEPT marathon-of-good
     // Future Vision communities don't use quota regardless of role
     if (
-      (userRole === 'viewer' && community.typeTag !== 'marathon-of-good') ||
+      (userRole === COMMUNITY_ROLE_VIEWER && community.typeTag !== 'marathon-of-good') ||
       community.typeTag === 'future-vision'
     ) {
       return {
@@ -93,7 +96,7 @@ export class QuotaResetService {
 
     // Query votes and poll casts with amountQuota > 0 for this user in this community created after quotaStartTime
     const [votesUsed, pollCastsUsed] = await Promise.all([
-      this.mongoose.db
+      this.mongoose.db!
         .collection('votes')
         .aggregate([
           {
@@ -117,7 +120,7 @@ export class QuotaResetService {
           },
         ])
         .toArray(),
-      this.mongoose.db
+      this.mongoose.db!
         .collection('poll_casts')
         .aggregate([
           {
@@ -206,8 +209,8 @@ export class QuotaResetService {
     // Create notifications for users whose quota changed
     let notificationsCreated = 0;
     for (const userId of userIds) {
-      const quotaBefore = quotaBeforeMap.get(userId);
-      const quotaAfter = quotaAfterMap.get(userId);
+      const quotaBefore = quotaBeforeMap.get(userId) ?? null;
+      const quotaAfter = quotaAfterMap.get(userId) ?? null;
 
       if (this.shouldCreateNotification(quotaBefore, quotaAfter)) {
         const amountBefore = quotaBefore?.remainingToday ?? 0;

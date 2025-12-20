@@ -19,7 +19,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useMe, useFakeAuth, useFakeSuperadminAuth, useLogout } from '@/hooks/api/useAuth';
 import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
-import { clearAuthStorage, redirectToLogin, clearJwtCookie } from '@/lib/utils/auth';
+import { clearAuthStorage, redirectToLogin, clearJwtCookie, setHasPreviousSession } from '@/lib/utils/auth';
 import { useToastStore } from '@/shared/stores/toast.store';
 import type { User } from '@/types/api-v1';
 import type { Router } from 'next/router';
@@ -145,6 +145,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const setAuthErrorMemoized = useCallback((error: string | null) => {
     setAuthError(error);
   }, []);
+
+  // Track successful authentication to distinguish first-time users from returning users
+  useEffect(() => {
+    if (user && !userError && isAuthenticated) {
+      // User successfully authenticated - mark that they have had a session
+      setHasPreviousSession();
+    }
+  }, [user, userError, isAuthenticated]);
 
   useEffect(() => {
     if (userError) {

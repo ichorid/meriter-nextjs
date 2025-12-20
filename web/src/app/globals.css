@@ -3,7 +3,6 @@
 @tailwind utilities;
 
 /* Keep essential third-party imports */
-@import 'rc-slider/assets/index.css';
 @import '@telegram-apps/telegram-ui/dist/styles.css';
 
 @layer base {
@@ -61,6 +60,15 @@
     --loading-spinner-bg: #f3f3f3;
     --loading-spinner-active: #0474bf;
     --loading-text: #ffffff;
+    
+    /* Layout dimensions */
+    --header-h: 56px;
+    --nav-w: 336px; /* Match --left-sidebar-width default */
+    --left-sidebar-width: 336px; /* Explicitly define for consistency */
+    --inspector-w: 360px;
+    --content-max: 920px;
+    --gutter: 24px;
+    --radius: 12px;
   }
   
   [data-theme="dark"] {
@@ -504,46 +512,6 @@
   }
 }
 
-/* rc-slider dark mode support */
-[data-theme="dark"] .rc-slider-rail {
-  background-color: var(--base-300) !important;
-}
-
-[data-theme="dark"] .rc-slider-track {
-  background-color: var(--base-content) !important;
-}
-
-[data-theme="dark"] .rc-slider-handle {
-  background-color: var(--base-content) !important;
-  border-color: var(--base-content) !important;
-}
-
-[data-theme="dark"] .rc-slider-handle:hover {
-  border-color: var(--base-content) !important;
-}
-
-[data-theme="dark"] .rc-slider-handle:active {
-  border-color: var(--base-content) !important;
-  box-shadow: 0 0 5px var(--base-content) !important;
-}
-
-[data-theme="dark"] .rc-slider-handle-dragging {
-  border-color: var(--base-content) !important;
-  box-shadow: 0 0 5px var(--base-content) !important;
-}
-
-[data-theme="dark"] .rc-slider-vertical .rc-slider-rail {
-  background-color: var(--base-300) !important;
-}
-
-[data-theme="dark"] .rc-slider-vertical .rc-slider-track {
-  background-color: var(--base-content) !important;
-}
-
-[data-theme="dark"] .rc-slider-vertical .rc-slider-handle {
-  background-color: var(--base-content) !important;
-  border-color: var(--base-content) !important;
-}
 
 /* Daily Quota Ring Styles */
 .daily-quota-ring {
@@ -554,39 +522,35 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: background 0.3s ease-out, transform 0.2s ease-out;
-  border: 2px solid rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease-out;
   cursor: pointer;
   padding: 0;
-  background: #E4E4E7; /* Default track color - fallback */
+  background: transparent;
   overflow: visible;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Inner disc that covers the center, creating the ring effect */
-.daily-quota-ring::before {
-  content: "";
-  position: absolute;
-  width: 22px;
-  height: 22px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  border-radius: 999px;
-  background: var(--base-100);
-  z-index: 1;
+.daily-quota-ring__svg {
   pointer-events: none;
 }
 
 .daily-quota-ring__inner {
   position: relative;
   z-index: 2;
-  width: 22px;
-  height: 22px;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
+}
+
+.daily-quota-ring__svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .daily-quota-ring__number {
@@ -597,9 +561,17 @@
   transition: transform 0.2s ease-out;
 }
 
+.daily-quota-ring__number--inverted {
+  color: var(--base-100);
+}
+
 .daily-quota-ring__checkmark {
   color: var(--base-content);
   stroke-width: 3;
+}
+
+.daily-quota-ring--inverted .daily-quota-ring__checkmark {
+  color: var(--base-100);
 }
 
 /* Idle subtle pulse animation */
@@ -657,4 +629,159 @@
 
 [data-theme="dark"] .daily-quota-ring__number {
   color: var(--base-content);
+}
+
+/* App Shell Layout Styles */
+@layer components {
+  /* Shell */
+  .appShell {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  .appHeader {
+    height: var(--header-h);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background-color: var(--base-100);
+    border-bottom: 1px solid var(--base-300);
+  }
+
+  /* Body grid */
+  .appBody {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: var(--nav-w) 1fr; /* default: no docked inspector */
+  }
+
+  /* Left nav */
+  .leftNav {
+    overflow: auto;
+    min-height: 0;
+    border-right: 1px solid var(--base-300);
+  }
+
+  /* Main scroll container */
+  .mainWrap {
+    overflow: auto;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .main {
+    max-width: var(--content-max);
+    margin-inline: auto;
+    padding: var(--gutter) clamp(16px, 3vw, 32px);
+  }
+
+  /* FAB: anchor to the content column, not viewport */
+  .fabSlot {
+    position: sticky;
+    bottom: 24px;
+    display: flex;
+    justify-content: flex-end;
+    pointer-events: none; /* so only the button gets clicks */
+    margin-top: 24px;
+  }
+
+  .fab {
+    pointer-events: auto;
+    width: 48px;
+    height: 48px;
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Overlay inspector (default behavior) */
+  .inspectorOverlay {
+    position: fixed;
+    top: var(--header-h);
+    right: 0;
+    height: calc(100dvh - var(--header-h));
+    width: min(var(--inspector-w), 92vw);
+    transform: translateX(100%);
+    transition: transform 180ms ease;
+    z-index: 50;
+    background-color: var(--base-100);
+    border-left: 1px solid var(--base-300);
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+
+  /* Adjust overlay when header is not visible */
+  .appShell[data-header-visible="false"] .inspectorOverlay {
+    top: 0;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Hide overlay on mobile - mobile uses full-screen drawer instead */
+  @media (max-width: 1023px) {
+    .inspectorOverlay {
+      display: none;
+    }
+  }
+
+  /* Scrim for overlay */
+  .scrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+    z-index: 40;
+  }
+
+  /* Hide scrim on mobile - mobile uses full-screen drawer instead */
+  @media (max-width: 1023px) {
+    .scrim {
+      display: none;
+    }
+  }
+
+  /* Toggle open */
+  .appShell[data-comments-open="true"] .inspectorOverlay {
+    transform: translateX(0);
+  }
+
+  .appShell[data-comments-open="true"] .scrim {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Docked mode on ultra-wide screens */
+  @media (min-width: 1600px) {
+    .appShell[data-inspector-mode="docked"] .appBody {
+      grid-template-columns: var(--nav-w) 1fr var(--inspector-w);
+    }
+
+    .inspectorDock {
+      overflow: auto;
+      min-height: 0;
+      border-left: 1px solid var(--base-300);
+    }
+
+    /* In docked mode, disable overlay+scrim */
+    .appShell[data-inspector-mode="docked"] .inspectorOverlay,
+    .appShell[data-inspector-mode="docked"] .scrim {
+      display: none;
+    }
+  }
+
+  /* Tablet/mobile: collapse nav to a drawer/rail (outline only) */
+  @media (max-width: 900px) {
+    .appBody {
+      grid-template-columns: 1fr;
+    }
+
+    .leftNav {
+      display: none; /* replace with a drawer */
+    }
+  }
 }

@@ -64,10 +64,10 @@ export const CommunityMembersFab: React.FC<CommunityMembersFabProps> = ({ commun
 
     return (
         <>
-            <div className="fixed bottom-20 right-4 z-[60] lg:bottom-6 lg:right-6" ref={fabRef}>
+            <div className="fabSlot" ref={fabRef}>
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className={`
+                    className={`fab
                         flex items-center justify-center w-14 h-14 rounded-full shadow-lg 
                         transition-all duration-200 
                         ${isOpen

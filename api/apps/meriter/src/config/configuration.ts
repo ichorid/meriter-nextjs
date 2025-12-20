@@ -15,6 +15,10 @@ export interface AppConfig {
     mongoUrl: string;
     mongoUrlSecondary: string;
   };
+  features: {
+    telegramBotEnabled: boolean;
+    telegramAuthEnabled: boolean;
+  };
 }
 
 /**
@@ -35,12 +39,15 @@ function deriveAppUrl(): string {
       return process.env.APP_URL;
     }
     
-    // Allow default for test environment only
-    if (nodeEnv === 'test') {
+    // Allow default for test and development environments
+    if (nodeEnv === 'test' || nodeEnv === 'development') {
       return 'http://localhost';
     }
     
-    throw new Error('DOMAIN environment variable is required. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).');
+    throw new Error(
+      'DOMAIN environment variable is required. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).\n' +
+      'For local development, you can set DOMAIN=localhost or leave it unset (defaults to http://localhost).'
+    );
   }
   
   // Use http:// for localhost, https:// for production
@@ -51,11 +58,11 @@ function deriveAppUrl(): string {
 export default (): AppConfig => ({
   app: {
     url: deriveAppUrl(),
-    port: parseInt(process.env.PORT, 10) || 8002,
+    port: parseInt(process.env.PORT || '8002', 10) || 8002,
     env: process.env.NODE_ENV || 'development',
   },
   jwt: {
-    secret: process.env.JWT_SECRET,
+    secret: process.env.JWT_SECRET || '',
   },
   bot: {
     username: process.env.BOT_USERNAME || 'meriterbot',
@@ -64,6 +71,10 @@ export default (): AppConfig => ({
   database: {
     mongoUrl: process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/meriter',
     mongoUrlSecondary: process.env.MONGO_URL_SECONDARY || 'mongodb://127.0.0.1:27017/meriter_test',
+  },
+  features: {
+    telegramBotEnabled: process.env.TELEGRAM_BOT_ENABLED === 'true',
+    telegramAuthEnabled: process.env.OAUTH_TELEGRAM_ENABLED === 'true',
   },
 });
 

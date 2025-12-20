@@ -42,8 +42,7 @@ export default function ProfileCommentsPage() {
   const pageHeader = (
     <PageHeader
       title={t('tabs.comments')}
-      showBack={true}
-      onBack={() => router.push('/meriter/profile')}
+      showBack={false}
     />
   );
 

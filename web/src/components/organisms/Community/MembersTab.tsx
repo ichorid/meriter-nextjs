@@ -4,12 +4,13 @@ import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useCommunityMembers } from '@/hooks/api/useCommunityMembers';
-import { InfoCard } from '@/components/ui/InfoCard';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { SearchInput } from '@/components/molecules/SearchInput';
 import { Loader2, Users } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
+import { MemberInfoCard } from './MemberInfoCard';
+import { useCanViewUserMerits } from '@/hooks/useCanViewUserMerits';
 
 interface MembersTabProps {
     communityId: string;
@@ -22,6 +23,7 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
     const tSearch = useTranslations('search');
     const { data: membersData, isLoading: membersLoading } = useCommunityMembers(communityId);
     const [searchQuery, setSearchQuery] = useState('');
+    const { canView: canViewMerits } = useCanViewUserMerits(communityId);
 
     const members = useMemo(() => {
         return membersData?.data || [];
@@ -78,22 +80,43 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
             )}
 
             {filteredMembers.length > 0 ? (
-                filteredMembers.map((member) => (
-                    <InfoCard
-                        key={member.id}
-                        title={member.displayName || member.username || tCommon('unknownUser')}
-                        subtitle={member.username ? `@${member.username}` : undefined}
-                        icon={
-                            <BrandAvatar
-                                src={member.avatarUrl}
-                                fallback={member.displayName || member.username || tCommon('user')}
-                                size="sm"
-                                className="bg-transparent"
-                            />
-                        }
-                        onClick={() => router.push(routes.userProfile(member.id))}
-                    />
-                ))
+                filteredMembers.map((member) => {
+                    // Determine display role: superadmin from globalRole, otherwise community role
+                    // Ensure both are strings and handle fake mode edge cases
+                    const globalRoleStr = typeof member.globalRole === 'string' ? member.globalRole : '';
+                    const communityRoleStr = typeof member.role === 'string' ? member.role : '';
+                    
+                    const displayRole = globalRoleStr === 'superadmin' 
+                        ? 'superadmin' 
+                        : communityRoleStr;
+                    
+                    // Get translated role label if role exists and is a valid role type
+                    const validRoles = ['superadmin', 'lead', 'participant', 'viewer'] as const;
+                    const roleBadge = displayRole && validRoles.includes(displayRole as typeof validRoles[number])
+                        ? tCommon(displayRole as 'superadmin' | 'lead' | 'participant' | 'viewer')
+                        : undefined;
+                    
+                    return (
+                        <MemberInfoCard
+                            key={member.id}
+                            memberId={member.id}
+                            title={member.displayName || member.username || tCommon('unknownUser')}
+                            subtitle={member.username ? `@${member.username}` : undefined}
+                            icon={
+                                <BrandAvatar
+                                    src={member.avatarUrl}
+                                    fallback={member.displayName || member.username || tCommon('user')}
+                                    size="sm"
+                                    className="bg-transparent"
+                                />
+                            }
+                            badges={roleBadge ? [roleBadge] : undefined}
+                            communityId={communityId}
+                            canViewMerits={canViewMerits}
+                            onClick={() => router.push(routes.userProfile(member.id))}
+                        />
+                    );
+                })
             ) : searchQuery ? (
                 <div className="text-center py-12 text-base-content/60">
                     <Users className="w-12 h-12 mx-auto mb-3 text-base-content/40" />

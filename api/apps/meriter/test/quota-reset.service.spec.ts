@@ -9,15 +9,15 @@ import { UserCommunityRoleService } from '../src/domain/services/user-community-
 import { PermissionService } from '../src/domain/services/permission.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { Vote, VoteDocument } from '../src/domain/models/vote/vote.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { VoteSchemaClass, VoteDocument } from '../src/domain/models/vote/vote.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import {
-  Notification,
+  NotificationSchemaClass,
   NotificationDocument,
 } from '../src/domain/models/notification/notification.schema';
 import {
-  UserCommunityRole,
+  UserCommunityRoleSchemaClass,
   UserCommunityRoleDocument,
 } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
@@ -73,11 +73,11 @@ describe('QuotaResetService', () => {
 
     connection = app.get(getConnectionToken());
 
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    voteModel = connection.model<VoteDocument>(Vote.name);
-    notificationModel = connection.model<NotificationDocument>(Notification.name);
-    userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRole.name);
+    communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
+    userModel = connection.model<UserDocument>(UserSchemaClass.name);
+    voteModel = connection.model<VoteDocument>(VoteSchemaClass.name);
+    notificationModel = connection.model<NotificationDocument>(NotificationSchemaClass.name);
+    userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
 
     // Initialize test IDs
     testUserId1 = uid();

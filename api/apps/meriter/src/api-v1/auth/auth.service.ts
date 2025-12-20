@@ -7,9 +7,10 @@ import { CommunityService } from '../../domain/services/community.service';
 import { User } from '../../../../../../libs/shared-types/dist/index';
 import { signJWT } from '../../common/helpers/jwt';
 import {
-  Community,
+  CommunitySchemaClass,
   CommunityDocument,
 } from '../../domain/models/community/community.schema';
+import type { Community } from '../../domain/models/community/community.schema';
 import { JwtService } from '../common/utils/jwt-service.util';
 import * as crypto from 'crypto';
 
@@ -31,7 +32,7 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly communityService: CommunityService,
     private readonly configService: ConfigService,
-    @InjectModel(Community.name)
+    @InjectModel(CommunitySchemaClass.name)
     private communityModel: Model<CommunityDocument>,
   ) {}
 
@@ -570,7 +571,7 @@ export class AuthService {
 
     const dataCheckString = Object.keys(fields)
       .sort()
-      .map((key) => `${key}=${fields[key]}`)
+      .map((key) => `${key}=${(fields as any)[key]}`)
       .join('\n');
 
     const secretKey = crypto.createHash('sha256').update(botToken).digest();

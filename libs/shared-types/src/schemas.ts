@@ -167,6 +167,7 @@ export const UserSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   profile: UserProfileSchema.default({ isVerified: false }),
   meritStats: z.record(z.string(), z.number().int().min(0)).optional(), // Статистика меритов по коммьюнити (только для lead)
   inviteCode: z.string().optional(), // Код, использованный при регистрации
+  teamId: z.string().optional(), // ID команды, к которой принадлежит пользователь
   communityTags: z.array(z.string()).default([]),
   communityMemberships: z.array(z.string()).default([]),
 });
@@ -178,6 +179,8 @@ export const CommunitySchema = IdentifiableSchema.merge(
   description: z.string().optional(),
   avatarUrl: z.string().url().optional(),
   coverImageUrl: z.string().url().optional(),
+  // IDs of administrators (internal User IDs) - УСТАРЕВШЕЕ, использовать UserCommunityRole
+  adminIds: z.array(z.string()).default([]),
   members: z.array(z.string()).default([]), // УСТАРЕВШЕЕ, использовать UserCommunityRole
   // НОВОЕ: Метка типа (опциональная, только для удобства)
   typeTag: z
@@ -243,6 +246,16 @@ export const CommentAuthorMetaSchema = z.object({
   photoUrl: z.string().url().optional(),
 });
 
+export const ResourcePermissionsSchema = z.object({
+  canVote: z.boolean(),
+  canEdit: z.boolean(),
+  canDelete: z.boolean(),
+  canComment: z.boolean(),
+  voteDisabledReason: z.string().optional(),
+  editDisabledReason: z.string().optional(),
+  deleteDisabledReason: z.string().optional(),
+});
+
 export const CommentSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   targetType: z.enum(["publication", "comment"]),
   targetId: z.string(),
@@ -255,6 +268,7 @@ export const CommentSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
       author: CommentAuthorMetaSchema,
     })
     .optional(),
+  permissions: ResourcePermissionsSchema.optional(),
 });
 
 export const VoteSchema = PolymorphicReferenceSchema.extend({
@@ -281,6 +295,7 @@ export const PollSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   expiresAt: z.string().datetime(),
   isActive: z.boolean().default(true),
   metrics: PollMetricsSchema,
+  permissions: ResourcePermissionsSchema.optional(),
 });
 
 export const PollCastSchema = IdentifiableSchema.merge(TimestampsSchema)
@@ -350,6 +365,7 @@ export const CreateCommentDtoSchema = z.object({
   targetId: z.string().min(1),
   content: z.string().max(5000),
   parentCommentId: z.string().optional(),
+  images: z.array(z.string().url()).optional(),
 });
 
 export const UpdateCommentDtoSchema = CreateCommentDtoSchema.partial();
@@ -501,6 +517,7 @@ export const VoteWithCommentDtoSchema = PolymorphicReferenceSchema.partial()
     walletAmount: z.number().int().min(0).optional(),
     comment: z.string().optional(),
     direction: z.enum(["up", "down"]).optional(),
+    images: z.array(z.string().url()).optional(),
   })
   .refine(
     (data) => {
@@ -651,6 +668,7 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   hashtags: z.array(z.string()).default([]),
   metrics: PublicationMetricsSchema,
   meta: FeedItemMetaSchema,
+  permissions: ResourcePermissionsSchema.optional(),
 });
 
 export const PollFeedItemSchema = IdentifiableSchema.merge(
@@ -693,6 +711,7 @@ export type VotingRules = z.infer<typeof VotingRulesSchema>;
 export type VisibilityRules = z.infer<typeof VisibilityRulesSchema>;
 export type MeritRules = z.infer<typeof MeritRulesSchema>;
 export type MeritConversion = z.infer<typeof MeritConversionSchema>;
+export type ResourcePermissions = z.infer<typeof ResourcePermissionsSchema>;
 
 export type CreatePublicationDto = z.infer<typeof CreatePublicationDtoSchema>;
 export type CreateCommentDto = z.infer<typeof CreateCommentDtoSchema>;

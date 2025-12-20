@@ -28,6 +28,7 @@ import { JwtService } from '../common/utils/jwt-service.util';
 import { UserSettingsService } from '../../domain/services/user-settings.service';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 
 @Controller('api/v1/users')
 @UseGuards(UserGuard)
@@ -70,7 +71,7 @@ export class UsersController {
     const total = validUserIds.length;
 
     // Apply pagination to valid user IDs
-    const paginatedUserIds = validUserIds.slice(skip, skip + pagination.limit);
+    const paginatedUserIds = validUserIds.slice(skip, skip + (pagination.limit || 20));
     
     // Enrich users with total merits and lead communities
     const enrichedUsers = await Promise.all(
@@ -252,11 +253,7 @@ export class UsersController {
 
   @Get(':userId/roles')
   async getUserRoles(@Param('userId') userId: string, @Req() req: any) {
-    // Users can only see their own roles
-    if (userId !== 'me' && userId !== req.user.id) {
-      throw new NotFoundError('User', userId);
-    }
-
+    // Allow viewing any user's roles for profile pages
     const actualUserId = userId === 'me' ? req.user.id : userId;
     const roles =
       await this.userCommunityRoleService.getUserRoles(actualUserId);
@@ -297,11 +294,15 @@ export class UsersController {
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
 
+    if (!this.mongoose.db) {
+      throw new Error('Database connection not available');
+    }
+
     // Get publications directly from MongoDB to access isProject field
     const publicationDocs = await this.mongoose.db
       .collection('publications')
       .find({ authorId: actualUserId, isProject: true })
-      .limit(pagination.limit)
+      .limit(pagination.limit || 20)
       .skip(skip)
       .sort({ createdAt: -1 })
       .toArray();
@@ -446,16 +447,6 @@ export class UsersController {
     };
   }
 
-
-  @Get('search')
-  async searchUsers(@Query('q') query: string, @Query('limit') limit: number) {
-    if (!query || query.length < 2) {
-      return [];
-    }
-    const users = await this.userService.searchUsers(query, limit || 20);
-    return users.map((u) => this.mapUserToV1Format(u));
-  }
-
   @Put(':userId/global-role')
   async updateGlobalRole(
     @Param('userId') userId: string,
@@ -464,7 +455,7 @@ export class UsersController {
   ) {
     // Check if requester is superadmin
     const requester = await this.userService.getUser(req.user.id);
-    if (requester?.globalRole !== 'superadmin') {
+    if (requester?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
       throw new ForbiddenError('Only superadmins can update global roles');
     }
 

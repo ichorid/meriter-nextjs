@@ -12,42 +12,59 @@ import { Document } from 'mongoose';
  * 
  * Fields correspond to VoteSchema in libs/shared-types/src/schemas.ts
  */
-export type VoteDocument = Vote & Document;
 
-@Schema({ collection: 'votes', timestamps: true })
-export class Vote {
-  @Prop({ required: true, unique: true })
+export interface Vote {
   id: string;
-
-  @Prop({ required: true, enum: ['publication', 'vote'] })
-  targetType: string;
-
-  @Prop({ required: true })
+  targetType: 'publication' | 'vote';
   targetId: string;
-
-  @Prop({ required: true })
   userId: string;
-
-  @Prop({ required: true, default: 0, min: 0 })
   amountQuota: number;
-
-  @Prop({ required: true, default: 0, min: 0 })
   amountWallet: number;
-
-  @Prop({ required: true, enum: ['up', 'down'] })
   direction: 'up' | 'down'; // Explicit vote direction: upvote or downvote
-
-  @Prop({ required: true, maxlength: 5000 })
   comment: string; // Required comment text attached to vote
-
-  @Prop({ required: true })
+  images?: string[]; // Array of image URLs for vote attachments
   communityId: string; // Made required for consistency
-
-  @Prop({ required: true })
   createdAt: Date;
 }
 
-export const VoteSchema = SchemaFactory.createForClass(Vote);
+@Schema({ collection: 'votes', timestamps: true })
+export class VoteSchemaClass implements Vote {
+  @Prop({ required: true, unique: true })
+  id!: string;
+
+  @Prop({ required: true, enum: ['publication', 'vote'] })
+  targetType!: 'publication' | 'vote';
+
+  @Prop({ required: true })
+  targetId!: string;
+
+  @Prop({ required: true })
+  userId!: string;
+
+  @Prop({ required: true, default: 0, min: 0 })
+  amountQuota!: number;
+
+  @Prop({ required: true, default: 0, min: 0 })
+  amountWallet!: number;
+
+  @Prop({ required: true, enum: ['up', 'down'] })
+  direction!: 'up' | 'down'; // Explicit vote direction: upvote or downvote
+
+  @Prop({ required: true, maxlength: 5000 })
+  comment!: string; // Required comment text attached to vote
+
+  @Prop({ type: [String], default: [] })
+  images?: string[]; // Array of image URLs for vote attachments
+
+  @Prop({ required: true })
+  communityId!: string; // Made required for consistency
+
+  @Prop({ required: true })
+  createdAt!: Date;
+}
+
+export const VoteSchema = SchemaFactory.createForClass(VoteSchemaClass);
+export type VoteDocument = VoteSchemaClass & Document;
 
 // Add indexes for common queries
 VoteSchema.index({ targetType: 1, targetId: 1 });

@@ -19,6 +19,7 @@ import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { PermissionService } from '../../domain/services/permission.service';
 import { UserEnrichmentService } from '../common/services/user-enrichment.service';
+import { PermissionsHelperService } from '../common/services/permissions-helper.service';
 import { EntityMappers } from '../common/mappers/entity-mappers';
 import { UserFormatter } from '../common/utils/user-formatter.util';
 import { VoteCommentResolverService } from '../common/services/vote-comment-resolver.service';
@@ -57,6 +58,7 @@ export class CommentsController {
     private readonly voteCommentResolver: VoteCommentResolverService,
     private readonly commentEnrichment: CommentEnrichmentService,
     private readonly permissionService: PermissionService,
+    private readonly permissionsHelperService: PermissionsHelperService,
   ) {}
 
   @Get()
@@ -82,7 +84,7 @@ export class CommentsController {
       VoteTransactionCalculatorService.calculate(vote);
 
     // Fetch votes on the vote/comment itself (for metrics)
-    let commentVotes = [];
+    let commentVotes: any[] = [];
     try {
       if (vote) {
         // If this is a vote, get votes on this vote
@@ -92,9 +94,10 @@ export class CommentsController {
         commentVotes = await this.voteService.getTargetVotes('comment', id);
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.warn(
         `Failed to fetch votes on comment ${id}:`,
-        error.message,
+        errorMessage,
       );
     }
 
@@ -118,9 +121,10 @@ export class CommentsController {
         totalReceived = await this.voteService.getPositiveSumForVote(id);
       }
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       this.logger.warn(
         `Failed to aggregate positive votes for ${id}:`,
-        err?.message || err,
+        errorMessage,
       );
     }
     try {
@@ -134,9 +138,10 @@ export class CommentsController {
           )
         : 0;
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       this.logger.warn(
         `Failed to aggregate withdrawals for ${id}:`,
-        err?.message || err,
+        errorMessage,
       );
     }
 
@@ -176,6 +181,12 @@ export class CommentsController {
     const voteTransactionData =
       VoteTransactionCalculatorService.calculate(vote);
 
+    // Calculate permissions
+    const permissions = await this.permissionsHelperService.calculateCommentPermissions(
+      req.user?.id,
+      id,
+    );
+
     const commentData = {
       ...snapshot,
       createdAt: snapshot.createdAt.toISOString(),
@@ -185,6 +196,8 @@ export class CommentsController {
       },
       // Add vote transaction fields if comment is associated with a vote
       ...voteTransactionData,
+      // Add permissions
+      permissions,
     };
 
     return ApiResponseHelper.successResponse(commentData);
@@ -198,7 +211,7 @@ export class CommentsController {
   ): Promise<Comment> {
     // Check permissions using PermissionService
     // For comments, we need to resolve the publication ID first
-    let publicationId: string;
+    let publicationId: string | undefined;
     if (createDto.targetType === 'publication') {
       publicationId = createDto.targetId;
     } else {
@@ -277,7 +290,8 @@ export class CommentsController {
         author: UserFormatter.formatUserForApi(author, authorId),
       },
     };
-    return ApiResponseHelper.successResponse(response);
+    // Interceptor will wrap this in ApiResponse format
+    return response as Comment;
   }
 
   @Put(':id')
@@ -309,7 +323,8 @@ export class CommentsController {
       usersMap,
     );
 
-    return ApiResponseHelper.successResponse(mappedComment);
+    // Interceptor will wrap this in ApiResponse format
+    return mappedComment as Comment;
   }
 
   @Delete(':id')
@@ -395,6 +410,18 @@ export class CommentsController {
       };
     });
 
+    // Batch calculate permissions for all comments (votes)
+    const commentIds = enrichedComments.map((comment) => comment.id);
+    const permissionsMap = await this.permissionsHelperService.batchCalculateCommentPermissions(
+      req.user?.id,
+      commentIds,
+    );
+
+    // Add permissions to each comment
+    enrichedComments.forEach((comment) => {
+      comment.permissions = permissionsMap.get(comment.id);
+    });
+
     // Get total count for pagination
     const totalVotes =
       await this.voteService.getVotesOnPublication(publicationId);
@@ -436,7 +463,8 @@ export class CommentsController {
     });
 
     // Apply pagination
-    const paginatedVotes = votes.slice(skip, skip + pagination.limit);
+    const limit = pagination.limit ?? 20;
+    const paginatedVotes = votes.slice(skip, skip + limit);
 
     // Extract unique user IDs (vote authors)
     const userIdsArray = Array.from(
@@ -484,6 +512,18 @@ export class CommentsController {
       };
     });
 
+    // Batch calculate permissions for all replies (votes)
+    const replyIds = enrichedReplies.map((reply) => reply.id);
+    const permissionsMap = await this.permissionsHelperService.batchCalculateCommentPermissions(
+      req.user?.id,
+      replyIds,
+    );
+
+    // Add permissions to each reply
+    enrichedReplies.forEach((reply) => {
+      reply.permissions = permissionsMap.get(reply.id);
+    });
+
     return {
       data: enrichedReplies,
       total: votes.length,
@@ -525,7 +565,8 @@ export class CommentsController {
             usersMap.set(userId, user);
           }
         } catch (error) {
-          this.logger.warn(`Failed to fetch author ${userId}:`, error.message);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.logger.warn(`Failed to fetch author ${userId}:`, errorMessage);
         }
       }),
     );
@@ -553,9 +594,10 @@ export class CommentsController {
             });
           }
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           this.logger.warn(
             `Failed to fetch publication ${publicationId}:`,
-            error.message,
+            errorMessage,
           );
         }
       }),

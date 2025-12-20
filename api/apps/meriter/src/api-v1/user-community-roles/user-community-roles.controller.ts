@@ -13,6 +13,7 @@ import { PermissionService } from '../../domain/services/permission.service';
 import { User } from '../../decorators/user.decorator';
 import { UserGuard } from '../../user.guard';
 import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
+import { COMMUNITY_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../../domain/common/constants/roles.constants';
 import { ApiResponseHelper } from '../common/helpers/api-response.helper';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import { z } from 'zod';
@@ -45,7 +46,7 @@ export class UserCommunityRolesController {
       communityId,
     );
 
-    if (userRole !== 'superadmin' && userRole !== 'lead') {
+    if (userRole !== COMMUNITY_ROLE_SUPERADMIN && userRole !== COMMUNITY_ROLE_LEAD) {
       throw new ForbiddenException('Only superadmin or lead can view roles');
     }
 
@@ -78,7 +79,7 @@ export class UserCommunityRolesController {
       communityId,
     );
 
-    if (userRole !== 'superadmin') {
+    if (userRole !== COMMUNITY_ROLE_SUPERADMIN) {
       throw new ForbiddenException('Only superadmin can update roles');
     }
 
@@ -107,7 +108,7 @@ export class UserCommunityRolesController {
       communityId,
     );
 
-    if (userRole !== 'superadmin' && userRole !== 'lead') {
+    if (userRole !== COMMUNITY_ROLE_SUPERADMIN && userRole !== COMMUNITY_ROLE_LEAD) {
       throw new ForbiddenException('Only superadmin or lead can view roles');
     }
 

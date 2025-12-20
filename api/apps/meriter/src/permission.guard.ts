@@ -60,6 +60,7 @@ export class PermissionGuard implements CanActivate {
         permission,
         userId,
         resourceIds,
+        req,
       );
 
       if (!allowed) {
@@ -78,9 +79,11 @@ export class PermissionGuard implements CanActivate {
       }
 
       // Log unexpected errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(
-        `Error checking permission: ${error.message}`,
-        error.stack,
+        `Error checking permission: ${errorMessage}`,
+        errorStack,
       );
       throw new ForbiddenException(
         'An error occurred while checking permissions',
@@ -126,7 +129,16 @@ export class PermissionGuard implements CanActivate {
       case 'edit:publication':
       case 'delete:publication':
         // publicationId comes from route params
-        result.publicationId = req.params?.id;
+        const paramId = req.params?.id;
+        // Check if ID is undefined or the string "undefined"
+        if (!paramId || paramId === 'undefined' || paramId === 'null') {
+          this.logger.error(
+            `[PermissionGuard] Invalid publicationId in route params: ${paramId}, req.params: ${JSON.stringify(req.params)}, req.url: ${req.url}`,
+          );
+          result.publicationId = undefined;
+        } else {
+          result.publicationId = paramId;
+        }
         break;
 
       case 'edit:comment':
@@ -157,6 +169,7 @@ export class PermissionGuard implements CanActivate {
     permission: PermissionMetadata,
     userId: string,
     resourceIds: ResourceIds,
+    req?: any,
   ): Promise<boolean> {
     const { action, resource } = permission;
 
@@ -186,7 +199,19 @@ export class PermissionGuard implements CanActivate {
           this.logger.warn('Missing publicationId for vote:publication');
           return false;
         }
-        return this.permissionService.canVote(userId, resourceIds.publicationId);
+        this.logger.log(
+          `[PermissionGuard] vote:publication check: userId=${userId}, publicationId=${resourceIds.publicationId}`,
+        );
+        const canVoteResult = await this.permissionService.canVote(userId, resourceIds.publicationId);
+        this.logger.log(
+          `[PermissionGuard] vote:publication result: userId=${userId}, publicationId=${resourceIds.publicationId}, result=${canVoteResult}`,
+        );
+        if (!canVoteResult) {
+          this.logger.warn(
+            `[PermissionGuard] vote:publication DENIED: userId=${userId}, publicationId=${resourceIds.publicationId}`,
+          );
+        }
+        return canVoteResult;
 
       case 'comment:publication':
         if (!resourceIds.publicationId) {
@@ -204,16 +229,31 @@ export class PermissionGuard implements CanActivate {
 
       case 'edit:publication':
         if (!resourceIds.publicationId) {
-          this.logger.warn('Missing publicationId for edit:publication');
-          return false;
+          // Log detailed info about why publicationId is missing
+          const user = req.user;
+          this.logger.error(
+            `[PermissionGuard] Missing publicationId for edit:publication - userId: ${userId}, user.globalRole: ${user?.globalRole}, req.params: ${JSON.stringify(req.params)}, req.body: ${JSON.stringify(req.body)}, URL: ${req.url}`,
+          );
+          throw new ForbiddenException(
+            'Publication ID is required to edit a publication',
+          );
         }
+        // Log user info for debugging
+        const user = req.user;
+        this.logger.log(
+          `[PermissionGuard] edit:publication check - userId: ${userId}, publicationId: ${resourceIds.publicationId}, user.globalRole: ${user?.globalRole}`,
+        );
         const canEdit = await this.permissionService.canEditPublication(
           userId,
           resourceIds.publicationId,
         );
         if (!canEdit) {
-          this.logger.debug(
-            `Permission denied for edit:publication - userId: ${userId}, publicationId: ${resourceIds.publicationId}`,
+          this.logger.warn(
+            `[PermissionGuard] Permission denied for edit:publication - userId: ${userId}, publicationId: ${resourceIds.publicationId}, user.globalRole: ${user?.globalRole}`,
+          );
+        } else {
+          this.logger.log(
+            `[PermissionGuard] Permission granted for edit:publication - userId: ${userId}, publicationId: ${resourceIds.publicationId}`,
           );
         }
         return canEdit;

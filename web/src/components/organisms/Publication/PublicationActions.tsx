@@ -10,8 +10,8 @@ import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { getWalletBalance } from '@/lib/utils/wallet';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
-import { useCanVote } from '@/hooks/useCanVote';
 import { useCommunity } from '@/hooks/api/useCommunities';
+import { ResourcePermissions } from '@/types/api-v1';
 
 // Local Publication type definition
 interface Publication {
@@ -43,6 +43,10 @@ interface Publication {
       telegramChatName?: string;
     };
     hashtagName?: string;
+  };
+  permissions?: ResourcePermissions;
+  withdrawals?: {
+    totalWithdrawn?: number;
   };
   [key: string]: unknown;
 }
@@ -106,8 +110,10 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const currentScore = publication.metrics?.score || 0;
 
   // Calculate withdraw amounts
-  const maxWithdrawAmount = (isAuthor && !hasBeneficiary) || isBeneficiary
-    ? Math.floor(10 * currentScore) / 10
+  const totalWithdrawn = publication.withdrawals?.totalWithdrawn || 0;
+  const availableForWithdrawal = Math.max(0, currentScore - totalWithdrawn);
+  const maxWithdrawAmount = ((isAuthor && !hasBeneficiary) || isBeneficiary)
+    ? Math.floor(10 * availableForWithdrawal) / 10
     : 0;
 
   // Get current wallet balance for topup
@@ -120,25 +126,33 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const isSpecialGroup = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
 
   // Mutual exclusivity logic
-  // Withdrawal feature is disabled - merits are automatically credited on upvote
-  // Topup functionality is still available through the voting popup
-  const showWithdraw = false; // Withdrawals disabled
+  // Withdrawal is enabled - users can manually withdraw accumulated votes to permanent merits
+  const showWithdraw = ((isAuthor && !hasBeneficiary) || isBeneficiary) && maxWithdrawAmount > 0;
   const showVote = !isAuthor && !isBeneficiary;
   const showVoteForAuthor = isAuthor && hasBeneficiary;
 
   const publicationId = getPublicationIdentifier(publication);
 
-  // Check if user can vote based on community rules
-  const { canVote, reason: voteDisabledReason } = useCanVote(
-    publicationId,
-    'publication',
-    communityId,
-    authorId,
-    isAuthor,
-    isBeneficiary,
-    hasBeneficiary,
-    isProject
-  );
+  // Use API permissions instead of calculating on frontend
+  const canVote = publication.permissions?.canVote ?? false;
+  const voteDisabledReason = publication.permissions?.voteDisabledReason;
+  
+  // Debug logging
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[PublicationActions] DEBUG', JSON.stringify({
+      publicationId: publication.id,
+      authorId,
+      myId,
+      isAuthor,
+      communityId,
+      hasPermissions: !!publication.permissions,
+      permissions: publication.permissions,
+      canVote,
+      voteDisabledReason,
+      communityTypeTag: community?.typeTag,
+      fullPublication: Object.keys(publication)
+    }, null, 2));
+  }
 
   const handleVoteClick = () => {
     let mode: 'standard' | 'wallet-only' | 'quota-only' = 'standard';
@@ -178,7 +192,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const handleWithdrawClick = () => {
     useUIStore.getState().openWithdrawPopup(
       publicationId,
-      'publication-topup',
+      'publication',
       maxWithdrawAmount,
       maxTopUpAmount
     );

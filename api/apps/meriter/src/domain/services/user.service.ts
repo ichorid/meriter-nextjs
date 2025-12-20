@@ -8,11 +8,13 @@ import {
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
-import { User, UserDocument } from '../models/user/user.schema';
+import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
+import type { User } from '../models/user/user.schema';
 import {
-  Community,
+  CommunitySchemaClass,
   CommunityDocument,
 } from '../models/community/community.schema';
+import type { Community } from '../models/community/community.schema';
 import { UserId } from '../value-objects';
 import { EventBus } from '../events/event-bus';
 import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
@@ -20,6 +22,7 @@ import { uid } from 'uid';
 import { CommunityService } from './community.service';
 import { WalletService } from './wallet.service';
 import { UserCommunityRoleService } from './user-community-role.service';
+import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 
 export interface CreateUserDto {
   authProvider: string;
@@ -33,6 +36,7 @@ export interface CreateUserDto {
   location?: string;
   website?: string;
   isVerified?: boolean;
+  globalRole?: 'superadmin';
 }
 
 @Injectable()
@@ -40,8 +44,8 @@ export class UserService implements OnModuleInit {
   private readonly logger = new Logger(UserService.name);
 
   constructor(
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(Community.name)
+    @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
+    @InjectModel(CommunitySchemaClass.name)
     private communityModel: Model<CommunityDocument>,
     @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,
@@ -59,13 +63,15 @@ export class UserService implements OnModuleInit {
         await this.userModel.collection.dropIndex('telegramId_1');
         this.logger.log('Legacy index dropped successfully');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // Ignore error if index doesn't exist (though indexExists check should prevent this)
       // or if other error occurs, just log it
-      if (error.code !== 27) {
-        // 27 is IndexNotFound
-        this.logger.warn(`Failed to drop legacy index: ${error.message}`);
+      if (error && typeof error === 'object' && 'code' in error && error.code === 27) {
+        // 27 is IndexNotFound - ignore
+        return;
       }
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Failed to drop legacy index: ${errorMessage}`);
     }
   }
 
@@ -118,6 +124,10 @@ export class UserService implements OnModuleInit {
         updatedAt: new Date(),
       };
 
+      if (dto.globalRole !== undefined) {
+        updateData.globalRole = dto.globalRole;
+      }
+
       if (token) {
         updateData.token = token;
       }
@@ -151,7 +161,7 @@ export class UserService implements OnModuleInit {
         .lean();
     } else {
       // Create new user
-      const newUser = {
+      const newUser: any = {
         id: uid(),
         authProvider: dto.authProvider,
         authId: dto.authId,
@@ -174,8 +184,20 @@ export class UserService implements OnModuleInit {
         updatedAt: new Date(),
       };
 
+      // Only set globalRole if provided and is 'superadmin' (enum only allows 'superadmin')
+      if (dto.globalRole === 'superadmin') {
+        newUser.globalRole = 'superadmin';
+      }
+
       await this.userModel.create([newUser]);
       user = await this.userModel.findOne({ id: newUser.id }).lean();
+      if (!user) {
+        throw new Error(`Failed to create user with id ${newUser.id}`);
+      }
+    }
+
+    if (!user) {
+      throw new Error(`User not found after createOrUpdateUser`);
     }
 
     return user;
@@ -523,8 +545,8 @@ export class UserService implements OnModuleInit {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
 
-    if (role === 'superadmin') {
-      user.globalRole = 'superadmin';
+    if (role === GLOBAL_ROLE_SUPERADMIN) {
+      user.globalRole = GLOBAL_ROLE_SUPERADMIN;
     } else {
       user.globalRole = undefined;
     }

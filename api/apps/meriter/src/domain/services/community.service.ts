@@ -10,18 +10,22 @@ import {
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
 import {
-  Community,
+  CommunitySchemaClass,
   CommunityDocument,
 } from '../models/community/community.schema';
-import { User, UserDocument } from '../models/user/user.schema';
+import type { Community, CommunityVisibilityRules } from '../models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
+import type { User } from '../models/user/user.schema';
 import { CommunityId, UserId } from '../value-objects';
 import { EventBus } from '../events/event-bus';
 import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
 import { uid } from 'uid';
 import { UserService } from './user.service';
 import { UserCommunityRoleService } from './user-community-role.service';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
 
 export interface CreateCommunityDto {
+  id?: string;
   name: string;
   description?: string;
   avatarUrl?: string;
@@ -35,6 +39,7 @@ export interface CreateCommunityDto {
     | 'volunteer'
     | 'corporate'
     | 'custom';
+  visibilityRules?: CommunityVisibilityRules;
   settings?: {
     iconUrl?: string;
     currencyNames?: {
@@ -71,9 +76,9 @@ export class CommunityService {
   private readonly logger = new Logger(CommunityService.name);
 
   constructor(
-    @InjectModel(Community.name)
+    @InjectModel(CommunitySchemaClass.name)
     private communityModel: Model<CommunityDocument>,
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
     @Inject(forwardRef(() => UserService))
@@ -85,12 +90,12 @@ export class CommunityService {
   async getCommunity(communityId: string): Promise<Community | null> {
     // Query by internal ID only
     const doc = await this.communityModel.findOne({ id: communityId }).lean();
-    return (doc as unknown) as Community;
+    return doc ? (doc as unknown as Community) : null;
   }
 
   async getCommunityByTypeTag(typeTag: string): Promise<Community | null> {
     const doc = await this.communityModel.findOne({ typeTag }).lean();
-    return (doc as unknown) as Community;
+    return doc ? (doc as unknown as Community) : null;
   }
 
   async onModuleInit() {
@@ -245,11 +250,11 @@ export class CommunityService {
       defaultMeritRules.quotaRecipients = ['superadmin', 'lead', 'participant'];
     }
 
-    // Special rules for "Support" (same as Team)
+    // Special rules for "Support"
     if (dto.typeTag === 'support') {
-      // Posting: Only Team Members and Lead
+      // Posting: Participants, Leads, and Superadmins can post (no team membership required)
       defaultPostingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
-      defaultPostingRules.requiresTeamMembership = true;
+      defaultPostingRules.requiresTeamMembership = false;
       // Voting: Team Members can vote
       defaultVotingRules.allowedRoles = ['superadmin', 'lead', 'participant'];
       // Merit rules: Viewers do NOT get daily quota in support groups
@@ -268,7 +273,7 @@ export class CommunityService {
     }
 
     const community = {
-      id: uid(),
+      id: dto.id || uid(),
       name: dto.name,
       description: dto.description,
       avatarUrl: dto.avatarUrl,
@@ -402,13 +407,13 @@ export class CommunityService {
   async isUserAdmin(communityId: string, userId: string): Promise<boolean> {
     // 1. Check global superadmin role
     const user = await this.userService.getUserById(userId);
-    if (user?.globalRole === 'superadmin') {
+    if (user?.globalRole === GLOBAL_ROLE_SUPERADMIN) {
       return true;
     }
 
     // 2. Check lead role in community
     const userRole = await this.userCommunityRoleService.getRole(userId, communityId);
-    if (userRole?.role === 'lead') {
+    if (userRole?.role === COMMUNITY_ROLE_LEAD) {
       return true;
     }
 

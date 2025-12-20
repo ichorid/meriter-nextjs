@@ -2,10 +2,12 @@ import { Injectable, Logger, forwardRef, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
-  UserCommunityRole,
+  UserCommunityRoleSchemaClass,
   UserCommunityRoleDocument,
 } from '../models/user-community-role/user-community-role.schema';
+import type { UserCommunityRole } from '../models/user-community-role/user-community-role.schema';
 import { CommunityService } from './community.service';
+import { COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
 import { uid } from 'uid';
 
 /**
@@ -19,7 +21,7 @@ export class UserCommunityRoleService {
   private readonly logger = new Logger(UserCommunityRoleService.name);
 
   constructor(
-    @InjectModel(UserCommunityRole.name)
+    @InjectModel(UserCommunityRoleSchemaClass.name)
     private userCommunityRoleModel: Model<UserCommunityRoleDocument>,
     @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,
@@ -119,7 +121,7 @@ export class UserCommunityRoleService {
             await this.communityService.getCommunityByTypeTag(pairedTypeTag);
           if (pairedCommunity) {
             // Only sync 'lead' role changes
-            if (role === 'lead') {
+            if (role === COMMUNITY_ROLE_LEAD) {
               // User is becoming lead - set lead in paired community
               this.logger.log(
                 `Syncing lead status: User ${userId} is now lead in ${community.typeTag}, setting lead in ${pairedTypeTag}`,
@@ -130,7 +132,7 @@ export class UserCommunityRoleService {
                 'lead',
                 true, // Skip sync to prevent recursion
               );
-            } else if (previousRole === 'lead') {
+            } else if (previousRole === COMMUNITY_ROLE_LEAD) {
               // User was lead and is now changing to another role - sync the change
               this.logger.log(
                 `Syncing role change: User ${userId} changed from lead to ${role} in ${community.typeTag}, updating ${pairedTypeTag}`,

@@ -233,4 +233,43 @@ export function handleAuthRedirect(returnTo?: string | null, fallbackUrl: string
   window.location.href = redirectUrl;
 }
 
+/**
+ * Session tracking utilities
+ * Used to distinguish between first-time visitors and returning users
+ * to avoid showing scary error messages to first-time users
+ */
+
+const PREVIOUS_SESSION_KEY = 'meriter_has_previous_session';
+
+/**
+ * Check if the user has had a previous successful authentication session
+ * @returns true if the user has previously authenticated, false otherwise
+ */
+export function hasPreviousSession(): boolean {
+  if (typeof localStorage === 'undefined') return false;
+  
+  try {
+    return localStorage.getItem(PREVIOUS_SESSION_KEY) === 'true';
+  } catch (error) {
+    // If localStorage is not available or access is denied, return false
+    return false;
+  }
+}
+
+/**
+ * Mark that the user has had a successful authentication session
+ * This flag persists across page reloads and browser sessions
+ * It will be cleared when clearAuthStorage() is called (e.g., on logout)
+ */
+export function setHasPreviousSession(): void {
+  if (typeof localStorage === 'undefined') return;
+  
+  try {
+    localStorage.setItem(PREVIOUS_SESSION_KEY, 'true');
+  } catch (error) {
+    // Silently fail if localStorage is not available or access is denied
+    console.warn('Failed to set previous session flag:', error);
+  }
+}
+
 

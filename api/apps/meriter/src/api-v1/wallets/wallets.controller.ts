@@ -28,10 +28,13 @@ import {
 } from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import {
-  Community,
+  CommunitySchemaClass,
   CommunityDocument,
 } from '../../domain/models/community/community.schema';
-import { User, UserDocument } from '../../domain/models/user/user.schema';
+import type { Community } from '../../domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../../domain/models/user/user.schema';
+import type { User } from '../../domain/models/user/user.schema';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_VIEWER, COMMUNITY_ROLE_LEAD } from '../../domain/common/constants/roles.constants';
 
 @Controller('api/v1')
 @UseGuards(UserGuard)
@@ -42,9 +45,9 @@ export class WalletsController {
     private readonly walletsService: WalletService,
     private readonly communityService: CommunityService,
     private readonly permissionService: PermissionService,
-    @InjectModel(Community.name)
+    @InjectModel(CommunitySchemaClass.name)
     private communityModel: Model<CommunityDocument>,
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
     @InjectConnection() private mongoose: Connection,
   ) {}
 
@@ -56,19 +59,50 @@ export class WalletsController {
     // Handle 'me' token for current user
     const actualUserId = userId === 'me' ? req.user.id : userId;
 
-    // Users can only see their own wallets
-    if (actualUserId !== req.user.id) {
-      throw new NotFoundError('User', userId);
-    }
-
     // Get user's community memberships (internal community IDs)
     const user = await this.userModel.findOne({ id: actualUserId }).lean();
     if (!user) {
       throw new NotFoundError('User', userId);
     }
 
-    // Check if user is superadmin
-    const isSuperadmin = user.globalRole === 'superadmin';
+    // Permission check: allow if user is viewing their own wallets, or if requester is superadmin/lead
+    const isViewingOwn = actualUserId === req.user.id;
+    let requestingUser: any = null;
+    let isSuperadminRequester = false;
+    let leadCommunityIds: string[] = [];
+
+    if (!isViewingOwn) {
+      // Check if requesting user is superadmin
+      requestingUser = await this.userModel.findOne({ id: req.user.id }).lean();
+      if (!requestingUser) {
+        throw new NotFoundError('User', req.user.id);
+      }
+
+      isSuperadminRequester = requestingUser.globalRole === GLOBAL_ROLE_SUPERADMIN;
+
+      // If not superadmin, check which communities the requester is a lead in
+      if (!isSuperadminRequester) {
+        // Get all communities where requester is a lead
+        const allCommunities = await this.communityModel.find({ isActive: true }).lean();
+        for (const community of allCommunities) {
+          const requesterRole = await this.permissionService.getUserRoleInCommunity(
+            req.user.id,
+            community.id,
+          );
+          if (requesterRole === COMMUNITY_ROLE_LEAD) {
+            leadCommunityIds.push(community.id);
+          }
+        }
+
+        // If requester is not a lead in any community, deny access
+        if (leadCommunityIds.length === 0) {
+          throw new NotFoundError('User', userId);
+        }
+      }
+    }
+
+    // Check if user is superadmin (for determining which communities they can see)
+    const isSuperadmin = user.globalRole === GLOBAL_ROLE_SUPERADMIN;
 
     let userCommunities: any[];
 
@@ -136,7 +170,15 @@ export class WalletsController {
 
     const wallets = await Promise.all(walletPromises);
 
-    return wallets.map((wallet) => {
+    // Filter wallets if requester is a lead (only show wallets for communities where they are leads)
+    let filteredWallets = wallets;
+    if (!isViewingOwn && !isSuperadminRequester && leadCommunityIds.length > 0) {
+      filteredWallets = wallets.filter((wallet) =>
+        leadCommunityIds.includes(wallet.getCommunityId.getValue()),
+      );
+    }
+
+    return filteredWallets.map((wallet) => {
       const snapshot = wallet.toSnapshot();
       return {
         ...snapshot,
@@ -156,10 +198,29 @@ export class WalletsController {
     // Handle 'me' token for current user
     const actualUserId = userId === 'me' ? req.user.id : userId;
 
-    // Users can only see their own wallets
+    // Permission check: allow if user is viewing their own wallet, or if requester is superadmin/lead
     if (actualUserId !== req.user.id) {
-      throw new NotFoundError('User', userId);
+      // Check if requesting user is superadmin
+      const requestingUser = await this.userModel.findOne({ id: req.user.id }).lean();
+      if (!requestingUser) {
+        throw new NotFoundError('User', req.user.id);
+      }
+
+      const isSuperadmin = requestingUser.globalRole === GLOBAL_ROLE_SUPERADMIN;
+
+      // Check if requesting user is a lead in this community
+      const requesterRole = await this.permissionService.getUserRoleInCommunity(
+        req.user.id,
+        communityId,
+      );
+      const isLead = requesterRole === COMMUNITY_ROLE_LEAD;
+
+      // Only allow if requester is superadmin or lead in this community
+      if (!isSuperadmin && !isLead) {
+        throw new NotFoundError('User', userId);
+      }
     }
+
     const wallet = await this.walletsService.getUserWallet(
       actualUserId,
       communityId,
@@ -194,7 +255,7 @@ export class WalletsController {
     const result = await this.walletsService.getUserTransactions(
       actualUserId,
       'all',
-      pagination.limit,
+      pagination.limit || 20,
       skip,
     );
     return {
@@ -214,13 +275,31 @@ export class WalletsController {
     // Handle 'me' token for current user
     const actualUserId = userId === 'me' ? req.user.id : userId;
 
-    // Users can only see their own quota
-    if (actualUserId !== req.user.id) {
-      throw new NotFoundError('User', userId);
-    }
-
     if (!communityId) {
       throw new BadRequestException('communityId is required');
+    }
+
+    // Permission check: allow if user is viewing their own quota, or if requester is superadmin/lead
+    if (actualUserId !== req.user.id) {
+      // Check if requesting user is superadmin
+      const requestingUser = await this.userModel.findOne({ id: req.user.id }).lean();
+      if (!requestingUser) {
+        throw new NotFoundError('User', req.user.id);
+      }
+
+      const isSuperadmin = requestingUser.globalRole === GLOBAL_ROLE_SUPERADMIN;
+
+      // Check if requesting user is a lead in this community
+      const requesterRole = await this.permissionService.getUserRoleInCommunity(
+        req.user.id,
+        communityId,
+      );
+      const isLead = requesterRole === COMMUNITY_ROLE_LEAD;
+
+      // Only allow if requester is superadmin or lead in this community
+      if (!isSuperadmin && !isLead) {
+        throw new NotFoundError('User', userId);
+      }
     }
 
     // Query community by internal ID
@@ -264,7 +343,7 @@ export class WalletsController {
     // Viewers get zero quota in all communities EXCEPT marathon-of-good (where they can vote with quota)
     // Future Vision communities don't use quota regardless of role
     if (
-      (userRole === 'viewer' && community.typeTag !== 'marathon-of-good') ||
+      (userRole === COMMUNITY_ROLE_VIEWER && community.typeTag !== 'marathon-of-good') ||
       community.typeTag === 'future-vision'
     ) {
       // Viewers (except in marathon-of-good) and Future Vision users have no quota
@@ -291,7 +370,7 @@ export class WalletsController {
     // Query votes, poll casts, and quota usage with amountQuota > 0 for this user in this community created after quotaStartTime
     // Use absolute value of amountQuota - both upvotes and downvotes consume quota
     const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
-      this.mongoose.db
+      (this.mongoose as any).db
         .collection('votes')
         .aggregate([
           {
@@ -315,7 +394,7 @@ export class WalletsController {
           },
         ])
         .toArray(),
-      this.mongoose.db
+      (this.mongoose as any).db
         .collection('poll_casts')
         .aggregate([
           {
@@ -339,7 +418,7 @@ export class WalletsController {
           },
         ])
         .toArray(),
-      this.mongoose.db
+      (this.mongoose as any).db
         .collection('quota_usage')
         .aggregate([
           {

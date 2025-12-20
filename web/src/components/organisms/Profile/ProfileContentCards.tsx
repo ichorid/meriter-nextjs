@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { FileText, MessageSquare, BarChart3, Briefcase } from 'lucide-react';
+import { FileText, MessageSquare, BarChart3 } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
 
 interface ProfileContentCardsProps {
@@ -11,7 +11,7 @@ interface ProfileContentCardsProps {
     publications: number;
     comments: number;
     polls: number;
-    projects: number;
+    projects?: number;
   };
   isLoading?: boolean;
 }
@@ -48,14 +48,6 @@ export function ProfileContentCards({
       color: 'text-base-content',
       bgColor: 'bg-base-200/50',
       route: `${routes.profile}/polls`,
-    },
-    {
-      label: t('hero.stats.projects'),
-      value: stats.projects,
-      icon: Briefcase,
-      color: 'text-base-content',
-      bgColor: 'bg-base-200/50',
-      route: `${routes.profile}/projects`,
     },
   ];
 

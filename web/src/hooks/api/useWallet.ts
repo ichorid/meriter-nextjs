@@ -97,6 +97,22 @@ export function useWallet(communityId?: string) {
   });
 }
 
+/**
+ * Hook to fetch wallet for another user (requires appropriate permissions: superadmin or lead in community)
+ */
+export function useOtherUserWallet(userId: string, communityId: string) {
+  return useQuery<Wallet>({
+    queryKey: ['wallet', 'user', userId, communityId],
+    queryFn: async () => {
+      if (!userId || !communityId) throw new Error('userId and communityId required');
+      const { usersApiV1 } = await import('@/lib/api/v1');
+      return usersApiV1.getUserWallet(userId, communityId);
+    },
+    enabled: !!userId && !!communityId,
+    staleTime: STALE_TIME.MEDIUM,
+  });
+}
+
 // Wallet controller for optimistic updates
 export function useWalletController() {
   const queryClient = useQueryClient();

@@ -7,22 +7,35 @@ import { useCommunity } from '@/hooks/api/useCommunities';
  * 
  * Edit permissions:
  * - Authors can edit their own posts/comments if:
- *   - Zero votes AND
+ *   - Zero votes AND zero comments AND
  *   - Within edit window (from community settings, default 7 days)
  * - Leads can edit any post/comment in their community (no restrictions)
  * - Superadmins can edit any post/comment (no restrictions)
  * 
  * Delete permissions:
- * - Authors can delete their own posts/comments if no votes
+ * - Authors can delete their own posts/comments if no votes and no comments
  * - Leads can delete any post/comment in their community
  * - Superadmins can delete any post/comment
+ * 
+ * @deprecated This hook is deprecated. Use API permissions from publication.permissions or comment.permissions instead.
+ * Permissions are now calculated server-side and embedded in API responses.
+ * This hook will be removed in a future major version.
  */
 export function useCanEditDelete(
   authorId: string | undefined,
   communityId: string | undefined,
   hasVotes: boolean = false,
-  createdAt?: string | Date
+  createdAt?: string | Date,
+  hasComments: boolean = false
 ) {
+  // Deprecation warning
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(
+      'useCanEditDelete is deprecated. Use API permissions from publication.permissions or comment.permissions instead. ' +
+      'Permissions are now calculated server-side and embedded in API responses.'
+    );
+  }
+
   const { user } = useAuth();
   const { data: userRoles } = useUserRoles(user?.id || '');
   const { data: community } = useCommunity(communityId || '');
@@ -53,17 +66,24 @@ export function useCanEditDelete(
     isWithinEditWindow = daysSinceCreation <= editWindowDays;
   }
 
-  // Edit: Authors can edit if zero votes and within time window, admins can always edit
-  const canEdit = isAdmin || (isAuthor && !hasVotes && isWithinEditWindow);
-  const canEditEnabled = isAdmin || (isAuthor && !hasVotes && isWithinEditWindow);
+  // Check if post has votes or comments (frozen state)
+  const isFrozen = hasVotes || hasComments;
   
-  // Delete: Authors can delete if no votes, admins can always delete
-  const canDelete = isAdmin || (isAuthor && !hasVotes);
+  // Edit: Show button if admin or author, but enable only if not frozen and within time window
+  // This allows buttons to be visible but disabled when frozen
+  const canEdit = isAdmin || isAuthor;
+  const canEditEnabled = isAdmin || (isAuthor && !isFrozen && isWithinEditWindow);
+  
+  // Delete: Show button if admin or author, but enable only if not frozen
+  // This allows buttons to be visible but disabled when frozen
+  const canDelete = isAdmin || isAuthor;
+  const canDeleteEnabled = isAdmin || (isAuthor && !isFrozen);
 
   return {
     canEdit,
     canEditEnabled,
     canDelete,
+    canDeleteEnabled,
     isAuthor: !!isAuthor,
     isAdmin: !!isAdmin,
     isLoading: !user || (!!user?.id && userRoles === undefined) || (!!communityId && community === undefined),

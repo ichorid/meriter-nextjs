@@ -12,36 +12,47 @@ import { Document } from 'mongoose';
  * 
  * Fields correspond to PollCastSchema in libs/shared-types/src/schemas.ts
  */
-export type PollCastDocument = PollCast & Document;
 
-@Schema({ collection: 'poll_casts', timestamps: true })
-export class PollCast {
-  @Prop({ required: true, unique: true })
+export interface PollCast {
   id: string;
-
-  @Prop({ required: true })
   pollId: string;
-
-  @Prop({ required: true })
   userId: string;
-
-  @Prop({ required: true })
   optionId: string; // Changed from optionIndex to optionId
-
-  @Prop({ required: true, default: 0, min: 0 })
   amountQuota: number;
-
-  @Prop({ required: true, default: 0, min: 0 })
   amountWallet: number;
-
-  @Prop({ required: true })
   communityId: string; // Added for consistency
-
-  @Prop({ required: true })
   createdAt: Date;
 }
 
-export const PollCastSchema = SchemaFactory.createForClass(PollCast);
+@Schema({ collection: 'poll_casts', timestamps: true })
+export class PollCastSchemaClass implements PollCast {
+  @Prop({ required: true, unique: true })
+  id!: string;
+
+  @Prop({ required: true })
+  pollId!: string;
+
+  @Prop({ required: true })
+  userId!: string;
+
+  @Prop({ required: true })
+  optionId!: string; // Changed from optionIndex to optionId
+
+  @Prop({ required: true, default: 0, min: 0 })
+  amountQuota!: number;
+
+  @Prop({ required: true, default: 0, min: 0 })
+  amountWallet!: number;
+
+  @Prop({ required: true })
+  communityId!: string; // Added for consistency
+
+  @Prop({ required: true })
+  createdAt!: Date;
+}
+
+export const PollCastSchema = SchemaFactory.createForClass(PollCastSchemaClass);
+export type PollCastDocument = PollCastSchemaClass & Document;
 
 // Add indexes for common queries
 PollCastSchema.index({ pollId: 1, createdAt: -1 });

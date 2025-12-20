@@ -15,7 +15,7 @@ export interface JwtPayload {
  * @returns The signed JWT token
  */
 export function signJWT(payload: JwtPayload, secret: string, expiration: string): string {
-  return jwt.sign(payload, secret, { expiresIn: expiration });
+  return jwt.sign(payload, secret, { expiresIn: expiration } as jwt.SignOptions);
 }
 
 /**

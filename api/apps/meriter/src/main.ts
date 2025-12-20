@@ -28,14 +28,19 @@ async function bootstrap() {
     logger.debug(`Google OAuth status: clientId=${!!googleClientId}, clientSecret=${!!googleClientSecret}, redirectUri=${!!googleRedirectUri}`);
   }
   
+  // Log Telegram bot configuration status (optional)
+  const botUsername = process.env.BOT_USERNAME;
+  const botToken = process.env.BOT_TOKEN;
+  
+  if (botUsername && botToken) {
+    logger.log('✅ Telegram bot configured');
+    logger.debug(`Telegram bot username: ${botUsername}`);
+  } else {
+    logger.warn('⚠️  Telegram bot not configured (optional)');
+    logger.debug(`Telegram bot status: username=${!!botUsername}, token=${!!botToken}`);
+  }
+  
   if (isProduction) {
-    const botUsername = process.env.BOT_USERNAME;
-    if (!botUsername || botUsername.trim() === '') {
-      logger.error('❌ BOT_USERNAME environment variable is required but not set');
-      logger.error('Application cannot start without BOT_USERNAME in production');
-      process.exit(1);
-    }
-    
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret || jwtSecret.trim() === '') {
       logger.error('❌ JWT_SECRET environment variable is required but not set');
@@ -86,7 +91,7 @@ async function bootstrap() {
 
   app.use(cookieParser());
   
-  const port = configService.get<number>('app.port');
+  const port = configService.get<number>('app.port') ?? 8002;
   await app.listen(port);
   logger.log(`Application is running on: http://localhost:${port}`);
 

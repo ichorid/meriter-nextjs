@@ -3,7 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { VotesController } from './votes.controller';
 import { DomainModule } from '../../domain.module';
 import {
-  Publication,
+  PublicationSchemaClass,
   PublicationSchema,
 } from '../../domain/models/publication/publication.schema';
 
@@ -11,7 +11,7 @@ import {
   imports: [
     DomainModule,
     MongooseModule.forFeature([
-      { name: Publication.name, schema: PublicationSchema },
+      { name: PublicationSchemaClass.name, schema: PublicationSchema },
     ]),
   ],
   controllers: [VotesController],

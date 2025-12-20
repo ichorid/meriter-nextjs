@@ -17,6 +17,7 @@ import { VoteService } from '../../domain/services/vote.service';
 import { UserSettingsService } from '../../domain/services/user-settings.service';
 import { UserUpdatesService } from '../../domain/services/user-updates.service';
 import { PublicationService } from '../../domain/services/publication.service';
+import { CommentService } from '../../domain/services/comment.service';
 import { UserService } from '../../domain/services/user.service';
 import { WalletService } from '../../domain/services/wallet.service';
 import { CommunityService } from '../../domain/services/community.service';
@@ -38,9 +39,10 @@ import {
 } from '../../../../../../libs/shared-types/dist/index';
 import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
 import {
-  Publication as PublicationSchema,
+  PublicationSchemaClass,
   PublicationDocument,
 } from '../../domain/models/publication/publication.schema';
+import type { Publication } from '../../domain/models/publication/publication.schema';
 
 @Controller('api/v1')
 @UseGuards(UserGuard, PermissionGuard)
@@ -50,6 +52,7 @@ export class VotesController {
   constructor(
     private readonly voteService: VoteService,
     private readonly publicationService: PublicationService,
+    private readonly commentService: CommentService,
     private readonly userService: UserService,
     private readonly walletService: WalletService,
     private readonly communityService: CommunityService,
@@ -57,7 +60,7 @@ export class VotesController {
     private readonly userUpdatesService: UserUpdatesService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     @InjectConnection() private readonly connection: Connection,
-    @InjectModel(PublicationSchema.name)
+    @InjectModel(PublicationSchemaClass.name)
     private readonly publicationModel: Model<PublicationDocument>,
   ) {}
 
@@ -87,6 +90,10 @@ export class VotesController {
     const quotaStartTime = community.lastQuotaResetAt
       ? new Date(community.lastQuotaResetAt)
       : today;
+
+    if (!this.connection.db) {
+      throw new Error('Database connection not available');
+    }
 
     const [votesUsed, quotaUsageUsed] = await Promise.all([
       this.connection.db
@@ -127,8 +134,8 @@ export class VotesController {
         .toArray(),
     ]);
 
-    const votesTotal = votesUsed.length > 0 ? votesUsed[0].total : 0;
-    const quotaUsageTotal = quotaUsageUsed.length > 0 ? quotaUsageUsed[0].total : 0;
+    const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
+    const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
     const used = votesTotal + quotaUsageTotal;
     return Math.max(0, dailyQuota - used);
   }
@@ -158,6 +165,7 @@ export class VotesController {
     communityId: string,
     community: any,
     comment: string,
+    images?: string[],
   ): Promise<any> {
     // Validate that quota is not used for downvotes
     if (direction === 'down' && quotaAmount > 0) {
@@ -174,6 +182,7 @@ export class VotesController {
       direction,
       comment,
       communityId,
+      images,
     );
 
     // Deduct from wallet: only walletAmount is deducted from wallet balance
@@ -286,7 +295,14 @@ export class VotesController {
     community: any,
     voterId: string,
   ): Promise<void> {
-    const beneficiaryId = publication.getEffectiveBeneficiary()?.getValue();
+    try {
+      this.logger.log(`[awardMeritsToBeneficiary] START: publicationId=${publication?.getId?.getValue()}, amount=${amount}, voterId=${voterId}`);
+      const effectiveBeneficiary = publication.getEffectiveBeneficiary();
+      if (!effectiveBeneficiary) {
+        this.logger.warn(`[awardMeritsToBeneficiary] No effective beneficiary found for publication ${publication?.getId?.getValue()}`);
+        return;
+      }
+      const beneficiaryId = effectiveBeneficiary.getValue();
     if (!beneficiaryId) {
       return;
     }
@@ -345,17 +361,23 @@ export class VotesController {
       return;
     }
 
-    // For other communities (not marathon-of-good, not future-vision), use normal merit awarding
-    // This will credit the original community wallet
-    await this.creditUserWithConversion(
-      beneficiaryId,
-      communityId,
-      amount,
-      community,
-      'publication_vote',
-      publication.getId.getValue(),
-      `Merits from vote on publication ${publication.getId.getValue()}`,
-    );
+      // For other communities (not marathon-of-good, not future-vision), use normal merit awarding
+      // This will credit the original community wallet
+      this.logger.log(`[awardMeritsToBeneficiary] Crediting user with conversion: beneficiaryId=${beneficiaryId}, amount=${amount}`);
+      await this.creditUserWithConversion(
+        beneficiaryId,
+        communityId,
+        amount,
+        community,
+        'publication_vote',
+        publication.getId.getValue(),
+        `Merits from vote on publication ${publication.getId.getValue()}`,
+      );
+      this.logger.log(`[awardMeritsToBeneficiary] SUCCESS: Awarded ${amount} merits to ${beneficiaryId}`);
+    } catch (error) {
+      this.logger.error(`[awardMeritsToBeneficiary] ERROR: ${error?.message || 'Unknown error'}`, error?.stack);
+      throw error; // Re-throw to be caught by caller
+    }
   }
 
   /**
@@ -406,8 +428,11 @@ export class VotesController {
 
     // Marathon of Good: Block wallet voting on publications/comments (quota only)
     // Future Vision: Block quota voting on publications/comments (wallet only)
+    // Support communities: Allow both quota and wallet voting (like regular communities)
     // Polls are handled separately and always use wallet
     if (targetType && (targetType === 'publication' || targetType === 'vote')) {
+      const isSupportCommunity = community?.typeTag === 'support';
+      
       if (isMarathonOfGood && walletAmount > 0) {
         throw new BadRequestException(
           'Marathon of Good only allows quota voting on posts and comments. Please use daily quota to vote.',
@@ -418,8 +443,9 @@ export class VotesController {
           'Future Vision only allows wallet voting on posts and comments. Please use wallet merits to vote.',
         );
       }
-      // For regular groups (non-special), reject wallet voting
-      if (!isSpecialGroup && walletAmount > 0) {
+      // For regular groups (non-special, non-support), reject wallet voting
+      // Support communities are treated like regular communities for voting purposes
+      if (!isSpecialGroup && !isSupportCommunity && walletAmount > 0) {
         throw new BadRequestException(
           'Voting with permanent wallet merits is only allowed in special groups (Marathon of Good and Future Vision). Please use daily quota to vote on posts and comments.',
         );
@@ -478,6 +504,8 @@ export class VotesController {
     communityId: string;
     direction: 'up' | 'down';
     absoluteAmount: number;
+    quotaAmount: number;
+    walletAmount: number;
   }> {
     // Get community ID based on target type
     let communityId: string;
@@ -505,14 +533,20 @@ export class VotesController {
     }
 
     // Validate comment is provided
+    // Note: Comment is optional in the schema but required by business logic
     const comment = (createDto as any).comment?.trim() || '';
     const commentRequiredMessage =
       targetType === 'publication'
         ? 'Comment is required'
         : 'Comment is required when voting on a vote';
     if (!comment) {
+      this.logger.warn(`[handleVoteCreation] Missing comment: targetType=${targetType}, targetId=${targetId}, userId=${req.user?.id}, dto=${JSON.stringify(createDto)}`);
       throw new BadRequestException(commentRequiredMessage);
     }
+    this.logger.log(`[handleVoteCreation] Comment validated: length=${comment.length}, targetType=${targetType}, targetId=${targetId}`);
+    
+    // Get images from DTO
+    const images = (createDto as any).images || [];
 
     // Validate and process vote amounts (quotaAmount + walletAmount)
     const { quotaAmount, walletAmount, totalAmount, direction } =
@@ -537,9 +571,10 @@ export class VotesController {
       communityId,
       community,
       comment,
+      images,
     );
 
-    return { vote, communityId, direction, absoluteAmount };
+    return { vote, communityId, direction, absoluteAmount, quotaAmount, walletAmount };
   }
 
   @Post('publications/:id/votes')
@@ -550,6 +585,7 @@ export class VotesController {
     @Body() createDto: VoteWithCommentDto,
     @Req() req: any,
   ) {
+    this.logger.log(`[votePublication] START: publicationId=${id}, userId=${req.user?.id}, dto=${JSON.stringify(createDto)}`);
     // Get publication document directly from DB to check postType and isProject
     const publicationDoc = await this.publicationModel.findOne({ id }).lean();
     if (!publicationDoc) {
@@ -572,40 +608,43 @@ export class VotesController {
       throw new NotFoundError('Publication', id);
     }
 
-    const { vote, communityId, direction, absoluteAmount } =
-      await this.handleVoteCreation('publication', id, createDto, req, {
-        sendNotification: true,
-        updatePublicationMetrics: true,
-      });
+    let vote, communityId, direction, absoluteAmount, quotaAmount, walletAmount;
+    try {
+      this.logger.log(`[votePublication] Calling handleVoteCreation for publicationId=${id}, userId=${req.user?.id}`);
+      ({ vote, communityId, direction, absoluteAmount, quotaAmount, walletAmount } =
+        await this.handleVoteCreation('publication', id, createDto, req, {
+          sendNotification: true,
+          updatePublicationMetrics: true,
+        }));
+      this.logger.log(`[votePublication] handleVoteCreation succeeded: voteId=${vote?.id}, direction=${direction}, absoluteAmount=${absoluteAmount}, quotaAmount=${quotaAmount}, walletAmount=${walletAmount}`);
+    } catch (error) {
+      this.logger.error(`[votePublication] handleVoteCreation failed: ${error?.message || 'Unknown error'}`, error?.stack);
+      throw error;
+    }
 
     // Update publication metrics to reflect the vote immediately
-    await this.publicationService.voteOnPublication(
-      id,
-      req.user.id,
-      absoluteAmount,
-      direction,
-    );
-
-    // Award merits to beneficiary if this is an upvote
-    // According to concept: "All merits collected by posts with good deeds go to the wallet of the Team Representative who published the post"
-    // Note: Self-votes (when voter is the effective beneficiary) do not award merits
-    if (direction === 'up' && absoluteAmount > 0) {
-      // Get community for currency info
-      const community = await this.communityService.getCommunity(communityId);
-      if (community) {
-        await this.awardMeritsToBeneficiary(
-          publication,
-          communityId,
-          absoluteAmount,
-          community,
-          req.user.id, // Pass voter ID to check for self-votes
-        );
-      }
+    try {
+      this.logger.log(`[votePublication] Calling publicationService.voteOnPublication for publicationId=${id}`);
+      await this.publicationService.voteOnPublication(
+        id,
+        req.user.id,
+        absoluteAmount,
+        direction,
+      );
+      this.logger.log(`[votePublication] publicationService.voteOnPublication succeeded`);
+    } catch (error) {
+      this.logger.error(`[votePublication] publicationService.voteOnPublication failed: ${error.message}`, error.stack);
+      throw error;
     }
+
+    // Automatic merit crediting has been disabled
+    // Merits are now only credited when users manually withdraw from their publications/comments
+    // This allows users to control when they convert accumulated votes to permanent merits
 
     // Immediate notification if enabled for beneficiary
     try {
-      const beneficiaryId = publication.getEffectiveBeneficiary()?.getValue();
+      const effectiveBeneficiary = publication.getEffectiveBeneficiary();
+      const beneficiaryId = effectiveBeneficiary ? effectiveBeneficiary.getValue() : null;
       if (beneficiaryId) {
         const settings =
           await this.userSettingsService.getOrCreate(beneficiaryId);
@@ -684,7 +723,7 @@ export class VotesController {
 
     const pagination = PaginationHelper.parseOptions(query);
     const skip = PaginationHelper.getSkip(pagination);
-    const limit = pagination.limit;
+    const limit = pagination.limit || 20;
 
     // Get votes on this vote
     const votes = await this.voteService.getVotesOnVote(id);
@@ -738,6 +777,89 @@ export class VotesController {
     );
   }
 
+  /**
+   * Process withdrawal and credit wallet
+   * Handles marathon-of-good → future-vision bridge
+   */
+  private async processWithdrawal(
+    beneficiaryId: string,
+    publicationCommunityId: string,
+    publicationId: string,
+    amount: number,
+    referenceType: 'publication_withdrawal' | 'comment_withdrawal' | 'vote_withdrawal',
+  ): Promise<{ targetCommunityId: string; currency: { singular: string; plural: string; genitive: string } }> {
+    const publicationCommunity = await this.communityService.getCommunity(publicationCommunityId);
+    if (!publicationCommunity) {
+      throw new NotFoundError('Community', publicationCommunityId);
+    }
+
+    // Check if publication is in marathon-of-good - if so, credit Future Vision wallet
+    if (publicationCommunity.typeTag === 'marathon-of-good') {
+      const futureVisionCommunity =
+        await this.communityService.getCommunityByTypeTag('future-vision');
+
+      if (!futureVisionCommunity) {
+        throw new NotFoundError('Community', 'future-vision');
+      }
+
+      const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+
+      // Credit Future Vision wallet
+      await this.walletService.addTransaction(
+        beneficiaryId,
+        futureVisionCommunity.id,
+        'credit',
+        amount,
+        'personal',
+        referenceType,
+        publicationId,
+        fvCurrency,
+        `Withdrawal from ${referenceType.replace('_withdrawal', '')} ${publicationId} (Marathon of Good → Future Vision)`,
+      );
+
+      this.logger.log(
+        `Withdrew ${amount} merits to beneficiary ${beneficiaryId} in Future Vision (community: ${futureVisionCommunity.id}) from ${referenceType.replace('_withdrawal', '')} ${publicationId}`,
+      );
+
+      return {
+        targetCommunityId: futureVisionCommunity.id,
+        currency: fvCurrency,
+      };
+    }
+
+    // For other communities, credit the publication's community wallet
+    const currency = publicationCommunity.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+
+    await this.walletService.addTransaction(
+      beneficiaryId,
+      publicationCommunityId,
+      'credit',
+      amount,
+      'personal',
+      referenceType,
+      publicationId,
+      currency,
+      `Withdrawal from ${referenceType.replace('_withdrawal', '')} ${publicationId}`,
+    );
+
+    this.logger.log(
+      `Withdrew ${amount} merits to beneficiary ${beneficiaryId} in community ${publicationCommunityId} from ${referenceType.replace('_withdrawal', '')} ${publicationId}`,
+    );
+
+    return {
+      targetCommunityId: publicationCommunityId,
+      currency,
+    };
+  }
+
   @Post('publications/:id/withdraw')
   @ZodValidation(WithdrawAmountDtoSchema)
   async withdrawFromPublication(
@@ -745,11 +867,78 @@ export class VotesController {
     @Body() body: any,
     @Req() req: any,
   ) {
-    // Withdrawal feature has been disabled
-    // Merits are now automatically credited to the beneficiary's wallet when publications receive upvotes
-    throw new BadRequestException(
-      'Withdrawal from publications is disabled. Merits are automatically credited to your wallet when your publication receives upvotes.',
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new BadRequestException('User not authenticated');
+    }
+
+    const amount = body.amount;
+    if (!amount || amount <= 0) {
+      throw new BadRequestException('Withdrawal amount must be greater than 0');
+    }
+
+    // Get publication
+    const publication = await this.publicationService.getPublication(id);
+    if (!publication) {
+      throw new NotFoundError('Publication', id);
+    }
+
+    // Validate user can withdraw
+    const canWithdraw = await this.voteService.canUserWithdraw(
+      userId,
+      'publication',
+      id,
     );
+    if (!canWithdraw) {
+      throw new BadRequestException('You are not authorized to withdraw from this publication');
+    }
+
+    // Get current score
+    const currentScore = publication.getMetrics.score;
+    if (currentScore <= 0) {
+      throw new BadRequestException('No votes available to withdraw');
+    }
+
+    // Check total already withdrawn
+    const totalWithdrawn = await this.walletService.getTotalWithdrawnByReference(
+      'publication_withdrawal',
+      id,
+    );
+
+    // Calculate available amount
+    const availableAmount = currentScore - totalWithdrawn;
+    if (amount > availableAmount) {
+      throw new BadRequestException(
+        `Insufficient votes to withdraw. Available: ${availableAmount}, Requested: ${amount}`,
+      );
+    }
+
+    // Get effective beneficiary
+    const effectiveBeneficiary = publication.getEffectiveBeneficiary();
+    const beneficiaryId = effectiveBeneficiary.getValue();
+
+    // Process withdrawal (handles marathon bridge)
+    const communityId = publication.getCommunityId.getValue();
+    const { targetCommunityId } = await this.processWithdrawal(
+      beneficiaryId,
+      communityId,
+      id,
+      amount,
+      'publication_withdrawal',
+    );
+
+    // Reduce publication score
+    await this.publicationService.reduceScore(id, amount);
+
+    // Get updated wallet balance
+    const wallet = await this.walletService.getWallet(beneficiaryId, targetCommunityId);
+    const balance = wallet?.balance || 0;
+
+    return ApiResponseHelper.successResponse({
+      amount,
+      balance,
+      message: 'Withdrawal successful',
+    });
   }
 
   @Post('votes/:id/withdraw')
@@ -759,11 +948,108 @@ export class VotesController {
     @Body() body: any,
     @Req() req: any,
   ) {
-    // Withdrawal feature has been disabled
-    // Merits are now automatically credited to the beneficiary's wallet when comments/votes receive upvotes
-    throw new BadRequestException(
-      'Withdrawal from comments/votes is disabled. Merits are automatically credited to your wallet when your content receives upvotes.',
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new BadRequestException('User not authenticated');
+    }
+
+    const amount = body.amount;
+    if (!amount || amount <= 0) {
+      throw new BadRequestException('Withdrawal amount must be greater than 0');
+    }
+
+    // Get vote (which represents a comment)
+    const vote = await this.voteService.getVoteById(id);
+    if (!vote) {
+      throw new NotFoundError('Vote', id);
+    }
+
+    // Validate user can withdraw
+    const canWithdraw = await this.voteService.canUserWithdraw(
+      userId,
+      'vote',
+      id,
     );
+    if (!canWithdraw) {
+      throw new BadRequestException('You are not authorized to withdraw from this comment');
+    }
+
+    // Get comment to get its score and find the publication
+    const comment = await this.commentService.getComment(id);
+    if (!comment) {
+      throw new NotFoundError('Comment', id);
+    }
+
+    // Get current score
+    const currentScore = comment.getScore();
+    if (currentScore <= 0) {
+      throw new BadRequestException('No votes available to withdraw');
+    }
+
+    // Check total already withdrawn
+    const totalWithdrawn = await this.walletService.getTotalWithdrawnByReference(
+      'vote_withdrawal',
+      id,
+    );
+
+    // Calculate available amount
+    const availableAmount = currentScore - totalWithdrawn;
+    if (amount > availableAmount) {
+      throw new BadRequestException(
+        `Insufficient votes to withdraw. Available: ${availableAmount}, Requested: ${amount}`,
+      );
+    }
+
+    // Find the root publication to get the community
+    let publicationId: string | null = null;
+    let currentComment = comment;
+    let depth = 0;
+    while (currentComment.getTargetType() === 'comment' && depth < 20) {
+      const parentComment = await this.commentService.getComment(currentComment.getTargetId());
+      if (!parentComment) break;
+      currentComment = parentComment;
+      depth++;
+    }
+    if (currentComment.getTargetType() === 'publication') {
+      publicationId = currentComment.getTargetId();
+    }
+
+    if (!publicationId) {
+      throw new BadRequestException('Could not find publication for this comment');
+    }
+
+    // Get publication to determine community
+    const publication = await this.publicationService.getPublication(publicationId);
+    if (!publication) {
+      throw new NotFoundError('Publication', publicationId);
+    }
+
+    const communityId = publication.getCommunityId.getValue();
+
+    // Get effective beneficiary (comment author)
+    const beneficiaryId = comment.getAuthorId.getValue();
+
+    // Process withdrawal (handles marathon bridge)
+    const { targetCommunityId } = await this.processWithdrawal(
+      beneficiaryId,
+      communityId,
+      id,
+      amount,
+      'vote_withdrawal',
+    );
+
+    // Reduce comment score
+    await this.commentService.reduceScore(id, amount);
+
+    // Get updated wallet balance
+    const wallet = await this.walletService.getWallet(beneficiaryId, targetCommunityId);
+    const balance = wallet?.balance || 0;
+
+    return ApiResponseHelper.successResponse({
+      amount,
+      balance,
+      message: 'Withdrawal successful',
+    });
   }
 
 }

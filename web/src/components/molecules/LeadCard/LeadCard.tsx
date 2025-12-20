@@ -5,6 +5,7 @@ import { ChevronRight } from 'lucide-react';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { Badge } from '@/components/atoms/Badge';
 import { useTranslations } from 'next-intl';
+import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
 
 interface LeadCardProps {
     id: string;
@@ -17,6 +18,12 @@ interface LeadCardProps {
     showRoleChip?: boolean;
     hideTeamInfo?: boolean;
     onClick?: () => void;
+    permanentMerits?: number;
+    quota?: {
+        dailyQuota: number;
+        remainingToday: number;
+        usedToday: number;
+    };
 }
 
 export const LeadCard: React.FC<LeadCardProps> = ({
@@ -30,8 +37,11 @@ export const LeadCard: React.FC<LeadCardProps> = ({
     showRoleChip = false,
     hideTeamInfo = false,
     onClick,
+    permanentMerits,
+    quota,
 }) => {
     const t = useTranslations('common');
+    const tCommon = useTranslations('common');
     const Component = onClick ? 'button' : 'div';
 
     // Get first team name or empty string
@@ -118,6 +128,31 @@ export const LeadCard: React.FC<LeadCardProps> = ({
                 {totalMerits !== undefined && (
                     <div className="text-xs leading-[120%] text-base-content/60">
                         {meritsDisplay} merits
+                    </div>
+                )}
+                
+                {/* Permanent Merits and Quota */}
+                {(permanentMerits !== undefined || quota) && (
+                    <div className="flex items-center gap-2 mt-1">
+                        {permanentMerits !== undefined && (
+                            <div className="text-xs leading-[120%] text-base-content/60">
+                                <span className="text-base-content/60">{tCommon('permanentMerits')}: </span>
+                                <span className="font-semibold text-base-content">{permanentMerits.toLocaleString()}</span>
+                            </div>
+                        )}
+                        {quota && quota.dailyQuota > 0 && (
+                            <div className="flex items-center gap-1">
+                                <DailyQuotaRing
+                                    remaining={quota.remainingToday}
+                                    max={quota.dailyQuota}
+                                    className="w-4 h-4"
+                                    asDiv={true}
+                                />
+                                <span className="text-xs leading-[120%] text-base-content/60">
+                                    {quota.remainingToday}/{quota.dailyQuota}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

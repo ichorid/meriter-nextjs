@@ -3,6 +3,7 @@ import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { PublicationService } from './publication.service';
 import { VoteService } from './vote.service';
+import type { Vote } from '../models/vote/vote.schema';
 
 export interface UpdateEventItem {
   id: string;
@@ -38,7 +39,7 @@ export class UserUpdatesService {
 
     // Votes on user's publications/votes within window
     const voteUpdatesRaw = (userPublicationIds.length > 0 || userVoteIds.length > 0)
-      ? await this.mongoose.db.collection('votes')
+      ? await this.mongoose.db!.collection('votes')
           .find({
             $or: [
               ...(userPublicationIds.length > 0 ? [{ targetType: 'publication', targetId: { $in: userPublicationIds } }] : []),
@@ -51,7 +52,7 @@ export class UserUpdatesService {
       : [];
 
     // Beneficiary publications within window
-    const beneficiaryPublications = await this.mongoose.db.collection('publications')
+    const beneficiaryPublications = await this.mongoose.db!.collection('publications')
       .find({ beneficiaryId: userId, createdAt: { $gte: from, $lt: to } })
       .project({ id: 1, authorId: 1, communityId: 1, createdAt: 1 })
       .toArray();
@@ -69,9 +70,9 @@ export class UserUpdatesService {
           const targetVote = await this.voteService.getVoteById(vote.targetId);
           if (targetVote) {
             // Traverse vote chain to find root publication
-            let currentVote = targetVote;
+            let currentVote: Vote | null = targetVote;
             let depth = 0;
-            while (currentVote.targetType === 'vote' && depth < 20) {
+            while (currentVote && currentVote.targetType === 'vote' && depth < 20) {
               currentVote = await this.voteService.getVoteById(currentVote.targetId);
               if (!currentVote) break;
               depth++;
@@ -115,7 +116,7 @@ export class UserUpdatesService {
     // Fetch actors info
     const actorIds = Array.from(new Set(all.map(x => x.actor.id)));
     if (actorIds.length > 0) {
-      const actors = await this.mongoose.db
+      const actors = await this.mongoose.db!
         .collection('users')
         .find({ id: { $in: actorIds } })
         .project({ id: 1, displayName: 1, username: 1, avatarUrl: 1 })

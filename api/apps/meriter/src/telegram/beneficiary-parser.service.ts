@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { User, UserDocument } from '../domain/models/user/user.schema';
-import { Community, CommunityDocument } from '../domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../domain/models/user/user.schema';
+import type { User } from '../domain/models/user/user.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../domain/models/community/community.schema';
+import type { Community } from '../domain/models/community/community.schema';
 
 export interface BeneficiaryParseResult {
   beneficiary: {
@@ -19,8 +21,8 @@ export class BeneficiaryParserService {
   private readonly logger = new Logger(BeneficiaryParserService.name);
 
   constructor(
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
+    @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
+    @InjectModel(CommunitySchemaClass.name) private communityModel: Model<CommunityDocument>,
   ) {}
 
   async parseBeneficiary(messageText: string, communityId: string): Promise<BeneficiaryParseResult> {

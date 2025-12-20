@@ -65,11 +65,16 @@
         "backToCommunity": "Back to Community",
         "urlPlaceholder": "https://...",
         "selectOption": "Select an option",
-        "hashtagPlaceholder": "Type hashtag and press Enter",
-        "hashtagRules": "English only, lowercase, numbers, underscore",
+        "hashtagPlaceholder": "Type hashtag and press Enter (e.g., #mytag or mytag)",
+        "hashtagRules": "Allowed: letters, numbers, underscore. # is optional and will be removed automatically",
+        "hashtagInvalidChars": "Invalid characters will be removed",
+        "hashtagPreview": "Preview",
         "deleteConfirmation": {
             "title": "Confirm Deletion",
             "message": "Are you sure you want to delete this {itemType}? This action cannot be undone."
+        },
+        "ariaLabels": {
+            "settings": "Settings"
         }
     },
     "home": {
@@ -214,6 +219,16 @@
         "inReplyTo": "In reply to:",
         "thisPost": "this post",
         "logout": "Logout",
+        "editDisabled": {
+            "hasVotes": "Cannot edit: post has votes",
+            "hasComments": "Cannot edit: post has comments",
+            "timeWindowExpired": "Cannot edit: time window expired or insufficient permissions"
+        },
+        "deleteDisabled": {
+            "hasVotes": "Cannot delete: post has votes",
+            "hasComments": "Cannot delete: post has comments",
+            "insufficientPermissions": "Cannot delete: insufficient permissions"
+        },
         "voteDisabled": {
             "default": "You do not have permission to vote on this content",
             "notLoggedIn": "You must be logged in to vote",
@@ -391,10 +406,14 @@
         "downvoteQuota": "Vote negatively for {used}/{total} daily quota",
         "downvoteBalance": "Vote negatively for {amount} from Balance",
         "sliderHint": "Move the slider to choose the number of votes you want to give.",
+        "noVotesAvailable": "No votes available",
         "adjustSliderToVote": "Adjust slider to vote",
         "addCommentOptional": "Add a comment (optional)",
         "commentHint": "Tell us why you gave this rating. We value your opinion",
         "reasonRequired": "A reason for your vote is required",
+        "maxVoteAmount": "Max: {max}",
+        "requiresVoteAmount": "Requires vote of at least +1/-1",
+        "requiresComment": "Requires comment",
         "voteUp": "Vote up",
         "voteDown": "Vote down",
         "close": "close[x]",
@@ -638,7 +657,9 @@
                 "hashtags": "Hashtags",
                 "hashtagsPlaceholder": "Add hashtags",
                 "hashtagsHelp": "Add up to 10 hashtags",
-                "characters": "characters"
+                "characters": "characters",
+                "images": "Images",
+                "imagesHelp": "Upload up to 10 images for your post"
             },
             "postTypes": {
                 "basic": "Basic",

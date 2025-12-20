@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, use, useMemo } from "react";
 import { useQueryClient } from '@tanstack/react-query';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { CommunityTopBar } from '@/components/organisms/ContextTopBar';
 import { useRouter, useSearchParams } from "next/navigation";
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
 import { FabMenu } from "@/components/molecules/FabMenu/FabMenu";
@@ -412,6 +413,7 @@ const CommunityPage = ({ params }: { params: Promise<{ id: string }> }) => {
             activeCommentHook={[activeCommentHook, setActiveCommentHook]}
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
+            stickyHeader={<CommunityTopBar communityId={chatId} asStickyHeader={true} />}
         >
             {/* Community Hero Card - Twitter-style with cover */}
             {comms && (

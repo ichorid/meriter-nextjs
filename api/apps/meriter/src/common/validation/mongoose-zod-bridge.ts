@@ -51,7 +51,7 @@ export function addZodValidationHook<T>(
 ): void {
   mongooseSchema.pre('save', async function (next) {
     try {
-      validateMongooseDocument(zodSchema, this, context);
+      validateMongooseDocument(zodSchema, this as Document, context);
       next();
     } catch (error) {
       if (error instanceof MongooseValidationError) {
@@ -61,9 +61,9 @@ export function addZodValidationHook<T>(
           document: error.document.id,
           context,
         });
-        next(error);
+        next(error as Error);
       } else {
-        next(error);
+        next(error as Error);
       }
     }
   });

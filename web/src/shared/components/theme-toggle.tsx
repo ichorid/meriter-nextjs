@@ -1,19 +1,18 @@
 'use client';
 
 import { useTheme } from '../lib/theme-provider';
-import { initDataRaw, useSignal } from '@telegram-apps/sdk-react';
 import { Smartphone, Sun, Moon } from 'lucide-react';
 
 export function ThemeToggle() {
     const { theme, setTheme, resolvedTheme } = useTheme();
-    const rawData = useSignal(initDataRaw);
-    const isInTelegram = !!rawData;
+    
+    // Check if Telegram theme is active
+    const isTelegramTheme = typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp?.themeParams;
 
     const cycleTheme = () => {
-        if (isInTelegram) {
+        if (isTelegramTheme) {
             // In Telegram, show a message that theme follows Telegram settings
             console.log('🎨 Theme toggle clicked in Telegram - theme follows Telegram settings');
-            // You could show a toast or alert here
             return;
         }
         
@@ -27,7 +26,7 @@ export function ThemeToggle() {
     };
 
     const getIcon = () => {
-        if (isInTelegram) {
+        if (isTelegramTheme) {
             return Smartphone; // Different icon to indicate Telegram mode
         }
         if (theme === 'auto') {
@@ -37,7 +36,7 @@ export function ThemeToggle() {
     };
 
     const getLabel = () => {
-        if (isInTelegram) {
+        if (isTelegramTheme) {
             return `Telegram (${resolvedTheme})`;
         }
         if (theme === 'auto') {
@@ -53,7 +52,7 @@ export function ThemeToggle() {
             onClick={cycleTheme}
             className="btn btn-ghost btn-circle"
             aria-label={`Theme: ${getLabel()}`}
-            title={`Theme: ${getLabel()}${isInTelegram ? ' - Follows Telegram settings' : ''}`}
+            title={`Theme: ${getLabel()}${isTelegramTheme ? ' - Follows Telegram settings' : ''}`}
         >
             <Icon className="w-5 h-5" />
         </button>

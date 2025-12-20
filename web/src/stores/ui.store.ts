@@ -2,12 +2,13 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 
 export type VotingTargetType = 'publication' | 'comment' | null;
-export type WithdrawTargetType = 'publication-topup' | 'comment-topup' | null;
+export type WithdrawTargetType = 'publication' | 'comment' | 'vote' | 'publication-topup' | 'comment-topup' | null;
 
 interface VotingFormData {
   comment: string;
   delta: number;
   error: string;
+  images?: string[];
 }
 
 interface WithdrawFormData {
@@ -87,7 +88,7 @@ export const useUIStore = create<UIState & UIActions>()(
           activeVotingTarget: targetId,
           votingTargetType: targetType,
           votingMode: mode,
-          activeVotingFormData: { comment: '', delta: 0, error: '' }
+          activeVotingFormData: { comment: '', delta: 0, error: '', images: [] }
         }),
         closeVotingPopup: () => set({
           activeVotingTarget: null,
@@ -97,7 +98,7 @@ export const useUIStore = create<UIState & UIActions>()(
         updateVotingFormData: (data) => set((state) => ({
           activeVotingFormData: state.activeVotingFormData
             ? { ...state.activeVotingFormData, ...data }
-            : { comment: '', delta: 0, error: '', ...data }
+            : { comment: '', delta: 0, error: '', images: [], ...data }
         })),
         openWithdrawPopup: (targetId, targetType, maxWithdrawAmount, maxTopUpAmount) => set({
           activeWithdrawTarget: targetId,

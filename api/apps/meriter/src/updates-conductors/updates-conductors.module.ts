@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import {
-  UpdatesConductor,
+  UpdatesConductorSchemaClass,
   UpdatesConductorSchema,
 } from './model/updates-conductor.schema';
 import { UpdatesConductorsService } from './updates-conductors.service';
@@ -15,7 +15,7 @@ import { DatabaseModule } from '../common/database/database.module';
     ScheduleModule.forRoot(),
     DatabaseModule,
     MongooseModule.forFeature([
-      { name: UpdatesConductor.name, schema: UpdatesConductorSchema }
+      { name: UpdatesConductorSchemaClass.name, schema: UpdatesConductorSchema }
     ]),
     DomainModule,
   ],

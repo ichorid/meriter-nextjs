@@ -12,21 +12,35 @@ import { Document } from 'mongoose';
  * 
  * Fields correspond to WalletSchema in libs/shared-types/src/schemas.ts
  */
-export type WalletDocument = Wallet & Document;
+
+export interface WalletCurrency {
+  singular: string;
+  plural: string;
+  genitive: string;
+}
+
+export interface Wallet {
+  id: string;
+  userId: string;
+  communityId: string;
+  balance: number;
+  currency: WalletCurrency;
+  lastUpdated: Date;
+}
 
 @Schema({ collection: 'wallets', timestamps: true })
-export class Wallet {
+export class WalletSchemaClass implements Wallet {
   @Prop({ required: true, unique: true })
-  id: string;
+  id!: string;
 
   @Prop({ required: true })
-  userId: string;
+  userId!: string;
 
   @Prop({ required: true })
-  communityId: string;
+  communityId!: string;
 
   @Prop({ required: true, default: 0 })
-  balance: number;
+  balance!: number;
 
   @Prop({
     type: {
@@ -36,17 +50,14 @@ export class Wallet {
     },
     required: true,
   })
-  currency: {
-    singular: string;
-    plural: string;
-    genitive: string;
-  };
+  currency!: WalletCurrency;
 
   @Prop({ required: true })
-  lastUpdated: Date;
+  lastUpdated!: Date;
 }
 
-export const WalletSchema = SchemaFactory.createForClass(Wallet);
+export const WalletSchema = SchemaFactory.createForClass(WalletSchemaClass);
+export type WalletDocument = WalletSchemaClass & Document;
 
 // Add indexes for common queries
 WalletSchema.index({ userId: 1, communityId: 1 }, { unique: true });

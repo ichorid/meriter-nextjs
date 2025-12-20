@@ -2,8 +2,10 @@ import { Injectable, Logger, NotFoundException, forwardRef, Inject } from '@nest
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { Comment } from '../aggregates/comment/comment.entity';
-import { Comment as CommentSchema, CommentDocument } from '../models/comment/comment.schema';
-import { Publication as PublicationSchema, PublicationDocument } from '../models/publication/publication.schema';
+import { CommentSchemaClass, CommentDocument } from '../models/comment/comment.schema';
+import type { Comment as CommentSchema } from '../models/comment/comment.schema';
+import { PublicationSchemaClass, PublicationDocument } from '../models/publication/publication.schema';
+import type { Publication as PublicationSchema } from '../models/publication/publication.schema';
 import { UserId } from '../value-objects';
 import { CommentAddedEvent, CommentVotedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
@@ -16,6 +18,7 @@ export interface CreateCommentDto {
   targetId: string;
   parentCommentId?: string;
   content: string;
+  images?: string[]; // Array of image URLs
 }
 
 @Injectable()
@@ -23,8 +26,8 @@ export class CommentService {
   private readonly logger = new Logger(CommentService.name);
 
   constructor(
-    @InjectModel(CommentSchema.name) private commentModel: Model<CommentDocument>,
-    @InjectModel(PublicationSchema.name) private publicationModel: Model<PublicationDocument>,
+    @InjectModel(CommentSchemaClass.name) private commentModel: Model<CommentDocument>,
+    @InjectModel(PublicationSchemaClass.name) private publicationModel: Model<PublicationDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
     @Inject(forwardRef(() => PublicationService)) private publicationService: PublicationService,
@@ -74,7 +77,8 @@ export class CommentService {
       dto.targetType,
       dto.targetId,
       dto.content,
-      dto.parentCommentId
+      dto.parentCommentId,
+      dto.images
     );
 
     // Save using Mongoose directly
@@ -213,6 +217,27 @@ export class CommentService {
     // Publish event
     await this.eventBus.publish(
       new CommentVotedEvent(commentId, userId, amount, direction)
+    );
+
+    return comment;
+  }
+
+  async reduceScore(commentId: string, amount: number): Promise<Comment> {
+    // Load aggregate
+    const doc = await this.commentModel.findOne({ id: commentId }).lean();
+    if (!doc) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    const comment = Comment.fromSnapshot(doc as ICommentDocument);
+
+    // Reduce score
+    comment.reduceScore(amount);
+
+    // Save
+    await this.commentModel.updateOne(
+      { id: comment.getId },
+      { $set: comment.toSnapshot() }
     );
 
     return comment;

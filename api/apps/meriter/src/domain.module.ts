@@ -3,43 +3,57 @@ import { MongooseModule } from '@nestjs/mongoose';
 
 // Import schemas
 import {
-  Publication,
+  PublicationSchemaClass,
   PublicationSchema,
 } from './domain/models/publication/publication.schema';
-import { Vote, VoteSchema } from './domain/models/vote/vote.schema';
-import { Poll, PollSchema } from './domain/models/poll/poll.schema';
+import type { Publication } from './domain/models/publication/publication.schema';
+import { VoteSchemaClass, VoteSchema } from './domain/models/vote/vote.schema';
+import type { Vote } from './domain/models/vote/vote.schema';
+import { PollSchemaClass, PollSchema } from './domain/models/poll/poll.schema';
+import type { Poll } from './domain/models/poll/poll.schema';
 import {
-  PollCast,
+  PollCastSchemaClass,
   PollCastSchema,
 } from './domain/models/poll/poll-cast.schema';
-import { Wallet, WalletSchema } from './domain/models/wallet/wallet.schema';
-import { User, UserSchema } from './domain/models/user/user.schema';
+import type { PollCast } from './domain/models/poll/poll-cast.schema';
+import { WalletSchemaClass, WalletSchema } from './domain/models/wallet/wallet.schema';
+import type { Wallet } from './domain/models/wallet/wallet.schema';
+import { UserSchemaClass, UserSchema } from './domain/models/user/user.schema';
+import type { User } from './domain/models/user/user.schema';
 import {
-  Community,
+  CommunitySchemaClass,
   CommunitySchema,
 } from './domain/models/community/community.schema';
+import type { Community } from './domain/models/community/community.schema';
 import {
-  UserSettings,
+  UserSettingsSchemaClass,
   UserSettingsSchema,
 } from './domain/models/user-settings.schema';
+import type { UserSettings } from './domain/models/user-settings.schema';
 import {
-  Transaction,
+  TransactionSchemaClass,
   TransactionSchema,
 } from './domain/models/transaction/transaction.schema';
-import { Comment, CommentSchema } from './domain/models/comment/comment.schema';
+import type { Transaction } from './domain/models/transaction/transaction.schema';
+import { CommentSchemaClass, CommentSchema } from './domain/models/comment/comment.schema';
+import type { Comment } from './domain/models/comment/comment.schema';
 import {
-  UserCommunityRole,
+  UserCommunityRoleSchemaClass,
   UserCommunityRoleSchema,
 } from './domain/models/user-community-role/user-community-role.schema';
-import { Invite, InviteSchema } from './domain/models/invite/invite.schema';
+import type { UserCommunityRole } from './domain/models/user-community-role/user-community-role.schema';
+import { InviteSchemaClass, InviteSchema } from './domain/models/invite/invite.schema';
+import type { Invite } from './domain/models/invite/invite.schema';
 import {
-  Notification,
+  NotificationSchemaClass,
   NotificationSchema,
 } from './domain/models/notification/notification.schema';
+import type { Notification } from './domain/models/notification/notification.schema';
 import {
-  QuotaUsage,
+  QuotaUsageSchemaClass,
   QuotaUsageSchema,
 } from './domain/models/quota-usage/quota-usage.schema';
+import type { QuotaUsage } from './domain/models/quota-usage/quota-usage.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -71,20 +85,20 @@ import { EventBus } from './domain/events/event-bus';
   imports: [
     // Mongoose schemas
     MongooseModule.forFeature([
-      { name: Publication.name, schema: PublicationSchema },
-      { name: Vote.name, schema: VoteSchema },
-      { name: Poll.name, schema: PollSchema },
-      { name: PollCast.name, schema: PollCastSchema },
-      { name: Wallet.name, schema: WalletSchema },
-      { name: User.name, schema: UserSchema },
-      { name: Community.name, schema: CommunitySchema },
-      { name: Transaction.name, schema: TransactionSchema },
-      { name: UserSettings.name, schema: UserSettingsSchema },
-      { name: Comment.name, schema: CommentSchema },
-      { name: UserCommunityRole.name, schema: UserCommunityRoleSchema },
-      { name: Invite.name, schema: InviteSchema },
-      { name: Notification.name, schema: NotificationSchema },
-      { name: QuotaUsage.name, schema: QuotaUsageSchema },
+      { name: PublicationSchemaClass.name, schema: PublicationSchema },
+      { name: VoteSchemaClass.name, schema: VoteSchema },
+      { name: PollSchemaClass.name, schema: PollSchema },
+      { name: PollCastSchemaClass.name, schema: PollCastSchema },
+      { name: WalletSchemaClass.name, schema: WalletSchema },
+      { name: UserSchemaClass.name, schema: UserSchema },
+      { name: CommunitySchemaClass.name, schema: CommunitySchema },
+      { name: TransactionSchemaClass.name, schema: TransactionSchema },
+      { name: UserSettingsSchemaClass.name, schema: UserSettingsSchema },
+      { name: CommentSchemaClass.name, schema: CommentSchema },
+      { name: UserCommunityRoleSchemaClass.name, schema: UserCommunityRoleSchema },
+      { name: InviteSchemaClass.name, schema: InviteSchema },
+      { name: NotificationSchemaClass.name, schema: NotificationSchema },
+      { name: QuotaUsageSchemaClass.name, schema: QuotaUsageSchema },
     ]),
   ],
   providers: [

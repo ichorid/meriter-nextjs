@@ -84,7 +84,10 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
             : true;
           
           if (shouldInvalidate) {
+            // Invalidate all comment queries (broad invalidation)
             queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
+            // Also invalidate comment lists
+            queryClient.invalidateQueries({ queryKey: queryKeys.comments.lists(), exact: false });
             
             const commentId = invalidations.specificCommentId?.(variables);
             if (commentId) {
@@ -92,7 +95,6 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
                 queryKey: commentsKeys.byComment(commentId),
                 exact: false 
               });
-              queryClient.invalidateQueries({ queryKey: commentsKeys.all, exact: false });
             }
             
             const publicationId = invalidations.specificPublicationId?.(variables);

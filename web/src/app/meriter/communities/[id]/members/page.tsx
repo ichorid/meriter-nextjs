@@ -10,7 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { Loader2, UserX } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
-import { LeadCard } from '@/components/molecules/LeadCard/LeadCard';
+import { useCanViewUserMerits } from '@/hooks/useCanViewUserMerits';
+import { MemberCardWithMerits } from './MemberCardWithMerits';
 
 const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) => {
     const router = useRouter();
@@ -26,6 +27,9 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
 
     // Check if user is admin (superadmin or lead of this community)
     const isAdmin = community?.isAdmin;
+
+    // Check if current user can view merits/quota for other users
+    const { canView: canViewMerits } = useCanViewUserMerits(communityId);
 
     // Determine if we should show role chip and hide team info
     const isMarathonOrFutureVision = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
@@ -69,14 +73,16 @@ const CommunityMembersPage = ({ params }: { params: Promise<{ id: string }> }) =
                         <div className="bg-base-100 rounded-lg border border-base-300 overflow-hidden">
                             {membersData.data.map((member) => (
                                 <div key={member.id} className="relative group">
-                                    <LeadCard
-                                        id={member.id}
+                                    <MemberCardWithMerits
+                                        memberId={member.id}
                                         displayName={member.displayName || member.username}
                                         username={member.username}
                                         avatarUrl={member.avatarUrl}
                                         role={member.role}
+                                        communityId={communityId}
                                         showRoleChip={showRoleChip}
                                         hideTeamInfo={hideTeamInfo}
+                                        canViewMerits={canViewMerits}
                                         onClick={() => router.push(routes.userProfile(member.id))}
                                     />
                                     {isAdmin && member.id !== user?.id && (

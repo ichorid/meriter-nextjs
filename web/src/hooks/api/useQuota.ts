@@ -27,6 +27,22 @@ export function useUserQuota(communityId?: string) {
   });
 }
 
+/**
+ * Hook to fetch quota for another user (requires appropriate permissions: superadmin or lead in community)
+ */
+export function useOtherUserQuota(userId: string, communityId?: string) {
+  return useQuery<UserQuota>({
+    queryKey: quotaKeys.quota(userId, communityId),
+    queryFn: async () => {
+      if (!userId || !communityId) throw new Error('missing identifiers');
+      const quota = await usersApiV1.getUserQuota(userId, communityId);
+      return quota;
+    },
+    enabled: !!userId && !!communityId,
+    refetchOnWindowFocus: false,
+  });
+}
+
 export function useQuotaController() {
   const queryClient = useQueryClient();
   const { user } = useAuth();

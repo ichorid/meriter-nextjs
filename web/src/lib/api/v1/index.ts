@@ -648,10 +648,14 @@ export const publicationsApiV1 = {
         id: string,
         data: UpdatePublicationDto
     ): Promise<Publication> {
+        const normalizedId = id?.trim();
+        if (!normalizedId || normalizedId === 'undefined' || normalizedId === 'null') {
+            throw new Error('Publication ID is required to update a publication');
+        }
         const response = await apiClient.put<{
             success: true;
             data: Publication;
-        }>(`/api/v1/publications/${id}`, data);
+        }>(`/api/v1/publications/${normalizedId}`, data);
         return response.data;
     },
 

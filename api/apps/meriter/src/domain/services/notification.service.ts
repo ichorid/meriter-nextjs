@@ -2,8 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
-  Notification,
+  NotificationSchemaClass,
   NotificationDocument,
+} from '../models/notification/notification.schema';
+import type {
+  Notification,
   NotificationType,
   NotificationSource,
   NotificationMetadata,
@@ -33,7 +36,7 @@ export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
   constructor(
-    @InjectModel(Notification.name)
+    @InjectModel(NotificationSchemaClass.name)
     private readonly notificationModel: Model<NotificationDocument>,
   ) {}
 
@@ -86,7 +89,7 @@ export class NotificationService {
       .find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(pagination.limit)
+      .limit(pagination.limit ?? 10)
       .lean<Notification[]>()
       .exec();
 

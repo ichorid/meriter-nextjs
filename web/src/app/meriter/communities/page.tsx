@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
@@ -42,13 +43,7 @@ export default function CommunitiesPage() {
 
     return (
         <AdaptiveLayout
-            stickyHeader={
-                <header className="px-4 pt-4 pb-3 border-b border-base-content/10">
-                    <h1 className="text-xl font-semibold text-base-content">
-                        Communities
-                    </h1>
-                </header>
-            }
+            stickyHeader={<PageHeader title="Communities" showBack={false} />}
         >
             {/* Content */}
             <div>
@@ -58,7 +53,7 @@ export default function CommunitiesPage() {
                         <h2 className="text-sm font-medium text-base-content/60 uppercase tracking-wide mb-4">
                             Special Communities
                         </h2>
-                        <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
                             {specialCommunities.map((community) => {
                                 const wallet = walletsMap.get(community.id);
                                 const quota = quotasMap.get(community.id);
@@ -111,13 +106,13 @@ export default function CommunitiesPage() {
                             Your Communities
                         </h2>
                         {isLoading ? (
-                            <div className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
                                 <CardSkeleton />
                                 <CardSkeleton />
                                 <CardSkeleton />
                             </div>
                         ) : (
-                            <div className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
                                 {userCommunities.map((community) => {
                                     const wallet = walletsMap.get(community.id);
                                     const quota = quotasMap.get(community.id);

@@ -18,9 +18,12 @@ import {
 } from "../config";
 import * as TelegramTypes from "@common/extapis/telegram/telegram.types";
 import Axios from "axios";
-import { User, UserDocument } from "../domain/models/user/user.schema";
-import { Publication, PublicationDocument } from "../domain/models/publication/publication.schema";
-import { Community, CommunityDocument } from "../domain/models/community/community.schema";
+import { UserSchemaClass, UserDocument } from "../domain/models/user/user.schema";
+import type { User } from "../domain/models/user/user.schema";
+import { PublicationSchemaClass, PublicationDocument } from "../domain/models/publication/publication.schema";
+import type { Publication } from "../domain/models/publication/publication.schema";
+import { CommunitySchemaClass, CommunityDocument } from "../domain/models/community/community.schema";
+import type { Community } from "../domain/models/community/community.schema";
 import { UserCommunityRoleService } from "../domain/services/user-community-role.service";
 
 import * as config from "../config";
@@ -32,6 +35,7 @@ import * as stream from "stream";
 import { encodeTelegramDeepLink, formatDualLinksFromEncoded, formatDualLinks, escapeMarkdownV2 } from '../common/helpers/telegram';
 import { t } from '../i18n';
 import { UpdateEventItem } from '../domain/services/user-updates.service';
+import { FeatureFlagsService } from '../common/services/feature-flags.service';
 
 @Injectable()
 export class TgBotsService {
@@ -40,10 +44,11 @@ export class TgBotsService {
   s3: S3Client | null; // Allow s3 to be null
   private readonly s3Bucket?: string;
   constructor(
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(Publication.name) private publicationModel: Model<PublicationDocument>,
-    @InjectModel(Community.name) private communityModel: Model<CommunityDocument>,
+    @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
+    @InjectModel(PublicationSchemaClass.name) private publicationModel: Model<PublicationDocument>,
+    @InjectModel(CommunitySchemaClass.name) private communityModel: Model<CommunityDocument>,
     private userCommunityRoleService: UserCommunityRoleService,
+    private featureFlagsService: FeatureFlagsService,
   ) {
     // S3 is completely optional - only initialize if fully configured
     const s3Endpoint = process.env.S3_ENDPOINT;
@@ -74,6 +79,10 @@ export class TgBotsService {
   }
 
   async sendUserUpdates(userId: string, events: UpdateEventItem[], locale: 'en' | 'ru' = 'en') {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; skipping sendUserUpdates');
+      return;
+    }
     try {
       const user = await this.userModel.findOne({ id: userId }).lean();
       const tgChatId = user?.authId;
@@ -124,6 +133,10 @@ export class TgBotsService {
     direction: 'up' | 'down';
     createdAt?: Date;
   }, locale: 'en' | 'ru' = 'en') {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; skipping sendImmediateVoteNotification');
+      return;
+    }
     this.logger.log(`Preparing immediate vote notification: toUser=${userId}, from=${data.actorUsername || data.actorName}, amount=${data.amount}, dir=${data.direction}, targetType=${data.targetType}`);
     const event: UpdateEventItem = {
       id: `vote-${Date.now()}`,
@@ -144,6 +157,10 @@ export class TgBotsService {
     await this.sendUserUpdates(userId, [event], locale);
   }
   async processHookBody(body: TelegramTypes.Update, botUsername: string) {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; ignoring webhook update');
+      return;
+    }
     // Log all incoming updates for debugging
     this.logger.log('📨 Received Telegram update:', JSON.stringify(body, null, 2));
 
@@ -234,12 +251,20 @@ export class TgBotsService {
     }
   }
 
-  async processAddedToChat({ chatId, chat_username }) {
+  async processAddedToChat({ chatId, chat_username }: { chatId: string | number; chat_username?: string }) {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; skipping processAddedToChat');
+      return;
+    }
     this.logger.log(`🤖 Bot added to chat ${chatId} (${chat_username || 'no username'})`);
     this.logger.log(`ℹ️  Community auto-creation is disabled. Communities must be created manually through the API.`);
   }
 
-  async processRemovedFromChat({ chatId, chat_username }) {
+  async processRemovedFromChat({ chatId, chat_username }: { chatId: string; chat_username?: string }) {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; skipping processRemovedFromChat');
+      return;
+    }
     try {
       this.logger.log(`🚪 Processing bot removed from chat ${chatId}`);
 
@@ -264,7 +289,7 @@ export class TgBotsService {
    * Returns { beneficiary: {...}, cleanedText: "...", error: null } 
    *      or { beneficiary: null, cleanedText: "...", error: "error message" }
    */
-  async parseBeneficiary(messageText: string, tgChatId: string) {
+  async parseBeneficiary(messageText: string, tgChatId: string): Promise<{ beneficiary: { telegramId: string; name: string; photoUrl?: string | null; username?: string } | null; cleanedText: string; error: string | null }> {
     if (!messageText) return { beneficiary: null, cleanedText: messageText, error: null };
 
     // Match /ben:@username or /ben:123456
@@ -322,7 +347,8 @@ export class TgBotsService {
             }
           }
         } catch (error) {
-          this.logger.warn(`⚠️ Failed to resolve username ${beneficiaryIdentifier} via Telegram API:`, error.message);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.logger.warn(`⚠️ Failed to resolve username ${beneficiaryIdentifier} via Telegram API:`, errorMessage);
         }
       }
     }
@@ -367,7 +393,7 @@ export class TgBotsService {
     );
 
     const beneficiary = {
-      name: beneficiaryUser.profile?.name || beneficiaryIdentifier,
+      name: (beneficiaryUser.profile as any)?.name || beneficiaryIdentifier,
       photoUrl: beneficiaryPhotoUrl,
       telegramId: beneficiaryTgId,
       username: beneficiaryIdentifier,
@@ -390,7 +416,24 @@ export class TgBotsService {
     firstName,
     lastName,
     entities,
+  }: {
+    tgChatId: number | string;
+    tgUserId: number | string;
+    tgAuthorUsername?: string;
+    tgAuthorName?: string;
+    messageText?: string;
+    messageId?: number;
+    tgChatUsername?: string;
+    replyMessageId?: number;
+    tgChatName?: string;
+    firstName?: string;
+    lastName?: string;
+    entities?: any[];
   }) {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; skipping processRecieveMessageFromGroup');
+      return;
+    }
     const tgChatId = String(numTgChatId);
     const tgUserId = String(numTgUserId);
 
@@ -440,20 +483,22 @@ export class TgBotsService {
     }
 
     // Parse and validate beneficiary
-    const { beneficiary, cleanedText, error } = await this.parseBeneficiary(messageText, tgChatId);
+    const { beneficiary, cleanedText, error } = await this.parseBeneficiary(messageText || '', tgChatId);
 
     // If there's an error with the beneficiary, send error message and abort
     if (error) {
       this.logger.warn(`❌ Beneficiary error, sending error message to chat`);
-      await this.tgReplyMessage({
-        reply_to_message_id: messageId,
-        chat_id: tgChatId,
-        text: error,
-      });
+      if (messageId !== undefined) {
+        await this.tgReplyMessage({
+          reply_to_message_id: messageId,
+          chat_id: tgChatId,
+          text: error,
+        });
+      }
       return; // Don't create the publication
     }
 
-    const finalMessageText = cleanedText || messageText;
+    const finalMessageText = cleanedText || messageText || '';
 
     const tgAuthorId = tgUserId;
     const authorPhotoUrl = await this.telegramGetChatPhotoUrl(
@@ -485,8 +530,8 @@ export class TgBotsService {
       fromTgChatId: tgChatId,
       tgAuthorId,
       tgAuthorUsername: tgChatUsername,
-      tgAuthorName: tgAuthorName,
-      tgMessageId: messageId,
+      tgAuthorName: tgAuthorName || '',
+      tgMessageId: messageId || 0,
       keyword: kw,
       tgChatUsername,
       tgChatName: tgChatName,
@@ -512,14 +557,20 @@ export class TgBotsService {
     const text = `${escapeMarkdownV2(t('updates.publication.saved', 'en'))} \: ${dualLinks}`;
     this.logger.log(`💬 Sending reply to group ${tgChatId} with text: ${text}`);
 
-    await this.tgReplyMessage({
-      reply_to_message_id: messageId,
-      chat_id: tgChatId,
-      text,
-    });
+    if (messageId !== undefined) {
+      await this.tgReplyMessage({
+        reply_to_message_id: messageId,
+        chat_id: tgChatId,
+        text,
+      });
+    }
   }
 
-  async processRecieveMessageFromUser({ tgUserId, messageText, tgUserName }) {
+  async processRecieveMessageFromUser({ tgUserId, messageText, tgUserName }: { tgUserId: string | number; messageText: string; tgUserName?: string }) {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; skipping processRecieveMessageFromUser');
+      return;
+    }
     const referal = await this.tgMessageTextParseReferal({ messageText });
     this.logger.log(`👤 Processing direct message from user ${tgUserId}: "${messageText}"`);
     this.logger.log(`🔍 Parsed referral: ${referal || 'none'}`);
@@ -570,7 +621,7 @@ export class TgBotsService {
       });
     }
   }
-  async tgReplyMessage({ reply_to_message_id, chat_id, text }) {
+  async tgReplyMessage({ reply_to_message_id, chat_id, text }: { reply_to_message_id: number; chat_id: string | number; text: string }) {
     try {
       const params = {
         reply_to_message_id,
@@ -596,7 +647,7 @@ export class TgBotsService {
       this.logger.error(
         "error",
         { reply_to_message_id, chat_id, text },
-        e.response.data
+        (e as any)?.response?.data
       );
     }
   }
@@ -607,14 +658,14 @@ export class TgBotsService {
     });
   }
 
-  async tgMessageTextParseReferal({ messageText }) {
+  async tgMessageTextParseReferal({ messageText }: { messageText: string }) {
     if (messageText.match("/start")) {
       return messageText.split("/start ")?.[1];
     } else return false;
   }
 
-  async tgGetChat(tgChatId) {
-    if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
+  async tgGetChat(tgChatId: string | number) {
+    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
     const params = { chat_id: tgChatId };
     if (process.env.noAxios) return null;
     return await Axios.get(BOT_URL + "/getChat", {
@@ -624,7 +675,7 @@ export class TgBotsService {
       .then((d) => d?.result);
   }
 
-  async tgGetChatMember(tgChatId, tgUserId) {
+  async tgGetChatMember(tgChatId: string | number, tgUserId: string | number) {
     //if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
     const params = { chat_id: tgChatId, user_id: tgUserId };
     if (process.env.noAxios) return null;
@@ -668,14 +719,19 @@ export class TgBotsService {
 
       return null;
     } catch (error) {
-      this.logger.warn(`Failed to get user info for @${cleanUsername}:`, error.message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Failed to get user info for @${cleanUsername}:`, errorMessage);
       return null;
     }
   }
 
-  async tgSend({ tgChatId, text }) {
+  async tgSend({ tgChatId, text }: { tgChatId: string | number; text: string }) {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      this.logger.debug('Telegram bot is disabled; skipping tgSend');
+      return "ok";
+    }
     //console.log(tgChatId, text )
-    if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
+    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
     if (!process.env.BOT_TOKEN) {
       this.logger.warn('BOT_TOKEN is empty; Telegram send skipped');
       return "ok";
@@ -707,8 +763,8 @@ export class TgBotsService {
   }
   */
 
-  async tgChatGetAdmins({ tgChatId }) {
-    if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
+  async tgChatGetAdmins({ tgChatId }: { tgChatId: string | number }) {
+    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
     if (process.env.noAxios) return [{ id: "1" }];
 
     return Axios.get(BOT_URL + "/getChatAdministrators", {
@@ -716,23 +772,23 @@ export class TgBotsService {
     })
       .then((d) => d.data)
       .then((d) => {
-        return d.result.map(({ user }) => ({ id: user.id }));
+        return d.result.map(({ user }: { user: { id: string | number } }) => ({ id: user.id }));
       })
       .catch((e) => this.logger.error(e));
   }
 
-  async tgChatIsAdmin({ tgChatId, tgUserId }) {
-    if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
+  async tgChatIsAdmin({ tgChatId, tgUserId }: { tgChatId: string | number; tgUserId: string | number }) {
+    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
     if (process.env.noAxios) return process.env.admin == "true" ? true : false;
     const admins = await this.tgChatGetAdmins({ tgChatId });
     if (!admins) return false;
     //console.log(admins, tgUserId);
 
-    return admins.find((a) => a.id == tgUserId) ? true : false;
+    return admins.find((a: { id: string | number }) => a.id == tgUserId) ? true : false;
   }
 
-  async tgChatGetKeywords({ tgChatId }) {
-    if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
+  async tgChatGetKeywords({ tgChatId }: { tgChatId: string | number }) {
+    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
     const chat = await this.communityModel.findOne({
 
     });
@@ -774,12 +830,13 @@ export class TgBotsService {
       this.logger.log(`Successfully uploaded avatar for user ${telegramId}`);
       return `${avatarBaseUrl}/${telegramId}.jpg`;
     } catch (error) {
-      this.logger.error(`Failed to download and upload photo for ${telegramId}:`, error.message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to download and upload photo for ${telegramId}:`, errorMessage);
       throw error;
     }
   }
 
-  async telegramGetChatPhotoUrl(token, chat_id, revalidate = false) {
+  async telegramGetChatPhotoUrl(token: string, chat_id: string | number, revalidate = false) {
     //if (process.env.NODE_ENV === 'test') return ``;
 
     const avatarBaseUrl = process.env.TELEGRAM_AVATAR_BASE_URL || 'https://telegram.hb.bizmrg.com/telegram_small_avatars';
@@ -820,8 +877,9 @@ export class TgBotsService {
         await promise2;
 
         return `${avatarBaseUrl}/${chat_id}.jpg`;
-      } catch (err) {
-        this.logger.warn(`Failed to generate avatar for ${chat_id} (no photo):`, err.message);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Failed to generate avatar for ${chat_id} (no photo):`, errorMessage);
         return null;
       }
     }
@@ -849,8 +907,9 @@ export class TgBotsService {
       await Promise.all([promise, promise2]);
 
       return `${avatarBaseUrl}/${chat_id}.jpg`;
-    } catch (e) {
-      this.logger.warn(`Failed to download photo for ${chat_id}, generating fallback avatar:`, e.message);
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`Failed to download photo for ${chat_id}, generating fallback avatar:`, errorMessage);
       // If photo download fails (410, 403, etc), generate a fallback avatar
       try {
         const photoUrl2 = `telegram_small_avatars/${chat_id}.jpg`;
@@ -875,14 +934,15 @@ export class TgBotsService {
 
         return `${avatarBaseUrl}/${chat_id}.jpg`;
       } catch (fallbackError) {
-        this.logger.error(`Failed to generate fallback avatar for ${chat_id}:`, fallbackError.message);
+        const errorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+        this.logger.error(`Failed to generate fallback avatar for ${chat_id}:`, errorMessage);
         // Return null if even the fallback fails
         return null;
       }
     }
   }
 
-  async telegramGetAvatarLink(chat_id) {
+  async telegramGetAvatarLink(chat_id: string | number) {
     if (!chat_id || chat_id == "undefined") return;
     //apiGET("/api/telegram/updatechatphoto", { chat_id }).then((d) => d);
 
@@ -890,26 +950,26 @@ export class TgBotsService {
     return `${avatarBaseUrl}/${chat_id}.jpg`;
   }
 
-  async telegramSetWebook(token, url) {
+  async telegramSetWebook(token: string, url: string) {
     return await Axios.get(`${this.telegramApiUrl}/bot${token}/setWebhook`, {
       params: { url },
     });
   }
-  async telegramGetChat(token, chat_id) {
+  async telegramGetChat(token: string, chat_id: string | number) {
     // Removed debug log to avoid exposing bot token in logs
     return await Axios.get(`${this.telegramApiUrl}/bot${token}/getChat`, {
       params: { chat_id },
     });
   }
 
-  async telegramPrepareFile(token, file_id) {
+  async telegramPrepareFile(token: string, file_id: string) {
     return await Axios.get(
       `${this.telegramApiUrl}/bot${token}/getFile?file_id=${file_id}`,
       {}
     ).then((d) => d.data?.result);
   }
 
-  async telegramGetFile(token, file_path) {
+  async telegramGetFile(token: string, file_path: string) {
     return await Axios({
       url: `${this.telegramApiUrl}/file/bot${token}/${file_path}`,
       method: "GET",
@@ -917,7 +977,7 @@ export class TgBotsService {
     });
   }
 
-  async telegramMessageTextParseReferal(messageText) {
+  async telegramMessageTextParseReferal(messageText: string) {
     if (messageText.match("/start")) {
       return messageText.split("/start ")?.[1];
     } else return false;
@@ -932,7 +992,7 @@ export class TgBotsService {
     else return null;
   }
 
-  async telegramReplyMessage(token, reply_to_message_id, chat_id, text) {
+  async telegramReplyMessage(token: string, reply_to_message_id: number, chat_id: string | number, text: string) {
     const params = { reply_to_message_id, chat_id, text, parse_mode: "MarkdownV2" };
     return await Promise.all([
       Axios.get(`${this.telegramApiUrl}/bot${token}/sendMessage`, {
@@ -940,7 +1000,7 @@ export class TgBotsService {
       }),
     ]);
   }
-  async telegramSendMessage(token, chat_id, text) {
+  async telegramSendMessage(token: string, chat_id: string | number, text: string) {
     const params = { chat_id, text, parse_mode: "MarkdownV2" };
     try {
       const r = await Promise.all([
@@ -955,7 +1015,7 @@ export class TgBotsService {
     return { ok: true };
   }
 
-  async telegramChatGetAdmins(token, chat_id) {
+  async telegramChatGetAdmins(token: string, chat_id: string | number) {
     if (process.env.noAxios) return [{ id: "1" }];
 
     return Axios.get(
@@ -965,8 +1025,8 @@ export class TgBotsService {
       }
     )
       .then((d) => d.data)
-      .then((d) => {
-        return d.result.map(({ user }) => ({ id: user.id }));
+      .then((d: { result: Array<{ user: { id: number } }> }) => {
+        return d.result.map(({ user }: { user: { id: number } }) => ({ id: user.id }));
       });
   }
   async publicationAdd({
@@ -984,6 +1044,21 @@ export class TgBotsService {
     authorPhotoUrl,
     entities,
     beneficiary,
+  }: {
+    tgChatId: string | number;
+    fromTgChatId: string | number;
+    tgAuthorName: string;
+    tgAuthorUsername?: string;
+    tgMessageId: number;
+    tgAuthorId: string;
+    tgChatName?: string;
+    tgChatUsername?: string;
+    keyword: string;
+    text: string;
+    messageText: string;
+    authorPhotoUrl?: string | null;
+    entities?: any;
+    beneficiary?: { telegramId: string; name: string; photoUrl?: string | null; username?: string } | null;
   }) {
     const tgChatId = String(tgChatIdInt);
 
@@ -1055,6 +1130,9 @@ export class TgBotsService {
   awsUploadStream = ({ Key }: { Key: string }) => {
     const pass = new stream.PassThrough();
 
+    if (!this.s3) {
+      throw new Error('S3 client is not configured');
+    }
     const upload = new Upload({
       client: this.s3,
       params: {

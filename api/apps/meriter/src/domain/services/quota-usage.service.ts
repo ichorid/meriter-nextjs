@@ -3,7 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
-import { QuotaUsage, QuotaUsageDocument } from '../models/quota-usage/quota-usage.schema';
+import { QuotaUsageSchemaClass, QuotaUsageDocument } from '../models/quota-usage/quota-usage.schema';
+import type { QuotaUsage } from '../models/quota-usage/quota-usage.schema';
 import { uid } from 'uid';
 
 export type QuotaUsageType = 'vote' | 'poll_cast' | 'publication_creation' | 'poll_creation';
@@ -13,7 +14,7 @@ export class QuotaUsageService {
   private readonly logger = new Logger(QuotaUsageService.name);
 
   constructor(
-    @InjectModel(QuotaUsage.name) private quotaUsageModel: Model<QuotaUsageDocument>,
+    @InjectModel(QuotaUsageSchemaClass.name) private quotaUsageModel: Model<QuotaUsageDocument>,
     @InjectConnection() private readonly connection: Connection,
   ) {}
 
@@ -67,7 +68,7 @@ export class QuotaUsageService {
     communityId: string,
     since: Date,
   ): Promise<number> {
-    const result = await this.connection.db
+    const result = await this.connection.db!
       .collection('quota_usage')
       .aggregate([
         {
@@ -89,4 +90,11 @@ export class QuotaUsageService {
     return result.length > 0 ? result[0].total : 0;
   }
 }
+
+
+
+
+
+
+
 

@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUserRoles, useUserProjects, useMeritStats } from '@/hooks/api/useProfile';
+import { useUserRoles, useMeritStats } from '@/hooks/api/useProfile';
 import { ProfileEditForm } from '@/components/organisms/Profile/ProfileEditForm';
 import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
 import { ProfileStats } from '@/components/organisms/Profile/ProfileStats';
@@ -35,15 +35,7 @@ export default function ProfilePage() {
     pollsLoading,
   } = useProfileData();
 
-  const {
-    data: projectsData,
-  } = useUserProjects(user?.id || '', 20);
   const { data: meritStatsData, isLoading: meritStatsLoading } = useMeritStats();
-
-  // Flatten projects from all pages for counting
-  const projects = useMemo(() => {
-    return (projectsData?.pages ?? []).flatMap((page) => page.data || []);
-  }, [projectsData?.pages]);
 
   if (authLoading) {
     return (
@@ -99,7 +91,6 @@ export default function ProfilePage() {
           <ProfileHero
             user={user}
             stats={{
-              projects: projects.length,
               merits: meritStatsData?.meritStats?.reduce((sum, stat) => sum + stat.amount, 0) || 0,
             }}
             onEdit={() => setIsEditing(true)}
@@ -122,7 +113,6 @@ export default function ProfilePage() {
             publications: myPublications.length,
             comments: myComments.length,
             polls: myPolls.length,
-            projects: projects.length,
           }}
           isLoading={
             publicationsLoading ||

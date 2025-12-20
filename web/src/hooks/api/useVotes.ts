@@ -87,6 +87,7 @@ export function useVoteOnPublicationWithComment() {
         walletAmount?: number;
         comment?: string;
         direction?: 'up' | 'down';
+        images?: string[];
       }; 
       communityId?: string; 
     }) => votesApiV1.voteOnPublicationWithComment(publicationId, data),
@@ -95,7 +96,7 @@ export function useVoteOnPublicationWithComment() {
       communities: true,
       comments: true,
       specificPublicationId: (variables) => variables?.publicationId,
-      shouldInvalidateComments: (result) => !!result.comment,
+      shouldInvalidateComments: (result, variables) => !!(result.comment || variables?.data?.comment || variables?.data?.images?.length),
     },
     onErrorReThrow: false,
     errorContext: 'Vote with comment error',

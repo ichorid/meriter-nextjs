@@ -8,9 +8,9 @@ import { UserCommunityRoleService } from '../src/domain/services/user-community-
 import { CommunityService } from '../src/domain/services/community.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { uid } from 'uid';
 import * as request from 'supertest';
 
@@ -81,9 +81,9 @@ describe('Users - Get All Leads', () => {
     communityService = app.get<CommunityService>(CommunityService);
 
     connection = app.get<Connection>(getConnectionToken());
-    userModel = connection.model('User');
-    userCommunityRoleModel = connection.model('UserCommunityRole');
-    communityModel = connection.model('Community');
+    userModel = connection.model<UserDocument>(UserSchemaClass.name);
+    userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
+    communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
 
     // Generate test IDs
     lead1Id = uid();
@@ -436,6 +436,15 @@ describe('Users - Get All Leads', () => {
     });
   });
 });
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,14 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { UserSettings, UserSettingsDocument } from '../models/user-settings.schema';
+import { UserSettingsSchemaClass, UserSettingsDocument } from '../models/user-settings.schema';
+import type { UserSettings } from '../models/user-settings.schema';
 
 @Injectable()
 export class UserSettingsService {
   private readonly logger = new Logger(UserSettingsService.name);
 
   constructor(
-    @InjectModel(UserSettings.name) private readonly model: Model<UserSettingsDocument>,
+    @InjectModel(UserSettingsSchemaClass.name) private readonly model: Model<UserSettingsDocument>,
   ) {}
 
   async getOrCreate(userId: string): Promise<UserSettings> {
