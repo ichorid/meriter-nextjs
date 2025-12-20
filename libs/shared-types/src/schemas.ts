@@ -155,6 +155,17 @@ export const InviteSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
 });
 
 // Main entity schemas
+// WebAuthn Authenticator Schema
+export const AuthenticatorSchema = z.object({
+  credentialID: z.string(),
+  credentialPublicKey: z.string(),
+  counter: z.number(),
+  credentialDeviceType: z.string(),
+  credentialBackedUp: z.boolean(),
+  transports: z.array(z.string()).optional(),
+  deviceName: z.string().optional(), // For UI management / multi-device support
+});
+
 export const UserSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   authProvider: z.string(),
   authId: z.string(),
@@ -170,6 +181,7 @@ export const UserSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   teamId: z.string().optional(), // ID команды, к которой принадлежит пользователь
   communityTags: z.array(z.string()).default([]),
   communityMemberships: z.array(z.string()).default([]),
+  authenticators: z.array(AuthenticatorSchema).default([]), // Available passkeys
 });
 
 export const CommunitySchema = IdentifiableSchema.merge(

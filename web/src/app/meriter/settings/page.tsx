@@ -3,14 +3,15 @@
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogoutButton } from '@/components/LogoutButton';
+import { LogoutBlock } from '@/components/organisms/LogoutBlock';
 import { LanguageSelector } from '@shared/components/language-selector';
 import { ThemeSelector } from '@shared/components/theme-selector';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFakeDataMode } from '@/config';
 import { communitiesApiV1 } from '@/lib/api/v1';
-import { PageHeader } from '@/components/ui/PageHeader';
+
 import { BrandButton } from '@/components/ui/BrandButton';
 import { Loader2 } from 'lucide-react';
 import { SuperadminManagement } from '@/components/settings/SuperadminManagement';
@@ -90,7 +91,7 @@ const SettingsPage = () => {
 
     return (
         <AdaptiveLayout
-            stickyHeader={<PageHeader title={t('title')} showBack={true} />}
+            stickyHeader={<SimpleStickyHeader title={t('title')} showBack={true} asStickyHeader={true} />}
         >
             <div className="space-y-6">
                 {/* Language Section */}
@@ -163,13 +164,8 @@ const SettingsPage = () => {
                     <SuperadminManagement />
                 )}
 
-                {/* Account Section */}
-                <div className="space-y-3">
-                    <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
-                        {t('account')}
-                    </h2>
-                    <LogoutButton />
-                </div>
+                {/* Account Section - now shared component */}
+                <LogoutBlock />
             </div>
         </AdaptiveLayout>
     );

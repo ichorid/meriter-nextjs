@@ -24,9 +24,22 @@ const nextConfig = {
         // Optimize memory usage during build
         optimizePackageImports: ['@gluestack-ui/themed', '@gluestack-style/react'],
     },
+    // Expose server-side environment variables to Next.js
+    env: {
+        OAUTH_GOOGLE_ENABLED: process.env.OAUTH_GOOGLE_ENABLED,
+        OAUTH_YANDEX_ENABLED: process.env.OAUTH_YANDEX_ENABLED,
+        OAUTH_VK_ENABLED: process.env.OAUTH_VK_ENABLED,
+        OAUTH_TELEGRAM_ENABLED: process.env.OAUTH_TELEGRAM_ENABLED,
+        OAUTH_APPLE_ENABLED: process.env.OAUTH_APPLE_ENABLED,
+        OAUTH_TWITTER_ENABLED: process.env.OAUTH_TWITTER_ENABLED,
+        OAUTH_INSTAGRAM_ENABLED: process.env.OAUTH_INSTAGRAM_ENABLED,
+        OAUTH_SBER_ENABLED: process.env.OAUTH_SBER_ENABLED,
+        OAUTH_MAILRU_ENABLED: process.env.OAUTH_MAILRU_ENABLED,
+        AUTHN_ENABLED: process.env.AUTHN_ENABLED,
+    },
     transpilePackages: [
-        '@telegram-apps/sdk-react', 
-        '@telegram-apps/telegram-ui', 
+        '@telegram-apps/sdk-react',
+        '@telegram-apps/telegram-ui',
         '@meriter/shared-types',
         '@gluestack-ui/themed',
         '@gluestack-ui/config',
@@ -56,7 +69,7 @@ const nextConfig = {
             // If API URL is set, don't use rewrites - client will use absolute URL
             return [];
         }
-        
+
         // Proxy /api/* to API server
         // In Docker: always use service name 'api' (Next.js runs in Docker network)
         // In local dev: use 'localhost:8002'
@@ -69,7 +82,7 @@ const nextConfig = {
         // In production (Docker), always use service name 'api'
         // In development, use 'localhost:8002'
         const apiHost = isProduction ? 'http://api:8002' : 'http://localhost:8002';
-        
+
         return [
             {
                 source: '/api/:path*',
@@ -83,13 +96,13 @@ const nextConfig = {
             ...config.resolve.alias,
             '@meriter/shared-types': path.resolve(__dirname, '../libs/shared-types/dist'),
         };
-        
+
         // Fix for React Native modules in Next.js
         config.resolve.alias = {
             ...config.resolve.alias,
             'react-native$': 'react-native-web',
         };
-        
+
         // Extensions for React Native
         config.resolve.extensions = [
             '.web.js',
@@ -98,14 +111,14 @@ const nextConfig = {
             '.web.tsx',
             ...config.resolve.extensions,
         ];
-        
+
         // Define __DEV__ for React Native Web compatibility
         // Check if DefinePlugin already exists and merge, otherwise create new one
         const webpack = require('webpack');
         const existingDefinePlugin = config.plugins.find(
             plugin => plugin && plugin.constructor && plugin.constructor.name === 'DefinePlugin'
         );
-        
+
         if (existingDefinePlugin) {
             // Merge __DEV__ into existing DefinePlugin
             const existingDefinitions = existingDefinePlugin.definitions || {};
@@ -122,7 +135,7 @@ const nextConfig = {
                 })
             );
         }
-        
+
         // Use NormalModuleReplacementPlugin to replace problematic file with a patched version
         // This runs BEFORE any loaders, so we can intercept the file
         const NormalModuleReplacementPlugin = require('webpack').NormalModuleReplacementPlugin;
@@ -136,7 +149,7 @@ const nextConfig = {
                 }
             )
         );
-        
+
         // Add rule to handle @expo/html-elements
         config.module.rules.push({
             test: /\.(tsx?|jsx?)$/,
@@ -168,7 +181,7 @@ const nextConfig = {
         // CRITICAL: Handle @react-native/assets-registry with Flow syntax
         // The file contains Flow syntax (+property, ?type) which SWC cannot parse
         // We MUST intercept it BEFORE SWC processes it
-        
+
         // Add rule at the very top level with enforce: 'pre' to ensure it runs first
         config.module.rules.unshift({
             enforce: 'pre',
@@ -181,7 +194,7 @@ const nextConfig = {
                     presets: [
                         ['@babel/preset-env', { modules: false }],
                         '@babel/preset-flow', // CRITICAL: This handles Flow syntax like +property
-                        ['@babel/preset-typescript', { 
+                        ['@babel/preset-typescript', {
                             allowNamespaces: true,
                             onlyRemoveTypeImports: false,
                             isTSX: true,
@@ -192,12 +205,12 @@ const nextConfig = {
                 },
             },
         });
-        
+
         // Also add to oneOf rule if it exists (Next.js uses this structure)
         const oneOfRule = config.module.rules.find(
             (rule) => rule && typeof rule === 'object' && Array.isArray(rule.oneOf)
         );
-        
+
         if (oneOfRule && Array.isArray(oneOfRule.oneOf)) {
             // Find and remove any SWC rules for this path
             oneOfRule.oneOf = oneOfRule.oneOf.filter((rule) => {
@@ -217,7 +230,7 @@ const nextConfig = {
                 }
                 return true;
             });
-            
+
             // Insert babel-loader rule at the very beginning of oneOf array
             oneOfRule.oneOf.unshift({
                 test: /\.(ts|tsx|js|jsx)$/,
@@ -229,7 +242,7 @@ const nextConfig = {
                         presets: [
                             ['@babel/preset-env', { modules: false }],
                             '@babel/preset-flow',
-                            ['@babel/preset-typescript', { 
+                            ['@babel/preset-typescript', {
                                 allowNamespaces: true,
                                 onlyRemoveTypeImports: false,
                                 isTSX: true,
@@ -241,7 +254,7 @@ const nextConfig = {
                 },
             });
         }
-        
+
         return config;
     },
 };

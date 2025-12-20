@@ -37,6 +37,18 @@ export interface UserProfile {
   educationalInstitution?: string;
 }
 
+// Mongoose doesn't need a strict schema for the details inside authenticators if we just treat it as Mixed or define it roughly
+// But better to define it.
+export interface Authenticator {
+  credentialID: string;
+  credentialPublicKey: string;
+  counter: number;
+  credentialDeviceType: string;
+  credentialBackedUp: boolean;
+  transports?: string[];
+  deviceName?: string;
+}
+
 export interface User {
   id: string;
   authProvider: string;
@@ -54,6 +66,7 @@ export interface User {
   inviteCode?: string;
   communityTags: string[];
   communityMemberships: string[];
+  authenticators?: Authenticator[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -120,6 +133,20 @@ export class UserSchemaClass implements User {
 
   @Prop({ type: [String], default: [] })
   communityMemberships!: string[];
+
+  @Prop({
+    type: [{
+      credentialID: String,
+      credentialPublicKey: String,
+      counter: Number,
+      credentialDeviceType: String,
+      credentialBackedUp: Boolean,
+      transports: [String],
+      deviceName: String,
+    }],
+    default: []
+  })
+  authenticators!: Authenticator[];
 
   @Prop({ required: true })
   createdAt!: Date;

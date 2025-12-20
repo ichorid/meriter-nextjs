@@ -4,8 +4,9 @@ import { use, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { PageHeader } from '@/components/ui/PageHeader';
-import { SortTabs, type SortValue } from '@/components/ui/SortTabs';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
+import { SortToggle } from '@/components/ui/SortToggle';
+import { type SortValue } from '@/components/ui/SortTabs';
 import { BrandAvatar } from '@/components/ui/BrandAvatar';
 import { useRouter } from "next/navigation";
 import { Comment } from "@features/comments/components/comment";
@@ -25,10 +26,10 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     const resolvedParams = use(params);
     const chatId = resolvedParams.id;
     const slug = resolvedParams.slug;
-    
+
     // Get highlight parameter from URL for comment highlighting
     const highlightCommentId = searchParams?.get('highlight');
-    
+
     // Comment sort state
     const [commentSort, setCommentSort] = useState<SortValue>('recent');
 
@@ -36,10 +37,10 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     const { user } = useAuth();
     const { data: publication, isLoading: publicationLoading, error: publicationError } = usePublication(slug);
     const { data: community } = useCommunity(chatId);
-    
+
     // Fetch author profile
     const { data: author } = useUserProfile(publication?.authorId || '');
-    
+
     const { data: balance = 0 } = useWalletBalance(chatId);
     const { data: wallets = [] } = useWallets();
 
@@ -56,7 +57,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
         slug, // publicationSlug
         "", // transactionId
         balance, // balance
-        async () => {}, // updBalance
+        async () => { }, // updBalance
         0, // plusGiven
         0, // minusGiven
         activeCommentHook, // activeCommentHook - still needed for reply comments
@@ -99,9 +100,9 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     const pageTitle = publication?.title || t('post');
 
     const pageHeader = (
-        <PageHeader
+        <SimpleStickyHeader
             title={
-                <button 
+                <button
                     onClick={() => router.push(`/meriter/communities/${chatId}`)}
                     className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                 >
@@ -117,10 +118,10 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                                 {community.name}
                             </span>
                             {community.settings?.iconUrl && (
-                                <img 
-                                    src={community.settings.iconUrl} 
-                                    alt="" 
-                                    className="w-4 h-4" 
+                                <img
+                                    src={community.settings.iconUrl}
+                                    alt=""
+                                    className="w-4 h-4"
                                 />
                             )}
                         </>
@@ -130,19 +131,20 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
             showBack={true}
             onBack={() => router.push(`/meriter/communities/${chatId}`)}
             rightAction={
-                <SortTabs
-                    value={commentSort}
-                    onChange={setCommentSort}
-                    size="sm"
+                <SortToggle
+                    value={commentSort as 'recent' | 'voted'}
+                    onChange={(val) => setCommentSort(val)}
+                    compact={true}
                 />
             }
+            asStickyHeader={true}
         />
     );
 
     // Show loading state
     if (publicationLoading) {
         return (
-            <AdaptiveLayout 
+            <AdaptiveLayout
                 className="feed"
                 communityId={chatId}
                 balance={balance}
@@ -163,7 +165,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     // Show error state
     if (publicationError || !publication) {
         return (
-            <AdaptiveLayout 
+            <AdaptiveLayout
                 className="feed"
                 communityId={chatId}
                 balance={balance}
@@ -176,7 +178,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
             >
                 <div className="flex flex-col items-center justify-center h-64">
                     <p className="text-error">{t('publicationNotFound')}</p>
-                    <button 
+                    <button
                         className="btn btn-primary mt-4"
                         onClick={() => router.push(`/meriter/communities/${chatId}`)}
                     >
@@ -188,7 +190,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
     }
 
     return (
-        <AdaptiveLayout 
+        <AdaptiveLayout
             className="feed"
             communityId={chatId}
             balance={balance}
@@ -202,7 +204,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
             <div className="space-y-4">
                 {/* Publication Header Card with Cover as Background */}
                 {publication && (
-                    <article 
+                    <article
                         className="relative rounded-2xl overflow-hidden border border-base-content/5"
                         style={(publication as any).imageUrl ? {
                             backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.6)), url(${(publication as any).imageUrl})`,
@@ -220,14 +222,14 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                                     </span>
                                 </div>
                             )}
-                            
+
                             {/* Title */}
                             {(publication as any).title && (
                                 <h1 className={`text-xl sm:text-2xl font-bold mb-3 ${(publication as any).imageUrl ? 'text-white drop-shadow-lg' : 'text-base-content'}`}>
                                     {(publication as any).title}
                                 </h1>
                             )}
-                            
+
                             {/* Author Info */}
                             <div className={`flex items-center gap-3 ${(publication as any).imageUrl ? '' : 'mt-2 pt-2 border-t border-base-content/10'}`}>
                                 <BrandAvatar
@@ -244,7 +246,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                                         {new Date(publication.createdAt).toLocaleDateString()}
                                     </div>
                                 </div>
-                                
+
                                 {/* Score */}
                                 {publication.metrics?.score !== undefined && (
                                     <div className={`ml-auto text-lg font-bold ${(publication as any).imageUrl ? 'text-white drop-shadow' : 'text-base-content'}`}>
@@ -255,7 +257,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                         </div>
                     </article>
                 )}
-                
+
                 {/* Post Content - Outside the card */}
                 {publication && ((publication as any).description || publication.content) && (
                     <div className="bg-base-100 rounded-2xl p-5 border border-base-content/5">
@@ -280,7 +282,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                 {publication && showComments && (
                     <div className="bg-base-100 rounded-2xl p-5 border border-base-content/5">
                         <h3 className="text-lg font-semibold mb-4">{t('comments')} ({comments?.length || 0})</h3>
-                        
+
                         <div className="mb-4">
                             <button
                                 onClick={() => {
@@ -291,7 +293,7 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                                 {t('addComment')}
                             </button>
                         </div>
-                        
+
                         {/* Comments List */}
                         <div className="space-y-4">
                             {comments?.map((c: any, index: number) => (
@@ -300,15 +302,15 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
                                     {...c}
                                     _id={c._id || c.id || `comment-${index}`}
                                     balance={balance}
-                                    updBalance={() => {}}
+                                    updBalance={() => { }}
                                     spaceSlug=""
                                     inPublicationSlug={slug}
                                     activeCommentHook={activeCommentHook}
                                     myId={user?.id}
                                     highlightTransactionId={highlightCommentId || undefined}
                                     wallets={wallets}
-                                    updateWalletBalance={() => {}}
-                                    updateAll={() => {}}
+                                    updateWalletBalance={() => { }}
+                                    updateAll={() => { }}
                                     communityId={chatId}
                                     isDetailPage={true}
                                 />
@@ -322,4 +324,3 @@ const PostPage = ({ params }: { params: Promise<{ id: string; slug: string }> })
 };
 
 export default PostPage;
-

@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { VersionDisplay } from '@/components/organisms/VersionDisplay';
 import { useTranslations } from 'next-intl';
 import { useAllLeads } from '@/hooks/api/useUsers';
@@ -21,32 +21,32 @@ const AboutPage = () => {
     const tSearch = useTranslations('search');
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState('');
-    
+
     // Fetch leads
     const { data: leadsData, isLoading: leadsLoading } = useAllLeads({ pageSize: 100 });
     const leads = (leadsData?.data || []) as EnrichedLead[];
-    
+
     // Filter leads based on search query
     const filteredLeads = useMemo(() => {
         if (!searchQuery.trim()) {
             return leads;
         }
-        
+
         const query = searchQuery.toLowerCase();
         return leads.filter((lead) => {
             const displayName = (lead.displayName || '').toLowerCase();
             const username = (lead.username || '').toLowerCase();
             const bio = (lead.profile?.bio || '').toLowerCase();
-            
-            return displayName.includes(query) || 
-                   username.includes(query) || 
-                   bio.includes(query);
+
+            return displayName.includes(query) ||
+                username.includes(query) ||
+                bio.includes(query);
         });
     }, [leads, searchQuery]);
 
     return (
         <AdaptiveLayout
-            stickyHeader={<PageHeader title={t('about')} showBack={false} />}
+            stickyHeader={<SimpleStickyHeader title={t('about')} showBack={false} asStickyHeader={true} />}
         >
             <div className="space-y-6">
                 <div className="space-y-4">
@@ -54,18 +54,18 @@ const AboutPage = () => {
                         About
                     </h2>
                     <p className="text-base text-brand-text-secondary dark:text-base-content/80">
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
-                        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. 
+                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
                         Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
                     </p>
                     <p className="text-base text-brand-text-secondary dark:text-base-content/80">
-                        Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. 
-                        Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, 
+                        Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                        Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium,
                         totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
                     </p>
                     <p className="text-base text-brand-text-secondary dark:text-base-content/80">
-                        Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos 
-                        qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, 
+                        Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos
+                        qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet,
                         consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
                     </p>
                 </div>

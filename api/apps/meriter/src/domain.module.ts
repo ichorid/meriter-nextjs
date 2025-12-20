@@ -54,6 +54,7 @@ import {
   QuotaUsageSchema,
 } from './domain/models/quota-usage/quota-usage.schema';
 import type { QuotaUsage } from './domain/models/quota-usage/quota-usage.schema';
+import { PasskeyChallenge, PasskeyChallengeSchema } from './domain/models/auth/passkey-challenge.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -99,6 +100,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: InviteSchemaClass.name, schema: InviteSchema },
       { name: NotificationSchemaClass.name, schema: NotificationSchema },
       { name: QuotaUsageSchemaClass.name, schema: QuotaUsageSchema },
+      { name: PasskeyChallenge.name, schema: PasskeyChallengeSchema },
     ]),
   ],
   providers: [
@@ -156,4 +158,4 @@ import { EventBus } from './domain/events/event-bus';
     EventBus,
   ],
 })
-export class DomainModule {}
+export class DomainModule { }

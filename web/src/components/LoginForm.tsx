@@ -30,21 +30,29 @@ import {
     Logo,
 } from "@/components/ui";
 import { useToastStore } from "@/shared/stores/toast.store";
+import { PasskeySection } from "./PasskeySection";
 
 interface LoginFormProps {
     className?: string;
     enabledProviders?: string[];
+    authnEnabled?: boolean;
 }
 
 export function LoginForm({
     className = "",
     enabledProviders,
+    authnEnabled = false,
 }: LoginFormProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const t = useTranslations("login");
     const tReg = useTranslations("registration");
     const fakeDataMode = isFakeDataMode();
+
+    console.log("login form test34");
+    console.log("fakeDataMode", fakeDataMode);
+    console.log("authnEnabled", authnEnabled);
+    console.log("enabledProviders", enabledProviders);
 
     const { authenticateFakeUser, authenticateFakeSuperadmin, isLoading, authError, setAuthError } =
         useAuth();
@@ -195,9 +203,9 @@ export function LoginForm({
                                     {t("superadminLogin")}
                                 </BrandButton>
                             </div>
-                        ) : displayedProviders.length > 0 ? (
+                        ) : (
                             <div className="space-y-3">
-                                {displayedProviders.map((provider) => (
+                                {displayedProviders.length > 0 && displayedProviders.map((provider) => (
                                     <BrandButton
                                         key={provider.id}
                                         variant="outline"
@@ -214,12 +222,41 @@ export function LoginForm({
                                         })}
                                     </BrandButton>
                                 ))}
-                            </div>
-                        ) : (
-                            <div className="text-center p-4 bg-error/10 rounded-xl border border-error/20">
-                                <p className="text-sm text-error">
-                                    {t("noAuthenticationProviders")}
-                                </p>
+
+                                {authnEnabled && (
+                                    <div>
+                                        <PasskeySection
+                                            isLoading={isLoading}
+
+                                            onSuccess={(result) => {
+                                                let redirectUrl = buildRedirectUrl();
+
+                                                // Force welcome page for new users
+                                                if (result?.isNewUser) {
+                                                    const url = new URL("/meriter/welcome", window.location.origin);
+                                                    if (inviteCode.trim()) {
+                                                        url.searchParams.set("invite", inviteCode.trim());
+                                                    }
+                                                    redirectUrl = url.pathname + url.search;
+                                                }
+
+                                                window.location.href = redirectUrl;
+                                            }}
+                                            onError={(msg) => {
+                                                setAuthError(msg);
+                                                addToast(msg, "error");
+                                            }}
+                                        />
+                                    </div>
+                                )}
+
+                                {displayedProviders.length === 0 && !authnEnabled && (
+                                    <div className="text-center p-4 bg-error/10 rounded-xl border border-error/20">
+                                        <p className="text-sm text-error">
+                                            {t("noAuthenticationProviders")}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

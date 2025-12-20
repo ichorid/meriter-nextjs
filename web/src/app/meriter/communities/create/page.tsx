@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { CommunityForm } from '@/features/communities/components';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useCanCreateCommunity } from '@/hooks/api/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
@@ -39,7 +39,7 @@ export default function CreateCommunityPage() {
     if (authLoading || permissionLoading) {
         return (
             <AdaptiveLayout
-                stickyHeader={<PageHeader title={t('title')} showBack={true} />}
+                stickyHeader={<SimpleStickyHeader title={t('title')} showBack={true} asStickyHeader={true} />}
             >
                 <div className="flex-1 flex items-center justify-center">
                     <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
@@ -51,7 +51,7 @@ export default function CreateCommunityPage() {
     if (!canCreate) {
         return (
             <AdaptiveLayout
-                stickyHeader={<PageHeader title={t('title')} showBack={true} />}
+                stickyHeader={<SimpleStickyHeader title={t('title')} showBack={true} asStickyHeader={true} />}
             >
                 <div className="flex-1 flex items-center justify-center">
                     <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
@@ -63,10 +63,11 @@ export default function CreateCommunityPage() {
     return (
         <AdaptiveLayout
             stickyHeader={
-                <PageHeader
+                <SimpleStickyHeader
                     title={t('title')}
                     showBack={true}
                     onBack={() => router.push('/meriter/communities')}
+                    asStickyHeader={true}
                 />
             }
         >

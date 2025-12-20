@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useProfileData } from '@/hooks/useProfileData';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import { ProfilePublicationsTab } from '@/components/organisms/Profile/ProfilePublicationsTab';
@@ -40,10 +40,7 @@ export default function ProfilePublicationsPage() {
   }, [searchParams, setSortByTab]);
 
   const pageHeader = (
-    <PageHeader
-      title={t('tabs.publications')}
-      showBack={false}
-    />
+    <ProfileTopBar asStickyHeader={true} />
   );
 
   if (userLoading || !isAuthenticated) {
