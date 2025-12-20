@@ -79,6 +79,8 @@ import { NotificationService } from './domain/services/notification.service';
 import { NotificationHandlersService } from './domain/services/notification-handlers.service';
 import { QuotaUsageService } from './domain/services/quota-usage.service';
 import { CommunityDefaultsService } from './domain/services/community-defaults.service';
+import { PermissionRuleEngine } from './domain/services/permission-rule-engine.service';
+import { PermissionContextService } from './domain/services/permission-context.service';
 
 // Import event bus
 import { EventBus } from './domain/events/event-bus';
@@ -118,6 +120,8 @@ import { EventBus } from './domain/events/event-bus';
     UserService,
     CommunityService,
     CommunityDefaultsService,
+    PermissionRuleEngine,
+    PermissionContextService,
     UserUpdatesService,
     UserSettingsService,
     CommentService,
@@ -146,6 +150,8 @@ import { EventBus } from './domain/events/event-bus';
     UserService,
     CommunityService,
     CommunityDefaultsService,
+    PermissionRuleEngine,
+    PermissionContextService,
     UserUpdatesService,
     UserSettingsService,
     CommentService,

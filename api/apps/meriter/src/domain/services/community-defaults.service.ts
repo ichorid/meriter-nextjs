@@ -1,134 +1,273 @@
 import { Injectable } from '@nestjs/common';
-import type {
-  CommunityPostingRules,
-  CommunityVotingRules,
-  CommunityVisibilityRules,
-  CommunityMeritRules,
+import { ActionType } from '../common/constants/action-types.constants';
+import type { 
+  PermissionRule, 
+  CommunityMeritSettings, 
+  CommunityVotingSettings 
 } from '../models/community/community.schema';
 
 /**
  * CommunityDefaultsService
  *
- * Provides default rules for communities based on their typeTag.
+ * Provides default permission rules for communities based on their typeTag.
  * Defaults are stored in-memory in code, not in the database.
  * Only custom overrides are stored in the database.
  */
 @Injectable()
 export class CommunityDefaultsService {
   /**
-   * Get default posting rules based on community typeTag
+   * Get default permission rules based on community typeTag
+   * Returns granular PermissionRule array covering all actions and roles
    */
-  getDefaultPostingRules(
-    typeTag?: string,
-  ): CommunityPostingRules {
-    const baseDefaults: CommunityPostingRules = {
-      allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-      requiresTeamMembership: false,
-      onlyTeamLead: false,
-      autoMembership: false,
-    };
+  getDefaultPermissionRules(typeTag?: string): PermissionRule[] {
+    const rules: PermissionRule[] = [];
 
+    // Base rules for all community types
+    const baseRules = this.getBaseRules();
+    rules.push(...baseRules);
+
+    // Type-specific overrides
     switch (typeTag) {
       case 'marathon-of-good':
-        return {
-          ...baseDefaults,
-          allowedRoles: ['superadmin', 'lead', 'participant'],
-          onlyTeamLead: false,
-        };
-
+        rules.push(...this.getMarathonOfGoodRules());
+        break;
       case 'future-vision':
-        return {
-          ...baseDefaults,
-          allowedRoles: ['superadmin', 'lead', 'participant'],
-          onlyTeamLead: false,
-        };
-
+        rules.push(...this.getFutureVisionRules());
+        break;
       case 'support':
-        return {
-          ...baseDefaults,
-          allowedRoles: ['superadmin', 'lead', 'participant'],
-          requiresTeamMembership: false,
-        };
-
+        rules.push(...this.getSupportRules());
+        break;
       case 'team':
-        return {
-          ...baseDefaults,
-          allowedRoles: ['superadmin', 'lead', 'participant'],
-          requiresTeamMembership: true,
-        };
-
+        rules.push(...this.getTeamRules());
+        break;
       default:
-        return baseDefaults;
+        // Custom or other types use base rules
+        break;
     }
+
+    return rules;
   }
 
   /**
-   * Get default voting rules based on community typeTag
+   * Base rules that apply to all community types
    */
-  getDefaultVotingRules(
-    typeTag?: string,
-  ): CommunityVotingRules {
-    const baseDefaults: CommunityVotingRules = {
-      allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-      canVoteForOwnPosts: false,
-      participantsCannotVoteForLead: false,
-      spendsMerits: true,
-      awardsMerits: true,
-    };
+  private getBaseRules(): PermissionRule[] {
+    const roles: Array<'superadmin' | 'lead' | 'participant' | 'viewer'> = [
+      'superadmin',
+      'lead',
+      'participant',
+      'viewer',
+    ];
+    const rules: PermissionRule[] = [];
 
-    switch (typeTag) {
-      case 'marathon-of-good':
-        return {
-          ...baseDefaults,
-          participantsCannotVoteForLead: true,
-        };
-
-      case 'future-vision':
-        return {
-          ...baseDefaults,
-          canVoteForOwnPosts: true,
-        };
-
-      case 'support':
-        return {
-          ...baseDefaults,
-          allowedRoles: ['superadmin', 'lead', 'participant'],
-        };
-
-      case 'team':
-        return {
-          ...baseDefaults,
-          allowedRoles: ['superadmin', 'lead', 'participant'],
-        };
-
-      default:
-        return baseDefaults;
+    // Superadmin can do everything (except vote for own posts, handled in rule engine)
+    for (const action of Object.values(ActionType)) {
+      rules.push({
+        role: 'superadmin',
+        action,
+        allowed: true,
+      });
     }
+
+    // Lead permissions
+    rules.push(
+      { role: 'lead', action: ActionType.POST_PUBLICATION, allowed: true },
+      { role: 'lead', action: ActionType.CREATE_POLL, allowed: true },
+      { role: 'lead', action: ActionType.EDIT_PUBLICATION, allowed: true },
+      { role: 'lead', action: ActionType.DELETE_PUBLICATION, allowed: true },
+      { role: 'lead', action: ActionType.VOTE, allowed: true },
+      { role: 'lead', action: ActionType.COMMENT, allowed: true },
+      { role: 'lead', action: ActionType.EDIT_COMMENT, allowed: true },
+      { role: 'lead', action: ActionType.DELETE_COMMENT, allowed: true },
+      { role: 'lead', action: ActionType.EDIT_POLL, allowed: true },
+      { role: 'lead', action: ActionType.DELETE_POLL, allowed: true },
+      { role: 'lead', action: ActionType.VIEW_COMMUNITY, allowed: true },
+    );
+
+    // Participant permissions (base - can be overridden by type)
+    rules.push(
+      { role: 'participant', action: ActionType.POST_PUBLICATION, allowed: true },
+      { role: 'participant', action: ActionType.CREATE_POLL, allowed: true },
+      {
+        role: 'participant',
+        action: ActionType.EDIT_PUBLICATION,
+        allowed: true,
+        conditions: {
+          canEditWithVotes: false,
+          canEditWithComments: false,
+          canEditAfterDays: 7, // Default 7 days
+        },
+      },
+      {
+        role: 'participant',
+        action: ActionType.DELETE_PUBLICATION,
+        allowed: true,
+        conditions: {
+          canDeleteWithVotes: false,
+          canDeleteWithComments: false,
+        },
+      },
+      {
+        role: 'participant',
+        action: ActionType.VOTE,
+        allowed: true,
+        conditions: {
+          canVoteForOwnPosts: false,
+        },
+      },
+      { role: 'participant', action: ActionType.COMMENT, allowed: true },
+      {
+        role: 'participant',
+        action: ActionType.EDIT_COMMENT,
+        allowed: true,
+        conditions: {
+          canEditWithVotes: false,
+          canEditAfterDays: 7,
+        },
+      },
+      { role: 'participant', action: ActionType.EDIT_POLL, allowed: true },
+      { role: 'participant', action: ActionType.DELETE_POLL, allowed: true },
+      { role: 'participant', action: ActionType.VIEW_COMMUNITY, allowed: true },
+    );
+
+    // Viewer permissions
+    rules.push(
+      { role: 'viewer', action: ActionType.VIEW_COMMUNITY, allowed: true },
+      // Viewers cannot post, vote (except in marathon-of-good), comment, edit, or delete
+    );
+
+    return rules;
   }
 
   /**
-   * Get default visibility rules based on community typeTag
+   * Marathon of Good specific rules
    */
-  getDefaultVisibilityRules(
-    typeTag?: string,
-  ): CommunityVisibilityRules {
-    const baseDefaults: CommunityVisibilityRules = {
-      visibleToRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-      isHidden: false,
-      teamOnly: false,
-    };
+  private getMarathonOfGoodRules(): PermissionRule[] {
+    const rules: PermissionRule[] = [];
 
-    // All community types use the same visibility defaults for now
-    return baseDefaults;
+    // Participants can post and create polls (already in base, but ensure it's explicit)
+    // Participants cannot vote for leads from same team
+    rules.push({
+      role: 'participant',
+      action: ActionType.VOTE,
+      allowed: true,
+      conditions: {
+        canVoteForOwnPosts: false,
+        participantsCannotVoteForLead: true,
+      },
+    });
+
+    // Viewers can vote in marathon-of-good
+    rules.push({
+      role: 'viewer',
+      action: ActionType.VOTE,
+      allowed: true,
+      conditions: {
+        canVoteForOwnPosts: false,
+      },
+    });
+
+    return rules;
   }
 
   /**
-   * Get default merit rules based on community typeTag
+   * Future Vision specific rules
    */
-  getDefaultMeritRules(
-    typeTag?: string,
-  ): CommunityMeritRules {
-    const baseDefaults: CommunityMeritRules = {
+  private getFutureVisionRules(): PermissionRule[] {
+    const rules: PermissionRule[] = [];
+
+    // Participants, leads, and superadmins can vote for own posts in future-vision
+    rules.push({
+      role: 'participant',
+      action: ActionType.VOTE,
+      allowed: true,
+      conditions: {
+        canVoteForOwnPosts: true,
+      },
+    });
+
+    rules.push({
+      role: 'lead',
+      action: ActionType.VOTE,
+      allowed: true,
+      conditions: {
+        canVoteForOwnPosts: true,
+      },
+    });
+
+    return rules;
+  }
+
+  /**
+   * Support community specific rules
+   */
+  private getSupportRules(): PermissionRule[] {
+    const rules: PermissionRule[] = [];
+
+    // Participants can post, create polls, and vote freely in support communities
+    // (base rules already allow this, but we make it explicit)
+    rules.push({
+      role: 'participant',
+      action: ActionType.VOTE,
+      allowed: true,
+      conditions: {
+        canVoteForOwnPosts: false,
+      },
+    });
+
+    return rules;
+  }
+
+  /**
+   * Team community specific rules
+   */
+  private getTeamRules(): PermissionRule[] {
+    const rules: PermissionRule[] = [];
+
+    // Team communities require team membership for posting
+    rules.push({
+      role: 'participant',
+      action: ActionType.POST_PUBLICATION,
+      allowed: true,
+      conditions: {
+        requiresTeamMembership: true,
+      },
+    });
+
+    rules.push({
+      role: 'participant',
+      action: ActionType.CREATE_POLL,
+      allowed: true,
+      conditions: {
+        requiresTeamMembership: true,
+      },
+    });
+
+    // Team communities: only team members can vote, and they can vote for each other but not themselves
+    rules.push({
+      role: 'participant',
+      action: ActionType.VOTE,
+      allowed: true,
+      conditions: {
+        canVoteForOwnPosts: false,
+      },
+    });
+
+    // Viewers cannot see team communities
+    rules.push({
+      role: 'viewer',
+      action: ActionType.VIEW_COMMUNITY,
+      allowed: false,
+    });
+
+    return rules;
+  }
+
+  /**
+   * Get default merit settings based on community typeTag
+   */
+  getDefaultMeritSettings(typeTag?: string): CommunityMeritSettings {
+    const baseDefaults: CommunityMeritSettings = {
       dailyQuota: 100,
       quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
       canEarn: true,
@@ -163,6 +302,17 @@ export class CommunityDefaultsService {
       default:
         return baseDefaults;
     }
+  }
+
+  /**
+   * Get default voting settings based on community typeTag
+   */
+  getDefaultVotingSettings(typeTag?: string): CommunityVotingSettings {
+    return {
+      spendsMerits: true,
+      awardsMerits: true,
+      // meritConversion is optional and community-specific
+    };
   }
 }
 

@@ -15,10 +15,9 @@ import {
 } from '../models/community/community.schema';
 import type {
   Community,
-  CommunityPostingRules,
-  CommunityVotingRules,
-  CommunityVisibilityRules,
-  CommunityMeritRules,
+  PermissionRule,
+  CommunityMeritSettings,
+  CommunityVotingSettings,
 } from '../models/community/community.schema';
 import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
 import type { User } from '../models/user/user.schema';
@@ -46,7 +45,6 @@ export interface CreateCommunityDto {
     | 'volunteer'
     | 'corporate'
     | 'custom';
-  visibilityRules?: CommunityVisibilityRules;
   settings?: {
     iconUrl?: string;
     currencyNames?: {
@@ -101,100 +99,94 @@ export class CommunityService {
     return doc ? (doc as unknown as Community) : null;
   }
 
+
   /**
-   * Get effective posting rules (defaults merged with custom overrides)
+   * Get effective permission rules (defaults merged with custom overrides)
+   * DB rules override defaults. Rules are matched by role + action.
    */
-  getEffectivePostingRules(
-    community: Community,
-  ): CommunityPostingRules {
-    const defaults = this.communityDefaultsService.getDefaultPostingRules(
+  getEffectivePermissionRules(community: Community): PermissionRule[] {
+    const defaultRules = this.communityDefaultsService.getDefaultPermissionRules(
       community.typeTag,
     );
 
-    if (!community.postingRules) {
-      return defaults;
+    if (!community.permissionRules || community.permissionRules.length === 0) {
+      return defaultRules;
     }
 
-    // Merge stored rules with defaults (stored rules override defaults)
-    return {
-      ...defaults,
-      ...community.postingRules,
-      // Ensure allowedRoles is properly handled (array override)
-      allowedRoles:
-        community.postingRules.allowedRoles ?? defaults.allowedRoles,
-    };
+    // Merge: DB rules override defaults
+    // Create a map of default rules by role+action for quick lookup
+    const defaultRulesMap = new Map<string, PermissionRule>();
+    for (const rule of defaultRules) {
+      const key = `${rule.role}:${rule.action}`;
+      defaultRulesMap.set(key, rule);
+    }
+
+    // Create a map of DB rules by role+action
+    const dbRulesMap = new Map<string, PermissionRule>();
+    for (const rule of community.permissionRules) {
+      const key = `${rule.role}:${rule.action}`;
+      dbRulesMap.set(key, rule);
+    }
+
+    // Merge: DB rules override defaults, but include all default rules
+    const mergedRules: PermissionRule[] = [];
+    const processedKeys = new Set<string>();
+
+    // First, add all DB rules (these override defaults)
+    for (const dbRule of community.permissionRules) {
+      const key = `${dbRule.role}:${dbRule.action}`;
+      mergedRules.push(dbRule);
+      processedKeys.add(key);
+    }
+
+    // Then, add default rules that weren't overridden
+    for (const defaultRule of defaultRules) {
+      const key = `${defaultRule.role}:${defaultRule.action}`;
+      if (!processedKeys.has(key)) {
+        mergedRules.push(defaultRule);
+      }
+    }
+
+    return mergedRules;
   }
 
   /**
-   * Get effective voting rules (defaults merged with custom overrides)
+   * Get effective merit settings (defaults merged with custom overrides)
    */
-  getEffectiveVotingRules(
-    community: Community,
-  ): CommunityVotingRules {
-    const defaults = this.communityDefaultsService.getDefaultVotingRules(
+  getEffectiveMeritSettings(community: Community): CommunityMeritSettings {
+    const defaults = this.communityDefaultsService.getDefaultMeritSettings(
       community.typeTag,
     );
 
-    if (!community.votingRules) {
+    if (!community.meritSettings) {
       return defaults;
     }
 
-    // Merge stored rules with defaults (stored rules override defaults)
     return {
       ...defaults,
-      ...community.votingRules,
-      // Ensure allowedRoles is properly handled (array override)
-      allowedRoles:
-        community.votingRules.allowedRoles ?? defaults.allowedRoles,
-      // Handle optional nested object
-      meritConversion:
-        community.votingRules.meritConversion ?? defaults.meritConversion,
-    };
-  }
-
-  /**
-   * Get effective visibility rules (defaults merged with custom overrides)
-   */
-  getEffectiveVisibilityRules(
-    community: Community,
-  ): CommunityVisibilityRules {
-    const defaults = this.communityDefaultsService.getDefaultVisibilityRules(
-      community.typeTag,
-    );
-
-    if (!community.visibilityRules) {
-      return defaults;
-    }
-
-    // Merge stored rules with defaults (stored rules override defaults)
-    return {
-      ...defaults,
-      ...community.visibilityRules,
-      // Ensure visibleToRoles is properly handled (array override)
-      visibleToRoles:
-        community.visibilityRules.visibleToRoles ?? defaults.visibleToRoles,
-    };
-  }
-
-  /**
-   * Get effective merit rules (defaults merged with custom overrides)
-   */
-  getEffectiveMeritRules(community: Community): CommunityMeritRules {
-    const defaults = this.communityDefaultsService.getDefaultMeritRules(
-      community.typeTag,
-    );
-
-    if (!community.meritRules) {
-      return defaults;
-    }
-
-    // Merge stored rules with defaults (stored rules override defaults)
-    return {
-      ...defaults,
-      ...community.meritRules,
-      // Ensure quotaRecipients is properly handled (array override)
+      ...community.meritSettings,
       quotaRecipients:
-        community.meritRules.quotaRecipients ?? defaults.quotaRecipients,
+        community.meritSettings.quotaRecipients ?? defaults.quotaRecipients,
+    };
+  }
+
+  /**
+   * Get effective voting settings (defaults merged with custom overrides)
+   */
+  getEffectiveVotingSettings(community: Community): CommunityVotingSettings {
+    const defaults = this.communityDefaultsService.getDefaultVotingSettings(
+      community.typeTag,
+    );
+
+    if (!community.votingSettings) {
+      return defaults;
+    }
+
+    return {
+      ...defaults,
+      ...community.votingSettings,
+      meritConversion:
+        community.votingSettings.meritConversion ?? defaults.meritConversion,
     };
   }
 

@@ -78,49 +78,26 @@ export const CommunitySettingsSchema = z.object({
   editWindowDays: z.number().int().min(0).default(7), // Number of days after creation that regular users can edit their posts/comments (0 = no time limit)
 });
 
-// Community rules schemas (настраиваемые правила)
-// requiresTeamMembership: requires membership in a team-type community (typeTag: 'team')
-// onlyTeamLead: only allows leads (representatives) to post
-export const PostingRulesSchema = z.object({
-  allowedRoles: z.array(
-    z.enum(["superadmin", "lead", "participant", "viewer"])
-  ),
-  requiresTeamMembership: z.boolean().optional(), // Requires membership in a team-type community
+// Permission rule schema - granular role -> action -> allow/deny rules
+export const PermissionRuleConditionsSchema = z.object({
+  requiresTeamMembership: z.boolean().optional(),
   onlyTeamLead: z.boolean().optional(),
-  autoMembership: z.boolean().optional(),
-});
-
-export const MeritConversionSchema = z.object({
-  targetCommunityId: z.string(),
-  ratio: z.number().positive(),
-});
-
-export const VotingRulesSchema = z.object({
-  allowedRoles: z.array(
-    z.enum(["superadmin", "lead", "participant", "viewer"])
-  ),
-  canVoteForOwnPosts: z.boolean(),
+  canVoteForOwnPosts: z.boolean().optional(),
   participantsCannotVoteForLead: z.boolean().optional(),
-  spendsMerits: z.boolean(),
-  awardsMerits: z.boolean(),
-  meritConversion: MeritConversionSchema.optional(),
-});
-
-export const VisibilityRulesSchema = z.object({
-  visibleToRoles: z.array(
-    z.enum(["superadmin", "lead", "participant", "viewer"])
-  ),
-  isHidden: z.boolean().optional(),
+  canEditWithVotes: z.boolean().optional(),
+  canEditWithComments: z.boolean().optional(),
+  canEditAfterDays: z.number().int().min(0).optional(),
+  canDeleteWithVotes: z.boolean().optional(),
+  canDeleteWithComments: z.boolean().optional(),
   teamOnly: z.boolean().optional(),
+  isHidden: z.boolean().optional(),
 });
 
-export const MeritRulesSchema = z.object({
-  dailyQuota: z.number().int().min(0),
-  quotaRecipients: z.array(
-    z.enum(["superadmin", "lead", "participant", "viewer"])
-  ),
-  canEarn: z.boolean(),
-  canSpend: z.boolean(),
+export const PermissionRuleSchema = z.object({
+  role: z.enum(["superadmin", "lead", "participant", "viewer"]),
+  action: z.string(), // ActionType enum value
+  allowed: z.boolean(),
+  conditions: PermissionRuleConditionsSchema.optional(),
 });
 
 export const PollOptionSchema = z.object({
@@ -210,14 +187,8 @@ export const CommunitySchema = IdentifiableSchema.merge(
     .optional(),
   // НОВОЕ: Связанные валюты (настраивается)
   linkedCurrencies: z.array(z.string()).optional(),
-  // НОВОЕ: Правила публикации (НАСТРАИВАЕМЫЕ)
-  postingRules: PostingRulesSchema.optional(),
-  // НОВОЕ: Правила голосования (НАСТРАИВАЕМЫЕ)
-  votingRules: VotingRulesSchema.optional(),
-  // НОВОЕ: Правила видимости (НАСТРАИВАЕМЫЕ)
-  visibilityRules: VisibilityRulesSchema.optional(),
-  // НОВОЕ: Правила меритов (НАСТРАИВАЕМЫЕ)
-  meritRules: MeritRulesSchema.optional(),
+  // Granular permission rules - replaces postingRules, votingRules, visibilityRules, meritRules
+  permissionRules: z.array(PermissionRuleSchema).optional(),
   settings: CommunitySettingsSchema,
   hashtags: z.array(z.string()).default([]),
   hashtagDescriptions: z.record(z.string(), z.string()).optional().default({}),
@@ -718,11 +689,8 @@ export type Wallet = z.infer<typeof WalletSchema>;
 export type Transaction = z.infer<typeof TransactionSchema>;
 
 // Export rule types
-export type PostingRules = z.infer<typeof PostingRulesSchema>;
-export type VotingRules = z.infer<typeof VotingRulesSchema>;
-export type VisibilityRules = z.infer<typeof VisibilityRulesSchema>;
-export type MeritRules = z.infer<typeof MeritRulesSchema>;
-export type MeritConversion = z.infer<typeof MeritConversionSchema>;
+export type PermissionRule = z.infer<typeof PermissionRuleSchema>;
+export type PermissionRuleConditions = z.infer<typeof PermissionRuleConditionsSchema>;
 export type ResourcePermissions = z.infer<typeof ResourcePermissionsSchema>;
 
 export type CreatePublicationDto = z.infer<typeof CreatePublicationDtoSchema>;
