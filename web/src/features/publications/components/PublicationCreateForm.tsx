@@ -272,7 +272,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             content: description.trim(), // Оставляем для обратной совместимости
             hashtags,
             imageUrl: images.length > 0 ? images[0] : undefined, // Legacy: use first image
-            images: images.length > 0 ? images : undefined, // New: support multiple images
+            // NOTE: backend UpdatePublicationDtoSchema is strict and currently does not support `images`.
+            // We intentionally only send `imageUrl` when editing.
           },
         });
       } else {

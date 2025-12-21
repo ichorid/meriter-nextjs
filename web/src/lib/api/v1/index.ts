@@ -647,7 +647,7 @@ export const publicationsApiV1 = {
     async updatePublication(
         id: string,
         data: UpdatePublicationDto
-    ): Promise<Publication> {
+    ): Promise<{ success: true; data: Publication }> {
         const normalizedId = id?.trim();
         if (!normalizedId || normalizedId === 'undefined' || normalizedId === 'null') {
             throw new Error('Publication ID is required to update a publication');
@@ -656,7 +656,8 @@ export const publicationsApiV1 = {
             success: true;
             data: Publication;
         }>(`/api/v1/publications/${normalizedId}`, data);
-        return response.data;
+        // Return full response for useValidatedMutation to validate
+        return response;
     },
 
     async deletePublication(id: string): Promise<{ success: boolean }> {

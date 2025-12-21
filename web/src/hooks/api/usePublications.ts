@@ -10,6 +10,7 @@ import { createMutation } from "@/lib/api/mutation-factory";
 import {
     PublicationSchema,
     CreatePublicationDtoSchema,
+    UpdatePublicationDtoSchema,
 } from "@/types/api-v1/schemas";
 import type {
     Publication,
@@ -17,6 +18,7 @@ import type {
     CreatePublicationDto,
     UpdatePublicationDto,
 } from "@/types/api-v1";
+import { z } from "zod";
 import {
     createGetNextPageParam,
     createArrayGetNextPageParam,
@@ -163,7 +165,14 @@ export const useCreatePublication = createMutation({
 export const useUpdatePublication = createMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdatePublicationDto }) =>
         publicationsApiV1.updatePublication(id, data),
-    inputSchema: CreatePublicationDtoSchema.partial() as any,
+    // IMPORTANT: input schema must match the actual mutation variables shape ({ id, data }).
+    // Otherwise Zod will strip unknown keys and we’ll end up calling updatePublication(undefined, undefined).
+    inputSchema: z
+        .object({
+            id: z.string().min(1),
+            data: UpdatePublicationDtoSchema,
+        })
+        .strict() as any,
     outputSchema: PublicationSchema as any,
     validationContext: "useUpdatePublication",
     errorContext: "Update publication error",
