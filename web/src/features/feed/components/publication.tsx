@@ -186,6 +186,11 @@ export const Publication = (props: any) => {
     const showVoteForAuthor = isAuthor && hasBeneficiary; // Author can vote when there's a beneficiary
     const currentScore = currentPlus - currentMinus;
     
+    // Calculate total votes (current score + withdrawn votes) for display
+    // Check if withdrawals data is available in originalPublication
+    const totalWithdrawn = (originalPublication as any)?.withdrawals?.totalWithdrawn || 0;
+    const totalVotes = totalWithdrawn > 0 ? currentScore + totalWithdrawn : undefined;
+    
     // Community info already fetched above - reuse it
     const communityIdForRouting = communityInfo?.id || communityId;
     
@@ -306,6 +311,7 @@ export const Publication = (props: any) => {
                                     } : undefined}
                                     canVote={canVote}
                                     disabledReason={voteDisabledReason}
+                                    totalVotes={totalVotes}
                                 />
                             );
                         }

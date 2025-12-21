@@ -217,6 +217,8 @@
         "share": "Поделиться",
         "urlCopiedToBuffer": "URL скопирован в буфер",
         "noVotesToWithdraw": "Нет голосов для вывода",
+        "totalVotes": "Всего голосов",
+        "totalVotesTooltip": "Всего голосов включая выведенные",
         "writeComment": "Напишите комментарий",
         "from": "от",
         "inReplyTo": "В ответ на:",

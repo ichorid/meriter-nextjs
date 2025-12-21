@@ -16,6 +16,7 @@ interface BarVoteUnifiedProps {
     disabledReason?: string; // Translation key for why voting is disabled
     communityId?: string; // Community ID for share functionality
     slug?: string; // Post slug for share functionality
+    totalVotes?: number; // Total votes including withdrawn (only shown when > score)
 }
 
 export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({ 
@@ -29,7 +30,8 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
     canVote: canVoteProp,
     disabledReason,
     communityId,
-    slug
+    slug,
+    totalVotes
 }) => {
     const t = useTranslations('shared');
     
@@ -93,11 +95,21 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
             
             {/* Score & Vote & Share */}
             <div className="flex items-center gap-3">
-                <span className={`text-lg font-semibold tabular-nums ${
-                    score > 0 ? "text-success" : score < 0 ? "text-error" : "text-base-content/40"
-                }`}>
-                    {score > 0 ? '+' : ''}{score}
-                </span>
+                <div className="flex items-center gap-2">
+                    <span className={`text-lg font-semibold tabular-nums ${
+                        score > 0 ? "text-success" : score < 0 ? "text-error" : "text-base-content/40"
+                    }`}>
+                        {score > 0 ? '+' : ''}{score}
+                    </span>
+                    {totalVotes !== undefined && totalVotes > score && (
+                        <span 
+                            className="text-base-content/40 text-sm font-medium tabular-nums"
+                            title={t('totalVotesTooltip')}
+                        >
+                            ({totalVotes > 0 ? '+' : ''}{totalVotes})
+                        </span>
+                    )}
+                </div>
                 
                 <button
                     className={`h-8 px-4 text-xs font-medium rounded-lg transition-all ${

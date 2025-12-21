@@ -216,6 +216,8 @@
         "share": "Share",
         "urlCopiedToBuffer": "URL copied to buffer",
         "noVotesToWithdraw": "No votes to withdraw",
+        "totalVotes": "Total votes",
+        "totalVotesTooltip": "Total votes including withdrawn",
         "writeComment": "Write a comment",
         "from": "from",
         "inReplyTo": "In reply to:",

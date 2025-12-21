@@ -116,6 +116,10 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     ? Math.floor(10 * availableForWithdrawal) / 10
     : 0;
 
+  // Calculate total votes (current score + withdrawn votes) for display
+  // Only show when there are actual withdrawals
+  const totalVotes = totalWithdrawn > 0 ? currentScore + totalWithdrawn : undefined;
+
   // Get current wallet balance for topup
   const communityId = publication.communityId;
   const currentBalance = getWalletBalance(wallets, communityId);
@@ -234,6 +238,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
             disabledReason={voteDisabledReason}
             communityId={communityId}
             slug={publication.slug}
+            totalVotes={totalVotes}
           />
         )}
       </div>
