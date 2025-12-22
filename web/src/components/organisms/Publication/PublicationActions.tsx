@@ -218,6 +218,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         {showWithdraw ? (
           <BarWithdraw
             balance={maxWithdrawAmount}
+            score={currentScore}
+            totalVotes={totalVotes}
             onWithdraw={handleWithdrawClick}
             onTopup={handleTopupClick}
             showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)}

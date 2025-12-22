@@ -7,6 +7,8 @@ interface BarWithdrawProps {
     onWithdraw: () => void;
     onTopup: () => void;
     balance: number;
+    score?: number;
+    totalVotes?: number; // Total votes including withdrawn (only shown when > score)
     children?: React.ReactNode;
     showDisabled?: boolean; // If true, show disabled button even when balance <= 0
     isLoading?: boolean; // If true, show loading state
@@ -18,6 +20,8 @@ export const BarWithdraw: React.FC<BarWithdrawProps> = ({
     onWithdraw, 
     onTopup, 
     balance, 
+    score,
+    totalVotes,
     children, 
     showDisabled = false, 
     isLoading = false,
@@ -41,10 +45,38 @@ export const BarWithdraw: React.FC<BarWithdrawProps> = ({
         hapticImpact('light');
         onCommentClick && onCommentClick();
     };
+
+    const hasScore = typeof score === 'number' && !Number.isNaN(score);
     
     return (
         <div className="grid grid-cols-[1fr_140px] gap-4 px-5 py-2.5">
             <div className="flex items-center gap-2 mt-4">
+                {hasScore && (
+                    <div className="flex items-center gap-2">
+                        <span
+                            className={`text-lg font-semibold tabular-nums ${
+                                score! > 0
+                                    ? 'text-success'
+                                    : score! < 0
+                                      ? 'text-error'
+                                      : 'text-base-content/40'
+                            }`}
+                            title={t('vote')}
+                        >
+                            {score! > 0 ? '+' : ''}
+                            {score}
+                        </span>
+                        {totalVotes !== undefined && totalVotes > score! && (
+                            <span
+                                className="text-base-content/40 text-sm font-medium tabular-nums"
+                                title={t('totalVotesTooltip')}
+                            >
+                                ({totalVotes > 0 ? '+' : ''}
+                                {totalVotes})
+                            </span>
+                        )}
+                    </div>
+                )}
                 {children && <div className="left-info">{children}</div>}
                 {commentCount > 0 && (
                     <div className="cursor-pointer flex items-center gap-2" onClick={handleCommentClick}>

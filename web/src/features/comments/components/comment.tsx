@@ -178,6 +178,10 @@ export const Comment: React.FC<CommentProps> = ({
         withdrawableBalance,
         currentBalance,
     });
+
+    const totalWithdrawn =
+        (rest as { withdrawals?: { totalWithdrawn?: number } }).withdrawals
+            ?.totalWithdrawn ?? 0;
     
     // Check if community is special group (withdrawals disabled)
     const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
@@ -271,6 +275,8 @@ export const Comment: React.FC<CommentProps> = ({
                     isAuthor && !isSpecialGroup ? (
                         <BarWithdraw
                             balance={maxWithdrawAmount}
+                            score={commentScore}
+                            totalVotes={totalWithdrawn > 0 ? commentScore + totalWithdrawn : undefined}
                             onWithdraw={() => {
                                 useUIStore.getState().openWithdrawPopup(
                                     _id,

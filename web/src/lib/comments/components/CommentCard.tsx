@@ -406,6 +406,8 @@ export function CommentCard({
           (isAuthor && maxWithdrawAmount > 0) ? ( // Show withdraw button if user is author and has withdrawable balance
             <BarWithdraw
               balance={maxWithdrawAmount}
+              score={commentScore}
+              totalVotes={totalWithdrawn > 0 ? commentScore + totalWithdrawn : undefined}
               onWithdraw={() => {
                 useUIStore.getState().openWithdrawPopup(
                   node.id,
