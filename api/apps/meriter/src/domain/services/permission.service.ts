@@ -342,6 +342,7 @@ export class PermissionService {
    * - Requester is viewing their own data
    * - Requester is superadmin
    * - Requester is lead in the community
+   * - Requester is participant in the community
    */
   async canViewUserMerits(
     requesterId: string,
@@ -363,8 +364,8 @@ export class PermissionService {
       return true;
     }
 
-    // Check if requester is lead in the community
+    // Check if requester is lead or participant in the community
     const requesterRole = await this.getUserRoleInCommunity(requesterId, communityId);
-    return requesterRole === COMMUNITY_ROLE_LEAD;
+    return requesterRole === COMMUNITY_ROLE_LEAD || requesterRole === COMMUNITY_ROLE_PARTICIPANT;
   }
 }

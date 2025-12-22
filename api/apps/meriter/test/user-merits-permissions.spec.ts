@@ -198,13 +198,13 @@ describe('User Merits Permissions', () => {
       expect(canView).toBe(true);
     });
 
-    it('should return false when participant views another participant data', async () => {
+    it('should return true when participant views another participant data', async () => {
       const canView = await permissionService.canViewUserMerits(
         participant1Id,
         participant2Id,
         regularCommunityId,
       );
-      expect(canView).toBe(false);
+      expect(canView).toBe(true);
     });
 
     it('should return false when viewer views participant data', async () => {
@@ -271,15 +271,15 @@ describe('User Merits Permissions', () => {
       expect(wallet.userId).toBe(participant1Id);
     });
 
-    it('should throw ForbiddenError when participant views another participant wallet', async () => {
+    it('should return wallet when participant views another participant wallet', async () => {
       const req = { user: { id: participant1Id } };
-      await expect(
-        walletsController.getUserWallet(
-          participant2Id,
-          regularCommunityId,
-          req as any,
-        ),
-      ).rejects.toThrow(ForbiddenError);
+      const wallet = await walletsController.getUserWallet(
+        participant2Id,
+        regularCommunityId,
+        req as any,
+      );
+      expect(wallet).toBeDefined();
+      expect(wallet.userId).toBe(participant2Id);
     });
 
     it('should throw ForbiddenError when viewer views participant wallet', async () => {
@@ -293,16 +293,16 @@ describe('User Merits Permissions', () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it('should throw ForbiddenError when participant views non-existent user wallet (security: no info leakage)', async () => {
+    it('should throw NotFoundError when participant views non-existent user wallet (permission granted, then check existence)', async () => {
       const req = { user: { id: participant1Id } };
-      // Should return 403, not 404, to prevent information leakage
+      // Participant has permission, so we check existence and return 404
       await expect(
         walletsController.getUserWallet(
           nonExistentUserId,
           regularCommunityId,
           req as any,
         ),
-      ).rejects.toThrow(ForbiddenError);
+      ).rejects.toThrow(NotFoundError);
     });
 
     it('should throw NotFoundError when superadmin views non-existent user wallet (permission granted, then check existence)', async () => {
@@ -375,15 +375,15 @@ describe('User Merits Permissions', () => {
       expect(quota.dailyQuota).toBe(10);
     });
 
-    it('should throw ForbiddenError when participant views another participant quota', async () => {
+    it('should return quota when participant views another participant quota', async () => {
       const req = { user: { id: participant1Id } };
-      await expect(
-        walletsController.getUserQuota(
-          participant2Id,
-          regularCommunityId,
-          req as any,
-        ),
-      ).rejects.toThrow(ForbiddenError);
+      const quota = await walletsController.getUserQuota(
+        participant2Id,
+        regularCommunityId,
+        req as any,
+      );
+      expect(quota).toBeDefined();
+      expect(quota.dailyQuota).toBe(10);
     });
 
     it('should throw ForbiddenError when viewer views participant quota', async () => {
@@ -397,16 +397,16 @@ describe('User Merits Permissions', () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it('should throw ForbiddenError when participant views non-existent user quota (security: no info leakage)', async () => {
+    it('should throw NotFoundError when participant views non-existent user quota (permission granted, then check existence)', async () => {
       const req = { user: { id: participant1Id } };
-      // Should return 403, not 404, to prevent information leakage
+      // Participant has permission, so we check existence and return 404
       await expect(
         walletsController.getUserQuota(
           nonExistentUserId,
           regularCommunityId,
           req as any,
         ),
-      ).rejects.toThrow(ForbiddenError);
+      ).rejects.toThrow(NotFoundError);
     });
 
     it('should throw NotFoundError when superadmin views non-existent user quota (permission granted, then check existence)', async () => {
