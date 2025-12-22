@@ -8,6 +8,12 @@ export interface CommunityMember {
     avatarUrl?: string;
     globalRole: string;
     role?: 'lead' | 'participant' | 'viewer' | 'superadmin';
+    walletBalance?: number; // New: permanent merits balance
+    quota?: { // New: daily quota information
+        dailyQuota: number;
+        usedToday: number;
+        remainingToday: number;
+    };
 }
 
 export interface CommunityMembersResponse {

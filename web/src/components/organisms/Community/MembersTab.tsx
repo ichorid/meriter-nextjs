@@ -113,6 +113,8 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                             badges={roleBadge ? [roleBadge] : undefined}
                             communityId={communityId}
                             canViewMerits={canViewMerits}
+                            walletBalance={member.walletBalance}
+                            quota={member.quota}
                             onClick={() => router.push(routes.userProfile(member.id))}
                         />
                     );

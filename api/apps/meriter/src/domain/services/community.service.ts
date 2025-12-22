@@ -21,6 +21,7 @@ import type {
 } from '../models/community/community.schema';
 import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
 import type { User } from '../models/user/user.schema';
+import { WalletSchemaClass, WalletDocument } from '../models/wallet/wallet.schema';
 import { CommunityId, UserId } from '../value-objects';
 import { EventBus } from '../events/event-bus';
 import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
@@ -84,6 +85,7 @@ export class CommunityService {
     @InjectModel(CommunitySchemaClass.name)
     private communityModel: Model<CommunityDocument>,
     @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
+    @InjectModel(WalletSchemaClass.name) private walletModel: Model<WalletDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
     @Inject(forwardRef(() => UserService))
@@ -555,6 +557,7 @@ export class CommunityService {
     limit: number = 50,
     skip: number = 0,
   ): Promise<{ members: any[]; total: number }> {
+    // 1. Get community to retrieve memberIds, settings, and total count
     const community = await this.communityModel
       .findOne({ id: communityId })
       .lean();
@@ -564,41 +567,254 @@ export class CommunityService {
 
     const memberIds = community.members || [];
     const total = memberIds.length;
-
-    // Reverse to show newest members first (assuming appended to end)
-    // or just slice. Let's slice for now, but usually we want recent.
-    // Arrays in Mongo are usually appended.
     const paginatedIds = memberIds.slice(skip, skip + limit);
 
     if (paginatedIds.length === 0) {
       return { members: [], total };
     }
 
-    const members = await this.userModel
-      .find({
-        id: { $in: paginatedIds },
-      })
-      .lean();
+    // Calculate quota start time (needed for quota aggregation)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const quotaStartTime = community.lastQuotaResetAt
+      ? new Date(community.lastQuotaResetAt)
+      : today;
+    
+    const dailyQuota = community.settings?.dailyEmission ?? 0;
+    const isFutureVision = community.typeTag === 'future-vision';
+    const isMarathonOfGood = community.typeTag === 'marathon-of-good';
 
-    // Map to DTOs with roles
-    const mappedMembers = await Promise.all(
-      members.map(async (user) => {
-        // Get user's role in this community
-        const role = await this.userCommunityRoleService.getRole(
-          user.id,
-          communityId,
-        );
-        
-        return {
-          id: user.id,
-          username: user.username,
-          displayName: user.displayName,
-          avatarUrl: user.avatarUrl,
-          globalRole: user.globalRole,
-          role: role || undefined, // role can be 'lead', 'participant', 'viewer', or null
-        };
-      }),
-    );
+    // 2. Use aggregation pipeline to join users with roles, wallets, and quota
+    const members = await this.userModel.aggregate([
+      // Match only the paginated user IDs
+      { $match: { id: { $in: paginatedIds } } },
+      
+      // Lookup user community role for this specific community
+      {
+        $lookup: {
+          from: 'user_community_roles',
+          let: { userId: '$id', communityId: communityId },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                  ],
+                },
+              },
+            },
+            { $limit: 1 },
+          ],
+          as: 'roleData',
+        },
+      },
+      
+      // Lookup wallet for this user in this community
+      {
+        $lookup: {
+          from: 'wallets',
+          let: { userId: '$id', communityId: communityId },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                  ],
+                },
+              },
+            },
+            { $limit: 1 },
+          ],
+          as: 'walletData',
+        },
+      },
+
+      // Add community context for quota calculation
+      {
+        $addFields: {
+          userRole: { $arrayElemAt: ['$roleData.role', 0] },
+          dailyQuota: dailyQuota,
+          quotaStartTime: quotaStartTime,
+          isFutureVision: isFutureVision,
+          isMarathonOfGood: isMarathonOfGood,
+        },
+      },
+
+      // Lookup and aggregate quota usage from votes
+      {
+        $lookup: {
+          from: 'votes',
+          let: { userId: '$id', communityId: communityId, quotaStartTime: quotaStartTime },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                    { $gt: ['$amountQuota', 0] },
+                    { $gte: ['$createdAt', '$$quotaStartTime'] },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ],
+          as: 'votesQuota',
+        },
+      },
+
+      // Lookup and aggregate quota usage from poll_casts
+      {
+        $lookup: {
+          from: 'poll_casts',
+          let: { userId: '$id', communityId: communityId, quotaStartTime: quotaStartTime },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                    { $gt: ['$amountQuota', 0] },
+                    { $gte: ['$createdAt', '$$quotaStartTime'] },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ],
+          as: 'pollCastsQuota',
+        },
+      },
+
+      // Lookup and aggregate quota usage from quota_usage
+      {
+        $lookup: {
+          from: 'quota_usage',
+          let: { userId: '$id', communityId: communityId, quotaStartTime: quotaStartTime },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                    { $gt: ['$amountQuota', 0] },
+                    { $gte: ['$createdAt', '$$quotaStartTime'] },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ],
+          as: 'quotaUsageQuota',
+        },
+      },
+
+      // Calculate quota fields
+      {
+        $addFields: {
+          votesTotal: { $ifNull: [{ $arrayElemAt: ['$votesQuota.total', 0] }, 0] },
+          pollCastsTotal: { $ifNull: [{ $arrayElemAt: ['$pollCastsQuota.total', 0] }, 0] },
+          quotaUsageTotal: { $ifNull: [{ $arrayElemAt: ['$quotaUsageQuota.total', 0] }, 0] },
+        },
+      },
+
+      {
+        $addFields: {
+          usedToday: {
+            $add: ['$votesTotal', '$pollCastsTotal', '$quotaUsageTotal'],
+          },
+          // Calculate effective daily quota based on role and community type
+          effectiveDailyQuota: {
+            $cond: {
+              if: {
+                $or: [
+                  { $eq: ['$isFutureVision', true] },
+                  {
+                    $and: [
+                      { $eq: ['$userRole', 'viewer'] },
+                      { $ne: ['$isMarathonOfGood', true] },
+                    ],
+                  },
+                ],
+              },
+              then: 0,
+              else: '$dailyQuota',
+            },
+          },
+        },
+      },
+
+      {
+        $addFields: {
+          remainingToday: {
+            $max: [
+              0,
+              {
+                $subtract: ['$effectiveDailyQuota', '$usedToday'],
+              },
+            ],
+          },
+        },
+      },
+
+      // Project final structure
+      {
+        $project: {
+          id: 1,
+          username: 1,
+          displayName: 1,
+          avatarUrl: 1,
+          globalRole: 1,
+          role: '$userRole',
+          walletBalance: { $arrayElemAt: ['$walletData.balance', 0] },
+          quota: {
+            dailyQuota: '$effectiveDailyQuota',
+            usedToday: '$usedToday',
+            remainingToday: '$remainingToday',
+          },
+        },
+      },
+    ]);
+
+    // 3. Map to DTO format (handle undefined/null values)
+    const mappedMembers = members.map((user) => ({
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      globalRole: user.globalRole,
+      role: user.role || undefined,
+      walletBalance: user.walletBalance ?? undefined,
+      quota: user.quota
+        ? {
+            dailyQuota: user.quota.dailyQuota ?? 0,
+            usedToday: user.quota.usedToday ?? 0,
+            remainingToday: user.quota.remainingToday ?? 0,
+          }
+        : undefined,
+    }));
 
     return { members: mappedMembers, total };
   }

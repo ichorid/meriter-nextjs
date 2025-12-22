@@ -2,8 +2,6 @@
 
 import React from 'react';
 import { InfoCard } from '@/components/ui/InfoCard';
-import { useOtherUserQuota } from '@/hooks/api/useQuota';
-import { useOtherUserWallet } from '@/hooks/api/useWallet';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
 import { useTranslations } from 'next-intl';
 
@@ -15,6 +13,12 @@ interface MemberInfoCardProps {
     badges?: string[];
     communityId: string;
     canViewMerits: boolean;
+    walletBalance?: number; // New: permanent merits balance
+    quota?: { // New: daily quota information
+        dailyQuota: number;
+        usedToday: number;
+        remainingToday: number;
+    };
     onClick?: () => void;
 }
 
@@ -26,37 +30,33 @@ export function MemberInfoCard({
     badges,
     communityId,
     canViewMerits,
+    walletBalance,
+    quota,
     onClick,
 }: MemberInfoCardProps) {
     const tCommon = useTranslations('common');
-    
-    // Fetch quota and wallet data if user has permission
-    const { data: memberQuota } = useOtherUserQuota(memberId, communityId);
-    const { data: memberWallet } = useOtherUserWallet(memberId, communityId);
-
-    const permanentMerits = memberWallet?.balance;
 
     // Build footer content if user can view merits and data exists
-    const footer = canViewMerits && (permanentMerits !== undefined || (memberQuota && memberQuota.dailyQuota > 0)) ? (
+    const footer = canViewMerits && (walletBalance !== undefined || (quota && quota.dailyQuota > 0)) ? (
         <div className="flex items-center gap-3 pt-2 border-t border-brand-secondary/10">
-            {memberWallet?.balance !== undefined && (
+            {walletBalance !== undefined && (
                 <div className="text-xs text-brand-text-secondary">
                     <span>{tCommon('permanentMerits')}: </span>
                     <span className="font-semibold text-brand-text-primary">
-                        {memberWallet.balance.toLocaleString()}
+                        {walletBalance.toLocaleString()}
                     </span>
                 </div>
             )}
-            {memberQuota && memberQuota.dailyQuota > 0 && (
+            {quota && quota.dailyQuota > 0 && (
                 <div className="flex items-center gap-1">
                     <DailyQuotaRing
-                        remaining={memberQuota.remainingToday}
-                        max={memberQuota.dailyQuota}
+                        remaining={quota.remainingToday}
+                        max={quota.dailyQuota}
                         className="w-4 h-4"
                         asDiv={true}
                     />
                     <span className="text-xs text-brand-text-secondary">
-                        {memberQuota.remainingToday}/{memberQuota.dailyQuota}
+                        {quota.remainingToday}/{quota.dailyQuota}
                     </span>
                 </div>
             )}
