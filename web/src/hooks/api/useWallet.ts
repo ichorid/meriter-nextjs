@@ -101,15 +101,30 @@ export function useWallet(communityId?: string) {
  * Hook to fetch wallet for another user (requires appropriate permissions: superadmin or lead in community)
  */
 export function useOtherUserWallet(userId: string, communityId: string) {
-  return useQuery<Wallet>({
+  return useQuery<Wallet | null>({
     queryKey: ['wallet', 'user', userId, communityId],
     queryFn: async () => {
       if (!userId || !communityId) throw new Error('userId and communityId required');
-      const { usersApiV1 } = await import('@/lib/api/v1');
-      return usersApiV1.getUserWallet(userId, communityId);
+      try {
+        const { usersApiV1 } = await import('@/lib/api/v1');
+        return await usersApiV1.getUserWallet(userId, communityId);
+      } catch (error: any) {
+        // 403 = no permission (expected, don't show error)
+        // 404 = user/resource doesn't exist (also expected in some cases)
+        const status = error?.details?.status || error?.code;
+        if (status === 403 || status === 'HTTP_403' || status === 'FORBIDDEN') {
+          return null; // No permission, return null gracefully
+        }
+        if (status === 404 || status === 'HTTP_404' || status === 'NOT_FOUND') {
+          return null; // User/resource doesn't exist, return null gracefully
+        }
+        throw error; // Re-throw other errors
+      }
     },
     enabled: !!userId && !!communityId,
     staleTime: STALE_TIME.MEDIUM,
+    retry: false,
+    throwOnError: false, // Don't propagate errors to prevent toasts
   });
 }
 

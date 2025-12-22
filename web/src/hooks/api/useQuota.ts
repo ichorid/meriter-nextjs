@@ -31,15 +31,29 @@ export function useUserQuota(communityId?: string) {
  * Hook to fetch quota for another user (requires appropriate permissions: superadmin or lead in community)
  */
 export function useOtherUserQuota(userId: string, communityId?: string) {
-  return useQuery<UserQuota>({
+  return useQuery<UserQuota | null>({
     queryKey: quotaKeys.quota(userId, communityId),
     queryFn: async () => {
       if (!userId || !communityId) throw new Error('missing identifiers');
-      const quota = await usersApiV1.getUserQuota(userId, communityId);
-      return quota;
+      try {
+        return await usersApiV1.getUserQuota(userId, communityId);
+      } catch (error: any) {
+        // 403 = no permission (expected, don't show error)
+        // 404 = user/resource doesn't exist (also expected in some cases)
+        const status = error?.details?.status || error?.code;
+        if (status === 403 || status === 'HTTP_403' || status === 'FORBIDDEN') {
+          return null; // No permission, return null gracefully
+        }
+        if (status === 404 || status === 'HTTP_404' || status === 'NOT_FOUND') {
+          return null; // User/resource doesn't exist, return null gracefully
+        }
+        throw error; // Re-throw other errors
+      }
     },
     enabled: !!userId && !!communityId,
     refetchOnWindowFocus: false,
+    retry: false,
+    throwOnError: false, // Don't propagate errors to prevent toasts
   });
 }
 

@@ -17,7 +17,7 @@ import { CommunityService } from '../../domain/services/community.service';
 import { PermissionService } from '../../domain/services/permission.service';
 import { UserGuard } from '../../user.guard';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
-import { NotFoundError } from '../../common/exceptions/api.exceptions';
+import { NotFoundError, ForbiddenError } from '../../common/exceptions/api.exceptions';
 import {
   Wallet,
   Transaction,
@@ -198,29 +198,26 @@ export class WalletsController {
     // Handle 'me' token for current user
     const actualUserId = userId === 'me' ? req.user.id : userId;
 
-    // Permission check: allow if user is viewing their own wallet, or if requester is superadmin/lead
-    if (actualUserId !== req.user.id) {
-      // Check if requesting user is superadmin
-      const requestingUser = await this.userModel.findOne({ id: req.user.id }).lean();
-      if (!requestingUser) {
-        throw new NotFoundError('User', req.user.id);
-      }
-
-      const isSuperadmin = requestingUser.globalRole === GLOBAL_ROLE_SUPERADMIN;
-
-      // Check if requesting user is a lead in this community
-      const requesterRole = await this.permissionService.getUserRoleInCommunity(
-        req.user.id,
-        communityId,
-      );
-      const isLead = requesterRole === COMMUNITY_ROLE_LEAD;
-
-      // Only allow if requester is superadmin or lead in this community
-      if (!isSuperadmin && !isLead) {
-        throw new NotFoundError('User', userId);
-      }
+    // STEP 1: Check permissions FIRST (security: don't leak existence information)
+    // If no permission, return 403 without checking if user exists
+    const canView = await this.permissionService.canViewUserMerits(
+      req.user.id,
+      actualUserId,
+      communityId,
+    );
+    
+    if (!canView) {
+      // Return 403: data MAY exist, but requester lacks permission to know it
+      throw new ForbiddenError('You do not have permission to view this user\'s wallet');
     }
 
+    // STEP 2: Permission granted - now check if target user exists
+    const targetUser = await this.userModel.findOne({ id: actualUserId }).lean();
+    if (!targetUser) {
+      throw new NotFoundError('User', actualUserId);
+    }
+
+    // STEP 3: Get wallet (permission granted and user exists)
     const wallet = await this.walletsService.getUserWallet(
       actualUserId,
       communityId,
@@ -279,27 +276,23 @@ export class WalletsController {
       throw new BadRequestException('communityId is required');
     }
 
-    // Permission check: allow if user is viewing their own quota, or if requester is superadmin/lead
-    if (actualUserId !== req.user.id) {
-      // Check if requesting user is superadmin
-      const requestingUser = await this.userModel.findOne({ id: req.user.id }).lean();
-      if (!requestingUser) {
-        throw new NotFoundError('User', req.user.id);
-      }
+    // STEP 1: Check permissions FIRST (security: don't leak existence information)
+    // If no permission, return 403 without checking if user exists
+    const canView = await this.permissionService.canViewUserMerits(
+      req.user.id,
+      actualUserId,
+      communityId,
+    );
+    
+    if (!canView) {
+      // Return 403: data MAY exist, but requester lacks permission to know it
+      throw new ForbiddenError('You do not have permission to view this user\'s quota');
+    }
 
-      const isSuperadmin = requestingUser.globalRole === GLOBAL_ROLE_SUPERADMIN;
-
-      // Check if requesting user is a lead in this community
-      const requesterRole = await this.permissionService.getUserRoleInCommunity(
-        req.user.id,
-        communityId,
-      );
-      const isLead = requesterRole === COMMUNITY_ROLE_LEAD;
-
-      // Only allow if requester is superadmin or lead in this community
-      if (!isSuperadmin && !isLead) {
-        throw new NotFoundError('User', userId);
-      }
+    // STEP 2: Permission granted - now check if target user exists
+    const targetUser = await this.userModel.findOne({ id: actualUserId }).lean();
+    if (!targetUser) {
+      throw new NotFoundError('User', actualUserId);
     }
 
     // Query community by internal ID

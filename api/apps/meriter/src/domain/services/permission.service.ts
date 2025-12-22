@@ -335,4 +335,36 @@ export class PermissionService {
       context,
     );
   }
+
+  /**
+   * Check if user can view another user's wallet/quota data in a community
+   * Returns true if:
+   * - Requester is viewing their own data
+   * - Requester is superadmin
+   * - Requester is lead in the community
+   */
+  async canViewUserMerits(
+    requesterId: string,
+    targetUserId: string,
+    communityId: string,
+  ): Promise<boolean> {
+    // User can always view their own data
+    if (requesterId === targetUserId) {
+      return true;
+    }
+
+    // Check if requester is superadmin
+    const requester = await this.userService.getUserById(requesterId);
+    if (!requester) {
+      return false;
+    }
+    
+    if (requester.globalRole === GLOBAL_ROLE_SUPERADMIN) {
+      return true;
+    }
+
+    // Check if requester is lead in the community
+    const requesterRole = await this.getUserRoleInCommunity(requesterId, communityId);
+    return requesterRole === COMMUNITY_ROLE_LEAD;
+  }
 }
