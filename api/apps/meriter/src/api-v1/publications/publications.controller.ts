@@ -522,9 +522,44 @@ export class PublicationsController {
       publicationIds,
     );
 
-    // Add permissions to each publication
+    // Batch fetch withdrawals data for all publications
+    const withdrawalsMap = new Map<string, number>();
+    try {
+      const withdrawals = await Promise.all(
+        publicationIds.map(async (id) => {
+          try {
+            const totalWithdrawn = await this.walletService.getTotalWithdrawnByReference(
+              'publication_withdrawal',
+              id,
+            );
+            return { id, totalWithdrawn };
+          } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            this.logger.warn(
+              `Failed to aggregate withdrawals for publication ${id}:`,
+              errorMessage,
+            );
+            return { id, totalWithdrawn: 0 };
+          }
+        }),
+      );
+      withdrawals.forEach(({ id, totalWithdrawn }) => {
+        withdrawalsMap.set(id, totalWithdrawn);
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        'Failed to batch fetch withdrawals for publications:',
+        errorMessage,
+      );
+    }
+
+    // Add permissions and withdrawals to each publication
     mappedPublications.forEach((pub) => {
       pub.permissions = permissionsMap.get(pub.id);
+      pub.withdrawals = {
+        totalWithdrawn: withdrawalsMap.get(pub.id) || 0,
+      };
     });
 
     return ApiResponseHelper.successResponse(mappedPublications);

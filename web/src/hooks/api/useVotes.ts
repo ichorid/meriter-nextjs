@@ -111,8 +111,16 @@ export function useWithdrawFromPublication() {
   return useMutation({
     mutationFn: ({ publicationId, amount }: { publicationId: string; amount?: number }) => 
       votesApiV1.withdrawFromPublication(publicationId, { amount }),
-    onSuccess: () => {
-      invalidatePublications(queryClient, { lists: true, exact: false });
+    onSuccess: (_, variables) => {
+      // Invalidate both lists and the specific publication detail
+      // Also invalidate all publication queries to ensure fresh data
+      invalidatePublications(queryClient, { 
+        lists: true, 
+        detail: variables.publicationId,
+        exact: false 
+      });
+      // Broad invalidation to catch any cached queries
+      queryClient.invalidateQueries({ queryKey: ['publications'], exact: false });
       invalidateCommunities(queryClient, { lists: true, exact: false });
       invalidateWallet(queryClient, { includeBalance: true });
     },

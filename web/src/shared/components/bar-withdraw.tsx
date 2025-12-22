@@ -66,7 +66,10 @@ export const BarWithdraw: React.FC<BarWithdrawProps> = ({
                             {score! > 0 ? '+' : ''}
                             {score}
                         </span>
-                        {totalVotes !== undefined && totalVotes > score! && (
+                        {totalVotes !== undefined && 
+                         typeof score === 'number' && 
+                         !Number.isNaN(score) &&
+                         totalVotes > score && (
                             <span
                                 className="text-base-content/40 text-sm font-medium tabular-nums"
                                 title={t('totalVotesTooltip')}

@@ -117,8 +117,18 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     : 0;
 
   // Calculate total votes (current score + withdrawn votes) for display
-  // Only show when there are actual withdrawals
+  // Only show when there are actual withdrawals and totalVotes > currentScore
   const totalVotes = totalWithdrawn > 0 ? currentScore + totalWithdrawn : undefined;
+  
+  // Debug logging (only in development)
+  if (process.env.NODE_ENV !== 'production' && totalWithdrawn > 0) {
+    console.debug('[PublicationActions] Vote display:', {
+      currentScore,
+      totalWithdrawn,
+      totalVotes,
+      willShowTotalVotes: totalVotes !== undefined && totalVotes > currentScore,
+    });
+  }
 
   // Get current wallet balance for topup
   const communityId = publication.communityId;
