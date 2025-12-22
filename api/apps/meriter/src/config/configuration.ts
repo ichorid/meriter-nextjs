@@ -18,6 +18,7 @@ export interface AppConfig {
   features: {
     telegramBotEnabled: boolean;
     telegramAuthEnabled: boolean;
+    commentImageUploadsEnabled: boolean;
   };
 }
 
@@ -75,6 +76,7 @@ export default (): AppConfig => ({
   features: {
     telegramBotEnabled: process.env.TELEGRAM_BOT_ENABLED === 'true',
     telegramAuthEnabled: process.env.OAUTH_TELEGRAM_ENABLED === 'true',
+    commentImageUploadsEnabled: process.env.ENABLE_COMMENT_IMAGE_UPLOADS === 'true',
   },
 });
 

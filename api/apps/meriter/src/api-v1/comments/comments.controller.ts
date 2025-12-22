@@ -10,7 +10,10 @@ import {
   Req,
   UseGuards,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { CommentService } from '../../domain/services/comment.service';
 import { UserService } from '../../domain/services/user.service';
 import { VoteService } from '../../domain/services/vote.service';
@@ -59,6 +62,7 @@ export class CommentsController {
     private readonly commentEnrichment: CommentEnrichmentService,
     private readonly permissionService: PermissionService,
     private readonly permissionsHelperService: PermissionsHelperService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Get()
@@ -209,6 +213,12 @@ export class CommentsController {
     @Body() createDto: CreateCommentDto,
     @Req() req: any,
   ): Promise<Comment> {
+    // Check feature flag for image uploads
+    const commentImageUploadsEnabled = this.configService.get<boolean>('features.commentImageUploadsEnabled', false);
+    if (!commentImageUploadsEnabled && createDto.images && createDto.images.length > 0) {
+      throw new BadRequestException('Image uploads in votes/comments are disabled');
+    }
+    
     // Check permissions using PermissionService
     // For comments, we need to resolve the publication ID first
     let publicationId: string | undefined;

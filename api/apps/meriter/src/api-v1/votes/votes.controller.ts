@@ -11,6 +11,7 @@ import {
   Logger,
   BadRequestException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { VoteService } from '../../domain/services/vote.service';
@@ -59,6 +60,7 @@ export class VotesController {
     private readonly userSettingsService: UserSettingsService,
     private readonly userUpdatesService: UserUpdatesService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
+    private readonly configService: ConfigService,
     @InjectConnection() private readonly connection: Connection,
     @InjectModel(PublicationSchemaClass.name)
     private readonly publicationModel: Model<PublicationDocument>,
@@ -547,6 +549,12 @@ export class VotesController {
     
     // Get images from DTO
     const images = (createDto as any).images || [];
+    
+    // Check feature flag for image uploads
+    const commentImageUploadsEnabled = this.configService.get<boolean>('features.commentImageUploadsEnabled', false);
+    if (!commentImageUploadsEnabled && images && images.length > 0) {
+      throw new BadRequestException('Image uploads in votes/comments are disabled');
+    }
 
     // Validate and process vote amounts (quotaAmount + walletAmount)
     const { quotaAmount, walletAmount, totalAmount, direction } =

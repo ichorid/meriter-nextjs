@@ -25,6 +25,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   const t = useTranslations('comments');
   const features = useFeaturesConfig();
   const enableCommentVoting = features.commentVoting;
+  const enableCommentImageUploads = features.commentImageUploads;
   const { user } = useAuth();
   const {
     activeVotingTarget,
@@ -216,7 +217,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
             walletAmount,
             comment: formData.comment.trim() || undefined,
             direction: isUpvote ? 'up' : 'down',
-            images: formData.images && formData.images.length > 0 ? formData.images : undefined,
+            images: enableCommentImageUploads && formData.images && formData.images.length > 0 ? formData.images : undefined,
           },
           communityId: targetCommunityId,
         });
@@ -230,7 +231,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
             walletAmount,
             comment: formData.comment.trim() || undefined,
             direction: isUpvote ? 'up' : 'down',
-            images: formData.images && formData.images.length > 0 ? formData.images : undefined,
+            images: enableCommentImageUploads && formData.images && formData.images.length > 0 ? formData.images : undefined,
           },
           communityId: targetCommunityId,
         });
@@ -270,8 +271,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           usedToday={usedToday}
           error={formData.error}
           isViewer={isViewer}
-          images={formData.images || []}
-          onImagesChange={handleImagesChange}
+          images={enableCommentImageUploads ? (formData.images || []) : []}
+          onImagesChange={enableCommentImageUploads ? handleImagesChange : undefined}
         />
       </div>
     </BottomPortal>

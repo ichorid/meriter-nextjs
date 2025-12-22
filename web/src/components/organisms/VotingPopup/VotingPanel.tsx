@@ -10,6 +10,7 @@ import {
 import { useTranslations } from "next-intl";
 import { classList } from "@/shared/lib/classList";
 import { ImageGallery } from "@/components/ui/ImageGallery";
+import { useFeaturesConfig } from "@/hooks/useConfig";
 
 interface VotingPanelProps {
     onClose: () => void;
@@ -63,6 +64,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
 }) => {
     const t = useTranslations("comments");
     const tShared = useTranslations("shared");
+    const features = useFeaturesConfig();
+    const enableCommentImageUploads = features.commentImageUploads;
     // In withdraw mode, force positive direction
     const [voteDirection, setVoteDirection] = useState<"positive" | "negative">(
         hideDirectionToggle ? "positive" : "positive"
@@ -494,7 +497,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             )}
 
             {/* Image Gallery */}
-            {onImagesChange && !hideImages && (
+            {onImagesChange && !hideImages && enableCommentImageUploads && (
                 <div className="flex flex-col gap-1" style={{ width: "304px" }}>
                     <ImageGallery
                         images={images}

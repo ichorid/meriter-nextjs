@@ -80,6 +80,7 @@ const envSchema = z.object({
   NEXT_PUBLIC_ENABLE_ANALYTICS: z.string().optional(),
   NEXT_PUBLIC_ENABLE_DEBUG: z.string().optional(),
   NEXT_PUBLIC_ENABLE_COMMENT_VOTING: z.string().optional(),
+  NEXT_PUBLIC_ENABLE_COMMENT_IMAGE_UPLOADS: z.string().optional(),
   NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM: z.string().optional(),
   
   // Development Mode
@@ -211,6 +212,7 @@ export const config = {
     analytics: env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true',
     debug: env.NEXT_PUBLIC_ENABLE_DEBUG === 'true' || env.NODE_ENV === 'development',
     commentVoting: env.NEXT_PUBLIC_ENABLE_COMMENT_VOTING === 'true',
+    commentImageUploads: env.NEXT_PUBLIC_ENABLE_COMMENT_IMAGE_UPLOADS === 'true',
     loginInviteForm: env.NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM === 'true',
   },
   
