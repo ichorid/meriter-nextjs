@@ -78,6 +78,18 @@ export const CommunitySettingsSchema = z.object({
   editWindowDays: z.number().int().min(0).default(7), // Number of days after creation that regular users can edit their posts/comments (0 = no time limit)
 });
 
+export const CommunityMeritConversionSchema = z.object({
+  targetCommunityId: z.string(),
+  ratio: z.number(),
+});
+
+export const CommunityVotingSettingsSchema = z.object({
+  spendsMerits: z.boolean().optional(),
+  awardsMerits: z.boolean().optional(),
+  meritConversion: CommunityMeritConversionSchema.optional(),
+  votingRestriction: z.enum(["any", "not-own", "not-same-group"]).optional(),
+});
+
 // Permission rule schema - granular role -> action -> allow/deny rules
 export const PermissionRuleConditionsSchema = z.object({
   requiresTeamMembership: z.boolean().optional(),
@@ -448,6 +460,7 @@ export const UpdateCommunityDtoSchema = z.object({
   hashtags: z.array(z.string()).optional(),
   hashtagDescriptions: z.record(z.string(), z.string()).optional(),
   settings: CommunitySettingsSchema.partial().optional(),
+  votingSettings: CommunityVotingSettingsSchema.partial().optional(),
   isPriority: z.boolean().optional(),
 });
 

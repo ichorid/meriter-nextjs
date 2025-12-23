@@ -308,6 +308,7 @@ export interface CommunityVotingSettings {
   spendsMerits: boolean;
   awardsMerits: boolean;
   meritConversion?: CommunityMeritConversion;
+  votingRestriction?: 'any' | 'not-own' | 'not-same-group'; // Restriction on who can vote for whom
 }
 
 // Legacy rule types (for backwards compatibility with old API responses)

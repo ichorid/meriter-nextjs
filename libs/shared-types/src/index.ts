@@ -20,6 +20,8 @@ export {
     UserProfileSchema,
     UpdateUserProfileSchema,
     CommunitySettingsSchema,
+    CommunityVotingSettingsSchema,
+    CommunityMeritConversionSchema,
     PermissionRuleSchema,
     PermissionRuleConditionsSchema,
     PollOptionSchema,
