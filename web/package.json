@@ -105,11 +105,5 @@
     "prettier": {
         "tabWidth": 4
     },
-    "packageManager": "pnpm@10.20.0",
-    "pnpm": {
-        "overrides": {
-            "react": "^19.0.0",
-            "react-dom": "^19.0.0"
-        }
-    }
+    "packageManager": "pnpm@10.20.0"
 }

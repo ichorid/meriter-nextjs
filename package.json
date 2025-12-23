@@ -25,6 +25,10 @@
       "mongodb-memory-server",
       "postinstall-postinstall",
       "sharp"
-    ]
+    ],
+    "overrides": {
+      "react": "^19.0.0",
+      "react-dom": "^19.0.0"
+    }
   }
 }
