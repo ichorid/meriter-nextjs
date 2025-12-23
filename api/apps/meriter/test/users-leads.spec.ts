@@ -114,6 +114,8 @@ describe('Users - Get All Leads', () => {
 
   describe('GET /api/v1/users/leads', () => {
     it('should return empty array when no leads exist', async () => {
+      // Set test user ID for authentication
+      (global as any).testUserId = lead1Id;
       const response = await trpcQuery(app, 'users.getAllLeads');
 
       expect(response).toHaveProperty('data');
@@ -123,6 +125,8 @@ describe('Users - Get All Leads', () => {
     });
 
     it('should return all users with lead role across all communities', async () => {
+      // Set test user ID for authentication
+      (global as any).testUserId = lead1Id;
       // Create communities
       await communityModel.create([
         {
@@ -259,6 +263,8 @@ describe('Users - Get All Leads', () => {
     });
 
     it('should handle pagination correctly', async () => {
+      // Set test user ID for authentication
+      (global as any).testUserId = lead1Id;
       // Create communities
       await communityModel.create({
         id: community1Id,
@@ -320,6 +326,8 @@ describe('Users - Get All Leads', () => {
     });
 
     it('should return unique users even if they are leads in multiple communities', async () => {
+      // Set test user ID for authentication
+      (global as any).testUserId = lead1Id;
       // Create communities
       await communityModel.create([
         {
@@ -380,6 +388,8 @@ describe('Users - Get All Leads', () => {
     });
 
     it('should filter out deleted users', async () => {
+      // Set test user ID for authentication
+      (global as any).testUserId = lead1Id;
       // Create community
       await communityModel.create({
         id: community1Id,

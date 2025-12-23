@@ -223,7 +223,9 @@ describe('Invites - Superadmin-to-Lead', () => {
       // Use the invite via tRPC
       const response = await trpcMutation(app, 'invites.use', { code: inviteCode });
 
-      expect(response.message).toContain('Team group created');
+      // Verify invite was used
+      expect(response).toBeDefined();
+      expect(response.isUsed).toBe(true);
 
       // Find team community (created automatically) - use UserCommunityRole to find communities where user is lead
       const leadRoles = await userCommunityRoleService.getCommunitiesByRole(newLeadId, 'lead');

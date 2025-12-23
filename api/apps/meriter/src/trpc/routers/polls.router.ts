@@ -406,6 +406,13 @@ export const pollsRouter = router({
     .query(async ({ ctx, input }) => {
       // Return empty array for future-vision communities
       const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+      
       if (community?.typeTag === 'future-vision') {
         return {
           data: [],
@@ -430,10 +437,10 @@ export const pollsRouter = router({
 
       // Enrich polls with user and community data
       const userIds = Array.from(
-        new Set(polls.map((p) => p.getAuthorId.getValue()).filter(Boolean)),
+        new Set(polls.map((p) => p.toSnapshot().authorId).filter(Boolean)),
       );
       const communityIds = Array.from(
-        new Set(polls.map((p) => p.getCommunityId.getValue()).filter(Boolean)),
+        new Set(polls.map((p) => p.toSnapshot().communityId).filter(Boolean)),
       );
 
       const [usersMap, communitiesMap] = await Promise.all([
@@ -444,6 +451,21 @@ export const pollsRouter = router({
       const enrichedPolls = polls.map((poll) =>
         EntityMappers.mapPollToApi(poll, usersMap, communitiesMap),
       );
+
+      // Batch calculate permissions for all polls (only if there are polls)
+      if (enrichedPolls.length > 0) {
+        const pollIds = enrichedPolls.map((poll) => poll.id);
+        const permissionsMap = await Promise.all(
+          pollIds.map((pollId) => 
+            ctx.permissionsHelperService.calculatePollPermissions(ctx.user?.id || null, pollId)
+          )
+        );
+
+        // Add permissions to each poll
+        enrichedPolls.forEach((poll, index) => {
+          poll.permissions = permissionsMap[index];
+        });
+      }
 
       // Get total count
       const total = await ctx.connection.db

@@ -9,6 +9,7 @@
 
 import * as request from 'supertest';
 import type { INestApplication } from '@nestjs/common';
+import superjson from 'superjson';
 
 /**
  * Call a tRPC query procedure via HTTP
@@ -20,7 +21,9 @@ export async function trpcQuery(
   input?: any,
   cookies: Record<string, string> = {}
 ) {
-  const queryString = input ? `?input=${encodeURIComponent(JSON.stringify(input))}` : '';
+  // For queries, tRPC v11 uses query parameters with superjson format
+  // Use superjson.stringify to properly serialize the input
+  const queryString = input ? `?input=${encodeURIComponent(superjson.stringify(input))}` : '';
   const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
   
   const response = await request(app.getHttpServer())
@@ -33,12 +36,18 @@ export async function trpcQuery(
     throw new Error(`tRPC error: ${JSON.stringify(response.body.result.error)}`);
   }
   
-  return response.body.result?.data;
+  // Parse response data with superjson (tRPC v11 uses superjson transformer)
+  const rawData = response.body.result?.data;
+  if (rawData && typeof rawData === 'object' && 'json' in rawData) {
+    return superjson.parse(JSON.stringify(rawData));
+  }
+  return rawData;
 }
 
 /**
  * Call a tRPC mutation procedure via HTTP
- * Format: POST /trpc/{procedurePath} with { json: input } in body
+ * Format: POST /trpc/{procedurePath}?input={json}
+ * Note: tRPC v11 HTTP adapter uses query parameters for input in both GET and POST requests
  */
 export async function trpcMutation(
   app: INestApplication,
@@ -48,9 +57,13 @@ export async function trpcMutation(
 ) {
   const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
   
+  // tRPC v11 with superjson transformer expects input in body as { json: input }
+  // The superjson.stringify wraps input in { json: ... } format
+  const body = input ? superjson.stringify(input) : '{}';
+  
   const response = await request(app.getHttpServer())
     .post(`/trpc/${path}`)
-    .send(input ? { json: input } : {})
+    .send(body)
     .set('Content-Type', 'application/json')
     .set('Cookie', cookieHeader)
     .expect(200);
@@ -60,7 +73,12 @@ export async function trpcMutation(
     throw new Error(`tRPC error: ${JSON.stringify(response.body.result.error)}`);
   }
   
-  return response.body.result?.data;
+  // Parse response data with superjson (tRPC v11 uses superjson transformer)
+  const rawData = response.body.result?.data;
+  if (rawData && typeof rawData === 'object' && 'json' in rawData) {
+    return superjson.parse(JSON.stringify(rawData));
+  }
+  return rawData;
 }
 
 /**
@@ -74,7 +92,8 @@ export async function trpcQueryWithError(
   input?: any,
   cookies: Record<string, string> = {}
 ): Promise<{ data?: any; error?: { code: string; message: string; httpStatus?: number } }> {
-  const queryString = input ? `?input=${encodeURIComponent(JSON.stringify(input))}` : '';
+  // Use superjson.stringify for consistency
+  const queryString = input ? `?input=${encodeURIComponent(superjson.stringify(input))}` : '';
   const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
   
   const response = await request(app.getHttpServer())
@@ -94,13 +113,20 @@ export async function trpcQueryWithError(
     };
   }
   
-  return { data: response.body.result?.data };
+  // Parse response data with superjson
+  const rawData = response.body.result?.data;
+  let parsedData = rawData;
+  if (rawData && typeof rawData === 'object' && 'json' in rawData) {
+    parsedData = superjson.parse(JSON.stringify(rawData));
+  }
+  
+  return { data: parsedData };
 }
 
 /**
  * Call a tRPC mutation procedure via HTTP, returning error instead of throwing
  * Returns { data?, error? } - test can check error.code
- * Format: POST /trpc/{procedurePath} with { json: input } in body
+ * Format: POST /trpc/{procedurePath}?input={json}
  */
 export async function trpcMutationWithError(
   app: INestApplication,
@@ -110,9 +136,12 @@ export async function trpcMutationWithError(
 ): Promise<{ data?: any; error?: { code: string; message: string; httpStatus?: number } }> {
   const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
   
+  // tRPC v11 with superjson transformer expects input in body as superjson format
+  const body = input ? superjson.stringify(input) : '{}';
+  
   const response = await request(app.getHttpServer())
     .post(`/trpc/${path}`)
-    .send(input ? { json: input } : {})
+    .send(body)
     .set('Content-Type', 'application/json')
     .set('Cookie', cookieHeader)
     .expect(200);
@@ -129,7 +158,14 @@ export async function trpcMutationWithError(
     };
   }
   
-  return { data: response.body.result?.data };
+  // Parse response data with superjson
+  const rawData = response.body.result?.data;
+  let parsedData = rawData;
+  if (rawData && typeof rawData === 'object' && 'json' in rawData) {
+    parsedData = superjson.parse(JSON.stringify(rawData));
+  }
+  
+  return { data: parsedData };
 }
 
 /**

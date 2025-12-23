@@ -212,10 +212,16 @@ export const walletsRouter = router({
       const used = votesTotal + pollCastsTotal + quotaUsageTotal;
       const remaining = Math.max(0, dailyQuota - used);
 
+      // Calculate resetAt: next midnight or next reset time
+      const resetAt = new Date(quotaStartTime);
+      resetAt.setDate(resetAt.getDate() + 1);
+      resetAt.setHours(0, 0, 0, 0);
+
       return {
         dailyQuota,
         used,
         remaining,
+        resetAt: resetAt.toISOString(),
       };
     }),
 

@@ -603,6 +603,12 @@ export const commentsRouter = router({
         // Silently fail
       }
 
+      // Calculate permissions
+      const permissions = await ctx.permissionsHelperService.calculateCommentPermissions(
+        ctx.user?.id || null,
+        input.id,
+      );
+
       return {
         comment: {
           ...snapshot,
@@ -622,6 +628,7 @@ export const commentsRouter = router({
         withdrawals: {
           totalWithdrawn,
         },
+        permissions,
       };
     }),
 });

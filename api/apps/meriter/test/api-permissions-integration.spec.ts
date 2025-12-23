@@ -251,7 +251,14 @@ describe('API Permissions Integration', () => {
     it('should include permissions for each publication in list', async () => {
       const result = await trpcQuery(app, 'publications.getAll', { communityId: regularCommunityId }, { jwt: participant2Token });
 
-      expect(Array.isArray(result.data)).toBe(true);
+      // publications.getAll returns { data: [...], total: ..., skip: ..., limit: ... }
+      expect(result).toBeDefined();
+      // Debug: log actual result structure
+      if (!result || !result.data) {
+        console.log('Result:', JSON.stringify(result, null, 2));
+      }
+      expect(result).toHaveProperty('data');
+      expect(Array.isArray(result?.data)).toBe(true);
       
       if (result.data.length > 0) {
         const firstPublication = result.data[0];
@@ -266,13 +273,13 @@ describe('API Permissions Integration', () => {
 
   describe('GET /api/v1/comments/:id', () => {
     it('should include permissions in response', async () => {
-      const comment = await trpcQuery(app, 'comments.getDetails', { id: commentId }, { jwt: participant1Token });
+      const result = await trpcQuery(app, 'comments.getDetails', { id: commentId }, { jwt: participant1Token });
 
-      expect(comment).toBeDefined();
-      expect(comment.permissions).toBeDefined();
-      expect(typeof comment.permissions.canVote).toBe('boolean');
-      expect(typeof comment.permissions.canEdit).toBe('boolean');
-      expect(typeof comment.permissions.canDelete).toBe('boolean');
+      expect(result).toBeDefined();
+      expect(result.permissions).toBeDefined();
+      expect(typeof result.permissions.canVote).toBe('boolean');
+      expect(typeof result.permissions.canEdit).toBe('boolean');
+      expect(typeof result.permissions.canDelete).toBe('boolean');
     });
   });
 
