@@ -92,15 +92,16 @@ const nextConfig = {
         ];
     },
     webpack: (config, { isServer }) => {
-        // Resolve @meriter/shared-types to the dist directory for CommonJS relative imports
+        // CRITICAL: Merge all aliases properly to ensure single React instance
+        // This prevents "Cannot read properties of undefined (reading 'ReactCurrentOwner')" errors
         config.resolve.alias = {
             ...config.resolve.alias,
+            // Ensure React and React-DOM resolve to single instances (prevents ReactCurrentOwner errors)
+            'react': path.resolve(__dirname, 'node_modules/react'),
+            'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
+            // Resolve @meriter/shared-types to the dist directory for CommonJS relative imports
             '@meriter/shared-types': path.resolve(__dirname, '../libs/shared-types/dist'),
-        };
-
-        // Fix for React Native modules in Next.js
-        config.resolve.alias = {
-            ...config.resolve.alias,
+            // Fix for React Native modules in Next.js
             'react-native$': 'react-native-web',
         };
 
