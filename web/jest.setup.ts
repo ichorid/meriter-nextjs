@@ -139,11 +139,6 @@ jest.mock('next-intl/server', () => ({
     getMessages: jest.fn(() => Promise.resolve({})),
 }));
 
-// Mock next/config
-jest.mock('next/config', () => () => ({
-    publicRuntimeConfig: {},
-}));
-
 // Mock Next.js 15 App Router navigation
 jest.mock('next/navigation', () => ({
     useRouter: jest.fn(() => ({
