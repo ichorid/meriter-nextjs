@@ -1,6 +1,6 @@
-import request from 'supertest';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { createTestPublication } from './helpers/fixtures';
+import { trpcMutation, trpcQuery } from './helpers/trpc-test-helper';
 
 describe('Publications E2E (happy path)', () => {
   let app: any;
@@ -17,24 +17,16 @@ describe('Publications E2E (happy path)', () => {
   });
 
   it('creates a publication and fetches it', async () => {
-    // Minimal DTO aligned with controller schema
+    // Minimal DTO aligned with tRPC schema
     const dto = createTestPublication('test-community-id', 'test-user-id', {});
 
-    const createRes = await request(app.getHttpServer())
-      .post('/api/v1/publications')
-      .send(dto)
-      .expect(201);
-
-    expect(createRes.body?.success).toBe(true);
-    const created = createRes.body.data;
+    // Create publication via tRPC
+    const created = await trpcMutation(app, 'publications.create', dto);
     expect(created?.id).toBeDefined();
 
-    const getRes = await request(app.getHttpServer())
-      .get(`/api/v1/publications/${created.id}`)
-      .expect(200);
-
-    expect(getRes.body?.success).toBe(true);
-    expect(getRes.body.data?.id).toEqual(created.id);
+    // Fetch publication via tRPC
+    const fetched = await trpcQuery(app, 'publications.getById', { id: created.id });
+    expect(fetched?.id).toEqual(created.id);
   });
 });
 

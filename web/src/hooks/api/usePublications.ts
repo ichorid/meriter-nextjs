@@ -1,4 +1,5 @@
 // Publications React Query hooks with tRPC
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc/client";
 import type {
     Publication,
@@ -10,6 +11,7 @@ import {
     createGetNextPageParam,
     createArrayGetNextPageParam,
 } from "@/lib/utils/pagination-utils";
+import { queryKeys } from "@/lib/constants/queryKeys";
 
 interface ListQueryParams {
     skip?: number;
@@ -37,60 +39,38 @@ export function usePublications(params: ListQueryParams = {}) {
 export function useMyPublications(
     params: { skip?: number; limit?: number; userId?: string } = {}
 ) {
-    return useQuery({
-        queryKey: queryKeys.publications.myPublications(params),
-        queryFn: async () => {
-            // If userId is provided, use the publications endpoint with authorId query param
-            if (params.userId) {
-                return publicationsApiV1.getPublications({
-                    skip: params.skip,
-                    limit: params.limit,
-                    userId: params.userId,
-                });
-            } else {
-                // Try to use /api/v1/users/me/publications endpoint (may not exist)
-                // Fallback: return empty array if no userId provided
-                try {
-                    return await publicationsApiV1.getMyPublications({
-                        skip: params.skip,
-                        limit: params.limit,
-                    });
-                } catch (error) {
-                    console.warn(
-                        "getMyPublications failed, returning empty array:",
-                        error
-                    );
-                    return [];
-                }
-            }
+    return trpc.publications.getAll.useQuery(
+        {
+            authorId: params.userId,
+            skip: params.skip,
+            limit: params.limit,
         },
-        enabled: !!params.userId, // Only enable if userId is provided
-    });
+        {
+            enabled: !!params.userId, // Only enable if userId is provided
+        },
+    );
 }
 
 export function useInfiniteMyPublications(
     userId: string,
     pageSize: number = 20
 ) {
-    return useInfiniteQuery({
-        queryKey: [
-            ...queryKeys.publications.my(),
-            "infinite",
-            userId,
+    return trpc.publications.getAll.useInfiniteQuery(
+        {
+            authorId: userId,
             pageSize,
-        ],
-        queryFn: ({ pageParam = 1 }: { pageParam: number }) => {
-            const skip = (pageParam - 1) * pageSize;
-            return publicationsApiV1.getPublications({
-                skip,
-                limit: pageSize,
-                userId,
-            });
         },
-        getNextPageParam: createArrayGetNextPageParam<Publication>(pageSize),
-        initialPageParam: 1,
-        enabled: !!userId,
-    });
+        {
+            getNextPageParam: (lastPage) => {
+                if (lastPage.pagination.hasNext) {
+                    return lastPage.pagination.page + 1;
+                }
+                return undefined;
+            },
+            initialPageParam: 1,
+            enabled: !!userId,
+        },
+    );
 }
 
 export function usePublication(id: string) {
@@ -104,25 +84,24 @@ export function useInfinitePublicationsByCommunity(
     communityId: string,
     params: { pageSize?: number; sort?: string; order?: string } = {}
 ) {
-    const { pageSize = 5, sort = "score", order = "desc" } = params;
+    const { pageSize = 5, sort = "score" } = params;
 
-    return useInfiniteQuery({
-        queryKey: queryKeys.publications.byCommunityInfinite(
+    return trpc.publications.getAll.useInfiniteQuery(
+        {
             communityId,
-            params
-        ),
-        queryFn: ({ pageParam }: { pageParam: number }) => {
-            return communitiesApiV1.getCommunityPublications(communityId, {
-                page: pageParam,
-                pageSize,
-                sort,
-                order,
-            });
+            pageSize,
         },
-        getNextPageParam: createGetNextPageParam<Publication>(),
-        initialPageParam: 1,
-        enabled: !!communityId, // Ensure query only runs when communityId is available
-    });
+        {
+            getNextPageParam: (lastPage) => {
+                if (lastPage.pagination.hasNext) {
+                    return lastPage.pagination.page + 1;
+                }
+                return undefined;
+            },
+            initialPageParam: 1,
+            enabled: !!communityId, // Ensure query only runs when communityId is available
+        },
+    );
 }
 
 export const useCreatePublication = () => {

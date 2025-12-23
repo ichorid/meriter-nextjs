@@ -5,6 +5,10 @@ import { CreateCommentDtoSchema, UpdateCommentDtoSchema } from '@meriter/shared-
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError, ForbiddenError } from '../../common/exceptions/api.exceptions';
+import { VoteTransactionCalculatorService } from '../../api-v1/common/services/vote-transaction-calculator.service';
+import { UserFormatter } from '../../api-v1/common/utils/user-formatter.util';
+import { VoteTransactionCalculatorService } from '../../api-v1/common/services/vote-transaction-calculator.service';
+import { UserFormatter } from '../../api-v1/common/utils/user-formatter.util';
 
 export const commentsRouter = router({
   /**
@@ -427,5 +431,197 @@ export const commentsRouter = router({
     .mutation(async ({ ctx, input }) => {
       await ctx.commentService.deleteComment(input.id, ctx.user.id);
       return { success: true, message: 'Comment deleted successfully' };
+    }),
+
+  /**
+   * Get comments by user ID
+   */
+  getByUserId: publicProcedure
+    .input(z.object({
+      userId: z.string(),
+      page: z.number().int().min(1).optional(),
+      pageSize: z.number().int().min(1).max(100).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      skip: z.number().int().min(0).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const pagination = PaginationHelper.parseOptions({
+        page: input.page,
+        pageSize: input.pageSize,
+        limit: input.limit,
+      });
+      const skip = PaginationHelper.getSkip(pagination);
+
+      // Get comments by author
+      const comments = await ctx.commentService.getCommentsByAuthor(
+        input.userId,
+        pagination.limit || 20,
+        skip,
+      );
+
+      // Extract unique author IDs
+      const authorIds = Array.from(
+        new Set(comments.map((comment) => comment.getAuthorId.getValue()).filter(Boolean)),
+      );
+
+      // Batch fetch all authors using enrichment service
+      const usersMap = await ctx.userEnrichmentService.batchFetchUsers(authorIds);
+
+      // Extract unique publication IDs for comments targeting publications
+      const publicationIds = Array.from(
+        new Set(
+          comments
+            .filter((comment) => comment.getTargetType === 'publication')
+            .map((comment) => comment.getTargetId),
+        ),
+      );
+
+      // Batch fetch all publications to get slugs and community IDs
+      const publicationsMap = new Map<string, { id: string; slug: string; communityId: string }>();
+      await Promise.all(
+        publicationIds.map(async (publicationId) => {
+          try {
+            const publication = await ctx.publicationService.getPublication(publicationId);
+            if (publication) {
+              publicationsMap.set(publicationId, {
+                id: publication.getId.getValue(),
+                slug: publication.getId.getValue(), // Use ID as slug
+                communityId: publication.getCommunityId.getValue(),
+              });
+            }
+          } catch (error) {
+            // Silently fail - publication might not exist
+          }
+        }),
+      );
+
+      // Enrich comments with author metadata and publication data using EntityMappers
+      const enrichedComments = comments.map((comment) => {
+        const authorId = comment.getAuthorId.getValue();
+
+        // Get publication data if comment targets a publication
+        let publicationSlug: string | undefined;
+        let communityId: string | undefined;
+        if (comment.getTargetType === 'publication') {
+          const publicationId = comment.getTargetId;
+          const publication = publicationsMap.get(publicationId);
+          if (publication) {
+            publicationSlug = publication.slug;
+            communityId = publication.communityId;
+          }
+        }
+
+        return EntityMappers.mapCommentToApi(
+          comment,
+          usersMap,
+          publicationSlug,
+          communityId,
+        );
+      });
+
+      // Get total count (need to query separately)
+      // Note: This is a simplified approach - for better performance, consider caching or optimizing
+      const totalComments = await ctx.connection.db
+        ?.collection('comments')
+        .countDocuments({ authorId: input.userId })
+        || comments.length;
+
+      return PaginationHelper.createResult(
+        enrichedComments,
+        totalComments,
+        pagination,
+      );
+    }),
+
+  /**
+   * Get comment details with full enrichment (author, beneficiary, community, metrics, withdrawals)
+   */
+  getDetails: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const { vote, snapshot, authorId } =
+        await ctx.voteCommentResolverService.resolve(input.id);
+
+      // Fetch author data
+      const author = await ctx.commentEnrichmentService.fetchAuthor(authorId);
+
+      // Fetch beneficiary and community
+      const { beneficiary, community } =
+        await ctx.commentEnrichmentService.fetchBeneficiaryAndCommunity(vote, authorId);
+
+      // Calculate vote transaction data
+      const voteTransactionData =
+        VoteTransactionCalculatorService.calculate(vote);
+
+      // Fetch votes on the vote/comment itself (for metrics)
+      let commentVotes: any[] = [];
+      try {
+        if (vote) {
+          // If this is a vote, get votes on this vote
+          commentVotes = await ctx.voteService.getVotesOnVote(input.id);
+        } else {
+          // For regular comments (legacy), try to get votes (though this might not work anymore)
+          commentVotes = await ctx.voteService.getTargetVotes('comment', input.id);
+        }
+      } catch (error) {
+        // Silently fail - votes might not exist
+      }
+
+      // Calculate comment metrics from votes using stored direction field
+      const upvotes = commentVotes.filter((v) => v.direction === 'up').length;
+      const downvotes = commentVotes.filter((v) => v.direction === 'down').length;
+      // Score: sum of upvote amounts minus sum of downvote amounts
+      const score = commentVotes.reduce((sum, v) => {
+        const quota = v.amountQuota || 0;
+        const wallet = v.amountWallet || 0;
+        const total = quota + wallet;
+        // Use stored direction field to determine if vote is upvote or downvote
+        return sum + (v.direction === 'up' ? total : -total);
+      }, 0);
+
+      // Aggregated totals (avoid loading extra docs unnecessarily)
+      let totalReceived = 0;
+      let totalWithdrawn = 0;
+      try {
+        if (vote) {
+          totalReceived = await ctx.voteService.getPositiveSumForVote(input.id);
+        }
+      } catch (err) {
+        // Silently fail
+      }
+      try {
+        // Sum of all withdrawals referencing this vote/comment
+        const withdrawalType = vote ? 'vote_withdrawal' : 'comment_withdrawal';
+        // Check if walletService has getTotalWithdrawnByReference method
+        if ((ctx.walletService as any)?.getTotalWithdrawnByReference) {
+          totalWithdrawn = await (ctx.walletService as any).getTotalWithdrawnByReference(
+            withdrawalType,
+            input.id,
+          );
+        }
+      } catch (err) {
+        // Silently fail
+      }
+
+      return {
+        comment: {
+          ...snapshot,
+          createdAt: snapshot.createdAt.toISOString(),
+          updatedAt: snapshot.updatedAt.toISOString(),
+        },
+        author: UserFormatter.formatUserForApi(author, authorId),
+        voteTransaction: voteTransactionData,
+        beneficiary: beneficiary,
+        community: community,
+        metrics: {
+          upvotes,
+          downvotes,
+          score,
+          totalReceived,
+        },
+        withdrawals: {
+          totalWithdrawn,
+        },
+      };
     }),
 });

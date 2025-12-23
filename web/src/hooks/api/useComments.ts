@@ -1,5 +1,8 @@
 // Comments React Query hooks with tRPC
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc/client";
+import { queryKeys } from "@/lib/constants/queryKeys";
+import { STALE_TIME } from "@/lib/constants/query-config";
 import type {
     Comment,
     CreateCommentDto,
@@ -91,12 +94,14 @@ export function useComment(id: string) {
 
 // Get comment details (with all metadata for popup)
 export function useCommentDetails(id: string) {
-    return useQuery({
-        queryKey: commentsKeys.detailData(id),
-        queryFn: () => commentsApiV1.getCommentDetails(id),
-        staleTime: STALE_TIME.LONG,
-        enabled: !!id,
-    });
+    return trpc.comments.getDetails.useQuery(
+        { id },
+        {
+            queryKey: commentsKeys.detailData(id),
+            staleTime: STALE_TIME.LONG,
+            enabled: !!id,
+        }
+    );
 }
 
 // Create comment
@@ -148,27 +153,37 @@ export function useMyComments(
     userId: string,
     params: { skip?: number; limit?: number } = {}
 ) {
-    return useQuery({
-        queryKey: queryKeys.comments.myComments(userId, params),
-        queryFn: () => usersApiV1.getUserComments(userId, params),
-        staleTime: STALE_TIME.MEDIUM,
-        enabled: !!userId,
-    });
+    return trpc.comments.getByUserId.useQuery(
+        {
+            userId,
+            skip: params.skip,
+            limit: params.limit,
+        },
+        {
+            queryKey: queryKeys.comments.myComments(userId, params),
+            staleTime: STALE_TIME.MEDIUM,
+            enabled: !!userId,
+        }
+    );
 }
 
 // Infinite query for user's comments
 export function useInfiniteMyComments(userId: string, pageSize: number = 20) {
-    return useInfiniteQuery({
-        queryKey: [...queryKeys.comments.my(userId), "infinite", pageSize],
-        queryFn: ({ pageParam = 1 }: { pageParam: number }) => {
-            const skip = (pageParam - 1) * pageSize;
-            return usersApiV1.getUserComments(userId, {
-                skip,
-                limit: pageSize,
-            });
+    return trpc.comments.getByUserId.useInfiniteQuery(
+        {
+            userId,
+            pageSize,
         },
-        getNextPageParam: createGetNextPageParam<Comment>(),
-        initialPageParam: 1,
-        enabled: !!userId,
-    });
+        {
+            queryKey: [...queryKeys.comments.my(userId), "infinite", pageSize],
+            getNextPageParam: (lastPage) => {
+                if (lastPage.pagination.hasMore) {
+                    return lastPage.pagination.page + 1;
+                }
+                return undefined;
+            },
+            initialPageParam: 1,
+            enabled: !!userId,
+        }
+    );
 }

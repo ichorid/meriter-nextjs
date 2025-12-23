@@ -1,6 +1,7 @@
 /**
  * Runtime configuration types
- * These types match the response from /api/v1/config endpoint
+ * These types match the response from trpc.config.getConfig endpoint
+ * (previously /api/v1/config, now migrated to tRPC)
  */
 
 export interface OAuthConfig {

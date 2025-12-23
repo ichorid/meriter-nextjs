@@ -60,13 +60,7 @@ export function useUnreadCount() {
 }
 
 export function useNotificationPreferences() {
-    // TODO: Add preferences endpoint to notifications router
-    return {
-        data: undefined,
-        isLoading: false,
-        isError: false,
-        error: null,
-    };
+    return trpc.notifications.getPreferences.useQuery(undefined);
 }
 
 export const useMarkAsRead = () => {
@@ -85,38 +79,31 @@ export const useMarkAsRead = () => {
 export const useMarkAllAsRead = () => {
     const utils = trpc.useUtils();
     
-    // TODO: Add markAllAsRead endpoint to notifications router
-    return {
-        mutate: () => {},
-        mutateAsync: async () => {},
-        isLoading: false,
-        isError: false,
-        error: null,
-    };
+    return trpc.notifications.markAllAsRead.useMutation({
+        onSuccess: () => {
+            utils.notifications.getAll.invalidate();
+            utils.notifications.getUnreadCount.invalidate();
+        },
+    });
 };
 
 export const useDeleteNotification = () => {
     const utils = trpc.useUtils();
     
-    // TODO: Add delete endpoint to notifications router
-    return {
-        mutate: () => {},
-        mutateAsync: async () => {},
-        isLoading: false,
-        isError: false,
-        error: null,
-    };
+    return trpc.notifications.delete.useMutation({
+        onSuccess: () => {
+            utils.notifications.getAll.invalidate();
+            utils.notifications.getUnreadCount.invalidate();
+        },
+    });
 };
 
 export const useUpdatePreferences = () => {
     const utils = trpc.useUtils();
     
-    // TODO: Add updatePreferences endpoint to notifications router
-    return {
-        mutate: () => {},
-        mutateAsync: async () => {},
-        isLoading: false,
-        isError: false,
-        error: null,
-    };
+    return trpc.notifications.updatePreferences.useMutation({
+        onSuccess: () => {
+            utils.notifications.getPreferences.invalidate();
+        },
+    });
 };

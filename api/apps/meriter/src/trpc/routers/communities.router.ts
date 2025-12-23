@@ -3,7 +3,8 @@ import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { CreateCommunityDtoSchema, UpdateCommunityDtoSchema, PaginationParamsSchema } from '@meriter/shared-types';
 import { CommunitySetupHelpers } from '../../api-v1/common/helpers/community-setup.helpers';
-import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_VIEWER } from '../../domain/common/constants/roles.constants';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_VIEWER, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
+import { PaginationHelper } from '../../common/helpers/pagination.helper';
 
 export const communitiesRouter = router({
   /**
@@ -276,6 +277,396 @@ export const communitiesRouter = router({
         createdAt: community.createdAt.toISOString(),
         updatedAt: community.updatedAt.toISOString(),
       };
+    }),
+
+  /**
+   * Get community feed (aggregated publications + polls)
+   */
+  getFeed: protectedProcedure
+    .input(
+      z.object({
+        communityId: z.string(),
+        page: z.number().int().min(1).optional().default(1),
+        pageSize: z.number().int().min(1).max(100).optional().default(5),
+        sort: z.enum(['recent', 'score']).optional().default('score'),
+        tag: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const pagination = PaginationHelper.parseOptions({
+        page: input.page,
+        limit: input.pageSize,
+      });
+
+      const result = await ctx.communityFeedService.getCommunityFeed(
+        input.communityId,
+        {
+          page: pagination.page,
+          pageSize: pagination.limit,
+          sort: input.sort,
+          tag: input.tag,
+        },
+      );
+
+      // Calculate permissions for all publications in the feed
+      const publicationIds = result.data
+        .filter((item) => item.type === 'publication')
+        .map((item) => item.id);
+
+      if (publicationIds.length > 0) {
+        const permissionsMap =
+          await ctx.permissionsHelperService.batchCalculatePublicationPermissions(
+            ctx.user.id,
+            publicationIds,
+          );
+
+        // Add permissions to each publication in the feed
+        result.data.forEach((item) => {
+          if (item.type === 'publication') {
+            const permissions = permissionsMap.get(item.id);
+            (item as any).permissions = permissions;
+          }
+        });
+      }
+
+      return {
+        data: result.data,
+        pagination: {
+          page: result.pagination.page,
+          pageSize: result.pagination.pageSize,
+          total: result.pagination.total,
+          hasNext: result.pagination.hasMore,
+          hasPrev: result.pagination.page > 1,
+        },
+      };
+    }),
+
+  /**
+   * Reset daily quota for a community (admin only)
+   */
+  resetDailyQuota: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // Check if user is superadmin (can reset quota in any community)
+      const isSuperadmin = ctx.user.globalRole === GLOBAL_ROLE_SUPERADMIN;
+
+      // Check if user has lead role in this community
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(
+        ctx.user.id,
+        input.id,
+      );
+      const isLead = userRole === COMMUNITY_ROLE_LEAD;
+
+      // Only superadmin or lead can reset daily quota
+      if (!isSuperadmin && !isLead) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only leads and superadmins can reset daily quota',
+        });
+      }
+
+      const { resetAt, notificationsCreated } =
+        await ctx.quotaResetService.resetQuotaForCommunity(input.id);
+
+      return {
+        resetAt: resetAt.toISOString(),
+        notificationsCreated,
+      };
+    }),
+
+  /**
+   * Send community memo (admin only)
+   * Note: Telegram notifications are disabled, this is a no-op
+   */
+  sendMemo: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const isAdmin = await ctx.communityService.isUserAdmin(input.id, ctx.user.id);
+      if (!isAdmin) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only administrators can send memo',
+        });
+      }
+
+      const community = await ctx.communityService.getCommunity(input.id);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+
+      // Telegram notifications are disabled in this project
+      return { sent: false };
+    }),
+
+  /**
+   * Create fake community (development only)
+   */
+  createFakeCommunity: protectedProcedure.mutation(async ({ ctx }) => {
+    // Check if fake data mode is enabled
+    if (process.env.FAKE_DATA_MODE !== 'true') {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Fake data mode is not enabled',
+      });
+    }
+
+    // Create a test community
+    const testCommunity = await ctx.communityService.createCommunity({
+      name: `Test Community ${Date.now()}`,
+      description: 'Test community for fake data',
+    });
+
+    // Add user to the community
+    await ctx.communityService.addMember(testCommunity.id, ctx.user.id);
+
+    // Set user as lead role
+    await ctx.userCommunityRoleService.setRole(
+      ctx.user.id,
+      testCommunity.id,
+      'lead',
+    );
+
+    // Add community to user's memberships
+    await ctx.userService.addCommunityMembership(ctx.user.id, testCommunity.id);
+
+    // Create wallet for the user in this community
+    const currency = testCommunity.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+    await ctx.walletService.createOrGetWallet(
+      ctx.user.id,
+      testCommunity.id,
+      currency,
+    );
+
+    return {
+      ...testCommunity,
+      isAdmin: true,
+    };
+  }),
+
+  /**
+   * Add user to all communities (development only)
+   */
+  addUserToAllCommunities: protectedProcedure.mutation(async ({ ctx }) => {
+    // Check if fake data mode is enabled
+    if (process.env.FAKE_DATA_MODE !== 'true') {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Fake data mode is not enabled',
+      });
+    }
+
+    // Get all communities
+    const allCommunities = await ctx.communityService.getAllCommunities(1000, 0);
+
+    let addedCount = 0;
+    let skippedCount = 0;
+    const errors: string[] = [];
+
+    for (const community of allCommunities) {
+      try {
+        // Check if user is already a member
+        const user = await ctx.userService.getUserById(ctx.user.id);
+        if (!user) {
+          errors.push('User not found');
+          continue;
+        }
+
+        const isMember = user.communityMemberships?.includes(community.id);
+        if (isMember) {
+          skippedCount++;
+          continue;
+        }
+
+        // Add user to community
+        await ctx.communityService.addMember(community.id, ctx.user.id);
+        await ctx.userService.addCommunityMembership(ctx.user.id, community.id);
+
+        // Create wallet if it doesn't exist
+        const currency = community.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        };
+        await ctx.walletService.createOrGetWallet(
+          ctx.user.id,
+          community.id,
+          currency,
+        );
+
+        addedCount++;
+      } catch (error: any) {
+        errors.push(error.message || 'Unknown error');
+      }
+    }
+
+    return {
+      added: addedCount,
+      skipped: skippedCount,
+      errors: errors.length > 0 ? errors : undefined,
+    };
+  }),
+
+  /**
+   * Get community members
+   */
+  getMembers: protectedProcedure
+    .input(z.object({
+      id: z.string(),
+      page: z.number().int().min(1).optional(),
+      pageSize: z.number().int().min(1).max(100).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      skip: z.number().int().min(0).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const pagination = PaginationHelper.parseOptions({
+        page: input.page,
+        pageSize: input.pageSize,
+        limit: input.limit,
+      });
+      const skip = PaginationHelper.getSkip(pagination);
+
+      const result = await ctx.communityService.getCommunityMembers(
+        input.id,
+        pagination.limit || 20,
+        skip,
+      );
+
+      return PaginationHelper.createResult(
+        result.members,
+        result.total,
+        pagination,
+      );
+    }),
+
+  /**
+   * Remove member from community (admin only)
+   */
+  removeMember: protectedProcedure
+    .input(z.object({
+      id: z.string(),
+      userId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const isAdmin = await ctx.communityService.isUserAdmin(input.id, ctx.user.id);
+      if (!isAdmin) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only administrators can remove members',
+        });
+      }
+
+      // Remove from community
+      await ctx.communityService.removeMember(input.id, input.userId);
+
+      // Remove from user memberships
+      await ctx.userService.removeCommunityMembership(input.userId, input.id);
+
+      return { success: true, message: 'Member removed successfully' };
+    }),
+
+  /**
+   * Get user role in a community
+   */
+  getUserRole: protectedProcedure
+    .input(z.object({
+      userId: z.string(),
+      communityId: z.string(),
+    }))
+    .query(async ({ ctx, input }) => {
+      // Check if user can view roles (superadmin or lead in the community)
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(
+        ctx.user.id,
+        input.communityId,
+      );
+
+      if (userRole !== COMMUNITY_ROLE_SUPERADMIN && userRole !== COMMUNITY_ROLE_LEAD) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only superadmin or lead can view roles',
+        });
+      }
+
+      const role = await ctx.userCommunityRoleService.getRole(
+        input.userId,
+        input.communityId,
+      );
+      if (!role) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Role not found',
+        });
+      }
+
+      return role;
+    }),
+
+  /**
+   * Update user role in a community
+   */
+  updateUserRole: protectedProcedure
+    .input(z.object({
+      userId: z.string(),
+      communityId: z.string(),
+      role: z.enum(['lead', 'participant', 'viewer']),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // Only superadmin can update roles
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(
+        ctx.user.id,
+        input.communityId,
+      );
+
+      if (userRole !== COMMUNITY_ROLE_SUPERADMIN) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only superadmin can update roles',
+        });
+      }
+
+      const role = await ctx.userCommunityRoleService.setRole(
+        input.userId,
+        input.communityId,
+        input.role,
+      );
+
+      return role;
+    }),
+
+  /**
+   * Get all users with a specific role in a community
+   */
+  getUsersByRole: protectedProcedure
+    .input(z.object({
+      communityId: z.string(),
+      role: z.enum(['lead', 'participant', 'viewer']),
+    }))
+    .query(async ({ ctx, input }) => {
+      // Check if user can view roles (superadmin or lead in the community)
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(
+        ctx.user.id,
+        input.communityId,
+      );
+
+      if (userRole !== COMMUNITY_ROLE_SUPERADMIN && userRole !== COMMUNITY_ROLE_LEAD) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only superadmin or lead can view roles',
+        });
+      }
+
+      const users = await ctx.userCommunityRoleService.getUsersByRole(
+        input.communityId,
+        input.role,
+      );
+
+      return users;
     }),
 });
 

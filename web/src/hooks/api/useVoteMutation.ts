@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
-import { votesApiV1 } from '@/lib/api/v1';
+// votesApiV1 removed - all vote endpoints migrated to tRPC
 import type { CreateVoteRequest } from '@/types/api-v1';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateQuotaOptimistically, updateWalletOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';

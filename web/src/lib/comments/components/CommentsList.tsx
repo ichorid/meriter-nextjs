@@ -6,7 +6,7 @@ import { getNodeById } from '../tree';
 import type { TreeNode, FlatItem } from '../types';
 import { CommentCard } from './CommentCard';
 import { ANIMATION_TIMING } from '../animation-config';
-import { commentsApiV1 } from '@/lib/api/v1';
+import { trpc } from '@/lib/trpc/client';
 import { transformComments } from '../utils/transform';
 import { buildTree } from '../tree';
 import { calculateConnectionMetadata, calculateMaxSiblingGroups } from '../utils/connections';
@@ -62,6 +62,9 @@ export function CommentsList({
   const [loadedCommentIds, setLoadedCommentIds] = useState<Set<string>>(new Set());
   const [loadingReplies, setLoadingReplies] = useState<Set<string>>(new Set());
 
+  // Get tRPC utils at component level
+  const utils = trpc.useUtils();
+
   // Helper function to count all nodes in tree (including nested)
   const countAllNodes = (nodes: TreeNode[]): number => {
     let count = 0;
@@ -114,7 +117,8 @@ export function CommentsList({
     setLoadingReplies(prev => new Set(prev).add(commentId));
 
     try {
-      const result = await commentsApiV1.getCommentReplies(commentId, {
+      const result = await utils.comments.getReplies.fetch({
+        id: commentId,
         sort: 'createdAt',
         order: 'desc',
       });
@@ -142,7 +146,7 @@ export function CommentsList({
         return next;
       });
     }
-  }, [loadingReplies, loadedCommentIds, addRepliesToNode]);
+  }, [loadingReplies, loadedCommentIds, addRepliesToNode, utils]);
 
   // Build the items to display: depth-first chain + breadth-first children
   const itemsWithMetadata = useMemo(() => {

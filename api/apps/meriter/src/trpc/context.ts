@@ -17,6 +17,12 @@ import { PermissionService } from '../domain/services/permission.service';
 import { UserEnrichmentService } from '../api-v1/common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../api-v1/common/services/community-enrichment.service';
 import { PermissionsHelperService } from '../api-v1/common/services/permissions-helper.service';
+import { CommunityFeedService } from '../domain/services/community-feed.service';
+import { AuthService } from '../api-v1/auth/auth.service';
+import { QuotaResetService } from '../domain/services/quota-reset.service';
+import { UserSettingsService } from '../domain/services/user-settings.service';
+import { VoteCommentResolverService } from '../api-v1/common/services/vote-comment-resolver.service';
+import { CommentEnrichmentService } from '../api-v1/common/services/comment-enrichment.service';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 import { TRPCError } from '@trpc/server';
 import { Connection } from 'mongoose';
@@ -40,6 +46,12 @@ export interface CreateContextOptions {
   userEnrichmentService: UserEnrichmentService;
   communityEnrichmentService: CommunityEnrichmentService;
   permissionsHelperService: PermissionsHelperService;
+  communityFeedService: CommunityFeedService;
+  authService: AuthService;
+  quotaResetService: QuotaResetService;
+  userSettingsService: UserSettingsService;
+  voteCommentResolverService: VoteCommentResolverService;
+  commentEnrichmentService: CommentEnrichmentService;
   connection: Connection;
   configService: ConfigService;
 }
@@ -67,6 +79,12 @@ export async function createContext(opts: CreateContextOptions) {
     userEnrichmentService,
     communityEnrichmentService,
     permissionsHelperService,
+    communityFeedService,
+    authService,
+    quotaResetService,
+    userSettingsService,
+    voteCommentResolverService,
+    commentEnrichmentService,
     connection,
     configService,
     pollCastService,
@@ -113,6 +131,12 @@ export async function createContext(opts: CreateContextOptions) {
           userEnrichmentService,
           communityEnrichmentService,
           permissionsHelperService,
+          communityFeedService,
+          authService,
+          quotaResetService,
+          userSettingsService,
+          voteCommentResolverService,
+          commentEnrichmentService,
           connection,
         };
       }
@@ -145,18 +169,24 @@ export async function createContext(opts: CreateContextOptions) {
     walletService,
     publicationService,
     commentService,
-          voteService,
-          pollService,
-          pollCastService,
-          notificationService,
-          inviteService,
-          quotaUsageService,
-          permissionService,
-          userEnrichmentService,
-          communityEnrichmentService,
-          permissionsHelperService,
-          connection,
-        };
+    voteService,
+    pollService,
+    pollCastService,
+    notificationService,
+    inviteService,
+    quotaUsageService,
+    permissionService,
+    userEnrichmentService,
+    communityEnrichmentService,
+    permissionsHelperService,
+    communityFeedService,
+    authService,
+    quotaResetService,
+    userSettingsService,
+    voteCommentResolverService,
+    commentEnrichmentService,
+    connection,
+  };
 }
 
 export type Context = inferAsyncReturnType<typeof createContext>;

@@ -10,6 +10,7 @@ import { pollsRouter } from './routers/polls.router';
 import { walletsRouter } from './routers/wallets.router';
 import { notificationsRouter } from './routers/notifications.router';
 import { invitesRouter } from './routers/invites.router';
+import { searchRouter } from './routers/search.router';
 
 /**
  * Main tRPC router combining all sub-routers
@@ -27,6 +28,7 @@ export const appRouter = router({
   wallets: walletsRouter,
   notifications: notificationsRouter,
   invites: invitesRouter,
+  search: searchRouter,
 });
 
 export type AppRouter = typeof appRouter;

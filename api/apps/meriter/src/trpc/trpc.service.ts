@@ -18,6 +18,12 @@ import { PermissionService } from '../domain/services/permission.service';
 import { UserEnrichmentService } from '../api-v1/common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../api-v1/common/services/community-enrichment.service';
 import { PermissionsHelperService } from '../api-v1/common/services/permissions-helper.service';
+import { CommunityFeedService } from '../domain/services/community-feed.service';
+import { AuthService } from '../api-v1/auth/auth.service';
+import { QuotaResetService } from '../domain/services/quota-reset.service';
+import { UserSettingsService } from '../domain/services/user-settings.service';
+import { VoteCommentResolverService } from '../api-v1/common/services/vote-comment-resolver.service';
+import { CommentEnrichmentService } from '../api-v1/common/services/comment-enrichment.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
@@ -41,6 +47,12 @@ export class TrpcService {
     private userEnrichmentService: UserEnrichmentService,
     private communityEnrichmentService: CommunityEnrichmentService,
     private permissionsHelperService: PermissionsHelperService,
+    private communityFeedService: CommunityFeedService,
+    private authService: AuthService,
+    private quotaResetService: QuotaResetService,
+    private userSettingsService: UserSettingsService,
+    private voteCommentResolverService: VoteCommentResolverService,
+    private commentEnrichmentService: CommentEnrichmentService,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService,
   ) {}
@@ -69,6 +81,12 @@ export class TrpcService {
       userEnrichmentService: this.userEnrichmentService,
       communityEnrichmentService: this.communityEnrichmentService,
       permissionsHelperService: this.permissionsHelperService,
+      communityFeedService: this.communityFeedService,
+      authService: this.authService,
+      quotaResetService: this.quotaResetService,
+      userSettingsService: this.userSettingsService,
+      voteCommentResolverService: this.voteCommentResolverService,
+      commentEnrichmentService: this.commentEnrichmentService,
       connection: this.connection,
       configService: this.configService,
     });

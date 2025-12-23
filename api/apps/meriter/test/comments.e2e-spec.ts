@@ -1,6 +1,6 @@
-import request from 'supertest';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { createTestPublication, createTestComment, createTestVote } from './helpers/fixtures';
+import { trpcMutation, trpcQuery } from './helpers/trpc-test-helper';
 
 describe('Comments E2E (create, list, vote)', () => {
   let app: any;
@@ -19,34 +19,25 @@ describe('Comments E2E (create, list, vote)', () => {
   it('creates a comment, lists it, votes on it', async () => {
     // Create a publication to attach the comment to
     const pubDto = createTestPublication('test-community-id', 'test-user-id', {});
-    const pubRes = await request(app.getHttpServer())
-      .post('/api/v1/publications')
-      .send(pubDto)
-      .expect(201);
-    const publicationId = pubRes.body.data.id as string;
+    const publication = await trpcMutation(app, 'publications.create', pubDto);
+    const publicationId = publication.id as string;
 
-    // Create comment
+    // Create comment via tRPC
     const commentDto = createTestComment('publication', publicationId, 'Hello world');
-    const createCommentRes = await request(app.getHttpServer())
-      .post('/api/v1/comments')
-      .send(commentDto)
-      .expect(201);
-    const commentId = createCommentRes.body.data.id as string;
+    const comment = await trpcMutation(app, 'comments.create', commentDto);
+    const commentId = comment.id as string;
 
-    // List comments by target
-    const listRes = await request(app.getHttpServer())
-      .get(`/api/v1/comments?targetType=publication&targetId=${publicationId}`)
-      .expect(200);
-    expect(Array.isArray(listRes.body.data)).toBe(true);
-    expect(listRes.body.data.some((c: any) => c.id === commentId)).toBe(true);
+    // List comments by publication via tRPC
+    const comments = await trpcQuery(app, 'comments.getByPublicationId', { 
+      publicationId 
+    });
+    expect(Array.isArray(comments)).toBe(true);
+    expect(comments.some((c: any) => c.id === commentId)).toBe(true);
 
-    // Vote on the comment
+    // Vote on the comment via tRPC
     const voteDto = createTestVote('comment', commentId, 3, 'personal');
-    const voteRes = await request(app.getHttpServer())
-      .post(`/api/v1/comments/${commentId}/votes`)
-      .send(voteDto)
-      .expect(201);
-    expect(voteRes.body.success).toBe(true);
+    const voteResult = await trpcMutation(app, 'votes.create', voteDto);
+    expect(voteResult).toBeDefined();
   });
 });
 

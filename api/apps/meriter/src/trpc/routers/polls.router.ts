@@ -373,6 +373,92 @@ export const pollsRouter = router({
     }),
 
   /**
+   * Get poll results
+   */
+  getResults: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const results = await ctx.pollService.getPollResults(input.id);
+      return results;
+    }),
+
+  /**
+   * Get current user's casts for a poll
+   */
+  getMyCasts: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const casts = await ctx.pollService.getUserCasts(input.id, ctx.user.id);
+      return casts;
+    }),
+
+  /**
+   * Get polls by community ID
+   */
+  getByCommunity: publicProcedure
+    .input(z.object({
+      communityId: z.string(),
+      page: z.number().int().min(1).optional(),
+      pageSize: z.number().int().min(1).max(100).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      skip: z.number().int().min(0).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      // Return empty array for future-vision communities
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (community?.typeTag === 'future-vision') {
+        return {
+          data: [],
+          total: 0,
+          skip: 0,
+          limit: 20,
+        };
+      }
+
+      const pagination = PaginationHelper.parseOptions({
+        page: input.page,
+        pageSize: input.pageSize,
+        limit: input.limit,
+      });
+      const skip = PaginationHelper.getSkip(pagination);
+
+      const polls = await ctx.pollService.getPollsByCommunity(
+        input.communityId,
+        pagination.limit || 20,
+        skip,
+      );
+
+      // Enrich polls with user and community data
+      const userIds = Array.from(
+        new Set(polls.map((p) => p.getAuthorId.getValue()).filter(Boolean)),
+      );
+      const communityIds = Array.from(
+        new Set(polls.map((p) => p.getCommunityId.getValue()).filter(Boolean)),
+      );
+
+      const [usersMap, communitiesMap] = await Promise.all([
+        ctx.userEnrichmentService.batchFetchUsers(userIds),
+        ctx.communityEnrichmentService.batchFetchCommunities(communityIds),
+      ]);
+
+      const enrichedPolls = polls.map((poll) =>
+        EntityMappers.mapPollToApi(poll, usersMap, communitiesMap),
+      );
+
+      // Get total count
+      const total = await ctx.connection.db
+        ?.collection('polls')
+        .countDocuments({ communityId: input.communityId })
+        || polls.length;
+
+      return PaginationHelper.createResult(
+        enrichedPolls,
+        total,
+        pagination,
+      );
+    }),
+
+  /**
    * Cast vote on poll
    */
   cast: protectedProcedure

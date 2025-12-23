@@ -157,6 +157,45 @@ export const invitesRouter = router({
     }),
 
   /**
+   * Get invite by code
+   */
+  getByCode: protectedProcedure
+    .input(z.object({ code: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const invite = await ctx.inviteService.getInviteByCode(input.code);
+      if (!invite) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Invite not found',
+        });
+      }
+      return invite;
+    }),
+
+  /**
+   * Get invites by community ID (admin only)
+   */
+  getByCommunity: protectedProcedure
+    .input(z.object({ communityId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      // Check if user is admin of the community
+      const isAdmin = await ctx.communityService.isUserAdmin(
+        input.communityId,
+        ctx.user.id,
+      );
+      const isSuperadmin = ctx.user.globalRole === 'superadmin';
+      if (!isAdmin && !isSuperadmin) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only administrators can view community invites',
+        });
+      }
+
+      const invites = await ctx.inviteService.getInvitesByCommunity(input.communityId);
+      return invites;
+    }),
+
+  /**
    * Delete invite
    */
   delete: protectedProcedure

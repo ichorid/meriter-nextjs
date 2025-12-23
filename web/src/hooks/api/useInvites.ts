@@ -8,20 +8,17 @@ export function useInvites() {
 }
 
 export function useCommunityInvites(communityId: string, options?: { enabled?: boolean }) {
-    return trpc.invites.getAll.useQuery(
+    return trpc.invites.getByCommunity.useQuery(
         { communityId },
         { enabled: options?.enabled !== false && !!communityId }
     );
 }
 
 export function useInviteByCode(code: string, options?: { enabled?: boolean }) {
-    // TODO: Add getByCode endpoint to invites router
-    return {
-        data: undefined,
-        isLoading: false,
-        isError: false,
-        error: null,
-    };
+    return trpc.invites.getByCode.useQuery(
+        { code },
+        { enabled: options?.enabled !== false && !!code }
+    );
 }
 
 export function useCreateInvite() {

@@ -178,7 +178,7 @@ export function useWithdrawFromPublication() {
 export function useWithdrawFromVote() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const withdrawMutation = trpc.votes.withdraw.useMutation({
+  const withdrawMutation = trpc.votes.withdrawFromVote.useMutation({
     onSuccess: () => {
       invalidateComments(queryClient, { lists: true, exact: false });
       invalidateWallet(queryClient, { includeBalance: true });

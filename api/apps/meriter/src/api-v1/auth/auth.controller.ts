@@ -31,6 +31,20 @@ interface TelegramWebAppData {
   initData: string;
 }
 
+/**
+ * @deprecated Some endpoints have been migrated to tRPC.
+ * 
+ * Migrated endpoints:
+ * - POST /api/v1/auth/logout -> trpc.auth.logout
+ * - POST /api/v1/auth/clear-cookies -> trpc.auth.clearCookies
+ * - POST /api/v1/auth/fake -> trpc.auth.authenticateFake
+ * - POST /api/v1/auth/fake/superadmin -> trpc.auth.authenticateFakeSuperadmin
+ * 
+ * Still using REST (required for OAuth redirects):
+ * - GET /api/v1/auth/{provider} -> OAuth redirects (must stay REST)
+ * - GET /api/v1/auth/{provider}/callback -> OAuth callbacks (must stay REST)
+ * - GET /api/v1/auth/me -> Still REST (used by UserGuard middleware)
+ */
 @Controller('api/v1/auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);

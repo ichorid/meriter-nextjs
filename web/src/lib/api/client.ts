@@ -64,9 +64,9 @@ export class ApiClient {
               
               // Also immediately call server-side clearCookies() to clear HttpOnly cookies
               // Use fire-and-forget pattern to avoid blocking the error flow
-              // Import authApiV1 lazily to avoid circular dependency
-              import('@/lib/api/v1').then(({ authApiV1 }) => {
-                authApiV1.clearCookies().catch(e => {
+              // Import trpc lazily to avoid circular dependency
+              import('@/lib/trpc/client').then(({ trpc }) => {
+                trpc.auth.clearCookies.mutate().catch((e: any) => {
                   // Silently fail - we've already cleared client-side cookies
                   console.error('Failed to clear server cookies on 401:', e);
                 });

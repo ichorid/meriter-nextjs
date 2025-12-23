@@ -3,9 +3,7 @@
  * Fetches public configuration from backend API at runtime
  * Falls back to build-time defaults if API call fails
  */
-import { useQuery } from '@tanstack/react-query';
-import { configApiV1 } from '@/lib/api/v1';
-import { queryKeys } from '@/lib/constants/queryKeys';
+import { trpc } from '@/lib/trpc/client';
 import { STALE_TIME } from '@/lib/constants/query-config';
 import type { RuntimeConfig } from '@/types/runtime-config';
 
@@ -19,24 +17,17 @@ export function useRuntimeConfig(): {
     isLoading: boolean;
     error: Error | null;
 } {
-    const { data, isLoading, error } = useQuery<RuntimeConfig>({
-        queryKey: queryKeys.config.runtime(),
-        queryFn: async () => {
-            try {
-                const response = await configApiV1.getConfig();
-                return response;
-            } catch (err) {
-                // Log warning but don't throw - we'll fall back to build-time defaults
-                console.warn('Failed to fetch runtime config, using build-time defaults:', err);
-                throw err;
-            }
-        },
+    const { data, isLoading, error } = trpc.config.getConfig.useQuery(undefined, {
         staleTime: STALE_TIME.LONG, // Config doesn't change often
         gcTime: STALE_TIME.VERY_LONG, // Keep in cache for a while
         retry: 1, // Retry once on failure
         refetchOnWindowFocus: false, // Don't refetch on window focus
         // Don't throw errors - return null config instead
         throwOnError: false,
+        onError: (err) => {
+            // Log warning but don't throw - we'll fall back to build-time defaults
+            console.warn('Failed to fetch runtime config, using build-time defaults:', err);
+        },
     });
 
     return {

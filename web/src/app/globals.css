@@ -1,9 +1,9 @@
+/* Keep essential third-party imports - must be before @tailwind in Next.js 16 */
+@import '@telegram-apps/telegram-ui/dist/styles.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Keep essential third-party imports */
-@import '@telegram-apps/telegram-ui/dist/styles.css';
 
 @layer base {
   /* Root html/body viewport constraints */

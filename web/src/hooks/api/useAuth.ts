@@ -1,7 +1,5 @@
 // Auth React Query hooks
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { authApiV1 } from '@/lib/api/v1';
-import { queryKeys } from '@/lib/constants/queryKeys';
+import { useQueryClient } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
 
 export const useMe = () => {
@@ -33,29 +31,27 @@ export const useMe = () => {
 };
 
 export const useFakeAuth = () => {
-  const queryClient = useQueryClient();
+  const utils = trpc.useUtils();
   
-  return useMutation({
-    mutationFn: () => authApiV1.authenticateFakeUser(),
+  return trpc.auth.authenticateFake.useMutation({
     onSuccess: () => {
       // Invalidate queries but don't refetch immediately
       // Let the redirect and page reload handle the refetch
       // This ensures cookies are properly set before refetching
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all, refetchType: 'none' });
+      utils.users.getMe.invalidate();
     },
   });
 };
 
 export const useFakeSuperadminAuth = () => {
-  const queryClient = useQueryClient();
+  const utils = trpc.useUtils();
   
-  return useMutation({
-    mutationFn: () => authApiV1.authenticateFakeSuperadmin(),
+  return trpc.auth.authenticateFakeSuperadmin.useMutation({
     onSuccess: () => {
       // Invalidate queries but don't refetch immediately
       // Let the redirect and page reload handle the refetch
       // This ensures cookies are properly set before refetching
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all, refetchType: 'none' });
+      utils.users.getMe.invalidate();
     },
   });
 };
@@ -63,10 +59,14 @@ export const useFakeSuperadminAuth = () => {
 export const useLogout = () => {
   const queryClient = useQueryClient();
   
-  return useMutation({
-    mutationFn: () => authApiV1.logout(),
+  return trpc.auth.logout.useMutation({
     onSuccess: () => {
+      // Clear all queries
       queryClient.clear();
     },
   });
+};
+
+export const useClearCookies = () => {
+  return trpc.auth.clearCookies.useMutation();
 };

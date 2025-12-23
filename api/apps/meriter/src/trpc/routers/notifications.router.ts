@@ -129,4 +129,54 @@ export const notificationsRouter = router({
       await ctx.notificationService.markAllAsRead(ctx.user.id);
       return { success: true };
     }),
+
+  /**
+   * Delete notification
+   */
+  delete: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // Since notifications are stored in DB, we could implement soft delete here
+      // For now, this is a no-op as per original implementation
+      return { message: 'Notification deleted' };
+    }),
+
+  /**
+   * Get notification preferences
+   */
+  getPreferences: protectedProcedure
+    .query(async ({ ctx }) => {
+      // Return default preferences
+      // Can be enhanced later to store in user_settings
+      return {
+        mentions: true,
+        replies: true,
+        votes: true,
+        invites: true,
+        comments: true,
+        publications: true,
+        polls: true,
+        system: true,
+      };
+    }),
+
+  /**
+   * Update notification preferences
+   */
+  updatePreferences: protectedProcedure
+    .input(z.object({
+      mentions: z.boolean().optional(),
+      replies: z.boolean().optional(),
+      votes: z.boolean().optional(),
+      invites: z.boolean().optional(),
+      comments: z.boolean().optional(),
+      publications: z.boolean().optional(),
+      polls: z.boolean().optional(),
+      system: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // For now, just return success without storing
+      // Can be enhanced later to store in user_settings
+      return { message: 'Preferences updated' };
+    }),
 });

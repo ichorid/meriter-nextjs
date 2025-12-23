@@ -7,7 +7,7 @@ import { useCommunity, useWallets } from '@/hooks/api';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { useTranslations } from 'next-intl';
 import { isFakeDataMode } from '@/config';
-import { publicationsApiV1 } from '@/lib/api/v1';
+import { trpc } from '@/lib/trpc/client';
 import { BrandButton } from '@/components/ui/BrandButton';
 import { BrandInput } from '@/components/ui/BrandInput';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
@@ -342,12 +342,17 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
   }, [searchQuery]);
 
   // Handle fake data generation
+  const generateFakeDataMutation = trpc.publications.generateFakeData.useMutation();
+
   const handleGenerateUserPosts = async () => {
     setGeneratingUserPosts(true);
     setFakeDataMessage('');
 
     try {
-      const result = await publicationsApiV1.generateFakeData('user', communityId);
+      const result = await generateFakeDataMutation.mutateAsync({
+        type: 'user',
+        communityId,
+      });
       setFakeDataMessage(`Created ${result.count} user post(s)`);
       setTimeout(() => setFakeDataMessage(''), 3000);
       router.refresh();
@@ -365,7 +370,10 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
     setFakeDataMessage('');
 
     try {
-      const result = await publicationsApiV1.generateFakeData('beneficiary', communityId);
+      const result = await generateFakeDataMutation.mutateAsync({
+        type: 'beneficiary',
+        communityId,
+      });
       setFakeDataMessage(`Created ${result.count} post(s) with beneficiary`);
       setTimeout(() => setFakeDataMessage(''), 3000);
       router.refresh();

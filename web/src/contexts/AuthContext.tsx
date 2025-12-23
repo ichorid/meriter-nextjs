@@ -11,13 +11,12 @@
 
 'use client';
 
-import { authApiV1 } from '@/lib/api/v1';
-
 import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { useMe, useFakeAuth, useFakeSuperadminAuth, useLogout } from '@/hooks/api/useAuth';
+import { useMe, useFakeAuth, useFakeSuperadminAuth, useLogout, useClearCookies } from '@/hooks/api/useAuth';
+import { trpc } from '@/lib/trpc/client';
 import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
 import { clearAuthStorage, redirectToLogin, clearJwtCookie, setHasPreviousSession } from '@/lib/utils/auth';
 import { useToastStore } from '@/shared/stores/toast.store';
@@ -59,6 +58,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const fakeAuthMutation = useFakeAuth();
   const fakeSuperadminAuthMutation = useFakeSuperadminAuth();
   const logoutMutation = useLogout();
+  const clearCookiesMutation = useClearCookies();
   const tCommon = useTranslations('common');
 
   const { handleDeepLink } = useDeepLinkHandler(router as unknown as Router, null, undefined);
@@ -117,7 +117,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Call server-side clear-cookies to ensure HttpOnly cookies are removed
       try {
-        await authApiV1.clearCookies();
+        await clearCookiesMutation.mutateAsync();
       } catch (e) {
         console.error('Failed to clear server cookies:', e);
       }
@@ -130,7 +130,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Still clear everything and redirect on error
       try {
-        await authApiV1.clearCookies();
+        await clearCookiesMutation.mutateAsync();
       } catch (e) {
         console.error('Failed to clear server cookies:', e);
       }
@@ -165,7 +165,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         // Call server-side clear-cookies to ensure HttpOnly cookies are removed
         // We use a fire-and-forget approach here to avoid blocking
-        authApiV1.clearCookies().catch(e => console.error('Failed to clear server cookies on 401:', e));
+        clearCookiesMutation.mutateAsync().catch(e => console.error('Failed to clear server cookies on 401:', e));
 
         // Toast is now handled globally in api/client.ts
         // const currentErrorId = `${errorStatus}-${(userError as any)?.message || '401'}`;

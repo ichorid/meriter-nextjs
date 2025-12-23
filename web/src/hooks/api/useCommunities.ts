@@ -3,7 +3,6 @@ import {
     useQuery,
     useInfiniteQuery,
 } from "@tanstack/react-query";
-import { communitiesApiV1 } from "@/lib/api/v1";
 import { trpc } from "@/lib/trpc/client";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import { STALE_TIME } from "@/lib/constants/query-config";
@@ -52,18 +51,21 @@ export const useCommunities = () => {
 };
 
 export const useInfiniteCommunities = (pageSize: number = 20) => {
-    return useInfiniteQuery({
-        queryKey: [...queryKeys.communities.lists(), "infinite", pageSize],
-        queryFn: ({ pageParam = 1 }: { pageParam: number }) => {
-            const skip = (pageParam - 1) * pageSize;
-            return communitiesApiV1.getCommunities({
-                skip,
-                limit: pageSize,
-            });
+    return trpc.communities.getAll.useInfiniteQuery(
+        { page: 1, pageSize },
+        {
+            getNextPageParam: (lastPage) => {
+                // Calculate if there's a next page
+                const totalPages = Math.ceil(lastPage.total / pageSize);
+                const currentPage = lastPage.skip / pageSize + 1;
+                if (currentPage < totalPages) {
+                    return currentPage + 1;
+                }
+                return undefined;
+            },
+            initialPageParam: 1,
         },
-        getNextPageParam: createGetNextPageParam<Community>(),
-        initialPageParam: 1,
-    });
+    );
 };
 
 export const useCommunity = (id: string) => {
@@ -79,10 +81,15 @@ export const useCommunity = (id: string) => {
  * @returns Object with queries array and communitiesMap for easy access
  */
 export function useCommunitiesBatch(communityIds: string[]) {
+    const utils = trpc.useUtils();
+    
     const result = useBatchQueries<CommunityWithComputedFields, string>({
         ids: communityIds,
         queryKey: (id) => queryKeys.communities.detail(id),
-        queryFn: (id) => communitiesApiV1.getCommunity(id),
+        queryFn: async (id) => {
+            const response = await utils.communities.getById.fetch({ id });
+            return response as CommunityWithComputedFields;
+        },
         enabled: (id) => !!id && id !== "create",
         staleTime: STALE_TIME.LONG,
     });
@@ -119,31 +126,27 @@ export const useUpdateCommunity = () => {
     });
 };
 
-export const useSendCommunityMemo = createMutation<{ success: boolean }, string>({
-    mutationFn: (communityId) => communitiesApiV1.sendUsageMemo(communityId),
-    errorContext: "Send community memo error",
-    invalidations: {
-        communities: {
-            lists: true,
-            exact: false,
-        },
+export function useSendCommunityMemo() {
+  const utils = trpc.useUtils();
+  
+  return trpc.communities.sendMemo.useMutation({
+    onSuccess: () => {
+      utils.communities.getAll.invalidate();
+      utils.communities.getById.invalidate();
     },
-});
+  });
+}
 
-export const useResetDailyQuota = createMutation<{ success: boolean; resetAt: string }, string>({
-    mutationFn: (communityId) => communitiesApiV1.resetDailyQuota(communityId),
-    errorContext: "Reset daily quota error",
-    invalidations: {
-        communities: {
-            lists: true,
-            detail: (_result, communityId) => communityId,
-        },
-        quota: {
-            communityId: (_result, communityId) => communityId,
-        },
+export function useResetDailyQuota() {
+  const utils = trpc.useUtils();
+  
+  return trpc.communities.resetDailyQuota.useMutation({
+    onSuccess: (_result, variables) => {
+      utils.communities.getAll.invalidate();
+      utils.communities.getById.invalidate({ id: variables.id });
+      utils.wallets.getQuota.invalidate({ userId: 'me', communityId: variables.id });
+      // Invalidate quota-related queries
+      utils.invalidate({ queryKey: [['community-quota']] });
     },
-    onSuccess: (_result, communityId, queryClient) => {
-        // Invalidate quota-related queries
-        queryClient.invalidateQueries({ queryKey: ['community-quota'] });
-    },
-});
+  });
+}

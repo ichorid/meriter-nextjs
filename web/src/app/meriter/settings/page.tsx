@@ -10,7 +10,7 @@ import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/Context
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFakeDataMode } from '@/config';
-import { communitiesApiV1 } from '@/lib/api/v1';
+import { trpc } from '@/lib/trpc/client';
 
 import { BrandButton } from '@/components/ui/BrandButton';
 import { Loader2 } from 'lucide-react';
@@ -34,11 +34,14 @@ const SettingsPage = () => {
         }
     }, [isAuthenticated, isLoading, router]);
 
+    const createFakeCommunityMutation = trpc.communities.createFakeCommunity.useMutation();
+    const addUserToAllCommunitiesMutation = trpc.communities.addUserToAllCommunities.useMutation();
+
     const handleCreateFakeCommunity = async () => {
         setCreatingFakeCommunity(true);
         setFakeCommunityMessage('');
         try {
-            const community = await communitiesApiV1.createFakeCommunity();
+            const community = await createFakeCommunityMutation.mutateAsync();
             setFakeCommunityMessage(t('fakeCommunityCreated', { name: community.name }));
             setTimeout(() => {
                 router.push(`/meriter/communities/${community.id}`);
@@ -56,7 +59,7 @@ const SettingsPage = () => {
         setAddingToAllCommunities(true);
         setAddToAllMessage('');
         try {
-            const result = await communitiesApiV1.addUserToAllCommunities();
+            const result = await addUserToAllCommunitiesMutation.mutateAsync();
             if (result.errors && result.errors.length > 0) {
                 setAddToAllMessage(t('addToAllPartial', { added: result.added, skipped: result.skipped, errors: result.errors.length }));
             } else {

@@ -9,21 +9,24 @@ export const useUserProfile = (userId: string) => {
 };
 
 export function useAllLeads(params: { page?: number; pageSize?: number } = {}) {
-  // TODO: Migrate getAllLeads endpoint to tRPC
-  // For now, keep using REST API
-  return { data: undefined, isLoading: false, error: null };
+  return trpc.users.getAllLeads.useQuery(params);
 }
 
-export function useUpdatesFrequency() {
-  // TODO: Migrate updatesFrequency endpoint to tRPC
-  // For now, keep using REST API
-  return { data: undefined, isLoading: false, error: null };
+export function useUpdatesFrequency(userId: string = 'me') {
+  return trpc.users.getUpdatesFrequency.useQuery(
+    { userId },
+    { enabled: !!userId }
+  );
 }
 
 export function useSetUpdatesFrequency() {
-  // TODO: Migrate setUpdatesFrequency endpoint to tRPC
-  // For now, keep using REST API
-  return { mutate: () => {}, mutateAsync: async () => {} };
+  const utils = trpc.useUtils();
+  
+  return trpc.users.setUpdatesFrequency.useMutation({
+    onSuccess: (_, variables) => {
+      utils.users.getUpdatesFrequency.invalidate({ userId: variables.userId });
+    },
+  });
 }
 
 // Search users (admin only)

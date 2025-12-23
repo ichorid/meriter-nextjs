@@ -1,55 +1,67 @@
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { profileApiV1, type UserCommunityRoleWithName, type PublicationWithCommunityName, type UpdateProfileData, type MeritStatsResponse } from '@/lib/api/v1/profile';
-import type { PaginatedResponse, User } from '@/types/api-v1';
+import { trpc } from '@/lib/trpc/client';
+import type { User } from '@/types/api-v1';
 import { useAuth } from '@/contexts/AuthContext';
 import { createGetNextPageParam } from '@/lib/utils/pagination-utils';
 import { createMutation } from '@/lib/api/mutation-factory';
+import type { UpdateUserProfileSchema } from '@meriter/shared-types';
+import { z } from 'zod';
 
 export function useUserRoles(userId: string) {
-  return useQuery<UserCommunityRoleWithName[]>({
-    queryKey: ['profile', 'roles', userId],
-    queryFn: () => profileApiV1.getUserRoles(userId),
-    enabled: !!userId,
-  });
+  return trpc.users.getUserRoles.useQuery(
+    { userId },
+    {
+      enabled: !!userId,
+    },
+  );
 }
 
 export function useUserProjects(userId: string, pageSize: number = 20) {
-  return useInfiniteQuery<PaginatedResponse<PublicationWithCommunityName>>({
-    queryKey: ['profile', 'projects', userId, pageSize],
-    queryFn: ({ pageParam = 1 }) => profileApiV1.getUserProjects(userId, pageParam as number, pageSize),
-    getNextPageParam: createGetNextPageParam<PublicationWithCommunityName>(),
-    initialPageParam: 1,
-    enabled: !!userId,
-  });
+  return trpc.users.getUserProjects.useInfiniteQuery(
+    {
+      userId,
+      pageSize,
+    },
+    {
+      getNextPageParam: (lastPage) => {
+        if (lastPage.pagination.hasNext) {
+          return lastPage.pagination.page + 1;
+        }
+        return undefined;
+      },
+      initialPageParam: 1,
+      enabled: !!userId,
+    },
+  );
 }
 
 export function useLeadCommunities(userId: string) {
-  return useQuery({
-    queryKey: ['profile', 'lead-communities', userId],
-    queryFn: () => profileApiV1.getLeadCommunities(userId),
-    enabled: !!userId,
-  });
+  return trpc.users.getLeadCommunities.useQuery(
+    { userId },
+    {
+      enabled: !!userId,
+    },
+  );
 }
 
-export const useUpdateProfile = createMutation<User, UpdateProfileData>({
-    mutationFn: (data) => profileApiV1.updateProfile(data),
-    errorContext: "Update profile error",
-    onSuccess: (_result, _variables, queryClient) => {
-        // Invalidate user queries to refetch updated data
-        queryClient.invalidateQueries({ queryKey: ['user'] });
-        queryClient.invalidateQueries({ queryKey: ['profile'] });
-        queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+export function useUpdateProfile() {
+  const utils = trpc.useUtils();
+  
+  return trpc.users.updateProfile.useMutation({
+    onSuccess: () => {
+      // Invalidate user queries to refetch updated data
+      utils.users.getMe.invalidate();
+      utils.users.getUserProfile.invalidate();
+      utils.users.getUserRoles.invalidate();
     },
-});
+  });
+}
 
 // Alias for backwards compatibility
 export const useUpdateUser = useUpdateProfile;
 
 export function useMeritStats() {
-  return useQuery<MeritStatsResponse>({
-    queryKey: ['profile', 'merit-stats'],
-    queryFn: () => profileApiV1.getMeritStats(),
-  });
+  return trpc.users.getMeritStats.useQuery();
 }
 
 /**

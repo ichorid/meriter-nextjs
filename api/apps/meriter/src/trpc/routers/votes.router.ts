@@ -1,7 +1,85 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreateVoteDtoSchema, VoteWithCommentDtoSchema } from '@meriter/shared-types';
+import { CreateVoteDtoSchema, VoteWithCommentDtoSchema, WithdrawAmountDtoSchema } from '@meriter/shared-types';
+import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { NotFoundError } from '../../common/exceptions/api.exceptions';
+
+/**
+ * Helper function to process withdrawal and credit wallet
+ * Handles marathon-of-good → future-vision bridge
+ */
+async function processWithdrawal(
+  beneficiaryId: string,
+  publicationCommunityId: string,
+  publicationId: string,
+  amount: number,
+  referenceType: 'publication_withdrawal' | 'comment_withdrawal' | 'vote_withdrawal',
+  ctx: any,
+): Promise<{ targetCommunityId: string; currency: { singular: string; plural: string; genitive: string } }> {
+  const publicationCommunity = await ctx.communityService.getCommunity(publicationCommunityId);
+  if (!publicationCommunity) {
+    throw new NotFoundError('Community', publicationCommunityId);
+  }
+
+  // Check if publication is in marathon-of-good - if so, credit Future Vision wallet
+  if (publicationCommunity.typeTag === 'marathon-of-good') {
+    const futureVisionCommunity =
+      await ctx.communityService.getCommunityByTypeTag('future-vision');
+
+    if (!futureVisionCommunity) {
+      throw new NotFoundError('Community', 'future-vision');
+    }
+
+    const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+
+    // Credit Future Vision wallet
+    await ctx.walletService.addTransaction(
+      beneficiaryId,
+      futureVisionCommunity.id,
+      'credit',
+      amount,
+      'personal',
+      referenceType,
+      publicationId,
+      fvCurrency,
+      `Withdrawal from ${referenceType.replace('_withdrawal', '')} ${publicationId} (Marathon of Good → Future Vision)`,
+    );
+
+    return {
+      targetCommunityId: futureVisionCommunity.id,
+      currency: fvCurrency,
+    };
+  }
+
+  // For other communities, credit the publication's community wallet
+  const currency = publicationCommunity.settings?.currencyNames || {
+    singular: 'merit',
+    plural: 'merits',
+    genitive: 'merits',
+  };
+
+  await ctx.walletService.addTransaction(
+    beneficiaryId,
+    publicationCommunityId,
+    'credit',
+    amount,
+    'personal',
+    referenceType,
+    publicationId,
+    currency,
+    `Withdrawal from ${referenceType.replace('_withdrawal', '')} ${publicationId}`,
+  );
+
+  return {
+    targetCommunityId: publicationCommunityId,
+    currency,
+  };
+}
 
 /**
  * Helper to calculate remaining quota for a user in a community
@@ -308,5 +386,252 @@ export const votesRouter = router({
         code: 'NOT_IMPLEMENTED',
         message: 'Vote deletion not implemented yet',
       });
+    }),
+
+  /**
+   * Get votes by publication ID
+   */
+  getByPublication: protectedProcedure
+    .input(z.object({
+      id: z.string(),
+      page: z.number().int().min(1).optional(),
+      pageSize: z.number().int().min(1).max(100).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      skip: z.number().int().min(0).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const pagination = PaginationHelper.parseOptions({
+        page: input.page,
+        pageSize: input.pageSize,
+        limit: input.limit,
+      });
+      const result = await ctx.voteService.getTargetVotes('publication', input.id);
+      return PaginationHelper.createResult(result, result.length, pagination);
+    }),
+
+  /**
+   * Get vote details
+   * Note: This endpoint is not fully implemented in REST controller
+   */
+  getDetails: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const vote = await ctx.voteService.getVoteById(input.id);
+      if (!vote) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Vote not found',
+        });
+      }
+      // Return basic vote info for now
+      // Full implementation would require enrichment similar to comment details
+      return { vote: null };
+    }),
+
+  /**
+   * Withdraw from publication
+   */
+  withdraw: protectedProcedure
+    .input(WithdrawAmountDtoSchema.extend({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+      const amount = input.amount;
+      if (!amount || amount <= 0) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Withdrawal amount must be greater than 0',
+        });
+      }
+
+      // Get publication
+      const publication = await ctx.publicationService.getPublication(input.id);
+      if (!publication) {
+        throw new NotFoundError('Publication', input.id);
+      }
+
+      // Validate user can withdraw
+      const canWithdraw = await ctx.voteService.canUserWithdraw(
+        userId,
+        'publication',
+        input.id,
+      );
+      if (!canWithdraw) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You are not authorized to withdraw from this publication',
+        });
+      }
+
+      // Get current score
+      const currentScore = publication.getMetrics.score;
+      if (currentScore <= 0) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'No votes available to withdraw',
+        });
+      }
+
+      // Check total already withdrawn
+      const totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
+        'publication_withdrawal',
+        input.id,
+      );
+
+      // Calculate available amount
+      const availableAmount = currentScore - totalWithdrawn;
+      if (amount > availableAmount) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Insufficient votes to withdraw. Available: ${availableAmount}, Requested: ${amount}`,
+        });
+      }
+
+      // Get effective beneficiary
+      const effectiveBeneficiary = publication.getEffectiveBeneficiary();
+      const beneficiaryId = effectiveBeneficiary.getValue();
+
+      // Process withdrawal (handles marathon bridge)
+      const communityId = publication.getCommunityId.getValue();
+      const { targetCommunityId } = await processWithdrawal(
+        beneficiaryId,
+        communityId,
+        input.id,
+        amount,
+        'publication_withdrawal',
+        ctx,
+      );
+
+      // Reduce publication score
+      await ctx.publicationService.reduceScore(input.id, amount);
+
+      // Get updated wallet balance
+      const wallet = await ctx.walletService.getWallet(beneficiaryId, targetCommunityId);
+      const balance = wallet?.balance || 0;
+
+      return {
+        amount,
+        balance,
+        message: 'Withdrawal successful',
+      };
+    }),
+
+  /**
+   * Withdraw from vote (comment)
+   */
+  withdrawFromVote: protectedProcedure
+    .input(WithdrawAmountDtoSchema.extend({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+      const amount = input.amount;
+      if (!amount || amount <= 0) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Withdrawal amount must be greater than 0',
+        });
+      }
+
+      // Get vote (which represents a comment)
+      const vote = await ctx.voteService.getVoteById(input.id);
+      if (!vote) {
+        throw new NotFoundError('Vote', input.id);
+      }
+
+      // Validate user can withdraw
+      const canWithdraw = await ctx.voteService.canUserWithdraw(
+        userId,
+        'vote',
+        input.id,
+      );
+      if (!canWithdraw) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You are not authorized to withdraw from this comment',
+        });
+      }
+
+      // Get comment to get its score and find the publication
+      const comment = await ctx.commentService.getComment(input.id);
+      if (!comment) {
+        throw new NotFoundError('Comment', input.id);
+      }
+
+      // Get current score
+      const currentScore = comment.getScore();
+      if (currentScore <= 0) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'No votes available to withdraw',
+        });
+      }
+
+      // Check total already withdrawn
+      const totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
+        'vote_withdrawal',
+        input.id,
+      );
+
+      // Calculate available amount
+      const availableAmount = currentScore - totalWithdrawn;
+      if (amount > availableAmount) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Insufficient votes to withdraw. Available: ${availableAmount}, Requested: ${amount}`,
+        });
+      }
+
+      // Find the root publication to get the community
+      let publicationId: string | null = null;
+      let currentComment = comment;
+      let depth = 0;
+      while (currentComment.getTargetType() === 'comment' && depth < 20) {
+        const parentComment = await ctx.commentService.getComment(currentComment.getTargetId());
+        if (!parentComment) break;
+        currentComment = parentComment;
+        depth++;
+      }
+      if (currentComment.getTargetType() === 'publication') {
+        publicationId = currentComment.getTargetId();
+      }
+
+      if (!publicationId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Could not find publication for this comment',
+        });
+      }
+
+      // Get publication to determine community
+      const publication = await ctx.publicationService.getPublication(publicationId);
+      if (!publication) {
+        throw new NotFoundError('Publication', publicationId);
+      }
+
+      const communityId = publication.getCommunityId.getValue();
+
+      // Get effective beneficiary (comment author)
+      const beneficiaryId = comment.getAuthorId.getValue();
+
+      // Process withdrawal (handles marathon bridge)
+      const { targetCommunityId } = await processWithdrawal(
+        beneficiaryId,
+        communityId,
+        input.id,
+        amount,
+        'vote_withdrawal',
+        ctx,
+      );
+
+      // Reduce comment score
+      await ctx.commentService.reduceScore(input.id, amount);
+
+      // Get updated wallet balance
+      const wallet = await ctx.walletService.getWallet(beneficiaryId, targetCommunityId);
+      const balance = wallet?.balance || 0;
+
+      return {
+        amount,
+        balance,
+        message: 'Withdrawal successful',
+      };
     }),
 });

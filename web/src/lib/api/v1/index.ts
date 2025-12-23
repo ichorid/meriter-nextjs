@@ -1,3 +1,20 @@
+/**
+ * @deprecated This API client is deprecated. All endpoints have been migrated to tRPC.
+ * 
+ * Use tRPC hooks instead:
+ * - `trpc.*.useQuery()` for queries
+ * - `trpc.*.useMutation()` for mutations
+ * - `trpc.*.useInfiniteQuery()` for infinite queries
+ * 
+ * See LEGACY_DEPRECATED.md for migration guide.
+ * 
+ * This file is kept temporarily for:
+ * - OAuth redirects (still use REST)
+ * - File uploads (still use REST)
+ * - Backward compatibility during migration
+ * 
+ * ⚠️ DO NOT USE FOR NEW CODE
+ */
 // New v1 API client with improved types and structure
 import { apiClient } from "../client";
 import {
@@ -1504,25 +1521,21 @@ export const notificationsApiV1 = {
     },
 };
 
-// Import new APIs
-import { invitesApiV1 } from "./invites";
-import { profileApiV1 } from "./profile";
-
 // Export all APIs
+// Note: Most APIs are deprecated and migrated to tRPC
+// Only authApiV1 is still used for OAuth redirects
 export const apiV1 = {
     auth: authApiV1,
-    users: usersApiV1,
-    communities: communitiesApiV1,
-    publications: publicationsApiV1,
-    comments: commentsApiV1,
-    votes: votesApiV1,
-    polls: pollsApiV1,
-    wallet: walletApiV1,
-    invites: invitesApiV1,
-    profile: profileApiV1,
-    search: searchApiV1,
-    notifications: notificationsApiV1,
+    // All other APIs are deprecated - use tRPC instead
+    // users: usersApiV1, // -> trpc.users.*
+    // communities: communitiesApiV1, // -> trpc.communities.*
+    // publications: publicationsApiV1, // -> trpc.publications.*
+    // comments: commentsApiV1, // -> trpc.comments.*
+    // votes: votesApiV1, // -> trpc.votes.*
+    // polls: pollsApiV1, // -> trpc.polls.*
+    // wallet: walletApiV1, // -> trpc.wallets.*
+    // invites: invitesApiV1, // -> trpc.invites.*
+    // profile: profileApiV1, // -> trpc.users.*
+    // search: searchApiV1, // -> trpc.search.*
+    // notifications: notificationsApiV1, // -> trpc.notifications.*
 };
-
-// Export individual APIs for convenience
-export { invitesApiV1, profileApiV1 };

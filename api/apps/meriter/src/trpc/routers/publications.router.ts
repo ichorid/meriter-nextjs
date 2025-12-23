@@ -5,6 +5,7 @@ import { CreatePublicationDtoSchema, UpdatePublicationDtoSchema, PaginationParam
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { ValidationError } from '../../common/exceptions/api.exceptions';
+import { ForbiddenException } from '@nestjs/common';
 
 /**
  * Helper to calculate remaining quota for a user in a community
@@ -480,5 +481,141 @@ export const publicationsRouter = router({
     .mutation(async ({ ctx, input }) => {
       await ctx.publicationService.deletePublication(input.id, ctx.user.id);
       return { success: true };
+    }),
+
+  /**
+   * Generate fake data (development only)
+   */
+  generateFakeData: protectedProcedure
+    .input(
+      z.object({
+        type: z.enum(['user', 'beneficiary']),
+        communityId: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Check if fake data mode is enabled
+      if (process.env.FAKE_DATA_MODE !== 'true') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Fake data mode is not enabled',
+        });
+      }
+
+      // Get or use the specified community, or create/get a test community
+      let communityId: string;
+      let community: any;
+
+      if (input.communityId) {
+        communityId = input.communityId;
+        community = await ctx.communityService.getCommunity(communityId);
+        if (!community) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: `Community ${communityId} not found`,
+          });
+        }
+      } else {
+        // Get or create a test community
+        let communities = await ctx.communityService.getAllCommunities(1, 0);
+        if (communities.length === 0) {
+          const testCommunity = await ctx.communityService.createCommunity({
+            name: 'Test Community',
+            description: 'Test community for fake data',
+          });
+          communityId = testCommunity.id;
+          community = testCommunity;
+        } else {
+          communityId = communities[0].id;
+          community = await ctx.communityService.getCommunity(communityId);
+        }
+      }
+
+      // Ensure the community has the 'test' hashtag
+      const hashtags = community?.hashtags || [];
+      if (!hashtags.includes('test')) {
+        const updatedHashtags = [...hashtags, 'test'];
+        await ctx.communityService.updateCommunity(communityId, {
+          hashtags: updatedHashtags,
+        });
+      }
+
+      // Generate fake publications
+      const createdPublications: any[] = [];
+
+      if (input.type === 'user') {
+        // Create 1-2 user posts (by the authenticated fake user)
+        const contents = [
+          'Test post #1 from fake user',
+          'Test post #2 from fake user',
+        ];
+
+        for (let i = 0; i < Math.min(2, contents.length); i++) {
+          const publication = await ctx.publicationService.createPublication(
+            ctx.user.id,
+            {
+              communityId,
+              content: contents[i],
+              type: 'text',
+              hashtags: ['#test'],
+            },
+          );
+          createdPublications.push(publication);
+        }
+      } else if (input.type === 'beneficiary') {
+        // Get a random user (excluding fake users)
+        const allUsers = await ctx.userService.getAllUsers(100, 0);
+        const otherUsers = allUsers.filter(
+          (u) => !u.authId?.startsWith('fake_user_') && u.id !== ctx.user.id,
+        );
+
+        let beneficiaryId: string;
+
+        if (otherUsers.length === 0) {
+          // Create a test beneficiary user if none exists
+          const testBeneficiary = await ctx.userService.createOrUpdateUser({
+            authProvider: 'fake',
+            authId: `fake_beneficiary_${Date.now()}`,
+            username: 'fakebeneficiary',
+            firstName: 'Fake',
+            lastName: 'Beneficiary',
+            displayName: 'Fake Beneficiary User',
+          });
+          beneficiaryId = testBeneficiary.id;
+        } else {
+          // Pick a random user
+          const randomIndex = Math.floor(Math.random() * otherUsers.length);
+          beneficiaryId = otherUsers[randomIndex].id;
+        }
+
+        // Create 1-2 posts with random beneficiary
+        const contents = [
+          'Test post #1 with beneficiary',
+          'Test post #2 with beneficiary',
+        ];
+
+        for (let i = 0; i < Math.min(2, contents.length); i++) {
+          try {
+            const publication = await ctx.publicationService.createPublication(
+              ctx.user.id,
+              {
+                communityId,
+                content: contents[i],
+                type: 'text',
+                hashtags: ['#test'],
+                beneficiaryId,
+              },
+            );
+            createdPublications.push(publication);
+          } catch (error) {
+            // Continue on error
+          }
+        }
+      }
+
+      return {
+        publications: createdPublications,
+        count: createdPublications.length,
+      };
     }),
 });

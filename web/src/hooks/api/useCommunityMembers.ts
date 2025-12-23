@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { trpc } from "@/lib/trpc/client";
 
 export interface CommunityMember {
     id: string;
@@ -25,36 +25,28 @@ export interface CommunityMembersResponse {
 
 export const useCommunityMembers = (
     communityId: string,
-    options: { limit?: number; skip?: number } = {}
+    options: { limit?: number; skip?: number; page?: number; pageSize?: number } = {}
 ) => {
-    const { limit = 50, skip = 0 } = options;
+    const { limit = 50, skip = 0, page, pageSize } = options;
 
-    return useQuery({
-        queryKey: ["community-members", communityId, limit, skip],
-        queryFn: async () => {
-            const response = await apiClient.get<CommunityMembersResponse>(
-                `/api/v1/communities/${communityId}/members`,
-                { params: { limit, skip } }
-            );
-            return response;
+    return trpc.communities.getMembers.useQuery(
+        {
+            id: communityId,
+            limit,
+            skip,
+            page,
+            pageSize,
         },
-        enabled: !!communityId,
-    });
+        { enabled: !!communityId }
+    );
 };
 
 export const useRemoveCommunityMember = (communityId: string) => {
-    const queryClient = useQueryClient();
+    const utils = trpc.useUtils();
 
-    return useMutation({
-        mutationFn: async (userId: string) => {
-            await apiClient.delete(
-                `/api/v1/communities/${communityId}/members/${userId}`
-            );
-        },
+    return trpc.communities.removeMember.useMutation({
         onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: ["community-members", communityId],
-            });
+            utils.communities.getMembers.invalidate({ id: communityId });
         },
     });
 };

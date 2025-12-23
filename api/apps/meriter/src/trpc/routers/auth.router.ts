@@ -1,14 +1,16 @@
-import { router, protectedProcedure } from '../trpc';
+import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { CookieManager } from '../../api-v1/common/utils/cookie-manager.util';
+import { TRPCError } from '@trpc/server';
+import { ForbiddenException } from '@nestjs/common';
 
 export const authRouter = router({
   /**
    * Logout - clear JWT cookie
-   * Note: OAuth callbacks remain as REST endpoints
    */
   logout: protectedProcedure.mutation(async ({ ctx }) => {
     const cookieDomain = CookieManager.getCookieDomain();
-    const isProduction = process.env.NODE_ENV === 'production';
+    const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
+    const isProduction = process.env.NODE_ENV === 'production' || isSecure;
     CookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
 
     return { message: 'Logged out successfully' };
@@ -19,7 +21,8 @@ export const authRouter = router({
    */
   clearCookies: protectedProcedure.mutation(async ({ ctx }) => {
     const cookieDomain = CookieManager.getCookieDomain();
-    const isProduction = process.env.NODE_ENV === 'production';
+    const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
+    const isProduction = process.env.NODE_ENV === 'production' || isSecure;
 
     // Get all cookie names from the request
     const cookieNames = new Set<string>();
@@ -40,6 +43,106 @@ export const authRouter = router({
     }
 
     return { message: 'Cookies cleared successfully' };
+  }),
+
+  /**
+   * Fake user authentication (development only)
+   */
+  authenticateFake: publicProcedure.mutation(async ({ ctx }) => {
+    // Check if fake data mode is enabled
+    if (process.env.FAKE_DATA_MODE !== 'true') {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Fake data mode is not enabled',
+      });
+    }
+
+    // Get or generate a session-specific fake user ID
+    let fakeUserId = ctx.req.cookies?.fake_user_id;
+
+    // If no cookie exists, generate a new unique fake user ID
+    if (!fakeUserId) {
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 9);
+      fakeUserId = `fake_user_${timestamp}_${random}`;
+    }
+
+    const result = await ctx.authService.authenticateFakeUser(fakeUserId);
+
+    // Set JWT cookie with proper domain for Caddy reverse proxy
+    const cookieDomain = CookieManager.getCookieDomain();
+    const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
+    const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+
+    // Clear any existing JWT cookie first to ensure clean state
+    CookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
+
+    // Set new JWT cookie
+    CookieManager.setJwtCookie(ctx.res, result.jwt, cookieDomain, isProduction);
+
+    // Set fake_user_id cookie (session cookie - expires when browser closes)
+    ctx.res.cookie('fake_user_id', fakeUserId, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      path: '/',
+      domain: cookieDomain,
+    });
+
+    return {
+      user: result.user,
+      hasPendingCommunities: result.hasPendingCommunities,
+    };
+  }),
+
+  /**
+   * Fake superadmin authentication (development only)
+   */
+  authenticateFakeSuperadmin: publicProcedure.mutation(async ({ ctx }) => {
+    // Check if fake data mode is enabled
+    if (process.env.FAKE_DATA_MODE !== 'true') {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Fake data mode is not enabled',
+      });
+    }
+
+    // Get or generate a session-specific fake superadmin user ID
+    let fakeUserId = ctx.req.cookies?.fake_superadmin_id;
+
+    // If no cookie exists, generate a new unique fake superadmin user ID
+    if (!fakeUserId) {
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 9);
+      fakeUserId = `fake_superadmin_${timestamp}_${random}`;
+    }
+
+    const result = await ctx.authService.authenticateFakeSuperadmin(fakeUserId);
+
+    // Set JWT cookie with proper domain for Caddy reverse proxy
+    const cookieDomain = CookieManager.getCookieDomain();
+    const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
+    const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+
+    // Clear any existing JWT cookie first to ensure clean state
+    CookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
+
+    // Set new JWT cookie
+    CookieManager.setJwtCookie(ctx.res, result.jwt, cookieDomain, isProduction);
+
+    // Set fake_superadmin_id cookie (session cookie - expires when browser closes)
+    ctx.res.cookie('fake_superadmin_id', fakeUserId, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      path: '/',
+      domain: cookieDomain,
+    });
+
+    return {
+      user: result.user,
+      hasPendingCommunities: result.hasPendingCommunities,
+    };
   }),
 });
 

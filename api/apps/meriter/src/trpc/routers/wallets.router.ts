@@ -347,4 +347,166 @@ export const walletsRouter = router({
       }
       return wallet.getBalance();
     }),
+
+  /**
+   * Get free balance (remaining quota) for voting
+   * This is the same as getQuota but returns just the remaining amount
+   */
+  getFreeBalance: protectedProcedure
+    .input(z.object({ communityId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+
+      // Get community
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+
+      // Calculate quota (same logic as getQuota)
+      const dailyQuota = community.settings?.dailyEmission || 0;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const quotaStartTime = community.lastQuotaResetAt
+        ? new Date(community.lastQuotaResetAt)
+        : today;
+
+      if (!ctx.connection.db) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Database connection not available',
+        });
+      }
+
+      const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
+        ctx.connection.db
+          .collection('votes')
+          .aggregate([
+            {
+              $match: {
+                userId,
+                communityId: input.communityId,
+                createdAt: { $gte: quotaStartTime },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ])
+          .toArray(),
+        ctx.connection.db
+          .collection('poll_casts')
+          .aggregate([
+            {
+              $match: {
+                userId,
+                communityId: input.communityId,
+                createdAt: { $gte: quotaStartTime },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ])
+          .toArray(),
+        ctx.connection.db
+          .collection('quota_usage')
+          .aggregate([
+            {
+              $match: {
+                userId,
+                communityId: input.communityId,
+                createdAt: { $gte: quotaStartTime },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ])
+          .toArray(),
+      ]);
+
+      const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
+      const pollCastsTotal = pollCastsUsed.length > 0 && pollCastsUsed[0] ? (pollCastsUsed[0].total as number) : 0;
+      const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
+      const used = votesTotal + pollCastsTotal + quotaUsageTotal;
+      const remaining = Math.max(0, dailyQuota - used);
+
+      return remaining;
+    }),
+
+  /**
+   * Withdraw funds from wallet
+   * Note: Not yet implemented in backend
+   */
+  withdraw: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        communityId: z.string(),
+        amount: z.number().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Handle 'me' token for current user
+      const actualUserId = input.userId === 'me' ? ctx.user.id : input.userId;
+
+      // Users can only withdraw from their own wallets
+      if (actualUserId !== ctx.user.id) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'User not found',
+        });
+      }
+
+      // Withdraw functionality not implemented yet
+      throw new TRPCError({
+        code: 'NOT_IMPLEMENTED',
+        message: 'Withdraw functionality not implemented',
+      });
+    }),
+
+  /**
+   * Transfer funds to another user
+   * Note: Not yet implemented in backend
+   */
+  transfer: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        communityId: z.string(),
+        targetUserId: z.string(),
+        amount: z.number().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Handle 'me' token for current user
+      const actualUserId = input.userId === 'me' ? ctx.user.id : input.userId;
+
+      // Users can only transfer from their own wallets
+      if (actualUserId !== ctx.user.id) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'User not found',
+        });
+      }
+
+      // Transfer functionality not implemented yet
+      throw new TRPCError({
+        code: 'NOT_IMPLEMENTED',
+        message: 'Transfer functionality not implemented',
+      });
+    }),
 });

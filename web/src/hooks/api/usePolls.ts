@@ -65,10 +65,9 @@ export function usePoll(id: string) {
     );
 }
 
-// Get poll results - TODO: Add to polls router
+// Get poll results
 export function usePollResults(id: string) {
-    // Placeholder - poll results endpoint not yet in tRPC router
-    return trpc.polls.getById.useQuery(
+    return trpc.polls.getResults.useQuery(
         { id },
         { enabled: !!id }
     );
