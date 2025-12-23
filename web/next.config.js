@@ -94,17 +94,45 @@ const nextConfig = {
     webpack: (config, { isServer }) => {
         // CRITICAL: Merge all aliases properly to ensure single React instance
         // This prevents "Cannot read properties of undefined (reading 'ReactCurrentOwner')" errors
+        // and "Cannot read properties of null (reading 'useState')" errors
+        const reactPath = path.resolve(__dirname, 'node_modules/react');
+        const reactDomPath = path.resolve(__dirname, 'node_modules/react-dom');
+        
         config.resolve.alias = {
             ...config.resolve.alias,
             // Ensure React and React-DOM resolve to single instances (prevents ReactCurrentOwner errors)
             // Using explicit paths ensures all modules use the same React 19 instance
-            'react': path.resolve(__dirname, 'node_modules/react'),
-            'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
+            'react': reactPath,
+            'react-dom': reactDomPath,
             // Resolve @meriter/shared-types to the dist directory for CommonJS relative imports
             '@meriter/shared-types': path.resolve(__dirname, '../libs/shared-types/dist'),
             // Fix for React Native modules in Next.js
             'react-native$': 'react-native-web',
         };
+        
+        // Ensure React is not externalized for server bundle (required for standalone builds)
+        // This prevents "Cannot read properties of null (reading 'useState')" errors at runtime
+        if (isServer) {
+            // Remove React from externals to ensure it's bundled
+            if (Array.isArray(config.externals)) {
+                config.externals = config.externals.filter(
+                    (external) => {
+                        if (typeof external === 'string') {
+                            return !external.includes('react');
+                        }
+                        return true;
+                    }
+                );
+            } else if (typeof config.externals === 'function') {
+                const originalExternals = config.externals;
+                config.externals = (context, request, callback) => {
+                    if (request && (request === 'react' || request === 'react-dom' || request.startsWith('react/'))) {
+                        return callback(); // Don't externalize - bundle it
+                    }
+                    return originalExternals(context, request, callback);
+                };
+            }
+        }
 
         // Extensions for React Native
         config.resolve.extensions = [
