@@ -395,6 +395,18 @@ export const commentsRouter = router({
       data: UpdateCommentDtoSchema,
     }))
     .mutation(async ({ ctx, input }) => {
+      // Check permissions before updating
+      const canEdit = await ctx.permissionService.canEditComment(
+        ctx.user.id,
+        input.id,
+      );
+      if (!canEdit) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You do not have permission to edit this comment',
+        });
+      }
+
       if (!input.data.content) {
         throw new TRPCError({
           code: 'BAD_REQUEST',

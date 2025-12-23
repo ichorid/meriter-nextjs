@@ -439,6 +439,18 @@ export const publicationsRouter = router({
       data: UpdatePublicationDtoSchema,
     }))
     .mutation(async ({ ctx, input }) => {
+      // Check permissions before updating
+      const canEdit = await ctx.permissionService.canEditPublication(
+        ctx.user.id,
+        input.id,
+      );
+      if (!canEdit) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You do not have permission to edit this publication',
+        });
+      }
+
       // Clean up null values from update data
       const updateData: any = { ...input.data };
       if (updateData.imageUrl === null) {

@@ -293,8 +293,8 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
+        walletAmount: 0,
       });
 
       // Author should NOT be able to edit
@@ -350,8 +350,8 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
+        walletAmount: 0,
       });
 
       // Lead should be able to edit even with votes
@@ -421,8 +421,8 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
+        walletAmount: 0,
       });
 
       // Superadmin should be able to edit even with votes

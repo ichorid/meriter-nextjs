@@ -302,6 +302,17 @@ async function createVoteLogic(
     input.images,
   );
 
+  // Update publication metrics if voting on a publication
+  if (input.targetType === 'publication') {
+    const totalAmount = quotaAmount + walletAmount;
+    await ctx.publicationService.voteOnPublication(
+      input.targetId,
+      ctx.user.id,
+      totalAmount,
+      direction,
+    );
+  }
+
   // Deduct from wallet if wallet amount was used
   if (walletAmount > 0) {
     const transactionType =
@@ -354,6 +365,7 @@ export const votesRouter = router({
         targetId: input.targetId,
         quotaAmount: input.quotaAmount,
         walletAmount: input.walletAmount,
+        comment: '', // votes.create doesn't require a comment
       });
     }),
 

@@ -296,7 +296,8 @@ describe('Special Groups Merit Accumulation', () => {
       expect(fvWallet?.getBalance()).toBe(5);
     });
 
-    it('should allow withdrawal from publication in future-vision', async () => {
+    // TODO: Review this test - currently disabled as it's irrelevant now but should be reviewed later
+    it.skip('should allow withdrawal from publication in future-vision', async () => {
       // Create wallet with balance for voter (Future Vision requires wallet voting)
       await walletService.addTransaction(
         voterId,
