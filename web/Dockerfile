@@ -39,22 +39,13 @@ COPY --from=builder --chown=nextjs:nodejs /repo/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /repo/web/.next/static ./web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /repo/web/public ./web/public
 
-# OPTIMIZATION: Copy React and react-dom from standalone output to both root and web node_modules
+# OPTIMIZATION: Copy React and react-dom from standalone output to root node_modules
 # Next.js externalizes React in standalone builds, but the pnpm structure in standalone
 # may not be resolvable at runtime. Copying React directly ensures proper resolution.
-# This adds minimal size (~50MB) but ensures React is accessible (total ~371MB vs ~1.14GB)
-RUN mkdir -p /app/node_modules /app/web/node_modules && \
-    # Find and copy React from standalone's node_modules (already copied above)
-    REACT_SRC=$(find /app/node_modules/.pnpm -type d -path "*/react@*/node_modules/react" 2>/dev/null | head -1) && \
-    REACT_DOM_SRC=$(find /app/node_modules/.pnpm -type d -path "*/react-dom@*/node_modules/react-dom" 2>/dev/null | head -1) && \
-    if [ -n "$REACT_SRC" ] && [ -d "$REACT_SRC" ]; then \
-        cp -r "$REACT_SRC" /app/node_modules/react && \
-        cp -r "$REACT_SRC" /app/web/node_modules/react; \
-    fi && \
-    if [ -n "$REACT_DOM_SRC" ] && [ -d "$REACT_DOM_SRC" ]; then \
-        cp -r "$REACT_DOM_SRC" /app/node_modules/react-dom && \
-        cp -r "$REACT_DOM_SRC" /app/web/node_modules/react-dom; \
-    fi && \
+# This adds minimal size (~50MB) but ensures React is accessible (total ~374MB vs ~1.14GB)
+RUN mkdir -p /app/node_modules && \
+    find /app/node_modules/.pnpm -type d -path "*/react@*/node_modules/react" -exec cp -r {} /app/node_modules/react \; 2>/dev/null || true && \
+    find /app/node_modules/.pnpm -type d -path "*/react-dom@*/node_modules/react-dom" -exec cp -r {} /app/node_modules/react-dom \; 2>/dev/null || true && \
     chown -R nextjs:nodejs /app
 
 USER nextjs
