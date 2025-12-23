@@ -1,9 +1,9 @@
-import request from 'supertest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
 import { MongooseModule, getModelToken } from '@nestjs/mongoose';
 import { MeriterModule } from '../src/meriter.module';
 import { TestDatabaseHelper } from './test-db.helper';
+import { trpcQuery } from './helpers/trpc-test-helper';
 import { Model } from 'mongoose';
 import { User, UserDocument } from '../src/domain/models/user/user.schema';
 import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -105,12 +105,10 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
       },
     ]);
 
-    const res = await request(app.getHttpServer())
-      .get('/api/v1/users/test-user-id/wallets')
-      .expect(200);
+    const wallets = await trpcQuery(app, 'wallets.getAll', { userId: 'test-user-id' });
 
-    expect(res.body).toHaveLength(2);
-    const communityIds = res.body.map((w: any) => w.communityId).sort();
+    expect(wallets.data).toHaveLength(2);
+    const communityIds = wallets.data.map((w: any) => w.communityId).sort();
     expect(communityIds).toEqual(['community-1', 'community-2']);
   });
 
@@ -143,11 +141,9 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
       updatedAt: new Date(),
     });
 
-    const res = await request(app.getHttpServer())
-      .get('/api/v1/users/test-user-id/wallets')
-      .expect(200);
+    const wallets = await trpcQuery(app, 'wallets.getAll', { userId: 'test-user-id' });
 
-    expect(res.body).toHaveLength(0);
+    expect(wallets.data).toHaveLength(0);
   });
 
   it('inactive communities are excluded', async () => {
@@ -193,12 +189,10 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
       },
     ]);
 
-    const res = await request(app.getHttpServer())
-      .get('/api/v1/users/test-user-id/wallets')
-      .expect(200);
+    const wallets = await trpcQuery(app, 'wallets.getAll', { userId: 'test-user-id' });
 
-    expect(res.body).toHaveLength(1);
-    expect(res.body[0].communityId).toBe('community-1');
+    expect(wallets.data).toHaveLength(1);
+    expect(wallets.data[0].communityId).toBe('community-1');
   });
 });
 

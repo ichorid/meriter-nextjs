@@ -12,7 +12,7 @@ import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/co
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
+import { trpcQuery } from './helpers/trpc-test-helper';
 
 class AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -261,12 +261,10 @@ describe('Communities Visibility Filtering', () => {
       (global as any).testUserId = superadminId;
       (global as any).testUserGlobalRole = 'superadmin';
 
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/communities')
-        .expect(200);
+      const result = await trpcQuery(app, 'communities.getAll', {});
 
-      expect(response.body.data).toBeDefined();
-      const communityIds = response.body.data.map((c: Community) => c.id);
+      expect(result.data).toBeDefined();
+      const communityIds = result.data.map((c: Community) => c.id);
       
       // Should see all communities
       expect(communityIds).toContain(community1Id);
@@ -281,12 +279,10 @@ describe('Communities Visibility Filtering', () => {
       (global as any).testUserId = lead1Id;
       (global as any).testUserGlobalRole = undefined;
 
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/communities')
-        .expect(200);
+      const result = await trpcQuery(app, 'communities.getAll', {});
 
-      expect(response.body.data).toBeDefined();
-      const communityIds = response.body.data.map((c: Community) => c.id);
+      expect(result.data).toBeDefined();
+      const communityIds = result.data.map((c: Community) => c.id);
       
       // Lead1 should see community1 (lead role) and marathon (participant role)
       expect(communityIds).toContain(community1Id);
@@ -301,12 +297,10 @@ describe('Communities Visibility Filtering', () => {
       (global as any).testUserId = lead2Id;
       (global as any).testUserGlobalRole = undefined;
 
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/communities')
-        .expect(200);
+      const result = await trpcQuery(app, 'communities.getAll', {});
 
-      expect(response.body.data).toBeDefined();
-      const communityIds = response.body.data.map((c: Community) => c.id);
+      expect(result.data).toBeDefined();
+      const communityIds = result.data.map((c: Community) => c.id);
       
       // Lead2 should only see community2 (their team)
       expect(communityIds).toContain(community2Id);
@@ -323,12 +317,10 @@ describe('Communities Visibility Filtering', () => {
       (global as any).testUserId = participantId;
       (global as any).testUserGlobalRole = undefined;
 
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/communities')
-        .expect(200);
+      const result = await trpcQuery(app, 'communities.getAll', {});
 
-      expect(response.body.data).toBeDefined();
-      const communityIds = response.body.data.map((c: Community) => c.id);
+      expect(result.data).toBeDefined();
+      const communityIds = result.data.map((c: Community) => c.id);
       
       // Participant should see community1 (participant role)
       expect(communityIds).toContain(community1Id);
@@ -345,12 +337,10 @@ describe('Communities Visibility Filtering', () => {
       (global as any).testUserId = viewerId;
       (global as any).testUserGlobalRole = undefined;
 
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/communities')
-        .expect(200);
+      const result = await trpcQuery(app, 'communities.getAll', {});
 
-      expect(response.body.data).toBeDefined();
-      const communityIds = response.body.data.map((c: Community) => c.id);
+      expect(result.data).toBeDefined();
+      const communityIds = result.data.map((c: Community) => c.id);
       
       // Viewer should see community1 (viewer role)
       expect(communityIds).toContain(community1Id);
@@ -377,14 +367,12 @@ describe('Communities Visibility Filtering', () => {
       (global as any).testUserId = userWithNoRolesId;
       (global as any).testUserGlobalRole = undefined;
 
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/communities')
-        .expect(200);
+      const result = await trpcQuery(app, 'communities.getAll', {});
 
-      expect(response.body.data).toBeDefined();
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBe(0);
-      expect(response.body.total).toBe(0);
+      expect(result.data).toBeDefined();
+      expect(Array.isArray(result.data)).toBe(true);
+      expect(result.data.length).toBe(0);
+      expect(result.total).toBe(0);
     });
   });
 });

@@ -8,9 +8,9 @@ import { Community, CommunityDocument } from '../src/domain/models/community/com
 import { User, UserDocument } from '../src/domain/models/user/user.schema';
 import { QuotaUsage, QuotaUsageDocument } from '../src/domain/models/quota-usage/quota-usage.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
 import { UserGuard } from '../src/user.guard';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
+import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 
 class AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -178,35 +178,33 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
       (global as any).testUserId = testUserId;
 
       // Get initial quota
-      const quotaBefore = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      const quotaBefore = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
-      expect(quotaBefore.body.remainingToday).toBe(10);
+      expect(quotaBefore.remaining).toBe(10);
 
       // Create publication
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send({
-          communityId: testCommunityId,
-          title: 'Test Publication',
-          description: 'Test content',
-          content: 'Test content',
-          type: 'text',
-          postType: 'basic',
-        })
-        .expect(201);
+      const created = await trpcMutation(app, 'publications.create', {
+        communityId: testCommunityId,
+        title: 'Test Publication',
+        description: 'Test content',
+        content: 'Test content',
+        type: 'text',
+        postType: 'basic',
+      });
 
-      expect(createRes.body.success).toBe(true);
-      const publicationId = createRes.body.data.id;
+      const publicationId = created.id;
 
       // Verify quota was consumed
-      const quotaAfter = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      const quotaAfter = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
-      expect(quotaAfter.body.usedToday).toBe(1);
-      expect(quotaAfter.body.remainingToday).toBe(9);
+      expect(quotaAfter.used).toBe(1);
+      expect(quotaAfter.remaining).toBe(9);
 
       // Verify quota_usage record was created
       const quotaUsage = await quotaUsageModel
@@ -227,61 +225,52 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
 
       // Use up all quota by creating 10 publications
       for (let i = 0; i < 10; i++) {
-        await request(app.getHttpServer())
-          .post('/api/v1/publications')
-          .send({
-            communityId: testCommunityId,
-            title: `Test Publication ${i}`,
-            description: 'Test content',
-            content: 'Test content',
-            type: 'text',
-            postType: 'basic',
-          })
-          .expect(201);
-      }
-
-      // Verify quota is exhausted
-      const quota = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
-
-      expect(quota.body.remainingToday).toBe(0);
-
-      // Try to create another publication - should fail
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send({
+        await trpcMutation(app, 'publications.create', {
           communityId: testCommunityId,
-          title: 'Should Fail',
+          title: `Test Publication ${i}`,
           description: 'Test content',
           content: 'Test content',
           type: 'text',
           postType: 'basic',
-        })
-        .expect(400);
+        });
+      }
 
-      const errorMessage = createRes.body.error?.message || createRes.body.message || JSON.stringify(createRes.body);
-      expect(errorMessage).toContain('Insufficient quota');
+      // Verify quota is exhausted
+      const quota = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
+
+      expect(quota.remaining).toBe(0);
+
+      // Try to create another publication - should fail
+      const result = await trpcMutationWithError(app, 'publications.create', {
+        communityId: testCommunityId,
+        title: 'Should Fail',
+        description: 'Test content',
+        content: 'Test content',
+        type: 'text',
+        postType: 'basic',
+      });
+
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Insufficient quota');
     });
 
     it('should not consume quota for future-vision communities', async () => {
       (global as any).testUserId = testUserId;
 
       // Create publication in future-vision community
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send({
-          communityId: futureVisionCommunityId,
-          title: 'Future Vision Publication',
-          description: 'Test content',
-          content: 'Test content',
-          type: 'text',
-          postType: 'basic',
-        })
-        .expect(201);
+      const created = await trpcMutation(app, 'publications.create', {
+        communityId: futureVisionCommunityId,
+        title: 'Future Vision Publication',
+        description: 'Test content',
+        content: 'Test content',
+        type: 'text',
+        postType: 'basic',
+      });
 
-      expect(createRes.body.success).toBe(true);
-      const publicationId = createRes.body.data.id;
+      const publicationId = created.id;
 
       // Verify no quota_usage record was created
       const quotaUsage = await quotaUsageModel
@@ -300,54 +289,48 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
       (global as any).testUserId = testUserId;
 
       // Create a publication by testUserId (consumes 1 quota for testUserId)
-      const pubRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send({
-          communityId: testCommunityId,
-          title: 'Test Publication',
-          description: 'Test content',
-          content: 'Test content',
-          type: 'text',
-          postType: 'basic',
-        })
-        .expect(201);
+      const createdPub = await trpcMutation(app, 'publications.create', {
+        communityId: testCommunityId,
+        title: 'Test Publication',
+        description: 'Test content',
+        content: 'Test content',
+        type: 'text',
+        postType: 'basic',
+      });
 
-      const publicationId = pubRes.body.data.id;
+      const publicationId = createdPub.id;
 
       // Create a publication by testAuthorId for voting
       (global as any).testUserId = testAuthorId;
-      const authorPubRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send({
-          communityId: testCommunityId,
-          title: 'Author Publication',
-          description: 'Author content',
-          content: 'Author content',
-          type: 'text',
-          postType: 'basic',
-        })
-        .expect(201);
+      const createdAuthorPub = await trpcMutation(app, 'publications.create', {
+        communityId: testCommunityId,
+        title: 'Author Publication',
+        description: 'Author content',
+        content: 'Author content',
+        type: 'text',
+        postType: 'basic',
+      });
 
-      const authorPublicationId = authorPubRes.body.data.id;
+      const authorPublicationId = createdAuthorPub.id;
 
       // Switch back to testUserId and vote on author's publication (consumes 2 quota)
       (global as any).testUserId = testUserId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${authorPublicationId}/votes`)
-        .send({
-          quotaAmount: 2,
-          walletAmount: 0,
-          comment: 'Test comment',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: authorPublicationId,
+        quotaAmount: 2,
+        walletAmount: 0,
+        comment: 'Test comment',
+      });
 
       // Verify total quota used by testUserId is 3 (1 for publication + 2 for vote)
-      const quota = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      const quota = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
-      expect(quota.body.usedToday).toBe(3);
-      expect(quota.body.remainingToday).toBe(7);
+      expect(quota.used).toBe(3);
+      expect(quota.remaining).toBe(7);
     });
   });
 
@@ -356,40 +339,38 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
       (global as any).testUserId = testUserId;
 
       // Get initial quota
-      const quotaBefore = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      const quotaBefore = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
-      expect(quotaBefore.body.remainingToday).toBe(10);
+      expect(quotaBefore.remaining).toBe(10);
 
       // Create poll
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 1);
 
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/polls')
-        .send({
-          communityId: testCommunityId,
-          question: 'Test Poll Question',
-          description: 'Test poll description',
-          options: [
-            { id: '1', text: 'Option 1' },
-            { id: '2', text: 'Option 2' },
-          ],
-          expiresAt: expiresAt.toISOString(),
-        })
-        .expect(201);
+      const created = await trpcMutation(app, 'polls.create', {
+        communityId: testCommunityId,
+        question: 'Test Poll Question',
+        description: 'Test poll description',
+        options: [
+          { id: '1', text: 'Option 1' },
+          { id: '2', text: 'Option 2' },
+        ],
+        expiresAt: expiresAt.toISOString(),
+      });
 
-      expect(createRes.body.success).toBe(true);
-      const pollId = createRes.body.data.id;
+      const pollId = created.id;
 
       // Verify quota was consumed
-      const quotaAfter = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      const quotaAfter = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
-      expect(quotaAfter.body.usedToday).toBe(1);
-      expect(quotaAfter.body.remainingToday).toBe(9);
+      expect(quotaAfter.used).toBe(1);
+      expect(quotaAfter.remaining).toBe(9);
 
       // Verify quota_usage record was created
       const quotaUsage = await quotaUsageModel
@@ -413,45 +394,40 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
       expiresAt.setDate(expiresAt.getDate() + 1);
 
       for (let i = 0; i < 10; i++) {
-        await request(app.getHttpServer())
-          .post('/api/v1/polls')
-          .send({
-            communityId: testCommunityId,
-            question: `Test Poll ${i}`,
-            description: 'Test description',
-            options: [
-              { id: '1', text: 'Option 1' },
-              { id: '2', text: 'Option 2' },
-            ],
-            expiresAt: expiresAt.toISOString(),
-          })
-          .expect(201);
-      }
-
-      // Verify quota is exhausted
-      const quota = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
-
-      expect(quota.body.remainingToday).toBe(0);
-
-      // Try to create another poll - should fail
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/polls')
-        .send({
+        await trpcMutation(app, 'polls.create', {
           communityId: testCommunityId,
-          question: 'Should Fail',
+          question: `Test Poll ${i}`,
           description: 'Test description',
           options: [
             { id: '1', text: 'Option 1' },
             { id: '2', text: 'Option 2' },
           ],
           expiresAt: expiresAt.toISOString(),
-        })
-        .expect(400);
+        });
+      }
 
-      const errorMessage = createRes.body.error?.message || createRes.body.message || JSON.stringify(createRes.body);
-      expect(errorMessage).toContain('Insufficient quota');
+      // Verify quota is exhausted
+      const quota = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
+
+      expect(quota.remaining).toBe(0);
+
+      // Try to create another poll - should fail
+      const result = await trpcMutationWithError(app, 'polls.create', {
+        communityId: testCommunityId,
+        question: 'Should Fail',
+        description: 'Test description',
+        options: [
+          { id: '1', text: 'Option 1' },
+          { id: '2', text: 'Option 2' },
+        ],
+        expiresAt: expiresAt.toISOString(),
+      });
+
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Insufficient quota');
     });
 
     it('should not allow poll creation in future-vision communities', async () => {
@@ -461,22 +437,19 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
       expiresAt.setDate(expiresAt.getDate() + 1);
 
       // Try to create poll in future-vision community - should fail
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/polls')
-        .send({
-          communityId: futureVisionCommunityId,
-          question: 'Test Poll',
-          description: 'Test description',
-          options: [
-            { id: '1', text: 'Option 1' },
-            { id: '2', text: 'Option 2' },
-          ],
-          expiresAt: expiresAt.toISOString(),
-        })
-        .expect(400);
+      const result = await trpcMutationWithError(app, 'polls.create', {
+        communityId: futureVisionCommunityId,
+        question: 'Test Poll',
+        description: 'Test description',
+        options: [
+          { id: '1', text: 'Option 1' },
+          { id: '2', text: 'Option 2' },
+        ],
+        expiresAt: expiresAt.toISOString(),
+      });
 
-      const errorMessage = createRes.body.error?.message || createRes.body.message || JSON.stringify(createRes.body);
-      expect(errorMessage).toContain('disabled in future-vision');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('disabled in future-vision');
     });
 
     it('should track quota consumption correctly with poll casts', async () => {
@@ -486,39 +459,37 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 1);
 
-      const pollRes = await request(app.getHttpServer())
-        .post('/api/v1/polls')
-        .send({
-          communityId: testCommunityId,
-          question: 'Test Poll',
-          description: 'Test description',
-          options: [
-            { id: '1', text: 'Option 1' },
-            { id: '2', text: 'Option 2' },
-          ],
-          expiresAt: expiresAt.toISOString(),
-        })
-        .expect(201);
+      const createdPoll = await trpcMutation(app, 'polls.create', {
+        communityId: testCommunityId,
+        question: 'Test Poll',
+        description: 'Test description',
+        options: [
+          { id: '1', text: 'Option 1' },
+          { id: '2', text: 'Option 2' },
+        ],
+        expiresAt: expiresAt.toISOString(),
+      });
 
-      const pollId = pollRes.body.data.id;
+      const pollId = createdPoll.id;
 
       // Create a poll cast (consumes 2 quota)
-      await request(app.getHttpServer())
-        .post(`/api/v1/polls/${pollId}/casts`)
-        .send({
+      await trpcMutation(app, 'polls.cast', {
+        pollId,
+        data: {
           optionId: '1',
           quotaAmount: 2,
           walletAmount: 0,
-        })
-        .expect(201);
+        },
+      });
 
       // Verify total quota used is 3 (1 for poll + 2 for cast)
-      const quota = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      const quota = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
-      expect(quota.body.usedToday).toBe(3);
-      expect(quota.body.remainingToday).toBe(7);
+      expect(quota.used).toBe(3);
+      expect(quota.remaining).toBe(7);
     });
   });
 
@@ -527,82 +498,73 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
       (global as any).testUserId = testUserId;
 
       // Create publication by testUserId (1 quota)
-      const pubRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send({
-          communityId: testCommunityId,
-          title: 'Test Publication',
-          description: 'Test content',
-          content: 'Test content',
-          type: 'text',
-          postType: 'basic',
-        })
-        .expect(201);
+      await trpcMutation(app, 'publications.create', {
+        communityId: testCommunityId,
+        title: 'Test Publication',
+        description: 'Test content',
+        content: 'Test content',
+        type: 'text',
+        postType: 'basic',
+      });
 
       // Create publication by testAuthorId for voting
       (global as any).testUserId = testAuthorId;
-      const authorPubRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send({
-          communityId: testCommunityId,
-          title: 'Author Publication',
-          description: 'Author content',
-          content: 'Author content',
-          type: 'text',
-          postType: 'basic',
-        })
-        .expect(201);
+      const createdAuthorPub = await trpcMutation(app, 'publications.create', {
+        communityId: testCommunityId,
+        title: 'Author Publication',
+        description: 'Author content',
+        content: 'Author content',
+        type: 'text',
+        postType: 'basic',
+      });
 
-      const authorPublicationId = authorPubRes.body.data.id;
+      const authorPublicationId = createdAuthorPub.id;
 
       // Create poll by testUserId (1 quota)
       (global as any).testUserId = testUserId;
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 1);
 
-      const pollRes = await request(app.getHttpServer())
-        .post('/api/v1/polls')
-        .send({
-          communityId: testCommunityId,
-          question: 'Test Poll',
-          description: 'Test description',
-          options: [
-            { id: '1', text: 'Option 1' },
-            { id: '2', text: 'Option 2' },
-          ],
-          expiresAt: expiresAt.toISOString(),
-        })
-        .expect(201);
+      const createdPoll = await trpcMutation(app, 'polls.create', {
+        communityId: testCommunityId,
+        question: 'Test Poll',
+        description: 'Test description',
+        options: [
+          { id: '1', text: 'Option 1' },
+          { id: '2', text: 'Option 2' },
+        ],
+        expiresAt: expiresAt.toISOString(),
+      });
 
-      const pollId = pollRes.body.data.id;
+      const pollId = createdPoll.id;
 
       // Create vote by testUserId on author's publication (2 quota)
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${authorPublicationId}/votes`)
-        .send({
-          quotaAmount: 2,
-          walletAmount: 0,
-          comment: 'Test comment',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: authorPublicationId,
+        quotaAmount: 2,
+        walletAmount: 0,
+        comment: 'Test comment',
+      });
 
       // Create poll cast by testUserId (1 quota)
-      await request(app.getHttpServer())
-        .post(`/api/v1/polls/${pollId}/casts`)
-        .send({
+      await trpcMutation(app, 'polls.cast', {
+        pollId,
+        data: {
           optionId: '1',
           quotaAmount: 1,
           walletAmount: 0,
-        })
-        .expect(201);
+        },
+      });
 
       // Verify total quota used by testUserId is 5 (1 + 1 + 2 + 1)
-      const quota = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      const quota = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
-      expect(quota.body.usedToday).toBe(5);
-      expect(quota.body.remainingToday).toBe(5);
+      expect(quota.used).toBe(5);
+      expect(quota.remaining).toBe(5);
     });
   });
 });

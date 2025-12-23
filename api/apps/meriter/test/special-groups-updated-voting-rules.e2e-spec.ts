@@ -17,8 +17,8 @@ import { Publication, PublicationDocument } from '../src/domain/models/publicati
 import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
 import { UserGuard } from '../src/user.guard';
+import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 
 class AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -321,93 +321,87 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
     it('should allow quota voting on publications', async () => {
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Quota vote',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Quota vote',
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.vote.amountQuota).toBe(5);
-      expect(response.body.data.vote.amountWallet).toBe(0);
+      expect(vote.amountQuota).toBe(5);
+      expect(vote.amountWallet).toBe(0);
     });
 
     it('should allow quota voting on comments (votes)', async () => {
       // Create initial vote with testUserId
       (global as any).testUserId = testUserId;
       
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'First vote',
-        })
-        .expect(201);
+      const voteResponse = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'First vote',
+      });
 
-      const voteId = voteResponse.body.data.vote.id;
+      const voteId = voteResponse.id;
       marathonVoteId = voteId;
 
       // Now vote on the vote (comment) with quota only using testUserId2
       (global as any).testUserId = testUserId2;
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/votes/${voteId}/votes`)
-        .send({
-          quotaAmount: 3,
-          walletAmount: 0,
-          comment: 'Reply vote',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'vote',
+        targetId: voteId,
+        quotaAmount: 3,
+        walletAmount: 0,
+        comment: 'Reply vote',
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.vote.amountQuota).toBe(3);
-      expect(response.body.data.vote.amountWallet).toBe(0);
+      expect(vote.amountQuota).toBe(3);
+      expect(vote.amountWallet).toBe(0);
     });
 
     it('should reject wallet voting on publications', async () => {
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Wallet vote attempt',
-        })
-        .expect(400);
+      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Wallet vote attempt',
+      });
 
-      expect(response.body.message).toContain('Marathon of Good only allows quota voting');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Marathon of Good only allows quota voting');
     });
 
     it('should reject wallet voting on comments (votes)', async () => {
       // Create initial vote
       (global as any).testUserId = testUserId;
       
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'First vote',
-        })
-        .expect(201);
+      const voteResponse = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'First vote',
+      });
 
-      const voteId = voteResponse.body.data.vote.id;
+      const voteId = voteResponse.id;
 
       // Try to vote on the vote (comment) with wallet
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/votes/${voteId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Wallet vote attempt',
-        })
-        .expect(400);
+      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+        targetType: 'vote',
+        targetId: voteId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Wallet vote attempt',
+      });
 
-      expect(response.body.message).toContain('Marathon of Good only allows quota voting');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Marathon of Good only allows quota voting');
     });
   });
 
@@ -415,90 +409,87 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
     it('should return 0 quota for Future Vision users', async () => {
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${visionCommunityId}`)
-        .expect(200);
+      const quota = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: visionCommunityId,
+      });
 
-      expect(response.body.dailyQuota).toBe(0);
-      expect(response.body.remainingToday).toBe(0);
-      expect(response.body.usedToday).toBe(0);
+      expect(quota.dailyQuota).toBe(0);
+      expect(quota.remaining).toBe(0);
+      expect(quota.used).toBe(0);
     });
 
     it('should reject quota voting on publications', async () => {
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${visionPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Quota vote attempt',
-        })
-        .expect(400);
+      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: visionPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Quota vote attempt',
+      });
 
-      expect(response.body.message).toContain('Future Vision only allows wallet voting');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Future Vision only allows wallet voting');
     });
 
     it('should reject quota voting on comments (votes)', async () => {
       // Create initial vote with wallet
       (global as any).testUserId = testUserId;
       
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${visionPubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 5,
-          comment: 'First vote',
-        })
-        .expect(201);
+      const voteResponse = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: visionPubId,
+        quotaAmount: 0,
+        walletAmount: 5,
+        comment: 'First vote',
+      });
 
-      const voteId = voteResponse.body.data.vote.id;
+      const voteId = voteResponse.id;
       visionVoteId = voteId;
 
       // Try to vote on the vote (comment) with quota
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/votes/${voteId}/votes`)
-        .send({
-          quotaAmount: 3,
-          walletAmount: 0,
-          comment: 'Quota vote attempt',
-        })
-        .expect(400);
+      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+        targetType: 'vote',
+        targetId: voteId,
+        quotaAmount: 3,
+        walletAmount: 0,
+        comment: 'Quota vote attempt',
+      });
 
-      expect(response.body.message).toContain('Future Vision only allows wallet voting');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Future Vision only allows wallet voting');
     });
 
     it('should allow wallet voting on publications', async () => {
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${visionPubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Wallet vote',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: visionPubId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Wallet vote',
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.vote.amountWallet).toBe(10);
-      expect(response.body.data.vote.amountQuota).toBe(0);
+      expect(vote.amountWallet).toBe(10);
+      expect(vote.amountQuota).toBe(0);
     });
 
     it('should allow wallet voting on comments (votes)', async () => {
       // Create initial vote with wallet
       (global as any).testUserId = testUserId;
       
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${visionPubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 5,
-          comment: 'First vote',
-        })
-        .expect(201);
+      const voteResponse = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: visionPubId,
+        quotaAmount: 0,
+        walletAmount: 5,
+        comment: 'First vote',
+      });
 
-      const voteId = voteResponse.body.data.vote.id;
+      const voteId = voteResponse.id;
 
       // Vote on the vote (comment) with wallet using testUserId2
       (global as any).testUserId = testUserId2;
@@ -524,18 +515,16 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         });
       }
 
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/votes/${voteId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 3,
-          comment: 'Reply vote',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'vote',
+        targetId: voteId,
+        quotaAmount: 0,
+        walletAmount: 3,
+        comment: 'Reply vote',
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.vote.amountWallet).toBe(3);
-      expect(response.body.data.vote.amountQuota).toBe(0);
+      expect(vote.amountWallet).toBe(3);
+      expect(vote.amountQuota).toBe(0);
     });
   });
 
@@ -666,37 +655,35 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
     it('should allow viewer to vote with quota in marathon-of-good', async () => {
       (global as any).testUserId = viewerUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${viewerPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Viewer quota vote',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: viewerPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Viewer quota vote',
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.vote.amountQuota).toBe(5);
-      expect(response.body.data.vote.amountWallet).toBe(0);
+      expect(vote.amountQuota).toBe(5);
+      expect(vote.amountWallet).toBe(0);
     });
 
     it('should reject viewer wallet voting in marathon-of-good', async () => {
       (global as any).testUserId = viewerUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${viewerPubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Viewer wallet vote attempt',
-        })
-        .expect(400);
+      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: viewerPubId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Viewer wallet vote attempt',
+      });
 
       // Viewer check should happen first, but marathon-of-good check also applies
       // Accept either error message as both indicate wallet voting is not allowed
+      expect(result.error?.code).toBe('BAD_REQUEST');
       expect(
-        response.body.message.includes('Viewers can only vote using daily quota') ||
-        response.body.message.includes('Marathon of Good only allows quota voting')
+        result.error?.message.includes('Viewers can only vote using daily quota') ||
+        result.error?.message.includes('Marathon of Good only allows quota voting')
       ).toBe(true);
     });
   });
@@ -727,17 +714,14 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       });
 
       // Vote with wallet-only (should be an upvote, not downvote)
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${pubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Wallet-only upvote in Future Vision',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: pubId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Wallet-only upvote in Future Vision',
+      });
 
-      expect(response.body.success).toBe(true);
-      const vote = response.body.data.vote;
       expect(vote.amountWallet).toBe(10);
       expect(vote.amountQuota).toBe(0);
       // The key fix: direction should be 'up', not 'down'
@@ -775,24 +759,19 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       });
 
       // Create a vote (comment) with wallet-only
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${pubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 5,
-          comment: 'Wallet-only vote comment',
-        })
-        .expect(201);
+      const voteResponse = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: pubId,
+        quotaAmount: 0,
+        walletAmount: 5,
+        comment: 'Wallet-only vote comment',
+      });
 
-      const voteId = voteResponse.body.data.vote.id;
-      expect(voteResponse.body.data.vote.direction).toBe('up');
+      const voteId = voteResponse.id;
+      expect(voteResponse.direction).toBe('up');
 
       // Fetch the comment and verify metrics
-      const commentResponse = await request(app.getHttpServer())
-        .get(`/api/v1/comments/${voteId}`)
-        .expect(200);
-
-      const comment = commentResponse.body.data;
+      const comment = await trpcQuery(app, 'comments.getDetails', { id: voteId });
       // Metrics should show this as an upvote, not downvote
       expect(comment.metrics.upvotes).toBeGreaterThanOrEqual(0);
       expect(comment.metrics.downvotes).toBe(0);
@@ -824,18 +803,15 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       });
 
       // Create a downvote using explicit direction field (wallet-only)
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${pubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 5,
-          direction: 'down', // Explicit direction for downvote
-          comment: 'Downvote in Future Vision',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: pubId,
+        quotaAmount: 0,
+        walletAmount: 5,
+        direction: 'down', // Explicit direction for downvote
+        comment: 'Downvote in Future Vision',
+      });
 
-      expect(response.body.success).toBe(true);
-      const vote = response.body.data.vote;
       expect(vote.amountWallet).toBe(5);
       expect(vote.amountQuota).toBe(0);
       expect(vote.direction).toBe('down');

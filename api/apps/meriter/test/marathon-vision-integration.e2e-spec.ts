@@ -12,8 +12,8 @@ import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schem
 import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { Vote, VoteDocument } from '../src/domain/models/vote/vote.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
 import { JwtService } from '../src/api-v1/common/utils/jwt-service.util';
+import { trpcMutation, trpcQuery } from './helpers/trpc-test-helper';
 import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
@@ -169,59 +169,44 @@ describe('Marathon and Vision Groups Integration Test', () => {
     );
 
     // Step 2: Create marathon-of-good and future-vision groups
-    const marathonResponse = await request(app.getHttpServer())
-      .post('/api/v1/communities')
-      .set('Cookie', `jwt=${aliceToken}`)
-      .send({
-        name: 'Marathon of Good',
-        description: 'Marathon of Good group',
-        typeTag: 'marathon-of-good',
-        settings: {
-          dailyEmission: 10,
-          currencyNames: {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          },
+    const marathonCommunity = await trpcMutation(app, 'communities.create', {
+      name: 'Marathon of Good',
+      description: 'Marathon of Good group',
+      typeTag: 'marathon-of-good',
+      settings: {
+        dailyEmission: 10,
+        currencyNames: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
         },
-      });
+      },
+    }, { jwt: aliceToken });
 
-    expect(marathonResponse.status).toBe(201);
-    expect(marathonResponse.body.id).toBeDefined();
-    marathonCommunityId = marathonResponse.body.id;
+    marathonCommunityId = marathonCommunity.id;
 
-    const visionResponse = await request(app.getHttpServer())
-      .post('/api/v1/communities')
-      .set('Cookie', `jwt=${aliceToken}`)
-      .send({
-        name: 'Future Vision',
-        description: 'Future Vision group',
-        typeTag: 'future-vision',
-        settings: {
-          dailyEmission: 0, // No quota for future-vision
-          currencyNames: {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          },
+    const visionCommunity = await trpcMutation(app, 'communities.create', {
+      name: 'Future Vision',
+      description: 'Future Vision group',
+      typeTag: 'future-vision',
+      settings: {
+        dailyEmission: 0, // No quota for future-vision
+        currencyNames: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
         },
-      })
-      .expect(201);
+      },
+    }, { jwt: aliceToken });
 
-    visionCommunityId = visionResponse.body.id;
+    visionCommunityId = visionCommunity.id;
 
     // Step 3: Alice creates an invite
-    const inviteResponse = await request(app.getHttpServer())
-      .post('/api/v1/invites')
-      .set('Cookie', `jwt=${aliceToken}`)
-      .send({
-        type: 'superadmin-to-lead',
-      });
+    const invite = await trpcMutation(app, 'invites.create', {
+      type: 'superadmin-to-lead',
+    }, { jwt: aliceToken });
 
-    expect(inviteResponse.status).toBe(201);
-    expect(inviteResponse.body.success).toBe(true);
-    expect(inviteResponse.body.data).toBeDefined();
-    aliceInviteCode = inviteResponse.body.data.code;
+    aliceInviteCode = invite.code;
 
     // Step 4: Create user Bob (default, should be viewer)
     await userModel.create({
@@ -250,25 +235,19 @@ describe('Marathon and Vision Groups Integration Test', () => {
     );
 
     // Step 5: Bob uses invite from Alice and becomes a lead in his own group and a participant in marathon and vision groups
-    const bobInviteUseResponse = await request(app.getHttpServer())
-      .post(`/api/v1/invites/${aliceInviteCode}/use`)
-      .set('Cookie', `jwt=${bobToken}`);
-
-    expect(bobInviteUseResponse.status).toBe(201);
+    await trpcMutation(app, 'invites.use', {
+      code: aliceInviteCode,
+    }, { jwt: bobToken });
 
     // Step 6: Bob creates a post in marathon-of-good group
-    const bobPostResponse = await request(app.getHttpServer())
-      .post('/api/v1/publications')
-      .set('Cookie', `jwt=${bobToken}`)
-      .send({
-        communityId: marathonCommunityId,
-        content: 'hello this is a good deed',
-        type: 'text',
-        hashtags: [],
-      })
-      .expect(201);
+    const bobPost = await trpcMutation(app, 'publications.create', {
+      communityId: marathonCommunityId,
+      content: 'hello this is a good deed',
+      type: 'text',
+      hashtags: [],
+    }, { jwt: bobToken });
 
-    bobPostId = bobPostResponse.body.data.id;
+    bobPostId = bobPost.id;
 
     // Step 7: Create user Carol (default)
     await userModel.create({
@@ -319,41 +298,37 @@ describe('Marathon and Vision Groups Integration Test', () => {
     await walletService.createOrGetWallet(carolId, marathonCommunityId, marathonCurrency);
 
     // Step 8: Carol votes for Bob's post in marathon-of-good group with 3 out of 10 daily quota
-    await request(app.getHttpServer())
-      .post(`/api/v1/publications/${bobPostId}/votes`)
-      .set('Cookie', `jwt=${carolToken}`)
-      .send({
-        quotaAmount: 3,
-        walletAmount: 0,
-        comment: 'Great deed!',
-      })
-      .expect(201);
+    await trpcMutation(app, 'votes.createWithComment', {
+      targetType: 'publication',
+      targetId: bobPostId,
+      quotaAmount: 3,
+      walletAmount: 0,
+      comment: 'Great deed!',
+    }, { jwt: carolToken });
 
     // Verify Carol's quota: should have 7 remaining (started with 10, used 3)
-    const carolQuotaResponse = await request(app.getHttpServer())
-      .get(`/api/v1/users/${carolId}/quota?communityId=${marathonCommunityId}`)
-      .set('Cookie', `jwt=${carolToken}`);
+    const carolQuota = await trpcQuery(app, 'wallets.getQuota', {
+      userId: carolId,
+      communityId: marathonCommunityId,
+    }, { jwt: carolToken });
 
-    expect(carolQuotaResponse.status).toBe(200);
-    // Quota endpoint returns data directly
-    expect(carolQuotaResponse.body.remainingToday).toBe(7);
-    expect(carolQuotaResponse.body.usedToday).toBe(3);
+    expect(carolQuota.remaining).toBe(7);
+    expect(carolQuota.used).toBe(3);
 
     // Verify Bob's merit wallet in future-vision group is up 3 merits
-    const bobWalletsResponse = await request(app.getHttpServer())
-      .get(`/api/v1/users/${bobId}/wallets`)
-      .set('Cookie', `jwt=${bobToken}`)
-      .expect(200);
+    const bobWallets = await trpcQuery(app, 'wallets.getAll', {
+      userId: bobId,
+    }, { jwt: bobToken });
 
     // Wallets endpoint returns array directly
-    const bobVisionWallet = bobWalletsResponse.body.find(
+    const bobVisionWallet = bobWallets.find(
       (w: any) => w.communityId === visionCommunityId,
     );
     expect(bobVisionWallet).toBeDefined();
     expect(bobVisionWallet.balance).toBe(3);
 
     // Verify Bob's wallet in marathon group DOES NOT CHANGE (should be 0)
-    const bobMarathonWallet = bobWalletsResponse.body.find(
+    const bobMarathonWallet = bobWallets.find(
       (w: any) => w.communityId === marathonCommunityId,
     );
     // Marathon wallet should exist (created when Bob used invite) but balance should be 0
@@ -388,75 +363,61 @@ describe('Marathon and Vision Groups Integration Test', () => {
 
     // Step 10: Alice creates an invite for Derrek (superadmin-to-lead)
     // When Derrek uses this invite, he will automatically become a participant in marathon and vision groups
-    const derrekInviteResponse = await request(app.getHttpServer())
-      .post('/api/v1/invites')
-      .set('Cookie', `jwt=${aliceToken}`)
-      .send({
-        type: 'superadmin-to-lead',
-      })
-      .expect(201);
+    const derrekInvite = await trpcMutation(app, 'invites.create', {
+      type: 'superadmin-to-lead',
+    }, { jwt: aliceToken });
 
-    derrekInviteCode = derrekInviteResponse.body.data.code;
+    derrekInviteCode = derrekInvite.code;
 
     // Step 11: Derrek uses the invite and becomes a lead in his personal group and a participant in marathon and vision groups
-    await request(app.getHttpServer())
-      .post(`/api/v1/invites/${derrekInviteCode}/use`)
-      .set('Cookie', `jwt=${derrekToken}`)
-      .expect(201);
+    await trpcMutation(app, 'invites.use', {
+      code: derrekInviteCode,
+    }, { jwt: derrekToken });
 
     // Step 12: Derrek creates a post in the future vision group
-    const derrekPostResponse = await request(app.getHttpServer())
-      .post('/api/v1/publications')
-      .set('Cookie', `jwt=${derrekToken}`)
-      .send({
-        communityId: visionCommunityId,
-        content: "here is derrek's vision",
-        type: 'text',
-        hashtags: [],
-      })
-      .expect(201);
+    const derrekPost = await trpcMutation(app, 'publications.create', {
+      communityId: visionCommunityId,
+      content: "here is derrek's vision",
+      type: 'text',
+      hashtags: [],
+    }, { jwt: derrekToken });
 
-    derrekPostId = derrekPostResponse.body.data.id;
+    derrekPostId = derrekPost.id;
 
     // Step 13: Bob upvotes derrek's post in the vision group, by using his (bob's) merits he has in his wallet in the vision group
     // Bob uses 2 out of 3 merits to upvote derrek's vision post
-    await request(app.getHttpServer())
-      .post(`/api/v1/publications/${derrekPostId}/votes`)
-      .set('Cookie', `jwt=${bobToken}`)
-      .send({
-        quotaAmount: 0,
-        walletAmount: 2,
-        comment: 'Great vision!',
-      })
-      .expect(201);
+    await trpcMutation(app, 'votes.createWithComment', {
+      targetType: 'publication',
+      targetId: derrekPostId,
+      quotaAmount: 0,
+      walletAmount: 2,
+      comment: 'Great vision!',
+    }, { jwt: bobToken });
 
     // Verify derrek's post now has 2 upvotes on it
-    const derrekPostCheckResponse = await request(app.getHttpServer())
-      .get(`/api/v1/publications/${derrekPostId}`)
-      .set('Cookie', `jwt=${derrekToken}`)
-      .expect(200);
+    const derrekPostCheck = await trpcQuery(app, 'publications.getById', {
+      id: derrekPostId,
+    }, { jwt: derrekToken });
 
-    expect(derrekPostCheckResponse.body.data.metrics.upvotes).toBe(2);
+    expect(derrekPostCheck.metrics.upvotes).toBe(2);
 
     // Verify derrek's wallets did not change anywhere (zero merits, bob's upvote in the vision group did not affect it)
-    const derrekWalletsResponse = await request(app.getHttpServer())
-      .get(`/api/v1/users/${derrekId}/wallets`)
-      .set('Cookie', `jwt=${derrekToken}`)
-      .expect(200);
+    const derrekWallets = await trpcQuery(app, 'wallets.getAll', {
+      userId: derrekId,
+    }, { jwt: derrekToken });
 
     // Wallets endpoint returns array directly
-    derrekWalletsResponse.body.forEach((wallet: any) => {
+    derrekWallets.forEach((wallet: any) => {
       expect(wallet.balance).toBe(0);
     });
 
     // Verify bob's wallet in the vision group is down 2 merits (1 remaining)
-    const bobWalletsAfterVoteResponse = await request(app.getHttpServer())
-      .get(`/api/v1/users/${bobId}/wallets`)
-      .set('Cookie', `jwt=${bobToken}`)
-      .expect(200);
+    const bobWalletsAfterVote = await trpcQuery(app, 'wallets.getAll', {
+      userId: bobId,
+    }, { jwt: bobToken });
 
     // Wallets endpoint returns array directly
-    const bobVisionWalletAfter = bobWalletsAfterVoteResponse.body.find(
+    const bobVisionWalletAfter = bobWalletsAfterVote.find(
       (w: any) => w.communityId === visionCommunityId,
     );
     expect(bobVisionWalletAfter).toBeDefined();

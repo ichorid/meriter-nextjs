@@ -18,7 +18,7 @@ import { VoteSchemaClass, VoteDocument } from '../src/domain/models/vote/vote.sc
 import { TransactionSchemaClass, TransactionDocument } from '../src/domain/models/transaction/transaction.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
+import { trpcMutation } from './helpers/trpc-test-helper';
 
 class AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -269,14 +269,13 @@ describe('Special Groups Merit Accumulation', () => {
     it('should allow withdrawal from publication in marathon-of-good and credit Future Vision wallet', async () => {
       // Add a vote using HTTP endpoint to update publication metrics
       (global as any).testUserId = voterId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Test comment',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Test comment',
+      });
 
       // Get the Future Vision community
       const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
@@ -284,13 +283,12 @@ describe('Special Groups Merit Accumulation', () => {
 
       // Withdraw as author - should succeed
       (global as any).testUserId = authorId;
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/withdraw`)
-        .send({ amount: 5 })
-        .expect(201);
+      const result = await trpcMutation(app, 'votes.withdraw', {
+        id: marathonPubId,
+        amount: 5,
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.amount).toBe(5);
+      expect(result.amount).toBe(5);
 
       // Check that Future Vision wallet was credited
       const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
@@ -314,52 +312,43 @@ describe('Special Groups Merit Accumulation', () => {
 
       // Add a vote to create balance using HTTP endpoint (wallet only for Future Vision)
       (global as any).testUserId = voterId;
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${visionPubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 5,
-          comment: 'Test comment',
-        });
-      
-      if (voteResponse.status !== 201) {
-        console.error('Vote failed:', JSON.stringify(voteResponse.body, null, 2));
-        console.error('Status:', voteResponse.status);
-      }
-      expect(voteResponse.status).toBe(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: visionPubId,
+        quotaAmount: 0,
+        walletAmount: 5,
+        comment: 'Test comment',
+      });
 
       // Withdraw as author - should succeed
       (global as any).testUserId = authorId;
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${visionPubId}/withdraw`)
-        .send({ amount: 5 })
-        .expect(201);
+      const result = await trpcMutation(app, 'votes.withdraw', {
+        id: visionPubId,
+        amount: 5,
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.amount).toBe(5);
+      expect(result.amount).toBe(5);
     });
 
     it('should allow withdrawal from publication in regular community', async () => {
       // Add a vote to create balance using HTTP endpoint (which updates publication metrics)
       (global as any).testUserId = voterId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${regularPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Test comment',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: regularPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Test comment',
+      });
 
       // Withdraw as author - should succeed
       (global as any).testUserId = authorId;
-      const withdrawResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${regularPubId}/withdraw`)
-        .send({ amount: 5 })
-        .expect(201);
+      const result = await trpcMutation(app, 'votes.withdraw', {
+        id: regularPubId,
+        amount: 5,
+      });
       
-      expect(withdrawResponse.body.success).toBe(true);
-      expect(withdrawResponse.body.data.amount).toBe(5);
+      expect(result.amount).toBe(5);
     });
   });
 
@@ -368,19 +357,13 @@ describe('Special Groups Merit Accumulation', () => {
       (global as any).testUserId = voterId;
 
       // Vote on marathon publication
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Test vote',
-        });
-
-      if (voteResponse.status !== 201) {
-        console.error('Vote failed:', JSON.stringify(voteResponse.body, null, 2));
-        console.error('Status:', voteResponse.status);
-      }
-      expect(voteResponse.status).toBe(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Test vote',
+      });
 
       // Wait a bit for async operations
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -406,15 +389,13 @@ describe('Special Groups Merit Accumulation', () => {
       (global as any).testUserId = voterId;
 
       // Vote on marathon publication
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Test vote',
-        });
-
-      expect(voteResponse.status).toBe(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Test vote',
+      });
 
       // Wait a bit for vote to process
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -425,13 +406,12 @@ describe('Special Groups Merit Accumulation', () => {
 
       // Withdraw as author - should credit Future Vision wallet
       (global as any).testUserId = authorId;
-      const withdrawResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/withdraw`)
-        .send({ amount: 5 })
-        .expect(201);
+      const result = await trpcMutation(app, 'votes.withdraw', {
+        id: marathonPubId,
+        amount: 5,
+      });
 
-      expect(withdrawResponse.body.success).toBe(true);
-      expect(withdrawResponse.body.data.amount).toBe(5);
+      expect(result.amount).toBe(5);
 
       // Check that Future Vision wallet was credited
       let fvWallet = await walletService.getWallet(authorId, fvCommunityId);
@@ -466,14 +446,13 @@ describe('Special Groups Merit Accumulation', () => {
       (global as any).testUserId = voterId;
 
       // Vote on marathon publication
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Test vote',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Test vote',
+      });
 
       // Check that Marathon of Good wallet was NOT credited
       const gdmWallet = await walletModel.findOne({
@@ -497,14 +476,13 @@ describe('Special Groups Merit Accumulation', () => {
       (global as any).testUserId = voterId;
 
       // Vote on marathon publication
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Test vote',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Test vote',
+      });
 
       // Wait a bit for async operations
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -539,14 +517,13 @@ describe('Special Groups Merit Accumulation', () => {
       await transactionModel.deleteMany({ userId: authorId, referenceId: newMarathonPubId });
 
       // Vote on marathon publication
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${newMarathonPubId}/votes`)
-        .send({
-          quotaAmount: 10,
-          walletAmount: 0,
-          comment: 'Test vote',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: newMarathonPubId,
+        quotaAmount: 10,
+        walletAmount: 0,
+        comment: 'Test vote',
+      });
 
       await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -610,14 +587,13 @@ describe('Special Groups Merit Accumulation', () => {
       (global as any).testUserId = voterId;
 
       // Vote on marathon publication
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
-          quotaAmount: 10,
-          walletAmount: 0,
-          comment: 'Test vote',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 10,
+        walletAmount: 0,
+        comment: 'Test vote',
+      });
 
       await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -703,27 +679,25 @@ describe('Special Groups Merit Accumulation', () => {
 
       // First voter votes
       (global as any).testUserId = voterId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${newMarathonPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Vote from voter 1',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: newMarathonPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Vote from voter 1',
+      });
 
       await new Promise(resolve => setTimeout(resolve, 200));
 
       // Second voter votes
       (global as any).testUserId = voter2Id;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${newMarathonPubId}/votes`)
-        .send({
-          quotaAmount: 7,
-          walletAmount: 0,
-          comment: 'Vote from voter 2',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: newMarathonPubId,
+        quotaAmount: 7,
+        walletAmount: 0,
+        comment: 'Vote from voter 2',
+      });
 
       await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -786,19 +760,13 @@ describe('Special Groups Merit Accumulation', () => {
       );
 
       // Vote on future vision publication (wallet only for Future Vision)
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${visionPubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 5,
-          comment: 'Test vote',
-        });
-      
-      if (voteResponse.status !== 201) {
-        console.error('Vote failed:', JSON.stringify(voteResponse.body, null, 2));
-        console.error('Status:', voteResponse.status);
-      }
-      expect(voteResponse.status).toBe(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: visionPubId,
+        quotaAmount: 0,
+        walletAmount: 5,
+        comment: 'Test vote',
+      });
 
       // Check that no wallet was credited
       const fvWallet = await walletModel.findOne({
@@ -827,14 +795,13 @@ describe('Special Groups Merit Accumulation', () => {
       (global as any).testUserId = voterId;
 
       // Vote on regular publication
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${regularPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Test vote',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: regularPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Test vote',
+      });
 
       // Wait for async operations
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -859,14 +826,13 @@ describe('Special Groups Merit Accumulation', () => {
       // by checking that a regular upvote awards merits, and the logic prevents downvotes from awarding.
 
       // First, verify that upvotes award merits
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${regularPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Test upvote',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: regularPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Test upvote',
+      });
 
       // Wait for async operations
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -890,14 +856,13 @@ describe('Special Groups Merit Accumulation', () => {
       (global as any).testUserId = voterId;
 
       // Vote on marathon publication
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Test vote',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Test vote',
+      });
 
       // Should not crash, just skip merit awarding
       const fvWallet = await walletModel.findOne({

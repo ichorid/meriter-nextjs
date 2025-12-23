@@ -13,8 +13,8 @@ import { User, UserDocument } from '../src/domain/models/user/user.schema';
 import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
 import { UserGuard } from '../src/user.guard';
+import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 
 class AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -181,14 +181,13 @@ describe('Quota Wallet Separation (e2e)', () => {
       expect(balanceBefore).toBe(0);
 
       // Vote using quota only
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Test comment',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Test comment',
+      });
 
       // Verify wallet balance unchanged
       const walletAfter = await walletService.getWallet(testUserId, testCommunityId);
@@ -213,27 +212,28 @@ describe('Quota Wallet Separation (e2e)', () => {
       (global as any).testUserId = testUserId;
 
       // Get initial quota
-      const quotaBefore = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
-      expect(quotaBefore.body.remainingToday).toBe(10);
+      const quotaBefore = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
+      expect(quotaBefore.remaining).toBe(10);
 
       // Vote using quota only
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 7,
-          walletAmount: 0,
-          comment: 'Test comment',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 7,
+        walletAmount: 0,
+        comment: 'Test comment',
+      });
 
       // Verify quota was used
-      const quotaAfter = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
-      expect(quotaAfter.body.usedToday).toBe(7);
-      expect(quotaAfter.body.remainingToday).toBe(3);
+      const quotaAfter = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
+      expect(quotaAfter.used).toBe(7);
+      expect(quotaAfter.remaining).toBe(3);
 
       // Verify wallet balance still 0
       const wallet = await walletService.getWallet(testUserId, testCommunityId);
@@ -263,14 +263,13 @@ describe('Quota Wallet Separation (e2e)', () => {
 
       // Have author vote for user's publication (this credits wallet)
       (global as any).testUserId = testAuthorId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${userPubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 20,
-          comment: 'Test comment',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: userPubId,
+        quotaAmount: 0,
+        walletAmount: 20,
+        comment: 'Test comment',
+      });
 
       // Switch back to test user
       (global as any).testUserId = testUserId;
@@ -281,14 +280,13 @@ describe('Quota Wallet Separation (e2e)', () => {
       expect(balanceBefore).toBeGreaterThan(0); // Should have received merits
 
       // Vote using wallet only
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Test comment',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Test comment',
+      });
 
       // Verify wallet balance decreased by exactly walletAmount
       const walletAfter = await walletService.getWallet(testUserId, testCommunityId);
@@ -296,11 +294,12 @@ describe('Quota Wallet Separation (e2e)', () => {
       expect(balanceAfter).toBe(balanceBefore - 10);
 
       // Verify quota was not used
-      const quota = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
-      expect(quota.body.usedToday).toBe(0);
-      expect(quota.body.remainingToday).toBe(10);
+      const quota = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
+      expect(quota.used).toBe(0);
+      expect(quota.remaining).toBe(10);
     });
   });
 
@@ -323,14 +322,13 @@ describe('Quota Wallet Separation (e2e)', () => {
       });
 
       (global as any).testUserId = testAuthorId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${userPubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 50,
-          comment: 'Test comment',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: userPubId,
+        quotaAmount: 0,
+        walletAmount: 50,
+        comment: 'Test comment',
+      });
 
       (global as any).testUserId = testUserId;
 
@@ -339,20 +337,20 @@ describe('Quota Wallet Separation (e2e)', () => {
       const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
       expect(balanceBefore).toBeGreaterThan(0);
 
-      const quotaBefore = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
-      const remainingQuotaBefore = quotaBefore.body.remainingToday;
+      const quotaBefore = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
+      const remainingQuotaBefore = quotaBefore.remaining;
 
       // Vote with both quota and wallet
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 7,
-          walletAmount: 3,
-          comment: 'Test comment',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 7,
+        walletAmount: 3,
+        comment: 'Test comment',
+      });
 
       // Verify wallet balance decreased by ONLY walletAmount (3), not total (10)
       const walletAfter = await walletService.getWallet(testUserId, testCommunityId);
@@ -360,10 +358,11 @@ describe('Quota Wallet Separation (e2e)', () => {
       expect(balanceAfter).toBe(balanceBefore - 3); // Only walletAmount deducted
 
       // Verify quota was used
-      const quotaAfter = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
-      expect(quotaAfter.body.remainingToday).toBe(remainingQuotaBefore - 7); // Quota used
+      const quotaAfter = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
+      expect(quotaAfter.remaining).toBe(remainingQuotaBefore - 7); // Quota used
 
       // Verify only one wallet transaction was created (for walletAmount only)
       const wallet = await walletService.getWallet(testUserId, testCommunityId);
@@ -395,27 +394,26 @@ describe('Quota Wallet Separation (e2e)', () => {
       // Try to vote with quotaAmount=7, walletAmount=5 (total=12)
       // Should succeed because walletAmount=5 is within quota+wallet combined limit
       // But wait, user has 0 wallet, so walletAmount=5 should fail
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 7,
-          walletAmount: 5,
-          comment: 'Test comment',
-        });
+      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 7,
+        walletAmount: 5,
+        comment: 'Test comment',
+      });
 
       // Should fail because walletAmount (5) > walletBalance (0)
-      expect(response.status).toBe(400);
-      expect(response.body.message).toContain('Insufficient wallet balance');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Insufficient wallet balance');
 
       // But voting with quotaAmount=7, walletAmount=0 should succeed
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 7,
-          walletAmount: 0,
-          comment: 'Test comment',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 7,
+        walletAmount: 0,
+        comment: 'Test comment',
+      });
     });
   });
 
@@ -438,26 +436,24 @@ describe('Quota Wallet Separation (e2e)', () => {
       });
 
       (global as any).testUserId = testAuthorId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${userPubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 30,
-          comment: 'Test comment',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: userPubId,
+        quotaAmount: 0,
+        walletAmount: 30,
+        comment: 'Test comment',
+      });
 
       (global as any).testUserId = testUserId;
 
       // Use quota in votes
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Test comment',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Test comment',
+      });
 
       // Get wallet balance before reset
       const walletBefore = await walletService.getWallet(testUserId, testCommunityId);
