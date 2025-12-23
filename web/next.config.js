@@ -47,6 +47,7 @@ const nextConfig = {
         '@gluestack-ui/provider',
         '@gluestack-ui/toast',
         '@gluestack-ui/slider',
+        '@gluestack-ui/form-control',
         '@gluestack-style/react',
         '@gluestack/ui-next-adapter',
         '@expo/html-elements',
@@ -163,9 +164,15 @@ const nextConfig = {
         });
 
         // Add rule to handle @gluestack-ui/* packages with JSX
-        config.module.rules.push({
+        // Use enforce: 'pre' to ensure it runs before SWC
+        config.module.rules.unshift({
+            enforce: 'pre',
             test: /\.(tsx?|jsx?)$/,
-            include: /node_modules\/@gluestack-ui/,
+            include: [
+                /node_modules[\/\\]@gluestack-ui/,
+                /node_modules[\/\\]\.pnpm[\/\\].*@gluestack-ui/,
+            ],
+            exclude: /\.d\.ts$/,
             use: {
                 loader: 'babel-loader',
                 options: {
@@ -174,6 +181,7 @@ const nextConfig = {
                         ['@babel/preset-react', { runtime: 'automatic' }],
                         '@babel/preset-typescript',
                     ],
+                    cacheDirectory: true,
                 },
             },
         });
@@ -231,7 +239,45 @@ const nextConfig = {
                 return true;
             });
 
-            // Insert babel-loader rule at the very beginning of oneOf array
+            // Insert babel-loader rules at the very beginning of oneOf array
+            // First, exclude @gluestack-ui from SWC rules
+            oneOfRule.oneOf = oneOfRule.oneOf.map((rule) => {
+                if (!rule || typeof rule !== 'object') return rule;
+                // Check if rule uses SWC or next-flight loaders
+                const usesSWC = rule.use && (
+                    (Array.isArray(rule.use) && rule.use.some(u => {
+                        if (!u) return false;
+                        const loader = typeof u === 'string' ? u : (u.loader || '');
+                        return loader.includes('swc') || loader.includes('next-flight') || loader.includes('next-swc');
+                    })) ||
+                    (typeof rule.use === 'object' && rule.use.loader && (
+                        rule.use.loader.includes('swc') ||
+                        rule.use.loader.includes('next-flight') ||
+                        rule.use.loader.includes('next-swc')
+                    )) ||
+                    (typeof rule.use === 'string' && (
+                        rule.use.includes('swc') ||
+                        rule.use.includes('next-flight') ||
+                        rule.use.includes('next-swc')
+                    ))
+                );
+                if (usesSWC) {
+                    // Add exclude for @gluestack-ui to all SWC/next-flight rules
+                    const gluestackExclude = [
+                        /[\/\\]@gluestack-ui[\/\\]/,
+                        /[\/\\]\.pnpm[\/\\].*@gluestack-ui[\/\\]/,
+                    ];
+                    const newExclude = Array.isArray(rule.exclude)
+                        ? [...rule.exclude, ...gluestackExclude]
+                        : rule.exclude
+                            ? [rule.exclude, ...gluestackExclude]
+                            : gluestackExclude;
+                    return { ...rule, exclude: newExclude };
+                }
+                return rule;
+            });
+
+            // Insert babel-loader rule for @react-native/assets-registry
             oneOfRule.oneOf.unshift({
                 test: /\.(ts|tsx|js|jsx)$/,
                 include: /node_modules\/@react-native\/assets-registry/,
@@ -250,6 +296,27 @@ const nextConfig = {
                             }],
                             '@babel/preset-react',
                         ],
+                    },
+                },
+            });
+
+            // Insert babel-loader rule for @gluestack-ui at the very beginning
+            oneOfRule.oneOf.unshift({
+                test: /\.(tsx?|jsx?)$/,
+                include: [
+                    /[\/\\]@gluestack-ui[\/\\]/,
+                    /[\/\\]\.pnpm[\/\\].*@gluestack-ui[\/\\]/,
+                ],
+                exclude: /\.d\.ts$/,
+                use: {
+                    loader: 'babel-loader',
+                    options: {
+                        presets: [
+                            '@babel/preset-env',
+                            ['@babel/preset-react', { runtime: 'automatic' }],
+                            '@babel/preset-typescript',
+                        ],
+                        cacheDirectory: true,
                     },
                 },
             });
