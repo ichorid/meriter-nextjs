@@ -18,34 +18,43 @@ export class CommunityDefaultsService {
   /**
    * Get default permission rules based on community typeTag
    * Returns granular PermissionRule array covering all actions and roles
+   * Uses Map-based deduplication to ensure type-specific rules override base rules
    */
   getDefaultPermissionRules(typeTag?: string): PermissionRule[] {
-    const rules: PermissionRule[] = [];
-
-    // Base rules for all community types
     const baseRules = this.getBaseRules();
-    rules.push(...baseRules);
-
-    // Type-specific overrides
+    const rulesMap = new Map<string, PermissionRule>();
+    
+    // Add base rules first
+    for (const rule of baseRules) {
+      rulesMap.set(`${rule.role}:${rule.action}`, rule);
+    }
+    
+    // Override with type-specific rules
+    let typeSpecificRules: PermissionRule[] = [];
     switch (typeTag) {
       case 'marathon-of-good':
-        rules.push(...this.getMarathonOfGoodRules());
+        typeSpecificRules = this.getMarathonOfGoodRules();
         break;
       case 'future-vision':
-        rules.push(...this.getFutureVisionRules());
+        typeSpecificRules = this.getFutureVisionRules();
         break;
       case 'support':
-        rules.push(...this.getSupportRules());
+        typeSpecificRules = this.getSupportRules();
         break;
       case 'team':
-        rules.push(...this.getTeamRules());
+        typeSpecificRules = this.getTeamRules();
         break;
       default:
-        // Custom or other types use base rules
+        // Custom or other types use base rules only
         break;
     }
-
-    return rules;
+    
+    // Override base rules with type-specific rules
+    for (const rule of typeSpecificRules) {
+      rulesMap.set(`${rule.role}:${rule.action}`, rule);
+    }
+    
+    return Array.from(rulesMap.values());
   }
 
   /**

@@ -68,31 +68,45 @@ export class PermissionService {
 
   /**
    * Check if user can create publications in a community
-   * Uses permission rule engine
+   * Uses permission rule engine with context for condition evaluation
    */
   async canCreatePublication(
     userId: string,
     communityId: string,
   ): Promise<boolean> {
+    // Build context for creation (needed for requiresTeamMembership checks)
+    const context = await this.permissionContextService.buildContextForCommunity(
+      userId,
+      communityId,
+    );
+
     return this.permissionRuleEngine.canPerformAction(
       userId,
       communityId,
       ActionType.POST_PUBLICATION,
+      context,
     );
   }
 
   /**
    * Check if user can create polls in a community
-   * Uses permission rule engine
+   * Uses permission rule engine with context for condition evaluation
    */
   async canCreatePoll(
     userId: string,
     communityId: string,
   ): Promise<boolean> {
+    // Build context for creation (needed for requiresTeamMembership checks)
+    const context = await this.permissionContextService.buildContextForCommunity(
+      userId,
+      communityId,
+    );
+
     return this.permissionRuleEngine.canPerformAction(
       userId,
       communityId,
       ActionType.CREATE_POLL,
+      context,
     );
   }
 
