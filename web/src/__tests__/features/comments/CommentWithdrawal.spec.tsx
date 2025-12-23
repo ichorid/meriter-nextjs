@@ -1,5 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { NextIntlClientProvider } from 'next-intl';
+import { trpc, getTrpcClient } from '@/lib/trpc/client';
 import { Comment } from '@/features/comments/components/comment';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { useCommentWithdrawal } from '@/features/comments/hooks/useCommentWithdrawal';
@@ -31,6 +34,50 @@ jest.mock('@/stores/ui.store', () => ({
 const mockUseCommunity = useCommunity as jest.MockedFunction<typeof useCommunity>;
 const mockUseCommentWithdrawal = useCommentWithdrawal as jest.MockedFunction<typeof useCommentWithdrawal>;
 const mockUseFeaturesConfig = useFeaturesConfig as jest.MockedFunction<typeof useFeaturesConfig>;
+
+// Mock messages for next-intl
+const mockMessages = {
+  shared: {
+    withdraw: 'Withdraw',
+    cancel: 'Cancel',
+    confirm: 'Confirm',
+  },
+  comments: {
+    withdraw: 'Withdraw',
+  },
+};
+
+// Test wrapper with all required providers
+// Use useState to ensure QueryClient is created once and matches production pattern
+function TestWrapper({ children }: { children: React.ReactNode }) {
+  const [queryClient] = React.useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+            gcTime: 0,
+            staleTime: 0,
+          },
+          mutations: {
+            retry: false,
+          },
+        },
+      })
+  );
+
+  const [trpcClient] = React.useState(() => getTrpcClient());
+
+  return (
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <NextIntlClientProvider locale="en" messages={mockMessages}>
+          {children}
+        </NextIntlClientProvider>
+      </QueryClientProvider>
+    </trpc.Provider>
+  );
+}
 
 describe('Comment Withdrawal - Special Groups', () => {
   const mockComment = {
@@ -80,14 +127,16 @@ describe('Comment Withdrawal - Special Groups', () => {
     } as any);
 
     render(
-      <Comment
-        {...mockComment}
-        myId="author-1"
-        wallets={[]}
-        updateWalletBalance={jest.fn()}
-        updateAll={jest.fn()}
-        activeCommentHook={[null, jest.fn()]}
-      />
+      <TestWrapper>
+        <Comment
+          {...mockComment}
+          myId="author-1"
+          wallets={[]}
+          updateWalletBalance={jest.fn()}
+          updateAll={jest.fn()}
+          activeCommentHook={[null, jest.fn()]}
+        />
+      </TestWrapper>
     );
 
     // Withdrawal button should not be visible for author in special group
@@ -107,14 +156,16 @@ describe('Comment Withdrawal - Special Groups', () => {
     } as any);
 
     render(
-      <Comment
-        {...mockComment}
-        myId="author-1"
-        wallets={[]}
-        updateWalletBalance={jest.fn()}
-        updateAll={jest.fn()}
-        activeCommentHook={[null, jest.fn()]}
-      />
+      <TestWrapper>
+        <Comment
+          {...mockComment}
+          myId="author-1"
+          wallets={[]}
+          updateWalletBalance={jest.fn()}
+          updateAll={jest.fn()}
+          activeCommentHook={[null, jest.fn()]}
+        />
+      </TestWrapper>
     );
 
     // Withdrawal button should not be visible for author in special group
@@ -134,14 +185,16 @@ describe('Comment Withdrawal - Special Groups', () => {
     } as any);
 
     render(
-      <Comment
-        {...mockComment}
-        myId="author-1"
-        wallets={[]}
-        updateWalletBalance={jest.fn()}
-        updateAll={jest.fn()}
-        activeCommentHook={[null, jest.fn()]}
-      />
+      <TestWrapper>
+        <Comment
+          {...mockComment}
+          myId="author-1"
+          wallets={[]}
+          updateWalletBalance={jest.fn()}
+          updateAll={jest.fn()}
+          activeCommentHook={[null, jest.fn()]}
+        />
+      </TestWrapper>
     );
 
     // Withdrawal should be available for regular communities

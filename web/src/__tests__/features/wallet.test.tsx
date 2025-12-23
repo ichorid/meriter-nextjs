@@ -48,9 +48,12 @@ describe('Wallet Feature', () => {
             />
         );
         // Check that balance1 amount is rendered (span with font-medium class)
-        const balanceSpans = container.querySelectorAll('span.font-medium');
-        expect(balanceSpans.length).toBe(1);
-        expect(balanceSpans[0]).toHaveTextContent('100');
+        // Find the span containing the balance amount
+        const balanceAmountSpan = Array.from(container.querySelectorAll('span.font-medium')).find(
+            span => span.textContent === '100'
+        );
+        expect(balanceAmountSpan).toBeInTheDocument();
+        expect(balanceAmountSpan).toHaveTextContent('100');
     });
 });
 

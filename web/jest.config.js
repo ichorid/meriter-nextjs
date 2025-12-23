@@ -28,7 +28,7 @@ module.exports = {
       "^.+\\.(js|jsx)$": "babel-jest"
     },
     transformIgnorePatterns: [
-      "node_modules/"
+      "node_modules/(?!(superjson)/)"
     ],
     setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
     moduleDirectories: [
