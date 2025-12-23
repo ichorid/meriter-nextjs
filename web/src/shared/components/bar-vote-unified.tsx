@@ -35,6 +35,35 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
 }) => {
     const t = useTranslations('shared');
     
+    // Calculate canVote first (needed for tooltip)
+    const mutualExclusivityCheck = (!isAuthor && !isBeneficiary) || (isAuthor && hasBeneficiary);
+    const canVote = canVoteProp !== undefined 
+      ? canVoteProp
+      : mutualExclusivityCheck;
+    
+    // Get tooltip text for disabled vote button
+    const getTooltipText = (): string | undefined => {
+        if (canVote) {
+            return undefined;
+        }
+        if (disabledReason) {
+            // Try to get translation, fallback to default if not found
+            try {
+                const translated = t(disabledReason);
+                // If translation returns the key itself, it means translation is missing
+                if (translated === disabledReason) {
+                    return t('voteDisabled.default');
+                }
+                return translated;
+            } catch {
+                return t('voteDisabled.default');
+            }
+        }
+        return t('voteDisabled.default');
+    };
+    
+    const tooltipText = getTooltipText();
+    
     const handleVoteClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!canVote) {
@@ -59,19 +88,6 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
         }
     };
 
-    // Mutual exclusivity: Vote and Withdraw are mutually exclusive
-    // Can vote if: (NOT author AND NOT beneficiary) OR (IS author AND has beneficiary)
-    // IMPORTANT: Never show vote button if user is beneficiary, regardless of other conditions
-    // Exception: If canVoteProp is explicitly provided (from useCanVote hook), it already handles
-    // all edge cases including future-vision group self-voting exceptions, so we trust it.
-    const mutualExclusivityCheck = (!isAuthor && !isBeneficiary) || (isAuthor && hasBeneficiary);
-    
-    // Combine mutual exclusivity check with permission check (community rules, roles, etc.)
-    // If canVoteProp is explicitly provided (true/false), trust it as it handles all exceptions
-    // If canVoteProp is undefined, fall back to mutual exclusivity check only (backward compatibility)
-    const canVote = canVoteProp !== undefined 
-      ? canVoteProp  // Trust the permission system (handles future-vision exceptions, etc.)
-      : mutualExclusivityCheck; // Fallback for backward compatibility
     
     // Cannot show withdraw button here - withdraw should be handled by separate BarWithdraw component
     // This component always shows the vote button and score counter, but disables the button when user cannot vote
@@ -124,7 +140,7 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
                     }`}
                     onClick={handleVoteClick}
                     disabled={!canVote}
-                    title={!canVote ? (disabledReason ? t(disabledReason) : t('voteDisabled.default')) : undefined}
+                    title={tooltipText}
                 >
                     {t('vote')}
                 </button>
