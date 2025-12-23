@@ -31,23 +31,9 @@ ENV NODE_ENV=production
 ENV PORT=8001
 ENV HOSTNAME=0.0.0.0
 
-# Install pnpm for dependency installation
-RUN npm install -g pnpm@10.24.0
-
-# Copy package files for dependency installation
-COPY --from=builder --chown=nextjs:nodejs /repo/pnpm-lock.yaml /repo/pnpm-workspace.yaml /repo/package.json ./
-COPY --from=builder --chown=nextjs:nodejs /repo/web/package.json ./web/
-COPY --from=builder --chown=nextjs:nodejs /repo/libs/shared-types/package.json ./libs/shared-types/
-COPY --from=builder --chown=nextjs:nodejs /repo/libs/shared-types/dist ./libs/shared-types/dist
-
-# Install only production dependencies (including React which is externalized by Next.js)
-# This follows Next.js best practices for standalone builds
-# Skip prepare scripts since shared-types is already built
-# Note: We need to install as root, then change ownership
-RUN pnpm --filter @meriter/web... install --prod --frozen-lockfile --ignore-scripts && \
-    chown -R nextjs:nodejs /app
-
-# Next.js standalone expects these exact locations:
+# OPTIMIZATION: Next.js standalone output already includes all necessary dependencies
+# including React in its node_modules. We just need to copy the standalone output.
+# This is much more efficient than installing all production dependencies (~250MB vs ~1.14GB)
 COPY --from=builder --chown=nextjs:nodejs /repo/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /repo/web/.next/static ./web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /repo/web/public ./web/public
