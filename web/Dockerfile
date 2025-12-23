@@ -39,13 +39,12 @@ COPY --from=builder --chown=nextjs:nodejs /repo/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /repo/web/.next/static ./web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /repo/web/public ./web/public
 
-# OPTIMIZATION: Copy React and react-dom from standalone output to root node_modules
+# CRITICAL: Install React and react-dom as production dependencies
 # Next.js externalizes React in standalone builds, but the pnpm structure in standalone
-# may not be resolvable at runtime. Copying React directly ensures proper resolution.
-# This adds minimal size (~50MB) but ensures React is accessible (total ~374MB vs ~1.14GB)
-RUN mkdir -p /app/node_modules && \
-    find /app/node_modules/.pnpm -type d -path "*/react@*/node_modules/react" -exec cp -r {} /app/node_modules/react \; 2>/dev/null || true && \
-    find /app/node_modules/.pnpm -type d -path "*/react-dom@*/node_modules/react-dom" -exec cp -r {} /app/node_modules/react-dom \; 2>/dev/null || true && \
+# may not be resolvable at runtime. Installing React via npm ensures proper resolution.
+# This adds ~50MB but ensures React is accessible (total ~376MB vs ~1.14GB)
+RUN cd /app && npm install react@19.2.3 react-dom@19.2.3 --save --save-exact --no-package-lock --legacy-peer-deps && \
+    cd /app/web && npm install react@19.2.3 react-dom@19.2.3 --save --save-exact --no-package-lock --legacy-peer-deps && \
     chown -R nextjs:nodejs /app
 
 USER nextjs
