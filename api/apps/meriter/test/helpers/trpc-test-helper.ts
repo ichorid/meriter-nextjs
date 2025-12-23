@@ -143,17 +143,55 @@ export async function trpcMutationWithError(
     .post(`/trpc/${path}`)
     .send(body)
     .set('Content-Type', 'application/json')
-    .set('Cookie', cookieHeader)
-    .expect(200);
+    .set('Cookie', cookieHeader);
   
-  // tRPC returns { result: { data: ... } } or { result: { error: ... } }
-  if (response.body.result?.error) {
+  // tRPC returns { result: { data: ... } } or { result: { error: ... } } for HTTP 200
+  // For non-200 status codes, NestJS wraps it as { error: { json: { data: { code: ... } } } }
+  // Check for tRPC error structure first (HTTP 200 case)
+  if (response.body?.result?.error) {
     const error = response.body.result.error;
+    // tRPC error formatter puts code in error.data.code (see trpc.ts)
+    const errorCode = error.data?.code || error.code || 'UNKNOWN';
     return {
       error: {
-        code: error.data?.code || error.code || 'UNKNOWN',
+        code: errorCode,
         message: error.message || 'Unknown error',
-        httpStatus: mapTrpcErrorCodeToHttpStatus(error.data?.code || error.code),
+        httpStatus: mapTrpcErrorCodeToHttpStatus(errorCode),
+      },
+    };
+  }
+  
+  // Check for NestJS-wrapped error structure (non-200 status codes)
+  if (response.body?.error?.json?.data?.code) {
+    const error = response.body.error.json;
+    return {
+      error: {
+        code: error.data.code,
+        message: error.message || 'Unknown error',
+        httpStatus: response.status !== 200 ? response.status : error.data.httpStatus || 500,
+      },
+    };
+  }
+  
+  // Fallback: check for error at top level
+  if (response.body?.error) {
+    const error = response.body.error;
+    return {
+      error: {
+        code: error.code || error.data?.code || 'UNKNOWN',
+        message: error.message || 'Unknown error',
+        httpStatus: response.status !== 200 ? response.status : 500,
+      },
+    };
+  }
+  
+  // If status is not 200 and no error structure found, return generic error
+  if (response.status !== 200) {
+    return {
+      error: {
+        code: 'UNKNOWN',
+        message: 'Unknown error',
+        httpStatus: response.status,
       },
     };
   }
