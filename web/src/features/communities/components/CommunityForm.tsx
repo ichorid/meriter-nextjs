@@ -65,6 +65,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const [pollCost, setPollCost] = useState("1");
     const [hashtags, setHashtags] = useState<string[]>([]);
     const [isPriority, setIsPriority] = useState(false);
+    const [votingRestriction, setVotingRestriction] = useState<'any' | 'not-own' | 'not-same-group'>('not-own');
     // Default icon is "thanks" emoji (🙏)
     const defaultIconUrl = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">${encodeURIComponent(
         "🙏"
@@ -89,6 +90,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             setHashtags(c.hashtags || []);
             setIsPriority(c.isPriority || false);
             setIconUrl(c.settings?.iconUrl || defaultIconUrl);
+            setVotingRestriction(c.votingSettings?.votingRestriction || 'not-own');
         }
     }, [community, isEditMode]);
 
@@ -116,6 +118,9 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                     dailyEmission: parseInt(dailyEmission, 10),
                     postCost: parseInt(postCost, 10),
                     pollCost: parseInt(pollCost, 10),
+                },
+                votingSettings: {
+                    votingRestriction,
                 },
             };
 
@@ -531,6 +536,22 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                             icon={iconUrl}
                             cta={t("selectIcon")}
                             setIcon={setIconUrl}
+                        />
+                    </BrandFormControl>
+
+                    <BrandFormControl
+                        label={t("votingRestriction")}
+                        helperText={t("votingRestrictionHelp")}
+                    >
+                        <BrandSelect
+                            value={votingRestriction}
+                            onChange={(value) => setVotingRestriction(value as 'any' | 'not-own' | 'not-same-group')}
+                            options={[
+                                { value: 'any', label: t('votingRestriction.any') },
+                                { value: 'not-own', label: t('votingRestriction.notOwn') },
+                                { value: 'not-same-group', label: t('votingRestriction.notSameGroup') },
+                            ]}
+                            fullWidth
                         />
                     </BrandFormControl>
                 </div>

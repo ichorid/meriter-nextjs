@@ -570,6 +570,13 @@
             "singular": "Singular",
             "plural": "Plural",
             "genitive": "Genitive",
+            "votingRestriction": "Voting Restrictions",
+            "votingRestrictionHelp": "Control who can vote for whom in this community",
+            "votingRestriction": {
+                "any": "Anyone can vote for any post",
+                "notOwn": "Users can vote for others' posts, but not their own",
+                "notSameGroup": "Users can only vote for posts from users in different groups (except Future Vision, Marathon of Good, and Support groups)"
+            },
             "hashtags": "Hashtags",
             "hashtagsPlaceholder": "Type hashtag and press Enter",
             "hashtagsHelp": "Add hashtags to categorize your community content",
