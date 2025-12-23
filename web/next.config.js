@@ -16,6 +16,9 @@ const nextConfig = {
     eslint: {
         ignoreDuringBuilds: true,
     },
+    // CRITICAL: Prevent React from being externalized in standalone builds
+    // This ensures React is bundled and available at runtime, preventing "Cannot read properties of null (reading 'useState')" errors
+    serverComponentsExternalPackages: [],
     // For App Router
     experimental: {
         serverActions: {
@@ -110,27 +113,38 @@ const nextConfig = {
             'react-native$': 'react-native-web',
         };
         
-        // Ensure React is not externalized for server bundle (required for standalone builds)
+        // CRITICAL: Force React to be bundled in server build (required for standalone builds)
         // This prevents "Cannot read properties of null (reading 'useState')" errors at runtime
+        // Next.js 15 externalizes React by default in standalone builds, but we need it bundled
         if (isServer) {
-            // Remove React from externals to ensure it's bundled
-            if (Array.isArray(config.externals)) {
-                config.externals = config.externals.filter(
-                    (external) => {
-                        if (typeof external === 'string') {
-                            return !external.includes('react');
-                        }
-                        return true;
-                    }
-                );
-            } else if (typeof config.externals === 'function') {
-                const originalExternals = config.externals;
+            // Wrap the externals function to prevent React from being externalized
+            const originalExternals = config.externals;
+            
+            if (typeof originalExternals === 'function') {
                 config.externals = (context, request, callback) => {
-                    if (request && (request === 'react' || request === 'react-dom' || request.startsWith('react/'))) {
-                        return callback(); // Don't externalize - bundle it
+                    // Never externalize React or React-DOM - always bundle them
+                    if (request && (
+                        request === 'react' || 
+                        request === 'react-dom' || 
+                        request.startsWith('react/') ||
+                        request.startsWith('react-dom/')
+                    )) {
+                        return callback(); // Bundle it - don't externalize
                     }
+                    // For all other packages, use the original externals logic
                     return originalExternals(context, request, callback);
                 };
+            } else if (Array.isArray(originalExternals)) {
+                // Filter out React from the externals array
+                config.externals = originalExternals.filter(ext => {
+                    if (typeof ext === 'string') {
+                        return !ext.includes('react');
+                    }
+                    if (ext instanceof RegExp) {
+                        return !ext.toString().includes('react');
+                    }
+                    return true;
+                });
             }
         }
 
