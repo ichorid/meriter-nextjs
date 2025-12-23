@@ -104,7 +104,58 @@ export class PermissionRuleEngine {
       return false;
     }
 
-    // STEP 7: Special handling for team communities
+    // STEP 7: Check voting restrictions from community settings
+    if (action === ActionType.VOTE && community.votingSettings?.votingRestriction) {
+      const restriction = community.votingSettings.votingRestriction;
+      
+      // Check restriction: "not-own" - cannot vote for own posts
+      if (restriction === 'not-own' && context?.isAuthor) {
+        // Exception: future-vision allows self-voting
+        if (community.typeTag === 'future-vision') {
+          this.logger.debug(
+            `[canPerformAction] ALLOWED: Self-voting allowed in future-vision despite not-own restriction`,
+          );
+        } else {
+          this.logger.debug(
+            `[canPerformAction] DENIED: Cannot vote for own post (not-own restriction)`,
+          );
+          return false;
+        }
+      }
+      
+      // Check restriction: "not-same-group" - cannot vote if users share communities
+      if (restriction === 'not-same-group' && context?.authorId) {
+        const voterCommunities = await this.userService.getUserCommunities(userId);
+        const authorCommunities = await this.userService.getUserCommunities(context.authorId);
+        
+        // Find shared communities (excluding special groups: future-vision, marathon-of-good, support)
+        const specialTypeTags = ['future-vision', 'marathon-of-good', 'support'];
+        const sharedCommunities = voterCommunities.filter(vcId => 
+          authorCommunities.includes(vcId)
+        );
+        
+        // Check if any shared community is NOT a special group
+        let hasNonSpecialSharedCommunity = false;
+        for (const sharedCommId of sharedCommunities) {
+          const sharedComm = await this.communityService.getCommunity(sharedCommId);
+          if (sharedComm && !specialTypeTags.includes(sharedComm.typeTag || '')) {
+            hasNonSpecialSharedCommunity = true;
+            break;
+          }
+        }
+        
+        if (hasNonSpecialSharedCommunity) {
+          this.logger.debug(
+            `[canPerformAction] DENIED: Users share non-special communities (not-same-group restriction)`,
+          );
+          return false;
+        }
+      }
+      
+      // Restriction "any" allows all votes (no additional checks needed)
+    }
+
+    // STEP 7.1: Special handling for team communities
     if (community.typeTag === 'team' && action === ActionType.VOTE) {
       // In team communities, only team members can vote
       if (!context?.isTeamMember) {

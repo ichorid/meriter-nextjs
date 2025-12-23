@@ -73,6 +73,59 @@ export class VoteService {
       return false;
     }
 
+    // Check voting restrictions from community settings
+    if (communityId) {
+      const community = await this.communityService.getCommunity(communityId);
+      if (community?.votingSettings?.votingRestriction) {
+        const restriction = community.votingSettings.votingRestriction;
+        
+        // Check if this is self-voting
+        const isSelfVoting = effectiveBeneficiary === userId;
+        
+        // Check restriction: "not-own" - cannot vote for own posts
+        if (restriction === 'not-own' && isSelfVoting) {
+          // Exception: future-vision allows self-voting
+          if (community.typeTag === 'future-vision') {
+            const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
+            if (userRole === COMMUNITY_ROLE_PARTICIPANT || userRole === COMMUNITY_ROLE_LEAD || userRole === COMMUNITY_ROLE_SUPERADMIN) {
+              return true; // Allow self-voting in future-vision group for these roles
+            }
+          }
+          this.logger.log(`[canUserVote] DENIED: Cannot vote for own post (not-own restriction)`);
+          return false;
+        }
+        
+        // Check restriction: "not-same-group" - cannot vote if users share communities
+        if (restriction === 'not-same-group' && !isSelfVoting) {
+          const authorId = effectiveBeneficiary;
+          const voterCommunities = await this.userService.getUserCommunities(userId);
+          const authorCommunities = await this.userService.getUserCommunities(authorId);
+          
+          // Find shared communities (excluding special groups: future-vision, marathon-of-good, support)
+          const specialTypeTags = ['future-vision', 'marathon-of-good', 'support'];
+          const sharedCommunities = voterCommunities.filter(vcId => 
+            authorCommunities.includes(vcId)
+          );
+          
+          // Check if any shared community is NOT a special group
+          for (const sharedCommId of sharedCommunities) {
+            const sharedComm = await this.communityService.getCommunity(sharedCommId);
+            if (sharedComm && !specialTypeTags.includes(sharedComm.typeTag || '')) {
+              this.logger.log(`[canUserVote] DENIED: Users share non-special communities (not-same-group restriction)`);
+              return false;
+            }
+          }
+        }
+        
+        // Restriction "any" allows all votes (no additional checks needed)
+        // If not self-voting and restriction is not "not-same-group", allow it
+        if (!isSelfVoting && restriction !== 'not-same-group') {
+          return true;
+        }
+      }
+    }
+
+    // Legacy check: if no voting restriction is set, use old logic
     // Check if this is self-voting
     const isSelfVoting = effectiveBeneficiary === userId;
     if (!isSelfVoting) {

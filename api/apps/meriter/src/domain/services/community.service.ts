@@ -74,6 +74,15 @@ export interface UpdateCommunityDto {
     };
     dailyEmission?: number;
   };
+  votingSettings?: {
+    votingRestriction?: 'any' | 'not-own' | 'not-same-group';
+    spendsMerits?: boolean;
+    awardsMerits?: boolean;
+    meritConversion?: {
+      targetCommunityId: string;
+      ratio: number;
+    };
+  };
   isPriority?: boolean;
 }
 
@@ -187,6 +196,8 @@ export class CommunityService {
     return {
       ...defaults,
       ...community.votingSettings,
+      votingRestriction:
+        community.votingSettings.votingRestriction ?? defaults.votingRestriction,
       meritConversion:
         community.votingSettings.meritConversion ?? defaults.meritConversion,
     };
@@ -380,6 +391,26 @@ export class CommunityService {
 
       // Merge settings into updateData
       Object.assign(updateData, settingsUpdate);
+    }
+
+    if (dto.votingSettings) {
+      // Only merge nested properties if they exist
+      const votingSettingsUpdate: any = {};
+      if (dto.votingSettings.votingRestriction !== undefined) {
+        votingSettingsUpdate['votingSettings.votingRestriction'] = dto.votingSettings.votingRestriction;
+      }
+      if (dto.votingSettings.spendsMerits !== undefined) {
+        votingSettingsUpdate['votingSettings.spendsMerits'] = dto.votingSettings.spendsMerits;
+      }
+      if (dto.votingSettings.awardsMerits !== undefined) {
+        votingSettingsUpdate['votingSettings.awardsMerits'] = dto.votingSettings.awardsMerits;
+      }
+      if (dto.votingSettings.meritConversion !== undefined) {
+        votingSettingsUpdate['votingSettings.meritConversion'] = dto.votingSettings.meritConversion;
+      }
+
+      // Merge votingSettings into updateData
+      Object.assign(updateData, votingSettingsUpdate);
     }
 
     const updatedCommunity = await this.communityModel

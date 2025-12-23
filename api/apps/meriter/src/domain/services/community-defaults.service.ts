@@ -311,6 +311,7 @@ export class CommunityDefaultsService {
     return {
       spendsMerits: true,
       awardsMerits: true,
+      votingRestriction: 'not-own', // Default: users can vote for others' posts, but not their own
       // meritConversion is optional and community-specific
     };
   }
