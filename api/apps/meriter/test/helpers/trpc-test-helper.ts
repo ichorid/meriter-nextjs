@@ -7,7 +7,7 @@
  * - Mutations: POST /trpc/{procedurePath} with { json: input } in body
  */
 
-import request from 'supertest';
+import * as request from 'supertest';
 import type { INestApplication } from '@nestjs/common';
 
 /**

@@ -104,7 +104,12 @@
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": [
-        "ts-jest"
+        "ts-jest",
+        {
+          "tsconfig": {
+            "module": "commonjs"
+          }
+        }
       ]
     },
     "collectCoverageFrom": [
@@ -124,6 +129,9 @@
       "<rootDir>/libs/"
     ],
     "maxWorkers": 1,
+    "transformIgnorePatterns": [
+      "node_modules/(?!.*superjson|.*copy-anything|.*is-what|.*type-fest)"
+    ],
     "moduleNameMapper": {
       "@meriter/shared-types": "<rootDir>/../libs/shared-types/src",
       "@meriter/shared-types/(.*)": "<rootDir>/../libs/shared-types/src/$1",

@@ -90,25 +90,25 @@ export const searchRouter = router({
             publications = allPublications.flat().map((p) => p.toSnapshot());
           }
 
-          // Filter by query if provided
-          publications.forEach((pub) => {
+          // Filter by query if provided and process publications
+          for (const pub of publications) {
             if (query) {
               const searchText = `${pub.title || ''} ${pub.content || ''}`.toLowerCase();
               if (!searchText.includes(query.toLowerCase())) {
-                return;
+                continue;
               }
             }
 
             // Filter by author if provided
             if (authorId && pub.authorId !== authorId) {
-              return;
+              continue;
             }
 
             // Filter by tags if provided
             if (tags && tags.length > 0) {
               const pubTags = pub.hashtags || [];
               if (!tags.some((tag) => pubTags.includes(tag))) {
-                return;
+                continue;
               }
             }
 
@@ -140,7 +140,7 @@ export const searchRouter = router({
                   }
                 : undefined,
             });
-          });
+          }
         } catch (error) {
           // Continue with other content types if publications search fails
         }
