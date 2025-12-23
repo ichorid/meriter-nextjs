@@ -16,9 +16,9 @@ const nextConfig = {
     eslint: {
         ignoreDuringBuilds: true,
     },
-    // CRITICAL: Prevent React from being externalized in standalone builds
-    // This ensures React is bundled and available at runtime, preventing "Cannot read properties of null (reading 'useState')" errors
-    serverComponentsExternalPackages: [],
+    // Note: React is externalized by default in standalone builds for efficiency
+    // Production dependencies (including React) should be installed in the Docker runner stage
+    // This follows Next.js best practices and reduces bundle size
     // For App Router
     experimental: {
         serverActions: {
@@ -113,40 +113,9 @@ const nextConfig = {
             'react-native$': 'react-native-web',
         };
         
-        // CRITICAL: Force React to be bundled in server build (required for standalone builds)
-        // This prevents "Cannot read properties of null (reading 'useState')" errors at runtime
-        // Next.js 15 externalizes React by default in standalone builds, but we need it bundled
-        if (isServer) {
-            // Wrap the externals function to prevent React from being externalized
-            const originalExternals = config.externals;
-            
-            if (typeof originalExternals === 'function') {
-                config.externals = (context, request, callback) => {
-                    // Never externalize React or React-DOM - always bundle them
-                    if (request && (
-                        request === 'react' || 
-                        request === 'react-dom' || 
-                        request.startsWith('react/') ||
-                        request.startsWith('react-dom/')
-                    )) {
-                        return callback(); // Bundle it - don't externalize
-                    }
-                    // For all other packages, use the original externals logic
-                    return originalExternals(context, request, callback);
-                };
-            } else if (Array.isArray(originalExternals)) {
-                // Filter out React from the externals array
-                config.externals = originalExternals.filter(ext => {
-                    if (typeof ext === 'string') {
-                        return !ext.includes('react');
-                    }
-                    if (ext instanceof RegExp) {
-                        return !ext.toString().includes('react');
-                    }
-                    return true;
-                });
-            }
-        }
+        // Note: React externalization is handled by Next.js default behavior
+        // For standalone builds, React should be installed in the Docker runner stage
+        // This is more efficient than bundling React and follows Next.js best practices
 
         // Extensions for React Native
         config.resolve.extensions = [
