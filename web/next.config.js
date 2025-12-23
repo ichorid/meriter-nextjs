@@ -97,6 +97,7 @@ const nextConfig = {
         config.resolve.alias = {
             ...config.resolve.alias,
             // Ensure React and React-DOM resolve to single instances (prevents ReactCurrentOwner errors)
+            // Using explicit paths ensures all modules use the same React 19 instance
             'react': path.resolve(__dirname, 'node_modules/react'),
             'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
             // Resolve @meriter/shared-types to the dist directory for CommonJS relative imports
