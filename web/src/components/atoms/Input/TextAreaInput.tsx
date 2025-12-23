@@ -1,7 +1,10 @@
 'use client';
 
+import React from 'react';
+import { Textarea } from '@/components/ui/shadcn/textarea';
+import { Label } from '@/components/ui/shadcn/label';
 import { useControlledInput } from './useControlledInput';
-import { InputWrapper } from './InputWrapper';
+import { cn } from '@/lib/utils';
 
 export interface TextAreaInputProps {
     labelTitle?: string;
@@ -37,20 +40,23 @@ export function TextAreaInput({
         updateType,
     });
 
+    const textareaId = React.useId();
+
     return (
-        <InputWrapper
-            labelTitle={labelTitle}
-            labelStyle={labelStyle}
-            containerStyle={containerStyle}
-            className={className}
-        >
-            <textarea
+        <div className={cn('w-full space-y-1.5', containerStyle, className)}>
+            {labelTitle && (
+                <Label htmlFor={textareaId} className={labelStyle}>
+                    {labelTitle}
+                </Label>
+            )}
+            <Textarea
+                id={textareaId}
                 value={value}
-                className="textarea textarea-bordered w-full"
                 placeholder={placeholder}
                 onChange={(e) => updateValue(e.target.value)}
+                className="w-full"
             />
-        </InputWrapper>
+        </div>
     );
 }
 

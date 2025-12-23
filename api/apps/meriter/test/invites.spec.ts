@@ -16,7 +16,7 @@ import { InviteSchemaClass, InviteDocument } from '../src/domain/models/invite/i
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
+import { trpcMutation, trpcMutationWithError } from './helpers/trpc-test-helper';
 
 class AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -209,27 +209,21 @@ describe('Invites - Superadmin-to-Lead', () => {
       (global as any).testUserGlobalRole = 'superadmin';
 
       // Create superadmin-to-lead invite without communityId
-      const createResponse = await request(app.getHttpServer())
-        .post('/api/v1/invites')
-        .send({
-          type: 'superadmin-to-lead',
-          // No communityId - new behavior
-        })
-        .expect(201);
+      const created = await trpcMutation(app, 'invites.create', {
+        type: 'superadmin-to-lead',
+        // No communityId - new behavior
+      });
 
-      const inviteCode = createResponse.body.data.code;
+      const inviteCode = created.code;
 
       // Use the invite as newLeadId
       (global as any).testUserId = newLeadId;
       (global as any).testUserGlobalRole = undefined;
 
-      // Use the invite via HTTP endpoint
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/invites/${inviteCode}/use`)
-        .expect(201);
+      // Use the invite via tRPC
+      const response = await trpcMutation(app, 'invites.use', { code: inviteCode });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.message).toContain('Team group created');
+      expect(response.message).toContain('Team group created');
 
       // Find team community (created automatically) - use UserCommunityRole to find communities where user is lead
       const leadRoles = await userCommunityRoleService.getCommunitiesByRole(newLeadId, 'lead');
@@ -324,23 +318,18 @@ describe('Invites - Superadmin-to-Lead', () => {
       (global as any).testUserId = superadminId;
       (global as any).testUserGlobalRole = 'superadmin';
 
-      const createResponse = await request(app.getHttpServer())
-        .post('/api/v1/invites')
-        .send({
-          type: 'superadmin-to-lead',
-        })
-        .expect(201);
+      const created = await trpcMutation(app, 'invites.create', {
+        type: 'superadmin-to-lead',
+      });
 
-      const inviteCode = createResponse.body.data.code;
+      const inviteCode = created.code;
 
       (global as any).testUserId = newLeadId;
       (global as any).testUserGlobalRole = undefined;
 
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/invites/${inviteCode}/use`)
-        .expect(201);
+      const response = await trpcMutation(app, 'invites.use', { code: inviteCode });
 
-      expect(response.body.success).toBe(true);
+      expect(response).toBeDefined();
 
       // Verify user is participant in future-vision (new behavior)
       const visionRole = await userCommunityRoleService.getRole(
@@ -384,23 +373,18 @@ describe('Invites - Superadmin-to-Lead', () => {
       (global as any).testUserId = superadminId;
       (global as any).testUserGlobalRole = 'superadmin';
 
-      const createResponse = await request(app.getHttpServer())
-        .post('/api/v1/invites')
-        .send({
-          type: 'superadmin-to-lead',
-        })
-        .expect(201);
+      const created = await trpcMutation(app, 'invites.create', {
+        type: 'superadmin-to-lead',
+      });
 
-      const inviteCode = createResponse.body.data.code;
+      const inviteCode = created.code;
 
       (global as any).testUserId = newLeadId;
       (global as any).testUserGlobalRole = undefined;
 
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/invites/${inviteCode}/use`)
-        .expect(201);
+      const response = await trpcMutation(app, 'invites.use', { code: inviteCode });
 
-      expect(response.body.success).toBe(true);
+      expect(response).toBeDefined();
 
       // Verify user is participant in marathon-of-good (new behavior)
       const marathonRole = await userCommunityRoleService.getRole(
@@ -424,23 +408,18 @@ describe('Invites - Superadmin-to-Lead', () => {
       (global as any).testUserId = superadminId;
       (global as any).testUserGlobalRole = 'superadmin';
 
-      const createResponse = await request(app.getHttpServer())
-        .post('/api/v1/invites')
-        .send({
-          type: 'superadmin-to-lead',
-        })
-        .expect(201);
+      const created = await trpcMutation(app, 'invites.create', {
+        type: 'superadmin-to-lead',
+      });
 
-      const inviteCode = createResponse.body.data.code;
+      const inviteCode = created.code;
 
       (global as any).testUserId = newLeadId;
       (global as any).testUserGlobalRole = undefined;
 
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/invites/${inviteCode}/use`)
-        .expect(201);
+      const response = await trpcMutation(app, 'invites.use', { code: inviteCode });
 
-      expect(response.body.success).toBe(true);
+      expect(response).toBeDefined();
 
       // Verify team community was created
       const teamCommunities = await communityModel.find({
@@ -630,34 +609,26 @@ describe('Invites - Role Restrictions', () => {
     (global as any).testUserId = superadminId;
     (global as any).testUserGlobalRole = 'superadmin';
 
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/invites')
-      .send({
-        type: 'superadmin-to-lead',
-        communityId: communityId,
-      })
-      .expect(201);
+    const response = await trpcMutation(app, 'invites.create', {
+      type: 'superadmin-to-lead',
+      communityId: communityId,
+    });
 
-    expect(response.body.success).toBe(true);
-    expect(response.body.data).toBeDefined();
-    expect(response.body.data.type).toBe('superadmin-to-lead');
+    expect(response).toBeDefined();
+    expect(response.type).toBe('superadmin-to-lead');
   });
 
   it('should allow lead to create lead-to-participant invites', async () => {
     (global as any).testUserId = leadId;
     (global as any).testUserGlobalRole = undefined;
 
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/invites')
-      .send({
-        type: 'lead-to-participant',
-        communityId: teamCommunityId,
-      })
-      .expect(201);
+    const response = await trpcMutation(app, 'invites.create', {
+      type: 'lead-to-participant',
+      communityId: teamCommunityId,
+    });
 
-    expect(response.body.success).toBe(true);
-    expect(response.body.data).toBeDefined();
-    expect(response.body.data.type).toBe('lead-to-participant');
+    expect(response).toBeDefined();
+    expect(response.type).toBe('lead-to-participant');
   });
 
   it('should block participant from creating invites when they have no team community', async () => {
@@ -665,15 +636,13 @@ describe('Invites - Role Restrictions', () => {
     (global as any).testUserGlobalRole = undefined;
 
     // Try to create invite without team community - should fail
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/invites')
-      .send({
-        type: 'lead-to-participant',
-        // No communityId - will try to auto-detect but participant has no team
-      })
-      .expect(400); // BadRequest for no team community
+    const result = await trpcMutationWithError(app, 'invites.create', {
+      type: 'lead-to-participant',
+      // No communityId - will try to auto-detect but participant has no team
+    });
 
-    expect(response.body.message).toContain('No team community found');
+    expect(result.error?.code).toBe('BAD_REQUEST');
+    expect(result.error?.message).toContain('No team community found');
   });
 
   it('should block viewer from creating invites when they have no team community', async () => {
@@ -681,15 +650,13 @@ describe('Invites - Role Restrictions', () => {
     (global as any).testUserGlobalRole = undefined;
 
     // Try to create invite without team community - should fail
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/invites')
-      .send({
-        type: 'lead-to-participant',
-        // No communityId - will try to auto-detect but viewer has no team
-      })
-      .expect(400); // BadRequest for no team community
+    const result = await trpcMutationWithError(app, 'invites.create', {
+      type: 'lead-to-participant',
+      // No communityId - will try to auto-detect but viewer has no team
+    });
 
-    expect(response.body.message).toContain('No team community found');
+    expect(result.error?.code).toBe('BAD_REQUEST');
+    expect(result.error?.message).toContain('No team community found');
   });
 
   it('should allow user with both participant and lead roles to create invites', async () => {
@@ -711,16 +678,12 @@ describe('Invites - Role Restrictions', () => {
     (global as any).testUserId = mixedRoleUserId;
     (global as any).testUserGlobalRole = undefined;
 
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/invites')
-      .send({
-        type: 'lead-to-participant',
-        communityId: teamCommunityId,
-      })
-      .expect(201);
+    const response = await trpcMutation(app, 'invites.create', {
+      type: 'lead-to-participant',
+      communityId: teamCommunityId,
+    });
 
-    expect(response.body.success).toBe(true);
-    expect(response.body.data).toBeDefined();
+    expect(response).toBeDefined();
   });
 });
 

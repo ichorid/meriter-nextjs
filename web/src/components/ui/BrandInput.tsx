@@ -1,6 +1,9 @@
 'use client';
 
 import React from 'react';
+import { Input as ShadcnInput } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import { cn } from '@/lib/utils';
 
 interface BrandInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label?: string;
@@ -31,49 +34,41 @@ export const BrandInput = React.forwardRef<HTMLInputElement, BrandInputProps>(
         const inputId = id || React.useId();
 
         return (
-            <div className={`w-full space-y-1.5 ${containerClassName}`}>
+            <div className={cn('w-full space-y-1.5', containerClassName)}>
                 {label && (
-                    <label
-                        htmlFor={inputId}
-                        className="text-sm font-medium leading-none text-base-content peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
+                    <Label htmlFor={inputId}>
                         {label}
-                    </label>
+                    </Label>
                 )}
                 <div className="relative">
                     {leftIcon && (
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10">
                             {leftIcon}
                         </div>
                     )}
-                    <input
+                    <ShadcnInput
                         id={inputId}
                         ref={ref}
-                        className={`
-                            flex h-11 w-full rounded-xl border border-base-content/10 bg-base-100 px-4 py-2 text-sm text-base-content
-                            ring-offset-base-100 file:border-0 file:bg-transparent file:text-sm file:font-medium 
-                            placeholder:text-base-content/40 
-                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-base-content/20 focus-visible:border-base-content/20
-                            disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-base-200/50
-                            transition-all
-                            ${leftIcon ? 'pl-10' : ''}
-                            ${rightIcon ? 'pr-10' : ''}
-                            ${error ? 'border-error focus-visible:ring-error/30' : ''}
-                            ${className}
-                        `}
+                        className={cn(
+                            'h-11 rounded-xl',
+                            leftIcon && 'pl-10',
+                            rightIcon && 'pr-10',
+                            error && 'border-destructive focus-visible:ring-destructive',
+                            className
+                        )}
                         {...props}
                     />
                     {rightIcon && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40">
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10">
                             {rightIcon}
                         </div>
                     )}
                 </div>
                 {error && (
-                    <p className="text-xs text-error font-medium">{error}</p>
+                    <p className="text-xs text-destructive font-medium">{error}</p>
                 )}
                 {!error && helperText && (
-                    <p className="text-xs text-base-content/50">{helperText}</p>
+                    <p className="text-xs text-muted-foreground">{helperText}</p>
                 )}
             </div>
         );

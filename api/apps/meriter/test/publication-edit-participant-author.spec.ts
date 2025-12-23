@@ -1,9 +1,9 @@
-import * as request from 'supertest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
 import { MeriterModule } from '../src/meriter.module';
 import { TestDatabaseHelper } from './test-db.helper';
 import { createTestPublication } from './helpers/fixtures';
+import { trpcMutation } from './helpers/trpc-test-helper';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -153,27 +153,23 @@ describe('Publication Edit - Participant Author Scenario', () => {
       });
 
       console.log('[TEST] Creating publication...');
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
       console.log('[TEST] Publication created:', {
         id: publicationId,
-        authorId: createRes.body.data.authorId,
+        authorId: created.authorId,
         currentUserId: participantAuthorId,
-        metrics: createRes.body.data.metrics,
+        metrics: created.metrics,
       });
 
       // Verify publication has no votes
-      const totalVotes = (createRes.body.data.metrics?.upvotes || 0) + 
-                         (createRes.body.data.metrics?.downvotes || 0);
+      const totalVotes = (created.metrics?.upvotes || 0) + 
+                         (created.metrics?.downvotes || 0);
       expect(totalVotes).toBe(0);
       console.log('[TEST] Total votes:', totalVotes);
 
       // Verify publication is within edit window (just created, so should be day 0)
-      const createdAt = new Date(createRes.body.data.createdAt);
+      const createdAt = new Date(created.createdAt);
       const now = new Date();
       const daysSinceCreation = Math.floor(
         (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
@@ -182,21 +178,18 @@ describe('Publication Edit - Participant Author Scenario', () => {
       console.log('[TEST] Days since creation:', daysSinceCreation);
 
       // Attempt to edit the publication - this should succeed
-      const updateDto = {
-        title: 'Updated title',
-        description: 'Updated description from participant author',
-        content: 'Updated description from participant author',
-        hashtags: ['updated', 'tags'],
-      };
-
       console.log('[TEST] Attempting to edit publication...');
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(200);
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: {
+          title: 'Updated title',
+          description: 'Updated description from participant author',
+          content: 'Updated description from participant author',
+          hashtags: ['updated', 'tags'],
+        },
+      });
 
-      expect(updateRes.body.success).toBe(true);
-      expect(updateRes.body.data.content).toBe('Updated description from participant author');
+      expect(updated.content).toBe('Updated description from participant author');
       console.log('[TEST] Edit succeeded!');
     });
 
@@ -206,29 +199,22 @@ describe('Publication Edit - Participant Author Scenario', () => {
 
       // Create publication as participant author
       const pubDto = createTestPublication(communityId, participantAuthorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Simulate UI update call - matches PublicationCreateForm.tsx update call
-      const updateDto = {
-        title: 'Updated title',
-        description: 'Updated description',
-        content: 'Updated description', // UI sends description as content for backward compatibility
-        hashtags: ['updated', 'tags'],
-        imageUrl: undefined, // UI sends undefined for imageUrl
-      };
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: {
+          title: 'Updated title',
+          description: 'Updated description',
+          content: 'Updated description', // UI sends description as content for backward compatibility
+          hashtags: ['updated', 'tags'],
+          imageUrl: undefined, // UI sends undefined for imageUrl
+        },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
-      expect(updateRes.body.data.content).toBe('Updated description');
+      expect(updated.content).toBe('Updated description');
     });
 
     it('should verify participant author has correct role in community', async () => {

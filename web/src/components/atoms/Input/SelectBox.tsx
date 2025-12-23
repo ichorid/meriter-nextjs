@@ -3,6 +3,14 @@
 import React from 'react';
 import { useControlledInput } from './useControlledInput';
 import { InputWrapper } from './InputWrapper';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/shadcn/select';
+import { cn } from '@/lib/utils';
 
 export interface SelectOption {
     name: string;
@@ -53,22 +61,20 @@ export function SelectBox({
             labelStyle={labelStyle}
             containerStyle={containerStyle}
             className={className}
-            containerClassName={`inline-block ${containerStyle} ${className}`}
+            containerClassName={cn('inline-block', containerStyle, className)}
         >
-            <select
-                className="select select-bordered w-full"
-                value={value}
-                onChange={(e) => updateValue(e.target.value)}
-            >
-                <option disabled value="PLACEHOLDER">
-                    {placeholder}
-                </option>
-                {options.map((o, k) => (
-                    <option value={o.value || o.name} key={k}>
-                        {o.name}
-                    </option>
-                ))}
-            </select>
+            <Select value={value || undefined} onValueChange={updateValue}>
+                <SelectTrigger className="w-full">
+                    <SelectValue placeholder={placeholder} />
+                </SelectTrigger>
+                <SelectContent>
+                    {options.map((o, k) => (
+                        <SelectItem key={k} value={o.value || o.name}>
+                            {o.name}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
         </InputWrapper>
     );
 }

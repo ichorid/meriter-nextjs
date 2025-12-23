@@ -1,4 +1,8 @@
+'use client';
+
 import React from 'react';
+import { Separator } from '@/components/ui/shadcn/separator';
+import { cn } from '@/lib/utils';
 
 export interface DividerProps extends React.HTMLAttributes<HTMLDivElement> {
   text?: string;
@@ -15,26 +19,33 @@ export const Divider = React.forwardRef<HTMLDivElement, DividerProps>(
     },
     ref
   ) => {
-    if (vertical) {
+    if (text) {
       return (
         <div
           ref={ref}
-          className={`divider divider-vertical ${className}`}
+          className={cn(
+            'flex items-center gap-2',
+            vertical && 'flex-col h-full',
+            className
+          )}
           {...props}
         >
-          {text}
+          {!vertical && <Separator orientation="horizontal" />}
+          {vertical && <Separator orientation="vertical" />}
+          {text && <span className="text-sm text-muted-foreground whitespace-nowrap">{text}</span>}
+          {!vertical && <Separator orientation="horizontal" />}
+          {vertical && <Separator orientation="vertical" />}
         </div>
       );
     }
 
     return (
-      <div
+      <Separator
         ref={ref}
-        className={`divider ${className}`}
+        orientation={vertical ? 'vertical' : 'horizontal'}
+        className={className}
         {...props}
-      >
-        {text}
-      </div>
+      />
     );
   }
 );

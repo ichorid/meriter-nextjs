@@ -55,6 +55,30 @@
     --brand-text-secondary: #6b7280;
     --brand-text-muted: #9ca3af;
     
+    /* shadcn/ui theme variables (mapped to existing variables) */
+    --background: var(--base-100);
+    --foreground: var(--base-content);
+    --card: var(--base-100);
+    --card-foreground: var(--base-content);
+    --popover: var(--base-100);
+    --popover-foreground: var(--base-content);
+    --primary-foreground: var(--primary-content);
+    --secondary-foreground: var(--secondary-content);
+    --muted: var(--base-200);
+    --muted-foreground: var(--brand-text-muted);
+    --accent-foreground: var(--accent-content);
+    --destructive: var(--error);
+    --destructive-foreground: var(--error-content);
+    --border: var(--brand-border);
+    --input: var(--base-200);
+    --ring: var(--primary);
+    --radius: 12px;
+    --chart-1: var(--primary);
+    --chart-2: var(--secondary);
+    --chart-3: var(--accent);
+    --chart-4: var(--success);
+    --chart-5: var(--warning);
+    
     /* Loading indicator colors */
     --loading-overlay: rgba(0, 0, 0, 0.5);
     --loading-spinner-bg: #f3f3f3;
@@ -68,7 +92,6 @@
     --inspector-w: 360px;
     --content-max: 920px;
     --gutter: 24px;
-    --radius: 12px;
   }
   
   [data-theme="dark"] {
@@ -112,6 +135,29 @@
     --brand-text-primary: #a6adbb;
     --brand-text-secondary: #8b92a0;
     --brand-text-muted: #6b7280;
+    
+    /* shadcn/ui theme variables (dark mode - mapped to existing variables) */
+    --background: var(--base-100);
+    --foreground: var(--base-content);
+    --card: var(--brand-surface);
+    --card-foreground: var(--base-content);
+    --popover: var(--brand-surface);
+    --popover-foreground: var(--base-content);
+    --primary-foreground: var(--primary-content);
+    --secondary-foreground: var(--secondary-content);
+    --muted: var(--base-200);
+    --muted-foreground: var(--brand-text-muted);
+    --accent-foreground: var(--accent-content);
+    --destructive: var(--error);
+    --destructive-foreground: var(--error-content);
+    --border: var(--brand-border);
+    --input: var(--base-200);
+    --ring: var(--primary);
+    --chart-1: var(--primary);
+    --chart-2: var(--secondary);
+    --chart-3: var(--accent);
+    --chart-4: var(--success);
+    --chart-5: var(--warning);
     
     /* Loading indicator colors (dark theme) */
     --loading-overlay: rgba(0, 0, 0, 0.7);
@@ -311,8 +357,7 @@
   }
 }
 
-/* Dark mode styles for form elements (input, textarea, select) */
-[data-theme="dark"] .input,
+/* Dark mode styles for native form elements (kept for any direct usage) */
 [data-theme="dark"] input[type="text"],
 [data-theme="dark"] input[type="search"],
 [data-theme="dark"] input[type="email"],
@@ -320,16 +365,13 @@
 [data-theme="dark"] input[type="number"],
 [data-theme="dark"] input[type="tel"],
 [data-theme="dark"] input[type="url"],
-[data-theme="dark"] .textarea,
 [data-theme="dark"] textarea,
-[data-theme="dark"] .select,
 [data-theme="dark"] select {
   background-color: var(--base-200);
   color: var(--base-content);
   border-color: var(--base-300);
 }
 
-[data-theme="dark"] .input:focus,
 [data-theme="dark"] input[type="text"]:focus,
 [data-theme="dark"] input[type="search"]:focus,
 [data-theme="dark"] input[type="email"]:focus,
@@ -337,16 +379,13 @@
 [data-theme="dark"] input[type="number"]:focus,
 [data-theme="dark"] input[type="tel"]:focus,
 [data-theme="dark"] input[type="url"]:focus,
-[data-theme="dark"] .textarea:focus,
 [data-theme="dark"] textarea:focus,
-[data-theme="dark"] .select:focus,
 [data-theme="dark"] select:focus {
   background-color: var(--base-200);
   border-color: var(--primary);
   outline: none;
 }
 
-[data-theme="dark"] .input::placeholder,
 [data-theme="dark"] input[type="text"]::placeholder,
 [data-theme="dark"] input[type="search"]::placeholder,
 [data-theme="dark"] input[type="email"]::placeholder,
@@ -354,7 +393,6 @@
 [data-theme="dark"] input[type="number"]::placeholder,
 [data-theme="dark"] input[type="tel"]::placeholder,
 [data-theme="dark"] input[type="url"]::placeholder,
-[data-theme="dark"] .textarea::placeholder,
 [data-theme="dark"] textarea::placeholder {
   color: var(--base-content);
   opacity: 0.5;

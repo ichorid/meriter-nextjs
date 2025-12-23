@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import { Label } from '@/components/ui/shadcn/label';
+import { cn } from '@/lib/utils';
 
 interface BrandFormControlProps {
     label?: string;
@@ -20,19 +22,19 @@ export const BrandFormControl: React.FC<BrandFormControlProps> = ({
     className = '',
 }) => {
     return (
-        <div className={`space-y-2 ${className}`}>
+        <div className={cn('space-y-2', className)}>
             {label && (
-                <label className="block text-sm font-medium text-base-content">
+                <Label className="block">
                     {label}
-                    {required && <span className="text-error ml-1">*</span>}
-                </label>
+                    {required && <span className="text-destructive ml-1">*</span>}
+                </Label>
             )}
             {children}
             {helperText && !error && (
-                <p className="text-xs text-base-content/50">{helperText}</p>
+                <p className="text-xs text-muted-foreground">{helperText}</p>
             )}
             {error && (
-                <p className="text-xs text-error">{error}</p>
+                <p className="text-xs text-destructive">{error}</p>
             )}
         </div>
     );

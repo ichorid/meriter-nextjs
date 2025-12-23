@@ -2,7 +2,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Avatar as ShadcnAvatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { getInitials, getColorFromString } from '@/lib/utils/avatar';
+import { cn } from '@/lib/utils';
 
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | number;
 
@@ -16,7 +18,7 @@ export interface AvatarProps extends Omit<React.ImgHTMLAttributes<HTMLImageEleme
   onError?: () => void; // Callback when image fails to load
 }
 
-export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
+export const Avatar = React.forwardRef<React.ElementRef<typeof ShadcnAvatar>, AvatarProps>(
   ({
     src,
     alt = '',
@@ -29,7 +31,6 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
     ...props
   }, ref) => {
   const [hasError, setHasError] = useState(false);
-  const [isLoading, setIsLoading] = useState(!!src);
 
   const sizeClasses = {
     xs: 'w-6 h-6',
@@ -58,51 +59,20 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
     ? initials
     : fallback;
 
-  const handleError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  const handleError = () => {
     setHasError(true);
-    setIsLoading(false);
     if (onError) {
       onError();
     }
-    // Also handle legacy error display for backward compatibility
-    const target = e.target as HTMLImageElement;
-    target.style.display = 'none';
-    const fallbackElement = target.nextElementSibling as HTMLElement;
-    if (fallbackElement) {
-      fallbackElement.style.display = 'flex';
-    }
   };
-
-  const handleLoad = () => {
-    setIsLoading(false);
-  };
-
-  // Determine classes for container
-  const classes = [
-    'avatar',
-    'rounded-full',
-    'overflow-hidden',
-    'relative',
-    'aspect-square', // Ensure circular shape
-    'flex',
-    'items-center',
-    'justify-center',
-    'flex-shrink-0', // Prevent flex shrinking
-    typeof size !== 'number' && size in sizeClasses && sizeClasses[size as keyof typeof sizeClasses],
-    onClick && 'cursor-pointer',
-    className,
-  ].filter(Boolean).join(' ');
 
   // Container styles
   const containerStyle: React.CSSProperties = {
     ...(typeof size === 'number' ? { width: sizePixels, height: sizePixels, minWidth: sizePixels, minHeight: sizePixels } : {}),
   };
 
-  // Placeholder div styles
+  // Placeholder styles
   const placeholderStyle: React.CSSProperties = {
-    width: '100%',
-    height: '100%',
-    display: showPlaceholder ? 'flex' : 'none',
     ...(useNamePlaceholder && backgroundColor ? {
       backgroundColor,
       color: 'white',
@@ -112,44 +82,34 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
   };
 
   return (
-    <div
+    <ShadcnAvatar
       ref={ref}
-      className={classes}
+      className={cn(
+        typeof size !== 'number' && size in sizeClasses && sizeClasses[size as keyof typeof sizeClasses],
+        onClick && 'cursor-pointer',
+        className
+      )}
       style={containerStyle}
       onClick={onClick}
     >
       {src && !hasError && (
-        <img
+        <AvatarImage
           src={src}
           alt={alt}
-          className="w-full h-full object-cover"
           onError={handleError}
-          onLoad={handleLoad}
           {...props}
         />
       )}
-      {/* Loading placeholder (shown while image is loading) */}
-      {isLoading && useNamePlaceholder && (
-        <div
-          className="absolute inset-0 flex items-center justify-center"
-          style={{
-            backgroundColor,
-            color: 'white',
-            fontSize: sizePixels * 0.5,
-            fontWeight: 600,
-          }}
-        >
-          {initials}
-        </div>
-      )}
-      {/* Fallback placeholder (shown when no src or error) */}
-      <div
-        className={`w-full h-full flex items-center justify-center ${useNamePlaceholder ? '' : 'bg-base-300 text-base-content'} font-medium`}
+      <AvatarFallback
+        className={cn(
+          !useNamePlaceholder && 'bg-muted text-muted-foreground',
+          'font-medium'
+        )}
         style={placeholderStyle}
       >
         {placeholderContent}
-      </div>
-    </div>
+      </AvatarFallback>
+    </ShadcnAvatar>
   );
 });
 

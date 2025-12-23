@@ -16,7 +16,7 @@ import { Publication, PublicationDocument } from '../src/domain/models/publicati
 import { Comment, CommentDocument } from '../src/domain/models/comment/comment.schema';
 import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
+import { trpcQuery, trpcQueryWithError } from './helpers/trpc-test-helper';
 
 describe('Comment Details Endpoint E2E Tests', () => {
   let app: INestApplication;
@@ -252,15 +252,7 @@ describe('Comment Details Endpoint E2E Tests', () => {
       );
 
       // Make request to details endpoint
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/comments/${commentId}/details`)
-        .set('Authorization', `Bearer ${testToken}`)
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeDefined();
-
-      const data = response.body.data;
+      const data = await trpcQuery(app, 'comments.getDetails', { id: commentId });
       expect(data.comment).toBeDefined();
       expect(data.comment.id).toBe(commentId);
       expect(data.comment.content).toBe('This is a regular comment');
@@ -304,13 +296,7 @@ describe('Comment Details Endpoint E2E Tests', () => {
       );
 
       // Make request to details endpoint
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/comments/${commentId}/details`)
-        .set('Authorization', `Bearer ${testToken}`)
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      const data = response.body.data;
+      const data = await trpcQuery(app, 'comments.getDetails', { id: commentId });
 
       expect(data.voteTransaction).toBeDefined();
       expect(data.voteTransaction.amountTotal).toBe(10);
@@ -375,13 +361,7 @@ describe('Comment Details Endpoint E2E Tests', () => {
       );
 
       // Make request to details endpoint
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/comments/${commentId}/details`)
-        .set('Authorization', `Bearer ${testToken}`)
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      const data = response.body.data;
+      const data = await trpcQuery(app, 'comments.getDetails', { id: commentId });
 
       expect(data.voteTransaction).toBeDefined();
       expect(data.voteTransaction.amountTotal).toBe(15);
@@ -422,13 +402,7 @@ describe('Comment Details Endpoint E2E Tests', () => {
       );
 
       // Make request to details endpoint
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/comments/${commentId}/details`)
-        .set('Authorization', `Bearer ${testToken}`)
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      const data = response.body.data;
+      const data = await trpcQuery(app, 'comments.getDetails', { id: commentId });
 
       expect(data.voteTransaction).toBeDefined();
 
@@ -441,10 +415,9 @@ describe('Comment Details Endpoint E2E Tests', () => {
     it('should return 404 for non-existent comment', async () => {
       const nonExistentId = uid();
 
-      await request(app.getHttpServer())
-        .get(`/api/v1/comments/${nonExistentId}/details`)
-        .set('Authorization', `Bearer ${testToken}`)
-        .expect(404);
+      const result = await trpcQueryWithError(app, 'comments.getDetails', { id: nonExistentId });
+
+      expect(result.error?.code).toBe('NOT_FOUND');
     });
   });
 });

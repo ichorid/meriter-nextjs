@@ -32,22 +32,24 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    // Map 'danger' to 'primary' with red styling or just use 'primary' for now as BrandButton doesn't have danger
-    // Actually BrandButton has variants: primary, secondary, outline, ghost.
-    // We'll map 'danger' to 'primary' but maybe add a class if needed, or just accept it.
-    // 'link' -> 'ghost' or 'link' if BrandButton supports it. BrandButton supports 'ghost'.
-
-    const mapVariant = (v: ButtonVariant): any => {
-      if (v === 'danger') return 'primary'; // Fallback
-      if (v === 'link') return 'ghost';
+    // Map variants to BrandButton variants
+    const mapVariant = (v: ButtonVariant): 'primary' | 'secondary' | 'ghost' | 'link' | 'destructive' => {
+      if (v === 'danger') return 'destructive';
+      if (v === 'link') return 'link';
       return v;
+    };
+
+    // Map sizes: xs -> sm, others stay the same
+    const mapSize = (s: ButtonSize): 'sm' | 'md' | 'lg' => {
+      if (s === 'xs') return 'sm';
+      return s;
     };
 
     return (
       <BrandButton
         ref={ref}
         variant={mapVariant(variant)}
-        size={size === 'xs' ? 'sm' : size} // Map xs to sm
+        size={mapSize(size)}
         isLoading={isLoading}
         leftIcon={leftIcon}
         rightIcon={rightIcon}

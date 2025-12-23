@@ -19,7 +19,7 @@ import {
   NotificationDocument,
 } from '../src/domain/models/notification/notification.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
+import { trpcMutation, trpcQuery } from './helpers/trpc-test-helper';
 import { JwtService } from '../src/api-v1/common/utils/jwt-service.util';
 
 describe('Notifications E2E Tests', () => {
@@ -492,24 +492,17 @@ describe('Notifications E2E Tests', () => {
     });
 
     it('should get notifications via API', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/notifications')
-        .set('Authorization', `Bearer ${testToken}`)
-        .expect(200);
+      const response = await trpcQuery(app, 'notifications.getAll');
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeDefined();
-      expect(Array.isArray(response.body.data.data)).toBe(true);
+      expect(response).toBeDefined();
+      expect(Array.isArray(response.data)).toBe(true);
     });
 
     it('should get unread count via API', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/notifications/unread-count')
-        .set('Authorization', `Bearer ${testToken}`)
-        .expect(200);
+      const response = await trpcQuery(app, 'notifications.getUnreadCount');
 
-      expect(typeof response.body).toBe('number');
-      expect(response.body).toBeGreaterThanOrEqual(0);
+      expect(typeof response.count).toBe('number');
+      expect(response.count).toBeGreaterThanOrEqual(0);
     });
 
     it('should mark notification as read via API', async () => {
@@ -518,24 +511,18 @@ describe('Notifications E2E Tests', () => {
 
       const notificationId = notifications[0].id;
 
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/notifications/${notificationId}/read`)
-        .set('Authorization', `Bearer ${testToken}`)
-        .expect(200);
+      const response = await trpcMutation(app, 'notifications.markAsRead', { id: notificationId });
 
-      expect(response.body.message).toBe('Notification marked as read');
+      expect(response.success).toBe(true);
 
       const updated = await notificationModel.findOne({ id: notificationId }).lean();
       expect(updated?.read).toBe(true);
     });
 
     it('should mark all as read via API', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/api/v1/notifications/read-all')
-        .set('Authorization', `Bearer ${testToken}`)
-        .expect(200);
+      const response = await trpcMutation(app, 'notifications.markAllAsRead');
 
-      expect(response.body.message).toBe('All notifications marked as read');
+      expect(response.success).toBe(true);
 
       const count = await notificationService.getUnreadCount(testUserId);
       expect(count).toBe(0);

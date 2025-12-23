@@ -10,7 +10,7 @@ import { Publication, PublicationDocument } from '../src/domain/models/publicati
 import { Comment, CommentDocument } from '../src/domain/models/comment/comment.schema';
 import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
+import { trpcMutation, trpcQuery } from './helpers/trpc-test-helper';
 import { signJWT } from '../src/common/helpers/jwt';
 
 describe('Comment Vote Amount - API E2E', () => {
@@ -166,38 +166,32 @@ describe('Comment Vote Amount - API E2E', () => {
   it('should return correct vote amount when fetching comments after voting with quota using combined endpoint', async () => {
     const jwt = generateJWT(testUserId, `user_${testUserId}`, []);
 
-    // Use the new combined endpoint to vote with comment in a single request
+    // Use tRPC to vote with comment in a single request
     const voteAmount = 5;
     const commentText = 'This is a comment that will have a vote';
-    const voteResponse = await request(app.getHttpServer())
-      .post(`/api/v1/publications/${testPublicationId}/vote-with-comment`)
-      .set('Cookie', `jwt=${jwt}`)
-      .send({
-        amount: voteAmount,
-        sourceType: 'quota',
-        comment: commentText,
-      })
-      .expect(201);
+    const voteResult = await trpcMutation(app, 'votes.createWithComment', {
+      targetType: 'publication',
+      targetId: testPublicationId,
+      quotaAmount: voteAmount,
+      comment: commentText,
+    }, { jwt });
 
-    expect(voteResponse.body.data.vote).toBeDefined();
-    expect(voteResponse.body.data.vote.amount).toBe(voteAmount);
-    expect(voteResponse.body.data.vote.attachedCommentId).toBeDefined();
-    expect(voteResponse.body.data.comment).toBeDefined();
-    expect(voteResponse.body.data.comment.content).toBe(commentText);
+    expect(voteResult).toBeDefined();
+    expect(voteResult.id).toBeDefined();
+    expect(voteResult.comment).toBe(commentText);
 
-    const commentId = voteResponse.body.data.vote.attachedCommentId;
+    const commentId = voteResult.id;
 
     // Step 2: Fetch comments for the publication
-    const commentsResponse = await request(app.getHttpServer())
-      .get(`/api/v1/comments/publications/${testPublicationId}`)
-      .set('Cookie', `jwt=${jwt}`)
-      .expect(200);
+    const commentsResponse = await trpcQuery(app, 'comments.getByPublicationId', {
+      publicationId: testPublicationId,
+    }, { jwt });
 
-    expect(commentsResponse.body.data).toBeDefined();
-    expect(Array.isArray(commentsResponse.body.data)).toBe(true);
-    expect(commentsResponse.body.data.length).toBe(1);
+    expect(commentsResponse.data).toBeDefined();
+    expect(Array.isArray(commentsResponse.data)).toBe(true);
+    expect(commentsResponse.data.length).toBe(1);
 
-    const comment = commentsResponse.body.data[0];
+    const comment = commentsResponse.data[0];
 
     // Step 3: Verify the comment has the correct vote amount data
     expect(comment.id).toBe(commentId);

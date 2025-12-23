@@ -1,4 +1,9 @@
+'use client';
+
 import React from 'react';
+import { Input as ShadcnInput } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import { cn } from '@/lib/utils';
 
 export type InputSize = 'xs' | 'sm' | 'md' | 'lg';
 
@@ -28,62 +33,56 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     },
     ref
   ) => {
+    const inputId = id || React.useId();
+    
     const sizeClasses = {
-      xs: 'input-xs',
-      sm: 'input-sm',
-      md: 'input-md',
-      lg: 'input-lg',
+      xs: 'h-8 text-xs px-2',
+      sm: 'h-9 text-sm px-3',
+      md: 'h-10 px-3',
+      lg: 'h-11 text-base px-4',
     };
 
-    const inputId = id || `input-${Math.random().toString(36).substring(2, 9)}`;
-    
-    const inputClasses = [
-      'input',
-      'input-bordered',
-      sizeClasses[inputSize],
-      error && 'input-error',
-      fullWidth && 'w-full',
-      className,
-    ]
-      .filter(Boolean)
-      .join(' ');
-
     return (
-      <div className={fullWidth ? 'w-full' : ''}>
+      <div className={cn(fullWidth && 'w-full')}>
         {label && (
-          <label htmlFor={inputId} className="label">
-            <span className="label-text">{label}</span>
-          </label>
+          <Label htmlFor={inputId} className="mb-1.5 block">
+            {label}
+          </Label>
         )}
         
         <div className="relative">
           {leftIcon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-base-content/50">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10">
               {leftIcon}
             </div>
           )}
           
-          <input
+          <ShadcnInput
             ref={ref}
             id={inputId}
-            className={inputClasses}
-            style={{ paddingLeft: leftIcon ? '2.5rem' : undefined, paddingRight: rightIcon ? '2.5rem' : undefined }}
+            className={cn(
+              sizeClasses[inputSize],
+              leftIcon && 'pl-10',
+              rightIcon && 'pr-10',
+              error && 'border-destructive focus-visible:ring-destructive',
+              fullWidth && 'w-full',
+              className
+            )}
             {...props}
           />
           
           {rightIcon && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-base-content/50">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10">
               {rightIcon}
             </div>
           )}
         </div>
         
-        {(error || helperText) && (
-          <label className="label">
-            <span className={`label-text-alt ${error ? 'text-error' : ''}`}>
-              {error || helperText}
-            </span>
-          </label>
+        {error && (
+          <p className="mt-1.5 text-xs text-destructive font-medium">{error}</p>
+        )}
+        {!error && helperText && (
+          <p className="mt-1.5 text-xs text-muted-foreground">{helperText}</p>
         )}
       </div>
     );

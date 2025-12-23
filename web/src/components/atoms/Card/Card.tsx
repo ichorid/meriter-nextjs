@@ -1,14 +1,21 @@
 'use client';
 
 import React from 'react';
+import {
+  Card as ShadcnCard,
+  CardHeader as ShadcnCardHeader,
+  CardTitle as ShadcnCardTitle,
+  CardDescription,
+  CardContent as ShadcnCardContent,
+  CardFooter as ShadcnCardFooter,
+} from '@/components/ui/shadcn/card';
+import { cn } from '@/lib/utils';
 
-export interface CardProps {
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   hover?: boolean;
   bordered?: boolean;
   compact?: boolean;
   children?: React.ReactNode;
-  className?: string;
-  [key: string]: any;
 }
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
@@ -24,89 +31,89 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     ref
   ) => {
     return (
-      <div
+      <ShadcnCard
         ref={ref}
-        className={`
-          bg-base-100 rounded-xl shadow-sm dark:border dark:border-base-content/20
-          ${bordered ? 'border border-brand-border dark:border-base-content/20' : ''}
-          ${compact ? 'p-2' : 'p-4'}
-          ${hover ? 'hover:shadow-md transition-shadow duration-200' : ''}
-          ${className}
-        `}
+        className={cn(
+          'rounded-xl',
+          bordered && 'border',
+          compact && 'p-2',
+          !compact && 'p-4',
+          hover && 'hover:shadow-md transition-shadow duration-200',
+          className
+        )}
         {...props}
       >
         {children}
-      </div>
+      </ShadcnCard>
     );
   }
 );
 
 Card.displayName = 'Card';
 
-export interface CardHeaderProps {
+export interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: React.ReactNode;
-  className?: string;
-  [key: string]: any;
 }
 
 export const CardHeader = React.forwardRef<HTMLDivElement, CardHeaderProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div ref={ref} className={`mb-4 ${className}`} {...props}>
+      <ShadcnCardHeader ref={ref} className={cn('mb-4', className)} {...props}>
         {children}
-      </div>
+      </ShadcnCardHeader>
     );
   }
 );
 CardHeader.displayName = 'CardHeader';
 
-export interface CardBodyProps {
+export interface CardBodyProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: React.ReactNode;
-  className?: string;
-  [key: string]: any;
 }
 
 export const CardBody = React.forwardRef<HTMLDivElement, CardBodyProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div ref={ref} className={`${className}`} {...props}>
+      <ShadcnCardContent ref={ref} className={className} {...props}>
         {children}
-      </div>
+      </ShadcnCardContent>
     );
   }
 );
 CardBody.displayName = 'CardBody';
 
-export interface CardFooterProps {
+export interface CardFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: React.ReactNode;
-  className?: string;
-  [key: string]: any;
 }
 
 export const CardFooter = React.forwardRef<HTMLDivElement, CardFooterProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div ref={ref} className={`mt-4 pt-4 border-t border-brand-border dark:border-base-content/20 ${className}`} {...props}>
+      <ShadcnCardFooter
+        ref={ref}
+        className={cn('mt-4 pt-4 border-t', className)}
+        {...props}
+      >
         {children}
-      </div>
+      </ShadcnCardFooter>
     );
   }
 );
 CardFooter.displayName = 'CardFooter';
 
-export interface CardTitleProps {
+export interface CardTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: React.ReactNode;
-  className?: string;
-  [key: string]: any;
 }
 
 export const CardTitle = React.forwardRef<HTMLDivElement, CardTitleProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div ref={ref} className={`${className}`} {...props}>
-        <h3 className="text-lg font-bold text-brand-text-primary">{children}</h3>
-      </div>
+      <ShadcnCardTitle ref={ref} className={cn('text-lg', className)} {...props}>
+        {children}
+      </ShadcnCardTitle>
     );
   }
 );
 CardTitle.displayName = 'CardTitle';
+
+// Export CardDescription for convenience
+export { CardDescription };

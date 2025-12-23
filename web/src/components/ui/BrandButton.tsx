@@ -2,10 +2,13 @@
 
 import React from 'react';
 import { Loader2 } from 'lucide-react';
+import { Button as ShadcnButton, buttonVariants } from '@/components/ui/shadcn/button';
+import { cn } from '@/lib/utils';
+import { type VariantProps } from 'class-variance-authority';
 
-interface BrandButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'link' | 'default';
-    size?: 'sm' | 'md' | 'lg';
+interface BrandButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
+    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'link' | 'default' | 'destructive';
+    size?: 'sm' | 'md' | 'lg' | 'default' | 'icon';
     isLoading?: boolean;
     leftIcon?: React.ReactNode;
     rightIcon?: React.ReactNode;
@@ -28,49 +31,30 @@ export const BrandButton = React.forwardRef<HTMLButtonElement, BrandButtonProps>
         },
         ref
     ) => {
-        const baseStyles = `
-            inline-flex items-center justify-center rounded-xl font-medium 
-            transition-all duration-200 
-            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-base-content/20 focus-visible:ring-offset-2 focus-visible:ring-offset-base-100
-            disabled:opacity-50 disabled:pointer-events-none 
-            active:scale-[0.98]
-        `;
-
-        const variants = {
-            default: 'bg-base-content text-base-100 hover:bg-base-content/90',
-            primary: 'bg-primary text-primary-content hover:bg-primary/90',
-            secondary: 'bg-secondary text-secondary-content hover:bg-secondary/90',
-            outline: 'border border-base-content/20 text-base-content hover:bg-base-content/5 hover:border-base-content/30',
-            ghost: 'text-base-content hover:bg-base-content/5',
-            link: 'text-base-content/70 underline-offset-4 hover:underline hover:text-base-content',
-        };
-
-        const sizes = {
-            sm: 'h-9 px-4 text-xs',
-            md: 'h-11 px-5 text-sm',
-            lg: 'h-12 px-6 text-base',
-        };
-
-        const widthStyles = fullWidth ? 'w-full' : '';
+        // Map variant names to shadcn variants
+        const shadcnVariant = variant === 'primary' ? 'default' : variant;
+        
+        // Map size names to shadcn sizes
+        const shadcnSize = size === 'md' ? 'default' : size;
 
         return (
-            <button
+            <ShadcnButton
                 ref={ref}
-                className={`
-                    ${baseStyles}
-                    ${variants[variant]}
-                    ${sizes[size]}
-                    ${widthStyles}
-                    ${className}
-                `}
+                variant={shadcnVariant}
+                size={shadcnSize}
+                className={cn(
+                    'rounded-xl active:scale-[0.98]',
+                    fullWidth && 'w-full',
+                    className
+                )}
                 disabled={disabled || isLoading}
                 {...props}
             >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {!isLoading && leftIcon && <span className="mr-2">{leftIcon}</span>}
+                {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                {!isLoading && leftIcon && leftIcon}
                 {children}
-                {!isLoading && rightIcon && <span className="ml-2">{rightIcon}</span>}
-            </button>
+                {!isLoading && rightIcon && rightIcon}
+            </ShadcnButton>
         );
     }
 );

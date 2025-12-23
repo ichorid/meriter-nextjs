@@ -1,4 +1,3 @@
-import request from 'supertest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -6,6 +5,7 @@ import { MeriterModule } from '../src/meriter.module';
 import { UserGuard } from '../src/user.guard';
 import { TestDatabaseHelper } from './test-db.helper';
 import { createTestPublication, createTestComment } from './helpers/fixtures';
+import { trpcMutation, trpcMutationWithError } from './helpers/trpc-test-helper';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Community, CommunityDocument, CommunitySchema } from '../src/domain/models/community/community.schema';
@@ -229,141 +229,102 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Author should be able to edit
-      const updateDto = {
-        content: 'Updated content',
-      };
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
-      expect(updateRes.body.data.content).toBe('Updated content');
+      expect(updated.content).toBe('Updated content');
     });
 
     it('should NOT allow author to edit own publication with votes', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add a vote
       (global as any).testUserId = participantId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${publicationId}/vote`)
-        .send({
-          amount: 1,
-          direction: 'up',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: publicationId,
+        amount: 1,
+        direction: 'up',
+      });
 
       // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      const updateDto = {
-        content: 'Updated content',
-      };
+      const result = await trpcMutationWithError(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
+      });
 
-      await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(403);
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
 
     it('should NOT allow author to edit own publication with comments', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add a comment
       (global as any).testUserId = participantId;
       const commentDto = createTestComment('publication', publicationId);
-      await request(app.getHttpServer())
-        .post('/api/v1/comments')
-        .send(commentDto)
-        .expect(201);
+      await trpcMutation(app, 'comments.create', commentDto);
 
       // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      const updateDto = {
-        content: 'Updated content',
-      };
+      const result = await trpcMutationWithError(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
+      });
 
-      await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(403);
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
 
     it('should NOT allow author to edit own publication with both votes and comments', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add a vote
       (global as any).testUserId = participantId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${publicationId}/vote`)
-        .send({
-          amount: 1,
-          direction: 'up',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: publicationId,
+        amount: 1,
+        direction: 'up',
+      });
 
       // Add a comment
       const commentDto = createTestComment('publication', publicationId);
-      await request(app.getHttpServer())
-        .post('/api/v1/comments')
-        .send(commentDto)
-        .expect(201);
+      await trpcMutation(app, 'comments.create', commentDto);
 
       // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      const updateDto = {
-        content: 'Updated content',
-      };
+      const result = await trpcMutationWithError(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
+      });
 
-      await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(403);
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
 
     it('should NOT allow author to edit own publication after edit window expires', async () => {
       // Create publication as author with old date (8 days ago)
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Update createdAt to 8 days ago (outside 7-day window)
       const eightDaysAgo = new Date();
@@ -374,14 +335,12 @@ describe('Publication and Comment Edit Permissions', () => {
       );
 
       // Author should NOT be able to edit
-      const updateDto = {
-        content: 'Updated content',
-      };
+      const result = await trpcMutationWithError(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
+      });
 
-      await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(403);
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
   });
 
@@ -390,48 +349,34 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add votes
       (global as any).testUserId = participantId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${publicationId}/vote`)
-        .send({
-          amount: 1,
-          direction: 'up',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: publicationId,
+        amount: 1,
+        direction: 'up',
+      });
 
       // Lead should be able to edit even with votes
       (global as any).testUserId = leadId;
-      const updateDto = {
-        content: 'Updated content by lead',
-      };
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content by lead' },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
-      expect(updateRes.body.data.content).toBe('Updated content by lead');
+      expect(updated.content).toBe('Updated content by lead');
     });
 
     it('should allow lead to edit publication in their community after edit window expires', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Update createdAt to 8 days ago
       const eightDaysAgo = new Date();
@@ -443,39 +388,29 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Lead should be able to edit even after window expires
       (global as any).testUserId = leadId;
-      const updateDto = {
-        content: 'Updated content by lead',
-      };
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content by lead' },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
+      expect(updated).toBeDefined();
     });
 
     it('should NOT allow lead to edit publication in different community', async () => {
       // Create publication in other community
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(otherCommunityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Lead from different community should NOT be able to edit
       (global as any).testUserId = leadId;
-      const updateDto = {
-        content: 'Updated content',
-      };
+      const result = await trpcMutationWithError(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
+      });
 
-      await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(403);
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
   });
 
@@ -484,70 +419,48 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add votes
       (global as any).testUserId = participantId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${publicationId}/vote`)
-        .send({
-          amount: 1,
-          direction: 'up',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: publicationId,
+        amount: 1,
+        direction: 'up',
+      });
 
       // Superadmin should be able to edit even with votes
       (global as any).testUserId = superadminId;
-      const updateDto = {
-        content: 'Updated content by superadmin',
-      };
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content by superadmin' },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
-      expect(updateRes.body.data.content).toBe('Updated content by superadmin');
+      expect(updated.content).toBe('Updated content by superadmin');
     });
 
     it('should allow superadmin to edit any publication with comments', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add a comment
       (global as any).testUserId = participantId;
       const commentDto = createTestComment('publication', publicationId);
-      await request(app.getHttpServer())
-        .post('/api/v1/comments')
-        .send(commentDto)
-        .expect(201);
+      await trpcMutation(app, 'comments.create', commentDto);
 
       // Superadmin should be able to edit even with comments
       (global as any).testUserId = superadminId;
-      const updateDto = {
-        content: 'Updated content by superadmin',
-      };
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content by superadmin' },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
-      expect(updateRes.body.data.content).toBe('Updated content by superadmin');
+      expect(updated.content).toBe('Updated content by superadmin');
     });
   });
 
@@ -556,108 +469,82 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Author should be able to delete
-      const deleteRes = await request(app.getHttpServer())
-        .delete(`/api/v1/publications/${publicationId}`)
-        .expect(200);
+      const result = await trpcMutation(app, 'publications.delete', { id: publicationId });
 
-      expect(deleteRes.body.success).toBe(true);
+      expect(result.success).toBe(true);
     });
 
     it('should NOT allow author to delete own publication with votes', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add a vote
       (global as any).testUserId = participantId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${publicationId}/vote`)
-        .send({
-          amount: 1,
-          direction: 'up',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: publicationId,
+        amount: 1,
+        direction: 'up',
+      });
 
       // Author should NOT be able to delete
       (global as any).testUserId = authorId;
-      await request(app.getHttpServer())
-        .delete(`/api/v1/publications/${publicationId}`)
-        .expect(403);
+      const result = await trpcMutationWithError(app, 'publications.delete', { id: publicationId });
+
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
 
     it('should NOT allow author to delete own publication with comments', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add a comment
       (global as any).testUserId = participantId;
       const commentDto = createTestComment('publication', publicationId);
-      await request(app.getHttpServer())
-        .post('/api/v1/comments')
-        .send(commentDto)
-        .expect(201);
+      await trpcMutation(app, 'comments.create', commentDto);
 
       // Author should NOT be able to delete
       (global as any).testUserId = authorId;
-      await request(app.getHttpServer())
-        .delete(`/api/v1/publications/${publicationId}`)
-        .expect(403);
+      const result = await trpcMutationWithError(app, 'publications.delete', { id: publicationId });
+
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
 
     it('should NOT allow author to delete own publication with both votes and comments', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add a vote
       (global as any).testUserId = participantId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${publicationId}/vote`)
-        .send({
-          amount: 1,
-          direction: 'up',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: publicationId,
+        amount: 1,
+        direction: 'up',
+      });
 
       // Add a comment
       const commentDto = createTestComment('publication', publicationId);
-      await request(app.getHttpServer())
-        .post('/api/v1/comments')
-        .send(commentDto)
-        .expect(201);
+      await trpcMutation(app, 'comments.create', commentDto);
 
       // Author should NOT be able to delete
       (global as any).testUserId = authorId;
-      await request(app.getHttpServer())
-        .delete(`/api/v1/publications/${publicationId}`)
-        .expect(403);
+      const result = await trpcMutationWithError(app, 'publications.delete', { id: publicationId });
+
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
   });
 
@@ -666,58 +553,42 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add votes
       (global as any).testUserId = participantId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${publicationId}/vote`)
-        .send({
-          amount: 1,
-          direction: 'up',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: publicationId,
+        amount: 1,
+        direction: 'up',
+      });
 
       // Lead should be able to delete even with votes
       (global as any).testUserId = leadId;
-      const deleteRes = await request(app.getHttpServer())
-        .delete(`/api/v1/publications/${publicationId}`)
-        .expect(200);
+      const result = await trpcMutation(app, 'publications.delete', { id: publicationId });
 
-      expect(deleteRes.body.success).toBe(true);
+      expect(result.success).toBe(true);
     });
 
     it('should allow lead to delete publication in their community with comments', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add a comment
       (global as any).testUserId = participantId;
       const commentDto = createTestComment('publication', publicationId);
-      await request(app.getHttpServer())
-        .post('/api/v1/comments')
-        .send(commentDto)
-        .expect(201);
+      await trpcMutation(app, 'comments.create', commentDto);
 
       // Lead should be able to delete even with comments
       (global as any).testUserId = leadId;
-      const deleteRes = await request(app.getHttpServer())
-        .delete(`/api/v1/publications/${publicationId}`)
-        .expect(200);
+      const result = await trpcMutation(app, 'publications.delete', { id: publicationId });
 
-      expect(deleteRes.body.success).toBe(true);
+      expect(result.success).toBe(true);
     });
   });
 
@@ -726,58 +597,42 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add votes
       (global as any).testUserId = participantId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${publicationId}/vote`)
-        .send({
-          amount: 1,
-          direction: 'up',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: publicationId,
+        amount: 1,
+        direction: 'up',
+      });
 
       // Superadmin should be able to delete even with votes
       (global as any).testUserId = superadminId;
-      const deleteRes = await request(app.getHttpServer())
-        .delete(`/api/v1/publications/${publicationId}`)
-        .expect(200);
+      const result = await trpcMutation(app, 'publications.delete', { id: publicationId });
 
-      expect(deleteRes.body.success).toBe(true);
+      expect(result.success).toBe(true);
     });
 
     it('should allow superadmin to delete any publication with comments', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add a comment
       (global as any).testUserId = participantId;
       const commentDto = createTestComment('publication', publicationId);
-      await request(app.getHttpServer())
-        .post('/api/v1/comments')
-        .send(commentDto)
-        .expect(201);
+      await trpcMutation(app, 'comments.create', commentDto);
 
       // Superadmin should be able to delete even with comments
       (global as any).testUserId = superadminId;
-      const deleteRes = await request(app.getHttpServer())
-        .delete(`/api/v1/publications/${publicationId}`)
-        .expect(200);
+      const result = await trpcMutation(app, 'publications.delete', { id: publicationId });
 
-      expect(deleteRes.body.success).toBe(true);
+      expect(result.success).toBe(true);
     });
   });
 
@@ -786,55 +641,34 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createPubRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createPubRes.body.data.id;
+      const createdPub = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = createdPub.id;
 
       // Create comment as author
       const commentDto = createTestComment('publication', publicationId);
-      const createCommentRes = await request(app.getHttpServer())
-        .post('/api/v1/comments')
-        .send(commentDto)
-        .expect(201);
-
-      const commentId = createCommentRes.body.data.id;
+      const createdComment = await trpcMutation(app, 'comments.create', commentDto);
+      const commentId = createdComment.id;
 
       // Author should be able to edit
-      const updateDto = {
-        content: 'Updated comment',
-      };
+      const updated = await trpcMutation(app, 'comments.update', {
+        id: commentId,
+        data: { content: 'Updated comment' },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/comments/${commentId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
-      expect(updateRes.body.data.content).toBe('Updated comment');
+      expect(updated.content).toBe('Updated comment');
     });
 
     it('should NOT allow author to edit own comment with votes', async () => {
       // Create publication
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createPubRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createPubRes.body.data.id;
+      const createdPub = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = createdPub.id;
 
       // Create comment as author
       const commentDto = createTestComment('publication', publicationId);
-      const createCommentRes = await request(app.getHttpServer())
-        .post('/api/v1/comments')
-        .send(commentDto)
-        .expect(201);
-
-      const commentId = createCommentRes.body.data.id;
+      const createdComment = await trpcMutation(app, 'comments.create', commentDto);
+      const commentId = createdComment.id;
 
       // Simulate votes by updating comment metrics directly
       await commentModel.updateOne(
@@ -849,14 +683,12 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      const updateDto = {
-        content: 'Updated comment',
-      };
+      const result = await trpcMutationWithError(app, 'comments.update', {
+        id: commentId,
+        data: { content: 'Updated comment' },
+      });
 
-      await request(app.getHttpServer())
-        .put(`/api/v1/comments/${commentId}`)
-        .send(updateDto)
-        .expect(403);
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
   });
 
@@ -865,21 +697,13 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createPubRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createPubRes.body.data.id;
+      const createdPub = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = createdPub.id;
 
       // Create comment as author
       const commentDto = createTestComment('publication', publicationId);
-      const createCommentRes = await request(app.getHttpServer())
-        .post('/api/v1/comments')
-        .send(commentDto)
-        .expect(201);
-
-      const commentId = createCommentRes.body.data.id;
+      const createdComment = await trpcMutation(app, 'comments.create', commentDto);
+      const commentId = createdComment.id;
 
       // Simulate votes by updating comment metrics directly
       await commentModel.updateOne(
@@ -894,17 +718,12 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Lead should be able to edit even with votes
       (global as any).testUserId = leadId;
-      const updateDto = {
-        content: 'Updated comment by lead',
-      };
+      const updated = await trpcMutation(app, 'comments.update', {
+        id: commentId,
+        data: { content: 'Updated comment by lead' },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/comments/${commentId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
-      expect(updateRes.body.data.content).toBe('Updated comment by lead');
+      expect(updated.content).toBe('Updated comment by lead');
     });
   });
 
@@ -913,23 +732,17 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Participant should NOT be able to edit
       (global as any).testUserId = participantId;
-      const updateDto = {
-        content: 'Updated content',
-      };
+      const result = await trpcMutationWithError(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
+      });
 
-      await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(403);
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
   });
 });

@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Info } from 'lucide-react';
+import { Label } from '@/components/ui/shadcn/label';
+import { cn } from '@/lib/utils';
 
 export interface InputWrapperProps {
     labelTitle?: string;
@@ -24,15 +26,15 @@ export function InputWrapper({
     children,
     renderLabelAsWrapper = false,
 }: InputWrapperProps) {
-    const containerClasses = containerClassName || `form-control w-full ${containerStyle} ${className}`;
+    const containerClasses = containerClassName || cn('w-full space-y-1.5', containerStyle, className);
 
     if (renderLabelAsWrapper && labelTitle) {
         return (
             <div className={containerClasses}>
-                <label className={`label cursor-pointer ${labelStyle}`}>
-                    <span className={`label-text text-base-content ${labelStyle}`}>{labelTitle}</span>
+                <Label className={cn('cursor-pointer flex items-center gap-2', labelStyle)}>
+                    <span>{labelTitle}</span>
                     {children}
-                </label>
+                </Label>
             </div>
         );
     }
@@ -40,16 +42,17 @@ export function InputWrapper({
     return (
         <div className={containerClasses}>
             {labelTitle && (
-                <label className="label">
-                    <div className="label-text">
-                        <span className={`text-base-content ${labelStyle}`}>{labelTitle}</span>
-                        {labelDescription && (
-                            <div className="tooltip tooltip-right" data-tip={labelDescription}>
-                                <Info className="w-4 h-4" />
+                <Label className={cn('flex items-center gap-2', labelStyle)}>
+                    <span>{labelTitle}</span>
+                    {labelDescription && (
+                        <div className="group relative">
+                            <Info className="w-4 h-4 text-muted-foreground" />
+                            <div className="absolute left-0 top-full mt-2 hidden group-hover:block z-10 w-48 p-2 text-xs bg-popover border rounded-md shadow-lg">
+                                {labelDescription}
                             </div>
-                        )}
-                    </div>
-                </label>
+                        </div>
+                    )}
+                </Label>
             )}
             {children}
         </div>

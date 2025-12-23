@@ -1,6 +1,9 @@
 'use client';
 
 import React from 'react';
+import { Switch as ShadcnSwitch } from '@/components/ui/shadcn/switch';
+import { Label } from '@/components/ui/shadcn/label';
+import { cn } from '@/lib/utils';
 
 export type SwitchVariant = 'primary' | 'secondary' | 'accent' | 'success' | 'warning' | 'error';
 export type SwitchSize = 'xs' | 'sm' | 'md' | 'lg';
@@ -18,7 +21,7 @@ export interface SwitchProps {
   id?: string;
 }
 
-export const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
+export const Switch = React.forwardRef<React.ElementRef<typeof ShadcnSwitch>, SwitchProps>(
   (
     {
       variant = 'primary',
@@ -35,38 +38,28 @@ export const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
     },
     ref
   ) => {
-    const switchId = id || `switch-${Math.random().toString(36).substring(2, 9)}`;
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      onValueChange?.(e.target.checked);
-    };
+    const switchId = id || React.useId();
 
     return (
-      <div className={`inline-flex items-center gap-2 ${fullWidth ? 'w-full justify-between' : ''} ${labelPosition === 'left' ? 'flex-row-reverse' : ''} ${className}`}>
+      <div className={cn(
+        'inline-flex items-center gap-2',
+        fullWidth && 'w-full justify-between',
+        labelPosition === 'left' && 'flex-row-reverse',
+        className
+      )}>
         {label && (
-          <label htmlFor={switchId} className={`text-sm font-medium text-brand-text-primary ${disabled ? 'opacity-50' : ''}`}>
+          <Label htmlFor={switchId} className={cn('text-sm font-medium', disabled && 'opacity-50')}>
             {label}
-          </label>
+          </Label>
         )}
-        <div className="relative inline-flex items-center cursor-pointer">
-          <input
-            ref={ref}
-            type="checkbox"
-            id={switchId}
-            className="sr-only peer"
-            checked={checked}
-            onChange={handleChange}
-            disabled={disabled}
-            {...props}
-          />
-          <div className={`
-            w-11 h-6 bg-base-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-primary/20 rounded-full peer 
-            peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-base-100 
-            after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-base-100 after:border-base-300 after:border 
-            after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary
-            ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-          `}></div>
-        </div>
+        <ShadcnSwitch
+          ref={ref}
+          id={switchId}
+          checked={checked}
+          onCheckedChange={onValueChange}
+          disabled={disabled}
+          {...props}
+        />
       </div>
     );
   }

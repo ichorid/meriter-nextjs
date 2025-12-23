@@ -3,10 +3,18 @@
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/shadcn/dialog';
+import { cn } from '@/lib/utils';
 
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
 
-export interface ModalProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
@@ -14,6 +22,7 @@ export interface ModalProps extends React.HTMLAttributes<HTMLDivElement> {
   closable?: boolean;
   children?: React.ReactNode;
   footer?: React.ReactNode;
+  className?: string;
 }
 
 export const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
@@ -31,68 +40,30 @@ export const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
     },
     ref
   ) => {
-    const tCommon = useTranslations('common');
     const sizeClasses = {
-      sm: 'modal-box-sm',
-      md: '',
-      lg: 'modal-box-lg',
-      xl: 'modal-box-xl',
-      full: 'modal-box-full',
+      sm: 'max-w-md',
+      md: 'max-w-lg',
+      lg: 'max-w-2xl',
+      xl: 'max-w-4xl',
+      full: 'max-w-full m-4',
     };
 
-    React.useEffect(() => {
-      if (isOpen) {
-        document.body.style.overflow = 'hidden';
-      } else {
-        document.body.style.overflow = '';
-      }
-      return () => {
-        document.body.style.overflow = '';
-      };
-    }, [isOpen]);
-
-    if (!isOpen) return null;
-
     return (
-      <div
-        ref={ref}
-        className={`modal ${isOpen ? 'modal-open' : ''} ${className}`}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            onClose();
-          }
-        }}
-        {...props}
-      >
-        <div
-          className={`modal-box ${sizeClasses[size]}`}
-          onClick={(e) => e.stopPropagation()}
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent
+          ref={ref}
+          className={cn(sizeClasses[size], className)}
+          {...props}
         >
           {title && (
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">{title}</h3>
-              {closable && (
-                <button
-                  className="btn btn-sm btn-circle btn-ghost"
-                  onClick={onClose}
-                  aria-label={tCommon('closeModal')}
-                >
-                  ✕
-                </button>
-              )}
-            </div>
+            <DialogHeader>
+              <DialogTitle>{title}</DialogTitle>
+            </DialogHeader>
           )}
           {children}
-          {footer && (
-            <div className="modal-action">
-              {footer}
-            </div>
-          )}
-        </div>
-        <form method="dialog" className="modal-backdrop">
-          <button type="submit" className="hidden">close</button>
-        </form>
-      </div>
+          {footer && <DialogFooter>{footer}</DialogFooter>}
+        </DialogContent>
+      </Dialog>
     );
   }
 );

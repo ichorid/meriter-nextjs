@@ -6,13 +6,13 @@ import { UserGuard } from '../src/user.guard';
 import { UserService } from '../src/domain/services/user.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { CommunityService } from '../src/domain/services/community.service';
+import { trpcQuery } from './helpers/trpc-test-helper';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
 
 class AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -114,14 +114,12 @@ describe('Users - Get All Leads', () => {
 
   describe('GET /api/v1/users/leads', () => {
     it('should return empty array when no leads exist', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/users/leads')
-        .expect(200);
+      const response = await trpcQuery(app, 'users.getAllLeads');
 
-      expect(response.body).toHaveProperty('data');
-      expect(response.body.data).toEqual([]);
-      expect(response.body.meta).toBeDefined();
-      expect(response.body.meta.pagination.total).toBe(0);
+      expect(response).toHaveProperty('data');
+      expect(response.data).toEqual([]);
+      expect(response.meta).toBeDefined();
+      expect(response.meta.pagination.total).toBe(0);
     });
 
     it('should return all users with lead role across all communities', async () => {
@@ -237,29 +235,27 @@ describe('Users - Get All Leads', () => {
         },
       ]);
 
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/users/leads')
-        .expect(200);
+      const response = await trpcQuery(app, 'users.getAllLeads');
 
-      expect(response.body).toHaveProperty('data');
-      expect(response.body.data).toHaveLength(2);
+      expect(response).toHaveProperty('data');
+      expect(response.data).toHaveLength(2);
       
       // Check that only leads are returned
-      const userIds = response.body.data.map((user: any) => user.id);
+      const userIds = response.data.map((user: any) => user.id);
       expect(userIds).toContain(lead1Id);
       expect(userIds).toContain(lead2Id);
       expect(userIds).not.toContain(participantId);
       expect(userIds).not.toContain(viewerId);
 
       // Check user data structure
-      const lead1 = response.body.data.find((u: any) => u.id === lead1Id);
+      const lead1 = response.data.find((u: any) => u.id === lead1Id);
       expect(lead1).toBeDefined();
       expect(lead1.displayName).toBe('Lead 1');
       expect(lead1.username).toBe('lead1');
 
       // Check pagination metadata
-      expect(response.body.meta).toBeDefined();
-      expect(response.body.meta.pagination.total).toBe(2);
+      expect(response.meta).toBeDefined();
+      expect(response.meta.pagination.total).toBe(2);
     });
 
     it('should handle pagination correctly', async () => {
@@ -300,33 +296,27 @@ describe('Users - Get All Leads', () => {
       await userCommunityRoleModel.insertMany(roles);
 
       // Test first page
-      const page1Response = await request(app.getHttpServer())
-        .get('/api/v1/users/leads?page=1&pageSize=2')
-        .expect(200);
+      const page1Response = await trpcQuery(app, 'users.getAllLeads', { page: 1, pageSize: 2 });
 
-      expect(page1Response.body.data).toHaveLength(2);
-      expect(page1Response.body.meta.pagination.page).toBe(1);
-      expect(page1Response.body.meta.pagination.pageSize).toBe(2);
-      expect(page1Response.body.meta.pagination.total).toBe(5);
-      expect(page1Response.body.meta.pagination.hasNext).toBe(true);
+      expect(page1Response.data).toHaveLength(2);
+      expect(page1Response.meta.pagination.page).toBe(1);
+      expect(page1Response.meta.pagination.pageSize).toBe(2);
+      expect(page1Response.meta.pagination.total).toBe(5);
+      expect(page1Response.meta.pagination.hasNext).toBe(true);
 
       // Test second page
-      const page2Response = await request(app.getHttpServer())
-        .get('/api/v1/users/leads?page=2&pageSize=2')
-        .expect(200);
+      const page2Response = await trpcQuery(app, 'users.getAllLeads', { page: 2, pageSize: 2 });
 
-      expect(page2Response.body.data).toHaveLength(2);
-      expect(page2Response.body.meta.pagination.page).toBe(2);
-      expect(page2Response.body.meta.pagination.hasNext).toBe(true);
+      expect(page2Response.data).toHaveLength(2);
+      expect(page2Response.meta.pagination.page).toBe(2);
+      expect(page2Response.meta.pagination.hasNext).toBe(true);
 
       // Test last page
-      const page3Response = await request(app.getHttpServer())
-        .get('/api/v1/users/leads?page=3&pageSize=2')
-        .expect(200);
+      const page3Response = await trpcQuery(app, 'users.getAllLeads', { page: 3, pageSize: 2 });
 
-      expect(page3Response.body.data).toHaveLength(1);
-      expect(page3Response.body.meta.pagination.page).toBe(3);
-      expect(page3Response.body.meta.pagination.hasNext).toBe(false);
+      expect(page3Response.data).toHaveLength(1);
+      expect(page3Response.meta.pagination.page).toBe(3);
+      expect(page3Response.meta.pagination.hasNext).toBe(false);
     });
 
     it('should return unique users even if they are leads in multiple communities', async () => {
@@ -381,14 +371,12 @@ describe('Users - Get All Leads', () => {
         },
       ]);
 
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/users/leads')
-        .expect(200);
+      const response = await trpcQuery(app, 'users.getAllLeads');
 
       // Should return only one user, not duplicated
-      expect(response.body.data).toHaveLength(1);
-      expect(response.body.data[0].id).toBe(lead1Id);
-      expect(response.body.meta.pagination.total).toBe(1);
+      expect(response.data).toHaveLength(1);
+      expect(response.data[0].id).toBe(lead1Id);
+      expect(response.meta.pagination.total).toBe(1);
     });
 
     it('should filter out deleted users', async () => {
@@ -426,13 +414,11 @@ describe('Users - Get All Leads', () => {
       // Delete the user (simulate deleted user)
       await userModel.deleteOne({ id: lead1Id });
 
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/users/leads')
-        .expect(200);
+      const response = await trpcQuery(app, 'users.getAllLeads');
 
       // Should return empty array since user was deleted
-      expect(response.body.data).toHaveLength(0);
-      expect(response.body.meta.pagination.total).toBe(0);
+      expect(response.data).toHaveLength(0);
+      expect(response.meta.pagination.total).toBe(0);
     });
   });
 });

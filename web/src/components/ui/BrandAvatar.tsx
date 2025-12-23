@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { User } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { cn } from '@/lib/utils';
 
 interface AvatarProps {
     src?: string | null;
@@ -18,8 +20,6 @@ export const BrandAvatar: React.FC<AvatarProps> = ({
     fallback,
     className = '',
 }) => {
-    const [hasError, setHasError] = React.useState(false);
-
     const sizeClasses = {
         sm: 'w-8 h-8 text-xs',
         md: 'w-10 h-10 text-sm',
@@ -34,26 +34,16 @@ export const BrandAvatar: React.FC<AvatarProps> = ({
         xl: 32,
     };
 
+    const fallbackText = fallback ? fallback.slice(0, 2).toUpperCase() : undefined;
+
     return (
-        <div
-            className={`relative inline-flex items-center justify-center rounded-full overflow-hidden bg-brand-secondary/10 text-brand-text-secondary ${sizeClasses[size]} ${className}`}
-        >
-            {src && !hasError ? (
-                <img
-                    src={src}
-                    alt={alt}
-                    className="w-full h-full object-cover"
-                    onError={() => setHasError(true)}
-                />
-            ) : (
-                <span className="font-medium uppercase">
-                    {fallback ? (
-                        fallback.slice(0, 2)
-                    ) : (
-                        <User size={iconSizes[size]} />
-                    )}
-                </span>
+        <Avatar className={cn(sizeClasses[size], className)}>
+            {src && (
+                <AvatarImage src={src || undefined} alt={alt} />
             )}
-        </div>
+            <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                {fallbackText || <User size={iconSizes[size]} />}
+            </AvatarFallback>
+        </Avatar>
     );
 };

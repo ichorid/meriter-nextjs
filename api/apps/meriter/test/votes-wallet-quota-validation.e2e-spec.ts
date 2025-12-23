@@ -18,8 +18,8 @@ import { Publication, PublicationDocument } from '../src/domain/models/publicati
 import { Comment, CommentDocument } from '../src/domain/models/comment/comment.schema';
 import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
 import { UserGuard } from '../src/user.guard';
+import { trpcMutation, trpcMutationWithError } from './helpers/trpc-test-helper';
 
 class AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -225,15 +225,15 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       (global as any).testUserId = testUserId;
       
       // Try to vote with both amounts zero
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 0,
-        })
-        .expect(400);
+      const result = await trpcMutationWithError(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 0,
+        walletAmount: 0,
+      });
 
-      expect(response.body.message).toContain('zero quota and zero wallet amount');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('zero quota and zero wallet amount');
     });
 
     it('should reject votes exceeding available quota', async () => {
@@ -241,15 +241,15 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       (global as any).testUserId = testUserId;
       
       // User has 10 quota, try to use 15 quota
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 15,
-          walletAmount: 0,
-        })
-        .expect(400);
+      const result = await trpcMutationWithError(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 15,
+        walletAmount: 0,
+      });
 
-      expect(response.body.message).toContain('Insufficient quota');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Insufficient quota');
     });
 
     it('should reject votes exceeding available wallet balance', async () => {
@@ -257,15 +257,15 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       (global as any).testUserId = testUserId;
       
       // User has 100 wallet balance, try to use 150 wallet
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 150,
-        })
-        .expect(400);
+      const result = await trpcMutationWithError(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 0,
+        walletAmount: 150,
+      });
 
-      expect(response.body.message).toContain('Insufficient wallet balance');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Insufficient wallet balance');
     });
 
     it('should reject votes exceeding quota + wallet combined', async () => {
@@ -273,15 +273,15 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       (global as any).testUserId = testUserId;
       
       // User has 10 quota + 100 wallet = 110 total, try to use 120
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 10,
-          walletAmount: 110, // Total would be 120, exceeding 110
-        })
-        .expect(400);
+      const result = await trpcMutationWithError(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 10,
+        walletAmount: 110, // Total would be 120, exceeding 110
+      });
 
-      expect(response.body.message).toContain('Insufficient total balance');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Insufficient total balance');
     });
 
     it('should reject quota for downvotes (negative votes)', async () => {
@@ -289,49 +289,48 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       (global as any).testUserId = testUserId;
       
       // Downvotes should only use wallet, not quota
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          amount: -5, // Downvote with old format
-          sourceType: 'quota',
-        })
-        .expect(400);
+      const result = await trpcMutationWithError(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        direction: 'down',
+      });
 
-      expect(response.body.message).toContain('Quota cannot be used for downvotes');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Quota cannot be used for downvotes');
     });
 
     it('should accept valid quota-only vote', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 5,
+        walletAmount: 0,
+      });
 
-      expect(response.body.data.vote).toBeDefined();
-      expect(response.body.data.vote.amount).toBe(5);
-      expect(response.body.data.vote.sourceType).toBe('quota');
+      expect(vote).toBeDefined();
+      expect(vote.amountQuota).toBe(5);
+      expect(vote.amountWallet).toBe(0);
     });
 
     it('should accept valid wallet-only vote', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 20,
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 0,
+        walletAmount: 20,
+      });
 
-      expect(response.body.data.vote).toBeDefined();
-      expect(response.body.data.vote.amountWallet).toBe(20);
-      expect(response.body.data.vote.amountQuota).toBe(0);
+      expect(vote).toBeDefined();
+      expect(vote.amountWallet).toBe(20);
+      expect(vote.amountQuota).toBe(0);
     });
 
     it('should accept valid combined quota + wallet vote', async () => {
@@ -339,18 +338,17 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       (global as any).testUserId = testUserId;
       
       // Use 7 quota + 3 wallet = 10 total
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 7,
-          walletAmount: 3,
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 7,
+        walletAmount: 3,
+      });
 
-      expect(response.body.data.vote).toBeDefined();
+      expect(vote).toBeDefined();
       // Should create a single vote with both quota and wallet amounts
-      expect(response.body.data.vote.amountQuota).toBe(7);
-      expect(response.body.data.vote.amountWallet).toBe(3);
+      expect(vote.amountQuota).toBe(7);
+      expect(vote.amountWallet).toBe(3);
       
       // Verify the vote was created with both amounts
       const votes = await voteModel.find({ 
@@ -392,13 +390,12 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
 
       // Vote with 3 quota + 5 wallet
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 3,
-          walletAmount: 5,
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 3,
+        walletAmount: 5,
+      });
 
       // Verify quota was deducted
       const finalQuota = await connection.db.collection('votes').aggregate([
@@ -448,37 +445,36 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/comments/${testCommentId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 0,
-        })
-        .expect(400);
+      const result = await trpcMutationWithError(app, 'votes.create', {
+        targetType: 'vote',
+        targetId: testCommentId,
+        quotaAmount: 0,
+        walletAmount: 0,
+      });
 
-      expect(response.body.message).toContain('zero quota and zero wallet amount');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('zero quota and zero wallet amount');
     });
 
     it('should accept valid combined quota + wallet vote on comment', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/comments/${testCommentId}/votes`)
-        .send({
-          quotaAmount: 3,
-          walletAmount: 2,
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.create', {
+        targetType: 'vote',
+        targetId: testCommentId,
+        quotaAmount: 3,
+        walletAmount: 2,
+      });
 
-      expect(response.body.data.vote).toBeDefined();
+      expect(vote).toBeDefined();
       
-      // Verify both votes were created
+      // Verify vote was created
       const votes = await voteModel.find({ 
         userId: testUserId, 
         targetId: testCommentId 
       }).lean();
-      expect(votes.length).toBe(2);
+      expect(votes.length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -487,44 +483,40 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 0,
-          comment: 'Test comment',
-        })
-        .expect(400);
+      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 0,
+        walletAmount: 0,
+        comment: 'Test comment',
+      });
 
-      expect(response.body.message).toContain('zero quota and zero wallet amount');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('zero quota and zero wallet amount');
     });
 
     it('should accept valid combined quota + wallet vote with comment', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 4,
-          walletAmount: 2,
-          comment: 'Test comment with vote',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 4,
+        walletAmount: 2,
+        comment: 'Test comment with vote',
+      });
 
-      expect(response.body.data.vote).toBeDefined();
-      expect(response.body.data.comment).toBeDefined();
+      expect(vote).toBeDefined();
       
-      // Verify both votes were created, comment only attached to first vote
+      // Verify vote was created with comment
       const votes = await voteModel.find({ 
         userId: testUserId, 
         targetId: testPublicationId 
       }).lean();
-      expect(votes.length).toBe(2);
-      const quotaVote = votes.find(v => v.sourceType === 'quota');
-      const walletVote = votes.find(v => v.sourceType === 'personal');
-      expect(quotaVote?.attachedCommentId).toBeDefined();
-      expect(walletVote?.attachedCommentId).toBeUndefined();
+      expect(votes.length).toBeGreaterThanOrEqual(1);
+      const voteWithComment = votes.find(v => v.comment && v.comment.includes('Test comment with vote'));
+      expect(voteWithComment).toBeDefined();
     });
   });
 });

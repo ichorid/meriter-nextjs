@@ -2,6 +2,9 @@
 
 import React from 'react';
 import { Subtitle } from '../Typography';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
+import { Separator } from '@/components/ui/shadcn/separator';
+import { cn } from '@/lib/utils';
 
 export interface TitleCardProps {
     title?: string;
@@ -19,24 +22,28 @@ export function TitleCard({
     className = '',
 }: TitleCardProps) {
     return (
-        <div className={`card w-full p-6 bg-base-100 shadow-xl dark:border dark:border-base-content/20 ${topMargin || 'mt-6'} ${className}`}>
+        <Card className={cn('w-full shadow-xl', topMargin || 'mt-6', className)}>
             {/* Title for Card */}
             {title && (
-                <>
-                    <Subtitle styleClass={TopSideButtons ? 'inline-block' : ''}>
-                        {title}
+                <CardHeader>
+                    <CardTitle className={cn('flex items-center justify-between', TopSideButtons && 'inline-block')}>
+                        <Subtitle styleClass={TopSideButtons ? 'inline-block' : ''}>
+                            {title}
+                        </Subtitle>
                         {/* Top side button, show only if present */}
                         {TopSideButtons && (
                             <div className="inline-block float-right">{TopSideButtons}</div>
                         )}
-                    </Subtitle>
-                    <div className="divider mt-2"></div>
-                </>
+                    </CardTitle>
+                    <Separator className="mt-2" />
+                </CardHeader>
             )}
 
             {/** Card Body */}
-            <div className="h-full w-full pb-6 bg-base-100">{children}</div>
-        </div>
+            <CardContent className="h-full w-full pb-6">
+                {children}
+            </CardContent>
+        </Card>
     );
 }
 
