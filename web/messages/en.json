@@ -211,7 +211,7 @@
     },
     "shared": {
         "balance": "Balance:",
-        "withdraw": "Withdraw:",
+        "withdraw": "Withdraw merits",
         "vote": "Vote",
         "share": "Share",
         "urlCopiedToBuffer": "URL copied to buffer",

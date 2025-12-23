@@ -212,7 +212,7 @@
     },
     "shared": {
         "balance": "Баланс:",
-        "withdraw": "Снять:",
+        "withdraw": "Забрать мериты",
         "vote": "Голосовать",
         "share": "Поделиться",
         "urlCopiedToBuffer": "URL скопирован в буфер",
