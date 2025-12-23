@@ -29,7 +29,10 @@ describe('ConfigController', () => {
       process.env.BOT_USERNAME = 'test_bot';
       const result = configController.getConfig();
       
-      expect(result).toEqual({ botUsername: 'test_bot' });
+      expect(result).toMatchObject({ botUsername: 'test_bot' });
+      expect(result).toHaveProperty('oauth');
+      expect(result).toHaveProperty('authn');
+      expect(result).toHaveProperty('features');
       delete process.env.BOT_USERNAME;
     });
 
@@ -38,7 +41,10 @@ describe('ConfigController', () => {
       delete process.env.BOT_USERNAME;
       
       const result = configController.getConfig();
-      expect(result).toEqual({ botUsername: null });
+      expect(result).toMatchObject({ botUsername: null });
+      expect(result).toHaveProperty('oauth');
+      expect(result).toHaveProperty('authn');
+      expect(result).toHaveProperty('features');
       
       if (originalBotUsername) {
         process.env.BOT_USERNAME = originalBotUsername;
@@ -50,7 +56,10 @@ describe('ConfigController', () => {
       process.env.BOT_USERNAME = '';
       
       const result = configController.getConfig();
-      expect(result).toEqual({ botUsername: null });
+      expect(result).toMatchObject({ botUsername: null });
+      expect(result).toHaveProperty('oauth');
+      expect(result).toHaveProperty('authn');
+      expect(result).toHaveProperty('features');
       
       if (originalBotUsername) {
         process.env.BOT_USERNAME = originalBotUsername;
@@ -64,7 +73,10 @@ describe('ConfigController', () => {
       process.env.BOT_USERNAME = '   ';
       
       const result = configController.getConfig();
-      expect(result).toEqual({ botUsername: null });
+      expect(result).toMatchObject({ botUsername: null });
+      expect(result).toHaveProperty('oauth');
+      expect(result).toHaveProperty('authn');
+      expect(result).toHaveProperty('features');
       
       if (originalBotUsername) {
         process.env.BOT_USERNAME = originalBotUsername;

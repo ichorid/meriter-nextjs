@@ -16,29 +16,24 @@ const nextConfig = {
     eslint: {
         ignoreDuringBuilds: true,
     },
-    // Note: React is externalized by default in standalone builds for efficiency
-    // Production dependencies (including React) should be installed in the Docker runner stage
-    // This follows Next.js best practices and reduces bundle size
-    // For App Router
+    // Static export configuration - no server-side features
+    // Optimize memory usage during build
     experimental: {
-        serverActions: {
-            bodySizeLimit: '2mb',
-        },
-        // Optimize memory usage during build
         optimizePackageImports: ['@gluestack-ui/themed', '@gluestack-style/react'],
     },
-    // Expose server-side environment variables to Next.js
+    // Expose build-time environment variables to Next.js
+    // All variables must be NEXT_PUBLIC_* for static export (baked into build)
     env: {
-        OAUTH_GOOGLE_ENABLED: process.env.OAUTH_GOOGLE_ENABLED,
-        OAUTH_YANDEX_ENABLED: process.env.OAUTH_YANDEX_ENABLED,
-        OAUTH_VK_ENABLED: process.env.OAUTH_VK_ENABLED,
-        OAUTH_TELEGRAM_ENABLED: process.env.OAUTH_TELEGRAM_ENABLED,
-        OAUTH_APPLE_ENABLED: process.env.OAUTH_APPLE_ENABLED,
-        OAUTH_TWITTER_ENABLED: process.env.OAUTH_TWITTER_ENABLED,
-        OAUTH_INSTAGRAM_ENABLED: process.env.OAUTH_INSTAGRAM_ENABLED,
-        OAUTH_SBER_ENABLED: process.env.OAUTH_SBER_ENABLED,
-        OAUTH_MAILRU_ENABLED: process.env.OAUTH_MAILRU_ENABLED,
-        AUTHN_ENABLED: process.env.AUTHN_ENABLED,
+        NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED: process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED || process.env.OAUTH_GOOGLE_ENABLED,
+        NEXT_PUBLIC_OAUTH_YANDEX_ENABLED: process.env.NEXT_PUBLIC_OAUTH_YANDEX_ENABLED || process.env.OAUTH_YANDEX_ENABLED,
+        NEXT_PUBLIC_OAUTH_VK_ENABLED: process.env.NEXT_PUBLIC_OAUTH_VK_ENABLED || process.env.OAUTH_VK_ENABLED,
+        NEXT_PUBLIC_OAUTH_TELEGRAM_ENABLED: process.env.NEXT_PUBLIC_OAUTH_TELEGRAM_ENABLED || process.env.OAUTH_TELEGRAM_ENABLED,
+        NEXT_PUBLIC_OAUTH_APPLE_ENABLED: process.env.NEXT_PUBLIC_OAUTH_APPLE_ENABLED || process.env.OAUTH_APPLE_ENABLED,
+        NEXT_PUBLIC_OAUTH_TWITTER_ENABLED: process.env.NEXT_PUBLIC_OAUTH_TWITTER_ENABLED || process.env.OAUTH_TWITTER_ENABLED,
+        NEXT_PUBLIC_OAUTH_INSTAGRAM_ENABLED: process.env.NEXT_PUBLIC_OAUTH_INSTAGRAM_ENABLED || process.env.OAUTH_INSTAGRAM_ENABLED,
+        NEXT_PUBLIC_OAUTH_SBER_ENABLED: process.env.NEXT_PUBLIC_OAUTH_SBER_ENABLED || process.env.OAUTH_SBER_ENABLED,
+        NEXT_PUBLIC_OAUTH_MAILRU_ENABLED: process.env.NEXT_PUBLIC_OAUTH_MAILRU_ENABLED || process.env.OAUTH_MAILRU_ENABLED,
+        NEXT_PUBLIC_AUTHN_ENABLED: process.env.NEXT_PUBLIC_AUTHN_ENABLED || process.env.AUTHN_ENABLED,
     },
     transpilePackages: [
         '@telegram-apps/sdk-react',
@@ -59,41 +54,14 @@ const nextConfig = {
         'react-native-web',
         'react-native-safe-area-context',
     ],
-    output: 'standalone',
+    // Static export - generates fully static HTML/CSS/JS files
+    // No server-side rendering or API routes supported
+    output: 'export',
     // Fix monorepo/workspace output tracing root
     outputFileTracingRoot: path.join(__dirname, '..'),
-    // Proxy API requests to backend API server
-    // In Docker, use service name 'api' on port 8002
-    // In local development, use 'localhost:8002'
-    async rewrites() {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-        // If NEXT_PUBLIC_API_URL is set, use it (absolute URL)
-        // Otherwise, proxy to API server (relative rewrites)
-        if (apiUrl && apiUrl.trim() !== '') {
-            // If API URL is set, don't use rewrites - client will use absolute URL
-            return [];
-        }
-
-        // Proxy /api/* to API server
-        // In Docker: always use service name 'api' (Next.js runs in Docker network)
-        // In local dev: use 'localhost:8002'
-        // Check if we're in Docker by checking if we can resolve 'api' hostname
-        // or by checking NODE_ENV and assuming Docker if production
-        // Since rewrites() may be called at build time, we need a reliable way to detect Docker
-        // Best approach: always use 'api' service name in production builds (Docker)
-        // and 'localhost' only in development
-        const isProduction = process.env.NODE_ENV === 'production';
-        // In production (Docker), always use service name 'api'
-        // In development, use 'localhost:8002'
-        const apiHost = isProduction ? 'http://api:8002' : 'http://localhost:8002';
-
-        return [
-            {
-                source: '/api/:path*',
-                destination: `${apiHost}/api/:path*`,
-            },
-        ];
-    },
+    // Note: Static export doesn't support rewrites()
+    // API calls must use relative URLs (/api/*) or absolute URLs via NEXT_PUBLIC_API_URL
+    // Caddy will handle proxying /api/* to the backend API server
     webpack: (config, { isServer }) => {
         // CRITICAL: Merge all aliases properly to ensure single React instance
         // This prevents "Cannot read properties of undefined (reading 'ReactCurrentOwner')" errors

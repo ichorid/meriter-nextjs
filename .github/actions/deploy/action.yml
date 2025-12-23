@@ -11,6 +11,9 @@ inputs:
   commit-sha:
     description: 'Short commit SHA for image tag'
     required: false
+  web-static-artifact:
+    description: 'Path to the static web artifact directory (contains tgz file)'
+    required: false
 
 runs:
   using: 'composite'
@@ -26,6 +29,20 @@ runs:
       run: |
         mkdir -p ~/.ssh
         ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+    - name: Upload static web artifact
+      if: inputs.web-static-artifact != ''
+      shell: bash
+      env:
+        VPS_HOST: ${{ inputs.vps-host }}
+      run: |
+        # Find the tgz file in the artifact directory
+        ARTIFACT_FILE=$(find "${{ inputs.web-static-artifact }}" -name "*.tar.gz" -type f | head -n 1)
+        if [ -z "$ARTIFACT_FILE" ]; then
+          echo "Error: No .tar.gz file found in artifact directory"
+          exit 1
+        fi
+        echo "Uploading artifact: $ARTIFACT_FILE"
+        scp "$ARTIFACT_FILE" "deploy@$VPS_HOST:/tmp/web-static.tar.gz"
     - name: Run remote deploy script
       shell: bash
       env:

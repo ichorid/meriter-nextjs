@@ -128,19 +128,61 @@ export function getOAuthUrl(providerId: string, returnTo?: string): string {
 /**
  * Get authentication environment variables
  * Централизованный доступ к env переменным для OAuth и Authn
+ * Supports both NEXT_PUBLIC_* (for static builds) and legacy names (for backward compatibility)
+ * Can accept runtime config to override build-time values
  */
-export function getAuthEnv(): Record<string, string | undefined> {
+export function getAuthEnv(runtimeConfig?: {
+  oauth?: {
+    google?: boolean;
+    yandex?: boolean;
+    vk?: boolean;
+    telegram?: boolean;
+    apple?: boolean;
+    twitter?: boolean;
+    instagram?: boolean;
+    sber?: boolean;
+    mailru?: boolean;
+  };
+  authn?: { enabled: boolean };
+} | null): Record<string, string | undefined> {
+  // Helper to convert boolean to string 'true'/'false' or undefined
+  const boolToString = (value: boolean | undefined): string | undefined => {
+    if (value === undefined) return undefined;
+    return value ? 'true' : 'false';
+  };
+
+  // Use runtime config if available, otherwise fall back to process.env
   return {
-    OAUTH_GOOGLE_ENABLED: process.env.OAUTH_GOOGLE_ENABLED,
-    OAUTH_YANDEX_ENABLED: process.env.OAUTH_YANDEX_ENABLED,
-    OAUTH_VK_ENABLED: process.env.OAUTH_VK_ENABLED,
-    OAUTH_TELEGRAM_ENABLED: process.env.OAUTH_TELEGRAM_ENABLED,
-    OAUTH_APPLE_ENABLED: process.env.OAUTH_APPLE_ENABLED,
-    OAUTH_TWITTER_ENABLED: process.env.OAUTH_TWITTER_ENABLED,
-    OAUTH_INSTAGRAM_ENABLED: process.env.OAUTH_INSTAGRAM_ENABLED,
-    OAUTH_SBER_ENABLED: process.env.OAUTH_SBER_ENABLED,
-    OAUTH_MAILRU_ENABLED: process.env.OAUTH_MAILRU_ENABLED,
-    AUTHN_ENABLED: process.env.AUTHN_ENABLED,
+    OAUTH_GOOGLE_ENABLED: runtimeConfig?.oauth?.google !== undefined
+      ? boolToString(runtimeConfig.oauth.google)
+      : process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED || process.env.OAUTH_GOOGLE_ENABLED,
+    OAUTH_YANDEX_ENABLED: runtimeConfig?.oauth?.yandex !== undefined
+      ? boolToString(runtimeConfig.oauth.yandex)
+      : process.env.NEXT_PUBLIC_OAUTH_YANDEX_ENABLED || process.env.OAUTH_YANDEX_ENABLED,
+    OAUTH_VK_ENABLED: runtimeConfig?.oauth?.vk !== undefined
+      ? boolToString(runtimeConfig.oauth.vk)
+      : process.env.NEXT_PUBLIC_OAUTH_VK_ENABLED || process.env.OAUTH_VK_ENABLED,
+    OAUTH_TELEGRAM_ENABLED: runtimeConfig?.oauth?.telegram !== undefined
+      ? boolToString(runtimeConfig.oauth.telegram)
+      : process.env.NEXT_PUBLIC_OAUTH_TELEGRAM_ENABLED || process.env.OAUTH_TELEGRAM_ENABLED,
+    OAUTH_APPLE_ENABLED: runtimeConfig?.oauth?.apple !== undefined
+      ? boolToString(runtimeConfig.oauth.apple)
+      : process.env.NEXT_PUBLIC_OAUTH_APPLE_ENABLED || process.env.OAUTH_APPLE_ENABLED,
+    OAUTH_TWITTER_ENABLED: runtimeConfig?.oauth?.twitter !== undefined
+      ? boolToString(runtimeConfig.oauth.twitter)
+      : process.env.NEXT_PUBLIC_OAUTH_TWITTER_ENABLED || process.env.OAUTH_TWITTER_ENABLED,
+    OAUTH_INSTAGRAM_ENABLED: runtimeConfig?.oauth?.instagram !== undefined
+      ? boolToString(runtimeConfig.oauth.instagram)
+      : process.env.NEXT_PUBLIC_OAUTH_INSTAGRAM_ENABLED || process.env.OAUTH_INSTAGRAM_ENABLED,
+    OAUTH_SBER_ENABLED: runtimeConfig?.oauth?.sber !== undefined
+      ? boolToString(runtimeConfig.oauth.sber)
+      : process.env.NEXT_PUBLIC_OAUTH_SBER_ENABLED || process.env.OAUTH_SBER_ENABLED,
+    OAUTH_MAILRU_ENABLED: runtimeConfig?.oauth?.mailru !== undefined
+      ? boolToString(runtimeConfig.oauth.mailru)
+      : process.env.NEXT_PUBLIC_OAUTH_MAILRU_ENABLED || process.env.OAUTH_MAILRU_ENABLED,
+    AUTHN_ENABLED: runtimeConfig?.authn?.enabled !== undefined
+      ? boolToString(runtimeConfig.authn.enabled)
+      : process.env.NEXT_PUBLIC_AUTHN_ENABLED || process.env.AUTHN_ENABLED,
   };
 }
 

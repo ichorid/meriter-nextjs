@@ -41,20 +41,8 @@
         -Server
     }
 
-	# Rate limiting for API endpoints (higher limits for local dev)
-	# Note: Caddy v2 doesn't have built-in rate limiting - requires caddy-ratelimit plugin
-	# For local dev, rate limiting is optional but recommended
-	handle /_next* {
-		reverse_proxy host.docker.internal:8001 {
-			header_up X-Real-IP {remote_host}
-			header_up X-Forwarded-Proto "http"
-			header_up X-Forwarded-Host {host}
-			header_up X-Forwarded-For {remote_host}
-		}
-		encode gzip
-	}
-
-	handle /api* {
+    # API requests - proxy to backend API
+    handle /api* {
         # Rate limiting configuration (requires caddy-ratelimit plugin)
         # Uncomment and configure when plugin is installed:
         # rate_limit {
@@ -80,32 +68,30 @@
         encode gzip
     }
 
-    # Rate limiting for web endpoints (higher limits for local dev)
-    handle {
-        # Rate limiting configuration (requires caddy-ratelimit plugin)
-        # Uncomment and configure when plugin is installed:
-        # rate_limit {
-        #     zone web_zone {
-        #         key {remote_host}
-        #         events 1000
-        #         window 1m
-        #     }
-        # }
-        
-        # Add rate limit headers
-        header {
-            X-RateLimit-Limit "1000"
-            X-RateLimit-Window "60"
-        }
-        
-        reverse_proxy host.docker.internal:8001 {
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-Proto "http"
-            header_up X-Forwarded-Host {host}
-            header_up X-Forwarded-For {remote_host}
-        }
-        encode gzip
+    # Serve static files from mounted volume
+    root * /var/www/meriter-web
+    
+    # Next.js static assets - long cache
+    handle /_next/static/* {
+        file_server
+        header Cache-Control "public, max-age=31536000, immutable"
     }
+    
+    # Public assets and other /meriter routes
+    handle /meriter/* {
+        file_server
+        try_files {path} /index.html
+        header Cache-Control "public, max-age=3600"
+    }
+
+    # SPA fallback - all other routes
+    handle {
+        file_server
+        try_files {path} /index.html
+        header Cache-Control "public, max-age=0, must-revalidate"
+    }
+    
+    encode gzip
 
     # Error handling
     handle_errors {

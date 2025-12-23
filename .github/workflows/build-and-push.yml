@@ -16,7 +16,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME_WEB: ${{ github.repository }}-web
   IMAGE_NAME_API: ${{ github.repository }}-api
 
 jobs:
@@ -109,7 +108,7 @@ jobs:
       - test
     strategy:
       matrix:
-        component: [web, api]
+        component: [api]
     permissions:
       contents: read
       packages: write
@@ -206,12 +205,78 @@ jobs:
             echo "- \`${IMAGE_NAME}:sha-${SHORT_SHA}\`" >> $GITHUB_STEP_SUMMARY
           fi
 
+  build-static-web:
+    name: Build static web files
+    runs-on: ubuntu-latest
+    needs:
+      - determine-target
+      - test
+    outputs:
+      artifact_name: ${{ steps.artifact.outputs.name }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.24.0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build static export
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || '' }}
+          NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED || 'false' }}
+          NEXT_PUBLIC_OAUTH_YANDEX_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_YANDEX_ENABLED || 'false' }}
+          NEXT_PUBLIC_OAUTH_VK_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_VK_ENABLED || 'false' }}
+          NEXT_PUBLIC_OAUTH_TELEGRAM_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_TELEGRAM_ENABLED || 'false' }}
+          NEXT_PUBLIC_OAUTH_APPLE_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_APPLE_ENABLED || 'false' }}
+          NEXT_PUBLIC_OAUTH_TWITTER_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_TWITTER_ENABLED || 'false' }}
+          NEXT_PUBLIC_OAUTH_INSTAGRAM_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_INSTAGRAM_ENABLED || 'false' }}
+          NEXT_PUBLIC_OAUTH_SBER_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_SBER_ENABLED || 'false' }}
+          NEXT_PUBLIC_OAUTH_MAILRU_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_MAILRU_ENABLED || 'false' }}
+          NEXT_PUBLIC_AUTHN_ENABLED: ${{ vars.NEXT_PUBLIC_AUTHN_ENABLED || 'false' }}
+        run: pnpm -C web build
+      - name: Create archive
+        id: artifact
+        run: |
+          BUILD_TYPE="${{ needs.determine-target.outputs.build_type }}"
+          SHORT_SHA="${{ needs.determine-target.outputs.commit_sha }}"
+          
+          if [ "$BUILD_TYPE" = "dev" ]; then
+            ARTIFACT_NAME="web-static-dev-${SHORT_SHA}.tar.gz"
+          elif [ "$BUILD_TYPE" = "release" ]; then
+            WEB_VERSION="${{ needs.determine-target.outputs.web_version }}"
+            ARTIFACT_NAME="web-static-v${WEB_VERSION}.tar.gz"
+          else
+            ARTIFACT_NAME="web-static-${SHORT_SHA}.tar.gz"
+          fi
+          
+          tar -czf "${ARTIFACT_NAME}" -C web/out .
+          echo "name=${ARTIFACT_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Created artifact: ${ARTIFACT_NAME}"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-static
+          path: ${{ steps.artifact.outputs.name }}
+          retention-days: 7
+
   deploy-dev:
     name: Deploy to dev server
     runs-on: ubuntu-latest
     needs:
       - determine-target
       - build-images
+      - build-static-web
     if: needs.determine-target.outputs.run_dev_deploy == 'true'
     environment:
       name: dev
@@ -222,11 +287,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Download static web artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-static
+          path: ./web-static-artifact
       - name: Deploy
         uses: ./.github/actions/deploy
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
           vps-host: ${{ secrets.VPS_HOST }}
+          web-static-artifact: ./web-static-artifact
 
   deploy-stage:
     name: Deploy to stage server
@@ -234,18 +305,25 @@ jobs:
     needs:
       - determine-target
       - build-images
+      - build-static-web
     if: needs.determine-target.outputs.run_stage_deploy == 'true'
     environment:
       name: stage
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Download static web artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-static
+          path: ./web-static-artifact
       - name: Deploy
         uses: ./.github/actions/deploy
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
           vps-host: ${{ secrets.VPS_HOST }}
           commit-sha: ${{ needs.determine-target.outputs.commit_sha }}
+          web-static-artifact: ./web-static-artifact
 
   deploy-prod:
     name: Deploy to production server
@@ -253,15 +331,22 @@ jobs:
     needs:
       - determine-target
       - deploy-stage
+      - build-static-web
     if: needs.determine-target.outputs.run_prod_deploy == 'true'
     environment:
       name: prod
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Download static web artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-static
+          path: ./web-static-artifact
       - name: Deploy
         uses: ./.github/actions/deploy
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
           vps-host: ${{ secrets.VPS_HOST }}
           commit-sha: ${{ needs.determine-target.outputs.commit_sha }}
+          web-static-artifact: ./web-static-artifact

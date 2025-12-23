@@ -171,4 +171,10 @@ export const queryKeys = {
 
     // Version
     version: () => ["version"] as const,
+
+    // Config
+    config: {
+        all: ["config"] as const,
+        runtime: () => [...queryKeys.config.all, "runtime"] as const,
+    },
 };

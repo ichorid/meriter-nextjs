@@ -66,29 +66,29 @@
         encode gzip
     }
 
-    # Rate limiting for web endpoints (more lenient)
-    handle {
-        # Rate limiting configuration (requires caddy-ratelimit plugin)
-        # Uncomment and configure when plugin is installed:
-        # rate_limit {
-        #     zone web_zone {
-        #         key {remote_host}
-        #         events 200
-        #         window 1m
-        #     }
-        # }
-        
-        # Add rate limit headers
-        header {
-            X-RateLimit-Limit "200"
-            X-RateLimit-Window "60"
-        }
-        
-        reverse_proxy web:8001 {
-            header_up X-Real-IP {remote_host}
-            header_up X-Forwarded-For {remote_host}
-        }
-        encode gzip
+    # Serve static files from /var/www/meriter-web
+    root * /var/www/meriter-web
+    
+    # Next.js static assets - long cache
+    handle /_next/static/* {
+        file_server
+        header Cache-Control "public, max-age=31536000, immutable"
     }
+    
+    # Public assets
+    handle /meriter/* {
+        file_server
+        try_files {path} /index.html
+        header Cache-Control "public, max-age=3600"
+    }
+    
+    # SPA fallback - all other routes serve index.html
+    handle {
+        file_server
+        try_files {path} /index.html
+        header Cache-Control "public, max-age=0, must-revalidate"
+    }
+    
+    encode gzip
 }
 

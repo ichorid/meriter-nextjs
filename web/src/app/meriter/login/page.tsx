@@ -1,11 +1,21 @@
+'use client';
+
 import { LoginForm } from '@/components/LoginForm';
 import { VersionDisplay } from '@/components/organisms';
 import { getEnabledProviders, getAuthEnv } from '@/lib/utils/oauth-providers';
+import { useRuntimeConfig } from '@/hooks/useRuntimeConfig';
 
 export default function PageMeriterLogin() {
-    const env = getAuthEnv();
+    // Fetch runtime config (falls back to build-time defaults if API fails)
+    const { config: runtimeConfig } = useRuntimeConfig();
+    
+    // Get auth environment with runtime config override
+    const env = getAuthEnv(runtimeConfig);
     const enabledProviders = getEnabledProviders(env);
-    const authnEnabled = process.env.AUTHN_ENABLED === 'true';
+    
+    // Get AUTHN enabled from runtime config or fall back to build-time
+    const authnEnabled = runtimeConfig?.authn?.enabled ?? 
+        (process.env.NEXT_PUBLIC_AUTHN_ENABLED || process.env.AUTHN_ENABLED) === 'true';
 
     console.log('Enabled providers:', enabledProviders);
     console.log('Authn enabled:', authnEnabled);

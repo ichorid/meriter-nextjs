@@ -1383,6 +1383,60 @@ export const searchApiV1 = {
     },
 };
 
+// Config API
+export const configApiV1 = {
+    async getConfig(): Promise<{
+        botUsername: string | null;
+        oauth: {
+            google: boolean;
+            yandex: boolean;
+            vk: boolean;
+            telegram: boolean;
+            apple: boolean;
+            twitter: boolean;
+            instagram: boolean;
+            sber: boolean;
+            mailru: boolean;
+        };
+        authn: {
+            enabled: boolean;
+        };
+        features: {
+            analytics: boolean;
+            debug: boolean;
+            commentVoting: boolean;
+            commentImageUploads: boolean;
+            loginInviteForm: boolean;
+        };
+    }> {
+        const response = await apiClient.get<{ success: true; data: {
+            botUsername: string | null;
+            oauth: {
+                google: boolean;
+                yandex: boolean;
+                vk: boolean;
+                telegram: boolean;
+                apple: boolean;
+                twitter: boolean;
+                instagram: boolean;
+                sber: boolean;
+                mailru: boolean;
+            };
+            authn: {
+                enabled: boolean;
+            };
+            features: {
+                analytics: boolean;
+                debug: boolean;
+                commentVoting: boolean;
+                commentImageUploads: boolean;
+                loginInviteForm: boolean;
+            };
+        } }>("/api/v1/config");
+        return response.data;
+    },
+};
+
 // Notifications API
 export const notificationsApiV1 = {
     async getNotifications(
