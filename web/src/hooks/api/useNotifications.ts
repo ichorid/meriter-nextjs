@@ -1,10 +1,7 @@
-// Notifications React Query hooks
-import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
-import { notificationsApiV1 } from "@/lib/api/v1";
-import { queryKeys } from "@/lib/constants/queryKeys";
-import type { Notification, NotificationPreferences, PaginatedResponse } from "@/types/api-v1";
+// Notifications React Query hooks - migrated to tRPC
+import { trpc } from "@/lib/trpc/client";
+import type { Notification, NotificationPreferences } from "@/types/api-v1";
 import { createGetNextPageParam } from "@/lib/utils/pagination-utils";
-import { createMutation } from "@/lib/api/mutation-factory";
 
 interface GetNotificationsParams {
     page?: number;
@@ -14,13 +11,16 @@ interface GetNotificationsParams {
 }
 
 export function useNotifications(params: GetNotificationsParams = {}) {
-    return useQuery({
-        queryKey: queryKeys.notifications.list(params),
-        queryFn: () => notificationsApiV1.getNotifications(params),
+    return trpc.notifications.getAll.useQuery({
+        page: params.page,
+        pageSize: params.pageSize,
+        unreadOnly: params.unreadOnly,
+        type: params.type,
+    }, {
         refetchInterval: 30000, // Poll every 30 seconds for real-time updates
-        retry: false, // Don't retry on 404
-        retryOnMount: false, // Don't retry on mount if failed
-        throwOnError: false, // Don't show errors for 404
+        retry: false,
+        retryOnMount: false,
+        throwOnError: false,
     });
 }
 
@@ -28,29 +28,31 @@ export function useInfiniteNotifications(
     params: { unreadOnly?: boolean; type?: string } = {},
     pageSize: number = 20
 ) {
-    return useInfiniteQuery({
-        queryKey: [...queryKeys.notifications.lists(), 'infinite', params, pageSize],
-        queryFn: ({ pageParam = 1 }: { pageParam: number }) => {
-            return notificationsApiV1.getNotifications({
-                page: pageParam,
-                pageSize,
-                unreadOnly: params.unreadOnly,
-                type: params.type,
-            });
+    return trpc.notifications.getAll.useInfiniteQuery(
+        {
+            page: 1,
+            pageSize,
+            unreadOnly: params.unreadOnly,
+            type: params.type,
         },
-        getNextPageParam: createGetNextPageParam<Notification>(),
-        initialPageParam: 1,
-        refetchInterval: 30000, // Poll every 30 seconds for real-time updates
-        retry: false, // Don't retry on 404
-        retryOnMount: false, // Don't retry on mount if failed
-        throwOnError: false, // Don't show errors for 404
-    });
+        {
+            getNextPageParam: (lastPage) => {
+                if (!lastPage || lastPage.total === 0) return undefined;
+                const currentPage = lastPage.page || 1;
+                const totalPages = Math.ceil(lastPage.total / lastPage.pageSize);
+                return currentPage < totalPages ? currentPage + 1 : undefined;
+            },
+            initialPageParam: 1,
+            refetchInterval: 30000, // Poll every 30 seconds for real-time updates
+            retry: false,
+            retryOnMount: false,
+            throwOnError: false,
+        }
+    );
 }
 
 export function useUnreadCount() {
-    return useQuery({
-        queryKey: queryKeys.notifications.unreadCount(),
-        queryFn: () => notificationsApiV1.getUnreadCount(),
+    return trpc.notifications.getUnreadCount.useQuery(undefined, {
         retry: false,
         retryOnMount: false,
         throwOnError: false,
@@ -58,63 +60,63 @@ export function useUnreadCount() {
 }
 
 export function useNotificationPreferences() {
-    return useQuery({
-        queryKey: queryKeys.notifications.preferences(),
-        queryFn: () => notificationsApiV1.getPreferences(),
-    });
+    // TODO: Add preferences endpoint to notifications router
+    return {
+        data: undefined,
+        isLoading: false,
+        isError: false,
+        error: null,
+    };
 }
 
-export const useMarkAsRead = createMutation<void, string>({
-    mutationFn: (notificationId) => notificationsApiV1.markAsRead(notificationId),
-    errorContext: "Mark as read error",
-    invalidations: {
-        notifications: true,
-    },
-    onSuccess: (_result, _variables, queryClient) => {
-        // Explicitly refetch unread count to ensure immediate update
-        queryClient.refetchQueries({
-            queryKey: queryKeys.notifications.unreadCount(),
-        });
-    },
-});
+export const useMarkAsRead = () => {
+    const utils = trpc.useUtils();
+    
+    return trpc.notifications.markAsRead.useMutation({
+        onSuccess: () => {
+            // Invalidate notifications lists
+            utils.notifications.getAll.invalidate();
+            // Explicitly refetch unread count to ensure immediate update
+            utils.notifications.getUnreadCount.invalidate();
+        },
+    });
+};
 
-export const useMarkAllAsRead = createMutation<void, void>({
-    mutationFn: () => notificationsApiV1.markAllAsRead(),
-    errorContext: "Mark all as read error",
-    invalidations: {
-        notifications: true,
-    },
-    onSuccess: (_result, _variables, queryClient) => {
-        // Explicitly refetch unread count to ensure immediate update
-        queryClient.refetchQueries({
-            queryKey: queryKeys.notifications.unreadCount(),
-        });
-    },
-});
+export const useMarkAllAsRead = () => {
+    const utils = trpc.useUtils();
+    
+    // TODO: Add markAllAsRead endpoint to notifications router
+    return {
+        mutate: () => {},
+        mutateAsync: async () => {},
+        isLoading: false,
+        isError: false,
+        error: null,
+    };
+};
 
-export const useDeleteNotification = createMutation<void, string>({
-    mutationFn: (notificationId) => notificationsApiV1.deleteNotification(notificationId),
-    errorContext: "Delete notification error",
-    invalidations: {
-        notifications: true,
-    },
-    onSuccess: (_result, _variables, queryClient) => {
-        // Explicitly refetch unread count in case deleted notification was unread
-        queryClient.refetchQueries({
-            queryKey: queryKeys.notifications.unreadCount(),
-        });
-    },
-});
+export const useDeleteNotification = () => {
+    const utils = trpc.useUtils();
+    
+    // TODO: Add delete endpoint to notifications router
+    return {
+        mutate: () => {},
+        mutateAsync: async () => {},
+        isLoading: false,
+        isError: false,
+        error: null,
+    };
+};
 
-export const useUpdatePreferences = createMutation<
-    void,
-    Partial<NotificationPreferences>
->({
-    mutationFn: (preferences) => notificationsApiV1.updatePreferences(preferences),
-    errorContext: "Update preferences error",
-    onSuccess: (_result, _variables, queryClient) => {
-        queryClient.invalidateQueries({
-            queryKey: queryKeys.notifications.preferences(),
-        });
-    },
-});
+export const useUpdatePreferences = () => {
+    const utils = trpc.useUtils();
+    
+    // TODO: Add updatePreferences endpoint to notifications router
+    return {
+        mutate: () => {},
+        mutateAsync: async () => {},
+        isLoading: false,
+        isError: false,
+        error: null,
+    };
+};

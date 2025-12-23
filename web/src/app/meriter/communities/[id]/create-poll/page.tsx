@@ -1,62 +1,18 @@
-'use client';
+import { CreatePollPageClient } from './CreatePollPageClient';
 
-import React from 'react';
-import { FormPollCreate } from '@/features/polls/components/form-poll-create';
-import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { useTranslations } from 'next-intl';
-
-export default function CreatePollPage({
-  params,
-}: {
+interface CreatePollPageProps {
   params: Promise<{ id: string }>;
-}) {
-  const router = useRouter();
-  const t = useTranslations('polls');
-  const { isAuthenticated, isLoading: userLoading } = useAuth();
-  const [communityId, setCommunityId] = React.useState<string>('');
-
-  React.useEffect(() => {
-    params.then((p) => setCommunityId(p.id));
-  }, [params]);
-
-  useEffect(() => {
-    if (!userLoading && !isAuthenticated) {
-      router.push(`/meriter/login?returnTo=${encodeURIComponent(`/meriter/communities/${communityId}/create-poll`)}`);
-    }
-  }, [isAuthenticated, userLoading, router, communityId]);
-
-  if (!isAuthenticated || !communityId) {
-    return null;
-  }
-
-  return (
-    <AdaptiveLayout
-      communityId={communityId}
-      stickyHeader={
-        <SimpleStickyHeader
-          title={t('createTitle')}
-          showBack={true}
-          onBack={() => router.push(`/meriter/communities/${communityId}`)}
-          asStickyHeader={true}
-        />
-      }
-    >
-      <div className="space-y-6">
-        <FormPollCreate
-          communityId={communityId}
-          onSuccess={(pollId) => {
-            router.push(`/meriter/communities/${communityId}?poll=${pollId}`);
-          }}
-          onCancel={() => {
-            router.push(`/meriter/communities/${communityId}`);
-          }}
-        />
-      </div>
-    </AdaptiveLayout>
-  );
 }
+
+// Required for static export with dynamic routes
+export async function generateStaticParams() {
+  // Return empty array - dynamic routes will be handled client-side
+  return [];
+}
+
+export default async function CreatePollPage({ params }: CreatePollPageProps) {
+  const { id } = await params;
+  return <CreatePollPageClient communityId={id} />;
+}
+
 

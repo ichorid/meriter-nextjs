@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { etv } from '@shared/lib/input-utils';
-import { Slider, SliderTrack, SliderFilledTrack, SliderThumb } from '@gluestack-ui/themed';
+import { Slider, SliderTrack, SliderFilledTrack, SliderThumb } from '@/components/ui/slider';
 import { useTranslations } from 'next-intl';
 
 interface FormWithdrawProps {

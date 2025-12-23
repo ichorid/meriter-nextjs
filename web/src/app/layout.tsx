@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react';
 import { detectBrowserLanguage, SUPPORTED_LOCALES, DEFAULT_LOCALE, type Locale } from '@/i18n/request';
 import { Root } from '@/components/Root';
 import { QueryProvider } from '@/providers/QueryProvider';
-import { GluestackUIProvider } from '@/providers/GluestackUIProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { RuntimeConfigProvider } from '@/components/RuntimeConfigProvider';
 import { ToastContainer } from '@/shared/components/toast-container';
@@ -165,25 +164,23 @@ export default function RootLayout({
             </head>
             <body suppressHydrationWarning>
                 <StyledJsxRegistry>
-                    <GluestackUIProvider>
-                        <AppModeProvider>
-                            <QueryProvider>
-                                <NextIntlClientProvider locale={locale} messages={messages}>
-                                    <ClientRouter />
-                                    <AuthProvider>
-                                        {/* RuntimeConfigProvider fetches config from API and passes to AuthWrapper */}
-                                        <RuntimeConfigProvider 
-                                            fallbackEnabledProviders={enabledProviders}
-                                            fallbackAuthnEnabled={authnEnabled}
-                                        >
-                                            <Root>{children}</Root>
-                                        </RuntimeConfigProvider>
-                                        <ToastContainer />
-                                    </AuthProvider>
-                                </NextIntlClientProvider>
-                            </QueryProvider>
-                        </AppModeProvider>
-                    </GluestackUIProvider>
+                    <AppModeProvider>
+                        <QueryProvider>
+                            <NextIntlClientProvider locale={locale} messages={messages}>
+                                <ClientRouter />
+                                <AuthProvider>
+                                    {/* RuntimeConfigProvider fetches config from API and passes to AuthWrapper */}
+                                    <RuntimeConfigProvider 
+                                        fallbackEnabledProviders={enabledProviders}
+                                        fallbackAuthnEnabled={authnEnabled}
+                                    >
+                                        <Root>{children}</Root>
+                                    </RuntimeConfigProvider>
+                                    <ToastContainer />
+                                </AuthProvider>
+                            </NextIntlClientProvider>
+                        </QueryProvider>
+                    </AppModeProvider>
                 </StyledJsxRegistry>
             </body>
         </html>

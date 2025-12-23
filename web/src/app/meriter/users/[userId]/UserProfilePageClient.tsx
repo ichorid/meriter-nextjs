@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { use } from 'react';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
@@ -14,11 +13,9 @@ import { Mail, MessageCircle, Globe, MapPin, GraduationCap, User as UserIcon, Us
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { MeritsAndQuotaSection } from './MeritsAndQuotaSection';
 
-export function UserProfilePageClient({ params }: { params: Promise<{ userId: string }> }) {
+export function UserProfilePageClient({ userId }: { userId: string }) {
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
-  const resolvedParams = use(params);
-  const userId = resolvedParams.userId;
 
   const { data: user, isLoading, error } = useUserProfile(userId);
   const { data: userRoles = [], isLoading: rolesLoading } = useUserRoles(userId);

@@ -58,10 +58,8 @@ export function LoginForm({
         useAuth();
     const addToast = useToastStore((state) => state.addToast);
 
-    // Get return URL and invite code from URL
+    // Get return URL from URL
     const returnTo = searchParams?.get("returnTo");
-    const inviteCodeFromUrl = searchParams?.get("invite");
-    const [inviteCode, setInviteCode] = useState(inviteCodeFromUrl || "");
 
     // Filter providers if enabledProviders is passed
     const displayedProviders = enabledProviders
@@ -75,22 +73,9 @@ export function LoginForm({
         }
     }, [authError, addToast]);
 
-    // Helper function to construct redirect URL with invite code
+    // Helper function to construct redirect URL
     const buildRedirectUrl = (): string => {
-        let returnToPath = returnTo || "/meriter/profile";
-
-        // If invite code is present, ensure we redirect to /meriter/profile with invite query param
-        if (inviteCode.trim()) {
-            const url = new URL("/meriter/profile", window.location.origin);
-            url.searchParams.set("invite", inviteCode.trim());
-            // Preserve returnTo as a query param if it was specified and different
-            if (returnTo && returnTo !== "/meriter/profile") {
-                url.searchParams.set("returnTo", returnTo);
-            }
-            returnToPath = url.pathname + url.search;
-        }
-
-        return returnToPath;
+        return returnTo || "/meriter/profile";
     };
 
     // Handle fake authentication
@@ -154,22 +139,6 @@ export function LoginForm({
             </div>
 
             <div className="space-y-4 mb-4">
-                {/* Invite Code Input */}
-                {config.features.loginInviteForm && (
-                    <BrandFormControl
-                        label={tReg('inviteCodeLabel')}
-                        helperText={tReg('inviteDescription')}
-                    >
-                        <BrandInput
-                            value={inviteCode}
-                            onChange={(e) => setInviteCode(e.target.value)}
-                            placeholder={tReg('inviteCodePlaceholder')}
-                            autoCapitalize="none"
-                            autoComplete="off"
-                        />
-                    </BrandFormControl>
-                )}
-
                 <p className="text-sm text-base-content/70 mb-8">
                     {t("subtitle")}
                 </p>
@@ -233,11 +202,7 @@ export function LoginForm({
 
                                                 // Force welcome page for new users
                                                 if (result?.isNewUser) {
-                                                    const url = new URL("/meriter/welcome", window.location.origin);
-                                                    if (inviteCode.trim()) {
-                                                        url.searchParams.set("invite", inviteCode.trim());
-                                                    }
-                                                    redirectUrl = url.pathname + url.search;
+                                                    redirectUrl = "/meriter/welcome";
                                                 }
 
                                                 window.location.href = redirectUrl;

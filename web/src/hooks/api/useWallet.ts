@@ -1,6 +1,7 @@
-// Wallet React Query hooks
+// Wallet React Query hooks - partially migrated to tRPC
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { walletApiV1 } from '@/lib/api/v1';
+import { walletApiV1 } from '@/lib/api/v1'; // Still needed for some endpoints
+import { trpc } from '@/lib/trpc/client';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import { STALE_TIME } from '@/lib/constants/query-config';
 import type { PaginatedResponse } from '@/types/api-v1';
@@ -20,21 +21,20 @@ interface WithdrawRequest {
 
 // Get user wallets
 export function useWallets() {
-  return useQuery({
-    queryKey: queryKeys.wallet.wallets(),
-    queryFn: () => walletApiV1.getWallets(),
+  return trpc.wallets.getAll.useQuery(undefined, {
     staleTime: STALE_TIME.MEDIUM,
   });
 }
 
-// Get wallet balance
+// Get wallet balance - migrated to tRPC
 export function useWalletBalance(communityId?: string) {
-  return useQuery({
-    queryKey: queryKeys.wallet.balance(communityId),
-    queryFn: () => walletApiV1.getBalance(communityId!),
-    staleTime: STALE_TIME.SHORT,
-    enabled: !!communityId,
-  });
+  return trpc.wallets.getBalance.useQuery(
+    { communityId: communityId! },
+    {
+      staleTime: STALE_TIME.SHORT,
+      enabled: !!communityId,
+    }
+  );
 }
 
 // Get free balance for voting
@@ -47,15 +47,17 @@ export function useFreeBalance(communityId?: string) {
   });
 }
 
-// Get user transactions
+// Get user transactions - migrated to tRPC
 export function useMyTransactions(params: { 
   skip?: number; 
   limit?: number; 
   positive?: boolean;
 } = {}) {
-  return useQuery({
-    queryKey: queryKeys.wallet.myTransactions(params),
-    queryFn: () => walletApiV1.getTransactions(params),
+  return trpc.wallets.getTransactions.useQuery({
+    userId: 'me',
+    skip: params.skip,
+    limit: params.limit,
+  }, {
     staleTime: STALE_TIME.SHORT,
   });
 }
@@ -83,18 +85,15 @@ export function useTransactions(params: {
   });
 }
 
-// Get a single wallet by community ID
+// Get a single wallet by community ID - migrated to tRPC
 export function useWallet(communityId?: string) {
-  return useQuery({
-    queryKey: queryKeys.wallet.wallet(communityId),
-    queryFn: async () => {
-      if (!communityId) throw new Error('communityId required');
-      const wallets = await walletApiV1.getWallets();
-      return wallets.find(w => w.communityId === communityId) || null;
-    },
-    enabled: !!communityId,
-    staleTime: STALE_TIME.MEDIUM,
-  });
+  return trpc.wallets.getByCommunity.useQuery(
+    { userId: 'me', communityId: communityId! },
+    {
+      enabled: !!communityId,
+      staleTime: STALE_TIME.MEDIUM,
+    }
+  );
 }
 
 /**

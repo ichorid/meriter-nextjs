@@ -404,13 +404,12 @@ describe('Login Page Integration', () => {
   });
 
   describe('URL Parameters', () => {
-    it('should include returnTo and invite code in OAuth URL', async () => {
+    it('should include returnTo in OAuth URL', async () => {
       const user = userEvent.setup();
 
       // Mock useSearchParams to return params with a different returnTo path
-      // so we can verify both returnTo and invite are included
       jest.spyOn(require('next/navigation'), 'useSearchParams').mockReturnValue(
-        new URLSearchParams('returnTo=/meriter/communities/123&invite=TEST123')
+        new URLSearchParams('returnTo=/meriter/communities/123')
       );
 
       render(
@@ -423,14 +422,14 @@ describe('Login Page Integration', () => {
       const buttons = screen.getAllByText(/login\.signInWith/i);
       await user.click(buttons[0]!);
 
-      // Verify getOAuthUrl was called with params containing returnTo and invite
+      // Verify getOAuthUrl was called with the returnTo path
       expect(mockGetOAuthUrl).toHaveBeenCalled();
       const callArgs = mockGetOAuthUrl.mock.calls[0];
       if (callArgs && callArgs[1]) {
-        // When invite code is present and returnTo is different from /meriter/profile,
-        // the path will be /meriter/profile?invite=TEST123&returnTo=/meriter/communities/123
-        expect(callArgs[1]).toContain('invite');
-        expect(callArgs[1]).toContain('returnTo');
+        // The returnTo path should be passed directly, not as a query parameter
+        expect(callArgs[1]).toBe('/meriter/communities/123');
+        // Invite code feature has been removed
+        expect(callArgs[1]).not.toContain('invite');
       }
     });
   });

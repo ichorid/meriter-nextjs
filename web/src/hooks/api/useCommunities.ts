@@ -4,6 +4,7 @@ import {
     useInfiniteQuery,
 } from "@tanstack/react-query";
 import { communitiesApiV1 } from "@/lib/api/v1";
+import { trpc } from "@/lib/trpc/client";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import { STALE_TIME } from "@/lib/constants/query-config";
 import type { PaginatedResponse, Community, CommunityWithComputedFields } from "@/types/api-v1";
@@ -47,10 +48,7 @@ interface UpdateCommunityDto {
 }
 
 export const useCommunities = () => {
-    return useQuery({
-        queryKey: queryKeys.communities.list({}),
-        queryFn: () => communitiesApiV1.getCommunities(),
-    });
+    return trpc.communities.getAll.useQuery({});
 };
 
 export const useInfiniteCommunities = (pageSize: number = 20) => {
@@ -69,11 +67,10 @@ export const useInfiniteCommunities = (pageSize: number = 20) => {
 };
 
 export const useCommunity = (id: string) => {
-    return useQuery<CommunityWithComputedFields>({
-        queryKey: queryKeys.communities.detail(id),
-        queryFn: () => communitiesApiV1.getCommunity(id),
-        enabled: !!id && id !== "create",
-    });
+    return trpc.communities.getById.useQuery(
+        { id },
+        { enabled: !!id && id !== "create" }
+    );
 };
 
 /**
@@ -99,33 +96,28 @@ export function useCommunitiesBatch(communityIds: string[]) {
     };
 }
 
-export const useCreateCommunity = createMutation<CommunityWithComputedFields, CreateCommunityDto>({
-    mutationFn: (data) => communitiesApiV1.createCommunity(data),
-    errorContext: "Create community error",
-    invalidations: {
-        communities: {
-            lists: true,
-            exact: false,
+export const useCreateCommunity = () => {
+    const utils = trpc.useUtils();
+    
+    return trpc.communities.create.useMutation({
+        onSuccess: () => {
+            // Invalidate communities list
+            utils.communities.getAll.invalidate();
         },
-        wallet: {
-            includeBalance: false,
-        },
-    },
-});
+    });
+};
 
-export const useUpdateCommunity = createMutation<
-    CommunityWithComputedFields,
-    { id: string; data: Partial<UpdateCommunityDto> }
->({
-    mutationFn: ({ id, data }) => communitiesApiV1.updateCommunity(id, data),
-    errorContext: "Update community error",
-    invalidations: {
-        communities: {
-            lists: true,
-            detail: (_, variables) => variables.id,
+export const useUpdateCommunity = () => {
+    const utils = trpc.useUtils();
+    
+    return trpc.communities.update.useMutation({
+        onSuccess: (_, variables) => {
+            // Invalidate communities list and specific community
+            utils.communities.getAll.invalidate();
+            utils.communities.getById.invalidate({ id: variables.id });
         },
-    },
-});
+    });
+};
 
 export const useSendCommunityMemo = createMutation<{ success: boolean }, string>({
     mutationFn: (communityId) => communitiesApiV1.sendUsageMemo(communityId),

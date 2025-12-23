@@ -1,15 +1,5 @@
-// Comments React Query hooks
-import {
-    useQuery,
-    useInfiniteQuery,
-} from "@tanstack/react-query";
-import { commentsApiV1, usersApiV1 } from "@/lib/api/v1";
-import { queryKeys } from "@/lib/constants/queryKeys";
-import { STALE_TIME } from "@/lib/constants/query-config";
-import { serializeQueryParams } from "@/lib/utils/queryKeys";
-import { useValidatedQuery } from "@/lib/api/validated-query";
-import { createMutation } from "@/lib/api/mutation-factory";
-import { CommentSchema, CreateCommentDtoSchema } from "@/types/api-v1/schemas";
+// Comments React Query hooks with tRPC
+import { trpc } from "@/lib/trpc/client";
 import type {
     Comment,
     CreateCommentDto,
@@ -30,11 +20,21 @@ export const commentsKeys = queryKeys.comments;
 
 // Get comments with pagination
 export function useComments(params: GetCommentsRequest = {}) {
-    return useQuery({
-        queryKey: commentsKeys.list(params),
-        queryFn: () => commentsApiV1.getComments(params),
-        staleTime: STALE_TIME.MEDIUM,
-    });
+    // Note: tRPC comments.getAll doesn't exist yet, using getByPublicationId if publicationId provided
+    if (params.publicationId) {
+        return trpc.comments.getByPublicationId.useQuery({
+            publicationId: params.publicationId,
+            page: params.skip !== undefined ? Math.floor((params.skip || 0) / (params.limit || 20)) + 1 : undefined,
+            pageSize: params.limit,
+            limit: params.limit,
+            skip: params.skip,
+        });
+    }
+    // Fallback for other cases - return empty for now
+    return trpc.comments.getByPublicationId.useQuery(
+        { publicationId: '' },
+        { enabled: false }
+    );
 }
 
 // Get comments by publication
@@ -47,19 +47,16 @@ export function useCommentsByPublication(
         order?: string;
     } = {}
 ) {
-    // Convert page/pageSize to skip/limit for API consistency
-    const queryParams = createPaginationParams(params);
-
-    return useQuery({
-        queryKey: [
-            ...commentsKeys.byPublication(publicationId),
-            serializeQueryParams(params),
-        ],
-        queryFn: () =>
-            commentsApiV1.getPublicationComments(publicationId, queryParams),
-        staleTime: STALE_TIME.MEDIUM,
-        enabled: !!publicationId,
-    });
+    return trpc.comments.getByPublicationId.useQuery(
+        {
+            publicationId,
+            page: params.page,
+            pageSize: params.pageSize,
+            sort: params.sort,
+            order: params.order,
+        },
+        { enabled: !!publicationId }
+    );
 }
 
 // Get comments by comment (replies)
@@ -72,31 +69,24 @@ export function useCommentsByComment(
         order?: string;
     } = {}
 ) {
-    // Convert page/pageSize to skip/limit for API consistency
-    const queryParams = createPaginationParams(params);
-
-    return useQuery({
-        queryKey: [
-            ...commentsKeys.byComment(commentId),
-            serializeQueryParams(params),
-        ],
-        queryFn: () => commentsApiV1.getCommentReplies(commentId, queryParams),
-        staleTime: STALE_TIME.MEDIUM,
-        enabled: !!commentId,
-    });
+    return trpc.comments.getReplies.useQuery(
+        {
+            id: commentId,
+            page: params.page,
+            pageSize: params.pageSize,
+            sort: params.sort,
+            order: params.order,
+        },
+        { enabled: !!commentId }
+    );
 }
 
 // Get single comment
 export function useComment(id: string) {
-    // Workaround for TypeScript's "Type instantiation is excessively deep" error
-    return useValidatedQuery({
-        queryKey: commentsKeys.detail(id),
-        queryFn: () => commentsApiV1.getComment(id),
-        schema: CommentSchema as any,
-        context: `useComment(${id})`,
-        staleTime: STALE_TIME.LONG,
-        enabled: !!id,
-    } as any);
+    return trpc.comments.getById.useQuery(
+        { id },
+        { enabled: !!id }
+    );
 }
 
 // Get comment details (with all metadata for popup)
@@ -110,65 +100,48 @@ export function useCommentDetails(id: string) {
 }
 
 // Create comment
-// Workaround for TypeScript's "Type instantiation is excessively deep" error
-export const useCreateComment = createMutation<Comment, CreateCommentDto>({
-    mutationFn: (data: CreateCommentDto) => commentsApiV1.createComment(data),
-    inputSchema: CreateCommentDtoSchema as any,
-    outputSchema: CommentSchema as any,
-    validationContext: "useCreateComment",
-    errorContext: "Create comment error",
-    invalidations: {
-        comments: {
-            lists: true,
-            exact: false,
-            byPublication: (result: Comment, variables: CreateCommentDto) => 
-                variables.targetType === 'publication' ? variables.targetId : undefined,
-            byComment: (result: Comment, variables: CreateCommentDto) => 
-                variables.targetType === 'comment' ? variables.targetId : undefined,
+export const useCreateComment = () => {
+    const utils = trpc.useUtils();
+    
+    return trpc.comments.create.useMutation({
+        onSuccess: (result, variables) => {
+            // Invalidate comments lists
+            utils.comments.getByPublicationId.invalidate();
+            utils.comments.getReplies.invalidate();
+            // Set the new comment in cache
+            utils.comments.getById.setData({ id: result.id }, result);
         },
-    },
-    setQueryData: {
-        queryKey: (result: Comment) => commentsKeys.detail(result.id),
-        data: (result: Comment) => result,
-    },
-} as any);
+    });
+};
 
 // Update comment
-export const useUpdateComment = createMutation<
-    Comment,
-    { id: string; data: Partial<CreateCommentDto> }
->({
-    mutationFn: ({ id, data }) => commentsApiV1.updateComment(id, data),
-    errorContext: "Update comment error",
-    invalidations: {
-        comments: {
-            lists: true,
-            detail: (result) => result.id,
-            byPublication: (result) =>
-                result.targetType === "publication" ? result.targetId : undefined,
-            byComment: (result) =>
-                result.targetType === "comment" ? result.targetId : undefined,
+export const useUpdateComment = () => {
+    const utils = trpc.useUtils();
+    
+    return trpc.comments.update.useMutation({
+        onSuccess: (result, variables) => {
+            // Invalidate comments lists and update cache
+            utils.comments.getByPublicationId.invalidate();
+            utils.comments.getReplies.invalidate();
+            utils.comments.getById.setData({ id: variables.id }, result);
         },
-    },
-    setQueryData: {
-        queryKey: (result) => commentsKeys.detail(result.id),
-        data: (result) => result,
-    },
-});
+    });
+};
 
 // Delete comment
-export const useDeleteComment = createMutation<void, string>({
-    mutationFn: (id) => commentsApiV1.deleteComment(id),
-    errorContext: "Delete comment error",
-    invalidations: {
-        comments: {
-            lists: true,
+export const useDeleteComment = () => {
+    const utils = trpc.useUtils();
+    
+    return trpc.comments.delete.useMutation({
+        onSuccess: (result, variables) => {
+            // Invalidate comments lists
+            utils.comments.getByPublicationId.invalidate();
+            utils.comments.getReplies.invalidate();
+            // Remove from cache
+            utils.comments.getById.setData({ id: variables.id }, undefined);
         },
-    },
-    removeQuery: {
-        queryKey: (deletedId) => commentsKeys.detail(deletedId),
-    },
-});
+    });
+};
 
 // Get user's comments
 export function useMyComments(

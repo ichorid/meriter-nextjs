@@ -18,6 +18,7 @@ import { TgBotsModule } from './tg-bots/tg-bots.module';
 
 // Import the new domain module
 import { DomainModule } from './domain.module';
+import { TrpcModule } from './trpc/trpc.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { DomainModule } from './domain.module';
     // TgBotsModule is always registered, but TgBotsService checks TELEGRAM_BOT_ENABLED flag internally
     // This allows the module to be available but the service methods will return early if disabled
     TgBotsModule,
+    TrpcModule, // tRPC for type-safe API
   ],
   controllers: [MeriterController],
   providers: [MeriterService],

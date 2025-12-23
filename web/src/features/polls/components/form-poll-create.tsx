@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from 'next-intl';
 import { initDataRaw, useSignal, mainButton, backButton } from '@telegram-apps/sdk-react';
-import { pollsApiV1 } from '@/lib/api/v1';
-import { useUpdatePoll } from '@/hooks/api/usePolls';
+import { useCreatePoll, useUpdatePoll } from '@/hooks/api/usePolls';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { useWallet } from '@/hooks/api/useWallet';
@@ -235,7 +234,7 @@ export const FormPollCreate = ({
                 console.log('📊 Poll update response:', poll);
             } else {
                 // Create new poll
-                poll = await pollsApiV1.createPoll(payload);
+                poll = await createPoll.mutateAsync(payload);
                 console.log('📊 Poll creation response:', poll);
             }
 

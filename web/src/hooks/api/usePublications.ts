@@ -1,24 +1,11 @@
-// Publications React Query hooks with Zod validation
-import {
-    useQuery,
-    useInfiniteQuery,
-} from "@tanstack/react-query";
-import { publicationsApiV1, communitiesApiV1 } from "@/lib/api/v1";
-import { queryKeys } from "@/lib/constants/queryKeys";
-import { useValidatedQuery } from "@/lib/api/validated-query";
-import { createMutation } from "@/lib/api/mutation-factory";
-import {
-    PublicationSchema,
-    CreatePublicationDtoSchema,
-    UpdatePublicationDtoSchema,
-} from "@/types/api-v1/schemas";
+// Publications React Query hooks with tRPC
+import { trpc } from "@/lib/trpc/client";
 import type {
     Publication,
     PaginatedResponse,
     CreatePublicationDto,
     UpdatePublicationDto,
 } from "@/types/api-v1";
-import { z } from "zod";
 import {
     createGetNextPageParam,
     createArrayGetNextPageParam,
@@ -36,9 +23,14 @@ interface ListQueryParams {
 }
 
 export function usePublications(params: ListQueryParams = {}) {
-    return useQuery({
-        queryKey: queryKeys.publications.list(params),
-        queryFn: () => publicationsApiV1.getPublications(params),
+    return trpc.publications.getAll.useQuery({
+        communityId: params.communityId,
+        authorId: params.userId,
+        hashtag: params.tag,
+        page: params.skip !== undefined ? Math.floor((params.skip || 0) / (params.limit || 20)) + 1 : undefined,
+        pageSize: params.limit,
+        limit: params.limit,
+        skip: params.skip,
     });
 }
 
@@ -102,15 +94,10 @@ export function useInfiniteMyPublications(
 }
 
 export function usePublication(id: string) {
-    // Workaround for TypeScript's "Type instantiation is excessively deep" error
-    // with complex Zod schemas. We cast the schema to any to avoid deep type checking.
-    return useValidatedQuery({
-        queryKey: queryKeys.publications.detail(id),
-        queryFn: () => publicationsApiV1.getPublication(id),
-        schema: PublicationSchema as any,
-        context: `usePublication(${id})`,
-        enabled: !!id,
-    } as any);
+    return trpc.publications.getById.useQuery(
+        { id },
+        { enabled: !!id }
+    );
 }
 
 export function useInfinitePublicationsByCommunity(
@@ -138,72 +125,40 @@ export function useInfinitePublicationsByCommunity(
     });
 }
 
-// Workaround for TypeScript's "Type instantiation is excessively deep" error
-// with complex Zod schemas. We cast schemas to any to avoid deep type checking.
-export const useCreatePublication = createMutation({
-    mutationFn: (data: CreatePublicationDto) => publicationsApiV1.createPublication(data),
-    inputSchema: CreatePublicationDtoSchema as any,
-    outputSchema: PublicationSchema as any,
-    validationContext: "useCreatePublication",
-    errorContext: "Create publication error",
-    invalidations: {
-        publications: {
-            lists: true,
-            exact: false,
-            communityId: (_result: any, variables: CreatePublicationDto) => variables.communityId,
+export const useCreatePublication = () => {
+    const utils = trpc.useUtils();
+    
+    return trpc.publications.create.useMutation({
+        onSuccess: (result, variables) => {
+            // Invalidate publications lists and community feed
+            utils.publications.getAll.invalidate();
+            // Invalidate quota queries for the community
+            // Note: tRPC doesn't have quota router yet, so we'll need to invalidate manually if needed
         },
-        communities: {
-            feed: true,
-            detail: (_result: any, variables: CreatePublicationDto) => variables.communityId,
-        },
-        quota: {
-            communityId: (_result: any, variables: CreatePublicationDto) => variables.communityId,
-        },
-    },
-} as any);
+    });
+};
 
-export const useUpdatePublication = createMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdatePublicationDto }) =>
-        publicationsApiV1.updatePublication(id, data),
-    // IMPORTANT: input schema must match the actual mutation variables shape ({ id, data }).
-    // Otherwise Zod will strip unknown keys and we’ll end up calling updatePublication(undefined, undefined).
-    inputSchema: z
-        .object({
-            id: z.string().min(1),
-            data: UpdatePublicationDtoSchema,
-        })
-        .strict() as any,
-    outputSchema: PublicationSchema as any,
-    validationContext: "useUpdatePublication",
-    errorContext: "Update publication error",
-    invalidations: {
-        publications: {
-            lists: true,
-            detail: (_result: any, variables: { id: string }) => variables.id,
+export const useUpdatePublication = () => {
+    const utils = trpc.useUtils();
+    
+    return trpc.publications.update.useMutation({
+        onSuccess: (result, variables) => {
+            // Invalidate publications lists and specific publication
+            utils.publications.getAll.invalidate();
+            utils.publications.getById.invalidate({ id: variables.id });
         },
-        communities: {
-            feed: true,
-            detail: (result: any) => result?.communityId,
-        },
-    },
-} as any);
+    });
+};
 
-export const useDeletePublication = createMutation<{ success: boolean }, string | { id: string; communityId?: string }>({
-    mutationFn: (variables) => {
-        const id = typeof variables === 'string' ? variables : variables.id;
-        return publicationsApiV1.deletePublication(id);
-    },
-    errorContext: "Delete publication error",
-    invalidations: {
-        publications: {
-            lists: true,
+export const useDeletePublication = () => {
+    const utils = trpc.useUtils();
+    
+    return trpc.publications.delete.useMutation({
+        onSuccess: (result, variables) => {
+            // Invalidate publications lists
+            utils.publications.getAll.invalidate();
+            // Remove the deleted publication from cache
+            utils.publications.getById.setData({ id: variables.id }, undefined);
         },
-        communities: {
-            feed: true,
-            detail: (_result: any, variables: any) => {
-                const communityId = typeof variables === 'string' ? undefined : variables.communityId;
-                return communityId;
-            },
-        },
-    },
-});
+    });
+};

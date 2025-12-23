@@ -83,6 +83,7 @@ export class JwtService {
       inviteCode: user.inviteCode,
       communityTags: user.communityTags || [],
       communityMemberships: user.communityMemberships || [],
+      authenticators: user.authenticators || [],
       createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: user.updatedAt?.toISOString() || new Date().toISOString(),
     };

@@ -68,6 +68,17 @@
         encode gzip
     }
 
+    # tRPC requests - proxy to backend API
+    handle /trpc* {
+        reverse_proxy host.docker.internal:8002 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto "http"
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        encode gzip
+    }
+
     # Serve static files from mounted volume
     root * /var/www/meriter-web
     

@@ -6,7 +6,7 @@ import {
     SliderTrack,
     SliderFilledTrack,
     SliderThumb,
-} from "@gluestack-ui/themed";
+} from "@/components/ui/slider";
 import { useTranslations } from "next-intl";
 import { classList } from "@/shared/lib/classList";
 import { ImageGallery } from "@/components/ui/ImageGallery";

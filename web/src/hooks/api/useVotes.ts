@@ -1,7 +1,6 @@
-// Votes React Query hooks
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { votesApiV1 } from '@/lib/api/v1';
-import type { CreateVoteRequest } from '@/types/api-v1';
+// Votes React Query hooks - migrated to tRPC
+import { useQueryClient } from '@tanstack/react-query';
+import { trpc } from '@/lib/trpc/client';
 import { useVoteMutation } from './useVoteMutation';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import { commentsKeys } from './useComments';
@@ -11,9 +10,20 @@ import { invalidateWallet, invalidatePublications, invalidateComments, invalidat
 
 // Vote on publication
 export function useVoteOnPublication() {
+  const utils = trpc.useUtils();
+  
   return useVoteMutation({
-    mutationFn: ({ publicationId, data, communityId }: { publicationId: string; data: CreateVoteRequest; communityId?: string }) => 
-      votesApiV1.voteOnPublication(publicationId, data),
+    mutationFn: ({ publicationId, data, communityId }: { publicationId: string; data: { quotaAmount?: number; walletAmount?: number; direction?: 'up' | 'down'; comment?: string; images?: string[] }; communityId?: string }) => 
+      utils.votes.create.mutateAsync({
+        targetType: 'publication',
+        targetId: publicationId,
+        quotaAmount: data.quotaAmount ?? 0,
+        walletAmount: data.walletAmount ?? 0,
+        direction: data.direction ?? 'up',
+        comment: data.comment ?? '',
+        images: data.images,
+        communityId: communityId!,
+      }),
     onSuccessInvalidations: {
       publications: true,
       communities: true,
@@ -26,11 +36,22 @@ export function useVoteOnPublication() {
   });
 }
 
-// Vote on vote
+// Vote on vote (comment vote)
 export function useVoteOnVote() {
+  const utils = trpc.useUtils();
+  
   return useVoteMutation({
-    mutationFn: ({ voteId, data, communityId }: { voteId: string; data: CreateVoteRequest; communityId?: string }) => 
-      votesApiV1.voteOnVote(voteId, data),
+    mutationFn: ({ voteId, data, communityId }: { voteId: string; data: { quotaAmount?: number; walletAmount?: number; direction?: 'up' | 'down'; comment?: string; images?: string[] }; communityId?: string }) => 
+      utils.votes.create.mutateAsync({
+        targetType: 'vote',
+        targetId: voteId,
+        quotaAmount: data.quotaAmount ?? 0,
+        walletAmount: data.walletAmount ?? 0,
+        direction: data.direction ?? 'up',
+        comment: data.comment ?? '',
+        images: data.images,
+        communityId: communityId!,
+      }),
     onSuccessInvalidations: {
       comments: true,
       specificCommentId: (variables) => variables?.voteId,
@@ -43,9 +64,7 @@ export function useVoteOnVote() {
 // Remove vote from publication
 export function useRemovePublicationVote() {
   const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (publicationId: string) => votesApiV1.removePublicationVote(publicationId),
+  const deleteMutation = trpc.votes.delete.useMutation({
     onSuccess: () => {
       invalidatePublications(queryClient, { lists: true, exact: false });
       invalidateCommunities(queryClient, { lists: true, exact: false });
@@ -55,14 +74,18 @@ export function useRemovePublicationVote() {
       console.error('Remove publication vote error:', error);
     },
   });
+  
+  return {
+    mutate: (publicationId: string) => deleteMutation.mutate({ targetType: 'publication', targetId: publicationId }),
+    mutateAsync: (publicationId: string) => deleteMutation.mutateAsync({ targetType: 'publication', targetId: publicationId }),
+    ...deleteMutation,
+  };
 }
 
 // Remove vote from comment
 export function useRemoveCommentVote() {
   const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (commentId: string) => votesApiV1.removeCommentVote(commentId),
+  const deleteMutation = trpc.votes.delete.useMutation({
     onSuccess: () => {
       invalidateComments(queryClient, { lists: true, exact: false });
       invalidateWallet(queryClient);
@@ -71,10 +94,18 @@ export function useRemoveCommentVote() {
       console.error('Remove comment vote error:', error);
     },
   });
+  
+  return {
+    mutate: (commentId: string) => deleteMutation.mutate({ targetType: 'vote', targetId: commentId }),
+    mutateAsync: (commentId: string) => deleteMutation.mutateAsync({ targetType: 'vote', targetId: commentId }),
+    ...deleteMutation,
+  };
 }
 
 // Vote on publication with optional comment (combined endpoint)
 export function useVoteOnPublicationWithComment() {
+  const utils = trpc.useUtils();
+  
   return useVoteMutation({
     mutationFn: ({ 
       publicationId, 
@@ -90,7 +121,16 @@ export function useVoteOnPublicationWithComment() {
         images?: string[];
       }; 
       communityId?: string; 
-    }) => votesApiV1.voteOnPublicationWithComment(publicationId, data),
+    }) => utils.votes.createWithComment.mutateAsync({
+      targetType: 'publication',
+      targetId: publicationId,
+      quotaAmount: data.quotaAmount ?? 0,
+      walletAmount: data.walletAmount ?? 0,
+      direction: data.direction ?? 'up',
+      comment: data.comment ?? '',
+      images: data.images,
+      communityId: communityId!,
+    }),
     onSuccessInvalidations: {
       publications: true,
       communities: true,
@@ -107,61 +147,54 @@ export function useVoteOnPublicationWithComment() {
 export function useWithdrawFromPublication() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  
-  return useMutation({
-    mutationFn: ({ publicationId, amount }: { publicationId: string; amount?: number }) => 
-      votesApiV1.withdrawFromPublication(publicationId, { amount }),
+  const withdrawMutation = trpc.publications.withdraw.useMutation({
     onSuccess: (_, variables) => {
-      // Invalidate both lists and the specific publication detail
-      // Also invalidate all publication queries to ensure fresh data
       invalidatePublications(queryClient, { 
         lists: true, 
-        detail: variables.publicationId,
+        detail: variables.id,
         exact: false 
       });
-      // Broad invalidation to catch any cached queries
       queryClient.invalidateQueries({ queryKey: ['publications'], exact: false });
       invalidateCommunities(queryClient, { lists: true, exact: false });
       invalidateWallet(queryClient, { includeBalance: true });
     },
     onError: (error: any) => {
       const errorMessage = extractErrorMessage(error, 'Unknown error');
-      const errorCode = error?.code || (error?.details?.status ? `HTTP_${error.details.status}` : 'UNKNOWN');
+      const errorCode = error?.data?.code || 'UNKNOWN';
       
       console.error('Withdraw from publication error:', {
         message: errorMessage,
         code: errorCode,
-        details: error?.details,
+        details: error?.data,
         fullError: error,
       });
-      throw error;
     },
   });
+  
+  return withdrawMutation;
 }
 
 // Withdraw from vote
 export function useWithdrawFromVote() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  
-  return useMutation({
-    mutationFn: ({ voteId, amount }: { voteId: string; amount?: number }) => 
-      votesApiV1.withdrawFromVote(voteId, { amount }),
+  const withdrawMutation = trpc.votes.withdraw.useMutation({
     onSuccess: () => {
       invalidateComments(queryClient, { lists: true, exact: false });
       invalidateWallet(queryClient, { includeBalance: true });
     },
     onError: (error: any) => {
       const errorMessage = extractErrorMessage(error, 'Unknown error');
-      const errorCode = error?.code || (error?.details?.status ? `HTTP_${error.details.status}` : 'UNKNOWN');
+      const errorCode = error?.data?.code || 'UNKNOWN';
       
       console.error('Withdraw from vote error:', {
         message: errorMessage,
         code: errorCode,
-        details: error?.details,
+        details: error?.data,
         fullError: error,
       });
-      throw error;
     },
   });
+  
+  return withdrawMutation;
 }
