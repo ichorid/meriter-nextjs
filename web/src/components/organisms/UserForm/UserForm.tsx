@@ -33,7 +33,7 @@ interface UserFormProps {
     stickyFooter?: boolean;
     hideHeader?: boolean;
     hideFooter?: boolean;
-    formRef?: React.RefObject<{ submit: () => void }>;
+    formRef?: React.RefObject<{ submit: () => void } | null>;
 }
 
 export function UserForm({
