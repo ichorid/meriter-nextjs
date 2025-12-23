@@ -552,7 +552,13 @@
             "avatarUrlPlaceholder": "https://example.com/avatar.png",
             "generateAvatar": "Generate",
             "generateAvatarHelp": "Click Generate to create an abstract avatar based on community name",
+            "changeAvatar": "Change avatar",
+            "cropAvatar": "Crop avatar",
             "coverImage": "Cover Image",
+            "coverImageHelp": "Upload a cover image for your community",
+            "coverImagePlaceholder": "Drop cover image here or click to upload",
+            "uploading": "Uploading...",
+            "uploadFailed": "Upload failed",
             "configuration": "Configuration",
             "language": "Language",
             "languageSelect": "Select option",
@@ -572,10 +578,10 @@
             "genitive": "Genitive",
             "votingRestriction": "Voting Restrictions",
             "votingRestrictionHelp": "Control who can vote for whom in this community",
-            "votingRestriction": {
+            "votingRestrictionOptions": {
                 "any": "Anyone can vote for any post",
                 "notOwn": "Users can vote for others' posts, but not their own",
-                "notSameGroup": "Users can only vote for posts from users in different groups (except Future Vision, Marathon of Good, and Support groups)"
+                "notSameGroup": "Only for posts from users in different teams"
             },
             "hashtags": "Hashtags",
             "hashtagsPlaceholder": "Type hashtag and press Enter",
@@ -588,6 +594,8 @@
             "add": "Add",
             "saveChanges": "Save Changes",
             "saving": "Saving...",
+            "save": "Save",
+            "cancel": "Cancel",
             "communityNotFound": "Community not found",
             "noDescription": "No description",
             "avatarUpdateNote": "Avatar updates automatically when you save settings",

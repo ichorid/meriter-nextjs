@@ -371,10 +371,10 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                         onUpload={(url) => setAvatarUrl(url)}
                         size={80}
                         labels={{
-                            upload: t("changeAvatar") || "Change avatar",
-                            cropTitle: t("cropAvatar") || "Crop avatar",
-                            cancel: t("cancel") || "Cancel",
-                            save: t("save") || "Save",
+                            upload: t("changeAvatar"),
+                            cropTitle: t("cropAvatar"),
+                            cancel: t("cancel"),
+                            save: t("save"),
                         }}
                     />
                     <BrandButton
@@ -389,27 +389,19 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             </BrandFormControl>
 
             <BrandFormControl
-                label={t("coverImage") || "Cover Image"}
-                helperText={
-                    t("coverImageHelp") ||
-                    "Upload a cover image for your community"
-                }
+                label={t("coverImage")}
+                helperText={t("coverImageHelp")}
             >
                 <ImageUploader
                     value={coverImageUrl}
                     onUpload={(url) => setCoverImageUrl(url)}
                     onRemove={() => setCoverImageUrl("")}
                     aspectRatio={3}
-                    placeholder={
-                        t("coverImagePlaceholder") ||
-                        "Drop cover image here or click to upload"
-                    }
+                    placeholder={t("coverImagePlaceholder")}
                     labels={{
-                        placeholder:
-                            t("coverImagePlaceholder") ||
-                            "Drop cover image here or click to upload",
-                        uploading: t("uploading") || "Uploading...",
-                        uploadFailed: t("uploadFailed") || "Upload failed",
+                        placeholder: t("coverImagePlaceholder"),
+                        uploading: t("uploading"),
+                        uploadFailed: t("uploadFailed"),
                     }}
                 />
             </BrandFormControl>
@@ -547,9 +539,9 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                             value={votingRestriction}
                             onChange={(value) => setVotingRestriction(value as 'any' | 'not-own' | 'not-same-group')}
                             options={[
-                                { value: 'any', label: t('votingRestriction.any') },
-                                { value: 'not-own', label: t('votingRestriction.notOwn') },
-                                { value: 'not-same-group', label: t('votingRestriction.notSameGroup') },
+                                { value: 'any', label: t('votingRestrictionOptions.any') },
+                                { value: 'not-own', label: t('votingRestrictionOptions.notOwn') },
+                                { value: 'not-same-group', label: t('votingRestrictionOptions.notSameGroup') },
                             ]}
                             fullWidth
                         />
