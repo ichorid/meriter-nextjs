@@ -60,9 +60,12 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
     setMounted(true);
   }, []);
 
-  const env = getAuthEnv();
+  // Note: Auth config is now provided via RuntimeConfigProvider which uses tRPC
+  // These are fallback values used only during initial render before runtime config loads
+  // They will be overridden by RuntimeConfigProvider once the API config is fetched
+  const env = getAuthEnv(null); // No runtime config available at this level
   const enabledProviders = getEnabledProviders(env);
-  const authnEnabled = (process.env.NEXT_PUBLIC_AUTHN_ENABLED || process.env.AUTHN_ENABLED) === 'true';
+  const authnEnabled = false; // Default to false, will be set by RuntimeConfigProvider
 
   if (!mounted) {
     return <div>Loading...</div>;

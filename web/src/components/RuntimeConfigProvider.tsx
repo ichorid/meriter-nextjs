@@ -27,8 +27,8 @@ export function RuntimeConfigProvider({
     const env = getAuthEnv(runtimeConfig);
     const enabledProviders = getEnabledProviders(env);
     
-    // Get AUTHN enabled from runtime config or fall back to build-time
-    const authnEnabled = runtimeConfig?.authn?.enabled ?? fallbackAuthnEnabled;
+    // Get AUTHN enabled from runtime config only (no fallback to env vars)
+    const authnEnabled = runtimeConfig?.authn?.enabled ?? false;
 
     return (
         <AuthWrapper enabledProviders={enabledProviders} authnEnabled={authnEnabled}>
