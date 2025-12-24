@@ -78,10 +78,28 @@ if [ -n "$ARTIFACT_FILE" ] && [ -f "$ARTIFACT_FILE" ]; then
     
     # Atomically swap symlink inside web-static directory
     echo "[deploy] Atomically swapping symlink to new deployment..."
+    # Verify the target directory exists
+    if [ ! -d "${DEPLOY_DIR}" ]; then
+        echo "[deploy] ERROR: Target directory does not exist: ${DEPLOY_DIR}"
+        exit 1
+    fi
     # Create new symlink pointing to versioned directory (relative path within web-static)
-    ln -sfn "${TIMESTAMP}_${VERSION_SUFFIX}" "${SYMLINK}.new"
+    # Use relative path from web-static directory (basename of DEPLOY_DIR)
+    TARGET_NAME="$(basename "${DEPLOY_DIR}")"
+    ln -sfn "${TARGET_NAME}" "${SYMLINK}.new"
+    # Verify symlink was created correctly
+    if [ ! -L "${SYMLINK}.new" ] || [ ! -e "${SYMLINK}.new" ]; then
+        echo "[deploy] ERROR: Failed to create symlink ${SYMLINK}.new -> ${TARGET_NAME}"
+        exit 1
+    fi
     # Atomic swap: mv is atomic on the same filesystem
-    mv "${SYMLINK}.new" "${SYMLINK}"
+    mv -f "${SYMLINK}.new" "${SYMLINK}"
+    # Verify final symlink
+    if [ ! -L "${SYMLINK}" ] || [ ! -e "${SYMLINK}" ]; then
+        echo "[deploy] ERROR: Final symlink is invalid: ${SYMLINK}"
+        exit 1
+    fi
+    echo "[deploy] Symlink updated: ${SYMLINK} -> $(readlink "${SYMLINK}")"
     
     # Reload Caddy to pick up the new symlink target
     # Caddy needs to be reloaded to re-resolve the symlink after it changes
