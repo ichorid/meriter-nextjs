@@ -24,11 +24,25 @@ function handleQueryError(error: any, isMutation = false) {
     return;
   }
 
+  // Extract error message
+  const message = error?.message || extractErrorMessage(error, 'An error occurred');
+  
+  // Don't show toast for transformation errors on queries - they're usually network/connectivity issues
+  // that are better handled silently (queries should fail gracefully)
+  if (!isMutation) {
+    const isTransformationError = message.includes('transform') || 
+                                   message.includes('deserialize') || 
+                                   message.includes('Unable to transform');
+    if (isTransformationError) {
+      // Log but don't show toast - these are usually connectivity issues
+      console.warn('Query failed with transformation error (likely backend connectivity issue):', message);
+      return;
+    }
+  }
+
   // Only show toast for mutations by default (queries errors are usually handled in UI)
   // But we can show for queries too if needed
-  if (globalToastHandler) {
-    // tRPC errors have error.message, REST errors might have different structure
-    const message = error?.message || extractErrorMessage(error, 'An error occurred');
+  if (globalToastHandler && isMutation) {
     globalToastHandler(message, 'error');
   }
 }

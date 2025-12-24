@@ -11,6 +11,9 @@ import type { RuntimeConfig } from '@/types/runtime-config';
  * Hook to fetch runtime configuration from backend
  * Returns config, loading state, and error
  * Falls back gracefully if API call fails
+ * 
+ * Note: Errors are logged but not shown to users via toast notifications,
+ * as this query is designed to fail gracefully and fall back to build-time defaults.
  */
 export function useRuntimeConfig(): {
     config: RuntimeConfig | null;
@@ -24,9 +27,20 @@ export function useRuntimeConfig(): {
         refetchOnWindowFocus: false, // Don't refetch on window focus
         // Don't throw errors - return null config instead
         throwOnError: false,
+        // Use meta to prevent error toast from showing
+        // This query is designed to fail gracefully
+        meta: {
+            skipErrorToast: true,
+        },
         onError: (err) => {
             // Log warning but don't throw - we'll fall back to build-time defaults
-            console.warn('Failed to fetch runtime config, using build-time defaults:', err);
+            // Include more context for transformation errors
+            const errorMessage = err?.message || String(err);
+            if (errorMessage.includes('transform') || errorMessage.includes('deserialize')) {
+                console.warn('Failed to fetch runtime config (transformation error). This usually means the backend API is not accessible or returned an invalid response. Falling back to build-time defaults.');
+            } else {
+                console.warn('Failed to fetch runtime config, using build-time defaults:', err);
+            }
         },
     });
 
