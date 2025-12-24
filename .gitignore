@@ -12,6 +12,9 @@ out/
 .nuxt/
 .cache/
 
+# Deployment directory (contains symlinked static files)
+web-static/
+
 # Environment files
 .env
 .env.local

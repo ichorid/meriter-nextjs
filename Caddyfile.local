@@ -79,8 +79,9 @@
         encode gzip
     }
 
-    # Serve static files from mounted volume
-    root * /var/www/meriter-web
+    # Serve static files from /var/www/meriter-web/current
+    # The 'current' symlink inside web-static points to the active versioned directory
+    root * /var/www/meriter-web/current
     
     # Next.js static assets - long cache
     handle /_next/static/* {

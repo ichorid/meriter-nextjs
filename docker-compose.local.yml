@@ -129,7 +129,8 @@ services:
       - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-      - ./web/out:/var/www/meriter-web:ro
+      # Mount web-static directory - symlinks inside this directory can be swapped dynamically
+      - ./web-static:/var/www/meriter-web:ro
     networks:
       - meriter-network
     extra_hosts:

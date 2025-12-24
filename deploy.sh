@@ -48,20 +48,26 @@ fi
 if [ -n "$ARTIFACT_FILE" ] && [ -f "$ARTIFACT_FILE" ]; then
     echo "[deploy] Deploying static web files from ${ARTIFACT_FILE}..."
     
-    # Generate versioned directory name: web/out.YYYYMMDD_HHMMSS_COMMITSHA
+    # web-static is the parent directory that gets mounted
+    STATIC_DIR="web-static"
+    mkdir -p "${STATIC_DIR}"
+    
+    # Generate versioned directory name: YYYYMMDD_HHMMSS_COMMITSHA (inside web-static)
     TIMESTAMP=$(date +%Y%m%d_%H%M%S)
     VERSION_SUFFIX="${COMMIT_SHA:-latest}"
-    DEPLOY_DIR="web/out.${TIMESTAMP}_${VERSION_SUFFIX}"
-    SYMLINK="web/out"
+    DEPLOY_DIR="${STATIC_DIR}/${TIMESTAMP}_${VERSION_SUFFIX}"
+    SYMLINK="${STATIC_DIR}/current"
     
     echo "[deploy] Deploying to versioned directory: ${DEPLOY_DIR}"
     
-    # Handle first-time deployment: if web/out exists as directory, convert to versioned directory
-    if [ -d "$SYMLINK" ] && [ ! -L "$SYMLINK" ]; then
-      echo "[deploy] Converting existing directory to versioned deployment..."
-      # Move existing directory contents to first versioned directory
-      FIRST_VERSION="web/out.${TIMESTAMP}_initial"
-      mv "$SYMLINK" "$FIRST_VERSION"
+    # Handle first-time deployment: if web-static has files but no current symlink, preserve them
+    if [ -d "${STATIC_DIR}" ] && [ ! -L "${SYMLINK}" ] && [ "$(ls -A ${STATIC_DIR} 2>/dev/null | grep -v '^current')" ]; then
+      echo "[deploy] Converting existing web-static directory to versioned deployment..."
+      # If web-static has files but no current symlink, move contents to initial version
+      FIRST_VERSION="${STATIC_DIR}/${TIMESTAMP}_initial"
+      mkdir -p "${FIRST_VERSION}"
+      # Move all files/dirs except versioned directories (pattern: YYYYMMDD_HHMMSS_*) and current symlink
+      find "${STATIC_DIR}" -maxdepth 1 -mindepth 1 ! -name "current*" ! -name ".*" ! -name "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]_*" -exec mv {} "${FIRST_VERSION}/" \; 2>/dev/null || true
       echo "[deploy] Moved existing deployment to: ${FIRST_VERSION}"
     fi
     
@@ -70,10 +76,10 @@ if [ -n "$ARTIFACT_FILE" ] && [ -f "$ARTIFACT_FILE" ]; then
     echo "[deploy] Extracting static files to ${DEPLOY_DIR}..."
     tar -xzf "${ARTIFACT_FILE}" -C "${DEPLOY_DIR}"
     
-    # Atomically swap symlink
+    # Atomically swap symlink inside web-static directory
     echo "[deploy] Atomically swapping symlink to new deployment..."
-    # Create new symlink pointing to versioned directory
-    ln -sfn "${DEPLOY_DIR}" "${SYMLINK}.new"
+    # Create new symlink pointing to versioned directory (relative path within web-static)
+    ln -sfn "${TIMESTAMP}_${VERSION_SUFFIX}" "${SYMLINK}.new"
     # Atomic swap: mv is atomic on the same filesystem
     mv "${SYMLINK}.new" "${SYMLINK}"
     
@@ -84,8 +90,8 @@ if [ -n "$ARTIFACT_FILE" ] && [ -f "$ARTIFACT_FILE" ]; then
     
     # Clean up old versioned directories (keep last 3)
     echo "[deploy] Cleaning up old versioned directories (keeping last 3)..."
-    # List all versioned directories (type d excludes symlink), sort by modification time (newest first), skip first 3, remove rest
-    ls -dt web/out.*/ 2>/dev/null | tail -n +4 | xargs rm -rf 2>/dev/null || true
+    # List all versioned directories inside web-static (pattern: YYYYMMDD_HHMMSS_*), sort by modification time (newest first), skip first 3, remove rest
+    find "${STATIC_DIR}" -maxdepth 1 -type d -name "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]_*" 2>/dev/null | sort -r | tail -n +4 | xargs rm -rf 2>/dev/null || true
 else
   echo "[deploy] No static web artifact found, skipping web deployment"
 fi
