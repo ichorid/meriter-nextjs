@@ -11,15 +11,35 @@ export default function PageMeriterLogin() {
     // Fetch runtime config (falls back to build-time defaults if API fails)
     const { config: runtimeConfig, isLoading, error } = useRuntimeConfig();
     
-    // Memoize enabled providers to prevent infinite re-renders
-    // getAuthEnv and getEnabledProviders create new objects/arrays each call
+    // Extract stable primitive values for dependencies to avoid object reference issues
+    // React Query might return new object references even when values are the same
+    const oauthGoogle = runtimeConfig?.oauth?.google ?? false;
+    const oauthYandex = runtimeConfig?.oauth?.yandex ?? false;
+    const oauthVk = runtimeConfig?.oauth?.vk ?? false;
+    const oauthTelegram = runtimeConfig?.oauth?.telegram ?? false;
+    const oauthApple = runtimeConfig?.oauth?.apple ?? false;
+    const oauthTwitter = runtimeConfig?.oauth?.twitter ?? false;
+    const oauthInstagram = runtimeConfig?.oauth?.instagram ?? false;
+    const oauthSber = runtimeConfig?.oauth?.sber ?? false;
+    const oauthMailru = runtimeConfig?.oauth?.mailru ?? false;
+    const authnEnabled = runtimeConfig?.authn?.enabled ?? false;
+    
+    // Memoize enabled providers using primitive dependencies
+    // This ensures we only recompute when oauth config values actually change
     const enabledProviders = useMemo(() => {
         const env = getAuthEnv(runtimeConfig ?? null);
         return getEnabledProviders(env);
-    }, [runtimeConfig]);
-    
-    // Get AUTHN enabled from runtime config only (no fallback to process.env)
-    const authnEnabled = runtimeConfig?.authn?.enabled ?? false;
+    }, [
+        oauthGoogle,
+        oauthYandex,
+        oauthVk,
+        oauthTelegram,
+        oauthApple,
+        oauthTwitter,
+        oauthInstagram,
+        oauthSber,
+        oauthMailru,
+    ]);
 
     // Show loading state while fetching config (optional - config query is fast)
     // But we can still render the form with build-time defaults

@@ -6,6 +6,7 @@
 import { trpc } from '@/lib/trpc/client';
 import { STALE_TIME } from '@/lib/constants/query-config';
 import type { RuntimeConfig } from '@/types/runtime-config';
+import { useMemo } from 'react';
 
 /**
  * Hook to fetch runtime configuration from backend
@@ -44,8 +45,12 @@ export function useRuntimeConfig(): {
         },
     });
 
+    // Memoize config to ensure stable reference when data hasn't changed
+    // This prevents infinite loops when config is used as a dependency
+    const config = useMemo(() => data || null, [data]);
+
     return {
-        config: data || null,
+        config,
         isLoading,
         error: error as Error | null,
     };
