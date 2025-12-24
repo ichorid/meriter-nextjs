@@ -18,7 +18,8 @@ const nextConfig = {
     // Enable source maps for debugging in dev builds (works with static export)
     // Note: SWC minification is always enabled in Next.js 16+ and cannot be disabled
     // Enable source maps when NEXT_PUBLIC_DEV_BUILD is true for dev server debugging
-    productionBrowserSourceMaps: process.env.NEXT_PUBLIC_DEV_BUILD === 'true',
+    // Disable in production to avoid source map errors and reduce bundle size
+    productionBrowserSourceMaps: false,
     // Note: OAuth provider flags and AUTHN are fetched from backend at runtime via useRuntimeConfig()
     // No need to expose them as build-time env vars
     transpilePackages: [
@@ -59,7 +60,7 @@ const nextConfig = {
         if (isDevMode && !isServer) {
             console.log('[next.config] Dev mode enabled: disabling minification and enabling source maps');
             
-            // Enable source maps for debugging
+            // Enable source maps for debugging only in dev mode
             config.devtool = 'source-map'; // Full source maps (slower but best quality)
             
             // Disable minification to keep code readable
@@ -74,7 +75,9 @@ const nextConfig = {
                 };
             }
         } else if (!isServer) {
-            console.log('[next.config] Production mode: minification enabled');
+            console.log('[next.config] Production mode: minification enabled, source maps disabled');
+            // Explicitly disable source maps in production to avoid errors
+            config.devtool = false;
         }
 
         // Exclude backend API code from frontend bundle (only import types)
