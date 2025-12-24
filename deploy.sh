@@ -92,11 +92,18 @@ if [ -n "$ARTIFACT_FILE" ] && [ -f "$ARTIFACT_FILE" ]; then
         echo "[deploy] ERROR: Failed to create symlink ${SYMLINK}.new -> ${TARGET_NAME}"
         exit 1
     fi
-    # Atomic swap: mv is atomic on the same filesystem
-    mv -f "${SYMLINK}.new" "${SYMLINK}"
+    # Atomic swap: mv is atomic on the same filesystem.
+    # IMPORTANT: ${SYMLINK} is itself a symlink to a directory, and plain `mv` would treat it
+    # as a directory destination (following the symlink) and move `.new` INTO the old target.
+    # `-T` forces mv to treat the destination as a file path and replace the symlink itself.
+    mv -Tf "${SYMLINK}.new" "${SYMLINK}"
     # Verify final symlink
     if [ ! -L "${SYMLINK}" ] || [ ! -e "${SYMLINK}" ]; then
         echo "[deploy] ERROR: Final symlink is invalid: ${SYMLINK}"
+        exit 1
+    fi
+    if [ "$(readlink "${SYMLINK}")" != "${TARGET_NAME}" ]; then
+        echo "[deploy] ERROR: Symlink swap failed: ${SYMLINK} -> $(readlink "${SYMLINK}") (expected ${TARGET_NAME})"
         exit 1
     fi
     echo "[deploy] Symlink updated: ${SYMLINK} -> $(readlink "${SYMLINK}")"
