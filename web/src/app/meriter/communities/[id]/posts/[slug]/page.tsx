@@ -1,7 +1,7 @@
 import { PostPageClient } from './PostPageClient';
 
 interface PostPageProps {
-  params: Promise<{ id: string; slug: string }>;
+  params: { id: string; slug: string };
 }
 
 // Required for static export with dynamic routes
@@ -10,7 +10,7 @@ export async function generateStaticParams(): Promise<Array<{ id: string; slug: 
   return [];
 }
 
-export default async function PostPage({ params }: PostPageProps) {
-  const { id, slug } = await params;
+export default function PostPage({ params }: PostPageProps) {
+  const { id, slug } = params;
   return <PostPageClient communityId={id} slug={slug} />;
 }

@@ -12,6 +12,8 @@
 
 import { z } from 'zod';
 
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || process.env.NEXT_PHASE === 'phase-export';
+
 /**
  * Derive application URL from DOMAIN
  * Protocol: http:// for localhost, https:// for production
@@ -40,6 +42,9 @@ function deriveAppUrl(): string {
     // Backward compatibility: if APP_URL exists but DOMAIN doesn't, use APP_URL
     if (process.env.APP_URL) {
       return process.env.APP_URL;
+    }
+    if (isBuildTime) {
+      return 'http://localhost';
     }
     throw new Error('DOMAIN environment variable is required on server-side. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).');
   }
@@ -131,6 +136,9 @@ function getDomainConfig(): string {
   // Server-side: require DOMAIN env var (already validated by deriveAppUrl, but double-check)
   const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
   if (!domain) {
+    if (isBuildTime) {
+      return 'localhost';
+    }
     throw new Error(
       'DOMAIN environment variable is required on server-side. ' +
       'Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro). ' +

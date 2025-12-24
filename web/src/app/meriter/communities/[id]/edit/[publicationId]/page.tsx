@@ -1,7 +1,7 @@
 import { EditPublicationPageClient } from './EditPublicationPageClient';
 
 interface EditPublicationPageProps {
-  params: Promise<{ id: string; publicationId: string }>;
+  params: { id: string; publicationId: string };
 }
 
 // Required for static export with dynamic routes
@@ -10,7 +10,7 @@ export async function generateStaticParams(): Promise<Array<{ id: string; public
   return [];
 }
 
-export default async function EditPublicationPage({ params }: EditPublicationPageProps) {
-  const { id, publicationId } = await params;
+export default function EditPublicationPage({ params }: EditPublicationPageProps) {
+  const { id, publicationId } = params;
   return <EditPublicationPageClient communityId={id} publicationId={publicationId} />;
 }
