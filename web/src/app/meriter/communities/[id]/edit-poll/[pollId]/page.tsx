@@ -5,9 +5,10 @@ interface EditPollPageProps {
 }
 
 // Required for static export with dynamic routes
+// Return a placeholder to satisfy static export requirements
+// Actual routing will be handled client-side
 export async function generateStaticParams(): Promise<Array<{ id: string; pollId: string }>> {
-  // Return empty array - dynamic routes will be handled client-side
-  return [];
+  return [{ id: '_', pollId: '_' }];
 }
 
 export default function EditPollPage({ params }: EditPollPageProps) {

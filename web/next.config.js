@@ -6,26 +6,11 @@ const path = require('path');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    // Disable Turbopack for now due to CSS @import strictness in Next.js 16
-    // Can be re-enabled once CSS import issues are resolved
-    // experimental: {
-    //     turbo: {},
-    // },
     reactStrictMode: true,
     // Re-enable strict type checking now that shared types have been trimmed for memory safety
     // Temporarily allow errors from backend imports (tRPC types) - these are type-only and don't affect runtime
     typescript: {
         ignoreBuildErrors: true, // TODO: Fix tRPC type imports to not pull in backend runtime code
-    },
-    // Skip ESLint during build to reduce memory usage
-    eslint: {
-        ignoreDuringBuilds: true,
-    },
-    // Static export configuration - no server-side features
-    experimental: {
-        // Reduce parallel workers to avoid race conditions in route processing
-        // This might help with generateStaticParams detection issues
-        // workerThreads: false, // Not available in Next.js 16
     },
     // Expose build-time environment variables to Next.js
     // All variables must be NEXT_PUBLIC_* for static export (baked into build)

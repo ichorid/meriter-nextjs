@@ -5,9 +5,10 @@ interface UserProfilePageProps {
 }
 
 // Required for static export with dynamic routes
-export async function generateStaticParams() {
-  // Return empty array - dynamic routes will be handled client-side
-  return [];
+// Return a placeholder to satisfy static export requirements
+// Actual routing will be handled client-side
+export async function generateStaticParams(): Promise<Array<{ userId: string }>> {
+  return [{ userId: '_' }];
 }
 
 export default function UserProfilePage({ params }: UserProfilePageProps) {

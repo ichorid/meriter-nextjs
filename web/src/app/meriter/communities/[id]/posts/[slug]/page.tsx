@@ -5,9 +5,10 @@ interface PostPageProps {
 }
 
 // Required for static export with dynamic routes
+// Return a placeholder to satisfy static export requirements
+// Actual routing will be handled client-side
 export async function generateStaticParams(): Promise<Array<{ id: string; slug: string }>> {
-  // Return empty array - dynamic routes will be handled client-side
-  return [];
+  return [{ id: '_', slug: '_' }];
 }
 
 export default function PostPage({ params }: PostPageProps) {
