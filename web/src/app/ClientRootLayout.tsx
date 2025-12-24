@@ -1,7 +1,7 @@
 'use client';
 
 import { NextIntlClientProvider } from 'next-intl';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { DEFAULT_LOCALE, type Locale } from '@/i18n/request';
 import { Root } from '@/components/Root';
 import { QueryProvider } from '@/providers/QueryProvider';
@@ -63,9 +63,12 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
   // Note: Auth config is now provided via RuntimeConfigProvider which uses tRPC
   // These are fallback values used only during initial render before runtime config loads
   // They will be overridden by RuntimeConfigProvider once the API config is fetched
-  const env = getAuthEnv(null); // No runtime config available at this level
-  const enabledProviders = getEnabledProviders(env);
-  const authnEnabled = false; // Default to false, will be set by RuntimeConfigProvider
+  // Memoize to prevent infinite re-renders (these functions create new objects/arrays each call)
+  const fallbackEnabledProviders = useMemo(() => {
+    const env = getAuthEnv(null); // No runtime config available at this level
+    return getEnabledProviders(env);
+  }, []); // Empty deps - these are static fallback values
+  const fallbackAuthnEnabled = false; // Default to false, will be set by RuntimeConfigProvider
 
   if (!mounted) {
     return <div>Loading...</div>;
@@ -79,8 +82,8 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
             <ClientRouter />
             <AuthProvider>
               <RuntimeConfigProvider
-                fallbackEnabledProviders={enabledProviders}
-                fallbackAuthnEnabled={authnEnabled}
+                fallbackEnabledProviders={fallbackEnabledProviders}
+                fallbackAuthnEnabled={fallbackAuthnEnabled}
               >
                 <Root>{children}</Root>
               </RuntimeConfigProvider>
