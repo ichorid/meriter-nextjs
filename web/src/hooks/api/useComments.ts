@@ -1,14 +1,7 @@
 // Comments React Query hooks with tRPC
-import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc/client";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import { STALE_TIME } from "@/lib/constants/query-config";
-import type {
-    Comment,
-    CreateCommentDto,
-    PaginatedResponse,
-} from "@/types/api-v1";
-import { createGetNextPageParam, createPaginationParams } from "@/lib/utils/pagination-utils";
 
 interface GetCommentsRequest {
     skip?: number;

@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from './api/useProfile';
 import { useCommunity } from './api';
-import type { CommunityWithComputedFields } from '@/types/api-v1';
 
 /**
  * Hook to check if user can create posts/polls in a community

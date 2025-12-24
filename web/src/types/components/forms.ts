@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react';
 
 export interface FormProps {
-  onSubmit: (data: any) => void;
+  onSubmit: (_data: unknown) => void;
   children: ReactNode;
   className?: string;
   disabled?: boolean;
@@ -22,7 +22,7 @@ export interface SelectProps {
   value?: string;
   defaultValue?: string;
   placeholder?: string;
-  onChange?: (value: string) => void;
+  onChange?: (_value: string) => void;
   disabled?: boolean;
   required?: boolean;
   error?: string;
@@ -33,7 +33,7 @@ export interface TextareaProps {
   value?: string;
   defaultValue?: string;
   placeholder?: string;
-  onChange?: (value: string) => void;
+  onChange?: (_value: string) => void;
   onBlur?: () => void;
   onFocus?: () => void;
   disabled?: boolean;
@@ -48,7 +48,7 @@ export interface TextareaProps {
 export interface CheckboxProps {
   checked?: boolean;
   defaultChecked?: boolean;
-  onChange?: (checked: boolean) => void;
+  onChange?: (_checked: boolean) => void;
   disabled?: boolean;
   required?: boolean;
   label?: string;
@@ -59,7 +59,7 @@ export interface RadioGroupProps {
   options: Array<{ value: string; label: string; disabled?: boolean }>;
   value?: string;
   defaultValue?: string;
-  onChange?: (value: string) => void;
+  onChange?: (_value: string) => void;
   disabled?: boolean;
   required?: boolean;
   error?: string;
@@ -69,7 +69,7 @@ export interface RadioGroupProps {
 export interface SwitchProps {
   checked?: boolean;
   defaultChecked?: boolean;
-  onChange?: (checked: boolean) => void;
+  onChange?: (_checked: boolean) => void;
   disabled?: boolean;
   required?: boolean;
   label?: string;

@@ -1,14 +1,8 @@
 // Communities React Query hooks
-import {
-    useQuery,
-    useInfiniteQuery,
-} from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc/client";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import { STALE_TIME } from "@/lib/constants/query-config";
 import type { PaginatedResponse, Community, CommunityWithComputedFields } from "@/types/api-v1";
-import { createGetNextPageParam } from "@/lib/utils/pagination-utils";
-import { createMutation } from "@/lib/api/mutation-factory";
 import { useBatchQueries } from "./useBatchQueries";
 
 // Local type definition

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, useMemo } from "react";
-import { useQueryClient } from '@tanstack/react-query';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { CommunityTopBar } from '@/components/organisms/ContextTopBar';
 import { useRouter, useSearchParams } from "next/navigation";
@@ -17,7 +16,6 @@ import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { routes } from '@/lib/constants/routes';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
-import type { CommunityWithComputedFields } from '@/types/api-v1';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
 import { Loader2, FileText, Users, Eye } from 'lucide-react';
@@ -102,7 +100,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         fetchNextPage: fetchNextVisionPage,
         hasNextPage: hasNextVisionPage,
         isFetchingNextPage: isFetchingNextVisionPage,
-        error: visionErr
+        error: _visionErr
     } = useCommunityFeed(futureVisionCommunityId || '', {
         pageSize: 5,
         sort: sortBy === 'recent' ? 'recent' : 'score',
@@ -214,7 +212,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 : undefined;
 
     const { user, isLoading: userLoading, isAuthenticated } = useAuth();
-    const { data: wallets = [], isLoading: walletsLoading } = useWallets();
+    const { data: wallets = [], isLoading: _walletsLoading } = useWallets();
 
     // Get wallet balance using standardized hook
     const { data: balance = 0 } = useWalletBalance(chatId);
@@ -252,7 +250,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const currencyIconUrl = comms?.settings?.iconUrl;
 
     // Get user's team community (community with typeTag: 'team' where user has a role)
-    const userTeamCommunityId = useMemo(() => {
+    const _userTeamCommunityId = useMemo(() => {
         if (!userRoles || userRoles.length === 0) return null;
         // Find a role in a team-type community
         // Note: We'd need to fetch communities to check typeTag, but for now we'll use a simpler approach
@@ -306,7 +304,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     }, [paginationEnd, activeTab, futureVisionCommunityId, fetchNextPage, fetchNextVisionPage]);
 
     // Use community data for chat info (same as comms)
-    const chatUrl = comms?.description;
+    const _chatUrl = comms?.description;
 
     // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     // Declare all state hooks unconditionally at the top level

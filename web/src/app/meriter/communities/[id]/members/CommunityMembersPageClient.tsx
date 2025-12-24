@@ -24,7 +24,7 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
     const { data: community, isLoading: communityLoading } = useCommunity(communityId);
     const { data: membersData, isLoading: membersLoading } = useCommunityMembers(communityId);
     const { mutate: removeMember, isPending: isRemoving } = useRemoveCommunityMember(communityId);
-    const { data: userRoles = [] } = useUserRoles(user?.id || '');
+    const { data: _userRoles = [] } = useUserRoles(user?.id || '');
 
     // Check if user is admin (superadmin or lead of this community)
     const isAdmin = community?.isAdmin;

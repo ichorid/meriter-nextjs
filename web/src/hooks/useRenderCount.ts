@@ -41,15 +41,11 @@ export function useRenderCount(options: UseRenderCountOptions = {}) {
     const renderCountRef = useRef(0);
     const isDevelopment = process.env.NODE_ENV === 'development';
 
-    // In production, return early to avoid overhead
-    if (!isDevelopment) {
-        return renderCountRef.current;
-    }
-
     renderCountRef.current += 1;
     const currentCount = renderCountRef.current;
 
     useEffect(() => {
+        // In production, skip all logic to avoid overhead
         if (!isDevelopment) return;
 
         if (logAll) {

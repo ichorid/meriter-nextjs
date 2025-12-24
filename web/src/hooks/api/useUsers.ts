@@ -1,5 +1,4 @@
 import { trpc } from '@/lib/trpc/client';
-import type { User, PaginatedResponse } from '@/types/api-v1';
 
 export const useUserProfile = (userId: string) => {
   return trpc.users.getUser.useQuery(

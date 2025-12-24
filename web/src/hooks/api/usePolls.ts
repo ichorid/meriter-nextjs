@@ -1,10 +1,6 @@
 // Polls React Query hooks - migrated to tRPC
 import { trpc } from "@/lib/trpc/client";
-import type { Poll } from "@/types/api-v1";
-import { createGetNextPageParam } from "@/lib/utils/pagination-utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { queryKeys } from "@/lib/constants/queryKeys";
-import { quotaKeys } from "./useQuota";
 
 interface PollCreate {
     question: string;
@@ -78,7 +74,7 @@ export const useCreatePoll = () => {
     const utils = trpc.useUtils();
     
     return trpc.polls.create.useMutation({
-        onSuccess: (result, variables) => {
+        onSuccess: () => {
             // Invalidate polls lists
             utils.polls.getAll.invalidate();
             // Invalidate quota queries for the community
@@ -93,7 +89,7 @@ export function useCastPoll() {
     const { user } = useAuth();
 
     return trpc.polls.cast.useMutation({
-        onSuccess: (result, variables) => {
+        onSuccess: (_result, variables) => {
             // Invalidate poll results to get updated cast counts
             utils.polls.getById.invalidate({ id: variables.pollId });
             // Invalidate polls list to ensure consistency
@@ -116,7 +112,7 @@ export const useUpdatePoll = () => {
     const utils = trpc.useUtils();
     
     return trpc.polls.update.useMutation({
-        onSuccess: (result, variables) => {
+        onSuccess: (_result, variables) => {
             // Invalidate polls lists and specific poll
             utils.polls.getAll.invalidate();
             utils.polls.getById.invalidate({ id: variables.id });

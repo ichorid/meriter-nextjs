@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQuery } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Dispatch, SetStateAction } from 'react';

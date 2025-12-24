@@ -39,9 +39,22 @@ module.exports = [
                 MouseEvent: 'readonly',
                 TouchEvent: 'readonly',
                 Event: 'readonly',
+                Element: 'readonly',
                 // Browser APIs
                 btoa: 'readonly',
                 atob: 'readonly',
+                fetch: 'readonly',
+                URLSearchParams: 'readonly',
+                IntersectionObserver: 'readonly',
+                DOMException: 'readonly',
+                crypto: 'readonly',
+                confirm: 'readonly',
+                // Node.js globals (for Next.js)
+                process: 'readonly',
+                global: 'readonly',
+                require: 'readonly',
+                // React (not needed in React 19, but for compatibility)
+                React: 'readonly',
             },
         },
         plugins: {
@@ -67,6 +80,8 @@ module.exports = [
                 {
                     argsIgnorePattern: '^_',
                     varsIgnorePattern: '^_',
+                    // Ignore parameters in type definitions (they're part of the API contract)
+                    ignoreRestSiblings: true,
                 },
             ],
         },
@@ -91,6 +106,21 @@ module.exports = [
                 beforeAll: 'readonly',
                 afterAll: 'readonly',
             },
+        },
+    },
+    // Type definition files - allow unused parameters in function types (they're part of API contract)
+    {
+        files: ['**/types/**/*.ts'],
+        rules: {
+            '@typescript-eslint/no-unused-vars': [
+                'warn',
+                {
+                    argsIgnorePattern: '^_',
+                    varsIgnorePattern: '^_',
+                    // In type definitions, parameter names are just documentation
+                    args: 'none',
+                },
+            ],
         },
     },
     {

@@ -20,7 +20,7 @@ export interface InputProps extends BaseComponentProps {
   placeholder?: string;
   value?: string;
   defaultValue?: string;
-  onChange?: (value: string) => void;
+  onChange?: (_value: string) => void;
   onBlur?: () => void;
   onFocus?: () => void;
   disabled?: boolean;

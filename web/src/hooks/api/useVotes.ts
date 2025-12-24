@@ -2,8 +2,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
 import { useVoteMutation } from './useVoteMutation';
-import { queryKeys } from '@/lib/constants/queryKeys';
-import { commentsKeys } from './useComments';
 import { useAuth } from '@/contexts/AuthContext';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { invalidateWallet, invalidatePublications, invalidateComments, invalidateCommunities } from '@/lib/api/invalidation-helpers';

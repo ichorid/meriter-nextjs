@@ -1,11 +1,6 @@
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
 import type { User } from '@/types/api-v1';
 import { useAuth } from '@/contexts/AuthContext';
-import { createGetNextPageParam } from '@/lib/utils/pagination-utils';
-import { createMutation } from '@/lib/api/mutation-factory';
-import type { UpdateUserProfileSchema } from '@meriter/shared-types';
-import { z } from 'zod';
 
 export function useUserRoles(userId: string) {
   return trpc.users.getUserRoles.useQuery(

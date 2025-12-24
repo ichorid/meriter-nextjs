@@ -28,7 +28,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
     const router = useRouter();
     const searchParams = useSearchParams();
     const t = useTranslations('common');
-    const tComments = useTranslations('comments');
+    const _tComments = useTranslations('comments');
 
     // Get highlight parameter from URL for comment highlighting
     const highlightCommentId = searchParams?.get('highlight');
@@ -99,8 +99,8 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
         return undefined;
     }, [highlightCommentId, publication]);
 
-    // Page title based on publication
-    const pageTitle = publication?.title || t('post');
+    // Page title based on publication (unused but kept for future use)
+    const _pageTitle = publication?.title || t('post');
 
     const pageHeader = (
         <SimpleStickyHeader

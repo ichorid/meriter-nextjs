@@ -1,23 +1,15 @@
 // Wallet React Query hooks - partially migrated to tRPC
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 // walletApiV1 removed - all endpoints migrated to tRPC
 import { trpc } from '@/lib/trpc/client';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import { STALE_TIME } from '@/lib/constants/query-config';
-import type { PaginatedResponse } from '@/types/api-v1';
-import { createMutation } from '@/lib/api/mutation-factory';
 
 // Import types from shared-types (single source of truth)
-import type { Wallet, Transaction } from '@meriter/shared-types';
+import type { Wallet } from '@meriter/shared-types';
 
 // Re-export Wallet type for convenience
 export type { Wallet };
-
-interface WithdrawRequest {
-  communityId: string;
-  amount: number;
-  memo?: string;
-}
 
 // Get user wallets
 export function useWallets() {

@@ -1,5 +1,5 @@
 // Publication state management logic
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useCommunity } from '@/hooks/api';
 import type { Dispatch, SetStateAction } from 'react';
 import { useTranslations } from 'next-intl';
@@ -55,12 +55,8 @@ export function usePublicationState({
   type,
   content,
   _id,
-  onlyPublication,
-  isDetailPage,
-  activeCommentHook,
   dimensions,
   keyword,
-  entities,
   meta,
 }: UsePublicationStateProps) {
   const t = useTranslations('feed');
