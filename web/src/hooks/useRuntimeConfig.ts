@@ -6,7 +6,7 @@
 import { trpc } from '@/lib/trpc/client';
 import { STALE_TIME } from '@/lib/constants/query-config';
 import type { RuntimeConfig } from '@/types/runtime-config';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 
 /**
  * Hook to fetch runtime configuration from backend
@@ -33,6 +33,9 @@ export function useRuntimeConfig(): {
         meta: {
             skipErrorToast: true,
         },
+        // Use select to ensure stable reference - only update when data actually changes
+        // This prevents infinite loops from object reference changes
+        select: (data) => data,
         onError: (err) => {
             // Log warning but don't throw - we'll fall back to build-time defaults
             // Include more context for transformation errors
@@ -45,9 +48,25 @@ export function useRuntimeConfig(): {
         },
     });
 
-    // Memoize config to ensure stable reference when data hasn't changed
-    // This prevents infinite loops when config is used as a dependency
-    const config = useMemo(() => data || null, [data]);
+    // Use ref to store previous data and compare by serialization
+    // This prevents infinite loops when React Query returns new object references
+    // with the same values
+    const prevDataRef = useRef<{ data: RuntimeConfig | null; key: string } | null>(null);
+    
+    const config = useMemo(() => {
+        // Serialize current data for comparison
+        const currentKey = data ? JSON.stringify(data) : 'null';
+        
+        // If serialized data matches previous, return previous config (stable reference)
+        if (prevDataRef.current && prevDataRef.current.key === currentKey) {
+            return prevDataRef.current.data;
+        }
+        
+        // Data actually changed, update ref and return new config
+        const newConfig = data || null;
+        prevDataRef.current = { data: newConfig, key: currentKey };
+        return newConfig;
+    }, [data]);
 
     return {
         config,
