@@ -1,6 +1,3 @@
-/* Keep essential third-party imports - must be before @tailwind in Next.js 16 */
-@import '@telegram-apps/telegram-ui/dist/styles.css';
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

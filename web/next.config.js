@@ -7,6 +7,9 @@ const path = require('path');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: true,
+    // Enable Turbopack for faster builds (used in dev mode with --turbo flag)
+    // Production builds still use Webpack (see webpack config below)
+    // Note: Turbopack config is limited in Next.js 16.1.1, webpack config is used for production
     // Re-enable strict type checking now that shared types have been trimmed for memory safety
     // Temporarily allow errors from backend imports (tRPC types) - these are type-only and don't affect runtime
     typescript: {
