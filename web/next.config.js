@@ -15,9 +15,10 @@ const nextConfig = {
     typescript: {
         ignoreBuildErrors: true, // TODO: Fix tRPC type imports to not pull in backend runtime code
     },
-    // Enable source maps for debugging (works with static export)
+    // Enable source maps for debugging in dev builds (works with static export)
     // Note: SWC minification is always enabled in Next.js 16+ and cannot be disabled
-    productionBrowserSourceMaps: process.env.NEXT_PUBLIC_DEV_BUILD === 'true' || process.env.NODE_ENV === 'development',
+    // Enable source maps when NEXT_PUBLIC_DEV_BUILD is true for dev server debugging
+    productionBrowserSourceMaps: process.env.NEXT_PUBLIC_DEV_BUILD === 'true',
     // Note: OAuth provider flags and AUTHN are fetched from backend at runtime via useRuntimeConfig()
     // No need to expose them as build-time env vars
     transpilePackages: [

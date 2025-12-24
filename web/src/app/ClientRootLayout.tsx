@@ -23,7 +23,6 @@ interface ClientRootLayoutProps {
 export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
   const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
   const [messages, setMessages] = useState(enMessages);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const detectLocale = (): Locale => {
@@ -56,8 +55,6 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
       const defaultLocale = browserLang === 'ru' ? 'ru' : 'en';
       document.cookie = `NEXT_LOCALE=${defaultLocale}; max-age=${365 * 24 * 60 * 60}; path=/; samesite=lax`;
     }
-
-    setMounted(true);
   }, []);
 
   // Note: Auth config is now provided via RuntimeConfigProvider which uses tRPC
@@ -70,10 +67,8 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
   }, []); // Empty deps - these are static fallback values
   const fallbackAuthnEnabled = false; // Default to false, will be set by RuntimeConfigProvider
 
-  if (!mounted) {
-    return <div>Loading...</div>;
-  }
-
+  // Always render the full app structure to avoid hydration mismatches
+  // The initial render uses default locale, which will be updated after mount
   return (
     <StyledJsxRegistry>
       <AppModeProvider>
