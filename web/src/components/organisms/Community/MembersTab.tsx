@@ -4,7 +4,8 @@ import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useCommunityMembers } from '@/hooks/api/useCommunityMembers';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { User } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { SearchInput } from '@/components/molecules/SearchInput';
 import { Loader2, Users } from 'lucide-react';
@@ -103,12 +104,14 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                             title={member.displayName || member.username || tCommon('unknownUser')}
                             subtitle={member.username ? `@${member.username}` : undefined}
                             icon={
-                                <BrandAvatar
-                                    src={member.avatarUrl}
-                                    fallback={member.displayName || member.username || tCommon('user')}
-                                    size="sm"
-                                    className="bg-transparent"
-                                />
+                                <Avatar className="w-8 h-8 text-xs bg-transparent">
+                                    {member.avatarUrl && (
+                                        <AvatarImage src={member.avatarUrl} alt={member.displayName || member.username || tCommon('user')} />
+                                    )}
+                                    <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                                        {(member.displayName || member.username) ? (member.displayName || member.username).slice(0, 2).toUpperCase() : <User size={14} />}
+                                    </AvatarFallback>
+                                </Avatar>
                             }
                             badges={roleBadge ? [roleBadge] : undefined}
                             communityId={communityId}

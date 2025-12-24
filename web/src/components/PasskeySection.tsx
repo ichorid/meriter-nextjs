@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { BrandButton } from "@/components/ui";
+import { Button } from "@/components/ui/shadcn/button";
+import { Loader2 } from "lucide-react";
 import { usePasskeys } from "@/hooks/usePasskeys";
 
 interface PasskeySectionProps {
@@ -38,14 +39,15 @@ export function PasskeySection({ isLoading, onSuccess, onError }: PasskeySection
     };
 
     return (
-        <BrandButton
+        <Button
             variant="outline"
             size="md"
-            fullWidth
+            className="rounded-xl active:scale-[0.98] w-full"
             onClick={handleAuthenticate}
             disabled={isLoading || localLoading}
         >
+            {localLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             {localLoading ? t("authenticating", { defaultMessage: "Authenticating..." }) : t("signInWithPasskey", { defaultMessage: "Sign in with Passkey" })}
-        </BrandButton>
+        </Button>
     );
 }

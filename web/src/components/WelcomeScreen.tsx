@@ -10,7 +10,8 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { BrandButton, Logo } from '@/components/ui';
+import { Logo } from '@/components/ui';
+import { Button } from '@/components/ui/shadcn/button';
 
 interface WelcomeScreenProps {
   className?: string;
@@ -34,14 +35,14 @@ export function WelcomeScreen({ className = '' }: WelcomeScreenProps) {
           <p className="text-sm text-base-content/70 mb-8">{t('welcomeSubtitle')}</p>
         </div>
         <div className="mb-4">
-          <BrandButton
+          <Button
             size="md"
-            fullWidth
+            className="rounded-xl active:scale-[0.98] w-full"
             variant="default"
             onClick={() => router.push('/meriter/new-user')}
           >
             {t('fillProfile')}
-          </BrandButton>
+          </Button>
         </div>
       </div>
     </div>

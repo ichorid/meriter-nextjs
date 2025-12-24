@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { classList } from '@lib/classList';
-import { Avatar } from '@/components/atoms';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { CommunityAvatar } from '@shared/components/community-avatar';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -130,13 +130,18 @@ export const CardCommentVote = ({
                         <div className="flex gap-3 mb-3 items-start min-w-0">
                             <div className="flex gap-3 flex-1 min-w-0">
                                 <Avatar
-                                    src={avatarUrl}
-                                    alt={title}
-                                    name={title}
-                                    size={32}
-                                    onError={onAvatarUrlNotFound}
+                                    className="w-8 h-8 cursor-pointer"
                                     onClick={authorId ? handleAuthorAvatarClick : undefined}
-                                />
+                                >
+                                    <AvatarImage
+                                        src={avatarUrl}
+                                        alt={title}
+                                        onError={onAvatarUrlNotFound}
+                                    />
+                                    <AvatarFallback className="bg-muted text-muted-foreground font-medium text-xs">
+                                        {title ? title.charAt(0).toUpperCase() : '?'}
+                                    </AvatarFallback>
+                                </Avatar>
                                 <div className="info min-w-0 flex-1">
                                     <div className="text-sm font-semibold text-base-content break-words leading-tight">{title}</div>
                                     <div className="text-xs text-base-content/60 break-words mt-0.5">{subtitle}</div>
@@ -178,12 +183,17 @@ export const CardCommentVote = ({
                             <div className="flex items-center gap-2 mb-3 text-xs text-base-content/70 min-w-0 py-1.5 px-2 bg-base-200/50 rounded-lg">
                                 <span className="flex-shrink-0 font-medium">to:</span>
                                 <Avatar
-                                    src={beneficiaryAvatarUrl}
-                                    alt={beneficiaryName}
-                                    name={beneficiaryName}
-                                    size={20}
+                                    className="w-5 h-5 cursor-pointer"
                                     onClick={beneficiaryId ? handleBeneficiaryAvatarClick : undefined}
-                                />
+                                >
+                                    <AvatarImage
+                                        src={beneficiaryAvatarUrl}
+                                        alt={beneficiaryName}
+                                    />
+                                    <AvatarFallback className="bg-muted text-muted-foreground font-medium text-[10px]">
+                                        {beneficiaryName ? beneficiaryName.charAt(0).toUpperCase() : '?'}
+                                    </AvatarFallback>
+                                </Avatar>
                                 <span className="break-words min-w-0 font-medium">{beneficiaryName}</span>
                             </div>
                         )}

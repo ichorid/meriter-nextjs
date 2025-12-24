@@ -24,11 +24,12 @@ import {
     type OAuthProvider,
 } from "@/lib/utils/oauth-providers";
 import {
-    BrandButton,
-    BrandInput,
     BrandFormControl,
     Logo,
 } from "@/components/ui";
+import { Button } from "@/components/ui/shadcn/button";
+import { Input } from "@/components/ui/shadcn/input";
+import { Loader2 } from "lucide-react";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { PasskeySection } from "./PasskeySection";
 
@@ -152,44 +153,42 @@ export function LoginForm({
                                 <p className="text-sm text-base-content bg-warning/10 p-2 rounded-lg border border-warning/20">
                                     {t("fakeDataModeEnabled")}
                                 </p>
-                                <BrandButton
-                                    variant="primary"
+                                <Button
+                                    variant="default"
                                     size="lg"
-                                    fullWidth
+                                    className="rounded-xl active:scale-[0.98] w-full"
                                     onClick={handleFakeAuth}
                                     disabled={isLoading}
                                 >
                                     {t("fakeLogin")}
-                                </BrandButton>
-                                <BrandButton
+                                </Button>
+                                <Button
                                     variant="outline"
                                     size="lg"
-                                    fullWidth
+                                    className="rounded-xl active:scale-[0.98] w-full border-primary text-primary hover:bg-primary hover:text-primary-content"
                                     onClick={handleFakeSuperadminAuth}
                                     disabled={isLoading}
-                                    className="border-primary text-primary hover:bg-primary hover:text-primary-content"
                                 >
                                     {t("superadminLogin")}
-                                </BrandButton>
+                                </Button>
                             </div>
                         ) : (
                             <div className="space-y-3">
                                 {displayedProviders.length > 0 && displayedProviders.map((provider) => (
-                                    <BrandButton
+                                    <Button
                                         key={provider.id}
                                         variant="outline"
                                         size="md"
-                                        fullWidth
+                                        className="rounded-xl active:scale-[0.98] w-full justify-start pl-6"
                                         onClick={() =>
                                             handleOAuthAuth(provider.id)
                                         }
                                         disabled={isLoading}
-                                        className="justify-start pl-6"
                                     >
                                         {t("signInWith", {
                                             provider: provider.name,
                                         })}
-                                    </BrandButton>
+                                    </Button>
                                 ))}
 
                                 {authnEnabled && (

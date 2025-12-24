@@ -10,10 +10,19 @@ import { useWallet } from '@/hooks/api/useWallet';
 import type { Poll } from '@/types/api-v1';
 import { safeHapticFeedback } from '@/shared/lib/utils/haptic-utils';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { BrandInput } from '@/components/ui/BrandInput';
-import { BrandSelect } from '@/components/ui/BrandSelect';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import { Loader2 } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/shadcn/select';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
+import { cn } from '@/lib/utils';
 import { Plus, Trash2 } from 'lucide-react';
 
 interface IPollOption {
@@ -381,12 +390,12 @@ export const FormPollCreate = ({
 
             {/* Poll Title Section */}
             <BrandFormControl label={t('pollTitleLabel')} required>
-                <BrandInput
+                <Input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder={t('pollTitlePlaceholder')}
                     disabled={isCreating}
-                    fullWidth
+                    className="h-11 rounded-xl w-full"
                 />
             </BrandFormControl>
 
@@ -410,38 +419,38 @@ export const FormPollCreate = ({
                         <div key={`option-${option.id}`} className="flex items-center gap-2">
                             <span className="text-sm font-medium text-brand-text-primary dark:text-base-content w-6">{index + 1}.</span>
                             <div className="flex-1">
-                                <BrandInput
+                                <Input
                                     value={option.text}
                                     onChange={(e) => updateOption(option.id, e.target.value)}
                                     placeholder={t('optionPlaceholder', { number: index + 1 })}
                                     disabled={isCreating}
-                                    fullWidth
+                                    className="h-11 rounded-xl w-full"
                                 />
                             </div>
                             {options.length > 2 && (
-                                <BrandButton
+                                <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() => removeOption(option.id)}
                                     disabled={isCreating}
-                                    className="text-red-500 border-red-200 hover:bg-red-50"
+                                    className="rounded-xl active:scale-[0.98] text-red-500 border-red-200 hover:bg-red-50"
                                 >
                                     <Trash2 size={16} />
-                                </BrandButton>
+                                </Button>
                             )}
                         </div>
                     ))}
 
                     {options.length < 10 && (
-                        <BrandButton
+                        <Button
                             variant="outline"
                             onClick={addOption}
                             disabled={isCreating}
-                            className="mt-2 w-full"
-                            leftIcon={<Plus size={16} />}
+                            className="rounded-xl active:scale-[0.98] mt-2 w-full"
                         >
+                            <Plus size={16} />
                             {t('addOption')}
-                        </BrandButton>
+                        </Button>
                     )}
                 </div>
             </div>
@@ -449,17 +458,22 @@ export const FormPollCreate = ({
             {/* Community Selection Section */}
             {!communityId && (
                 <BrandFormControl label={t('selectCommunity')} required>
-                    <BrandSelect
+                    <Select
                         value={selectedWallet}
-                        onChange={setSelectedWallet}
-                        options={wallets.map((wallet) => ({
-                            label: wallet.name || wallet.meta?.currencyNames?.many || t('communityFallback'),
-                            value: wallet.meta?.currencyOfCommunityTgChatId
-                        }))}
-                        placeholder={t('selectCommunityPlaceholder')}
+                        onValueChange={setSelectedWallet}
                         disabled={isCreating}
-                        fullWidth
-                    />
+                    >
+                        <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+                            <SelectValue placeholder={t('selectCommunityPlaceholder')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {wallets.map((wallet) => (
+                                <SelectItem key={wallet.meta?.currencyOfCommunityTgChatId} value={wallet.meta?.currencyOfCommunityTgChatId}>
+                                    {wallet.name || wallet.meta?.currencyNames?.many || t('communityFallback')}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </BrandFormControl>
             )}
 
@@ -467,26 +481,29 @@ export const FormPollCreate = ({
             <BrandFormControl label={t('durationLabel')} required>
                 <div className="flex gap-2">
                     <div className="w-24">
-                        <BrandInput
+                        <Input
                             value={timeValue}
                             onChange={(e) => setTimeValue(e.target.value)}
                             type="number"
                             disabled={isCreating}
-                            fullWidth
+                            className="h-11 rounded-xl w-full"
                         />
                     </div>
                     <div className="flex-1">
-                        <BrandSelect
+                        <Select
                             value={timeUnit}
-                            onChange={(val) => setTimeUnit(val as any)}
-                            options={[
-                                { label: t('minutes'), value: 'minutes' },
-                                { label: t('hours'), value: 'hours' },
-                                { label: t('days'), value: 'days' },
-                            ]}
+                            onValueChange={(val) => setTimeUnit(val as any)}
                             disabled={isCreating}
-                            fullWidth
-                        />
+                        >
+                            <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="minutes">{t('minutes')}</SelectItem>
+                                <SelectItem value="hours">{t('hours')}</SelectItem>
+                                <SelectItem value="days">{t('days')}</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
             </BrandFormControl>
@@ -502,22 +519,24 @@ export const FormPollCreate = ({
             {!isInTelegram && (
                 <div className="flex justify-end gap-3 mt-4">
                     {onCancel && (
-                        <BrandButton
+                        <Button
                             variant="outline"
                             onClick={onCancel}
                             disabled={isCreating}
+                            className="rounded-xl active:scale-[0.98]"
                         >
                             {t('cancel')}
-                        </BrandButton>
+                        </Button>
                     )}
-                    <BrandButton
-                        variant="primary"
+                    <Button
+                        variant="default"
                         onClick={handleCreate}
                         disabled={isCreating || hasInsufficientPayment}
-                        isLoading={isCreating}
+                        className="rounded-xl active:scale-[0.98]"
                     >
+                        {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
                         {isEditMode ? (t('updatePoll') || 'Update Poll') : t('createPoll')}
-                    </BrandButton>
+                    </Button>
                 </div>
             )}
         </div>

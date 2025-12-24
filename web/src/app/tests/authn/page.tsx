@@ -4,7 +4,9 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SimpleStickyHeader } from "@/components/organisms/ContextTopBar/ContextTopBar";
 import { AdaptiveLayout } from "@/components/templates/AdaptiveLayout";
-import { BrandButton, BrandInput, BrandFormControl } from "@/components/ui";
+import { BrandFormControl } from "@/components/ui";
+import { Button } from "@/components/ui/shadcn/button";
+import { Input } from "@/components/ui/shadcn/input";
 import { usePasskeys } from "@/hooks/usePasskeys";
 
 type LogEntry = {
@@ -81,23 +83,24 @@ export default function AuthnTestPage() {
                     </div>
 
                     <BrandFormControl label="Test Username">
-                        <BrandInput
+                        <Input
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             placeholder="username"
+                            className="h-11 rounded-xl w-full"
                         />
                     </BrandFormControl>
 
                     <div className="flex flex-wrap gap-2">
-                        <BrandButton onClick={handleRegister} variant="primary">
+                        <Button onClick={handleRegister} variant="default" className="rounded-xl active:scale-[0.98]">
                             Register Passkey
-                        </BrandButton>
-                        <BrandButton onClick={handleLogin} variant="secondary">
+                        </Button>
+                        <Button onClick={handleLogin} variant="secondary" className="rounded-xl active:scale-[0.98]">
                             Login with Passkey
-                        </BrandButton>
-                        <BrandButton onClick={clearLogs} variant="ghost" className="ml-auto">
+                        </Button>
+                        <Button onClick={clearLogs} variant="ghost" className="rounded-xl active:scale-[0.98] ml-auto">
                             Clear Logs
-                        </BrandButton>
+                        </Button>
                     </div>
                 </div>
 

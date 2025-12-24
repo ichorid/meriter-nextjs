@@ -4,9 +4,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Search, X, Filter, Calendar, User, Hash, Users } from 'lucide-react';
-import { BrandInput } from '@/components/ui/BrandInput';
-import { BrandSelect } from '@/components/ui/BrandSelect';
-import { BrandButton } from '@/components/ui/BrandButton';
+import { Input } from '@/components/ui/shadcn/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/shadcn/select';
+import { Button } from '@/components/ui/shadcn/button';
+import { cn } from '@/lib/utils';
 import type { SearchContentType } from '@/types/api-v1';
 
 interface AdvancedSearchProps {
@@ -173,7 +180,8 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     <div className={`space-y-4 ${className}`}>
       {/* Main Search Input */}
       <div className="relative" ref={searchInputRef}>
-        <BrandInput
+        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+        <Input
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -186,19 +194,17 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
             }
           }}
           placeholder={t('results.searchPlaceholder')}
-          leftIcon={<Search size={18} />}
-          rightIcon={
-            query ? (
-              <button
-                onClick={handleClear}
-                className="p-1 hover:bg-base-200 rounded-full transition-colors"
-                aria-label={tCommon('clear')}
-              >
-                <X size={16} />
-              </button>
-            ) : undefined
-          }
+          className={cn('h-11 rounded-xl pl-10 w-full', query && 'pr-10')}
         />
+        {query && (
+          <button
+            onClick={handleClear}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-base-200 rounded-full transition-colors z-10"
+            aria-label={tCommon('clear')}
+          >
+            <X size={16} />
+          </button>
+        )}
 
         {/* Search History Dropdown */}
         {showHistory && searchHistory.length > 0 && (
@@ -230,13 +236,13 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
           <span>{t('filters')}</span>
         </button>
 
-        <BrandButton
+        <Button
           onClick={handleSearch}
           disabled={!query.trim() && !tags.length && !dateFrom && !dateTo}
-          className="w-fit"
+          className="rounded-xl active:scale-[0.98] w-fit"
         >
           {t('search')}
-        </BrandButton>
+        </Button>
       </div>
 
       {/* Advanced Filters */}
@@ -247,15 +253,21 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
             <label className="block text-sm font-medium text-brand-text-primary mb-2">
               {t('contentType')}
             </label>
-            <BrandSelect
+            <Select
               value={contentType}
-              onChange={(value) => setContentType(value as SearchContentType)}
-              options={CONTENT_TYPES.map((type) => ({
-                value: type.value,
-                label: t(`contentTypes.${type.value}`) || type.label,
-              }))}
-              fullWidth
-            />
+              onValueChange={(value) => setContentType(value as SearchContentType)}
+            >
+              <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CONTENT_TYPES.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {t(`contentTypes.${type.value}`) || type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Tags */}
@@ -264,22 +276,24 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               {t('tags')}
             </label>
             <div className="flex gap-2 mb-2">
-              <BrandInput
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddTag();
-                  }
-                }}
-                placeholder={t('tagsPlaceholder')}
-                leftIcon={<Hash size={16} />}
-                className="flex-1"
-              />
-              <BrandButton onClick={handleAddTag} className="w-fit">
+              <div className="relative flex-1">
+                <Hash size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                <Input
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
+                  placeholder={t('tagsPlaceholder')}
+                  className="h-11 rounded-xl pl-10"
+                />
+              </div>
+              <Button onClick={handleAddTag} className="rounded-xl active:scale-[0.98] w-fit">
                 {t('add')}
-              </BrandButton>
+              </Button>
             </div>
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
@@ -307,23 +321,29 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               <label className="block text-sm font-medium text-brand-text-primary mb-2">
                 {t('dateFrom')}
               </label>
-              <BrandInput
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                leftIcon={<Calendar size={16} />}
-              />
+              <div className="relative">
+                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="h-11 rounded-xl pl-10"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-brand-text-primary mb-2">
                 {t('dateTo')}
               </label>
-              <BrandInput
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                leftIcon={<Calendar size={16} />}
-              />
+              <div className="relative">
+                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="h-11 rounded-xl pl-10"
+                />
+              </div>
             </div>
           </div>
         </div>

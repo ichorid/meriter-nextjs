@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Avatar } from '@/components/atoms';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { formatDate } from '@/shared/lib/date';
 import { routes } from '@/lib/constants/routes';
 
@@ -99,12 +99,14 @@ export const CommentListItem: React.FC<CommentListItemProps> = ({
               <div className="flex gap-2 mb-2 items-start">
                 <div className="flex gap-2 flex-1">
                   <Avatar
-                    src={authorAvatarUrl}
-                    alt={authorName || 'Unknown'}
-                    name={authorName || 'Unknown'}
-                    size={32}
+                    className="w-8 h-8 cursor-pointer"
                     onClick={authorId ? handleAvatarClick : undefined}
-                  />
+                  >
+                    <AvatarImage src={authorAvatarUrl} alt={authorName || 'Unknown'} />
+                    <AvatarFallback className="bg-muted text-muted-foreground font-medium text-xs">
+                      {authorName ? authorName.charAt(0).toUpperCase() : '?'}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="info">
                     <div className="text-xs font-medium">{authorName || 'Unknown'}</div>
                     {createdAt && (

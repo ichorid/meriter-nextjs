@@ -2,8 +2,16 @@
 
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
-import { BrandSelect } from '@/components/ui/BrandSelect';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/shadcn/select';
+import { Label } from '@/components/ui/shadcn/label';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
+import { cn } from '@/lib/utils';
 
 export function LanguageSelector() {
     const t = useTranslations('settings');
@@ -30,19 +38,26 @@ export function LanguageSelector() {
         }
     };
 
+    const options = [
+        { label: t('languageAuto'), value: 'auto' },
+        { label: t('languageEnglish'), value: 'en' },
+        { label: t('languageRussian'), value: 'ru' },
+    ];
+
     return (
         <BrandFormControl label={t('language')}>
-            <BrandSelect
-                value={selectedValue}
-                onChange={changeLanguage}
-                options={[
-                    { label: t('languageAuto'), value: 'auto' },
-                    { label: t('languageEnglish'), value: 'en' },
-                    { label: t('languageRussian'), value: 'ru' },
-                ]}
-                placeholder={t('languageAuto')}
-                fullWidth
-            />
+            <Select value={selectedValue} onValueChange={changeLanguage}>
+                <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+                    <SelectValue placeholder={t('languageAuto')} />
+                </SelectTrigger>
+                <SelectContent>
+                    {options.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
         </BrandFormControl>
     );
 }

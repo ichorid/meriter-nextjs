@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import { CommentsList } from '@/lib/comments/components/CommentsList';
 import { buildTree } from '@/lib/comments/tree';
 import { transformComments } from '@/lib/comments/utils/transform';
-import { BrandButton } from '@/components/ui/BrandButton';
+import { Button } from '@/components/ui/shadcn/button';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { SortToggle } from '@/components/ui/SortToggle';
 

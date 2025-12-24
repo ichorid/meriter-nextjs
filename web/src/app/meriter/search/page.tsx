@@ -9,7 +9,7 @@ import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/Context
 import { AdvancedSearch, SearchParams as AdvancedSearchParams } from '@/components/organisms/AdvancedSearch';
 import { useSearch } from '@/hooks/api/useSearch';
 import { InfoCard } from '@/components/ui/InfoCard';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Loader2 } from 'lucide-react';
 import type { SearchContentType } from '@/types/api-v1';
 
@@ -161,17 +161,23 @@ export default function SearchResultsPage() {
                         subtitle={subtitleParts.join(' | ')}
                         icon={
                           result.author?.avatarUrl ? (
-                            <BrandAvatar
-                              src={result.author.avatarUrl}
-                              fallback={result.author.name}
-                              size="sm"
-                            />
+                            <Avatar className="w-8 h-8 text-xs">
+                              {result.author.avatarUrl && (
+                                <AvatarImage src={result.author.avatarUrl} alt={result.author.name} />
+                              )}
+                              <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                                {result.author.name ? result.author.name.slice(0, 2).toUpperCase() : <User size={14} />}
+                              </AvatarFallback>
+                            </Avatar>
                           ) : result.community?.avatarUrl ? (
-                            <BrandAvatar
-                              src={result.community.avatarUrl}
-                              fallback={result.community.name}
-                              size="sm"
-                            />
+                            <Avatar className="w-8 h-8 text-xs">
+                              {result.community.avatarUrl && (
+                                <AvatarImage src={result.community.avatarUrl} alt={result.community.name} />
+                              )}
+                              <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                                {result.community.name ? result.community.name.slice(0, 2).toUpperCase() : <User size={14} />}
+                              </AvatarFallback>
+                            </Avatar>
                           ) : undefined
                         }
                         onClick={() => router.push(result.url)}

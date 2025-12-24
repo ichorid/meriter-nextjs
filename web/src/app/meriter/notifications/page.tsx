@@ -6,10 +6,18 @@ import { useTranslations } from 'next-intl';
 import { Bell, Check, CheckCheck, Filter, Settings } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { BrandSelect } from '@/components/ui/BrandSelect';
+import { Button } from '@/components/ui/shadcn/button';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/shadcn/select';
 import { InfoCard } from '@/components/ui/InfoCard';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { cn } from '@/lib/utils';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { User } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { Loader2 } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -214,36 +222,44 @@ export default function NotificationsPage() {
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
           <div className="flex items-center gap-2 flex-1">
             <Filter size={18} className="text-brand-text-secondary" />
-            <BrandSelect
+            <Select
               value={filter}
-              onChange={(value) => setFilter(value as typeof filter)}
-              options={filterOptions}
-              className="flex-1 sm:max-w-xs"
-              fullWidth
-            />
+              onValueChange={(value) => setFilter(value as typeof filter)}
+            >
+              <SelectTrigger className={cn('flex-1 sm:max-w-xs h-11 rounded-xl')}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {filterOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex items-center gap-2">
             {unreadCount > 0 && (
-              <BrandButton
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={handleMarkAllAsRead}
                 disabled={markAllAsRead.isPending}
-                className="w-fit"
+                className="rounded-xl active:scale-[0.98] w-fit"
               >
                 <CheckCheck size={16} className="mr-1" />
                 {t('markAllRead')}
-              </BrandButton>
+              </Button>
             )}
-            <BrandButton
+            <Button
               variant="outline"
               size="sm"
               onClick={() => setShowPreferences(!showPreferences)}
-              className="w-fit"
+              className="rounded-xl active:scale-[0.98] w-fit"
             >
               <Settings size={16} />
-            </BrandButton>
+            </Button>
           </div>
         </div>
 
@@ -286,12 +302,14 @@ export default function NotificationsPage() {
                   rightElement={
                     <div className="flex items-center gap-1">
                       {notification.actor?.avatarUrl && (
-                        <BrandAvatar
-                          src={notification.actor.avatarUrl}
-                          fallback={notification.actor.name}
-                          size="sm"
-                          className="mr-2"
-                        />
+                        <Avatar className="w-8 h-8 text-xs mr-2">
+                          {notification.actor.avatarUrl && (
+                            <AvatarImage src={notification.actor.avatarUrl} alt={notification.actor.name} />
+                          )}
+                          <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                            {notification.actor.name ? notification.actor.name.slice(0, 2).toUpperCase() : <User size={14} />}
+                          </AvatarFallback>
+                        </Avatar>
                       )}
                       {!notification.read && (
                         <button

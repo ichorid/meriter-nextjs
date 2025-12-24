@@ -2,8 +2,14 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { Camera, X, Loader2, RotateCcw, ZoomIn, ZoomOut, Check } from 'lucide-react';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { BrandModal } from '@/components/ui/BrandModal';
+import { Button } from '@/components/ui/shadcn/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/shadcn/dialog';
+import { cn } from '@/lib/utils';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -282,13 +288,13 @@ export function AvatarUploader({
       )}
 
       {/* Crop modal */}
-      <BrandModal
-        isOpen={isModalOpen}
-        onClose={handleClose}
-        title={labels.cropTitle}
-        size="md"
-      >
-        <div className="space-y-4">
+      <Dialog open={isModalOpen} onOpenChange={(open) => !open && handleClose()}>
+        <DialogContent className={cn('max-w-lg rounded-2xl max-h-[90vh] flex flex-col p-0')}>
+          <DialogHeader className="p-6 border-b">
+            <DialogTitle>{labels.cropTitle}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="space-y-4">
           {/* Preview with crop area */}
           <div 
             ref={containerRef}
@@ -382,25 +388,32 @@ export function AvatarUploader({
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-2">
-            <BrandButton
+            <Button
               variant="outline"
               onClick={handleClose}
               disabled={isUploading}
+              className="rounded-xl active:scale-[0.98]"
             >
               {labels.cancel}
-            </BrandButton>
-            <BrandButton
-              variant="primary"
+            </Button>
+            <Button
+              variant="default"
               onClick={handleUpload}
               disabled={isUploading}
-              isLoading={isUploading}
-              leftIcon={!isUploading ? <Check size={16} /> : undefined}
+              className="rounded-xl active:scale-[0.98]"
             >
+              {isUploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check size={16} />
+              )}
               {labels.save}
-            </BrandButton>
+            </Button>
           </div>
-        </div>
-      </BrandModal>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

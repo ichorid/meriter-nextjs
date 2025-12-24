@@ -3,7 +3,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Button, Icon, Avatar } from '@/components/atoms';
+import { Icon } from '@/components/atoms';
+import { Button } from '@/components/ui/shadcn/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { routes } from '@/lib/constants/routes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUIStore } from '@/stores/ui.store';
@@ -108,7 +110,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
                   className="flex items-center gap-2"
                 >
                   <div className="flex items-center gap-2">
-                    <Avatar src={user.avatarUrl} alt={user.displayName} size="sm" />
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={user.avatarUrl} alt={user.displayName} />
+                      <AvatarFallback className="bg-muted text-muted-foreground font-medium text-xs">
+                        {user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="hidden md:flex flex-col items-start text-xs">
                       <div className="flex items-center gap-1">
                         <span className="text-brand-text-secondary">{t('permanentMerits')}:</span>

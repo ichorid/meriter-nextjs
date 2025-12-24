@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { User } from 'lucide-react';
 import { Badge } from '@/components/atoms/Badge';
 import { useTranslations } from 'next-intl';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
@@ -88,12 +89,14 @@ export const LeadCard: React.FC<LeadCardProps> = ({
         >
             {/* Avatar */}
             <div className="flex-shrink-0">
-                <BrandAvatar
-                    src={avatarUrl}
-                    fallback={displayName || username || 'User'}
-                    size="md"
-                    className="w-10 h-10"
-                />
+                <Avatar className="w-10 h-10 text-sm">
+                    {avatarUrl && (
+                        <AvatarImage src={avatarUrl} alt={displayName || username || 'User'} />
+                    )}
+                    <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                        {(displayName || username) ? (displayName || username).slice(0, 2).toUpperCase() : <User size={18} />}
+                    </AvatarFallback>
+                </Avatar>
             </div>
 
             {/* Info Section */}

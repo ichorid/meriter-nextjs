@@ -8,12 +8,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLeadCommunities } from '@/hooks/api/useProfile';
 import { useCreateInvite } from '@/hooks/api/useInvites';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { BrandInput } from '@/components/ui/BrandInput';
-import { BrandCheckbox } from '@/components/ui/BrandCheckbox';
-import { BrandSelect } from '@/components/ui/BrandSelect';
-import { BrandFormControl } from '@/components/ui/BrandFormControl';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Checkbox } from '@/components/ui/shadcn/checkbox';
+import { Label } from '@/components/ui/shadcn/label';
 import { Loader2 } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/shadcn/select';
+import { BrandFormControl } from '@/components/ui/BrandFormControl';
+import { cn } from '@/lib/utils';
 
 export default function CreateInvitePage() {
   const router = useRouter();
@@ -93,22 +101,25 @@ export default function CreateInvitePage() {
         {hasPermission && (
           <>
             <BrandFormControl label={t('inviteType')}>
-              <BrandSelect
+              <Select
                 value={inviteType}
-                onChange={(value) => setInviteType(value as any)}
-                options={[
-                  { label: t('leadToParticipant'), value: 'lead-to-participant' },
-                  { label: t('superadminToLead'), value: 'superadmin-to-lead' },
-                ]}
-                fullWidth
-              />
+                onValueChange={(value) => setInviteType(value as any)}
+              >
+                <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lead-to-participant">{t('leadToParticipant')}</SelectItem>
+                  <SelectItem value="superadmin-to-lead">{t('superadminToLead')}</SelectItem>
+                </SelectContent>
+              </Select>
             </BrandFormControl>
 
             <BrandFormControl
               label={t('expiresInDays')}
               helperText={t('expiresInDaysHelp')}
             >
-              <BrandInput
+              <Input
                 type="number"
                 value={expiresInDays.toString()}
                 onChange={(e) => {
@@ -116,7 +127,7 @@ export default function CreateInvitePage() {
                   setExpiresInDays(isNaN(num) ? '' : num);
                 }}
                 placeholder={t('expiresInDaysPlaceholder')}
-                fullWidth
+                className="h-11 rounded-xl w-full"
               />
             </BrandFormControl>
 
@@ -133,12 +144,19 @@ export default function CreateInvitePage() {
               ) : (
                 <div className="space-y-2">
                   {leadCommunities.map((community) => (
-                    <BrandCheckbox
-                      key={community.id}
-                      checked={selectedCommunities.includes(community.id)}
-                      onChange={() => handleToggleCommunity(community.id)}
-                      label={community.name}
-                    />
+                    <div key={community.id} className="flex items-center gap-2.5">
+                      <Checkbox
+                        id={`community-${community.id}`}
+                        checked={selectedCommunities.includes(community.id)}
+                        onCheckedChange={() => handleToggleCommunity(community.id)}
+                      />
+                      <Label
+                        htmlFor={`community-${community.id}`}
+                        className="text-sm cursor-pointer"
+                      >
+                        {community.name}
+                      </Label>
+                    </div>
                   ))}
                 </div>
               )}
@@ -166,19 +184,19 @@ export default function CreateInvitePage() {
               </div>
             )}
 
-            <BrandButton
-              variant="primary"
+            <Button
+              variant="default"
               size="lg"
-              fullWidth
+              className="rounded-xl active:scale-[0.98] w-full"
               onClick={handleCreateInvites}
               disabled={
                 selectedCommunities.length === 0 ||
                 createInvite.isPending
               }
-              isLoading={createInvite.isPending}
             >
+              {createInvite.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               {createInvite.isPending ? t('creating') : t('create')}
-            </BrandButton>
+            </Button>
           </>
         )}
       </div>

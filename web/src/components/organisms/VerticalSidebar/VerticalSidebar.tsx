@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Info, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Avatar } from '@/components/atoms';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
@@ -135,11 +135,12 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
           >
             {isExpanded && user ? (
               <div className="flex items-center w-full">
-                <Avatar
-                  src={user.avatarUrl}
-                  alt={user.displayName || t('user')}
-                  size="sm"
-                />
+                <Avatar className="w-8 h-8">
+                  <AvatarImage src={user.avatarUrl} alt={user.displayName || t('user')} />
+                  <AvatarFallback className="bg-muted text-muted-foreground font-medium text-xs">
+                    {user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="flex-1 ml-2 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <div className="text-xs font-medium text-base-content truncate">

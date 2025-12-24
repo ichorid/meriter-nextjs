@@ -6,10 +6,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles, useLeadCommunities } from '@/hooks/api/useProfile';
 import { useInvites, useCreateInvite } from '@/hooks/api/useInvites';
 import { useCommunities } from '@/hooks/api/useCommunities';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { BrandInput } from '@/components/ui/BrandInput';
-import { BrandSelect } from '@/components/ui/BrandSelect';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/shadcn/select';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
+import { cn } from '@/lib/utils';
 import { Copy, Check, ChevronDown, ChevronUp, Loader2, UserPlus } from 'lucide-react';
 import type { Invite } from '@/types/api-v1';
 import { useToastStore } from '@/shared/stores/toast.store';
@@ -177,15 +184,21 @@ export function InviteGeneration() {
           <BrandFormControl
             label={t('selectCommunity')}
           >
-            <BrandSelect
+            <Select
               value={selectedCommunityId}
-              onChange={setSelectedCommunityId}
-              options={availableCommunities.map(c => ({
-                label: c.name,
-                value: c.id,
-              }))}
-              fullWidth
-            />
+              onValueChange={setSelectedCommunityId}
+            >
+              <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {availableCommunities.map(c => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </BrandFormControl>
         )}
 
@@ -199,7 +212,7 @@ export function InviteGeneration() {
           label={tInvites('expiresInDays') || 'Expires in (days)'}
           helperText={tInvites('expiresInDaysHelp')}
         >
-          <BrandInput
+          <Input
             type="number"
             value={inviteExpiresInDays.toString()}
             onChange={(e) => {
@@ -207,7 +220,7 @@ export function InviteGeneration() {
               setInviteExpiresInDays(isNaN(num) ? '' : num);
             }}
             placeholder={tInvites('expiresInDaysPlaceholder') || '30'}
-            fullWidth
+            className="h-11 rounded-xl w-full"
           />
         </BrandFormControl>
 
@@ -240,15 +253,15 @@ export function InviteGeneration() {
           </div>
         )}
 
-        <BrandButton
-          variant="primary"
+        <Button
+          variant="default"
           onClick={handleGenerateInvite}
           disabled={(!isSuperadmin && !selectedCommunityId) || createInvite.isPending}
-          isLoading={createInvite.isPending}
-          fullWidth
+          className="rounded-xl active:scale-[0.98] w-full"
         >
+          {createInvite.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
           {createInvite.isPending ? (tInvites('creating') || 'Creating...') : (tInvites('create') || 'Generate Invite')}
-        </BrandButton>
+        </Button>
       </div>
 
       {/* Invite List Dropdown */}

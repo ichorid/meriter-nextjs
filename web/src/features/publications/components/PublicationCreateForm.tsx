@@ -8,11 +8,19 @@ import type { Publication } from '@/types/api-v1';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { useWallet } from '@/hooks/api/useWallet';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { BrandInput } from '@/components/ui/BrandInput';
-import { BrandSelect } from '@/components/ui/BrandSelect';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import { Loader2 } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/shadcn/select';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
-import { BrandCheckbox } from '@/components/ui/BrandCheckbox';
+import { cn } from '@/lib/utils';
 import { HashtagInput } from '@/shared/components/hashtag-input';
 import { PublicationContent } from '@/components/organisms/Publication/PublicationContent';
 import { useToastStore } from '@/shared/stores/toast.store';
@@ -345,9 +353,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           {/* Draft restore button */}
           {hasDraft && (
             <div className="flex justify-end">
-              <BrandButton variant="outline" size="sm" onClick={loadDraft} leftIcon={<FileText size={16} />}>
+              <Button variant="outline" size="sm" onClick={loadDraft} className="rounded-xl active:scale-[0.98]">
+                <FileText size={16} />
                 {t('loadDraft')}
-              </BrandButton>
+              </Button>
             </div>
           )}
 
@@ -393,13 +402,13 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             helperText={`${title.length}/200 ${t('fields.characters')}`}
             required
           >
-            <BrandInput
+            <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('fields.titlePlaceholder')}
               disabled={isSubmitting}
               maxLength={200}
-              fullWidth
+              className="h-11 rounded-xl w-full"
             />
           </BrandFormControl>
 
@@ -420,12 +429,17 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           {/* PROJECT checkbox - only for Good Deeds Marathon */}
           {isGoodDeedsMarathon && (
             <BrandFormControl helperText={t('fields.markAsProjectHelp')}>
-              <BrandCheckbox
-                checked={isProject}
-                onChange={handleProjectChange}
-                label={t('fields.markAsProject')}
-                disabled={isSubmitting}
-              />
+              <div className="flex items-center gap-2.5">
+                <Checkbox
+                  id="isProject"
+                  checked={isProject}
+                  onCheckedChange={handleProjectChange}
+                  disabled={isSubmitting}
+                />
+                <Label htmlFor="isProject" className="text-sm cursor-pointer">
+                  {t('fields.markAsProject')}
+                </Label>
+              </div>
             </BrandFormControl>
           )}
 
@@ -435,20 +449,22 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               label={t('fields.postType')}
               helperText={t('fields.postTypeHelp')}
             >
-              <BrandSelect
+              <Select
                 value={postType}
-                onChange={(value) => {
+                onValueChange={(value) => {
                   const newType = value as PublicationPostType;
                   setPostType(newType);
                 }}
-                options={[
-                  { label: t('postTypes.basic'), value: 'basic' },
-                  { label: t('postTypes.poll'), value: 'poll' },
-                ]}
-                placeholder={t('fields.postTypePlaceholder')}
                 disabled={isSubmitting}
-                fullWidth
-              />
+              >
+                <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+                  <SelectValue placeholder={t('fields.postTypePlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="basic">{t('postTypes.basic')}</SelectItem>
+                  <SelectItem value="poll">{t('postTypes.poll')}</SelectItem>
+                </SelectContent>
+              </Select>
             </BrandFormControl>
           )}
 
@@ -458,12 +474,13 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               <p className="text-sm text-base-content mb-3">
                 {t('pollCreatePrompt')}
               </p>
-              <BrandButton
-                variant="primary"
+              <Button
+                variant="default"
                 onClick={() => router.push(`/meriter/communities/${communityId}/create-poll`)}
+                className="rounded-xl active:scale-[0.98]"
               >
                 {t('goToPollCreate')}
-              </BrandButton>
+              </Button>
             </div>
           )}
 
@@ -494,13 +511,13 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           )}
 
           {/* Preview Toggle */}
-          <BrandButton
+          <Button
             variant="outline"
             onClick={() => setShowPreview(!showPreview)}
-            className="self-start"
+            className="rounded-xl active:scale-[0.98] self-start"
           >
             {showPreview ? t('hidePreview') : t('showPreview')}
-          </BrandButton>
+          </Button>
 
           {/* Preview */}
           {showPreview && (title.trim() || description.trim()) && (
@@ -544,19 +561,19 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           <div className="flex items-center justify-between gap-4">
             <div className="flex gap-2">
               {hasDraft && (
-                <BrandButton variant="outline" onClick={clearDraft} disabled={isSubmitting}>
+                <Button variant="outline" onClick={clearDraft} disabled={isSubmitting} className="rounded-xl active:scale-[0.98]">
                   {t('clearDraft')}
-                </BrandButton>
+                </Button>
               )}
             </div>
             <div className="flex gap-2">
               {onCancel && (
-                <BrandButton variant="outline" onClick={onCancel} disabled={isSubmitting}>
+                <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="rounded-xl active:scale-[0.98]">
                   {t('cancel')}
-                </BrandButton>
+                </Button>
               )}
-              <BrandButton
-                variant="primary"
+              <Button
+                variant="default"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -570,10 +587,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                   hasInsufficientPayment ||
                   (isEditMode && !normalizedPublicationId)
                 }
-                isLoading={isSubmitting || isSubmittingRef.current}
+                className="rounded-xl active:scale-[0.98]"
               >
+                {(isSubmitting || isSubmittingRef.current) && <Loader2 className="h-4 w-4 animate-spin" />}
                 {isEditMode ? (t('update') || 'Update') : t('create')}
-              </BrandButton>
+              </Button>
             </div>
           </div>
         </div>

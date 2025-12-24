@@ -2,9 +2,16 @@
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
-import { Modal } from '@/components/atoms/Modal';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { AlertTriangle } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/shadcn/dialog';
+import { Button } from '@/components/ui/shadcn/button';
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DeleteConfirmationModalProps {
   isOpen: boolean;
@@ -38,39 +45,40 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={defaultTitle}
-      size="md"
-    >
-      <div className="space-y-4">
-        <div className="flex items-start gap-3">
-          <div className="flex-shrink-0">
-            <AlertTriangle className="w-6 h-6 text-error" />
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className={cn('max-w-lg')}>
+        <DialogHeader>
+          <DialogTitle>{defaultTitle}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <AlertTriangle className="w-6 h-6 text-error" />
+            </div>
+            <p className="text-base-content/80">{defaultMessage}</p>
           </div>
-          <p className="text-base-content/80">{defaultMessage}</p>
         </div>
-
-        <div className="flex justify-end gap-3 pt-4 border-t border-base-content/10">
-          <BrandButton
+        <DialogFooter className="flex justify-end gap-3 pt-4 border-t border-base-content/10">
+          <Button
             variant="outline"
             onClick={onClose}
             disabled={isLoading}
+            className="rounded-xl active:scale-[0.98]"
           >
             {t('cancel', { defaultValue: 'Cancel' })}
-          </BrandButton>
-          <BrandButton
-            variant="primary"
+          </Button>
+          <Button
+            variant="default"
             onClick={handleConfirm}
-            isLoading={isLoading}
-            className="bg-error hover:bg-error/90 text-error-content"
+            disabled={isLoading}
+            className="rounded-xl active:scale-[0.98] bg-error hover:bg-error/90 text-error-content"
           >
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             {t('delete', { defaultValue: 'Delete' })}
-          </BrandButton>
-        </div>
-      </div>
-    </Modal>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

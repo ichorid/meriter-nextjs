@@ -7,7 +7,8 @@ import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { SortToggle } from '@/components/ui/SortToggle';
 import { type SortValue } from '@/components/ui/SortTabs';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { User } from 'lucide-react';
 import { useRouter } from "next/navigation";
 import { Comment } from "@features/comments/components/comment";
 import { useUIStore } from '@/stores/ui.store';
@@ -110,12 +111,14 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                 >
                     {community && (
                         <>
-                            <BrandAvatar
-                                src={community.avatarUrl}
-                                fallback={community.name}
-                                size="sm"
-                                className="w-6 h-6"
-                            />
+                            <Avatar className="w-6 h-6 text-xs">
+                                {community.avatarUrl && (
+                                    <AvatarImage src={community.avatarUrl} alt={community.name} />
+                                )}
+                                <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                                    {community.name ? community.name.slice(0, 2).toUpperCase() : <User size={14} />}
+                                </AvatarFallback>
+                            </Avatar>
                             <span className="font-medium truncate max-w-[150px]">
                                 {community.name}
                             </span>
@@ -234,12 +237,14 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
 
                             {/* Author Info */}
                             <div className={`flex items-center gap-3 ${(publication as any).imageUrl ? '' : 'mt-2 pt-2 border-t border-base-content/10'}`}>
-                                <BrandAvatar
-                                    src={author?.avatarUrl}
-                                    fallback={author?.displayName || (publication as any).authorDisplay || 'Author'}
-                                    size="md"
-                                    className="w-10 h-10"
-                                />
+                                <Avatar className="w-10 h-10 text-sm">
+                                    {author?.avatarUrl && (
+                                        <AvatarImage src={author.avatarUrl} alt={author?.displayName || (publication as any).authorDisplay || 'Author'} />
+                                    )}
+                                    <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                                        {(author?.displayName || (publication as any).authorDisplay) ? (author?.displayName || (publication as any).authorDisplay).slice(0, 2).toUpperCase() : <User size={18} />}
+                                    </AvatarFallback>
+                                </Avatar>
                                 <div>
                                     <div className={`font-medium ${(publication as any).imageUrl ? 'text-white drop-shadow' : 'text-base-content'}`}>
                                         {author?.displayName || (publication as any).authorDisplay || 'Author'}

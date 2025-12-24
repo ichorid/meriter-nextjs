@@ -18,8 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { routes } from '@/lib/constants/routes';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import type { CommunityWithComputedFields } from '@/types/api-v1';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
 import { Loader2, FileText, Users, Eye } from 'lucide-react';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
@@ -570,13 +569,13 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     )}
 
                     {!paginationEnd && filteredPublications.length > 1 && !isFetchingNextPage && (
-                        <BrandButton
-                            variant="primary"
+                        <Button
+                            variant="default"
                             onClick={() => fetchNextPage()}
-                            className="w-full sm:w-auto mx-auto block"
+                            className="rounded-xl active:scale-[0.98] w-full sm:w-auto mx-auto block"
                         >
                             {t('communities.loadMore')}
-                        </BrandButton>
+                        </Button>
                     )}
                 </div>
             ) : activeTab === 'vision' ? (
@@ -631,13 +630,13 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             )}
 
                             {!paginationEnd && filteredVisionPublications.length > 1 && !isFetchingNextVisionPage && (
-                                <BrandButton
-                                    variant="primary"
+                                <Button
+                                    variant="default"
                                     onClick={() => fetchNextVisionPage()}
-                                    className="w-full sm:w-auto mx-auto block"
+                                    className="rounded-xl active:scale-[0.98] w-full sm:w-auto mx-auto block"
                                 >
                                     {t('communities.loadMore')}
-                                </BrandButton>
+                                </Button>
                             )}
 
                             {filteredVisionPublications.length === 0 && !isFetchingNextVisionPage && (

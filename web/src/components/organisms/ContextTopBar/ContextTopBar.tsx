@@ -8,9 +8,10 @@ import { useUserQuota } from '@/hooks/api/useQuota';
 import { useTranslations } from 'next-intl';
 import { isFakeDataMode } from '@/config';
 import { trpc } from '@/lib/trpc/client';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { BrandInput } from '@/components/ui/BrandInput';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
+import { cn } from '@/lib/utils';
 import { Clock, TrendingUp, Loader2, Search, X, ArrowLeft, Settings } from 'lucide-react';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import type { TabSortState } from '@/hooks/useProfileTabState';
@@ -125,30 +126,30 @@ export const ProfileTopBar: React.FC<{ asStickyHeader?: boolean }> = ({ asSticky
 
   const rightAction = (
     <div className="flex items-center gap-2 flex-shrink-0">
-      <BrandButton
+      <Button
         variant="ghost"
         size="sm"
         onClick={() => setShowSearchModal(true)}
         aria-label={tCommon('search')}
-        className="px-2"
+        className="rounded-xl active:scale-[0.98] px-2"
       >
         <Search size={18} className="text-base-content/70" />
-      </BrandButton>
+      </Button>
 
       <SortToggle
         value={sortByTab[currentTab]}
         onChange={handleSortClick}
         compact={true}
       />
-      <BrandButton
+      <Button
         variant="ghost"
         size="sm"
         onClick={() => router.push('/meriter/settings')}
         aria-label={tCommon('settings')}
-        className="px-2"
+        className="rounded-xl active:scale-[0.98] px-2"
       >
         <Settings size={20} className="text-base-content/70" />
-      </BrandButton>
+      </Button>
     </div>
   );
 
@@ -170,24 +171,26 @@ export const ProfileTopBar: React.FC<{ asStickyHeader?: boolean }> = ({ asSticky
           title={tCommon('search')}
         >
           <div className="space-y-4">
-            <BrandInput
-              type="text"
-              placeholder={tCommon('searchPlaceholder')}
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              leftIcon={<Search size={18} />}
-              rightIcon={searchQuery ? (
+            <div className="relative w-full">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+              <Input
+                type="text"
+                placeholder={tCommon('searchPlaceholder')}
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                className={cn('h-11 rounded-xl pl-10', searchQuery && 'pr-10')}
+              />
+              {searchQuery && (
                 <button
                   type="button"
                   onClick={handleSearchClear}
-                  className="text-brand-text-muted hover:text-brand-text-primary transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
                   aria-label={tCommon('clearSearch')}
                 >
                   <X size={18} />
                 </button>
-              ) : undefined}
-              className="w-full"
-            />
+              )}
+            </div>
           </div>
         </BottomActionSheet>
       )}
@@ -228,15 +231,15 @@ export const SimpleStickyHeader: React.FC<{
           <div className="flex items-center flex-1 min-w-0">
             {/* Back Button */}
             {showBack && (
-              <BrandButton
+              <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleBack}
                 aria-label={tCommon('goBack')}
-                className="px-2"
+                className="rounded-xl active:scale-[0.98] px-2"
               >
                 <ArrowLeft size={20} className="text-base-content" />
-              </BrandButton>
+              </Button>
             )}
 
             {/* Title */}
@@ -423,14 +426,14 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
       rightAction={
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* Search Button */}
-          <BrandButton
+          <Button
             variant="ghost"
             size="sm"
             onClick={() => setShowSearchModal(true)}
-            className="px-2"
+            className="rounded-xl active:scale-[0.98] px-2"
           >
             <Search size={18} className="text-base-content/70" />
-          </BrandButton>
+          </Button>
 
           {/* Sort Toggle */}
           <div className="flex gap-0.5 bg-base-200/50 p-0.5 rounded-lg">
@@ -444,26 +447,26 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
           {/* Fake Data Buttons - dev only */}
           {fakeDataMode && (
             <>
-              <BrandButton
+              <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleGenerateUserPosts}
                 disabled={generatingUserPosts || generatingBeneficiaryPosts}
-                className="px-2"
+                className="rounded-xl active:scale-[0.98] px-2"
                 title="Generate user post"
               >
                 {generatingUserPosts ? <Loader2 className="animate-spin" size={16} /> : <span>+</span>}
-              </BrandButton>
-              <BrandButton
+              </Button>
+              <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleGenerateBeneficiaryPosts}
                 disabled={generatingUserPosts || generatingBeneficiaryPosts}
-                className="px-2"
+                className="rounded-xl active:scale-[0.98] px-2"
                 title="Generate post with beneficiary"
               >
                 {generatingBeneficiaryPosts ? <Loader2 className="animate-spin" size={16} /> : <span>++</span>}
-              </BrandButton>
+              </Button>
               {fakeDataMessage && (
                 <span className={`text-xs ${fakeDataMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>
                   {fakeDataMessage}
@@ -474,17 +477,17 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
 
           {/* Admin Settings */}
           {isAdmin && (
-            <BrandButton
+            <Button
               variant="ghost"
               size="sm"
               onClick={() => router.push(`/meriter/communities/${communityId}/settings`)}
-              className="px-2"
+              className="rounded-xl active:scale-[0.98] px-2"
             >
               <svg className="w-5 h-5 text-base-content/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-            </BrandButton>
+            </Button>
           )}
         </div>
       }
@@ -506,23 +509,26 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
           onClose={() => setShowSearchModal(false)}
           title={t('searchPlaceholder')}
         >
-          <BrandInput
-            type="text"
-            placeholder={t('searchPlaceholder')}
-            value={localSearchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            leftIcon={<Search size={18} className="text-base-content/40" />}
-            rightIcon={localSearchQuery ? (
+          <div className="relative w-full">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+            <Input
+              type="text"
+              placeholder={t('searchPlaceholder')}
+              value={localSearchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className={cn('h-11 rounded-xl pl-10', localSearchQuery && 'pr-10')}
+              autoFocus
+            />
+            {localSearchQuery && (
               <button
                 type="button"
                 onClick={handleSearchClear}
-                className="text-base-content/40 hover:text-base-content transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
               >
                 <X size={18} />
               </button>
-            ) : undefined}
-            autoFocus
-          />
+            )}
+          </div>
         </BottomActionSheet>
       )}
     </>

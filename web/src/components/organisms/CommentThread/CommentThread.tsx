@@ -2,9 +2,14 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardBody } from '@/components/atoms';
+import { Card, CardContent } from '@/components/ui/shadcn/card';
 import { UserCard, VoteIndicator } from '@/components/molecules';
-import { Avatar, Badge, Button, Icon, Divider } from '@/components/atoms';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { Badge } from '@/components/atoms/Badge/Badge';
+import { Button } from '@/components/ui/shadcn/button';
+import { Icon } from '@/components/atoms/Icon/Icon';
+import { Divider } from '@/components/atoms/Divider/Divider';
+import { User } from 'lucide-react';
 import { formatDate } from '@/shared/lib/date';
 import { routes } from '@/lib/constants/routes';
 
@@ -61,7 +66,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({
   return (
     <div className="space-y-2">
       <Card compact>
-        <CardBody className="p-3">
+        <CardContent className="p-3">
           <div className="flex gap-2 mb-2">
             <Avatar 
               src={comment.author?.avatarUrl} 
@@ -115,7 +120,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({
               </>
             )}
           </div>
-        </CardBody>
+        </CardContent>
       </Card>
       
       {replies.length > 0 && canNest && (

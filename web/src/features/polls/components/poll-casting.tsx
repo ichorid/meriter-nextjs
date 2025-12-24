@@ -8,8 +8,9 @@ import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { usePollTimeRemaining } from '../hooks/usePollTimeRemaining';
 import { usePollAmountValidation } from '../hooks/usePollAmountValidation';
 import { useToastStore } from '@/shared/stores/toast.store';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { BrandInput } from '@/components/ui/BrandInput';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Loader2 } from 'lucide-react';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { useUserRoles } from '@/hooks/api/useProfile';
@@ -353,16 +354,16 @@ export const PollCasting = ({
                         </div>
                     )}
                     <div className="mt-4">
-                        <BrandButton
-                            variant="primary"
+                        <Button
+                            variant="default"
                             size="md"
-                            fullWidth
+                            className="rounded-xl active:scale-[0.98] w-full"
                             onClick={handleCastPoll}
-                            isLoading={isCasting}
                             disabled={isCasting || !selectedOptionId || amountValidationError !== null || maxAmount === 0}
                         >
+                            {isCasting && <Loader2 className="h-4 w-4 animate-spin" />}
                             {isCasting ? t('casting') : t('castPoll')}
-                        </BrandButton>
+                        </Button>
                     </div>
                 </div>
             )}

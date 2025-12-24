@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardBody } from '@/components/atoms';
+import { Card, CardContent } from '@/components/ui/shadcn/card';
 
 export interface AuthLayoutProps {
   children: React.ReactNode;
@@ -14,8 +14,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-base-200 p-4">
-      <Card className="w-full max-w-md">
-        <CardBody>
+      <Card className="rounded-lg border bg-card text-card-foreground shadow-sm w-full max-w-md">
+        <CardContent className="p-6">
           {title && (
             <div className="text-center mb-6">
               <h1 className="text-3xl font-bold mb-2">{title}</h1>
@@ -23,7 +23,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             </div>
           )}
           {children}
-        </CardBody>
+        </CardContent>
       </Card>
     </div>
   );

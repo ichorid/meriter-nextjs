@@ -1,7 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardBody, CardHeader, CardTitle, Button, Badge, Avatar } from '@/components/atoms';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/shadcn/card';
+import { Button } from '@/components/ui/shadcn/button';
+import { Badge } from '@/components/atoms/Badge/Badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { User } from 'lucide-react';
 
 export interface PollOption {
   id: string;
@@ -42,13 +46,17 @@ export const PollCard: React.FC<PollCardProps> = ({
   };
 
   return (
-    <Card hover bordered>
-      <CardHeader>
+    <Card className="rounded-xl border hover:shadow-md transition-shadow duration-200">
+      <CardHeader className="mb-4">
         <div className="flex items-center justify-between">
-          <CardTitle>{question}</CardTitle>
+          <CardTitle className="text-lg">{question}</CardTitle>
           {authorName && (
             <div className="flex items-center gap-2">
-              <Avatar size="sm" className="text-xs" />
+              <Avatar className="w-8 h-8 text-xs">
+                <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                  <User size={14} />
+                </AvatarFallback>
+              </Avatar>
               <span className="text-sm text-base-content/60">{authorName}</span>
             </div>
           )}
@@ -60,7 +68,7 @@ export const PollCard: React.FC<PollCardProps> = ({
         )}
       </CardHeader>
 
-      <CardBody>
+      <CardContent className="p-6 pt-0">
         <div className="space-y-2">
           {options.map((option) => (
             <div key={option.id} className="relative">
@@ -88,9 +96,8 @@ export const PollCard: React.FC<PollCardProps> = ({
               ) : (
                 <Button
                   variant="secondary"
-                  fullWidth
+                  className="rounded-xl active:scale-[0.98] w-full text-left justify-start h-auto py-2"
                   onClick={() => handleVote(option.id)}
-                  className="text-left justify-start h-auto py-2"
                 >
                   {option.text}
                 </Button>
@@ -103,7 +110,7 @@ export const PollCard: React.FC<PollCardProps> = ({
             {createdAt && ` • ${new Date(createdAt).toLocaleDateString()}`}
           </div>
         </div>
-      </CardBody>
+      </CardContent>
     </Card>
   );
 };

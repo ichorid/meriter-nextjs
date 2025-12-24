@@ -10,7 +10,7 @@ import { BarVoteUnified } from '@/shared/components/bar-vote-unified';
 import { BarWithdraw } from '@/shared/components/bar-withdraw';
 import { CommentDetailsPopup } from '@/shared/components/comment-details-popup';
 import { classList } from '@/shared/lib/classList';
-import { Button } from '@/components/atoms';
+import { Button } from '@/components/ui/shadcn/button';
 import type { TreeNode, FlatItem } from '../types';
 import { getSubtreeSize } from '../tree';
 import { getAvatarUrl } from '../utils/avatar';

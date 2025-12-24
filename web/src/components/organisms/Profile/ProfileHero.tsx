@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { User } from 'lucide-react';
 import { Edit } from 'lucide-react';
-import { BrandButton } from '@/components/ui/BrandButton';
+import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/atoms/Badge/Badge';
 import { useTranslations } from 'next-intl';
 
@@ -74,15 +75,15 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
         {/* Edit button */}
         {showEdit && onEdit && (
           <div className="absolute top-3 right-3">
-            <BrandButton
+            <Button
               variant="ghost"
               size="sm"
               onClick={onEdit}
-              className="bg-base-100/80 backdrop-blur-sm hover:bg-base-100 text-base-content/70 h-8 px-3"
+              className="rounded-xl active:scale-[0.98] bg-base-100/80 backdrop-blur-sm hover:bg-base-100 text-base-content/70 h-8 px-3"
             >
               <Edit size={14} className="mr-1.5" />
               <span className="text-xs">Edit</span>
-            </BrandButton>
+            </Button>
           </div>
         )}
       </div>
@@ -92,12 +93,14 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
         {/* Avatar */}
         <div className="-mt-10 mb-4">
           <div className="relative inline-block">
-            <BrandAvatar
-              src={avatarUrl}
-              fallback={displayName}
-              size="xl"
-              className="border-4 border-base-100 shadow-md bg-base-200"
-            />
+            <Avatar className="w-20 h-20 text-xl border-4 border-base-100 shadow-md bg-base-200">
+              {avatarUrl && (
+                <AvatarImage src={avatarUrl} alt={displayName} />
+              )}
+              <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                {displayName ? displayName.slice(0, 2).toUpperCase() : <User size={32} />}
+              </AvatarFallback>
+            </Avatar>
             {/* Online indicator */}
             <div className="absolute bottom-1 right-1 w-4 h-4 bg-success border-2 border-base-100 rounded-full" />
           </div>

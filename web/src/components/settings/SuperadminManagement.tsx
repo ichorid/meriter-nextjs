@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BrandInput } from '@/components/ui/BrandInput';
-import { BrandButton } from '@/components/ui/BrandButton';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import { Button } from '@/components/ui/shadcn/button';
 import { User } from '@/types/api-v1';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Loader2 } from 'lucide-react';
@@ -35,12 +36,15 @@ export const SuperadminManagement = () => {
                 Superadmin Management
             </h2>
 
-            <BrandInput
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={tSearch('results.searchUsersPlaceholder')}
-                label={tSettings('searchUsers')}
-            />
+            <div className="space-y-1.5">
+                <Label>{tSettings('searchUsers')}</Label>
+                <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={tSearch('results.searchUsersPlaceholder')}
+                    className="h-11 rounded-xl w-full"
+                />
+            </div>
 
             {isLoading && (
                 <div className="flex justify-center p-4">
@@ -60,13 +64,14 @@ export const SuperadminManagement = () => {
                                 <p className="text-xs text-base-content/60">@{user.username}</p>
                             </div>
                         </div>
-                        <BrandButton
+                        <Button
                             size="sm"
-                            variant={user.globalRole === 'superadmin' ? 'outline' : 'primary'}
+                            variant={user.globalRole === 'superadmin' ? 'outline' : 'default'}
                             onClick={() => handleToggleRole(user)}
+                            className="rounded-xl active:scale-[0.98]"
                         >
                             {user.globalRole === 'superadmin' ? tSettings('removeAdmin') : tSettings('makeAdmin')}
-                        </BrandButton>
+                        </Button>
                     </div>
                 ))}
             </div>

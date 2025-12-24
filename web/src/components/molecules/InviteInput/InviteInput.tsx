@@ -4,7 +4,10 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useInvite } from '@/hooks/api/useInvites';
-import { BrandButton, BrandInput, BrandFormControl } from '@/components/ui';
+import { BrandFormControl } from '@/components/ui';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Loader2 } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 
@@ -68,7 +71,7 @@ export function InviteInput({ className = '', hideLabel = false }: InviteInputPr
                 error={inviteError}
             >
                 <div className="flex gap-2">
-                    <BrandInput
+                    <Input
                         value={inviteCode}
                         onChange={(e) => {
                             setInviteCode(e.target.value);
@@ -79,16 +82,17 @@ export function InviteInput({ className = '', hideLabel = false }: InviteInputPr
                         autoCapitalize="none"
                         autoComplete="off"
                         disabled={useInviteMutation.isPending}
-                        className="flex-1"
+                        className="h-11 rounded-xl flex-1"
                     />
-                    <BrandButton
+                    <Button
                         onClick={handleSubmit}
                         disabled={!inviteCode.trim() || useInviteMutation.isPending}
-                        isLoading={useInviteMutation.isPending}
                         size="md"
+                        className="rounded-xl active:scale-[0.98]"
                     >
+                        {useInviteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                         {useInviteMutation.isPending ? t('checkingInvite') : t('continue')}
-                    </BrandButton>
+                    </Button>
                 </div>
             </BrandFormControl>
         </div>

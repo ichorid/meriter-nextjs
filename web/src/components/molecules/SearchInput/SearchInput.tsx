@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslations } from 'next-intl';
-import { Input, Icon } from '@/components/atoms';
+import { Icon } from '@/components/atoms';
+import { Input } from '@/components/ui/shadcn/input';
 
 export interface SearchInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
   onSearch?: (value: string) => void;

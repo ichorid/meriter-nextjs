@@ -1,8 +1,9 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { BrandInput } from '@/components/ui/BrandInput';
+import { Input } from '@/components/ui/shadcn/input';
 import { Search, MapPin, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 
 const Map = dynamic(() => import('./Map'), {
@@ -106,12 +107,29 @@ export function LocationPicker({ initialRegion, initialCity, onLocationSelect }:
     return (
         <div className="space-y-4">
             <div className="relative">
-                <BrandInput
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={tSearch('results.searchLocationPlaceholder')}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    rightIcon={
+                <div className="relative">
+                    <Input
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder={tSearch('results.searchLocationPlaceholder')}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                        className={cn('h-11 rounded-xl pr-10', isLoading && 'pr-10')}
+                    />
+                    {isLoading ? (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none z-10">
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={handleSearch}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-base-200 rounded-full transition-colors z-10"
+                            disabled={isLoading}
+                        >
+                            <Search className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                    )}
+                </div>
                         <button
                             onClick={handleSearch}
                             className="p-1 hover:bg-base-200 rounded-full transition-colors"

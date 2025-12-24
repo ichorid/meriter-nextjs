@@ -2,10 +2,18 @@
 
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { BrandInput } from '@/components/ui/BrandInput';
-import { BrandSelect } from '@/components/ui/BrandSelect';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Loader2 } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/shadcn/select';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
+import { cn } from '@/lib/utils';
 import { Copy, Check } from 'lucide-react';
 import type { Invite, Community } from '@/types/api-v1';
 import { useToastStore } from '@/shared/stores/toast.store';
@@ -112,15 +120,21 @@ export const InviteCreationForm: React.FC<InviteCreationFormProps> = ({
                 <BrandFormControl
                     label={t('selectCommunity')}
                 >
-                    <BrandSelect
+                    <Select
                         value={selectedCommunityId}
-                        onChange={handleCommunityChange}
-                        options={availableCommunities.map(c => ({
-                            label: c.name,
-                            value: c.id,
-                        }))}
-                        fullWidth
-                    />
+                        onValueChange={handleCommunityChange}
+                    >
+                        <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableCommunities.map(c => (
+                                <SelectItem key={c.id} value={c.id}>
+                                    {c.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </BrandFormControl>
             )}
 
@@ -134,7 +148,7 @@ export const InviteCreationForm: React.FC<InviteCreationFormProps> = ({
                 label={tInvites('expiresInDays')}
                 helperText={tInvites('expiresInDaysHelp')}
             >
-                <BrandInput
+                <Input
                     type="number"
                     value={inviteExpiresInDays.toString()}
                     onChange={(e) => {
@@ -142,7 +156,7 @@ export const InviteCreationForm: React.FC<InviteCreationFormProps> = ({
                         setInviteExpiresInDays(isNaN(num) ? '' : num);
                     }}
                     placeholder={tInvites('expiresInDaysPlaceholder') || '30'}
-                    fullWidth
+                    className="h-11 rounded-xl w-full"
                 />
             </BrandFormControl>
 
@@ -175,15 +189,15 @@ export const InviteCreationForm: React.FC<InviteCreationFormProps> = ({
                 </div>
             )}
 
-            <BrandButton
-                variant="primary"
+            <Button
+                variant="default"
                 onClick={handleGenerateInvite}
                 disabled={(!isSuperadmin && !selectedCommunityId) || isCreating}
-                isLoading={isCreating}
-                fullWidth
+                className="rounded-xl active:scale-[0.98] w-full"
             >
+                {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
                 {isCreating ? tInvites('creating') : tInvites('create')}
-            </BrandButton>
+            </Button>
         </div>
     );
 };

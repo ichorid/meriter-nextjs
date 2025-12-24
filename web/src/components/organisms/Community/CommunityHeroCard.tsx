@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { User } from 'lucide-react';
 import { Users, FileText, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
@@ -65,12 +66,14 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
         onClick={onClick}
       >
         <div className="flex items-center gap-3 p-3">
-          <BrandAvatar
-            src={community.avatarUrl}
-            fallback={community.name}
-            size="md"
-            className="w-10 h-10 flex-shrink-0"
-          />
+          <Avatar className="w-10 h-10 text-sm flex-shrink-0">
+            {community.avatarUrl && (
+              <AvatarImage src={community.avatarUrl} alt={community.name} />
+            )}
+            <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+              {community.name ? community.name.slice(0, 2).toUpperCase() : <User size={18} />}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-base-content truncate">
@@ -143,12 +146,14 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
       <div className="relative px-4 sm:px-6">
         <div className="-mt-12 sm:-mt-14 mb-3 relative z-10">
           <div className="inline-block ring-4 ring-base-100 rounded-full bg-base-100">
-            <BrandAvatar
-              src={community.avatarUrl}
-              fallback={community.name}
-              size="xl"
-              className="w-20 h-20 sm:w-24 sm:h-24 bg-base-200"
-            />
+            <Avatar className="w-20 h-20 sm:w-24 sm:h-24 text-xl bg-base-200">
+              {community.avatarUrl && (
+                <AvatarImage src={community.avatarUrl} alt={community.name} />
+              )}
+              <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                {community.name ? community.name.slice(0, 2).toUpperCase() : <User size={32} />}
+              </AvatarFallback>
+            </Avatar>
           </div>
         </div>
         

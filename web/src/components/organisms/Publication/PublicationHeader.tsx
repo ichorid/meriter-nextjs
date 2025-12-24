@@ -4,9 +4,10 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Edit, Trash2 } from 'lucide-react';
-import { Avatar, Badge } from '@/components/atoms';
+import { Badge } from '@/components/atoms';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Badge as BrandBadge } from '@/components/ui/Badge';
-import { BrandButton } from '@/components/ui/BrandButton';
+import { Button } from '@/components/ui/shadcn/button';
 import { dateVerbose } from '@shared/lib/date';
 import { useAuth } from '@/contexts/AuthContext';
 import { routes } from '@/lib/constants/routes';
@@ -163,11 +164,14 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
       {/* Author Info */}
       <div className="flex items-center gap-3 min-w-0">
         <Avatar 
-          src={author.photoUrl} 
-          alt={author.name} 
-          size="md" 
+          className="w-12 h-12 cursor-pointer"
           onClick={author.id ? handleAvatarClick : undefined}
-        />
+        >
+          <AvatarImage src={author.photoUrl} alt={author.name} />
+          <AvatarFallback className="bg-muted text-muted-foreground font-medium text-sm">
+            {author.name ? author.name.charAt(0).toUpperCase() : '?'}
+          </AvatarFallback>
+        </Avatar>
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-sm text-base-content truncate">{author.name}</span>
@@ -193,21 +197,21 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
       {/* Tags & Badges & Action Buttons */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
         {showEditButton && (
-          <BrandButton
+          <Button
             variant="ghost"
             size="sm"
             onClick={handleEdit}
             disabled={editButtonDisabled}
-            className={`p-1.5 h-auto min-h-0 ${editButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`rounded-xl active:scale-[0.98] p-1.5 h-auto min-h-0 ${editButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             title={editButtonDisabled && publication.permissions?.editDisabledReason 
               ? t(publication.permissions.editDisabledReason) 
               : 'Edit'}
           >
             <Edit size={16} />
-          </BrandButton>
+          </Button>
         )}
         {showDeleteButton && (
-          <BrandButton
+          <Button
             variant="ghost"
             size="sm"
             onClick={(e) => {
@@ -217,13 +221,13 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
               }
             }}
             disabled={deleteButtonDisabled}
-            className={`p-1.5 h-auto min-h-0 text-error hover:text-error ${deleteButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`rounded-xl active:scale-[0.98] p-1.5 h-auto min-h-0 text-error hover:text-error ${deleteButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             title={deleteButtonDisabled && publication.permissions?.deleteDisabledReason 
               ? t(publication.permissions.deleteDisabledReason) 
               : 'Delete'}
           >
             <Trash2 size={16} />
-          </BrandButton>
+          </Button>
         )}
         {(publication as any).postType === 'project' || (publication as any).isProject ? (
           <BrandBadge variant="warning" size="sm">

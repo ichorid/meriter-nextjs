@@ -3,7 +3,8 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { BrandButton, Logo } from "@/components/ui";
+import { Logo } from "@/components/ui";
+import { Button } from "@/components/ui/shadcn/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 
@@ -56,14 +57,14 @@ export default function WelcomePage() {
             {/* Fixed Footer */}
             <footer className="sticky bottom-0 z-10 px-6 pt-4 pb-6 bg-base-100 border-t border-base-content/5">
                 <div className="w-full max-w-md mx-auto">
-                    <BrandButton
+                    <Button
                         size="lg"
                         variant="default"
-                        fullWidth
+                        className="rounded-xl active:scale-[0.98] w-full"
                         onClick={() => router.push("/meriter/new-user")}
                     >
                         {t("fillProfile")}
-                    </BrandButton>
+                    </Button>
                 </div>
             </footer>
         </div>

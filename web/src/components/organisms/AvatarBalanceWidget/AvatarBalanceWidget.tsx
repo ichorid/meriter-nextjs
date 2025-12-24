@@ -5,8 +5,8 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Settings } from 'lucide-react';
-import { Avatar } from '@/components/atoms/Avatar';
-import { Button } from '@/components/atoms/Button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { Button } from '@/components/ui/shadcn/button';
 
 interface BalanceInfo {
   icon?: string;
@@ -66,17 +66,21 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-1 sm:gap-1.5">
-            <Avatar
-              src={avatarUrl}
-              alt={userName || 'User'}
-              size={40}
-              onError={onAvatarUrlNotFound}
-            />
+            <Avatar className="w-10 h-10">
+              <AvatarImage 
+                src={avatarUrl} 
+                alt={userName || 'User'}
+                onError={onAvatarUrlNotFound}
+              />
+              <AvatarFallback className="bg-muted text-muted-foreground font-medium">
+                {userName ? userName.charAt(0).toUpperCase() : 'U'}
+              </AvatarFallback>
+            </Avatar>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleSettingsClick}
-              className="btn-circle btn-xs opacity-60 hover:opacity-100"
+              className="h-6 w-6 rounded-full opacity-60 hover:opacity-100 p-0"
               aria-label={tCommon('settings')}
               title={tCommon('settings')}
             >

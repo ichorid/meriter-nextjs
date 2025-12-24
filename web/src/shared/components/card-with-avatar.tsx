@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { Avatar } from '@/components/atoms';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 
 export const CardWithAvatar = ({
     avatarUrl,
@@ -59,18 +59,21 @@ export const CardWithAvatar = ({
             onClick={onClick}
         >
             <div className="flex items-start gap-4">
-                <Avatar
-                    src={avatarUrl}
+                <Avatar className="w-12 h-12">
+                  <AvatarImage 
+                    src={avatarUrl} 
                     alt={userName || 'User'}
-                    name={userName || 'User'}
-                    size={48}
                     onError={() => {
-                        if (retryCount < 1 && avatarUrlUpd) {
-                            avatarUrlUpd(userName || '');
-                            setRetryCount(retryCount + 1);
-                        }
+                      if (retryCount < 1 && avatarUrlUpd) {
+                        avatarUrlUpd(userName || '');
+                        setRetryCount(retryCount + 1);
+                      }
                     }}
-                />
+                  />
+                  <AvatarFallback className="bg-muted text-muted-foreground font-medium text-sm">
+                    {userName ? userName.charAt(0).toUpperCase() : 'U'}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="flex-1">{children}</div>
             </div>
         </div>

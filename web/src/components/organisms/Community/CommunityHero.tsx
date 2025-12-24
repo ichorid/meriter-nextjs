@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { User } from 'lucide-react';
 import { Users, FileText, TrendingUp } from 'lucide-react';
 
 interface CommunityHeroProps {
@@ -30,12 +31,14 @@ export function CommunityHero({ community, stats }: CommunityHeroProps) {
       <div className="relative px-5 pb-5">
         {/* Avatar Section - positioned to overlap cover */}
         <div className="-mt-8 mb-3">
-          <BrandAvatar
-            src={avatarUrl}
-            fallback={name}
-            size="lg"
-            className="border-4 border-base-100 shadow-md bg-base-200"
-          />
+          <Avatar className="w-14 h-14 text-base border-4 border-base-100 shadow-md bg-base-200">
+            {avatarUrl && (
+              <AvatarImage src={avatarUrl} alt={name} />
+            )}
+            <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+              {name ? name.slice(0, 2).toUpperCase() : <User size={24} />}
+            </AvatarFallback>
+          </Avatar>
         </div>
 
         {/* Community Info */}

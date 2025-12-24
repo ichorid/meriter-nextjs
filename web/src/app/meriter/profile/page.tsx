@@ -11,7 +11,7 @@ import { ProfileStats } from '@/components/organisms/Profile/ProfileStats';
 import { UseInvite } from '@/components/organisms/Profile/UseInvite';
 import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
 import { useProfileData } from '@/hooks/useProfileData';
-import { BrandButton } from '@/components/ui/BrandButton';
+import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
 import { InviteHandler } from '@/components/InviteHandler';
 import Link from 'next/link';

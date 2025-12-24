@@ -17,13 +17,22 @@ import { useCommunityInvites } from "@/hooks/api/useInvites";
 import { useUserProfile } from "@/hooks/api/useUsers";
 import { HashtagInput } from "@/shared/components/hashtag-input";
 import { IconPicker } from "@/shared/components/iconpicker";
-import { BrandButton } from "@/components/ui/BrandButton";
-import { BrandInput } from "@/components/ui/BrandInput";
-import { BrandSelect } from "@/components/ui/BrandSelect";
+import { Button } from "@/components/ui/shadcn/button";
+import { Input } from "@/components/ui/shadcn/input";
+import { Label } from "@/components/ui/shadcn/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/shadcn/select';
 import { BrandFormControl } from "@/components/ui/BrandFormControl";
-import { BrandCheckbox } from "@/components/ui/BrandCheckbox";
+import { Checkbox } from "@/components/ui/shadcn/checkbox";
+import { cn } from '@/lib/utils';
 import { Loader2, X, UserX, CheckCircle2, Clock, Sparkles } from "lucide-react";
-import { BrandAvatar } from "@/components/ui/BrandAvatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/shadcn/avatar";
+import { User } from "lucide-react";
 import { AvatarUploader } from "@/components/ui/AvatarUploader";
 import { ImageUploader } from "@/components/ui/ImageUploader";
 import { useToastStore } from "@/shared/stores/toast.store";
@@ -344,20 +353,20 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     return (
         <div className="flex-1 space-y-6">
             <BrandFormControl label={t("name")} required>
-                <BrandInput
+                <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder={t("namePlaceholder")}
-                    fullWidth
+                    className="h-11 rounded-xl w-full"
                 />
             </BrandFormControl>
 
             <BrandFormControl label={t("description")}>
-                <BrandInput
+                <Input
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder={t("descriptionPlaceholder")}
-                    fullWidth
+                    className="h-11 rounded-xl w-full"
                 />
             </BrandFormControl>
 
@@ -377,14 +386,15 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                             save: t("save"),
                         }}
                     />
-                    <BrandButton
+                    <Button
                         variant="outline"
                         size="sm"
                         onClick={handleGenerateAvatar}
-                        leftIcon={<Sparkles size={16} />}
+                        className="rounded-xl active:scale-[0.98]"
                     >
+                        <Sparkles size={16} />
                         {t("generateAvatar")}
-                    </BrandButton>
+                    </Button>
                 </div>
             </BrandFormControl>
 
@@ -424,11 +434,11 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                         label={t("dailyEmission")}
                         helperText={t("dailyEmissionHelp")}
                     >
-                        <BrandInput
+                        <Input
                             type="number"
                             value={dailyEmission}
                             onChange={(e) => setDailyEmission(e.target.value)}
-                            fullWidth
+                            className="h-11 rounded-xl w-full"
                         />
                     </BrandFormControl>
 
@@ -438,14 +448,14 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                                 label={t("postCost")}
                                 helperText={t("postCostHelp")}
                             >
-                                <BrandInput
+                                <Input
                                     type="number"
                                     min="0"
                                     value={postCost}
                                     onChange={(e) =>
                                         setPostCost(e.target.value)
                                     }
-                                    fullWidth
+                                    className="h-11 rounded-xl w-full"
                                 />
                             </BrandFormControl>
 
@@ -453,14 +463,14 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                                 label={t("pollCost")}
                                 helperText={t("pollCostHelp")}
                             >
-                                <BrandInput
+                                <Input
                                     type="number"
                                     min="0"
                                     value={pollCost}
                                     onChange={(e) =>
                                         setPollCost(e.target.value)
                                     }
-                                    fullWidth
+                                    className="h-11 rounded-xl w-full"
                                 />
                             </BrandFormControl>
                         </>
@@ -471,17 +481,18 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                             label={t("resetQuota")}
                             helperText={t("resetQuotaDescription")}
                         >
-                            <BrandButton
+                            <Button
                                 variant="outline"
                                 size="md"
                                 onClick={handleResetDailyQuota}
                                 disabled={resetDailyQuota.isPending}
-                                isLoading={resetDailyQuota.isPending}
+                                className="rounded-xl active:scale-[0.98]"
                             >
+                                {resetDailyQuota.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                                 {resetDailyQuota.isPending
                                     ? t("saving")
                                     : t("resetQuota")}
-                            </BrandButton>
+                            </Button>
                         </BrandFormControl>
                     )}
 
@@ -491,31 +502,31 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <BrandFormControl label={t("singular")}>
-                                <BrandInput
+                                <Input
                                     value={currencySingular}
                                     onChange={(e) =>
                                         setCurrencySingular(e.target.value)
                                     }
-                                    fullWidth
+                                    className="h-11 rounded-xl w-full"
                                 />
                             </BrandFormControl>
                             <BrandFormControl label={t("plural")}>
-                                <BrandInput
+                                <Input
                                     value={currencyPlural}
                                     onChange={(e) =>
                                         setCurrencyPlural(e.target.value)
                                     }
-                                    fullWidth
+                                    className="h-11 rounded-xl w-full"
                                 />
                             </BrandFormControl>
                         </div>
                         <BrandFormControl label={t("genitive")}>
-                            <BrandInput
+                            <Input
                                 value={currencyGenitive}
                                 onChange={(e) =>
                                     setCurrencyGenitive(e.target.value)
                                 }
-                                fullWidth
+                                className="h-11 rounded-xl w-full"
                             />
                         </BrandFormControl>
                     </div>
@@ -535,16 +546,19 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                         label={t("votingRestriction")}
                         helperText={t("votingRestrictionHelp")}
                     >
-                        <BrandSelect
+                        <Select
                             value={votingRestriction}
-                            onChange={(value) => setVotingRestriction(value as 'any' | 'not-own' | 'not-same-group')}
-                            options={[
-                                { value: 'any', label: t('votingRestrictionOptions.any') },
-                                { value: 'not-own', label: t('votingRestrictionOptions.notOwn') },
-                                { value: 'not-same-group', label: t('votingRestrictionOptions.notSameGroup') },
-                            ]}
-                            fullWidth
-                        />
+                            onValueChange={(value) => setVotingRestriction(value as 'any' | 'not-own' | 'not-same-group')}
+                        >
+                            <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="any">{t('votingRestrictionOptions.any')}</SelectItem>
+                                <SelectItem value="not-own">{t('votingRestrictionOptions.notOwn')}</SelectItem>
+                                <SelectItem value="not-same-group">{t('votingRestrictionOptions.notSameGroup')}</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </BrandFormControl>
                 </div>
             </div>
@@ -560,14 +574,17 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                             "Priority communities are displayed first in the list"
                         }
                     >
-                        <BrandCheckbox
-                            checked={isPriority}
-                            onChange={(checked) => setIsPriority(checked)}
-                            label={
-                                t("isPriority") || "Mark as priority community"
-                            }
-                            disabled={isPending}
-                        />
+                        <div className="flex items-center gap-2.5">
+                            <Checkbox
+                                id="isPriority"
+                                checked={isPriority}
+                                onCheckedChange={(checked) => setIsPriority(checked as boolean)}
+                                disabled={isPending}
+                            />
+                            <Label htmlFor="isPriority" className="text-sm cursor-pointer">
+                                {t("isPriority") || "Mark as priority community"}
+                            </Label>
+                        </div>
                     </BrandFormControl>
                 </div>
             )}
@@ -585,17 +602,20 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                                     "Priority communities are displayed first in the list"
                                 }
                             >
-                                <BrandCheckbox
-                                    checked={isPriority}
-                                    onChange={(checked) =>
-                                        setIsPriority(checked)
-                                    }
-                                    label={
-                                        t("isPriority") ||
-                                        "Mark as priority community"
-                                    }
-                                    disabled={isPending}
-                                />
+                                <div className="flex items-center gap-2.5">
+                                    <Checkbox
+                                        id="isPriorityEdit"
+                                        checked={isPriority}
+                                        onCheckedChange={(checked) =>
+                                            setIsPriority(checked as boolean)
+                                        }
+                                        disabled={isPending}
+                                    />
+                                    <Label htmlFor="isPriorityEdit" className="text-sm cursor-pointer">
+                                        {t("isPriority") ||
+                                        "Mark as priority community"}
+                                    </Label>
+                                </div>
                             </BrandFormControl>
                         </div>
                     )}
@@ -640,14 +660,14 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                                         }`}
                                     >
                                         <div className="flex items-center space-x-3 flex-1">
-                                            <BrandAvatar
-                                                src={member.avatarUrl}
-                                                fallback={
-                                                    member.displayName ||
-                                                    member.username
-                                                }
-                                                size="md"
-                                            />
+                                            <Avatar className="w-10 h-10 text-sm">
+                                                {member.avatarUrl && (
+                                                    <AvatarImage src={member.avatarUrl} alt={member.displayName || member.username} />
+                                                )}
+                                                <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                                                    {(member.displayName || member.username) ? (member.displayName || member.username).slice(0, 2).toUpperCase() : <User size={18} />}
+                                                </AvatarFallback>
+                                            </Avatar>
                                             <div className="flex-1">
                                                 <div className="font-medium text-brand-text-primary">
                                                     {member.displayName ||
@@ -779,13 +799,14 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             )}
 
             <div className="flex justify-end pt-4">
-                <BrandButton
-                    variant="primary"
+                <Button
+                    variant="default"
                     size="lg"
                     onClick={handleSubmit}
                     disabled={!name || isPending}
-                    isLoading={isPending}
+                    className="rounded-xl active:scale-[0.98]"
                 >
+                    {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                     {isPending
                         ? isEditMode
                             ? t("saving")
@@ -793,7 +814,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                         : isEditMode
                         ? t("saveChanges")
                         : tCreate("createButton")}
-                </BrandButton>
+                </Button>
             </div>
         </div>
     );

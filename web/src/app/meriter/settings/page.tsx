@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isFakeDataMode } from '@/config';
 import { trpc } from '@/lib/trpc/client';
 
-import { BrandButton } from '@/components/ui/BrandButton';
+import { Button } from '@/components/ui/shadcn/button';
 import { Loader2 } from 'lucide-react';
 import { SuperadminManagement } from '@/components/settings/SuperadminManagement';
 import { InviteInput } from '@/components/molecules/InviteInput';
@@ -128,26 +128,26 @@ const SettingsPage = () => {
                             {t('development')}
                         </h2>
                         <div className="space-y-2">
-                            <BrandButton
-                                variant="primary"
+                            <Button
+                                variant="default"
                                 size="md"
                                 onClick={handleCreateFakeCommunity}
-                                isLoading={creatingFakeCommunity}
                                 disabled={creatingFakeCommunity || addingToAllCommunities}
-                                fullWidth
+                                className="rounded-xl active:scale-[0.98] w-full"
                             >
+                                {creatingFakeCommunity && <Loader2 className="h-4 w-4 animate-spin" />}
                                 {creatingFakeCommunity ? t('creating') : t('createFakeCommunity')}
-                            </BrandButton>
-                            <BrandButton
+                            </Button>
+                            <Button
                                 variant="outline"
                                 size="md"
                                 onClick={handleAddToAllCommunities}
-                                isLoading={addingToAllCommunities}
                                 disabled={creatingFakeCommunity || addingToAllCommunities}
-                                fullWidth
+                                className="rounded-xl active:scale-[0.98] w-full"
                             >
+                                {addingToAllCommunities && <Loader2 className="h-4 w-4 animate-spin" />}
                                 {addingToAllCommunities ? t('adding') : t('addUserToAllCommunities')}
-                            </BrandButton>
+                            </Button>
                             {fakeCommunityMessage && (
                                 <p className={`text-sm ${fakeCommunityMessage.includes('Failed') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                                     {fakeCommunityMessage}

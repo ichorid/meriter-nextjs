@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { BrandInput } from '@/components/ui/BrandInput';
-import { BrandCheckbox } from '@/components/ui/BrandCheckbox';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Checkbox } from '@/components/ui/shadcn/checkbox';
+import { Label } from '@/components/ui/shadcn/label';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { Check, RotateCcw, Eye, EyeOff, Download, Upload, History, Loader2 } from 'lucide-react';
 import type { CommunityWithComputedFields, LegacyPostingRules, LegacyVotingRules, LegacyVisibilityRules, LegacyMeritRules } from '@/types/api-v1';
@@ -353,44 +354,66 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
         <BrandFormControl label={t('allowedRoles')}>
           <div className="space-y-2">
-            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => (
-              <BrandCheckbox
-                key={role}
-                checked={postingRules.allowedRoles.includes(role)}
-                onChange={(checked) => {
-                  if (checked) {
-                    const currentRoles = postingRules.allowedRoles || [];
-                    if (!currentRoles.includes(role)) {
-                      setPostingRules({ ...postingRules, allowedRoles: [...currentRoles, role] });
-                    }
-                  } else {
-                    const currentRoles = postingRules.allowedRoles || [];
-                    setPostingRules({ ...postingRules, allowedRoles: currentRoles.filter((r: string) => r !== role) });
-                  }
-                }}
-                label={t(`roles.${role}`)}
-              />
-            ))}
+            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
+              const checkboxId = `posting-role-${role}`;
+              return (
+                <div key={role} className="flex items-center gap-2.5">
+                  <Checkbox
+                    id={checkboxId}
+                    checked={postingRules.allowedRoles.includes(role)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        const currentRoles = postingRules.allowedRoles || [];
+                        if (!currentRoles.includes(role)) {
+                          setPostingRules({ ...postingRules, allowedRoles: [...currentRoles, role] });
+                        }
+                      } else {
+                        const currentRoles = postingRules.allowedRoles || [];
+                        setPostingRules({ ...postingRules, allowedRoles: currentRoles.filter((r: string) => r !== role) });
+                      }
+                    }}
+                  />
+                  <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
+                    {t(`roles.${role}`)}
+                  </Label>
+                </div>
+              );
+            })}
           </div>
         </BrandFormControl>
 
-        <BrandCheckbox
-          checked={postingRules.requiresTeamMembership}
-          onChange={(checked) => setPostingRules({ ...postingRules, requiresTeamMembership: checked })}
-          label={t('requiresTeamMembership')}
-        />
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="requiresTeamMembership"
+            checked={postingRules.requiresTeamMembership}
+            onCheckedChange={(checked) => setPostingRules({ ...postingRules, requiresTeamMembership: checked as boolean })}
+          />
+          <Label htmlFor="requiresTeamMembership" className="text-sm cursor-pointer">
+            {t('requiresTeamMembership')}
+          </Label>
+        </div>
 
-        <BrandCheckbox
-          checked={postingRules.onlyTeamLead}
-          onChange={(checked) => setPostingRules({ ...postingRules, onlyTeamLead: checked })}
-          label={t('onlyTeamLead')}
-        />
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="onlyTeamLead"
+            checked={postingRules.onlyTeamLead}
+            onCheckedChange={(checked) => setPostingRules({ ...postingRules, onlyTeamLead: checked as boolean })}
+          />
+          <Label htmlFor="onlyTeamLead" className="text-sm cursor-pointer">
+            {t('onlyTeamLead')}
+          </Label>
+        </div>
 
-        <BrandCheckbox
-          checked={postingRules.autoMembership}
-          onChange={(checked) => setPostingRules({ ...postingRules, autoMembership: checked })}
-          label={t('autoMembership')}
-        />
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="autoMembership"
+            checked={postingRules.autoMembership}
+            onCheckedChange={(checked) => setPostingRules({ ...postingRules, autoMembership: checked as boolean })}
+          />
+          <Label htmlFor="autoMembership" className="text-sm cursor-pointer">
+            {t('autoMembership')}
+          </Label>
+        </div>
       </div>
 
       {/* Voting Rules */}
@@ -402,50 +425,77 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
         <BrandFormControl label={t('allowedRoles')}>
           <div className="space-y-2">
-            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => (
-              <BrandCheckbox
-                key={role}
-                checked={votingRules.allowedRoles.includes(role)}
-                onChange={(checked) => {
-                  if (checked) {
-                    const currentRoles = votingRules.allowedRoles || [];
-                    if (!currentRoles.includes(role)) {
-                      setVotingRules({ ...votingRules, allowedRoles: [...currentRoles, role] });
-                    }
-                  } else {
-                    const currentRoles = votingRules.allowedRoles || [];
-                    setVotingRules({ ...votingRules, allowedRoles: currentRoles.filter((r: string) => r !== role) });
-                  }
-                }}
-                label={t(`roles.${role}`)}
-              />
-            ))}
+            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
+              const checkboxId = `voting-role-${role}`;
+              return (
+                <div key={role} className="flex items-center gap-2.5">
+                  <Checkbox
+                    id={checkboxId}
+                    checked={votingRules.allowedRoles.includes(role)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        const currentRoles = votingRules.allowedRoles || [];
+                        if (!currentRoles.includes(role)) {
+                          setVotingRules({ ...votingRules, allowedRoles: [...currentRoles, role] });
+                        }
+                      } else {
+                        const currentRoles = votingRules.allowedRoles || [];
+                        setVotingRules({ ...votingRules, allowedRoles: currentRoles.filter((r: string) => r !== role) });
+                      }
+                    }}
+                  />
+                  <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
+                    {t(`roles.${role}`)}
+                  </Label>
+                </div>
+              );
+            })}
           </div>
         </BrandFormControl>
 
-        <BrandCheckbox
-          checked={votingRules.canVoteForOwnPosts}
-          onChange={(checked) => setVotingRules({ ...votingRules, canVoteForOwnPosts: checked })}
-          label={t('canVoteForOwnPosts')}
-        />
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="canVoteForOwnPosts"
+            checked={votingRules.canVoteForOwnPosts}
+            onCheckedChange={(checked) => setVotingRules({ ...votingRules, canVoteForOwnPosts: checked as boolean })}
+          />
+          <Label htmlFor="canVoteForOwnPosts" className="text-sm cursor-pointer">
+            {t('canVoteForOwnPosts')}
+          </Label>
+        </div>
 
-        <BrandCheckbox
-          checked={votingRules.participantsCannotVoteForLead}
-          onChange={(checked) => setVotingRules({ ...votingRules, participantsCannotVoteForLead: checked })}
-          label={t('participantsCannotVoteForLead')}
-        />
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="participantsCannotVoteForLead"
+            checked={votingRules.participantsCannotVoteForLead}
+            onCheckedChange={(checked) => setVotingRules({ ...votingRules, participantsCannotVoteForLead: checked as boolean })}
+          />
+          <Label htmlFor="participantsCannotVoteForLead" className="text-sm cursor-pointer">
+            {t('participantsCannotVoteForLead')}
+          </Label>
+        </div>
 
-        <BrandCheckbox
-          checked={votingRules.spendsMerits}
-          onChange={(checked) => setVotingRules({ ...votingRules, spendsMerits: checked })}
-          label={t('spendsMerits')}
-        />
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="spendsMerits"
+            checked={votingRules.spendsMerits}
+            onCheckedChange={(checked) => setVotingRules({ ...votingRules, spendsMerits: checked as boolean })}
+          />
+          <Label htmlFor="spendsMerits" className="text-sm cursor-pointer">
+            {t('spendsMerits')}
+          </Label>
+        </div>
 
-        <BrandCheckbox
-          checked={votingRules.awardsMerits}
-          onChange={(checked) => setVotingRules({ ...votingRules, awardsMerits: checked })}
-          label={t('awardsMerits')}
-        />
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="awardsMerits"
+            checked={votingRules.awardsMerits}
+            onCheckedChange={(checked) => setVotingRules({ ...votingRules, awardsMerits: checked as boolean })}
+          />
+          <Label htmlFor="awardsMerits" className="text-sm cursor-pointer">
+            {t('awardsMerits')}
+          </Label>
+        </div>
       </div>
 
       {/* Visibility Rules */}
@@ -457,38 +507,55 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
         <BrandFormControl label={t('visibleToRoles')}>
           <div className="space-y-2">
-            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => (
-              <BrandCheckbox
-                key={role}
-                checked={visibilityRules.visibleToRoles.includes(role)}
-                onChange={(checked) => {
-                  if (checked) {
-                    const currentRoles = visibilityRules.visibleToRoles || [];
-                    if (!currentRoles.includes(role)) {
-                      setVisibilityRules({ ...visibilityRules, visibleToRoles: [...currentRoles, role] });
-                    }
-                  } else {
-                    const currentRoles = visibilityRules.visibleToRoles || [];
-                    setVisibilityRules({ ...visibilityRules, visibleToRoles: currentRoles.filter((r: string) => r !== role) });
-                  }
-                }}
-                label={t(`roles.${role}`)}
-              />
-            ))}
+            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
+              const checkboxId = `visibility-role-${role}`;
+              return (
+                <div key={role} className="flex items-center gap-2.5">
+                  <Checkbox
+                    id={checkboxId}
+                    checked={visibilityRules.visibleToRoles.includes(role)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        const currentRoles = visibilityRules.visibleToRoles || [];
+                        if (!currentRoles.includes(role)) {
+                          setVisibilityRules({ ...visibilityRules, visibleToRoles: [...currentRoles, role] });
+                        }
+                      } else {
+                        const currentRoles = visibilityRules.visibleToRoles || [];
+                        setVisibilityRules({ ...visibilityRules, visibleToRoles: currentRoles.filter((r: string) => r !== role) });
+                      }
+                    }}
+                  />
+                  <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
+                    {t(`roles.${role}`)}
+                  </Label>
+                </div>
+              );
+            })}
           </div>
         </BrandFormControl>
 
-        <BrandCheckbox
-          checked={visibilityRules.isHidden}
-          onChange={(checked) => setVisibilityRules({ ...visibilityRules, isHidden: checked })}
-          label={t('isHidden')}
-        />
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="isHidden"
+            checked={visibilityRules.isHidden}
+            onCheckedChange={(checked) => setVisibilityRules({ ...visibilityRules, isHidden: checked as boolean })}
+          />
+          <Label htmlFor="isHidden" className="text-sm cursor-pointer">
+            {t('isHidden')}
+          </Label>
+        </div>
 
-        <BrandCheckbox
-          checked={visibilityRules.teamOnly}
-          onChange={(checked) => setVisibilityRules({ ...visibilityRules, teamOnly: checked })}
-          label={t('teamOnly')}
-        />
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="teamOnly"
+            checked={visibilityRules.teamOnly}
+            onCheckedChange={(checked) => setVisibilityRules({ ...visibilityRules, teamOnly: checked as boolean })}
+          />
+          <Label htmlFor="teamOnly" className="text-sm cursor-pointer">
+            {t('teamOnly')}
+          </Label>
+        </div>
       </div>
 
       {/* Merit Rules */}
@@ -496,48 +563,65 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         <h2 className="text-lg font-semibold text-brand-text-primary">{t('meritRules')}</h2>
 
         <BrandFormControl label={t('dailyQuota')}>
-          <BrandInput
+          <Input
             value={String(meritRules.dailyQuota)}
             onChange={(e) => setMeritRules({ ...meritRules, dailyQuota: parseInt(e.target.value, 10) || 0 })}
             type="number"
-            fullWidth
+            className="h-11 rounded-xl w-full"
           />
         </BrandFormControl>
 
         <BrandFormControl label={t('quotaRecipients')}>
           <div className="space-y-2">
-            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => (
-              <BrandCheckbox
-                key={role}
-                checked={meritRules.quotaRecipients.includes(role)}
-                onChange={(checked) => {
-                  if (checked) {
-                    const currentRoles = meritRules.quotaRecipients || [];
-                    if (!currentRoles.includes(role)) {
-                      setMeritRules({ ...meritRules, quotaRecipients: [...currentRoles, role] });
-                    }
-                  } else {
-                    const currentRoles = meritRules.quotaRecipients || [];
-                    setMeritRules({ ...meritRules, quotaRecipients: currentRoles.filter((r: string) => r !== role) });
-                  }
-                }}
-                label={t(`roles.${role}`)}
-              />
-            ))}
+            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
+              const checkboxId = `merit-role-${role}`;
+              return (
+                <div key={role} className="flex items-center gap-2.5">
+                  <Checkbox
+                    id={checkboxId}
+                    checked={meritRules.quotaRecipients.includes(role)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        const currentRoles = meritRules.quotaRecipients || [];
+                        if (!currentRoles.includes(role)) {
+                          setMeritRules({ ...meritRules, quotaRecipients: [...currentRoles, role] });
+                        }
+                      } else {
+                        const currentRoles = meritRules.quotaRecipients || [];
+                        setMeritRules({ ...meritRules, quotaRecipients: currentRoles.filter((r: string) => r !== role) });
+                      }
+                    }}
+                  />
+                  <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
+                    {t(`roles.${role}`)}
+                  </Label>
+                </div>
+              );
+            })}
           </div>
         </BrandFormControl>
 
-        <BrandCheckbox
-          checked={meritRules.canEarn}
-          onChange={(checked) => setMeritRules({ ...meritRules, canEarn: checked })}
-          label={t('canEarn')}
-        />
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="canEarn"
+            checked={meritRules.canEarn}
+            onCheckedChange={(checked) => setMeritRules({ ...meritRules, canEarn: checked as boolean })}
+          />
+          <Label htmlFor="canEarn" className="text-sm cursor-pointer">
+            {t('canEarn')}
+          </Label>
+        </div>
 
-        <BrandCheckbox
-          checked={meritRules.canSpend}
-          onChange={(checked) => setMeritRules({ ...meritRules, canSpend: checked })}
-          label={t('canSpend')}
-        />
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="canSpend"
+            checked={meritRules.canSpend}
+            onCheckedChange={(checked) => setMeritRules({ ...meritRules, canSpend: checked as boolean })}
+          />
+          <Label htmlFor="canSpend" className="text-sm cursor-pointer">
+            {t('canSpend')}
+          </Label>
+        </div>
       </div>
 
       {/* Linked Currencies */}
@@ -548,81 +632,86 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           {linkedCurrencies.map((currency) => (
             <div key={currency} className="flex items-center justify-between p-2 bg-base-200 rounded-md border border-base-300">
               <span className="text-sm text-brand-text-primary">{currency}</span>
-              <BrandButton size="sm" variant="outline" onClick={() => removeCurrency(currency)}>
+              <Button size="sm" variant="outline" onClick={() => removeCurrency(currency)} className="rounded-xl active:scale-[0.98]">
                 {t('remove')}
-              </BrandButton>
+              </Button>
             </div>
           ))}
         </div>
 
         <div className="flex gap-2">
           <div className="flex-1">
-            <BrandInput
+            <Input
               value={newCurrency}
               onChange={(e) => setNewCurrency(e.target.value)}
               placeholder={t('enterCurrencyId')}
-              fullWidth
+              className="h-11 rounded-xl w-full"
             />
           </div>
-          <BrandButton onClick={addCurrency} disabled={!newCurrency.trim()}>
+          <Button onClick={addCurrency} disabled={!newCurrency.trim()} className="rounded-xl active:scale-[0.98]">
             {t('add')}
-          </BrandButton>
+          </Button>
         </div>
       </div>
 
       {/* Preview Toggle and Actions */}
       <div className="flex flex-wrap items-center gap-4">
-        <BrandButton
+        <Button
           variant="outline"
           onClick={() => setShowPreview(!showPreview)}
-          leftIcon={showPreview ? <EyeOff size={16} /> : <Eye size={16} />}
+          className="rounded-xl active:scale-[0.98]"
         >
+          {showPreview ? <EyeOff size={16} /> : <Eye size={16} />}
           {showPreview ? t('hidePreview') : t('showPreview')}
-        </BrandButton>
+        </Button>
 
-        <BrandButton
+        <Button
           variant="outline"
           onClick={() => setShowHistory(!showHistory)}
-          leftIcon={<History size={16} />}
+          className="rounded-xl active:scale-[0.98]"
         >
+          <History size={16} />
           {showHistory ? t('hideHistory') : t('showHistory')}
-        </BrandButton>
+        </Button>
 
-        <BrandButton
+        <Button
           variant="outline"
           onClick={exportRules}
-          leftIcon={<Download size={16} />}
+          className="rounded-xl active:scale-[0.98]"
         >
+          <Download size={16} />
           {t('exportRules')}
-        </BrandButton>
+        </Button>
 
-        <BrandButton
+        <Button
           variant="outline"
           onClick={importRules}
-          leftIcon={<Upload size={16} />}
+          className="rounded-xl active:scale-[0.98]"
         >
+          <Upload size={16} />
           {t('importRules')}
-        </BrandButton>
+        </Button>
 
         {hasChanges() && (
-          <BrandButton
+          <Button
             variant="outline"
             onClick={handleReset}
-            leftIcon={<RotateCcw size={16} />}
+            className="rounded-xl active:scale-[0.98]"
           >
+            <RotateCcw size={16} />
             {t('resetChanges')}
-          </BrandButton>
+          </Button>
         )}
 
-        <BrandButton
-          variant="primary"
+        <Button
+          variant="default"
           onClick={handleSave}
           disabled={isSaving || !hasChanges()}
-          isLoading={isSaving}
-          className="ml-auto"
+          className="rounded-xl active:scale-[0.98] ml-auto"
         >
+          {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
           {t('save')}
-        </BrandButton>
+        </Button>
       </div>
 
       {/* History */}
@@ -649,13 +738,14 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
                         {t('historyEntry')}
                       </p>
                     </div>
-                    <BrandButton
+                    <Button
                       variant="outline"
                       size="sm"
                       onClick={() => restoreFromHistory(entry)}
+                      className="rounded-xl active:scale-[0.98]"
                     >
                       {t('restore')}
-                    </BrandButton>
+                    </Button>
                   </div>
                 ))}
               </div>

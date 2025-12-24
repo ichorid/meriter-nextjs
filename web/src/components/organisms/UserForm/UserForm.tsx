@@ -2,7 +2,10 @@
 
 import React, { useState, useEffect, useImperativeHandle } from "react";
 import { useTranslations } from "next-intl";
-import { BrandButton, BrandInput, BrandFormControl } from "@/components/ui";
+import { BrandFormControl } from "@/components/ui";
+import { Button } from "@/components/ui/shadcn/button";
+import { Input } from "@/components/ui/shadcn/input";
+import { Loader2 } from "lucide-react";
 import { OSMAutocomplete } from "@/components/molecules/OSMAutocomplete";
 
 export interface UserFormData {
@@ -211,12 +214,13 @@ export function UserForm({
                                 label={t("avatarUrl")}
                                 helperText={t("avatarUrlHelper")}
                             >
-                                <BrandInput
+                                <Input
                                     value={avatarUrl}
                                     onChange={(e) =>
                                         setAvatarUrl(e.target.value)
                                     }
                                     placeholder={tCommon('urlPlaceholder')}
+                                    className="h-11 rounded-xl w-full"
                                 />
                             </BrandFormControl>
                         </div>
@@ -228,10 +232,11 @@ export function UserForm({
                         error={errors.displayName}
                         required
                     >
-                        <BrandInput
+                        <Input
                             value={displayName}
                             onChange={(e) => setDisplayName(e.target.value)}
                             placeholder={t("displayNamePlaceholder")}
+                            className="h-11 rounded-xl w-full"
                         />
                     </BrandFormControl>
                 </section>
@@ -278,7 +283,7 @@ export function UserForm({
                             label={t("email")}
                             error={errors.email}
                         >
-                            <BrandInput
+                            <Input
                                 type="email"
                                 value={email}
                                 onChange={(e) =>
@@ -290,11 +295,11 @@ export function UserForm({
                                         ? t("emailPlaceholder")
                                         : undefined
                                 }
-                                className={
+                                className={`h-11 rounded-xl w-full ${
                                     !isEmailEditable
                                         ? "bg-base-300/30 text-base-content/50"
                                         : ""
-                                }
+                                }`}
                             />
                         </BrandFormControl>
                     </div>
@@ -357,25 +362,26 @@ export function UserForm({
                     `}
                 >
                     {onCancel && (
-                        <BrandButton
+                        <Button
                             variant="ghost"
                             onClick={onCancel}
                             disabled={isSubmitting}
                             size="md"
+                            className="rounded-xl active:scale-[0.98]"
                         >
                             {t("cancel")}
-                        </BrandButton>
+                        </Button>
                     )}
-                    <BrandButton
+                    <Button
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        isLoading={isSubmitting}
                         size="lg"
                         variant="default"
-                        fullWidth={stickyFooter}
+                        className={`rounded-xl active:scale-[0.98] ${stickyFooter ? 'w-full' : ''}`}
                     >
+                        {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                         {isSubmitting ? t("saving") : submitLabel || t("save")}
-                    </BrandButton>
+                    </Button>
                 </footer>
             )}
         </div>

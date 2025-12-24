@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Heart, MessageCircle, Share2, MoreVertical } from 'lucide-react';
-import { BrandButton } from './BrandButton';
+// No longer using BrandButton - using native buttons
 
 interface CardFooterProps {
   likes?: number;

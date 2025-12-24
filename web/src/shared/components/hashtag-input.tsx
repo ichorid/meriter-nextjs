@@ -2,8 +2,9 @@
 
 import React, { useState, KeyboardEvent, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { BrandInput } from '@/components/ui/BrandInput';
+import { Input } from '@/components/ui/shadcn/input';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
+import { cn } from '@/lib/utils';
 import { X, Hash, AlertCircle } from 'lucide-react';
 
 interface HashtagInputProps {
@@ -166,15 +167,22 @@ export const HashtagInput = ({
                 {/* Input field */}
                 {value.length < maxTags && (
                     <div className="space-y-2">
-                        <BrandInput
-                            value={inputValue}
-                            onChange={handleInputChange}
-                            onKeyDown={handleKeyDown}
-                            placeholder={defaultPlaceholder}
-                            fullWidth
-                            className={hasInvalidChars && inputValue.trim() ? 'border-warning focus-visible:ring-warning/30' : ''}
-                            rightIcon={hasInvalidChars && inputValue.trim() ? <AlertCircle size={16} className="text-warning" /> : undefined}
-                        />
+                        <div className="relative w-full">
+                            <Input
+                                value={inputValue}
+                                onChange={handleInputChange}
+                                onKeyDown={handleKeyDown}
+                                placeholder={defaultPlaceholder}
+                                className={cn(
+                                    'h-11 rounded-xl w-full',
+                                    hasInvalidChars && inputValue.trim() && 'border-warning focus-visible:ring-warning/30 pr-10',
+                                    !hasInvalidChars || !inputValue.trim() ? '' : 'pr-10'
+                                )}
+                            />
+                            {hasInvalidChars && inputValue.trim() && (
+                                <AlertCircle size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-warning pointer-events-none z-10" />
+                            )}
+                        </div>
                         
                         {/* Dynamic preview of how the hashtag will look */}
                         {previewTag && !value.includes(previewTag) && (

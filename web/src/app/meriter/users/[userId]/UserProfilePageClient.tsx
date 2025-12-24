@@ -7,7 +7,8 @@ import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/Context
 import { useUserProfile } from '@/hooks/api/useUsers';
 import { useUserRoles } from '@/hooks/api/useProfile';
 
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { User } from 'lucide-react';
 import { Badge } from '@/components/atoms';
 import { Mail, MessageCircle, Globe, MapPin, GraduationCap, User as UserIcon, Users } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
@@ -63,12 +64,14 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
         {/* Profile Header */}
         <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
           <div className="flex items-start gap-4">
-            <BrandAvatar
-              src={user.avatarUrl}
-              fallback={user.displayName || user.username || tCommon('user')}
-              size="lg"
-              className="bg-transparent"
-            />
+            <Avatar className="w-14 h-14 text-base bg-transparent">
+              {user.avatarUrl && (
+                <AvatarImage src={user.avatarUrl} alt={user.displayName || user.username || tCommon('user')} />
+              )}
+              <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                {(user.displayName || user.username) ? (user.displayName || user.username).slice(0, 2).toUpperCase() : <User size={24} />}
+              </AvatarFallback>
+            </Avatar>
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-brand-text-primary mb-1">
                 {user.displayName || user.username || tCommon('unknownUser')}
