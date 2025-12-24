@@ -15,20 +15,12 @@ const nextConfig = {
     typescript: {
         ignoreBuildErrors: true, // TODO: Fix tRPC type imports to not pull in backend runtime code
     },
-    // Expose build-time environment variables to Next.js
-    // All variables must be NEXT_PUBLIC_* for static export (baked into build)
-    env: {
-        NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED: process.env.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED || process.env.OAUTH_GOOGLE_ENABLED,
-        NEXT_PUBLIC_OAUTH_YANDEX_ENABLED: process.env.NEXT_PUBLIC_OAUTH_YANDEX_ENABLED || process.env.OAUTH_YANDEX_ENABLED,
-        NEXT_PUBLIC_OAUTH_VK_ENABLED: process.env.NEXT_PUBLIC_OAUTH_VK_ENABLED || process.env.OAUTH_VK_ENABLED,
-        NEXT_PUBLIC_OAUTH_TELEGRAM_ENABLED: process.env.NEXT_PUBLIC_OAUTH_TELEGRAM_ENABLED || process.env.OAUTH_TELEGRAM_ENABLED,
-        NEXT_PUBLIC_OAUTH_APPLE_ENABLED: process.env.NEXT_PUBLIC_OAUTH_APPLE_ENABLED || process.env.OAUTH_APPLE_ENABLED,
-        NEXT_PUBLIC_OAUTH_TWITTER_ENABLED: process.env.NEXT_PUBLIC_OAUTH_TWITTER_ENABLED || process.env.OAUTH_TWITTER_ENABLED,
-        NEXT_PUBLIC_OAUTH_INSTAGRAM_ENABLED: process.env.NEXT_PUBLIC_OAUTH_INSTAGRAM_ENABLED || process.env.OAUTH_INSTAGRAM_ENABLED,
-        NEXT_PUBLIC_OAUTH_SBER_ENABLED: process.env.NEXT_PUBLIC_OAUTH_SBER_ENABLED || process.env.OAUTH_SBER_ENABLED,
-        NEXT_PUBLIC_OAUTH_MAILRU_ENABLED: process.env.NEXT_PUBLIC_OAUTH_MAILRU_ENABLED || process.env.OAUTH_MAILRU_ENABLED,
-        NEXT_PUBLIC_AUTHN_ENABLED: process.env.NEXT_PUBLIC_AUTHN_ENABLED || process.env.AUTHN_ENABLED,
-    },
+    // Disable SWC minification when in dev mode (SWC minification bypasses webpack settings)
+    swcMinify: process.env.NEXT_PUBLIC_DEV_BUILD !== 'true',
+    // Enable source maps for debugging (works with static export)
+    productionBrowserSourceMaps: process.env.NEXT_PUBLIC_DEV_BUILD === 'true' || process.env.NODE_ENV === 'development',
+    // Note: OAuth provider flags and AUTHN are fetched from backend at runtime via useRuntimeConfig()
+    // No need to expose them as build-time env vars
     transpilePackages: [
         '@telegram-apps/sdk-react',
         '@telegram-apps/telegram-ui',
@@ -43,7 +35,10 @@ const nextConfig = {
     // Note: Static export doesn't support rewrites()
     // API calls must use relative URLs (/api/*) or absolute URLs via NEXT_PUBLIC_API_URL
     // Caddy will handle proxying /api/* to the backend API server
-    webpack: (config, { isServer }) => {
+    webpack: (config, { isServer, dev }) => {
+        // Check dev mode at runtime (not at config load time)
+        const isDevMode = process.env.NEXT_PUBLIC_DEV_BUILD === 'true' || process.env.NODE_ENV === 'development';
+        
         // CRITICAL: Merge all aliases properly to ensure single React instance
         // This prevents "Cannot read properties of undefined (reading 'ReactCurrentOwner')" errors
         // and "Cannot read properties of null (reading 'useState')" errors
@@ -59,6 +54,28 @@ const nextConfig = {
             // Resolve @meriter/shared-types to the dist directory for CommonJS relative imports
             '@meriter/shared-types': path.resolve(__dirname, '../libs/shared-types/dist'),
         };
+
+        // Enable dev features for static build
+        if (isDevMode && !isServer) {
+            console.log('[next.config] Dev mode enabled: disabling minification and enabling source maps');
+            
+            // Enable source maps for debugging
+            config.devtool = 'source-map'; // Full source maps (slower but best quality)
+            
+            // Disable minification to keep code readable
+            if (config.optimization) {
+                config.optimization.minimize = false;
+                // Disable all minimizers
+                config.optimization.minimizer = [];
+            } else {
+                config.optimization = {
+                    minimize: false,
+                    minimizer: [],
+                };
+            }
+        } else if (!isServer) {
+            console.log('[next.config] Production mode: minification enabled');
+        }
 
         // Exclude backend API code from frontend bundle (only import types)
         config.externals = config.externals || [];

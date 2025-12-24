@@ -236,17 +236,8 @@ jobs:
       - name: Build static export
         env:
           NODE_OPTIONS: --max-old-space-size=6144
+          NEXT_PUBLIC_DEV_BUILD: ${{ needs.determine-target.outputs.build_type == 'dev' && 'true' || 'false' }}
           NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || '' }}
-          NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_GOOGLE_ENABLED || 'false' }}
-          NEXT_PUBLIC_OAUTH_YANDEX_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_YANDEX_ENABLED || 'false' }}
-          NEXT_PUBLIC_OAUTH_VK_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_VK_ENABLED || 'false' }}
-          NEXT_PUBLIC_OAUTH_TELEGRAM_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_TELEGRAM_ENABLED || 'false' }}
-          NEXT_PUBLIC_OAUTH_APPLE_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_APPLE_ENABLED || 'false' }}
-          NEXT_PUBLIC_OAUTH_TWITTER_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_TWITTER_ENABLED || 'false' }}
-          NEXT_PUBLIC_OAUTH_INSTAGRAM_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_INSTAGRAM_ENABLED || 'false' }}
-          NEXT_PUBLIC_OAUTH_SBER_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_SBER_ENABLED || 'false' }}
-          NEXT_PUBLIC_OAUTH_MAILRU_ENABLED: ${{ vars.NEXT_PUBLIC_OAUTH_MAILRU_ENABLED || 'false' }}
-          NEXT_PUBLIC_AUTHN_ENABLED: ${{ vars.NEXT_PUBLIC_AUTHN_ENABLED || 'false' }}
         run: pnpm -C web build
       - name: Create archive
         id: artifact
