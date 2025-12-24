@@ -72,6 +72,7 @@
     }
 
     # tRPC requests - proxy to backend API
+    # Must come before static file handlers to ensure proper routing
     handle /trpc* {
         reverse_proxy api:8002 {
             header_up X-Real-IP {remote_host}
