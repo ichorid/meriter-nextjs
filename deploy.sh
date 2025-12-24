@@ -86,7 +86,6 @@ if [ -n "$ARTIFACT_FILE" ] && [ -f "$ARTIFACT_FILE" ]; then
     # Reload Caddy to pick up new files
     echo "[deploy] Reloading Caddy..."
     docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || echo "[deploy] Warning: Could not reload Caddy (may not be running)"
-  fi
 else
   echo "[deploy] No static web artifact found, skipping web deployment"
 fi

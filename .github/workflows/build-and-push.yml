@@ -139,7 +139,8 @@ jobs:
             if [ "$BUILD_TYPE" = "dev" ]; then
               TAG1="${COMPONENT}-dev-${{ github.sha }}"
               TAG2="${COMPONENT}-dev-latest"
-              TAGS_MULTILINE="type=raw,value=${TAG1}"$'\n'"type=raw,value=${TAG2}"
+              SHA_TAG="sha-${SHORT_SHA}"
+              TAGS_MULTILINE="type=raw,value=${TAG1}"$'\n'"type=raw,value=${TAG2}"$'\n'"type=raw,value=${SHA_TAG}"
             else
               VERSION="${{ needs.determine-target.outputs.web_version }}"
               if [ "$COMPONENT" = "api" ]; then
@@ -186,11 +187,13 @@ jobs:
           echo "### ${COMPONENT^} image published :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "$BUILD_TYPE" = "dev" ]; then
+            SHORT_SHA="${{ needs.determine-target.outputs.commit_sha }}"
             echo "**Context:** dev branch" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Images:**" >> $GITHUB_STEP_SUMMARY
             echo "- \`${IMAGE_NAME}:${COMPONENT}-dev-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
             echo "- \`${IMAGE_NAME}:${COMPONENT}-dev-latest\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`${IMAGE_NAME}:sha-${SHORT_SHA}\`" >> $GITHUB_STEP_SUMMARY
           else
             VERSION="${{ needs.determine-target.outputs.web_version }}"
             if [ "$COMPONENT" = "api" ]; then
