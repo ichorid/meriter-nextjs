@@ -25,13 +25,13 @@ describe('Poll Permissions', () => {
   
   let permissionService: PermissionService;
   let pollService: PollService;
-  let _communityService: CommunityService;
-  let _userService: UserService;
-  let _userCommunityRoleService: UserCommunityRoleService;
+  let communityService: CommunityService;
+  let userService: UserService;
+  let userCommunityRoleService: UserCommunityRoleService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let _pollModel: Model<PollDocument>;
+  let pollModel: Model<PollDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   // Test user IDs

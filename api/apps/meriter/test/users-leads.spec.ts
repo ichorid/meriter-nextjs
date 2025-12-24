@@ -36,9 +36,9 @@ describe('Users - Get All Leads', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let _userService: UserService;
-  let _userCommunityRoleService: UserCommunityRoleService;
-  let _communityService: CommunityService;
+  let userService: UserService;
+  let userCommunityRoleService: UserCommunityRoleService;
+  let communityService: CommunityService;
 
   let userModel: Model<UserDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
@@ -432,7 +432,6 @@ describe('Users - Get All Leads', () => {
     });
   });
 });
-
 
 
 

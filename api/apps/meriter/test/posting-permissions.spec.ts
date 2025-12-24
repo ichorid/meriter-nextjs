@@ -38,14 +38,14 @@ describe('Posting Permissions', () => {
   let connection: Connection;
   
   let permissionService: PermissionService;
-  let _publicationService: PublicationService;
-  let _communityService: CommunityService;
-  let _userService: UserService;
-  let _userCommunityRoleService: UserCommunityRoleService;
+  let publicationService: PublicationService;
+  let communityService: CommunityService;
+  let userService: UserService;
+  let userCommunityRoleService: UserCommunityRoleService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let _publicationModel: Model<PublicationDocument>;
+  let publicationModel: Model<PublicationDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   // Test user IDs
