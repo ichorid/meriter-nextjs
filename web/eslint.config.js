@@ -53,7 +53,8 @@ module.exports = [
             // Enforce Rules of Hooks - catches conditional hook calls (prevents React error #310)
             'react-hooks/rules-of-hooks': 'error',
             // Warn about missing dependencies in useEffect, useMemo, etc.
-            'react-hooks/exhaustive-deps': 'warn',
+            // Set to 'error' in CI to catch infinite loop issues early
+            'react-hooks/exhaustive-deps': process.env.CI === 'true' ? 'error' : 'warn',
             // Disable prop-types since we're using TypeScript
             'react/prop-types': 'off',
             // React 19 doesn't require React import in JSX

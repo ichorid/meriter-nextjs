@@ -1,0 +1,46 @@
+name: Check for Render Loops
+
+on:
+  pull_request:
+    paths:
+      - 'web/src/**/*.tsx'
+      - 'web/src/**/*.ts'
+  push:
+    branches:
+      - dev
+      - main
+    paths:
+      - 'web/src/**/*.tsx'
+      - 'web/src/**/*.ts'
+
+jobs:
+  check-render-loops:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      
+      - name: Install dependencies
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for render loops
+        working-directory: web
+        run: pnpm check:render-loops
+      
+      - name: Run ESLint (strict mode)
+        working-directory: web
+        env:
+          CI: 'true'
+        run: pnpm lint
+
