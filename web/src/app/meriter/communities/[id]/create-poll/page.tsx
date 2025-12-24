@@ -1,7 +1,7 @@
 import { CreatePollPageClient } from './CreatePollPageClient';
 
 interface CreatePollPageProps {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
 // Required for static export with dynamic routes
@@ -10,8 +10,8 @@ export async function generateStaticParams(): Promise<Array<{ id: string }>> {
   return [];
 }
 
-export default async function CreatePollPage({ params }: CreatePollPageProps) {
-  const { id } = await params;
+export default function CreatePollPage({ params }: CreatePollPageProps) {
+  const { id } = params;
   return <CreatePollPageClient communityId={id} />;
 }
 

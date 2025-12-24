@@ -1,7 +1,7 @@
 import { CommunityMembersPageClient } from './CommunityMembersPageClient';
 
 interface CommunityMembersPageProps {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
 // Required for static export with dynamic routes
@@ -10,7 +10,7 @@ export async function generateStaticParams(): Promise<Array<{ id: string }>> {
   return [];
 }
 
-export default async function CommunityMembersPage({ params }: CommunityMembersPageProps) {
-  const { id } = await params;
+export default function CommunityMembersPage({ params }: CommunityMembersPageProps) {
+  const { id } = params;
   return <CommunityMembersPageClient communityId={id} />;
 }

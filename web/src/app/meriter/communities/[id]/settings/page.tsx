@@ -1,7 +1,7 @@
 import { CommunitySettingsPageClient } from './CommunitySettingsPageClient';
 
 interface CommunitySettingsPageProps {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
 // Required for static export with dynamic routes
@@ -10,7 +10,7 @@ export async function generateStaticParams(): Promise<Array<{ id: string }>> {
   return [];
 }
 
-export default async function CommunitySettingsPage({ params }: CommunitySettingsPageProps) {
-  const { id } = await params;
+export default function CommunitySettingsPage({ params }: CommunitySettingsPageProps) {
+  const { id } = params;
   return <CommunitySettingsPageClient communityId={id} />;
 }

@@ -1,7 +1,7 @@
 import { UserProfilePageClient } from './UserProfilePageClient';
 
 interface UserProfilePageProps {
-  params: Promise<{ userId: string }>;
+  params: { userId: string };
 }
 
 // Required for static export with dynamic routes
@@ -10,7 +10,7 @@ export async function generateStaticParams() {
   return [];
 }
 
-export default async function UserProfilePage({ params }: UserProfilePageProps) {
-  const { userId } = await params;
+export default function UserProfilePage({ params }: UserProfilePageProps) {
+  const { userId } = params;
   return <UserProfilePageClient userId={userId} />;
 }
