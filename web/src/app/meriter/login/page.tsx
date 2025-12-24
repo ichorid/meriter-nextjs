@@ -4,16 +4,19 @@ import { LoginForm } from '@/components/LoginForm';
 import { VersionDisplay } from '@/components/organisms';
 import { getEnabledProviders, getAuthEnv } from '@/lib/utils/oauth-providers';
 import { useRuntimeConfig } from '@/hooks/useRuntimeConfig';
+import { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 
 export default function PageMeriterLogin() {
     // Fetch runtime config (falls back to build-time defaults if API fails)
     const { config: runtimeConfig, isLoading, error } = useRuntimeConfig();
     
-    // Safely get auth environment with runtime config override
-    // Handle case where runtimeConfig might be null during loading
-    const env = getAuthEnv(runtimeConfig ?? null);
-    const enabledProviders = getEnabledProviders(env);
+    // Memoize enabled providers to prevent infinite re-renders
+    // getAuthEnv and getEnabledProviders create new objects/arrays each call
+    const enabledProviders = useMemo(() => {
+        const env = getAuthEnv(runtimeConfig ?? null);
+        return getEnabledProviders(env);
+    }, [runtimeConfig]);
     
     // Get AUTHN enabled from runtime config only (no fallback to process.env)
     const authnEnabled = runtimeConfig?.authn?.enabled ?? false;
