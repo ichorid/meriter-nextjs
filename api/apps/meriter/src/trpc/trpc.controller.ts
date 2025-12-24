@@ -16,7 +16,7 @@ export class TrpcController {
     });
   }
 
-  @All('*')
+  @All('**')
   async handler(@Req() req: any, @Res() res: any, @Next() next: any) {
     return this.trpcMiddleware(req, res, next);
   }
