@@ -23,15 +23,17 @@ async function enhancedFetch(url: string, options?: RequestInit): Promise<Respon
 
     // If response is not ok, try to get more details
     if (!response.ok) {
-      // Try to read the response body to get error details
+      // Clone the response before reading to avoid consuming the body stream
+      // The original response will be returned and can still be read by tRPC
+      const clonedResponse = response.clone();
       const contentType = response.headers.get('content-type');
       let errorBody: unknown = null;
       
       try {
         if (contentType?.includes('application/json')) {
-          errorBody = await response.json();
+          errorBody = await clonedResponse.json();
         } else {
-          const text = await response.text();
+          const text = await clonedResponse.text();
           errorBody = text || null;
         }
       } catch (e) {
