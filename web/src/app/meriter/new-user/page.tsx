@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/shadcn/button";
 import { Loader2 } from "lucide-react";
 import { useToastStore } from "@/shared/stores/toast.store";
 
-export default function NewUserPage() {
+function NewUserPageContent() {
     const t = useTranslations("profile");
     const _tLogin = useTranslations("login");
     const router = useRouter();
@@ -146,5 +146,17 @@ export default function NewUserPage() {
                 </div>
             </footer>
         </div>
+    );
+}
+
+export default function NewUserPage() {
+    return (
+        <Suspense fallback={
+            <div className="h-svh bg-base-100 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-base-content/50" />
+            </div>
+        }>
+            <NewUserPageContent />
+        </Suspense>
     );
 }

@@ -91,6 +91,18 @@
         header Cache-Control "public, max-age=31536000, immutable"
     }
     
+    # Source map files - return 404 if not found (don't fallback to index.html)
+    # This prevents source map requests from being served as HTML
+    # Note: Source maps are enabled for dev builds (NEXT_PUBLIC_DEV_BUILD=true)
+    # but some source maps (e.g., from React DevTools) may not exist
+    @map_files {
+        path_regexp ^.*\.map$
+    }
+    handle @map_files {
+        file_server
+        header Cache-Control "public, max-age=0, must-revalidate"
+    }
+    
     # Public assets
     handle /meriter/* {
         file_server
