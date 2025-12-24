@@ -12,9 +12,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 export default function ProfileCommentsPage() {
-  const router = useRouter();
+  const _router = useRouter();
   const searchParams = useSearchParams();
-  const t = useTranslations('profile');
+  const _t = useTranslations('profile');
   const { user, isLoading: userLoading, isAuthenticated } = useAuth();
   const { sortByTab, setSortByTab } = useProfileTabState();
   const {
@@ -80,4 +80,3 @@ export default function ProfileCommentsPage() {
     </AdaptiveLayout>
   );
 }
-

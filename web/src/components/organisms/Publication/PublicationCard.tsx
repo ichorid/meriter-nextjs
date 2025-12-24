@@ -25,8 +25,8 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   publication,
   wallets = [],
   showCommunityAvatar = false,
-  className = '',
-  isSelected = false,
+  _className = '',
+  _isSelected = false,
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -165,9 +165,9 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             slug: pubItem.slug,
             createdAt: pubItem.createdAt,
             meta: pubItem.meta,
-            postType: (pubItem as any).postType,
-            isProject: (pubItem as any).isProject,
-            permissions: (pubItem as any).permissions,
+            postType: (pubItem as unknown).postType,
+            isProject: (pubItem as unknown).isProject,
+            permissions: (pubItem as unknown).permissions,
           }}
           showCommunityAvatar={showCommunityAvatar}
           className="mb-3"
@@ -183,10 +183,10 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             id: pubItem.id,
             createdAt: pubItem.createdAt,
             content: pubItem.content,
-            title: (pubItem as any).title,
-            description: (pubItem as any).description,
-            isProject: (pubItem as any).isProject,
-            imageUrl: (pubItem as any).imageUrl,
+            title: (pubItem as unknown).title,
+            description: (pubItem as unknown).description,
+            isProject: (pubItem as unknown).isProject,
+            imageUrl: (pubItem as unknown).imageUrl,
             meta: transformedMeta,
           }}
           className="mb-4"
@@ -200,12 +200,12 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             communityId: pubItem.communityId,
             slug: pubItem.slug,
             content: pubItem.content,
-            permissions: (pubItem as any).permissions,
+            permissions: (pubItem as unknown).permissions,
             type: pubItem.type,
             metrics: pubItem.metrics,
             meta: transformedMeta,
-            postType: (pubItem as any).postType,
-            isProject: (pubItem as any).isProject,
+            postType: (pubItem as unknown).postType,
+            isProject: (pubItem as unknown).isProject,
           }}
           onVote={handleVote}
           onComment={handleComment}

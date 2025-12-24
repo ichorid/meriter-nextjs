@@ -20,10 +20,10 @@ export function CommunityRulesPageClient({ communityId }: CommunityRulesPageClie
   const updateCommunity = useUpdateCommunity();
 
   const handleSave = async (rules: {
-    postingRules?: any;
-    votingRules?: any;
-    visibilityRules?: any;
-    meritRules?: any;
+    postingRules?: unknown;
+    votingRules?: unknown;
+    visibilityRules?: unknown;
+    meritRules?: unknown;
     linkedCurrencies?: string[];
   }) => {
     await updateCommunity.mutateAsync({

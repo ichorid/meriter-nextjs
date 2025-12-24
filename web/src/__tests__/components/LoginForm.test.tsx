@@ -109,7 +109,7 @@ describe('LoginForm', () => {
       };
 
       // Call the global callback that would be set by the widget
-      (window as any).onTelegramAuth(mockTelegramUser);
+      (window as unknown).onTelegramAuth(mockTelegramUser);
 
       await testUtils.waitFor(100);
 
@@ -165,7 +165,7 @@ describe('LoginForm', () => {
 
       // Simulate successful authentication
       const mockTelegramUser = mockUser;
-      (window as any).onTelegramAuth(mockTelegramUser);
+      (window as unknown).onTelegramAuth(mockTelegramUser);
 
       await testUtils.waitFor(100);
 
@@ -212,7 +212,7 @@ describe('LoginForm', () => {
 
       // Simulate failed authentication
       const mockTelegramUser = mockUser;
-      (window as any).onTelegramAuth(mockTelegramUser);
+      (window as unknown).onTelegramAuth(mockTelegramUser);
 
       await testUtils.waitFor(100);
 

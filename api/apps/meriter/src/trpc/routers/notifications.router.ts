@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
-import { TRPCError } from '@trpc/server';
+import { _TRPCError } from '@trpc/server';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 
 export const notificationsRouter = router({
@@ -135,7 +135,7 @@ export const notificationsRouter = router({
    */
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ _ctx, _input }) => {
       // Since notifications are stored in DB, we could implement soft delete here
       // For now, this is a no-op as per original implementation
       return { message: 'Notification deleted' };
@@ -145,7 +145,7 @@ export const notificationsRouter = router({
    * Get notification preferences
    */
   getPreferences: protectedProcedure
-    .query(async ({ ctx }) => {
+    .query(async ({ _ctx }) => {
       // Return default preferences
       // Can be enhanced later to store in user_settings
       return {
@@ -174,7 +174,7 @@ export const notificationsRouter = router({
       polls: z.boolean().optional(),
       system: z.boolean().optional(),
     }))
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ _ctx, _input }) => {
       // For now, just return success without storing
       // Can be enhanced later to store in user_settings
       return { message: 'Preferences updated' };

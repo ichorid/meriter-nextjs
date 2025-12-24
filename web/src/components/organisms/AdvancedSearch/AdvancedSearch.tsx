@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Search, X, Filter, Calendar, User, Hash, Users } from 'lucide-react';
+import { Search, X, Filter, Calendar, _User, Hash, _Users } from 'lucide-react';
 import { Input } from '@/components/ui/shadcn/input';
 import {
     Select,
@@ -66,7 +66,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     if (saved) {
       try {
         setSearchHistory(JSON.parse(saved));
-      } catch (e) {
+      } catch {
         console.warn('Failed to load search history:', e);
       }
     }
@@ -351,4 +351,3 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     </div>
   );
 };
-

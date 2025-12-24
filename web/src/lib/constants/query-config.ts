@@ -33,7 +33,7 @@ export const DEFAULT_QUERY_OPTIONS = {
 // Retry configuration
 export const RETRY_CONFIG = {
     // Don't retry on 401 Unauthorized errors
-    shouldRetry: (failureCount: number, error: any) => {
+    shouldRetry: (failureCount: number, error: unknown) => {
         const errorStatus = error?.details?.status || error?.code;
         if (errorStatus === 401 || errorStatus === 'HTTP_401') {
             return false;

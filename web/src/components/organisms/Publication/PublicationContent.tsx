@@ -3,8 +3,8 @@
 import React, { useMemo, useState } from 'react';
 import { WithTelegramEntities } from '@shared/components/with-telegram-entities';
 import DOMPurify from 'dompurify';
-import { ImageLightbox } from '@shared/components/image-lightbox';
-import { ImageViewer } from '@/components/ui/ImageViewer/ImageViewer';
+import { _ImageLightbox } from '@shared/components/image-lightbox';
+import { _ImageViewer } from '@/components/ui/ImageViewer/ImageViewer';
 import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
 
 interface Publication {
@@ -33,7 +33,7 @@ interface Publication {
       telegramChatName?: string;
     };
     hashtagName?: string;
-    commentTgEntities?: any[];
+    commentTgEntities?: unknown[];
     comment?: string;
   };
   [key: string]: unknown;
@@ -48,11 +48,11 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
   publication,
   className = '',
 }) => {
-  const title = (publication as any).title;
-  const description = (publication as any).description;
-  const isProject = (publication as any).isProject;
-  const coverImageUrl = publication.imageUrl || (publication as any).imageUrl;
-  const galleryImages = (publication as any).images || [];
+  const title = (publication as unknown).title;
+  const description = (publication as unknown).description;
+  const isProject = (publication as unknown).isProject;
+  const coverImageUrl = publication.imageUrl || (publication as unknown).imageUrl;
+  const galleryImages = (publication as unknown).images || [];
   
   const [viewingImageIndex, setViewingImageIndex] = useState<number | null>(null);
   const content = typeof publication.meta?.comment === 'string'

@@ -17,7 +17,7 @@ export interface BatchQueryConfig<TData, TId = string> {
     // Optional: transform data before adding to map/array
     transformData?: (data: NonNullable<TData>, id: TId) => NonNullable<TData>;
     // Optional: filter which results to include in map/array
-    shouldInclude?: (data: TData | undefined, id: TId, query: any) => boolean;
+    shouldInclude?: (data: TData | undefined, id: TId, query: unknown) => boolean;
 }
 
 export interface BatchQueryResult<TData, TId = string> {
@@ -26,7 +26,7 @@ export interface BatchQueryResult<TData, TId = string> {
         error: Error | null;
         isLoading: boolean;
         isFetched: boolean;
-        [key: string]: any;
+        [key: string]: unknown;
     }>;
     dataMap: Map<TId, TData>;
     dataArray: TData[];
@@ -114,13 +114,13 @@ export function useBatchQueries<TData, TId = string>(
         }
     });
 
-    // Determine loading state: true if any query is loading and we have IDs
+    // Determine loading state: true if unknown query is loading and we have IDs
     const isLoading = ids.length > 0 && queries.some((query) => query.isLoading);
 
     // Determine if all queries are done (either success or error)
     const isFetched = queries.length === 0 || queries.every((query) => query.isFetched);
 
-    // Determine if any query has an error
+    // Determine if unknown query has an error
     const hasError = queries.some((query) => !!query.error);
 
     return {

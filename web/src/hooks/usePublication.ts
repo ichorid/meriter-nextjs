@@ -52,7 +52,7 @@ export function usePublication({
   const [activeCommentHook, setActiveCommentHook] = useState<string | null>(null);
 
   const voteOnPublicationMutation = useVoteOnPublication();
-  const voteOnVoteMutation = useVoteOnVote();
+  const _voteOnVoteMutation = useVoteOnVote();
   const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
   
   // Get quota for the publication's community
@@ -88,7 +88,7 @@ export function usePublication({
       if (updateAll) {
         updateAll();
       }
-    } catch (error) {
+    } catch {
       console.error('Vote error:', error);
     }
   }, [publication, voteOnPublicationMutation, updateWalletBalance, updateAll, queryClient, user, wallets]);
@@ -143,7 +143,7 @@ export function usePublication({
 
       // Close comment form
       setActiveCommentHook(null);
-    } catch (error: any) {
+    } catch {
       console.error('Comment error:', error);
       // Re-throw to allow component to display error
       throw error;
@@ -178,4 +178,3 @@ export function usePublication({
     isCommenting: voteOnPublicationWithCommentMutation.isPending,
   };
 }
-

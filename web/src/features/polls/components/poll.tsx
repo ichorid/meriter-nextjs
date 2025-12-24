@@ -8,8 +8,8 @@ interface IPollProps {
     tagRoot?: string;
     options: IPollOptions[];
     results?: IPollResults;
-    setResults?: (data: IPollResults) => any;
-    onChange?: (tagName: string, val: any) => any;
+    setResults?: (data: IPollResults) => unknown;
+    onChange?: (tagName: string, val: unknown) => unknown;
     folded?: boolean;
     onSubmit?: Function;
 }
@@ -20,13 +20,13 @@ interface IPollOptions {
     options?: IPollOptions[];
 }
 interface IPollResults {
-    [tagName: string]: any;
+    [tagName: string]: unknown;
 }
 
 interface CheckboxProps {
     tagName: string;
-    h: any;
-    d: any;
+    h: unknown;
+    d: unknown;
     selectItem: (tagName: string, checked: boolean) => void;
 }
 

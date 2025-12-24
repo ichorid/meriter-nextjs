@@ -1,6 +1,6 @@
 import { Publication } from '../../../domain/aggregates/publication/publication.entity';
-import { UserEnrichmentService } from '../services/user-enrichment.service';
-import { CommunityEnrichmentService } from '../services/community-enrichment.service';
+import { _UserEnrichmentService } from '../services/user-enrichment.service';
+import { _CommunityEnrichmentService } from '../services/community-enrichment.service';
 import { UserFormatter } from '../utils/user-formatter.util';
 
 /**

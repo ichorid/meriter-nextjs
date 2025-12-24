@@ -1,11 +1,11 @@
 'use client';
 
-import { type PropsWithChildren, useState, useEffect } from 'react';
+import { type PropsWithChildren, _useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { usePathname } from 'next/navigation';
+import { _usePathname } from 'next/navigation';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { ErrorPage } from '@/components/ErrorPage';
+import { _ErrorPage } from '@/components/ErrorPage';
 import { useDidMount } from '@/hooks/useDidMount';
 import { ThemeProvider } from '@/shared/lib/theme-provider';
 import { setGlobalToastHandler } from '@/providers/QueryProvider';

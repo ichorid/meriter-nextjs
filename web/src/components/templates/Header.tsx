@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
+import { _usePathname } from 'next/navigation';
 import { Bell, Menu, Moon, Sun } from 'lucide-react';
 import Link from 'next/link';
 import { useTheme } from '@/shared/lib/theme-provider';
@@ -107,4 +107,3 @@ export function Header({
         </div>
     );
 }
-

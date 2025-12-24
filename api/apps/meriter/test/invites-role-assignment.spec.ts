@@ -40,11 +40,11 @@ describe('Invites - New Role Assignment Logic', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let inviteService: InviteService;
+  let _inviteService: InviteService;
   let communityService: CommunityService;
   let userService: UserService;
   let userCommunityRoleService: UserCommunityRoleService;
-  let walletService: WalletService;
+  let _walletService: WalletService;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -521,4 +521,3 @@ describe('Invites - New Role Assignment Logic', () => {
     });
   });
 });
-

@@ -1,7 +1,7 @@
 // Invites React Query hooks - migrated to tRPC
 import { trpc } from "@/lib/trpc/client";
-import type { Invite } from "@/types/api-v1";
-import { queryKeys } from "@/lib/constants/queryKeys";
+import type { _Invite } from "@/types/api-v1";
+import { _queryKeys } from "@/lib/constants/queryKeys";
 
 export function useInvites() {
     return trpc.invites.getAll.useQuery(undefined);

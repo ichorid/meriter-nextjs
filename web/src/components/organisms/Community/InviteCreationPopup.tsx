@@ -24,7 +24,7 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
     communityId,
 }, ref) => {
     const t = useTranslations('profile.invites');
-    const tInvites = useTranslations('invites.create');
+    const _tInvites = useTranslations('invites.create');
     const { user } = useAuth();
 
     const { data: userRoles = [] } = useUserRoles(user?.id || '');
@@ -116,7 +116,7 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
         communityId?: string;
         expiresAt?: string;
     }) => {
-        const inviteData: any = {
+        const inviteData: unknown = {
             type: data.type,
             ...(data.communityId || (!isSuperadmin && selectedCommunityId) ? { communityId: data.communityId || selectedCommunityId } : {}),
             expiresAt: data.expiresAt,

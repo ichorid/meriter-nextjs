@@ -8,14 +8,14 @@ export enum iDimensionCatEnum {
 
 export interface DimensionProto {
     enum: string[];
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface iDimensionTags {
     dimensions: {
         [dimensionSlug: string]: DimensionProto;
     };
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface iDimensionConfig {

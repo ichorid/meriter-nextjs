@@ -97,7 +97,7 @@ export function detectTelegramEnvironment(): TelegramDetectionResult {
         }
       };
     }
-  } catch (e) {
+  } catch {
     // Ignore
   }
 
@@ -106,23 +106,23 @@ export function detectTelegramEnvironment(): TelegramDetectionResult {
     const urlParams = new URLSearchParams(window.location.search);
     signals.hasTgWebAppData = urlParams.has('tgWebAppData');
     signals.hasTgWebAppStartParam = urlParams.has('tgWebAppStartParam');
-  } catch (e) {
+  } catch {
     // Ignore
   }
 
   // Check user agent
   try {
-    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    const userAgent = navigator.userAgent || navigator.vendor || (window as unknown).opera;
     signals.hasTelegramUserAgent = /Telegram/i.test(userAgent);
-  } catch (e) {
+  } catch {
     // Ignore
   }
 
   // Check for Telegram WebApp object
   try {
-    signals.hasTelegramObject = typeof (window as any).Telegram !== 'undefined' && 
-                                  typeof (window as any).Telegram?.WebApp !== 'undefined';
-  } catch (e) {
+    signals.hasTelegramObject = typeof (window as unknown).Telegram !== 'undefined' && 
+                                  typeof (window as unknown).Telegram?.WebApp !== 'undefined';
+  } catch {
     // Ignore
   }
 

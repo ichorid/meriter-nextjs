@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, memo } from "react";
+import { useState, _useMemo, useCallback, memo } from "react";
 import { etv } from '@shared/lib/input-utils';
 import { Slider, SliderTrack, SliderFilledTrack, SliderThumb } from '@/components/ui/slider';
 import { classList } from '@lib/classList';
@@ -162,4 +162,3 @@ export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = memo(({
 });
 
 FormWithdrawVertical.displayName = 'FormWithdrawVertical';
-

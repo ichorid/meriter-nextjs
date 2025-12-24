@@ -144,7 +144,7 @@ export function useVoteOnPublicationWithComment() {
 // Withdraw from publication
 export function useWithdrawFromPublication() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { _user } = useAuth();
   const withdrawMutation = trpc.publications.withdraw.useMutation({
     onSuccess: (_, variables) => {
       invalidatePublications(queryClient, { 
@@ -156,7 +156,7 @@ export function useWithdrawFromPublication() {
       invalidateCommunities(queryClient, { lists: true, exact: false });
       invalidateWallet(queryClient, { includeBalance: true });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const errorMessage = extractErrorMessage(error, 'Unknown error');
       const errorCode = error?.data?.code || 'UNKNOWN';
       
@@ -175,13 +175,13 @@ export function useWithdrawFromPublication() {
 // Withdraw from vote
 export function useWithdrawFromVote() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { _user } = useAuth();
   const withdrawMutation = trpc.votes.withdrawFromVote.useMutation({
     onSuccess: () => {
       invalidateComments(queryClient, { lists: true, exact: false });
       invalidateWallet(queryClient, { includeBalance: true });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const errorMessage = extractErrorMessage(error, 'Unknown error');
       const errorCode = error?.data?.code || 'UNKNOWN';
       

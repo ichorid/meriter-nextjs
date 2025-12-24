@@ -13,7 +13,7 @@ export function useClipboard(timeout: number = 2000) {
       }
       
       return true;
-    } catch (error) {
+    } catch {
       console.error('Failed to copy to clipboard:', error);
       return false;
     }

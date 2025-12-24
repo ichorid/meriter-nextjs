@@ -19,13 +19,13 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
 
   // Check if user is Representative (lead) or Member (participant)
-  const isRepresentativeOrMember = useMemo(() => {
+  const _isRepresentativeOrMember = useMemo(() => {
     if (!user) return false;
     if (user.globalRole === 'superadmin') return true; // Organizer
     return userRoles.some(role => role.role === 'lead' || role.role === 'participant');
   }, [user, userRoles]);
 
-  const showContacts = useMemo(() => {
+  const _showContacts = useMemo(() => {
     return user?.globalRole === 'superadmin' || userRoles.some(r => r.role === 'lead');
   }, [user, userRoles]);
 
@@ -63,7 +63,7 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
       });
       addToast(t('saved'), 'success');
       onSuccess?.();
-    } catch (error) {
+    } catch {
       console.error('Failed to update profile:', error);
       addToast(t('error'), 'error');
     }

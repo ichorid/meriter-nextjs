@@ -17,7 +17,7 @@ interface BreadcrumbsProps {
 }
 
 export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
-  pathname,
+  _pathname,
   chatId,
   tag,
   chatNameVerb,

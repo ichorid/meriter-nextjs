@@ -46,7 +46,7 @@ export function InviteGeneration() {
     return userRoles.some(r => r.role === 'lead') || leadCommunities.length > 0;
   }, [userRoles, leadCommunities]);
   
-  // Check if user has any lead role (either from userRoles or leadCommunities)
+  // Check if user has unknown lead role (either from userRoles or leadCommunities)
   const hasLeadRole = useMemo(() => {
     return isSuperadmin || isLead;
   }, [isSuperadmin, isLead]);
@@ -90,7 +90,7 @@ export function InviteGeneration() {
         ? new Date(Date.now() + inviteExpiresInDays * 24 * 60 * 60 * 1000).toISOString()
         : undefined;
 
-      const inviteData: any = {
+      const inviteData: unknown = {
         type: inviteType,
         ...(selectedCommunityId && { communityId: selectedCommunityId }), // Only include communityId if provided (for leads)
         expiresAt,
@@ -102,7 +102,7 @@ export function InviteGeneration() {
       // Reset form
       setInviteExpiresInDays(30);
       addToast(t('inviteGenerated'), 'success');
-    } catch (error) {
+    } catch {
       console.error('Failed to create invite:', error);
       addToast(t('inviteError'), 'error');
     }

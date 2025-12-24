@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Header } from './Header';
-import { SuspenseContent } from './SuspenseContent';
+import { _SuspenseContent } from './SuspenseContent';
 
 export interface PageContentProps {
     children: React.ReactNode;
@@ -51,4 +51,3 @@ export function PageContent({
         </div>
     );
 }
-

@@ -13,13 +13,13 @@ export function usePublicationNavigation({
   slug,
   communityId,
   isDetailPage,
-  myId,
-  authorId,
+  _myId,
+  _authorId,
 }: UsePublicationNavigationProps) {
   const router = useRouter();
   
   // Create unique post ID
-  const postId = slug;
+  const _postId = slug;
   
   // Navigate to post detail page
   const navigateToDetail = () => {

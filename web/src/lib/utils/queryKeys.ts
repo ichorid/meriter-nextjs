@@ -43,7 +43,7 @@ function serializeValue(value: unknown): string {
  * serializeQueryParams({ pageSize: 5, sort: 'score' }) === serializeQueryParams({ sort: 'score', pageSize: 5 })
  * // true
  */
-export function serializeQueryParams(params: Record<string, any> | undefined | null): string {
+export function serializeQueryParams(params: Record<string, unknown> | undefined | null): string {
   if (!params || Object.keys(params).length === 0) {
     return '';
   }

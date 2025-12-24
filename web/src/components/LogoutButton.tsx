@@ -28,7 +28,7 @@ export function LogoutButton() {
       await logoutMutation.mutateAsync();
       clearAuthStorage();
       redirectToLogin();
-    } catch (error: unknown) {
+    } catch {
       console.error('Logout failed:', error);
       // Still clear everything and redirect on error
       clearAuthStorage();

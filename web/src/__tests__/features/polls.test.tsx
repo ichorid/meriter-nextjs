@@ -5,7 +5,7 @@ import { Poll } from '@features/polls/components/poll';
 
 // Mock the simple elements
 jest.mock('@shared/components/simple/simple-elements', () => ({
-    A: ({ children, onClick }: any) => <a onClick={onClick}>{children}</a>
+    A: ({ children, onClick }: unknown) => <a onClick={onClick}>{children}</a>
 }));
 
 describe('Polls Feature', () => {

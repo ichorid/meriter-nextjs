@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreatePublicationDtoSchema, UpdatePublicationDtoSchema, PaginationParamsSchema } from '@meriter/shared-types';
+import { CreatePublicationDtoSchema, UpdatePublicationDtoSchema, _PaginationParamsSchema } from '@meriter/shared-types';
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
-import { PaginationHelper } from '../../common/helpers/pagination.helper';
-import { ValidationError } from '../../common/exceptions/api.exceptions';
-import { ForbiddenException } from '@nestjs/common';
+import { _PaginationHelper } from '../../common/helpers/pagination.helper';
+import { _ValidationError } from '../../common/exceptions/api.exceptions';
+import { _ForbiddenException } from '@nestjs/common';
 
 /**
  * Helper to calculate remaining quota for a user in a community
@@ -150,7 +150,7 @@ export const publicationsRouter = router({
           'publication_withdrawal',
           input.id,
         );
-      } catch (err) {
+      } catch {
         // Log but don't fail
       }
       mappedPublication.withdrawals = {
@@ -192,7 +192,6 @@ export const publicationsRouter = router({
       }
 
       let publications: any[];
-      let mappedPublications: any[];
 
       if (query.communityId) {
         publications = await ctx.publicationService.getPublicationsByCommunity(
@@ -237,7 +236,7 @@ export const publicationsRouter = router({
       ]);
 
       // Convert domain entities to DTOs with enriched user metadata
-      mappedPublications = publications.map((publication) =>
+      const mappedPublications = publications.map((publication) =>
         EntityMappers.mapPublicationToApi(
           publication,
           usersMap,
@@ -263,7 +262,7 @@ export const publicationsRouter = router({
                 id,
               );
               return { id, totalWithdrawn };
-            } catch (err) {
+            } catch {
               return { id, totalWithdrawn: 0 };
             }
           }),
@@ -271,7 +270,7 @@ export const publicationsRouter = router({
         withdrawals.forEach(({ id, totalWithdrawn }) => {
           withdrawalsMap.set(id, totalWithdrawn);
         });
-      } catch (err) {
+      } catch {
         // Log but don't fail
       }
 
@@ -382,7 +381,7 @@ export const publicationsRouter = router({
               'publication_creation',
               publicationId,
             );
-          } catch (error) {
+          } catch {
             // Don't fail the request if quota consumption fails - publication is already created
           }
         }
@@ -407,7 +406,7 @@ export const publicationsRouter = router({
               currency,
               `Payment for creating publication`,
             );
-          } catch (error) {
+          } catch {
             // Don't fail the request if wallet deduction fails - publication is already created
           }
         }
@@ -529,7 +528,7 @@ export const publicationsRouter = router({
         }
       } else {
         // Get or create a test community
-        let communities = await ctx.communityService.getAllCommunities(1, 0);
+        const communities = await ctx.communityService.getAllCommunities(1, 0);
         if (communities.length === 0) {
           const testCommunity = await ctx.communityService.createCommunity({
             name: 'Test Community',
@@ -619,7 +618,7 @@ export const publicationsRouter = router({
               },
             );
             createdPublications.push(publication);
-          } catch (error) {
+          } catch {
             // Continue on error
           }
         }

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { forwardRef, Inject } from '@nestjs/common';
 import { ActionType } from '../common/constants/action-types.constants';
-import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
+import { GLOBAL_ROLE_SUPERADMIN, _COMMUNITY_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 import { PermissionRule, PermissionContext, Community } from '../models/community/community.schema';
 import { UserService } from './user.service';
 import { CommunityService } from './community.service';
@@ -452,4 +452,3 @@ export class PermissionRuleEngine {
     return true;
   }
 }
-

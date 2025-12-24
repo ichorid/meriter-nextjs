@@ -7,19 +7,19 @@ export interface ApiClientConfig {
 }
 
 export interface RequestInterceptor {
-  onFulfilled?: (config: any) => any;
-  onRejected?: (error: any) => any;
+  onFulfilled?: (config: unknown) => unknown;
+  onRejected?: (error: unknown) => unknown;
 }
 
 export interface ResponseInterceptor {
-  onFulfilled?: (response: any) => any;
-  onRejected?: (error: any) => any;
+  onFulfilled?: (response: unknown) => unknown;
+  onRejected?: (error: unknown) => unknown;
 }
 
 export interface RetryConfig {
   retries: number;
   retryDelay: number;
-  retryCondition?: (error: any) => boolean;
+  retryCondition?: (error: unknown) => boolean;
 }
 
 export interface CacheConfig {

@@ -16,7 +16,7 @@ export function setGlobalToastHandler(handler: (message: string, type: 'error' |
   globalToastHandler = handler;
 }
 
-function handleQueryError(error: any, isMutation = false) {
+function handleQueryError(error: unknown, isMutation = false) {
   // Don't show toast for 401 errors - they are handled in AuthContext
   // Handle both REST API errors and tRPC errors
   const errorStatus = error?.data?.httpStatus || error?.details?.status || error?.code;
@@ -58,7 +58,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             // Time before unused data is garbage collected
             gcTime: 5 * 60 * 1000, // 5 minutes (was cacheTime)
             // Retry failed requests, but not for 401 errors
-            retry: (failureCount, error: any) => {
+            retry: (failureCount, error: unknown) => {
               // Don't retry on 401 Unauthorized errors
               const errorStatus = error?.data?.httpStatus || error?.details?.status || error?.code;
               if (errorStatus === 401 || errorStatus === 'HTTP_401' || errorStatus === 'UNAUTHORIZED') {
@@ -71,7 +71,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             // Refetch on reconnect, but not for queries that failed with 401
             refetchOnReconnect: (query) => {
               // Don't refetch if last error was 401
-              const lastError = query.state.error as any;
+              const lastError = query.state.error as unknown;
               const errorStatus = lastError?.data?.httpStatus || lastError?.details?.status || lastError?.code;
               if (errorStatus === 401 || errorStatus === 'HTTP_401' || errorStatus === 'UNAUTHORIZED') {
                 return false;
@@ -83,7 +83,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
           },
           mutations: {
             // Retry failed mutations, but not for 401 errors
-            retry: (failureCount, error: any) => {
+            retry: (failureCount, error: unknown) => {
               // Don't retry on 401 Unauthorized errors
               const errorStatus = error?.data?.httpStatus || error?.details?.status || error?.code;
               if (errorStatus === 401 || errorStatus === 'HTTP_401' || errorStatus === 'UNAUTHORIZED') {
@@ -92,7 +92,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
               return failureCount < 1;
             },
             // Global error handler for mutations - show toast automatically
-            onError: (error: any) => handleQueryError(error, true),
+            onError: (error: unknown) => handleQueryError(error, true),
           },
         },
       })

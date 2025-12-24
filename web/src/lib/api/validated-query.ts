@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useInfiniteQuery, UseQueryOptions, UseMutationOptions, UseInfiniteQueryOptions } from '@tanstack/react-query';
-import { z, ZodTypeAny } from 'zod';
+import { useQuery, useMutation, useInfiniteQuery, _UseQueryOptions, UseMutationOptions, _UseInfiniteQueryOptions } from '@tanstack/react-query';
+import { _z, ZodTypeAny } from 'zod';
 import { validateData, validateApiResponse, validatePaginatedResponse, ValidationError } from './validation';
 
 /**
@@ -18,7 +18,7 @@ export function useValidatedQuery<TError = Error>(
     refetchOnWindowFocus?: boolean;
     retry?: boolean | number;
   }
-): ReturnType<typeof useQuery<any, TError>> {
+): ReturnType<typeof useQuery<unknown, TError>> {
   const { queryFn, schema, context, enabled, staleTime, gcTime, refetchOnWindowFocus, retry } = options;
 
   return useQuery({
@@ -32,7 +32,7 @@ export function useValidatedQuery<TError = Error>(
       try {
         const response = await queryFn();
         return validateApiResponse(schema, response, context);
-      } catch (error) {
+      } catch {
         if (error instanceof ValidationError) {
           console.error('Validation error:', error.zodError, error.context);
           throw error;
@@ -40,7 +40,7 @@ export function useValidatedQuery<TError = Error>(
         throw error;
       }
     },
-  }) as any;
+  }) as unknown;
 }
 
 /**
@@ -48,18 +48,18 @@ export function useValidatedQuery<TError = Error>(
  * Avoids deep type instantiation by accepting schemas as ZodTypeAny without generics
  */
 export function useValidatedMutation<TError = Error>(
-  options: Omit<UseMutationOptions<any, TError, any>, 'mutationFn'> & {
-    mutationFn: (variables: any) => Promise<unknown>;
+  options: Omit<UseMutationOptions<unknown, TError, unknown>, 'mutationFn'> & {
+    mutationFn: (variables: unknown) => Promise<unknown>;
     inputSchema?: ZodTypeAny;
     outputSchema: ZodTypeAny;
     context?: string;
   }
-): ReturnType<typeof useMutation<any, TError, any>> {
+): ReturnType<typeof useMutation<unknown, TError, unknown>> {
   const { mutationFn, inputSchema, outputSchema, context, ...mutationOptions } = options;
 
   return useMutation({
     ...mutationOptions,
-    mutationFn: async (variables: any) => {
+    mutationFn: async (variables: unknown) => {
       try {
         // Validate input if schema provided
         const validatedInput = inputSchema ? validateData(inputSchema, variables, `${context || 'mutation'}.input`) : variables;
@@ -69,7 +69,7 @@ export function useValidatedMutation<TError = Error>(
         
         // Validate output
         return validateApiResponse(outputSchema, response, `${context || 'mutation'}.output`);
-      } catch (error) {
+      } catch {
         if (error instanceof ValidationError) {
           console.error('Validation error:', error.zodError, error.context);
           throw error;
@@ -87,7 +87,7 @@ export function useValidatedMutation<TError = Error>(
 export function useValidatedInfiniteQuery<TError = Error>(
   options: {
     queryKey: readonly unknown[];
-    queryFn: (pageParam: any) => Promise<unknown>;
+    queryFn: (pageParam: unknown) => Promise<unknown>;
     schema: ZodTypeAny;
     context?: string;
     enabled?: boolean;
@@ -95,10 +95,10 @@ export function useValidatedInfiniteQuery<TError = Error>(
     gcTime?: number;
     refetchOnWindowFocus?: boolean;
     retry?: boolean | number;
-    getNextPageParam: (lastPage: any, allPages: any[]) => number | undefined;
+    getNextPageParam: (lastPage: unknown, allPages: unknown[]) => number | undefined;
     initialPageParam: number;
   }
-): ReturnType<typeof useInfiniteQuery<any, TError>> {
+): ReturnType<typeof useInfiniteQuery<unknown, TError>> {
   const { queryFn, schema, context, enabled, staleTime, gcTime, refetchOnWindowFocus, retry, getNextPageParam, initialPageParam } = options;
 
   return useInfiniteQuery({
@@ -116,7 +116,7 @@ export function useValidatedInfiniteQuery<TError = Error>(
         // For infinite queries, we expect paginated responses
         const validated = validatePaginatedResponse(schema, response, context);
         return validated.data;
-      } catch (error) {
+      } catch {
         if (error instanceof ValidationError) {
           console.error('Validation error:', error.zodError, error.context);
           throw error;
@@ -124,6 +124,5 @@ export function useValidatedInfiniteQuery<TError = Error>(
         throw error;
       }
     },
-  }) as any;
+  }) as unknown;
 }
-

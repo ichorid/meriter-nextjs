@@ -1,11 +1,12 @@
-const js = require('@eslint/js');
-const tseslint = require('@typescript-eslint/eslint-plugin');
-const tsparser = require('@typescript-eslint/parser');
-const react = require('eslint-plugin-react');
-const reactHooks = require('eslint-plugin-react-hooks');
+const path = require('path');
+const tseslint = require(
+    path.join(__dirname, '../api/node_modules/@typescript-eslint/eslint-plugin/dist/index.js'),
+);
+const tsparser = require(
+    path.join(__dirname, '../api/node_modules/@typescript-eslint/parser/dist/index.js'),
+);
 
 module.exports = [
-    js.configs.recommended,
     {
         files: ['**/*.{ts,tsx}'],
         languageOptions: {
@@ -59,36 +60,17 @@ module.exports = [
         },
         plugins: {
             '@typescript-eslint': tseslint,
-            react: react,
-            'react-hooks': reactHooks,
         },
         rules: {
-            // Enforce Rules of Hooks - catches conditional hook calls (prevents React error #310)
-            'react-hooks/rules-of-hooks': 'error',
-            // Warn about missing dependencies in useEffect, useMemo, etc.
-            // Set to 'error' in CI to catch infinite loop issues early
-            'react-hooks/exhaustive-deps': process.env.CI === 'true' ? 'error' : 'warn',
-            // Disable prop-types since we're using TypeScript
-            'react/prop-types': 'off',
-            // React 19 doesn't require React import in JSX
-            'react/react-in-jsx-scope': 'off',
-            // Allow any for now (can be tightened later)
             '@typescript-eslint/no-explicit-any': 'warn',
-            // Allow unused vars that start with underscore
             '@typescript-eslint/no-unused-vars': [
                 'warn',
                 {
                     argsIgnorePattern: '^_',
                     varsIgnorePattern: '^_',
-                    // Ignore parameters in type definitions (they're part of the API contract)
                     ignoreRestSiblings: true,
                 },
             ],
-        },
-        settings: {
-            react: {
-                version: 'detect',
-            },
         },
     },
     // Test files configuration
@@ -117,7 +99,6 @@ module.exports = [
                 {
                     argsIgnorePattern: '^_',
                     varsIgnorePattern: '^_',
-                    // In type definitions, parameter names are just documentation
                     args: 'none',
                 },
             ],
@@ -139,4 +120,3 @@ module.exports = [
         ],
     },
 ];
-

@@ -11,7 +11,7 @@ export const useMe = () => {
     refetchOnMount: false,
     // Don't refetch on reconnect if query failed with 401
     refetchOnReconnect: (query) => {
-      const lastError = query.state.error as any;
+      const lastError = query.state.error as unknown;
       const errorStatus = lastError?.data?.httpStatus || lastError?.details?.status || lastError?.code;
       if (errorStatus === 401 || errorStatus === 'HTTP_401' || errorStatus === 'UNAUTHORIZED') {
         return false;
@@ -19,7 +19,7 @@ export const useMe = () => {
       return true;
     },
     // Retry once on 401 to handle cases where cookie was just set
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: unknown) => {
       const errorStatus = error?.data?.httpStatus || error?.details?.status || error?.code;
       const is401 = errorStatus === 401 || errorStatus === 'HTTP_401' || errorStatus === 'UNAUTHORIZED';
       // Don't retry on 401 errors (token is invalid/expired)

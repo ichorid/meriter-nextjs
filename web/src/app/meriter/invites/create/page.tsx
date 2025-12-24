@@ -24,7 +24,7 @@ import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { cn } from '@/lib/utils';
 
 export default function CreateInvitePage() {
-  const router = useRouter();
+  const _router = useRouter();
   const t = useTranslations('invites.create');
   const { user } = useAuth();
 
@@ -64,7 +64,7 @@ export default function CreateInvitePage() {
 
     for (const communityId of selectedCommunities) {
       try {
-        const inviteData: any = {
+        const inviteData: unknown = {
           type: inviteType,
           communityId,
           expiresAt,
@@ -72,7 +72,7 @@ export default function CreateInvitePage() {
 
         const invite = await createInvite.mutateAsync(inviteData);
         invites.push({ code: invite.code, communityId });
-      } catch (error) {
+      } catch {
         console.error(`Failed to create invite for community ${communityId}:`, error);
       }
     }
@@ -103,7 +103,7 @@ export default function CreateInvitePage() {
             <BrandFormControl label={t('inviteType')}>
               <Select
                 value={inviteType}
-                onValueChange={(value) => setInviteType(value as any)}
+                onValueChange={(value) => setInviteType(value as unknown)}
               >
                 <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
                   <SelectValue />

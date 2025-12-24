@@ -8,12 +8,12 @@ export interface ApiError {
   timestamp: string;
   details?: {
     status?: number;
-    data?: any;
+    data?: unknown;
     url?: string;
   };
 }
 
-interface ApiErrorResponse {
+interface _ApiErrorResponse {
   success: false;
   error: string;
   code?: string;
@@ -147,7 +147,7 @@ export function transformAxiosError(error: AxiosError): AppError {
     if (data && typeof data === 'object') {
       // Check for standardized API error format
       if ('error' in data && data.error && typeof data.error === 'object') {
-        const errObj: any = (data as any).error;
+        const errObj: unknown = (data as unknown).error;
         if (typeof errObj.message === 'string' && errObj.message.trim().length > 0) {
           message = errObj.message;
         }
@@ -155,10 +155,10 @@ export function transformAxiosError(error: AxiosError): AppError {
         if (
           details &&
           typeof details === 'object' &&
-          Array.isArray((details as any).errors)
+          Array.isArray((details as unknown).errors)
         ) {
-          validationMessages = (details as any).errors
-            .map((e: any) => {
+          validationMessages = (details as unknown).errors
+            .map((e: unknown) => {
               const path = Array.isArray(e?.path) ? e.path.join('.') : e?.path;
               const msg = e?.message ?? 'Invalid value';
               return path ? `${path}: ${msg}` : msg;
@@ -169,8 +169,8 @@ export function transformAxiosError(error: AxiosError): AppError {
             message = validationMessages[0] ?? message;
           }
         }
-      } else if ('message' in data && typeof (data as any).message === 'string') {
-        message = (data as any).message;
+      } else if ('message' in data && typeof (data as unknown).message === 'string') {
+        message = (data as unknown).message;
       }
     }
     

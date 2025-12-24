@@ -14,7 +14,7 @@ export function useMarathonOfGoodQuota() {
 
   // Filter communities by typeTag === 'marathon-of-good'
   const marathonCommunities = useMemo(() => {
-    return communities.filter((c: any) => c?.typeTag === 'marathon-of-good');
+    return communities.filter((c: unknown) => c?.typeTag === 'marathon-of-good');
   }, [communities]);
 
   // Calculate remaining and max quota
@@ -22,7 +22,7 @@ export function useMarathonOfGoodQuota() {
     let remainingTotal = 0;
     let maxTotal = 0;
 
-    marathonCommunities.forEach((community: any) => {
+    marathonCommunities.forEach((community: unknown) => {
       const quota = quotasMap.get(community.id);
       if (quota) {
         remainingTotal += quota.remainingToday || 0;

@@ -6,7 +6,7 @@ import type { Wallet } from './useWallet';
 
 export interface OptimisticUpdateContext {
   quotaKey?: readonly unknown[];
-  previousQuota?: any;
+  previousQuota?: unknown;
   walletsKey?: readonly unknown[];
   balanceKey?: readonly unknown[];
   previousWallets?: Wallet[];
@@ -21,17 +21,17 @@ export async function updateQuotaOptimistically(
   userId: string,
   communityId: string,
   amount: number
-): Promise<{ quotaKey: readonly unknown[]; previousQuota: any } | null> {
+): Promise<{ quotaKey: readonly unknown[]; previousQuota: unknown } | null> {
   const quotaKey = ['quota', userId, communityId];
   await queryClient.cancelQueries({ queryKey: quotaKey });
-  const previousQuota = queryClient.getQueryData<any>(quotaKey);
+  const previousQuota = queryClient.getQueryData<unknown>(quotaKey);
   
   if (!previousQuota) {
     return null;
   }
   
   const delta = Math.abs(amount || 0);
-  let next: any = previousQuota;
+  let next: unknown = previousQuota;
   
   if (typeof previousQuota === 'object') {
     if (Object.prototype.hasOwnProperty.call(previousQuota, 'remainingToday')) {

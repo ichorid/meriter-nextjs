@@ -9,7 +9,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/shadcn/select';
-import { Label } from '@/components/ui/shadcn/label';
+import { _Label } from '@/components/ui/shadcn/label';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { cn } from '@/lib/utils';
 
@@ -33,7 +33,7 @@ export function LanguageSelector() {
 
             // Reload page to get server-side rendering with new language
             window.location.reload();
-        } catch (error) {
+        } catch {
             console.error('Failed to set locale:', error);
         }
     };

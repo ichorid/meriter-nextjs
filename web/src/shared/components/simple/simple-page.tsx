@@ -12,9 +12,9 @@ interface SimplePageProps {
 
 export const SimplePage = ({ children, coverImageUrl, blur, className }: SimplePageProps) => {
     useEffect(() => {
-        const sc = (e: Event) => {
+        const sc = (_e: Event) => {
             //   const r = Math.max(0, 1 - window.scrollY / 500)
-            //     ;(document.querySelector('.simple-page-cover') as any).style.opacity = r
+            //     ;(document.querySelector('.simple-page-cover') as unknown).style.opacity = r
         }
         document.addEventListener('scroll', sc)
         return () => document.removeEventListener('scroll', sc)

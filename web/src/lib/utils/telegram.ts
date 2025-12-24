@@ -47,7 +47,7 @@ export function createCommunityDeepLink(botUsername: string, communityId: string
 
 export function isTelegramWebApp(): boolean {
   if (typeof window === 'undefined') return false;
-  return !!(window as any).Telegram?.WebApp;
+  return !!(window as unknown).Telegram?.WebApp;
 }
 
 // Avatar utilities

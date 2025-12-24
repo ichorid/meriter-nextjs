@@ -19,7 +19,7 @@ export const queryKeys = {
             [...queryKeys.users.all, "profile", userId] as const,
         updatesFrequency: () =>
             [...queryKeys.users.all, "updates-frequency"] as const,
-        updates: (userId: string, params?: Record<string, any>) =>
+        updates: (userId: string, params?: Record<string, unknown>) =>
             [
                 ...queryKeys.users.all,
                 "updates",
@@ -32,7 +32,7 @@ export const queryKeys = {
     publications: {
         all: ["publications"] as const,
         lists: () => [...queryKeys.publications.all, "list"] as const,
-        list: (params: Record<string, any>) =>
+        list: (params: Record<string, unknown>) =>
             [
                 ...queryKeys.publications.lists(),
                 serializeQueryParams(params),
@@ -41,7 +41,7 @@ export const queryKeys = {
         detail: (id: string) =>
             [...queryKeys.publications.details(), id] as const,
         my: () => [...queryKeys.publications.all, "my"] as const,
-        myPublications: (params: Record<string, any>) =>
+        myPublications: (params: Record<string, unknown>) =>
             [
                 ...queryKeys.publications.my(),
                 serializeQueryParams(params),
@@ -63,7 +63,7 @@ export const queryKeys = {
     comments: {
         all: ["comments"] as const,
         lists: () => [...queryKeys.comments.all, "list"] as const,
-        list: (params: Record<string, any>) =>
+        list: (params: Record<string, unknown>) =>
             [...queryKeys.comments.lists(), serializeQueryParams(params)] as const,
         details: () => [...queryKeys.comments.all, "detail"] as const,
         detail: (id: string) => [...queryKeys.comments.details(), id] as const,
@@ -75,7 +75,7 @@ export const queryKeys = {
             [...queryKeys.comments.all, "comment", commentId] as const,
         my: (userId: string) =>
             [...queryKeys.comments.all, "my", userId] as const,
-        myComments: (userId: string, params: Record<string, any>) =>
+        myComments: (userId: string, params: Record<string, unknown>) =>
             [
                 ...queryKeys.comments.my(userId),
                 serializeQueryParams(params),
@@ -86,7 +86,7 @@ export const queryKeys = {
     communities: {
         all: ["communities"] as const,
         lists: () => [...queryKeys.communities.all, "list"] as const,
-        list: (params: Record<string, any>) =>
+        list: (params: Record<string, unknown>) =>
             [
                 ...queryKeys.communities.lists(),
                 serializeQueryParams(params),
@@ -109,7 +109,7 @@ export const queryKeys = {
     polls: {
         all: ["polls"] as const,
         lists: () => [...queryKeys.polls.all, "list"] as const,
-        list: (params: Record<string, any>) =>
+        list: (params: Record<string, unknown>) =>
             [...queryKeys.polls.lists(), serializeQueryParams(params)] as const,
         details: () => [...queryKeys.polls.all, "detail"] as const,
         detail: (id: string) => [...queryKeys.polls.details(), id] as const,
@@ -126,12 +126,12 @@ export const queryKeys = {
         freeBalance: (communityId?: string) =>
             [...queryKeys.wallet.all, "freeBalance", communityId] as const,
         transactions: () => [...queryKeys.wallet.all, "transactions"] as const,
-        transactionsList: (params: Record<string, any>) =>
+        transactionsList: (params: Record<string, unknown>) =>
             [
                 ...queryKeys.wallet.transactions(),
                 serializeQueryParams(params),
             ] as const,
-        myTransactions: (params: Record<string, any>) =>
+        myTransactions: (params: Record<string, unknown>) =>
             [
                 ...queryKeys.wallet.all,
                 "myTransactions",
@@ -150,7 +150,7 @@ export const queryKeys = {
     // Search
     search: {
         all: ["search"] as const,
-        query: (params: Record<string, any>) =>
+        query: (params: Record<string, unknown>) =>
             [...queryKeys.search.all, serializeQueryParams(params)] as const,
     },
 
@@ -158,7 +158,7 @@ export const queryKeys = {
     notifications: {
         all: ["notifications"] as const,
         lists: () => [...queryKeys.notifications.all, "list"] as const,
-        list: (params: Record<string, any>) =>
+        list: (params: Record<string, unknown>) =>
             [
                 ...queryKeys.notifications.lists(),
                 serializeQueryParams(params),

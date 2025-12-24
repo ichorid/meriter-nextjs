@@ -1,35 +1,35 @@
 'use client';
 
 import { useState } from 'react';
-import { classList } from '@lib/classList';
+import { _classList } from '@lib/classList';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { CommunityAvatar } from '@shared/components/community-avatar';
 import { useRouter } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
-import { ImageLightbox } from '@shared/components/image-lightbox';
-import { ImageViewer } from '@/components/ui/ImageViewer/ImageViewer';
+import { _ImageLightbox } from '@shared/components/image-lightbox';
+import { _ImageViewer } from '@/components/ui/ImageViewer/ImageViewer';
 import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
 
 interface CardPublicationProps {
-    title: any;
-    subtitle: any;
-    description: any;
-    avatarUrl: any;
-    children: any;
-    bottom?: any;
-    onClick?: any;
-    onAvatarUrlNotFound?: any;
-    onDescriptionClick?: any;
-    showCommunityAvatar?: any;
-    communityAvatarUrl?: any;
-    communityName?: any;
-    communityIconUrl?: any;
-    onCommunityClick?: any;
-    communityNeedsSetup?: any;
-    communityIsAdmin?: any;
-    beneficiaryName?: any;
-    beneficiaryAvatarUrl?: any;
-    beneficiarySubtitle?: any;
+    title: unknown;
+    subtitle: unknown;
+    description: unknown;
+    avatarUrl: unknown;
+    children: unknown;
+    bottom?: unknown;
+    onClick?: unknown;
+    onAvatarUrlNotFound?: unknown;
+    onDescriptionClick?: unknown;
+    showCommunityAvatar?: unknown;
+    communityAvatarUrl?: unknown;
+    communityName?: unknown;
+    communityIconUrl?: unknown;
+    onCommunityClick?: unknown;
+    communityNeedsSetup?: unknown;
+    communityIsAdmin?: unknown;
+    beneficiaryName?: unknown;
+    beneficiaryAvatarUrl?: unknown;
+    beneficiarySubtitle?: unknown;
     authorId?: string;
     beneficiaryId?: string;
     coverImageUrl?: string;
@@ -49,10 +49,10 @@ export const CardPublication = ({
     showCommunityAvatar,
     communityAvatarUrl,
     communityName,
-    communityIconUrl,
+    _communityIconUrl,
     onCommunityClick,
     communityNeedsSetup,
-    communityIsAdmin,
+    _communityIsAdmin,
     beneficiaryName,
     beneficiaryAvatarUrl,
     beneficiarySubtitle,

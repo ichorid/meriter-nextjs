@@ -1,9 +1,9 @@
 // Publications React Query hooks with tRPC
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { _useInfiniteQuery } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc/client";
 import {
-    createGetNextPageParam,
-    createArrayGetNextPageParam,
+    _createGetNextPageParam,
+    _createArrayGetNextPageParam,
 } from "@/lib/utils/pagination-utils";
 
 interface ListQueryParams {
@@ -77,7 +77,7 @@ export function useInfinitePublicationsByCommunity(
     communityId: string,
     params: { pageSize?: number; sort?: string; order?: string } = {}
 ) {
-    const { pageSize = 5, sort = "score" } = params;
+    const { pageSize = 5, _sort = "score" } = params;
 
     return trpc.publications.getAll.useInfiniteQuery(
         {

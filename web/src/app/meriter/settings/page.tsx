@@ -46,7 +46,7 @@ const SettingsPage = () => {
             setTimeout(() => {
                 router.push(`/meriter/communities/${community.id}`);
             }, 1000);
-        } catch (error) {
+        } catch {
             console.error('Create fake community error:', error);
             setFakeCommunityMessage(t('fakeCommunityFailed'));
             setTimeout(() => setFakeCommunityMessage(''), 3000);
@@ -69,7 +69,7 @@ const SettingsPage = () => {
             setTimeout(() => {
                 window.location.reload();
             }, 2000);
-        } catch (error) {
+        } catch {
             console.error('Add to all communities error:', error);
             setAddToAllMessage(t('addToAllFailed'));
             setTimeout(() => setAddToAllMessage(''), 3000);

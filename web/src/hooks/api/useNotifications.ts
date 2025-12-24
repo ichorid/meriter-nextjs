@@ -1,6 +1,6 @@
 // Notifications React Query hooks - migrated to tRPC
 import { trpc } from "@/lib/trpc/client";
-import type { Notification, NotificationPreferences } from "@/types/api-v1";
+import type { _Notification, _NotificationPreferences } from "@/types/api-v1";
 
 interface GetNotificationsParams {
     page?: number;

@@ -39,7 +39,7 @@ interface VotingPanelProps {
 }
 
 export const VotingPanel: React.FC<VotingPanelProps> = ({
-    onClose,
+    _onClose,
     amount,
     setAmount,
     comment,

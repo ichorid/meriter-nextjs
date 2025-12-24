@@ -38,14 +38,14 @@ describe('PublicationActions - Voting Mode Restrictions', () => {
       user: { id: 'voter-1' }, // Different from author
       isAuthenticated: true,
       isLoading: false,
-    } as any);
+    } as unknown);
 
     mockUseCanVote.mockReturnValue({ canVote: true });
     
     mockUseUIStore.mockReturnValue({
       openVotingPopup: mockOpenVotingPopup,
       openWithdrawPopup: jest.fn(),
-    } as any);
+    } as unknown);
   });
 
   it('should use quota-only mode for non-special groups', () => {
@@ -57,9 +57,9 @@ describe('PublicationActions - Voting Mode Restrictions', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
-    const { rerender } = render(
+    const { _rerender } = render(
       <PublicationActions
         publication={mockPublication}
         onVote={jest.fn()}
@@ -85,7 +85,7 @@ describe('PublicationActions - Voting Mode Restrictions', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(
       <PublicationActions
@@ -110,7 +110,7 @@ describe('PublicationActions - Voting Mode Restrictions', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(
       <PublicationActions
@@ -141,11 +141,11 @@ describe('PublicationActions - Voting Mode Restrictions', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(
       <PublicationActions
-        publication={projectPublication as any}
+        publication={projectPublication as unknown}
         onVote={jest.fn()}
         onComment={jest.fn()}
         activeCommentHook={[null, jest.fn()]}
@@ -158,4 +158,3 @@ describe('PublicationActions - Voting Mode Restrictions', () => {
     expect(mockUseCommunity).toHaveBeenCalledWith('community-1');
   });
 });
-

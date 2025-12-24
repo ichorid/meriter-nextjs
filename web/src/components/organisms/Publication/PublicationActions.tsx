@@ -75,29 +75,29 @@ interface PublicationActionsProps {
 
 export const PublicationActions: React.FC<PublicationActionsProps> = ({
   publication,
-  onVote,
-  onComment,
-  activeCommentHook,
-  isVoting = false,
-  isCommenting = false,
-  maxPlus = 100,
-  maxMinus = 100,
+  _onVote,
+  _onComment,
+  _activeCommentHook,
+  _isVoting = false,
+  _isCommenting = false,
+  _maxPlus = 100,
+  _maxMinus = 100,
   wallets = [],
-  updateAll,
+  _updateAll,
   className = '',
 }) => {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const t = useTranslations('feed');
+  const _t = useTranslations('feed');
   const myId = user?.id;
   
   // Check if we're on the community feed page (not the detail page)
   const isOnCommunityFeedPage = pathname?.match(/^\/meriter\/communities\/[^/]+$/);
 
   // Check if this is a PROJECT post (no voting allowed)
-  const isProject = (publication as any).postType === 'project' || (publication as any).isProject === true;
+  const isProject = (publication as unknown).postType === 'project' || (publication as unknown).isProject === true;
 
   // Extract beneficiary information
   const beneficiaryId = publication.beneficiaryId || publication.meta?.beneficiary?.id;
@@ -137,13 +137,13 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
 
   // Get community info to check typeTag
   const { data: community } = useCommunity(communityId || '');
-  const isSpecialGroup = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
+  const _isSpecialGroup = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
 
   // Mutual exclusivity logic
   // Withdrawal is enabled - users can manually withdraw accumulated votes to permanent merits
   const showWithdraw = ((isAuthor && !hasBeneficiary) || isBeneficiary) && maxWithdrawAmount > 0;
-  const showVote = !isAuthor && !isBeneficiary;
-  const showVoteForAuthor = isAuthor && hasBeneficiary;
+  const _showVote = !isAuthor && !isBeneficiary;
+  const _showVoteForAuthor = isAuthor && hasBeneficiary;
 
   const publicationId = getPublicationIdentifier(publication);
 

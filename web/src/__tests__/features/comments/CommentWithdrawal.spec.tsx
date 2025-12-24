@@ -112,7 +112,7 @@ describe('Comment Withdrawal - Special Groups', () => {
       maxTopUpAmount: 0,
     });
     
-    mockUseFeaturesConfig.mockReturnValue({ commentVoting: true } as any);
+    mockUseFeaturesConfig.mockReturnValue({ commentVoting: true } as unknown);
   });
 
   it('should hide withdrawal UI for comments in marathon-of-good community', () => {
@@ -124,7 +124,7 @@ describe('Comment Withdrawal - Special Groups', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(
       <TestWrapper>
@@ -153,7 +153,7 @@ describe('Comment Withdrawal - Special Groups', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(
       <TestWrapper>
@@ -182,7 +182,7 @@ describe('Comment Withdrawal - Special Groups', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(
       <TestWrapper>

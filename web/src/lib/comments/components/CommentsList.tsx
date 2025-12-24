@@ -14,8 +14,8 @@ import { calculateConnectionMetadata, calculateMaxSiblingGroups } from '../utils
 interface CommentsListProps {
   roots: TreeNode[];
   myId?: string;
-  balance?: any;
-  wallets?: any[];
+  balance?: unknown;
+  wallets?: unknown[];
   communityId?: string;
   publicationSlug?: string;
   activeCommentHook?: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
@@ -66,7 +66,7 @@ export function CommentsList({
   const utils = trpc.useUtils();
 
   // Helper function to count all nodes in tree (including nested)
-  const countAllNodes = (nodes: TreeNode[]): number => {
+  const _countAllNodes = (nodes: TreeNode[]): number => {
     let count = 0;
     const traverse = (node: TreeNode) => {
       count++;
@@ -137,7 +137,7 @@ export function CommentsList({
       
       // Mark this comment as having loaded its replies
       setLoadedCommentIds(prev => new Set(prev).add(commentId));
-    } catch (error) {
+    } catch {
       console.error(`[CommentsList] Error loading replies for comment ${commentId}:`, error);
     } finally {
       setLoadingReplies(prev => {
@@ -366,7 +366,7 @@ export function CommentsList({
       // Get initial card position
       const initialRect = cardElement.getBoundingClientRect();
       const initialScrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      const initialCardTop = initialScrollTop + initialRect.top;
+      const _initialCardTop = initialScrollTop + initialRect.top;
       
       const startTime = performance.now();
       const targetOffset = 100; // 100px offset from top
@@ -493,4 +493,3 @@ export function CommentsList({
     </LayoutGroup>
   );
 }
-

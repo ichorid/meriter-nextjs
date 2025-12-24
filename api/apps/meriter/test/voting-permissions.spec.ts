@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { _MongooseModule } from '@nestjs/mongoose';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { PermissionService } from '../src/domain/services/permission.service';
@@ -16,7 +16,7 @@ import { PublicationSchemaClass, PublicationDocument } from '../src/domain/model
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 
-class AllowAllGuard implements CanActivate {
+class _AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest();
     req.user = { 
@@ -39,13 +39,13 @@ describe('Voting Permissions', () => {
   
   let permissionService: PermissionService;
   let publicationService: PublicationService;
-  let communityService: CommunityService;
-  let userService: UserService;
-  let userCommunityRoleService: UserCommunityRoleService;
+  let _communityService: CommunityService;
+  let _userService: UserService;
+  let _userCommunityRoleService: UserCommunityRoleService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let publicationModel: Model<PublicationDocument>;
+  let _publicationModel: Model<PublicationDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   // Test user IDs
@@ -103,7 +103,7 @@ describe('Voting Permissions', () => {
     // Drop telegramChatId index if it exists (legacy index from old schema)
     try {
       await communityModel.collection.dropIndex('telegramChatId_1');
-    } catch (e) {
+    } catch {
       // Index doesn't exist or already dropped, ignore
     }
 
@@ -524,4 +524,3 @@ describe('Voting Permissions', () => {
     });
   });
 });
-

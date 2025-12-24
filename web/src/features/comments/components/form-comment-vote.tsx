@@ -11,7 +11,7 @@ interface iFormCommentVoteProps {
     setAmount: (amount: number) => void;
     maxPlus: number;
     maxMinus: number;
-    commentAdd: (data: any) => void;
+    commentAdd: (data: unknown) => void;
     error: string;
     reason?: string;
 }

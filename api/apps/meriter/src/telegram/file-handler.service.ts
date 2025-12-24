@@ -121,7 +121,7 @@ export class TelegramFileHandlerService {
       },
     });
 
-    const result = await upload.done();
+    const _result = await upload.done();
     const url = `https://${this.bucketName}.s3.amazonaws.com/${key}`;
 
     return {

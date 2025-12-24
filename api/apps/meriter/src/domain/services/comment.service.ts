@@ -3,9 +3,9 @@ import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { Comment } from '../aggregates/comment/comment.entity';
 import { CommentSchemaClass, CommentDocument } from '../models/comment/comment.schema';
-import type { Comment as CommentSchema } from '../models/comment/comment.schema';
+import type { Comment as _CommentSchema } from '../models/comment/comment.schema';
 import { PublicationSchemaClass, PublicationDocument } from '../models/publication/publication.schema';
-import type { Publication as PublicationSchema } from '../models/publication/publication.schema';
+import type { Publication as _PublicationSchema } from '../models/publication/publication.schema';
 import { UserId } from '../value-objects';
 import { CommentAddedEvent, CommentVotedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
@@ -260,7 +260,7 @@ export class CommentService {
     // Leads and superadmins can edit regardless of votes/time, so no additional check needed here
 
     // Update comment content by updating the document directly
-    const snapshot = comment.toSnapshot();
+    const _snapshot = comment.toSnapshot();
     await this.commentModel.updateOne(
       { id: commentId },
       { 
@@ -279,7 +279,7 @@ export class CommentService {
     return Comment.fromSnapshot(updatedDoc as ICommentDocument);
   }
 
-  async deleteComment(commentId: string, userId: string): Promise<boolean> {
+  async deleteComment(commentId: string, _userId: string): Promise<boolean> {
     const comment = await this.getComment(commentId);
     if (!comment) {
       throw new NotFoundException('Comment not found');

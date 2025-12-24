@@ -84,7 +84,7 @@ export function ImageUploader({
   onRemove,
   uploadEndpoint = '/api/v1/uploads/image',
   aspectRatio,
-  maxWidth = 1920,
+  _maxWidth = 1920,
   maxHeight = 1080,
   placeholder,
   disabled = false,
@@ -159,7 +159,7 @@ export function ImageUploader({
       } else {
         throw new Error(labels.uploadFailed);
       }
-    } catch (err) {
+    } catch {
       console.error('Upload error:', err);
       setError(err instanceof Error ? err.message : labels.uploadFailed);
       setPreview(null);

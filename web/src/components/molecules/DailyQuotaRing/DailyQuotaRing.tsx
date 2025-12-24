@@ -123,10 +123,10 @@ export const DailyQuotaRing: React.FC<DailyQuotaRingProps> = ({
             // Stop immediate propagation to prevent other handlers
             if (
                 e.nativeEvent &&
-                typeof (e.nativeEvent as any).stopImmediatePropagation ===
+                typeof (e.nativeEvent as unknown).stopImmediatePropagation ===
                     "function"
             ) {
-                (e.nativeEvent as any).stopImmediatePropagation();
+                (e.nativeEvent as unknown).stopImmediatePropagation();
             }
             onClick(e);
         }

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-// @ts-ignore - passport-oauth2 types may not be available
+// @ts-expect-error - passport-oauth2 types may not be available
 import { Strategy } from 'passport-oauth2';
 import { ConfigService } from '@nestjs/config';
 

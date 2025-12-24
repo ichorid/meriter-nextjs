@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Badge as ShadcnBadge, badgeVariants } from '@/components/ui/shadcn/badge';
+import { Badge as _ShadcnBadge, badgeVariants } from '@/components/ui/shadcn/badge';
 import { cn } from '@/lib/utils';
 
 export type BadgeVariant = 'primary' | 'secondary' | 'accent' | 'info' | 'success' | 'warning' | 'error' | 'default' | 'destructive' | 'outline';
@@ -91,7 +91,7 @@ export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
 
     return (
       <Component
-        ref={ref as any}
+        ref={ref as unknown}
         className={cn(
           badgeVariants({ variant: shadcnVariant }),
           sizeStyles[size],

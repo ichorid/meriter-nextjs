@@ -1,9 +1,10 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { uid } from 'uid';
 import { Connection, Model } from 'mongoose';
 import { Poll } from '../aggregates/poll/poll.entity';
 import { PollSchemaClass, PollDocument } from '../models/poll/poll.schema';
-import type { Poll as PollSchema } from '../models/poll/poll.schema';
+import type { Poll as _PollSchema } from '../models/poll/poll.schema';
 import { PollCastRepository } from '../models/poll/poll-cast.repository';
 import { PollCreatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
@@ -218,7 +219,6 @@ export class PollService {
       
       // Map options to the format expected by the schema
       // Preserve existing option IDs if they match, otherwise generate new ones
-      const { uid } = require('uid');
       const existingOptions = poll.getOptions;
       const updatedOptions = updateData.options.map((opt, index) => {
         // Try to match by index first, then by ID

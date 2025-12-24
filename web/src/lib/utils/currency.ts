@@ -9,7 +9,7 @@ export interface CurrencyNames {
 }
 
 export function formatCurrencyAmount(amount: number, currency: CurrencyNames): string {
-  const { singular, plural, genitive } = currency;
+  const { singular, _plural, genitive } = currency;
   
   // Handle Russian plurals
   const lastDigit = amount % 10;

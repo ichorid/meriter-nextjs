@@ -21,8 +21,8 @@ describe('Voting quota spending (e2e)', () => {
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
-  let commentModel: Model<CommentDocument>;
-  let voteModel: Model<VoteDocument>;
+  let _commentModel: Model<CommentDocument>;
+  let _voteModel: Model<VoteDocument>;
 
   let voteService: VoteService;
   let commentService: CommentService;
@@ -241,5 +241,4 @@ describe('Voting quota spending (e2e)', () => {
     expect(usedAfter).toBe(0);
   });
 });
-
 

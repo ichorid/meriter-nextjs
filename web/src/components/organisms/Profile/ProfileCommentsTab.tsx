@@ -10,10 +10,10 @@ import { Loader2 } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 interface ProfileCommentsTabProps {
-  comments: any[];
+  comments: unknown[];
   isLoading: boolean;
   sortOrder: SortOrder;
-  wallets?: any[];
+  wallets?: unknown[];
   myId?: string;
   fetchNextPage?: () => void;
   hasNextPage?: boolean;
@@ -43,7 +43,7 @@ export function ProfileCommentsTab({
   });
 
   // Update balance function - invalidate wallet queries
-  const updateWalletBalance = useCallback(async (communityId: string, amountChange: number) => {
+  const updateWalletBalance = useCallback(async (communityId: string, _amountChange: number) => {
     // Invalidate wallet balance queries to trigger refetch
     await queryClient.invalidateQueries({ queryKey: ['wallets', 'balance', communityId] });
   }, [queryClient]);
@@ -76,7 +76,7 @@ export function ProfileCommentsTab({
 
   return (
     <div className="space-y-4 bg-base-100 dark:bg-base-100">
-      {sortItems(comments, sortOrder).map((comment: any, index: number) => {
+      {sortItems(comments, sortOrder).map((comment: unknown, index: number) => {
         const key = generateKey(comment?.id, index, 'comment');
 
         // Get balance for this comment's community
@@ -127,4 +127,3 @@ export function ProfileCommentsTab({
     </div>
   );
 }
-

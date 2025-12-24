@@ -6,14 +6,14 @@ import { queryKeys } from '@/lib/constants/queryKeys';
 import { commentsKeys } from './useComments';
 
 export interface VoteMutationConfig {
-  mutationFn: (variables: any) => Promise<any>;
+  mutationFn: (variables: unknown) => Promise<unknown>;
   onSuccessInvalidations?: {
     publications?: boolean;
     communities?: boolean;
     comments?: boolean;
-    specificCommentId?: (variables: any) => string | undefined;
-    specificPublicationId?: (variables: any) => string | undefined;
-    shouldInvalidateComments?: (result: any, variables: any) => boolean;
+    specificCommentId?: (variables: unknown) => string | undefined;
+    specificPublicationId?: (variables: unknown) => string | undefined;
+    shouldInvalidateComments?: (result: unknown, variables: unknown) => boolean;
   };
   onErrorReThrow?: boolean;
   errorContext?: string;
@@ -21,7 +21,7 @@ export interface VoteMutationConfig {
 
 export function createVoteMutationConfig(config: VoteMutationConfig) {
   return (queryClient: ReturnType<typeof useQueryClient>, user: ReturnType<typeof useAuth>['user']) => {
-    const mutationConfig: UseMutationOptions<any, any, any, OptimisticUpdateContext> = {
+    const mutationConfig: UseMutationOptions<unknown, unknown, unknown, OptimisticUpdateContext> = {
       mutationFn: config.mutationFn,
       onMutate: async (variables) => {
         const { data, communityId } = variables || {};
@@ -31,8 +31,8 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
         const context: OptimisticUpdateContext = {};
         
         // Calculate quota and wallet amounts from data
-        const quotaAmount = (data as any).quotaAmount ?? 0;
-        const walletAmount = (data as any).walletAmount ?? 0;
+        const quotaAmount = (data as unknown).quotaAmount ?? 0;
+        const walletAmount = (data as unknown).walletAmount ?? 0;
         
         // Handle quota optimistic update
         if (quotaAmount > 0 && user?.id && communityId) {
@@ -106,7 +106,7 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
           }
         }
       },
-      onError: (error: any, vars, ctx) => {
+      onError: (error: unknown, vars, ctx) => {
         const errorMsg = config.errorContext || 'Vote mutation error';
         console.error(`${errorMsg}:`, error);
         rollbackOptimisticUpdates(queryClient, ctx);

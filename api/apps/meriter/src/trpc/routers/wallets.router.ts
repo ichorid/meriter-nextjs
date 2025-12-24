@@ -246,7 +246,7 @@ export const walletsRouter = router({
       // Permission check: allow if user is viewing their own wallets, or if requester is superadmin/lead
       const isViewingOwn = actualUserId === ctx.user.id;
       let isSuperadminRequester = false;
-      let leadCommunityIds: string[] = [];
+      const leadCommunityIds: string[] = [];
 
       if (!isViewingOwn) {
         // Check if requesting user is superadmin

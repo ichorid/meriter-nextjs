@@ -14,7 +14,7 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 export interface RequestOptions extends RequestConfig {
   method: HttpMethod;
   url: string;
-  data?: any;
+  data?: unknown;
   params?: QueryParams;
 }
 

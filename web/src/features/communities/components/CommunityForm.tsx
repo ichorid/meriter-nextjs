@@ -14,7 +14,7 @@ import type { CommunityMember } from "@/hooks/api/useCommunityMembers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles, useCanCreateCommunity } from "@/hooks/api/useProfile";
 import { useCommunityInvites } from "@/hooks/api/useInvites";
-import { useUserProfile } from "@/hooks/api/useUsers";
+import { _useUserProfile } from "@/hooks/api/useUsers";
 import { HashtagInput } from "@/shared/components/hashtag-input";
 import { IconPicker } from "@/shared/components/iconpicker";
 import { Button } from "@/components/ui/shadcn/button";
@@ -30,7 +30,7 @@ import {
 import { BrandFormControl } from "@/components/ui/BrandFormControl";
 import { Checkbox } from "@/components/ui/shadcn/checkbox";
 import { cn } from '@/lib/utils';
-import { Loader2, X, UserX, CheckCircle2, Clock, Sparkles } from "lucide-react";
+import { Loader2, _X, UserX, CheckCircle2, Clock, Sparkles } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/shadcn/avatar";
 import { User } from "lucide-react";
 import { AvatarUploader } from "@/components/ui/AvatarUploader";
@@ -44,7 +44,7 @@ interface CommunityFormProps {
 
 export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const router = useRouter();
-    const queryClient = useQueryClient();
+    const _queryClient = useQueryClient();
     const t = useTranslations("pages.communitySettings");
     const tCreate = useTranslations("communities.create");
 
@@ -74,7 +74,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const [pollCost, setPollCost] = useState("1");
     const [hashtags, setHashtags] = useState<string[]>([]);
     const [isPriority, setIsPriority] = useState(false);
-    const [votingRestriction, setVotingRestriction] = useState<'any' | 'not-own' | 'not-same-group'>('not-own');
+    const [votingRestriction, setVotingRestriction] = useState<'unknown' | 'not-own' | 'not-same-group'>('not-own');
     // Default icon is "thanks" emoji (🙏)
     const defaultIconUrl = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">${encodeURIComponent(
         "🙏"
@@ -83,7 +83,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
 
     useEffect(() => {
         if (community && isEditMode) {
-            const c = community as any;
+            const c = community as unknown;
             setName(c.name);
             setDescription(c.description || "");
             setAvatarUrl(c.avatarUrl || "");
@@ -155,7 +155,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 addToast(tCreate("success"), "success");
                 router.push(`/meriter/communities/${result.id}`);
             }
-        } catch (error) {
+        } catch {
             console.error(
                 `Failed to ${isEditMode ? "update" : "create"} community:`,
                 error
@@ -187,7 +187,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
         return isSuperadmin || isUserLead;
     }, [isSuperadmin, isUserLead]);
 
-    // Superadmin can create invites for leads or participants in any community
+    // Superadmin can create invites for leads or participants in unknown community
     // Lead can create invites for participants in their community
     // Only fetch invites if user has admin/lead permissions
     const canViewInvites = isSuperadmin || isUserLead;
@@ -297,7 +297,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
         try {
             await resetDailyQuota.mutateAsync(communityId);
             addToast(t("resetQuotaSuccess"), "success");
-        } catch (error) {
+        } catch {
             console.error("Failed to reset daily quota:", error);
             const errorMessage = extractErrorMessage(
                 error,
@@ -548,13 +548,13 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                     >
                         <Select
                             value={votingRestriction}
-                            onValueChange={(value) => setVotingRestriction(value as 'any' | 'not-own' | 'not-same-group')}
+                            onValueChange={(value) => setVotingRestriction(value as 'unknown' | 'not-own' | 'not-same-group')}
                         >
                             <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="any">{t('votingRestrictionOptions.any')}</SelectItem>
+                                <SelectItem value="unknown">{t('votingRestrictionOptions.unknown')}</SelectItem>
                                 <SelectItem value="not-own">{t('votingRestrictionOptions.notOwn')}</SelectItem>
                                 <SelectItem value="not-same-group">{t('votingRestrictionOptions.notSameGroup')}</SelectItem>
                             </SelectContent>
@@ -637,14 +637,14 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                       allMembersAndInvites.length > 0 ? (
                         <div className="space-y-2">
                             {allMembersAndInvites.map((member) => {
-                                const isPendingInvite = (member as any)
+                                const isPendingInvite = (member as unknown)
                                     .isPendingInvite;
                                 const inviteInfo = isPendingInvite
                                     ? {
                                           isUsed: false,
-                                          inviteCode: (member as any)
+                                          inviteCode: (member as unknown)
                                               .inviteCode,
-                                          targetUserName: (member as any)
+                                          targetUserName: (member as unknown)
                                               .targetUserName,
                                       }
                                     : memberInviteMap.get(member.id);
@@ -701,13 +701,13 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                                                         </>
                                                     )}
                                                     {isPendingInvite &&
-                                                        (member as any)
+                                                        (member as unknown)
                                                             .inviteType && (
                                                             <>
                                                                 <span>•</span>
                                                                 <span>
                                                                     {(
-                                                                        member as any
+                                                                        member as unknown
                                                                     )
                                                                         .inviteType ===
                                                                     "superadmin-to-lead"

@@ -102,7 +102,7 @@ export const useCreateComment = () => {
     const utils = trpc.useUtils();
     
     return trpc.comments.create.useMutation({
-        onSuccess: (result, variables) => {
+        onSuccess: (result, _variables) => {
             // Invalidate comments lists
             utils.comments.getByPublicationId.invalidate();
             utils.comments.getReplies.invalidate();

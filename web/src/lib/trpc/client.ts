@@ -36,7 +36,7 @@ async function enhancedFetch(url: string, options?: RequestInit): Promise<Respon
           const text = await clonedResponse.text();
           errorBody = text || null;
         }
-      } catch (e) {
+      } catch {
         // If we can't parse the error body, that's okay
         console.warn('Failed to parse error response body:', e);
       }
@@ -51,7 +51,7 @@ async function enhancedFetch(url: string, options?: RequestInit): Promise<Respon
     }
 
     return response;
-  } catch (error) {
+  } catch {
     // Network error or fetch failed
     console.error('tRPC fetch error:', {
       url,

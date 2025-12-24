@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/shadcn/card';
+import { Card, CardContent, CardHeader, CardTitle, _CardDescription } from '@/components/ui/shadcn/card';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/atoms/Badge/Badge';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { Avatar, _AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { User } from 'lucide-react';
 
 export interface PollOption {

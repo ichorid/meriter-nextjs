@@ -9,13 +9,13 @@ import { useCommunity } from '@/hooks/api/useCommunities';
  * - Authors can edit their own posts/comments if:
  *   - Zero votes AND zero comments AND
  *   - Within edit window (from community settings, default 7 days)
- * - Leads can edit any post/comment in their community (no restrictions)
- * - Superadmins can edit any post/comment (no restrictions)
+ * - Leads can edit unknown post/comment in their community (no restrictions)
+ * - Superadmins can edit unknown post/comment (no restrictions)
  * 
  * Delete permissions:
  * - Authors can delete their own posts/comments if no votes and no comments
- * - Leads can delete any post/comment in their community
- * - Superadmins can delete any post/comment
+ * - Leads can delete unknown post/comment in their community
+ * - Superadmins can delete unknown post/comment
  * 
  * @deprecated This hook is deprecated. Use API permissions from publication.permissions or comment.permissions instead.
  * Permissions are now calculated server-side and embedded in API responses.

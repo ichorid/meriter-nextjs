@@ -21,10 +21,10 @@ export interface NavigationBarProps {
 export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) => {
   const auth = useAuth();
   const { user, isAuthenticated } = auth;
-  const { activeModal, setActiveSidebar } = useUIStore();
+  const { _activeModal, setActiveSidebar } = useUIStore();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
+  const _router = useRouter();
   const pathname = usePathname();
   const t = useTranslations('common');
   

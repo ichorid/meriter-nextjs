@@ -8,9 +8,9 @@ import { Loader2 } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 interface ProfilePublicationsTabProps {
-  publications: any[];
+  publications: unknown[];
   isLoading: boolean;
-  wallets: any[];
+  wallets: unknown[];
   sortOrder: SortOrder;
   fetchNextPage?: () => void;
   hasNextPage?: boolean;

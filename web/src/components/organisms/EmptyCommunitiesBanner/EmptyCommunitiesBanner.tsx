@@ -10,7 +10,7 @@ export interface EmptyCommunitiesBannerProps {
 }
 
 export const EmptyCommunitiesBanner: React.FC<EmptyCommunitiesBannerProps> = ({
-  className = '',
+  _className = '',
 }) => {
   const t = useTranslations('home.emptyCommunities.banner');
   const { isAuthenticated } = useAuth();
@@ -51,4 +51,3 @@ export const EmptyCommunitiesBanner: React.FC<EmptyCommunitiesBannerProps> = ({
     </div>
   );
 };
-

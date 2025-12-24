@@ -17,7 +17,7 @@ export function isValidUrl(url: string): boolean {
   }
 }
 
-export function required(value: any): string | null {
+export function required(value: unknown): string | null {
   if (value === null || value === undefined || value === '') {
     return 'This field is required';
   }

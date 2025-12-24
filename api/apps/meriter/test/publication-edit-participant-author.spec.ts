@@ -36,7 +36,7 @@ describe('Publication Edit - Participant Author Scenario', () => {
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let publicationModel: Model<PublicationDocument>;
+  let _publicationModel: Model<PublicationDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   // Test user IDs
@@ -234,4 +234,3 @@ describe('Publication Edit - Participant Author Scenario', () => {
 
   });
 });
-

@@ -37,7 +37,7 @@ export class VoteCommentResolverService {
    */
   async resolve(id: string): Promise<ResolvedVoteComment> {
     // Check if this is a vote ID first (votes now contain comments directly)
-    let vote = await this.voteService.getVoteById(id);
+    const vote = await this.voteService.getVoteById(id);
     let snapshot: VoteCommentSnapshot;
     let authorId: string;
 

@@ -1,4 +1,4 @@
-import { useRouter, useSearchParams } from 'next/navigation';
+import { _useRouter, _useSearchParams } from 'next/navigation';
 import { decodeTelegramDeepLink, looksLikeBase64url } from './base64url';
 
 export interface DeepLinkParams {
@@ -18,8 +18,8 @@ export interface DeepLinkHandler {
  * @returns Deep link handler functions
  */
 export function useDeepLinkHandler(
-  router: any, 
-  searchParams: any,
+  router: unknown, 
+  searchParams: unknown,
   telegramStartParam?: string
 ): DeepLinkHandler {
   const handleDeepLink = () => {
@@ -35,7 +35,7 @@ export function useDeepLinkHandler(
           const decoded = decodeTelegramDeepLink(telegramStartParam);
           startapp = decoded.action;
           id = decoded.id;
-        } catch (error) {
+        } catch {
           console.error('🔗 Failed to decode Telegram start_param:', error);
           console.error('🔗 Start param value:', telegramStartParam);
           // Fallback to treating as simple action

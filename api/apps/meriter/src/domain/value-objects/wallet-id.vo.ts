@@ -1,3 +1,5 @@
+import { uid } from 'uid';
+
 export class WalletId {
   private constructor(private readonly value: string) {}
 
@@ -9,7 +11,6 @@ export class WalletId {
   }
 
   static generate(): WalletId {
-    const { uid } = require('uid');
     return new WalletId(uid());
   }
 

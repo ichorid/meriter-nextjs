@@ -28,9 +28,9 @@ describe('Marathon and Vision Groups Integration Test', () => {
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let walletModel: Model<WalletDocument>;
-  let publicationModel: Model<PublicationDocument>;
-  let voteModel: Model<VoteDocument>;
+  let _walletModel: Model<WalletDocument>;
+  let _publicationModel: Model<PublicationDocument>;
+  let _voteModel: Model<VoteDocument>;
 
   // User IDs
   let aliceId: string;
@@ -59,7 +59,7 @@ describe('Marathon and Vision Groups Integration Test', () => {
   beforeAll(async () => {
     jest.setTimeout(120000); // Increase timeout for database setup
     // Clear MONGO_URL to ensure we create a fresh in-memory server
-    const originalMongoUrl = process.env.MONGO_URL;
+    const _originalMongoUrl = process.env.MONGO_URL;
     delete process.env.MONGO_URL;
     
     testDb = new TestDatabaseHelper();
@@ -120,7 +120,7 @@ describe('Marathon and Vision Groups Integration Test', () => {
       const collection = collections[key];
       try {
         await collection.dropIndex('token_1').catch(() => {});
-      } catch (err) {
+      } catch {
         // Index doesn't exist, ignore
       }
       await collection.deleteMany({});
@@ -424,4 +424,3 @@ describe('Marathon and Vision Groups Integration Test', () => {
     expect(bobVisionWalletAfter.balance).toBe(1); // Was 3, used 2, now 1
   });
 });
-

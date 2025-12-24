@@ -1,4 +1,4 @@
-import { ZodSchema, ZodError, ZodTypeAny } from "zod";
+import { _ZodSchema, ZodError, ZodTypeAny } from "zod";
 
 /**
  * Validation error with context
@@ -26,7 +26,7 @@ export function validateData<T>(
 ): T {
     try {
         return schema.parse(data) as T;
-    } catch (error) {
+    } catch {
         if (error instanceof ZodError) {
             throw new ValidationError(
                 `Validation failed${context ? ` for ${context}` : ""}`,
@@ -46,7 +46,7 @@ export function validateData<T>(
 export function safeValidateData<T>(
     schema: ZodTypeAny,
     data: unknown,
-    context?: string
+    _context?: string
 ): { success: true; data: T } | { success: false; error: ZodError } {
     const result = schema.safeParse(data);
     if (result.success) {
@@ -63,7 +63,7 @@ export function validatePaginatedResponse<T>(
     schema: ZodTypeAny,
     response: unknown,
     context?: string
-): { data: T[]; meta: any } {
+): { data: T[]; meta: unknown } {
     // First validate the response structure
     if (typeof response !== "object" || response === null) {
         const zerr = new ZodError([
@@ -71,7 +71,7 @@ export function validatePaginatedResponse<T>(
                 code: "custom",
                 path: [],
                 message: "Response is not an object",
-            } as any,
+            } as unknown,
         ]);
         throw new ValidationError("Invalid response format", zerr, { context });
     }
@@ -84,7 +84,7 @@ export function validatePaginatedResponse<T>(
                 code: "custom",
                 path: ["data"],
                 message: "Expected array at data",
-            } as any,
+            } as unknown,
         ]);
         throw new ValidationError("Response data is not an array", zerr, {
             context,
@@ -117,7 +117,7 @@ export function validateApiResponse<T>(
                 code: "custom",
                 path: [],
                 message: "Response is not an object",
-            } as any,
+            } as unknown,
         ]);
         throw new ValidationError("Invalid response format", zerr, { context });
     }
@@ -130,7 +130,7 @@ export function validateApiResponse<T>(
                 code: "custom",
                 path: ["success"],
                 message: "API indicated failure",
-            } as any,
+            } as unknown,
         ]);
         throw new ValidationError("API request failed", zerr, { context });
     }
@@ -141,7 +141,7 @@ export function validateApiResponse<T>(
                 code: "custom",
                 path: ["data"],
                 message: "Missing data property",
-            } as any,
+            } as unknown,
         ]);
         throw new ValidationError("Response data is missing", zerr, {
             context,

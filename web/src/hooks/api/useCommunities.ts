@@ -2,11 +2,11 @@
 import { trpc } from "@/lib/trpc/client";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import { STALE_TIME } from "@/lib/constants/query-config";
-import type { PaginatedResponse, Community, CommunityWithComputedFields } from "@/types/api-v1";
+import type { _PaginatedResponse, _Community, CommunityWithComputedFields } from "@/types/api-v1";
 import { useBatchQueries } from "./useBatchQueries";
 
 // Local type definition
-interface CreateCommunityDto {
+interface _CreateCommunityDto {
     name: string;
     description?: string;
     avatarUrl?: string;
@@ -18,7 +18,7 @@ interface CreateCommunityDto {
     [key: string]: unknown;
 }
 
-interface UpdateCommunityDto {
+interface _UpdateCommunityDto {
     name?: string;
     description?: string;
     avatarUrl?: string;
@@ -32,10 +32,10 @@ interface UpdateCommunityDto {
     };
     hashtags?: string[];
     hashtagDescriptions?: Record<string, string>;
-    postingRules?: any;
-    votingRules?: any;
-    visibilityRules?: any;
-    meritRules?: any;
+    postingRules?: unknown;
+    votingRules?: unknown;
+    visibilityRules?: unknown;
+    meritRules?: unknown;
     linkedCurrencies?: string[];
     typeTag?: string;
 }

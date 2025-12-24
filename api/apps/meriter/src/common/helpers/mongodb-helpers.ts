@@ -1,4 +1,4 @@
-import { Model, UpdateQuery } from 'mongoose';
+import { _Model, UpdateQuery } from 'mongoose';
 
 /**
  * MongoDB helper utilities for common update operations

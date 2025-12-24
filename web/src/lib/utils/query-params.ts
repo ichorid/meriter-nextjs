@@ -39,7 +39,7 @@ export function appendQueryString(params: QueryParams): string {
 export function convertPaginationToSkipLimit(
   page?: number,
   pageSize?: number,
-  defaultPageSize = 20
+  _defaultPageSize = 20
 ): { skip?: number; limit?: number } {
   if (page === undefined || pageSize === undefined) {
     return {};
@@ -78,4 +78,3 @@ export function convertSkipLimitToPagination(
 export function mergeQueryParams(...params: QueryParams[]): QueryParams {
   return Object.assign({}, ...params);
 }
-

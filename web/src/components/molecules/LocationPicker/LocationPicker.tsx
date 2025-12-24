@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, _useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { Input } from '@/components/ui/shadcn/input';
 import { Search, MapPin, Loader2 } from 'lucide-react';
@@ -32,7 +32,7 @@ interface NominatimResult {
 }
 
 export function LocationPicker({ initialRegion, initialCity, onLocationSelect }: LocationPickerProps) {
-    const t = useTranslations('common');
+    const _t = useTranslations('common');
     const tSearch = useTranslations('search');
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<NominatimResult[]>([]);
@@ -59,7 +59,7 @@ export function LocationPicker({ initialRegion, initialCity, onLocationSelect }:
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&limit=5`);
             const data = await response.json();
             setResults(data);
-        } catch (error) {
+        } catch {
             console.error('Error searching location:', error);
         } finally {
             setIsLoading(false);
@@ -97,7 +97,7 @@ export function LocationPicker({ initialRegion, initialCity, onLocationSelect }:
 
             setQuery(data.display_name);
             onLocationSelect({ region, city });
-        } catch (error) {
+        } catch {
             console.error('Error reverse geocoding:', error);
         } finally {
             setIsLoading(false);
@@ -130,15 +130,6 @@ export function LocationPicker({ initialRegion, initialCity, onLocationSelect }:
                         </button>
                     )}
                 </div>
-                        <button
-                            onClick={handleSearch}
-                            className="p-1 hover:bg-base-200 rounded-full transition-colors"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? <Loader2 className="w-5 h-5 animate-spin text-brand-primary" /> : <Search className="w-5 h-5 text-base-content/60" />}
-                        </button>
-                    }
-                />
 
                 {results.length > 0 && (
                     <div className="absolute z-50 w-full mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">

@@ -22,7 +22,7 @@ import { AppModeProvider } from '@/contexts/AppModeContext';
 const mockAddToast = jest.fn();
 const mockRemoveToast = jest.fn();
 jest.mock('@/shared/stores/toast.store', () => ({
-  useToastStore: jest.fn((selector: any) => {
+  useToastStore: jest.fn((selector: unknown) => {
     if (selector.toString().includes('addToast')) {
       return mockAddToast;
     }

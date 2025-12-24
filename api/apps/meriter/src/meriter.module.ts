@@ -10,7 +10,7 @@ import { DatabaseModule } from './common/database/database.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation.schema';
 
-import { UpdatesConductorsService } from './updates-conductors/updates-conductors.service';
+import { _UpdatesConductorsService } from './updates-conductors/updates-conductors.service';
 import { UpdatesConductorsModule } from './updates-conductors/updates-conductors.module';
 import { QuotaResetModule } from './domain/services/quota-reset.module';
 import { CommonServicesModule } from './common/services/common-services.module';

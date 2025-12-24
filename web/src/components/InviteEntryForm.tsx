@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
-import { useInviteByCode, useInvite } from '@/hooks/api/useInvites';
+import { _useInviteByCode, useInvite } from '@/hooks/api/useInvites';
 import { LoadingState } from '@/components/atoms/LoadingState';
 import { BrandFormControl } from '@/components/ui';
 import { Button } from '@/components/ui/shadcn/button';
@@ -17,7 +17,7 @@ interface InviteEntryFormProps {
     inviteCode?: string; // Optional prop to override searchParams
 }
 
-export function InviteEntryForm({ className = '', inviteCode: inviteCodeProp }: InviteEntryFormProps) {
+export function InviteEntryForm({ _className = '', inviteCode: inviteCodeProp }: InviteEntryFormProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const t = useTranslations('registration');
@@ -45,7 +45,7 @@ export function InviteEntryForm({ className = '', inviteCode: inviteCodeProp }: 
             await useInviteMutation.mutateAsync(inviteCode.trim());
             addToast(t('success'), 'success');
             router.push('/meriter/profile');
-        } catch (error: any) {
+        } catch {
             console.error('Failed to use invite:', error);
             const errorMessage = extractErrorMessage(error, t('errors.invalidInviteCode'));
             setInviteError(errorMessage);

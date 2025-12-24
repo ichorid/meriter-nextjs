@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { _useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Info, Users } from 'lucide-react';
@@ -229,4 +229,3 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
     </aside>
   );
 };
-

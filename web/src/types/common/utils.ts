@@ -25,10 +25,10 @@ export type PickByType<T, U> = {
 };
 
 // Component prop utilities
-export type ComponentProps<T extends React.ComponentType<any>> = 
+export type ComponentProps<T extends React.ComponentType<unknown>> = 
   T extends React.ComponentType<infer P> ? P : never;
 
-export type ComponentRef<T extends React.ComponentType<any>> = 
+export type ComponentRef<T extends React.ComponentType<unknown>> = 
   T extends React.ForwardRefExoticComponent<infer P> 
     ? P extends { ref?: infer R } 
       ? R 

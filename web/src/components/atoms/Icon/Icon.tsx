@@ -32,7 +32,7 @@ export const Icon = React.forwardRef<SVGSVGElement, IconProps>(
     {
       name,
       size = 24,
-      filled = false,
+      _filled = false,
       className = '',
       style,
       ...props
@@ -43,13 +43,13 @@ export const Icon = React.forwardRef<SVGSVGElement, IconProps>(
     const lucideIconName = iconNameMap[name] || name;
     
     // Get the icon component from lucide-react
-    const IconComponent = LucideIcons[lucideIconName as keyof typeof LucideIcons] as React.ComponentType<any>;
+    const IconComponent = LucideIcons[lucideIconName as keyof typeof LucideIcons] as React.ComponentType<unknown>;
     
     if (!IconComponent) {
       console.warn(`Icon "${name}" not found in lucide-react. Using placeholder.`);
       return (
         <div
-          ref={ref as any}
+          ref={ref as unknown}
           className={className}
           style={{ width: size, height: size, ...style }}
         >

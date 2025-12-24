@@ -14,13 +14,13 @@ import { useCommentVoteDisplay } from '../hooks/useCommentVoteDisplay';
 import { useCommentRecipient } from '../hooks/useCommentRecipient';
 import { useCommentWithdrawal } from '../hooks/useCommentWithdrawal';
 import { useFeaturesConfig } from '@/hooks/useConfig';
-import { ResourcePermissions } from '@/types/api-v1';
+import { _ResourcePermissions } from '@/types/api-v1';
 
 interface CommentProps {
     _id: string;
     spaceSlug?: string;
-    balance?: any;
-    updBalance?: any;
+    balance?: unknown;
+    updBalance?: unknown;
     plus?: number;
     minus?: number;
     ts?: string;
@@ -53,7 +53,7 @@ interface CommentProps {
     content?: string;
     createdAt?: string;
     sum?: number;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export const Comment: React.FC<CommentProps> = ({
@@ -91,7 +91,7 @@ export const Comment: React.FC<CommentProps> = ({
     createdAt,
     ...rest
 }) => {
-    const t = useTranslations('comments');
+    const _t = useTranslations('comments');
     const features = useFeaturesConfig();
     const enableCommentVoting = features.commentVoting;
     
@@ -141,13 +141,13 @@ export const Comment: React.FC<CommentProps> = ({
             wallets.find((w) => w.communityId === communityId)
                 ?.balance) ||
         0;
-    const [showselector, setShowselector] = useState(false);
+    const [_showselector, _setShowselector] = useState(false);
     
     // State for comment details popup
     const [showDetailsPopup, setShowDetailsPopup] = useState(false);
     
     // Rate conversion no longer needed with v1 API - currencies are normalized
-    const rate = 1;
+    const _rate = 1;
     
     // API provides directionPlus for vote transaction comments
     // Calculate from vote data if available, otherwise infer from metrics
@@ -187,8 +187,8 @@ export const Comment: React.FC<CommentProps> = ({
     const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
     
     // Use API permissions instead of calculating on frontend
-    const canVoteFromApi = (rest as any).permissions?.canVote ?? false;
-    const voteDisabledReasonFromApi = (rest as any).permissions?.voteDisabledReason;
+    const canVoteFromApi = (rest as unknown).permissions?.canVote ?? false;
+    const voteDisabledReasonFromApi = (rest as unknown).permissions?.voteDisabledReason;
     
     // Override reason if comment voting is disabled via feature flag
     const canVote = enableCommentVoting ? canVoteFromApi : false;
@@ -201,10 +201,10 @@ export const Comment: React.FC<CommentProps> = ({
     
     const {
         comments,
-        showPlus,
-        currentPlus,
-        currentMinus,
-        showMinus,
+        _showPlus,
+        _currentPlus,
+        _currentMinus,
+        _showMinus,
         showComments,
         setShowComments,
     } = useComments(
@@ -221,7 +221,7 @@ export const Comment: React.FC<CommentProps> = ({
         wallets // wallets array for balance lookup
     );
     const commentUnderReply = activeCommentHook[0] == (forTransactionId || _id);
-    const nobodyUnderReply = activeCommentHook[0] === null;
+    const _nobodyUnderReply = activeCommentHook[0] === null;
     const avatarUrl = authorMeta?.photoUrl || '';
     
     return (
@@ -248,7 +248,7 @@ export const Comment: React.FC<CommentProps> = ({
                 beneficiaryAvatarUrl={recipientAvatar}
                 upvotes={voteDisplay.displayUpvotes}
                 downvotes={voteDisplay.displayDownvotes}
-                images={(rest as any).images || []}
+                images={(rest as unknown).images || []}
                 onDetailsClick={() => setShowDetailsPopup(true)}
                 onClick={!isDetailPage ? () => {
                     // Navigate to the post page only when not on detail page
@@ -359,7 +359,7 @@ export const Comment: React.FC<CommentProps> = ({
             {showComments && (
                 <div className="transaction-comments">
                     <div className="comments">
-                        {comments?.map((c: any) => (
+                        {comments?.map((c: unknown) => (
                             <Comment
                                 key={c._id}
                                 {...c}

@@ -1,9 +1,9 @@
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 
 interface UsePasskeysReturn {
-    registerPasskey: (username: string) => Promise<any>;
-    loginWithPasskey: (username?: string) => Promise<any>;
-    authenticateWithPasskey: () => Promise<{ user: any; isNewUser: boolean }>;
+    registerPasskey: (username: string) => Promise<unknown>;
+    loginWithPasskey: (username?: string) => Promise<unknown>;
+    authenticateWithPasskey: () => Promise<{ user: unknown; isNewUser: boolean }>;
     isWebAuthnSupported: () => boolean;
 }
 
@@ -20,7 +20,7 @@ export const usePasskeys = (): UsePasskeysReturn => {
      * First tries to authenticate (shows browser Passkey picker)
      * If cancelled/no Passkey, offers registration with UUID username
      */
-    const authenticateWithPasskey = async (): Promise<{ user: any; isNewUser: boolean }> => {
+    const authenticateWithPasskey = async (): Promise<{ user: unknown; isNewUser: boolean }> => {
         try {
             // Step 1: Try authentication (for existing users)
             const authResp = await fetch('/api/v1/auth/passkey/authenticate/start', {
@@ -50,7 +50,7 @@ export const usePasskeys = (): UsePasskeysReturn => {
                     window.PublicKeyCredential && 
                     'isConditionalMediationAvailable' in window.PublicKeyCredential) {
                     try {
-                        const isConditionalAvailable = await (window.PublicKeyCredential as any)
+                        const isConditionalAvailable = await (window.PublicKeyCredential as unknown)
                             .isConditionalMediationAvailable();
                         
                         if (isConditionalAvailable) {
@@ -59,12 +59,12 @@ export const usePasskeys = (): UsePasskeysReturn => {
                             // when allowCredentials is empty, but we can explicitly request it
                             credential = await startAuthentication({
                                 ...authOptions,
-                                mediation: 'conditional' as any, // Type may not be in types yet
+                                mediation: 'conditional' as unknown, // Type may not be in types yet
                             });
                         } else {
                             credential = await startAuthentication(authOptions);
                         }
-                    } catch (mediationCheckError) {
+                    } catch {
                         // If conditional mediation check fails, fall back to regular authentication
                         console.log('[WebAuthn] Conditional mediation check failed, using regular authentication');
                         credential = await startAuthentication(authOptions);
@@ -78,7 +78,7 @@ export const usePasskeys = (): UsePasskeysReturn => {
                     type: credential.type,
                     responseType: credential.response ? 'authenticatorAssertionResponse' : 'none',
                 });
-            } catch (createError: any) {
+            } catch {
                 console.error('[WebAuthn Auth] create() failed:', {
                     name: createError.name,
                     message: createError.message,
@@ -118,7 +118,7 @@ export const usePasskeys = (): UsePasskeysReturn => {
                 user: result.user,
                 isNewUser: result.isNewUser || false, // Use backend flag
             };
-        } catch (authError: any) {
+        } catch {
             // Enhanced error logging
             console.error('[WebAuthn Auth] Error details:', {
                 name: authError.name,
@@ -170,7 +170,7 @@ export const usePasskeys = (): UsePasskeysReturn => {
                         id: regCredential.id?.substring(0, 20) + '...',
                         type: regCredential.type,
                     });
-                } catch (regError: any) {
+                } catch {
                     console.error('[WebAuthn Reg] create() failed:', {
                         name: regError.name,
                         message: regError.message,
@@ -252,7 +252,7 @@ export const usePasskeys = (): UsePasskeysReturn => {
                 id: attResp.id?.substring(0, 20) + '...',
                 type: attResp.type,
             });
-        } catch (error: any) {
+        } catch {
             console.error('[WebAuthn Reg] create() failed:', {
                 name: error.name,
                 message: error.message,
@@ -315,7 +315,7 @@ export const usePasskeys = (): UsePasskeysReturn => {
                 id: asseResp.id?.substring(0, 20) + '...',
                 type: asseResp.type,
             });
-        } catch (error: any) {
+        } catch {
             console.error('[WebAuthn Login] create() failed:', {
                 name: error.name,
                 message: error.message,

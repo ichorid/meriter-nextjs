@@ -10,17 +10,17 @@ import {
 import { cn } from '@/lib/utils';
 
 export interface ModalBody {
-    [key: string]: React.ComponentType<any> | null;
+    [key: string]: React.ComponentType<unknown> | null;
 }
 
 export interface ModalLayoutProps {
     isOpen: boolean;
     bodyType: string;
     size?: 'sm' | 'md' | 'lg' | 'xl';
-    extraObject?: Record<string, any>;
+    extraObject?: Record<string, unknown>;
     title?: string;
     bodyComponents?: ModalBody;
-    onClose?: (e?: any) => void;
+    onClose?: (e?: unknown) => void;
     className?: string;
 }
 
@@ -34,7 +34,7 @@ export function ModalLayout({
     onClose,
     className = '',
 }: ModalLayoutProps) {
-    const close = (e?: any) => {
+    const close = (e?: unknown) => {
         if (onClose) {
             onClose(e);
         }

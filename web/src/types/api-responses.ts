@@ -1,6 +1,6 @@
 /**
  * API Response Type Definitions
- * Replaces 'any' types throughout the API client
+ * Replaces 'unknown' types throughout the API client
  */
 
 import type { TelegramUser } from '@/types/telegram';

@@ -24,7 +24,7 @@ export function createGetEndpoint<T>(
  */
 export function createPaginatedEndpoint<T>(
   url: string,
-  schema?: ZodSchema<T>
+  _schema?: ZodSchema<T>
 ): (params?: Record<string, unknown>) => Promise<PaginatedResponse<T>> {
   return async (params?: Record<string, unknown>) => {
     const response = await apiClient.get<{ success: true; data: PaginatedResponse<T> }>(url, { params });
@@ -124,4 +124,3 @@ export function handleAuthResponse<T>(
   
   return response.data.data;
 }
-

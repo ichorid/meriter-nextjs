@@ -14,10 +14,10 @@ export const CardWithAvatar = ({
 }: {
     avatarUrl?: string;
     iconUrl?: string;
-    iconOnClick?: () => any;
+    iconOnClick?: () => unknown;
     children: React.ReactNode;
-    onClick?: () => any;
-    avatarUrlUpd?: (userId: string) => any;
+    onClick?: () => unknown;
+    avatarUrlUpd?: (userId: string) => unknown;
     userName?: string;
 }) => {
     const [retryCount, setRetryCount] = useState(0);

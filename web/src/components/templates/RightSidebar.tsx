@@ -4,16 +4,16 @@ import React from 'react';
 import { X } from 'lucide-react';
 
 export interface RightSidebarBody {
-    [key: string]: React.ComponentType<any> | null;
+    [key: string]: React.ComponentType<unknown> | null;
 }
 
 export interface RightSidebarProps {
     isOpen: boolean;
     bodyType: string;
-    extraObject?: Record<string, any>;
+    extraObject?: Record<string, unknown>;
     header?: string;
     bodyComponents?: RightSidebarBody;
-    onClose?: (e?: any) => void;
+    onClose?: (e?: unknown) => void;
     className?: string;
 }
 
@@ -26,7 +26,7 @@ export function RightSidebar({
     onClose,
     className = '',
 }: RightSidebarProps) {
-    const close = (e?: any) => {
+    const close = (e?: unknown) => {
         if (onClose) {
             onClose(e);
         }

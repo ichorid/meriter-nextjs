@@ -2,9 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserSchemaClass, UserDocument } from '../domain/models/user/user.schema';
-import type { User } from '../domain/models/user/user.schema';
+import type { _User } from '../domain/models/user/user.schema';
 import { CommunitySchemaClass, CommunityDocument } from '../domain/models/community/community.schema';
-import type { Community } from '../domain/models/community/community.schema';
+import type { _Community } from '../domain/models/community/community.schema';
 
 export interface BeneficiaryParseResult {
   beneficiary: {

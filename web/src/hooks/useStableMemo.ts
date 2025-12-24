@@ -14,7 +14,7 @@ import { useMemo, useRef } from 'react';
  * Deep equality check for objects and arrays
  * For primitives, uses === comparison
  */
-function deepEqual(a: any, b: any): boolean {
+function deepEqual(a: unknown, b: unknown): boolean {
     if (a === b) return true;
     if (a == null || b == null) return false;
     if (typeof a !== typeof b) return false;

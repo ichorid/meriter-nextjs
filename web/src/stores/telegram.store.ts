@@ -5,11 +5,11 @@ import type { TelegramWebAppUser } from '@/types/telegram';
 interface TelegramState {
   isInTelegram: boolean;
   initData: string | null;
-  initDataUnsafe: any;
+  initDataUnsafe: unknown;
   version: string;
   platform: string;
   colorScheme: 'light' | 'dark';
-  themeParams: any;
+  themeParams: unknown;
   user: TelegramWebAppUser | null;
   ready: boolean;
 }
@@ -39,7 +39,7 @@ export const useTelegramStore = create<TelegramState & TelegramActions>()(
         if (typeof window === 'undefined') return;
         
         try {
-          const tgWebApp = (window as any).Telegram?.WebApp;
+          const tgWebApp = (window as unknown).Telegram?.WebApp;
           
           if (tgWebApp) {
             set({
@@ -68,7 +68,7 @@ export const useTelegramStore = create<TelegramState & TelegramActions>()(
               });
             });
           }
-        } catch (error) {
+        } catch {
           console.warn('Failed to initialize Telegram WebApp:', error);
         }
       },

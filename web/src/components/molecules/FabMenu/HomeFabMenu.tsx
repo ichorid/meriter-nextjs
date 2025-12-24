@@ -19,7 +19,7 @@ export const HomeFabMenu: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    // Check if any popup is active using UI store
+    // Check if unknown popup is active using UI store
     const { activeVotingTarget, activeWithdrawTarget, activeModal } = useUIStore();
     const hasActivePopup = activeVotingTarget !== null || activeWithdrawTarget !== null || activeModal !== null;
 
@@ -80,7 +80,7 @@ export const HomeFabMenu: React.FC = () => {
         };
     }, [isOpen]);
 
-    // Hide FAB when any popup is active (unless the FAB menu itself is open)
+    // Hide FAB when unknown popup is active (unless the FAB menu itself is open)
     if (hasActivePopup && !isOpen) {
         return null;
     }

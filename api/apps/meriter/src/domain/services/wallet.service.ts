@@ -1,11 +1,11 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, _BadRequestException, _NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { Wallet } from '../aggregates/wallet/wallet.entity';
 import { WalletSchemaClass, WalletDocument } from '../models/wallet/wallet.schema';
-import type { Wallet as WalletSchema } from '../models/wallet/wallet.schema';
+import type { Wallet as _WalletSchema } from '../models/wallet/wallet.schema';
 import { Transaction, TransactionSchemaClass, TransactionDocument } from '../models/transaction/transaction.schema';
-import { UserId, CommunityId, WalletId } from '../value-objects';
+import { UserId, CommunityId, _WalletId } from '../value-objects';
 import { WalletBalanceChangedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { uid } from 'uid';
@@ -189,41 +189,41 @@ export class WalletService {
     };
   }
 
-  async getTransaction(id: string): Promise<any> {
+  async getTransaction(_id: string): Promise<any> {
     // This is a simplified implementation
     return null;
   }
 
   async getTransactionByReference(
-    type: string,
-    referenceId: string,
-    userId: string,
+    _type: string,
+    _referenceId: string,
+    _userId: string,
   ): Promise<any> {
     // This is a simplified implementation
     return null;
   }
 
   async getTransactionsByReference(
-    type: string,
-    referenceId: string,
-    limit: number,
-    skip: number,
+    _type: string,
+    _referenceId: string,
+    _limit: number,
+    _skip: number,
   ): Promise<any[]> {
     // This is a simplified implementation
     return [];
   }
 
   async getUserTransactions(
-    userId: string,
-    type: string,
-    limit: number,
-    skip: number,
+    _userId: string,
+    _type: string,
+    _limit: number,
+    _skip: number,
   ): Promise<any[]> {
     // This is a simplified implementation
     return [];
   }
 
-  async deleteTransaction(id: string): Promise<void> {
+  async deleteTransaction(_id: string): Promise<void> {
     // This is a simplified implementation
   }
 

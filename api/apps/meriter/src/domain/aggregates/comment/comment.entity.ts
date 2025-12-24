@@ -1,4 +1,5 @@
-import { UserId, PublicationId } from '../../value-objects';
+import { uid } from 'uid';
+import { UserId } from '../../value-objects';
 import { BaseMetrics } from '../../common/metrics/base-metrics';
 import { EditableEntity } from '../../common/interfaces/editable-entity.interface';
 import { AuthorizationHelper } from '../../common/mixins/authorizable-entity.mixin';
@@ -78,8 +79,6 @@ export class Comment implements EditableEntity {
     parentCommentId?: string,
     images?: string[]
   ): Comment {
-    const { uid } = require('uid');
-    
     return new Comment(
       uid(),
       targetType,

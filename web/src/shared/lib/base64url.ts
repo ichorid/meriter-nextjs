@@ -56,7 +56,7 @@ export function base64urlDecode(str: string): string {
   try {
     // Decode from base64
     return atob(base64);
-  } catch (error: unknown) {
+  } catch {
     const message = error instanceof Error ? error.message : 'Unknown error';
     throw new Error(`Base64 decode failed: ${message}`);
   }
@@ -98,7 +98,7 @@ export function decodeTelegramDeepLink(encodedData: string): { action: string; i
     const id = decoded.substring(colonIndex + 1);
     
     return { action, id };
-  } catch (error) {
+  } catch {
     console.error('Failed to decode Telegram deep link:', error);
     console.error('Original data:', encodedData);
     

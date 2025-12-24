@@ -20,7 +20,7 @@ export const CommentForm: React.FC<CommentFormProps> = memo(
         onCancel,
         maxAmount,
         initialAmount = 0,
-        initialDirection = true,
+        _initialDirection = true,
         loading = false,
         className = "",
     }) => {

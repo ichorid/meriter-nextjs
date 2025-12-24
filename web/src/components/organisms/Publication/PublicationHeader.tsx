@@ -29,7 +29,7 @@ interface Publication {
     commentCount?: number;
   };
   meta?: {
-    commentTgEntities?: any[];
+    commentTgEntities?: unknown[];
     comment?: string;
     author?: {
       name?: string;
@@ -71,7 +71,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   showCommunityAvatar = false,
   className = '',
   authorId,
-  metrics,
+  _metrics,
   publicationId,
   communityId,
   isPoll = false,
@@ -109,7 +109,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   const canDeleteEnabled = canDelete && !publication.permissions?.deleteDisabledReason;
   
   // Check if current user is the author (for navigation purposes)
-  const isAuthor = author.id && currentUserId && author.id === currentUserId;
+  const _isAuthor = author.id && currentUserId && author.id === currentUserId;
   
   // Show edit button if user can edit, disable if canEdit but not canEditEnabled
   const showEditButton = canEdit && publicationId && communityId;
@@ -147,7 +147,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
       } else {
         router.push(routes.profile);
       }
-    } catch (error: any) {
+    } catch {
       addToast(error?.message || 'Failed to delete', 'error');
     }
   };
@@ -229,7 +229,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             <Trash2 size={16} />
           </Button>
         )}
-        {(publication as any).postType === 'project' || (publication as any).isProject ? (
+        {(publication as unknown).postType === 'project' || (publication as unknown).isProject ? (
           <BrandBadge variant="warning" size="sm">
             PROJECT
           </BrandBadge>

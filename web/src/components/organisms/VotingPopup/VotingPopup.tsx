@@ -37,7 +37,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   } = useUIStore();
 
   // Use shared hook for community data
-  const { targetCommunityId, currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
+  const { targetCommunityId, _currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
 
   // Get user role to check if viewer
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
@@ -66,8 +66,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   const quotaRemaining = quotaData?.remainingToday ?? 0;
   const dailyQuota = quotaData?.dailyQuota ?? 0;
   const usedToday = quotaData?.usedToday ?? 0;
-  const freePlus = quotaRemaining;
-  const freeMinus = 0; // Downvotes typically don't have free quota
+  const _freePlus = quotaRemaining;
+  const _freeMinus = 0; // Downvotes typically don't have free quota
 
   // Get free balance as fallback (different API endpoint)
   const { data: freeBalance } = useFreeBalance(targetCommunityId);
@@ -75,7 +75,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   // Note: Quota and wallet optimistic updates are handled by mutation hooks
 
-  const hasPoints = freePlusAmount > 0 || walletBalance > 0;
+  const _hasPoints = freePlusAmount > 0 || walletBalance > 0;
 
   // Calculate maxPlus based on effective voting mode (quota-only for viewers)
   let maxPlus = 0;
@@ -104,7 +104,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   };
 
   // Calculate vote breakdown: quota vs wallet
-  const voteBreakdown = useMemo(() => {
+  const _voteBreakdown = useMemo(() => {
     const amount = Math.abs(formData.delta);
     const isUpvote = formData.delta > 0;
 
@@ -239,7 +239,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
       // Close popup and reset form
       handleClose();
-    } catch (err: unknown) {
+    } catch {
       // Mutation hooks handle rollback automatically via onError
       const message = err instanceof Error ? err.message : t('errorCommenting');
       updateVotingFormData({ error: message });
@@ -278,4 +278,3 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     </BottomPortal>
   );
 };
-

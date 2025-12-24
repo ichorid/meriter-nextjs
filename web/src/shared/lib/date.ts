@@ -54,7 +54,7 @@ export function parseDateFormula(fl: string, subst: object) {
 
     const addVal = fl.match('\\+') ? parseTimeString(fl.split('+')[1] || '') : fl.match('\\-') ? -parseTimeString(fl.split('-')[1] || '') : 0
 
-    const val = Object.entries(subst).find(([k, v]) => fl.match(k))?.[1] || 0
+    const val = Object.entries(subst).find(([k, _v]) => fl.match(k))?.[1] || 0
     return val + addVal
 }
 
@@ -127,6 +127,6 @@ export function getRelativeTime(date: Date): string {
 /**
  * Check if a value is a valid Date object
  */
-export function isValidDate(date: any): boolean {
+export function isValidDate(date: unknown): boolean {
   return date instanceof Date && !isNaN(date.getTime());
 }

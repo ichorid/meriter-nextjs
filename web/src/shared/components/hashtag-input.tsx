@@ -39,7 +39,7 @@ export const HashtagInput = ({
         if (!inputValue.trim()) return false;
         // Remove # prefix for validation check
         const textWithoutHash = inputValue.replace(/^#/, '');
-        // Check if there are any invalid characters (not a-z, A-Z, 0-9, _)
+        // Check if there are unknown invalid characters (not a-z, A-Z, 0-9, _)
         return /[^a-z0-9_]/i.test(textWithoutHash);
     }, [inputValue]);
 
@@ -70,7 +70,7 @@ export const HashtagInput = ({
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        // Allow users to type freely, including # and any characters
+        // Allow users to type freely, including # and unknown characters
         // Validation happens when adding the tag, not during typing
         setInputValue(e.target.value);
     };

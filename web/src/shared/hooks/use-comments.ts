@@ -2,7 +2,7 @@ import { useState } from "react";
 import { trpc } from '@/lib/trpc/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Dispatch, SetStateAction } from 'react';
-import { commentsKeys } from '@/hooks/api/useComments';
+import { _commentsKeys } from '@/hooks/api/useComments';
 import { useUserQuota } from '@/hooks/api/useQuota';
 
 const { round } = Math;
@@ -69,15 +69,15 @@ export const useComments = (
         : [];
 
     // Get user quota for free balance using standardized hook
-    const { user } = useAuth();
+    const { _user } = useAuth();
     const { data: quotaData } = useUserQuota(communityId);
     
     // Use quota data directly
     const freePlus = quotaData?.remainingToday || 0;
     const freeMinus = 0;
-    const dailyQuota = quotaData?.dailyQuota || 0;
-    const usedToday = quotaData?.usedToday || 0;
-    const quotaRemaining = freePlus;
+    const _dailyQuota = quotaData?.dailyQuota || 0;
+    const _usedToday = quotaData?.usedToday || 0;
+    const _quotaRemaining = freePlus;
 
     const currentPlus = round(plusGiven || 0);
     const currentMinus = round(minusGiven || 0);

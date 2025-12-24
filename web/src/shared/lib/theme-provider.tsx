@@ -20,7 +20,7 @@ function getInitialTheme(): Theme {
         if (stored && (stored === 'light' || stored === 'dark' || stored === 'auto')) {
             return stored;
         }
-    } catch (e) {
+    } catch {
         // localStorage not available
     }
     return 'auto';
@@ -34,7 +34,7 @@ function getInitialResolvedTheme(): 'light' | 'dark' {
         if (dataTheme === 'dark' || dataTheme === 'light') {
             return dataTheme;
         }
-    } catch (e) {
+    } catch {
         // document not available
     }
     return 'light';
@@ -51,7 +51,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         if (typeof window === 'undefined') return undefined;
         
         try {
-            const tgWebApp = (window as any).Telegram?.WebApp;
+            const tgWebApp = (window as unknown).Telegram?.WebApp;
             if (tgWebApp?.themeParams) {
                 const isDark = tgWebApp.themeParams.colorScheme === 'dark';
                 setResolvedTheme(isDark ? 'dark' : 'light');
@@ -67,7 +67,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                     tgWebApp.offEvent('themeChanged', handleThemeChange);
                 };
             }
-        } catch (error) {
+        } catch {
             // Not in Telegram or WebApp not available - continue with normal theme logic
         }
         
@@ -77,7 +77,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Update resolved theme based on theme setting and system preference
     useEffect(() => {
         // Check if Telegram theme is being used
-        const tgWebApp = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null;
+        const tgWebApp = typeof window !== 'undefined' ? (window as unknown).Telegram?.WebApp : null;
         if (tgWebApp?.themeParams) {
             // Telegram theme is handled by the effect above
             return;
@@ -115,7 +115,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         console.log('🎨 Setting theme:', newTheme);
         
         // Check if Telegram theme is active
-        const tgWebApp = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null;
+        const tgWebApp = typeof window !== 'undefined' ? (window as unknown).Telegram?.WebApp : null;
         if (tgWebApp?.themeParams) {
             console.log('🎨 In Telegram Web App - theme follows Telegram settings');
             return;
@@ -140,4 +140,3 @@ export function useTheme() {
     }
     return context;
 }
-

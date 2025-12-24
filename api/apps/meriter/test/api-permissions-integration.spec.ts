@@ -13,13 +13,14 @@ import { Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { uid } from 'uid';
 import { signJWT } from '../src/common/helpers/jwt';
+import cookieParser from 'cookie-parser';
 
 describe('API Permissions Integration', () => {
   jest.setTimeout(60000);
   
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
-  let connection: Connection;
+  let _connection: Connection;
   
   let publicationService: PublicationService;
   let commentService: CommentService;
@@ -47,9 +48,9 @@ describe('API Permissions Integration', () => {
   // JWT tokens
   let participant1Token: string;
   let participant2Token: string;
-  let lead1Token: string;
+  let _lead1Token: string;
   let superadminToken: string;
-  let viewerToken: string;
+  let _viewerToken: string;
 
   beforeAll(async () => {
     testDb = new TestDatabaseHelper();
@@ -64,7 +65,6 @@ describe('API Permissions Integration', () => {
 
     app = moduleFixture.createNestApplication();
     // Add cookie parser middleware (same as main.ts)
-    const cookieParser = require('cookie-parser');
     app.use(cookieParser());
     await app.init();
 
@@ -334,4 +334,3 @@ describe('API Permissions Integration', () => {
     });
   });
 });
-

@@ -26,8 +26,8 @@ export function useUserMeritsBalance() {
   const communityIds = useMemo(() => {
     return Array.from(new Set(
       wallets
-        .filter((w: any) => w?.communityId)
-        .map((w: any) => w.communityId)
+        .filter((w: unknown) => w?.communityId)
+        .map((w: unknown) => w.communityId)
     ));
   }, [wallets]);
   

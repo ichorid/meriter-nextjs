@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { HttpException } from '@nestjs/common';
+import { _HttpException } from '@nestjs/common';
 import { MeriterController } from './meriter.controller';
 import { MeriterService } from './meriter.service';
 

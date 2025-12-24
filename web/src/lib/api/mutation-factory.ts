@@ -4,8 +4,8 @@
  * with configurable invalidations and error handling
  */
 
-import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
-import { z, ZodTypeAny } from 'zod';
+import { useMutation, useQueryClient, _UseMutationOptions } from '@tanstack/react-query';
+import { _z, ZodTypeAny } from 'zod';
 import {
     invalidateWallet,
     invalidatePublications,
@@ -17,46 +17,46 @@ import { validateData, validateApiResponse, ValidationError } from './validation
 
     export interface InvalidationConfig {
         wallet?: {
-        communityId?: string | ((result: any, variables: any) => string | undefined);
+        communityId?: string | ((result: unknown, variables: unknown) => string | undefined);
         includeBalance?: boolean;
         includeTransactions?: boolean;
         };
     publications?: {
         lists?: boolean;
-        detail?: string | ((result: any, variables: any) => string | undefined);
-        communityId?: string | ((result: any, variables: any) => string | undefined);
+        detail?: string | ((result: unknown, variables: unknown) => string | undefined);
+        communityId?: string | ((result: unknown, variables: unknown) => string | undefined);
         feed?: boolean;
         exact?: boolean;
     };
     comments?: {
         lists?: boolean;
-        detail?: string | ((result: any, variables: any) => string | undefined);
-        byPublication?: string | ((result: any, variables: any) => string | undefined);
-        byComment?: string | ((result: any, variables: any) => string | undefined);
+        detail?: string | ((result: unknown, variables: unknown) => string | undefined);
+        byPublication?: string | ((result: unknown, variables: unknown) => string | undefined);
+        byComment?: string | ((result: unknown, variables: unknown) => string | undefined);
         exact?: boolean;
     };
     communities?: {
         lists?: boolean;
-        detail?: string | ((result: any, variables: any) => string | undefined);
+        detail?: string | ((result: unknown, variables: unknown) => string | undefined);
         feed?: boolean;
         exact?: boolean;
     };
     polls?: {
         lists?: boolean;
-        detail?: string | ((result: any, variables: any) => string | undefined);
-        results?: string | ((result: any, variables: any) => string | undefined);
+        detail?: string | ((result: unknown, variables: unknown) => string | undefined);
+        results?: string | ((result: unknown, variables: unknown) => string | undefined);
         exact?: boolean;
     };
     notifications?: boolean;
     quota?: {
-        userId?: string | ((result: any, variables: any) => string | undefined);
-        communityId?: string | ((result: any, variables: any) => string | undefined);
+        userId?: string | ((result: unknown, variables: unknown) => string | undefined);
+        communityId?: string | ((result: unknown, variables: unknown) => string | undefined);
     };
 }
 
 export interface MutationConfig<
-    TData = any,
-    TVariables = any,
+    TData = unknown,
+    TVariables = unknown,
     TError = Error,
     TInputSchema extends ZodTypeAny | undefined = undefined,
     TOutputSchema extends ZodTypeAny | undefined = undefined
@@ -68,7 +68,7 @@ export interface MutationConfig<
     onError?: (error: TError, variables: TVariables) => void;
     setQueryData?: {
         queryKey: (result: TData) => readonly unknown[];
-        data: (result: TData) => any;
+        data: (result: TData) => unknown;
     };
     removeQuery?: {
         queryKey: (variables: TVariables) => readonly unknown[];
@@ -83,13 +83,13 @@ export interface MutationConfig<
  * Helper to resolve a value that can be either a static value or a function
  */
 function resolveValue<T>(
-    value: T | ((result: any, variables: any) => T) | undefined,
-    result: any,
-    variables: any
+    value: T | ((result: unknown, variables: unknown) => T) | undefined,
+    result: unknown,
+    variables: unknown
 ): T | undefined {
     if (value === undefined) return undefined;
     if (typeof value === 'function') {
-        return (value as (result: any, variables: any) => T)(result, variables);
+        return (value as (result: unknown, variables: unknown) => T)(result, variables);
     }
     return value;
 }
@@ -100,8 +100,8 @@ function resolveValue<T>(
 function applyInvalidations(
     queryClient: ReturnType<typeof useQueryClient>,
     invalidations: InvalidationConfig | undefined,
-    result: any,
-    variables: any
+    result: unknown,
+    variables: unknown
 ): void {
     if (!invalidations) return;
 
@@ -193,11 +193,11 @@ function applyInvalidations(
 /**
  * Create a mutation hook with standardized patterns
  * Supports both validated and non-validated mutations
- * Avoids deep type instantiation by using any types and avoiding UseMutationOptions
+ * Avoids deep type instantiation by using unknown types and avoiding UseMutationOptions
  */
 export function createMutation<
-    TData = any,
-    TVariables = any,
+    TData = unknown,
+    TVariables = unknown,
     TError = Error
 >(
     config: MutationConfig<TData, TVariables, TError, ZodTypeAny | undefined, ZodTypeAny | undefined>
@@ -232,7 +232,7 @@ export function createMutation<
                 }
 
                 return response;
-            } catch (error) {
+            } catch {
                 if (error instanceof ValidationError) {
                     console.error('Validation error:', error.zodError, error.context);
                     throw error;
@@ -284,4 +284,3 @@ export function createMutation<
         });
     };
 }
-

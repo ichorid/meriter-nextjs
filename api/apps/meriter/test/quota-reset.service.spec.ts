@@ -31,10 +31,10 @@ describe('QuotaResetService', () => {
   let connection: Connection;
 
   let quotaResetService: QuotaResetService;
-  let communityService: CommunityService;
-  let notificationService: NotificationService;
-  let userCommunityRoleService: UserCommunityRoleService;
-  let permissionService: PermissionService;
+  let _communityService: CommunityService;
+  let _notificationService: NotificationService;
+  let _userCommunityRoleService: UserCommunityRoleService;
+  let _permissionService: PermissionService;
   let schedulerRegistry: SchedulerRegistry;
 
   let communityModel: Model<CommunityDocument>;
@@ -527,4 +527,3 @@ describe('QuotaResetService', () => {
     });
   });
 });
-

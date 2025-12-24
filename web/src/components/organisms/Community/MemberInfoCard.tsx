@@ -23,12 +23,12 @@ interface MemberInfoCardProps {
 }
 
 export function MemberInfoCard({
-    memberId,
+    _memberId,
     title,
     subtitle,
     icon,
     badges,
-    communityId,
+    _communityId,
     canViewMerits,
     walletBalance,
     quota,
@@ -74,4 +74,3 @@ export function MemberInfoCard({
         />
     );
 }
-

@@ -18,7 +18,7 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
   communityId,
 }) => {
   const t = useTranslations('shared');
-  const { user } = useAuth();
+  const { _user } = useAuth();
   const {
     activeWithdrawTarget,
     withdrawTargetType,
@@ -36,7 +36,7 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
   const isOpen = !!activeWithdrawTarget && !!withdrawTargetType;
 
   // Use shared hook for community data
-  const { targetCommunityId, currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
+  const { targetCommunityId, _currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
 
   // Use shared hook for form data management
   const { formData, handleCommentChange } = usePopupFormData({
@@ -112,7 +112,7 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
       // Close popup and reset form
       handleClose();
       // Mutations handle query invalidation automatically
-    } catch (err: unknown) {
+    } catch {
       const message = err instanceof Error ? err.message : t('errorSubmitting') || 'Failed to submit';
       updateWithdrawFormData({ error: message });
     }
@@ -135,7 +135,7 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
     ? t('withdraw') 
     : t('addCommunityPoints', { amount: 0 }).replace(': {amount}', '').replace('{amount}', '');
 
-  const isLoading = 
+  const _isLoading = 
     voteOnPublicationWithCommentMutation.isPending || 
     voteOnVoteMutation.isPending || 
     withdrawFromPublicationMutation.isPending || 
@@ -172,4 +172,3 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
     </BottomPortal>
   );
 };
-

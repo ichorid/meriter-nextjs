@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { PollCastRepository } from '../models/poll/poll-cast.repository';
 import { PollSchemaClass, PollDocument } from '../models/poll/poll.schema';
-import type { Poll } from '../models/poll/poll.schema';
+import type { _Poll } from '../models/poll/poll.schema';
 import type { PollCast } from '../models/poll/poll-cast.schema';
 import { PollCastedEvent } from '../events';
 import { EventBus } from '../events/event-bus';

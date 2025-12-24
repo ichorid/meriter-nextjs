@@ -20,7 +20,7 @@ interface ProfileHeroProps {
   userRoles?: Array<{ role: string }>;
 }
 
-export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles = [] }: ProfileHeroProps) {
+export function ProfileHero({ user, _stats, onEdit, showEdit = false, userRoles = [] }: ProfileHeroProps) {
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   
@@ -211,4 +211,3 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
     </div>
   );
 }
-

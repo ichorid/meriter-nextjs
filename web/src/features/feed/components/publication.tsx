@@ -3,7 +3,7 @@
 import { useComments } from "@shared/hooks/use-comments";
 import { useEffect, useState } from "react";
 import { CardPublication } from "./card-publication";
-import { useCommunity, usePoll } from '@/hooks/api';
+import { useCommunity, _usePoll } from '@/hooks/api';
 import { dateVerbose } from "@shared/lib/date";
 import { BarVoteUnified } from "@shared/components/bar-vote-unified";
 import { BarWithdraw } from "@shared/components/bar-withdraw";
@@ -12,14 +12,14 @@ import { FormDimensionsEditor } from "@shared/components/form-dimensions-editor"
 import { useUIStore } from "@/stores/ui.store";
 import { classList } from "@lib/classList";
 import { Comment } from "@features/comments/components/comment";
-import { PollCasting } from "@features/polls/components/poll-casting";
-import type { IPollData } from "@features/polls/types";
+import { _PollCasting } from "@features/polls/components/poll-casting";
+import type { _IPollData } from "@features/polls/types";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from 'next-intl';
-import type { Publication as PublicationType } from '@/types/api-v1';
-import { ResourcePermissions } from '@/types/api-v1';
+import type { Publication as _PublicationType } from '@/types/api-v1';
+import { _ResourcePermissions } from '@/types/api-v1';
 
-export const Publication = (props: any) => {
+export const Publication = (props: unknown) => {
     const {
         minus,
         plus,
@@ -44,17 +44,17 @@ export const Publication = (props: any) => {
         entities,
         highlightTransactionId,
         type,
-        content,
+        _content,
         _id,
         isDetailPage,
         showCommunityAvatar,
         wallets,
         updateWalletBalance,
         updateAll,
-        currency,
-        inMerits,
-        currencyOfCommunityTgChatId,
-        fromTgChatId,
+        _currency,
+        _inMerits,
+        _currencyOfCommunityTgChatId,
+        _fromTgChatId,
         communityId,
         authorId,
         meta,
@@ -115,14 +115,14 @@ export const Publication = (props: any) => {
     
     // Get community info to check typeTag
     const { data: communityInfo } = useCommunity(communityId || '');
-    const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
+    const _isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
     
     // Check if this is a PROJECT post (no voting allowed)
-    const isProject = type === 'project' || (meta as any)?.isProject === true;
+    const _isProject = type === 'project' || (meta as unknown)?.isProject === true;
     
     // Use API permissions instead of calculating on frontend
-    const canVote = (originalPublication as any).permissions?.canVote ?? false;
-    const voteDisabledReason = (originalPublication as any).permissions?.voteDisabledReason;
+    const canVote = (originalPublication as unknown).permissions?.canVote ?? false;
+    const voteDisabledReason = (originalPublication as unknown).permissions?.voteDisabledReason;
     
     // Withdrawal state management (for author's own posts)
     const [optimisticSum, setOptimisticSum] = useState(sum);
@@ -137,9 +137,9 @@ export const Publication = (props: any) => {
             wallets.find((w) => w.communityId === curr)
                 ?.balance) ||
         0;
-    const [showselector, setShowselector] = useState(false);
+    const [_showselector, _setShowselector] = useState(false);
     
-    // Additional hooks must be called before any conditional returns
+    // Additional hooks must be called before unknown conditional returns
     useEffect(() => {
         if (onlyPublication || isDetailPage) {
             setShowComments(true);
@@ -160,7 +160,7 @@ export const Publication = (props: any) => {
     
     // Calculate derived values after early return checks
     // Rate conversion no longer needed with v1 API - currencies are normalized
-    const rate = 1;
+    const _rate = 1;
     
     // Ensure we have a valid number before doing arithmetic
     // Handle NaN, null, and undefined values
@@ -182,13 +182,13 @@ export const Publication = (props: any) => {
     // Show vote if: !isAuthor && !isBeneficiary (or if isAuthor && hasBeneficiary - author can vote for beneficiary)
     // IMPORTANT: If user is beneficiary, NEVER show vote button (even if balance is 0)
     const showWithdraw = false; // Withdrawals disabled
-    const showVote = !isAuthor && !isBeneficiary;
-    const showVoteForAuthor = isAuthor && hasBeneficiary; // Author can vote when there's a beneficiary
+    const _showVote = !isAuthor && !isBeneficiary;
+    const _showVoteForAuthor = isAuthor && hasBeneficiary; // Author can vote when there's a beneficiary
     const currentScore = currentPlus - currentMinus;
     
     // Calculate total votes (current score + withdrawn votes) for display
     // Check if withdrawals data is available in originalPublication
-    const totalWithdrawn = (originalPublication as any)?.withdrawals?.totalWithdrawn || 0;
+    const totalWithdrawn = (originalPublication as unknown)?.withdrawals?.totalWithdrawn || 0;
     const totalVotes = totalWithdrawn > 0 ? currentScore + totalWithdrawn : undefined;
     
     // Community info already fetched above - reuse it
@@ -200,7 +200,7 @@ export const Publication = (props: any) => {
     const tagsStr = [
         "#" + keyword,
         ...(Object.entries(dimensions || {}) || [])
-            .map(([slug, dim]) => "#" + dim)
+            .map(([_slug, dim]) => "#" + dim)
             .flat(),
     ].join(" ");
 
@@ -367,7 +367,7 @@ export const Publication = (props: any) => {
                 <div className="publication-comments">
                     {/* Existing Comments */}
                     <div className="comments">
-                        {comments?.map((c: any, index: number) => (
+                        {comments?.map((c: unknown, index: number) => (
                             <Comment
                                 key={c.id || c._id || `comment-${index}`}
                                 {...c}

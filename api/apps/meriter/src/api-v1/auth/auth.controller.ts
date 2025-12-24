@@ -9,15 +9,15 @@ import {
   Logger,
   ForbiddenException,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { _AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { UserGuard } from '../../user.guard';
 import { CookieManager } from '../common/utils/cookie-manager.util';
-import { ApiError, UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
-import { TelegramAuthDataSchema, TelegramWebAppDataSchema } from '../../../../../../libs/shared-types/dist/index';
-import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
+import { _ApiError, UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
+import { _TelegramAuthDataSchema, _TelegramWebAppDataSchema } from '../../../../../../libs/shared-types/dist/index';
+import { _ZodValidation } from '../../common/decorators/zod-validation.decorator';
 
-interface TelegramAuthData {
+interface _TelegramAuthData {
   id: number;
   first_name: string;
   last_name?: string;
@@ -27,7 +27,7 @@ interface TelegramAuthData {
   hash: string;
 }
 
-interface TelegramWebAppData {
+interface _TelegramWebAppData {
   initData: string;
 }
 

@@ -39,13 +39,13 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
   
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
-  let connection: Connection;
+  let _connection: Connection;
   
-  let communityService: CommunityService;
+  let _communityService: CommunityService;
   let voteService: VoteService;
-  let publicationService: PublicationService;
-  let userService: UserService;
-  let walletService: WalletService;
+  let _publicationService: PublicationService;
+  let _userService: UserService;
+  let _walletService: WalletService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -60,8 +60,8 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
   let visionCommunityId: string;
   let marathonPubId: string;
   let visionPubId: string;
-  let marathonVoteId: string;
-  let visionVoteId: string;
+  let _marathonVoteId: string;
+  let _visionVoteId: string;
 
   beforeAll(async () => {
     testDb = new TestDatabaseHelper();
@@ -824,4 +824,3 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
     });
   });
 });
-

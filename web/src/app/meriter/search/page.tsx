@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { _useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Search, FileText, MessageSquare, BarChart3, Users, Calendar, User, Hash } from 'lucide-react';
+import { Search, FileText, MessageSquare, BarChart3, Users, _Calendar, User, _Hash } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { AdvancedSearch, SearchParams as AdvancedSearchParams } from '@/components/organisms/AdvancedSearch';
@@ -201,4 +201,3 @@ export default function SearchResultsPage() {
     </AdaptiveLayout>
   );
 }
-

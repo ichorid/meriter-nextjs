@@ -8,9 +8,9 @@ import { UserCommunityRoleService } from '../src/domain/services/user-community-
 import { CommunityService } from '../src/domain/services/community.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { _User, UserDocument } from '../src/domain/models/user/user.schema';
+import { _UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { _Community, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { trpcQuery } from './helpers/trpc-test-helper';
 import { uid } from 'uid';
 
@@ -36,9 +36,9 @@ describe('Users - Get All Leads', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let userService: UserService;
-  let userCommunityRoleService: UserCommunityRoleService;
-  let communityService: CommunityService;
+  let _userService: UserService;
+  let _userCommunityRoleService: UserCommunityRoleService;
+  let _communityService: CommunityService;
 
   let userModel: Model<UserDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
@@ -422,4 +422,3 @@ describe('Users - Get All Leads', () => {
     });
   });
 });
-

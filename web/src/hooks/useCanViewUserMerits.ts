@@ -6,9 +6,9 @@ import { useUserRoles } from '@/hooks/api/useProfile';
  * Hook to check if the current user can view another user's merits/quota in a specific community.
  * 
  * Returns true if:
- * - Current user is a superadmin (can view any user in any community)
- * - Current user is a lead in the specified community (can view any user in that community)
- * - Current user is a participant in the specified community (can view any user in that community)
+ * - Current user is a superadmin (can view unknown user in unknown community)
+ * - Current user is a lead in the specified community (can view unknown user in that community)
+ * - Current user is a participant in the specified community (can view unknown user in that community)
  * 
  * @param communityId - The community ID to check permissions for
  * @returns { canView: boolean; isLoading: boolean }
@@ -20,7 +20,7 @@ export function useCanViewUserMerits(communityId?: string) {
   const canView = useMemo(() => {
     if (!user || !communityId) return false;
 
-    // Superadmin can view any user's merits in any community
+    // Superadmin can view unknown user's merits in unknown community
     if (user.globalRole === 'superadmin') {
       return true;
     }

@@ -18,8 +18,8 @@ interface RuntimeConfigProviderProps {
  */
 export function RuntimeConfigProvider({
     children,
-    fallbackEnabledProviders,
-    fallbackAuthnEnabled,
+    _fallbackEnabledProviders,
+    _fallbackAuthnEnabled,
 }: RuntimeConfigProviderProps) {
     // Fetch runtime config (falls back to build-time defaults if API fails)
     const { config: runtimeConfig } = useRuntimeConfig();
@@ -61,4 +61,3 @@ export function RuntimeConfigProvider({
         </AuthWrapper>
     );
 }
-

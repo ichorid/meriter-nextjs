@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { renderWithProviders, mockUser, mockApiResponses, testUtils } from '../utils/test-utils';
+import { renderWithProviders, mockUser, _mockApiResponses, testUtils } from '../utils/test-utils';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useMe, useTelegramAuth, useTelegramWebAppAuth, useLogout } from '@/hooks/api/useAuth';
 
@@ -74,7 +74,7 @@ describe('AuthContext', () => {
         data: mockUser,
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       const { getByTestId } = renderWithProviders(
         <AuthProvider>
@@ -92,7 +92,7 @@ describe('AuthContext', () => {
         data: undefined,
         isLoading: true,
         error: null,
-      } as any);
+      } as unknown);
 
       const { getByTestId } = renderWithProviders(
         <AuthProvider>
@@ -110,7 +110,7 @@ describe('AuthContext', () => {
         data: undefined,
         isLoading: false,
         error: new Error('Failed to load user'),
-      } as any);
+      } as unknown);
 
       const { getByTestId } = renderWithProviders(
         <AuthProvider>
@@ -130,14 +130,14 @@ describe('AuthContext', () => {
         data: undefined,
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
     });
 
     it('should handle Telegram widget authentication', async () => {
       const mockMutateAsync = jest.fn().mockResolvedValue({});
       mockUseTelegramAuth.mockReturnValue({
         mutateAsync: mockMutateAsync,
-      } as any);
+      } as unknown);
 
       const { getByTestId } = renderWithProviders(
         <AuthProvider>
@@ -155,7 +155,7 @@ describe('AuthContext', () => {
       const mockMutateAsync = jest.fn().mockResolvedValue({});
       mockUseTelegramWebAppAuth.mockReturnValue({
         mutateAsync: mockMutateAsync,
-      } as any);
+      } as unknown);
 
       const { getByTestId } = renderWithProviders(
         <AuthProvider>
@@ -173,7 +173,7 @@ describe('AuthContext', () => {
       const mockMutateAsync = jest.fn().mockResolvedValue({});
       mockUseLogout.mockReturnValue({
         mutateAsync: mockMutateAsync,
-      } as any);
+      } as unknown);
 
       const { getByTestId } = renderWithProviders(
         <AuthProvider>
@@ -193,13 +193,13 @@ describe('AuthContext', () => {
       const mockMutateAsync = jest.fn().mockRejectedValue(new Error('Auth failed'));
       mockUseTelegramAuth.mockReturnValue({
         mutateAsync: mockMutateAsync,
-      } as any);
+      } as unknown);
 
       mockUseMe.mockReturnValue({
         data: undefined,
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       const { getByTestId } = renderWithProviders(
         <AuthProvider>

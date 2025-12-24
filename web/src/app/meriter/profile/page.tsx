@@ -11,17 +11,17 @@ import { ProfileStats } from '@/components/organisms/Profile/ProfileStats';
 import { UseInvite } from '@/components/organisms/Profile/UseInvite';
 import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
 import { useProfileData } from '@/hooks/useProfileData';
-import { Button } from '@/components/ui/shadcn/button';
-import { routes } from '@/lib/constants/routes';
+import { _Button } from '@/components/ui/shadcn/button';
+import { _routes } from '@/lib/constants/routes';
 import { InviteHandler } from '@/components/InviteHandler';
-import Link from 'next/link';
+import _Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { LogoutBlock } from '@/components/organisms/LogoutBlock';
 
 export default function ProfilePage() {
   const t = useTranslations('profile');
-  const tCommon = useTranslations('common');
+  const _tCommon = useTranslations('common');
   const { user, isLoading: authLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
 

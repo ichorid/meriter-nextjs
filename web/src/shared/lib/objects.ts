@@ -5,12 +5,12 @@ export const booleany = function (str: string | boolean): string | boolean {
 }
 
 export const objectDeepModify = function (
-    obj: any,
-    mapObject: (path: string) => (objEntries: any) => any = (path) => (objEntries) => objEntries,
-    filterObject: (path: string) => (objEntries: any) => any = (path) => (objEntries) => objEntries,
+    obj: unknown,
+    mapObject: (path: string) => (objEntries: unknown) => unknown = (_path) => (objEntries) => objEntries,
+    filterObject: (path: string) => (objEntries: unknown) => unknown = (_path) => (objEntries) => objEntries,
     strFn: (str: string) => string = (str) => str,
     path: string = ''
-): any {
+): unknown {
     if (obj && typeof obj == 'object') {
         if (Array.isArray(obj)) return obj.map((r, i) => objectDeepModify(r, mapObject, filterObject, strFn, `${path}/${i}`))
         else
@@ -24,7 +24,7 @@ export const objectDeepModify = function (
     else return obj
 }
 
-export const objectAddress = function (obj: any, address: string[] = []): any {
+export const objectAddress = function (obj: unknown, address: string[] = []): unknown {
     if (address.length > 0) {
         if (address[0] === '') return objectAddress(obj, address.slice(1))
         //support of "/" at start of the path
@@ -32,7 +32,7 @@ export const objectAddress = function (obj: any, address: string[] = []): any {
     } else return obj
 }
 
-export const objectExceptKeys = function <T extends Record<string, any>>(obj: T, keys: string[] = []): Partial<T> {
+export const objectExceptKeys = function <T extends Record<string, unknown>>(obj: T, keys: string[] = []): Partial<T> {
     const o = { ...obj }
     for (const key of keys) {
         delete o[key]
@@ -40,15 +40,15 @@ export const objectExceptKeys = function <T extends Record<string, any>>(obj: T,
     return o
 }
 
-export const objectSelectKeys = function <T extends Record<string, any>>(obj: T, keys: string[] = []): Partial<T> {
-    const o: any = {}
+export const objectSelectKeys = function <T extends Record<string, unknown>>(obj: T, keys: string[] = []): Partial<T> {
+    const o: unknown = {}
     for (const key of keys) {
         o[key] = obj[key]
     }
     return o
 }
 
-export function objectDeepFind(obj: Record<string, any>, fn: (key: string, value: any) => boolean): boolean {
+export function objectDeepFind(obj: Record<string, unknown>, fn: (key: string, value: unknown) => boolean): boolean {
     let found = false
     Object.entries(obj).forEach(([k, v]) => {
         if (fn(k, v)) found = true
@@ -57,15 +57,15 @@ export function objectDeepFind(obj: Record<string, any>, fn: (key: string, value
     return found
 }
 
-export function fillDefined<T extends Record<string, any>>(obj: T): Partial<T> {
+export function fillDefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
     return Object.entries(obj).reduce((acc, cur) => {
         if (typeof cur[1] !== 'undefined' && cur[0] !== 'undefined') acc[cur[0]] = cur[1]
 
         return acc
-    }, {} as any)
+    }, {} as unknown)
 }
 
-export function fillDefinedAndNotEmpty<T extends Record<string, any>>(obj: T): Partial<T> {
+export function fillDefinedAndNotEmpty<T extends Record<string, unknown>>(obj: T): Partial<T> {
     return Object.entries(obj).reduce((acc, cur) => {
         if (
             typeof cur[1] !== 'undefined' &&
@@ -75,10 +75,10 @@ export function fillDefinedAndNotEmpty<T extends Record<string, any>>(obj: T): P
             acc[cur[0]] = cur[1]
 
         return acc
-    }, {} as any)
+    }, {} as unknown)
 }
 
-export function objectDeepSubst(obj: object, params: object): any {
+export function objectDeepSubst(obj: object, params: object): unknown {
     if (Array.isArray(obj)) {
         return obj.map((o) => objectDeepSubst(o, params))
     }
@@ -99,9 +99,9 @@ export function objectDeepSubst(obj: object, params: object): any {
 function escapeRegExp(string: string): string {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // $& means the whole matched string
 }
-export function strSubst(str: string, params: Record<string, any>): any {
+export function strSubst(str: string, params: Record<string, unknown>): unknown {
     let newStr = str
-    let retObj: any = null
+    let retObj: unknown = null
 
     Object.entries(params).forEach(([from, to]) => {
         if (typeof to === 'object' && str.match(escapeRegExp(from))) {

@@ -3,13 +3,13 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/shadcn/card';
-import { UserCard, VoteIndicator } from '@/components/molecules';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { _UserCard, VoteIndicator } from '@/components/molecules';
+import { Avatar, _AvatarImage, _AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Badge } from '@/components/atoms/Badge/Badge';
 import { Button } from '@/components/ui/shadcn/button';
 import { Icon } from '@/components/atoms/Icon/Icon';
-import { Divider } from '@/components/atoms/Divider/Divider';
-import { User } from 'lucide-react';
+import { _Divider } from '@/components/atoms/Divider/Divider';
+import { _User } from 'lucide-react';
 import { formatDate } from '@/shared/lib/date';
 import { routes } from '@/lib/constants/routes';
 

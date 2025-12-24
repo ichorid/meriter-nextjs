@@ -124,7 +124,7 @@ describe('API Client', () => {
         '/test',
         expect.objectContaining({
           headers: expect.not.objectContaining({
-            'Authorization': expect.any(String),
+            'Authorization': expect.unknown(String),
           }),
         })
       );

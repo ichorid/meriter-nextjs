@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Children, Fragment } from "react";
+import React, { _Children, Fragment } from "react";
 import { classList } from '@lib/classList';
 
 export const parseMarkDown = (txt: unknown): React.ReactNode => {
@@ -93,28 +93,28 @@ const Paragraph: React.FC<ParagraphProps> = ({ type, props, children }) => {
         parseMarkDown(children)
     );
 };
-export const P: React.FC<any> = (props) => {
+export const P: React.FC<unknown> = (props) => {
     return (
         <Paragraph type="p" props={props}>
             {props.children}
         </Paragraph>
     );
 };
-export const H1: React.FC<any> = (props) => {
+export const H1: React.FC<unknown> = (props) => {
     return (
         <Paragraph type="h1" props={props}>
             {props.children}
         </Paragraph>
     );
 };
-export const H2: React.FC<any> = (props) => {
+export const H2: React.FC<unknown> = (props) => {
     return (
         <Paragraph type="h2" props={props}>
             {props.children}
         </Paragraph>
     );
 };
-export const B: React.FC<any> = (props) => {
+export const B: React.FC<unknown> = (props) => {
     return (
         <Paragraph type="b" props={props}>
             {props.children}
@@ -122,21 +122,21 @@ export const B: React.FC<any> = (props) => {
     );
 };
 
-export const H3: React.FC<any> = (props) => {
+export const H3: React.FC<unknown> = (props) => {
     return (
         <Paragraph type="h3" props={props}>
             {props.children}
         </Paragraph>
     );
 };
-export const H4: React.FC<any> = (props) => {
+export const H4: React.FC<unknown> = (props) => {
     return (
         <Paragraph type="h4" props={props}>
             {props.children}
         </Paragraph>
     );
 };
-export const Li: React.FC<any> = (props) => {
+export const Li: React.FC<unknown> = (props) => {
     return (
         <Paragraph type="li" props={props}>
             {props.children}
@@ -144,8 +144,8 @@ export const Li: React.FC<any> = (props) => {
     );
 };
 
-export const A: React.FC<any> = (props) => {
-    const noaccent = props.noaccent ?? false;
+export const A: React.FC<unknown> = (props) => {
+    const _noaccent = props.noaccent ?? false;
     const button = props.button ?? false;
     const {
         right,
@@ -215,7 +215,7 @@ export const A: React.FC<any> = (props) => {
         </p>
     );
 };
-export const Div: React.FC<any> = (props) => {
+export const Div: React.FC<unknown> = (props) => {
     return (
         <div
             className={classList(
@@ -230,7 +230,7 @@ export const Div: React.FC<any> = (props) => {
     );
 };
 
-export const Img: React.FC<any> = (props) => {
+export const Img: React.FC<unknown> = (props) => {
     const { src, cover, shadowblur } = props;
     if (cover)
         return (

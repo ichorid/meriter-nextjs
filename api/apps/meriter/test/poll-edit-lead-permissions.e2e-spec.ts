@@ -38,9 +38,9 @@ describe('Poll Edit and Lead Permissions E2E', () => {
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let pollModel: Model<PollDocument>;
-  let publicationModel: Model<PublicationDocument>;
-  let commentModel: Model<CommentDocument>;
+  let _pollModel: Model<PollDocument>;
+  let _publicationModel: Model<PublicationDocument>;
+  let _commentModel: Model<CommentDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   // Test user IDs
@@ -510,4 +510,3 @@ describe('Poll Edit and Lead Permissions E2E', () => {
     });
   });
 });
-

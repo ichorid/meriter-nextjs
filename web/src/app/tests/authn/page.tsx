@@ -13,7 +13,7 @@ type LogEntry = {
     timestamp: string;
     type: "info" | "success" | "error" | "json";
     message: string;
-    data?: any;
+    data?: unknown;
 };
 
 export default function AuthnTestPage() {
@@ -23,7 +23,7 @@ export default function AuthnTestPage() {
     const { registerPasskey, loginWithPasskey, isWebAuthnSupported } = usePasskeys();
     const logsEndRef = useRef<HTMLDivElement>(null);
 
-    const addLog = (type: LogEntry["type"], message: string, data?: any) => {
+    const addLog = (type: LogEntry["type"], message: string, data?: unknown) => {
         setLogs((prev) => [
             ...prev,
             {
@@ -45,7 +45,7 @@ export default function AuthnTestPage() {
             const result = await registerPasskey(username);
             addLog("success", "Registration Successful!");
             addLog("json", "Registration Result:", result);
-        } catch (e: any) {
+        } catch {
             addLog("error", "Registration Failed", e);
             addLog("json", "Error Details:", e);
         }
@@ -57,7 +57,7 @@ export default function AuthnTestPage() {
             const result = await loginWithPasskey(username);
             addLog("success", "Login Successful!");
             addLog("json", "Login Result (User & JWT):", result);
-        } catch (e: any) {
+        } catch {
             addLog("error", "Login Failed", e);
             addLog("json", "Error Details:", e);
         }

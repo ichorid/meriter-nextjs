@@ -32,7 +32,7 @@ export class MeriterController {
       
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
       return { version: packageJson.version || 'unknown' };
-    } catch (error) {
+    } catch {
       return { version: 'unknown' };
     }
   }
@@ -73,7 +73,7 @@ export class MeriterController {
       } else {
         res.status(HttpStatus.NOT_FOUND).send();
       }
-    } catch (error) {
+    } catch {
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
     }
   }

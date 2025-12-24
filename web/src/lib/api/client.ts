@@ -66,7 +66,7 @@ export class ApiClient {
               // Use fire-and-forget pattern to avoid blocking the error flow
               // Import trpc lazily to avoid circular dependency
               import('@/lib/trpc/client').then(({ trpc }) => {
-                trpc.auth.clearCookies.mutate().catch((e: any) => {
+                trpc.auth.clearCookies.mutate().catch((e: unknown) => {
                   // Silently fail - we've already cleared client-side cookies
                   console.error('Failed to clear server cookies on 401:', e);
                 });
@@ -82,8 +82,8 @@ export class ApiClient {
             // This prevents scary error messages for first-time visitors
             if (hasPreviousSession()) {
               // Show toast notification with server message or fallback
-              const serverMessage = (error.response?.data as any)?.error?.message ||
-                (error.response?.data as any)?.message ||
+              const serverMessage = (error.response?.data as unknown)?.error?.message ||
+                (error.response?.data as unknown)?.message ||
                 'Session expired. Please login again.';
               useToastStore.getState().addToast(serverMessage, 'error');
             }
@@ -94,8 +94,8 @@ export class ApiClient {
 
         // Handle 500 Server Errors globally
         if (error.response?.status && error.response.status >= 500) {
-          const serverMessage = (error.response?.data as any)?.error?.message ||
-            (error.response?.data as any)?.message ||
+          const serverMessage = (error.response?.data as unknown)?.error?.message ||
+            (error.response?.data as unknown)?.message ||
             'Server error. Please try again later.';
           useToastStore.getState().addToast(serverMessage, 'error');
         }
@@ -117,33 +117,33 @@ export class ApiClient {
     );
   }
 
-  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.get<T>(url, config);
     return response.data;
   }
 
-  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.post<T>(url, data, config);
     return response.data;
   }
 
-  async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.put<T>(url, data, config);
     return response.data;
   }
 
-  async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.patch<T>(url, data, config);
     return response.data;
   }
 
-  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.delete<T>(url, config);
     return response.data;
   }
 
   // Method for handling responses that need custom processing (like auth responses)
-  async postRaw<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  async postRaw<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return await this.client.post<T>(url, data, config);
   }
 
@@ -160,7 +160,7 @@ export class ApiClient {
     return parsed.data;
   }
 
-  async postValidated<T>(url: string, data: any, schema: z.ZodSchema<T>, config?: AxiosRequestConfig): Promise<T> {
+  async postValidated<T>(url: string, data: unknown, schema: z.ZodSchema<T>, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.post(url, data, config);
     const parsed = schema.safeParse(response);
     if (!parsed.success) {

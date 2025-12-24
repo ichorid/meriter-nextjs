@@ -7,15 +7,15 @@ import { useTranslations } from 'next-intl';
 import { CommentsList } from '@/lib/comments/components/CommentsList';
 import { buildTree } from '@/lib/comments/tree';
 import { transformComments } from '@/lib/comments/utils/transform';
-import { Button } from '@/components/ui/shadcn/button';
+import { _Button } from '@/components/ui/shadcn/button';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { SortToggle } from '@/components/ui/SortToggle';
 
 export interface CommentsColumnProps {
   publicationSlug: string;
   communityId: string;
-  balance: any;
-  wallets: any[];
+  balance: unknown;
+  wallets: unknown[];
   myId?: string;
   highlightTransactionId?: string;
   activeCommentHook: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
@@ -43,7 +43,7 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
   showBackButton = false,
 }) => {
   const router = useRouter();
-  const t = useTranslations('home');
+  const _t = useTranslations('home');
   const tCommon = useTranslations('common');
 
   // Sort state for comments
@@ -85,7 +85,7 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
       return [];
     }
     // Transform comments from Meriter format to template format
-    const transformedComments = transformComments(comments as any);
+    const transformedComments = transformComments(comments as unknown);
 
     // Build tree structure from flat list
     const tree = buildTree(transformedComments);
@@ -136,4 +136,3 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
     </div>
   );
 };
-

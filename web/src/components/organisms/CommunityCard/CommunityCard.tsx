@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Zap, ChevronRight } from 'lucide-react';
+import { _Zap, ChevronRight } from 'lucide-react';
 import { CommunityAvatar } from '@/shared/components/community-avatar';
 import { Badge } from '@/components/atoms';
 import { useCommunity } from '@/hooks/api';
@@ -295,4 +295,3 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     </Link>
   );
 };
-

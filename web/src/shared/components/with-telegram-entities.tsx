@@ -40,7 +40,7 @@ export const WithTelegramEntities = ({
         return null;
     }
     
-    function onlyUnique(value: any, index: number, self: any[]) {
+    function _onlyUnique(value: unknown, index: number, self: unknown[]) {
         return self.indexOf(value) === index;
     }
 

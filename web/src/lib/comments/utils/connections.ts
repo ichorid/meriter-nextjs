@@ -1,4 +1,4 @@
-import type { FlatItem, TreeNode } from '../types';
+import type { FlatItem, _TreeNode } from '../types';
 
 /**
  * Connection Utilities
@@ -148,4 +148,3 @@ export function calculatePadding(
   
   return totalPadding;
 }
-

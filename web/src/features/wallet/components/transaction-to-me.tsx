@@ -3,7 +3,7 @@
 import { CardCommentVote } from "@shared/components/card-comment-vote";
 import { telegramGetAvatarLink } from "@/lib/utils/telegram";
 import { useTranslations } from 'next-intl';
-import { useQuery } from '@tanstack/react-query';
+import { _useQuery } from '@tanstack/react-query';
 import { useCommunity } from '@/hooks/api';
 
 class RestTransactionObject {
@@ -20,7 +20,7 @@ class RestTransactionObject {
     inSpaceSlug: string = ""; //"asdf"
     minus: number = 0; //0
     plus: number = 0; //0
-    publicationClassTags: any[] = [];
+    publicationClassTags: unknown[] = [];
     reason: string = ""; //"forPublication"
     sum: number = 0; //0
     toUserTgId: string = ""; //"123123"

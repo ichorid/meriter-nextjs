@@ -86,7 +86,7 @@ export function usePublicationState({
   const { data: communityInfo } = useCommunity(communityId || '');
   
   // Calculate poll balance
-  const pollCommunityId = type === 'poll' ? (content as any)?.communityId : null;
+  const pollCommunityId = type === 'poll' ? (content as unknown)?.communityId : null;
   let calculatedBalance = balance || 0;
   if (isAuthor && Array.isArray(wallets) && pollCommunityId) {
     const pollWalletBalance = wallets.find((w: Wallet) => w.communityId === pollCommunityId)?.balance || 0;
@@ -102,7 +102,7 @@ export function usePublicationState({
   const tagsStr = [
     "#" + keyword,
     ...(Object.entries(dimensions || {}) || [])
-      .map(([slug, dim]) => "#" + dim)
+      .map(([_slug, dim]) => "#" + dim)
       .flat(),
   ].join(" ");
   

@@ -19,7 +19,7 @@ export function usePopupCommunityData(communityId?: string) {
   // Get wallet balance for the community
   const walletBalance = useMemo(() => {
     if (!targetCommunityId || !Array.isArray(wallets)) return 0;
-    const wallet = wallets.find((w: any) => w.communityId === targetCommunityId);
+    const wallet = wallets.find((w: unknown) => w.communityId === targetCommunityId);
     return wallet?.balance || 0;
   }, [targetCommunityId, wallets]);
 

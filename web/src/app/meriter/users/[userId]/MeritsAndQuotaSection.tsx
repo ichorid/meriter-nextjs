@@ -27,7 +27,7 @@ export function MeritsAndQuotaSection({ userId, communityIds, userRoles }: Merit
 
     // Filter communities where viewer has permission
     const communitiesWithPermission = useMemo(() => {
-        return communityIds.filter(communityId => {
+        return communityIds.filter(_communityId => {
             // Check permission for this community - we'll do it in the component
             return true; // Will be checked per component
         });
@@ -76,4 +76,3 @@ function CommunityMeritsWrapper({ userId, communityId, communityName }: { userId
         />
     );
 }
-

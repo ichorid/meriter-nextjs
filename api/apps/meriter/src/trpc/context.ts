@@ -226,7 +226,7 @@ export async function createContext(opts: CreateContextOptions) {
         avatarUrl: dbUser.avatarUrl,
         globalRole: dbUser.globalRole,
       };
-      } catch (error) {
+      } catch {
         // Invalid JWT - return null user
         // Don't throw here, let protected procedures handle auth
         user = null;
@@ -265,4 +265,3 @@ export async function createContext(opts: CreateContextOptions) {
 }
 
 export type Context = inferAsyncReturnType<typeof createContext>;
-

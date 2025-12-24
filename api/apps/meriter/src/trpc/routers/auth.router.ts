@@ -1,7 +1,7 @@
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { CookieManager } from '../../api-v1/common/utils/cookie-manager.util';
 import { TRPCError } from '@trpc/server';
-import { ForbiddenException } from '@nestjs/common';
+import { _ForbiddenException } from '@nestjs/common';
 
 export const authRouter = router({
   /**
@@ -145,4 +145,3 @@ export const authRouter = router({
     };
   }),
 });
-

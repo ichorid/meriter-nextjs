@@ -9,27 +9,27 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { _useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import * as LucideIcons from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoadingState } from "@/components/atoms/LoadingState";
-import { handleAuthRedirect } from "@/lib/utils/auth";
+import { _handleAuthRedirect } from "@/lib/utils/auth";
 import { getErrorMessage } from "@/lib/api/errors";
-import { isFakeDataMode, config } from "@/config";
+import { isFakeDataMode, _config } from "@/config";
 import {
     OAUTH_PROVIDERS,
     getOAuthUrl,
     type OAuthProvider,
 } from "@/lib/utils/oauth-providers";
 import {
-    BrandFormControl,
+    _BrandFormControl,
     Logo,
 } from "@/components/ui";
 import { Button } from "@/components/ui/shadcn/button";
-import { Input } from "@/components/ui/shadcn/input";
-import { Loader2 } from "lucide-react";
+import { _Input } from "@/components/ui/shadcn/input";
+import { _Loader2 } from "lucide-react";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { PasskeySection } from "./PasskeySection";
 
@@ -44,10 +44,10 @@ export function LoginForm({
     enabledProviders,
     authnEnabled = false,
 }: LoginFormProps) {
-    const router = useRouter();
+    const _router = useRouter();
     const searchParams = useSearchParams();
     const t = useTranslations("login");
-    const tReg = useTranslations("registration");
+    const _tReg = useTranslations("registration");
     const fakeDataMode = isFakeDataMode();
 
     console.log("login form test34");
@@ -85,7 +85,7 @@ export function LoginForm({
             await authenticateFakeUser();
             const redirectUrl = buildRedirectUrl();
             window.location.href = redirectUrl;
-        } catch (error: unknown) {
+        } catch {
             const message = getErrorMessage(error);
             console.error("❌ Fake authentication failed:", error);
             setAuthError(message);
@@ -99,7 +99,7 @@ export function LoginForm({
             await authenticateFakeSuperadmin();
             const redirectUrl = buildRedirectUrl();
             window.location.href = redirectUrl;
-        } catch (error: unknown) {
+        } catch {
             const message = getErrorMessage(error);
             console.error("❌ Fake superadmin authentication failed:", error);
             setAuthError(message);
@@ -115,7 +115,7 @@ export function LoginForm({
     };
 
     // Render OAuth provider icon
-    const renderProviderIcon = (provider: OAuthProvider) => {
+    const _renderProviderIcon = (provider: OAuthProvider) => {
         const IconComponent = LucideIcons[
             provider.icon
         ] as React.ComponentType<{ className?: string; size?: number }>;

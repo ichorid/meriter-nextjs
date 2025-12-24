@@ -24,16 +24,16 @@ export interface UsePublicationVotingProps {
 }
 
 export function usePublicationVoting({
-  slug,
+  _slug,
   _id,
   sum,
   isAuthor,
-  authorId,
-  myId,
+  _authorId,
+  _myId,
   wallets,
   communityId,
-  updateWalletBalance,
-  updateAll,
+  _updateWalletBalance,
+  _updateAll,
 }: UsePublicationVotingProps) {
   // State management for optimistic updates
   const [optimisticSum, setOptimisticSum] = useState(sum);

@@ -38,13 +38,13 @@ describe('Quota Wallet Separation (e2e)', () => {
   let connection: Connection;
   
   let walletService: WalletService;
-  let voteService: VoteService;
+  let _voteService: VoteService;
   let communityService: CommunityService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let voteModel: Model<VoteDocument>;
-  let walletModel: Model<WalletDocument>;
+  let _voteModel: Model<VoteDocument>;
+  let _walletModel: Model<WalletDocument>;
   let publicationModel: Model<PublicationDocument>;
 
   let testUserId: string;
@@ -469,4 +469,3 @@ describe('Quota Wallet Separation (e2e)', () => {
     });
   });
 });
-

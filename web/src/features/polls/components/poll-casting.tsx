@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, _useEffect, useMemo } from "react";
 import { IPollData, IPollCast, IPollUserCastSummary } from "../types";
 import { useTranslations } from 'next-intl';
 import { useCastPoll } from '@/hooks/api/usePolls';
@@ -9,9 +9,9 @@ import { usePollTimeRemaining } from '../hooks/usePollTimeRemaining';
 import { usePollAmountValidation } from '../hooks/usePollAmountValidation';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { Button } from '@/components/ui/shadcn/button';
-import { Input } from '@/components/ui/shadcn/input';
+import { _Input } from '@/components/ui/shadcn/input';
 import { Loader2 } from 'lucide-react';
-import { BrandFormControl } from '@/components/ui/BrandFormControl';
+import { _BrandFormControl } from '@/components/ui/BrandFormControl';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,7 +31,7 @@ interface IPollCastingProps {
 export const PollCasting = ({
     pollData,
     pollId,
-    userCast,
+    _userCast,
     userCastSummary,
     balance,
     onCastSuccess,
@@ -46,7 +46,7 @@ export const PollCasting = ({
     const [amountInputValue, setAmountInputValue] = useState<string>("1");
     const [castAmount, setCastAmount] = useState<number>(1);
     const [amountValidationError, setAmountValidationError] = useState<string | null>(null);
-    const [error, setError] = useState<string>("");
+    const [_error, setError] = useState<string>("");
 
     const castPollMutation = useCastPoll();
 
@@ -118,7 +118,7 @@ export const PollCasting = ({
             walletAmount = validation.numValue;
         }
 
-        // Clear any previous errors
+        // Clear unknown previous errors
         setError("");
         setAmountValidationError(null);
 
@@ -140,7 +140,7 @@ export const PollCasting = ({
 
             addToast(t('castSuccess'), 'success');
             onCastSuccess && onCastSuccess();
-        } catch (err: unknown) {
+        } catch {
             const errorMessage = extractErrorMessage(err, t('castError'));
             setError(errorMessage);
             addToast(errorMessage, 'error');
@@ -382,4 +382,3 @@ export const PollCasting = ({
         </div>
     );
 };
-

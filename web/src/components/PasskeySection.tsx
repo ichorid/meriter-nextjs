@@ -7,13 +7,13 @@ import { usePasskeys } from "@/hooks/usePasskeys";
 
 interface PasskeySectionProps {
     isLoading: boolean;
-    onSuccess: (result?: any) => void;
+    onSuccess: (result?: unknown) => void;
     onError: (msg: string) => void;
 }
 
 export function PasskeySection({ isLoading, onSuccess, onError }: PasskeySectionProps) {
     const t = useTranslations("login");
-    const router = useRouter();
+    const _router = useRouter();
     const { authenticateWithPasskey, isWebAuthnSupported } = usePasskeys();
     const [localLoading, setLocalLoading] = useState(false);
 
@@ -30,7 +30,7 @@ export function PasskeySection({ isLoading, onSuccess, onError }: PasskeySection
             // router.push('/meriter/profile');
 
             onSuccess(result);
-        } catch (e: any) {
+        } catch {
             console.error(e);
             onError(e.message || t("passkeyLoginFailed", { defaultMessage: "Passkey authentication failed" }));
         } finally {

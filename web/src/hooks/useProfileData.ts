@@ -50,7 +50,7 @@ export function useProfileData() {
     const myPublications = useMemo(() => {
         return (publicationsData?.pages ?? []).flatMap((page) => {
             return Array.isArray(page) ? page : [];
-        }).filter((pub: any) => {
+        }).filter((pub: unknown) => {
             // Filter out projects: exclude items where isProject is true or postType is 'project'
             return !pub.isProject && pub.postType !== 'project';
         });

@@ -419,7 +419,7 @@ export const invitesRouter = router({
    */
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ _ctx, _input }) => {
       // TODO: Implement invite deletion with permission checks
       throw new TRPCError({
         code: 'NOT_IMPLEMENTED',

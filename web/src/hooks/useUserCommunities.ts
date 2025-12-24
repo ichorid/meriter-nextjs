@@ -47,7 +47,7 @@ export function useUserCommunities() {
   // Create a map of communityId -> wallet for quick lookup
   const walletsMap = useMemo(() => {
     const map = new Map<string, typeof wallets[0]>();
-    wallets.forEach((wallet: any) => {
+    wallets.forEach((wallet: unknown) => {
       if (wallet?.communityId) {
         map.set(wallet.communityId, wallet);
       }

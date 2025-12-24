@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, _screen } from '@testing-library/react';
 import { PublicationActions } from '@/components/organisms/Publication/PublicationActions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommunity } from '@/hooks/api/useCommunities';
@@ -40,12 +40,12 @@ describe('PublicationActions - Special Groups Withdrawal', () => {
       user: { id: 'author-1' },
       isAuthenticated: true,
       isLoading: false,
-    } as any);
+    } as unknown);
     
     mockUseUIStore.mockReturnValue({
       openVotingPopup: jest.fn(),
       openWithdrawPopup: jest.fn(),
-    } as any);
+    } as unknown);
   });
 
   it('should show withdrawal UI for marathon-of-good community (withdrawals enabled for all groups)', () => {
@@ -57,7 +57,7 @@ describe('PublicationActions - Special Groups Withdrawal', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(
       <PublicationActions
@@ -83,7 +83,7 @@ describe('PublicationActions - Special Groups Withdrawal', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(
       <PublicationActions
@@ -109,7 +109,7 @@ describe('PublicationActions - Special Groups Withdrawal', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(
       <PublicationActions
@@ -131,7 +131,7 @@ describe('PublicationActions - Special Groups Withdrawal', () => {
       data: undefined,
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     // Should not crash
     render(
@@ -145,4 +145,3 @@ describe('PublicationActions - Special Groups Withdrawal', () => {
     );
   });
 });
-

@@ -13,7 +13,7 @@ import { useToastStore } from "@/shared/stores/toast.store";
 
 export default function NewUserPage() {
     const t = useTranslations("profile");
-    const tLogin = useTranslations("login");
+    const _tLogin = useTranslations("login");
     const router = useRouter();
     const { user, isLoading: authLoading } = useAuth();
     const { mutateAsync: updateUser, isPending: isUpdating } = useUpdateUser();
@@ -65,7 +65,7 @@ export default function NewUserPage() {
 
             addToast(t("saved"), "success");
             router.push("/meriter/profile");
-        } catch (error: any) {
+        } catch {
             addToast(error?.message || t("error"), "error");
         }
     };

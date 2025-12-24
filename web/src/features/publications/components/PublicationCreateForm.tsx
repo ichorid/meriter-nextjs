@@ -95,7 +95,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const willUseQuota = requiresPayment && quotaRemaining >= postCost;
   const willUseWallet = requiresPayment && quotaRemaining < postCost && walletBalance >= postCost;
   const hasInsufficientPayment = requiresPayment && quotaRemaining < postCost && walletBalance < postCost;
-  const paymentMethod = willUseQuota ? 'quota' : (willUseWallet ? 'wallet' : null);
+  const _paymentMethod = willUseQuota ? 'quota' : (willUseWallet ? 'wallet' : null);
 
   const [title, setTitle] = useState(initialData?.title || '');
   const [description, setDescription] = useState(initialData?.description || initialData?.content || '');
@@ -104,7 +104,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   // Support both legacy single image and new multi-image
   const initialImages = initialData?.imageUrl 
     ? [initialData.imageUrl] 
-    : ((initialData as any)?.images || []);
+    : ((initialData as unknown)?.images || []);
   const [images, setImages] = useState<string[]>(initialImages);
   const [isProject, setIsProject] = useState(initialData?.isProject || false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -152,7 +152,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         setIsProject(draft.isProject || false);
         setHasDraft(true);
         setShowDraftAlert(true);
-      } catch (error) {
+      } catch {
         console.error('Failed to load draft:', error);
       }
     }
@@ -182,7 +182,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     localStorage.setItem(draftKey, JSON.stringify(draft));
   }, [title, description, postType, hashtags, images, isProject, communityId, isEditMode]);
 
-  const saveDraft = () => {
+  const _saveDraft = () => {
     const draft: PublicationDraft = {
       title,
       description,
@@ -212,7 +212,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
         setIsProject(draft.isProject || false);
         addToast(t('draftLoaded'), 'success');
-      } catch (error) {
+      } catch {
         console.error('Failed to load draft:', error);
         addToast(t('draftLoadError'), 'error');
       }
@@ -322,7 +322,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       
       // Don't reset state here - navigation will unmount component
       // If navigation doesn't happen, state will remain but that's okay since we're navigating away
-    } catch (error: any) {
+    } catch {
       const errorMessage = error?.message || t('errors.submitFailed');
       console.error(isEditMode ? 'Publication update error:' : 'Publication creation error:', error);
       setErrors({

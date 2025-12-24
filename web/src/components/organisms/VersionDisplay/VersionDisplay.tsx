@@ -16,7 +16,7 @@ export const VersionDisplay: React.FC<VersionDisplayProps> = ({
     className = '',
     compact = false 
 }) => {
-    const { data: versionData, isLoading, isError } = useVersion();
+    const { data: versionData, isLoading, _isError } = useVersion();
     const frontendVersion = getFrontendVersion();
     const backendVersion = versionData?.version || (isLoading ? '...' : 'unknown');
 
@@ -36,4 +36,3 @@ export const VersionDisplay: React.FC<VersionDisplayProps> = ({
         </div>
     );
 };
-

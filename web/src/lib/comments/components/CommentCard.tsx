@@ -12,15 +12,15 @@ import { CommentDetailsPopup } from '@/shared/components/comment-details-popup';
 import { classList } from '@/shared/lib/classList';
 import { Button } from '@/components/ui/shadcn/button';
 import type { TreeNode, FlatItem } from '../types';
-import { getSubtreeSize } from '../tree';
-import { getAvatarUrl } from '../utils/avatar';
+import { _getSubtreeSize } from '../tree';
+import { _getAvatarUrl } from '../utils/avatar';
 import { calculatePadding } from '../utils/connections';
 import { useCommentVoteDisplay } from '@/features/comments/hooks/useCommentVoteDisplay';
 import { useCommentRecipient } from '@/features/comments/hooks/useCommentRecipient';
-import { useCommentWithdrawal } from '@/features/comments/hooks/useCommentWithdrawal';
+import { _useCommentWithdrawal } from '@/features/comments/hooks/useCommentWithdrawal';
 import { useFeaturesConfig } from '@/hooks/useConfig';
 import { useUpdateComment, useDeleteComment } from '@/hooks/api/useComments';
-import { ResourcePermissions } from '@/types/api-v1';
+import { _ResourcePermissions } from '@/types/api-v1';
 import { CommentEditModal } from '@/components/organisms/CommentEditModal/CommentEditModal';
 import { DeleteConfirmationModal } from '@/components/organisms/DeleteConfirmationModal/DeleteConfirmationModal';
 import { Edit, Trash2 } from 'lucide-react';
@@ -35,8 +35,8 @@ interface CommentCardProps {
   maxSiblingGroups: Map<number, number>;
   // Props from CommentsColumn
   myId?: string;
-  balance?: any;
-  wallets?: any[];
+  balance?: unknown;
+  wallets?: unknown[];
   communityId?: string;
   publicationSlug?: string;
   activeCommentHook?: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
@@ -66,13 +66,13 @@ export function CommentCard({
   communityId,
   publicationSlug,
   activeCommentHook,
-  activeWithdrawPost,
-  setActiveWithdrawPost,
+  _activeWithdrawPost,
+  _setActiveWithdrawPost,
   highlightTransactionId,
   showCommunityAvatar = false,
-  isDetailPage = false,
+  _isDetailPage = false,
 }: CommentCardProps) {
-  const t = useTranslations('comments');
+  const _t = useTranslations('comments');
   const tShared = useTranslations('shared');
   const features = useFeaturesConfig();
   const enableCommentVoting = features.commentVoting;
@@ -84,14 +84,14 @@ export function CommentCard({
   const commentTimestamp = node.createdAt || '';
   
   // API provides vote transaction fields when comment represents a vote
-  const hasVoteTransactionData = (originalComment as any).plus !== undefined || 
-                                 (originalComment as any).minus !== undefined || 
-                                 (originalComment as any).amountTotal !== undefined;
-  const plus = (originalComment as any).plus;
-  const minus = (originalComment as any).minus;
-  const amountTotal = (originalComment as any).amountTotal;
-  const directionPlus = (originalComment as any).directionPlus;
-  const sum = (originalComment as any).sum;
+  const hasVoteTransactionData = (originalComment as unknown).plus !== undefined || 
+                                 (originalComment as unknown).minus !== undefined || 
+                                 (originalComment as unknown).amountTotal !== undefined;
+  const _plus = (originalComment as unknown).plus;
+  const _minus = (originalComment as unknown).minus;
+  const amountTotal = (originalComment as unknown).amountTotal;
+  const directionPlus = (originalComment as unknown).directionPlus;
+  const sum = (originalComment as unknown).sum;
   
   // For UI display of comment stats, always use metrics (accumulated votes on the comment)
   const commentUpvotes = originalComment.metrics?.upvotes ?? 0;
@@ -103,7 +103,7 @@ export function CommentCard({
   const isAuthor = myId === commentAuthorId;
   
   // Check if there's a beneficiary and it's different from the author
-  const beneficiaryMeta = (originalComment.meta as any)?.beneficiary;
+  const beneficiaryMeta = (originalComment.meta as unknown)?.beneficiary;
   const hasBeneficiary = beneficiaryMeta && beneficiaryMeta.id !== commentAuthorId;
   const isBeneficiary = hasBeneficiary && myId === beneficiaryMeta?.id;
   
@@ -119,7 +119,7 @@ export function CommentCard({
   
   // Withdrawal state management
   const withdrawableBalance = originalComment.metrics?.score ?? 0;
-  const totalWithdrawn = (originalComment as any).withdrawals?.totalWithdrawn || 0;
+  const totalWithdrawn = (originalComment as unknown).withdrawals?.totalWithdrawn || 0;
   const availableForWithdrawal = Math.max(0, withdrawableBalance - totalWithdrawn);
   const [optimisticSum, setOptimisticSum] = useState(withdrawableBalance);
   
@@ -132,7 +132,7 @@ export function CommentCard({
   const { data: communityInfo } = useCommunity(communityId || '');
   
   // Withdrawals are now enabled
-  const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
+  const _isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
   
   const currentBalance =
     (Array.isArray(wallets) &&
@@ -175,7 +175,7 @@ export function CommentCard({
       });
       setShowEditModal(false);
       addToast('Comment updated successfully', 'success');
-    } catch (error: any) {
+    } catch {
       addToast(error?.message || 'Failed to update comment', 'error');
     }
   };
@@ -185,7 +185,7 @@ export function CommentCard({
       await deleteComment.mutateAsync(node.id);
       setShowDeleteModal(false);
       addToast('Comment deleted successfully', 'success');
-    } catch (error: any) {
+    } catch {
       addToast(error?.message || 'Failed to delete comment', 'error');
     }
   };
@@ -388,7 +388,7 @@ export function CommentCard({
         beneficiaryAvatarUrl={recipientAvatar}
         upvotes={voteDisplay.displayUpvotes}
         downvotes={voteDisplay.displayDownvotes}
-        images={(originalComment as any).images || []}
+        images={(originalComment as unknown).images || []}
         onClick={() => {
           onNavigate();
         }}

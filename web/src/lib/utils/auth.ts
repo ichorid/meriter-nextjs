@@ -52,7 +52,7 @@ function getCookieDomain(): string | undefined {
       const url = new URL(appUrl);
       const hostname = url.hostname.split(':')[0]; // Remove port if present
       return hostname === 'localhost' ? undefined : hostname;
-    } catch (error) {
+    } catch {
       throw new Error(
         'Failed to determine cookie domain: APP_URL is not a valid URL. ' +
         'Set DOMAIN environment variable or provide a valid APP_URL.'
@@ -250,7 +250,7 @@ export function hasPreviousSession(): boolean {
   
   try {
     return localStorage.getItem(PREVIOUS_SESSION_KEY) === 'true';
-  } catch (error) {
+  } catch {
     // If localStorage is not available or access is denied, return false
     return false;
   }
@@ -266,10 +266,9 @@ export function setHasPreviousSession(): void {
   
   try {
     localStorage.setItem(PREVIOUS_SESSION_KEY, 'true');
-  } catch (error) {
+  } catch {
     // Silently fail if localStorage is not available or access is denied
     console.warn('Failed to set previous session flag:', error);
   }
 }
-
 

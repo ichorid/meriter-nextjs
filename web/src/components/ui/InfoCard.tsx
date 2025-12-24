@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
-import { CardHeader } from './CardHeader';
-import { CardFooter } from './CardFooter';
+import { _CardHeader } from './CardHeader';
+import { _CardFooter } from './CardFooter';
 
 interface InfoCardProps {
     title: string;

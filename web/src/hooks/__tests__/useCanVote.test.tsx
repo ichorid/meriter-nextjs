@@ -110,19 +110,19 @@ describe('useCanVote Hook', () => {
       handleDeepLink: jest.fn(),
       authError: null,
       setAuthError: jest.fn(),
-    } as any);
+    } as unknown);
 
     mockUseUserRoles.mockReturnValue({
       data: [],
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     mockUseCommunity.mockReturnValue({
       data: mockCommunity,
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
   });
 
   describe('Basic Permissions', () => {
@@ -137,7 +137,7 @@ describe('useCanVote Hook', () => {
         handleDeepLink: jest.fn(),
         authError: null,
         setAuthError: jest.fn(),
-      } as any);
+      } as unknown);
 
       const { result } = renderHook(
         () => useCanVote('pub-123', 'publication', 'community-123', 'author-123', false, false, false, false),
@@ -191,7 +191,7 @@ describe('useCanVote Hook', () => {
         handleDeepLink: jest.fn(),
         authError: null,
         setAuthError: jest.fn(),
-      } as any);
+      } as unknown);
 
       const { result } = renderHook(
         () => useCanVote('pub-123', 'publication', 'community-123', 'author-123', false, false, false, false),
@@ -209,7 +209,7 @@ describe('useCanVote Hook', () => {
         data: mockTeamCommunity,
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       const { result } = renderHook(
         () => useCanVote('pub-123', 'publication', 'team-community-123', 'user-123', true, false, false, false),
@@ -225,13 +225,13 @@ describe('useCanVote Hook', () => {
         data: mockTeamCommunity,
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       mockUseUserRoles.mockReturnValue({
         data: [{ communityId: 'team-community-123', role: 'participant' }],
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       const { result } = renderHook(
         () => useCanVote('pub-123', 'publication', 'team-community-123', 'author-123', false, false, false, false),
@@ -250,13 +250,13 @@ describe('useCanVote Hook', () => {
         data: mockMarathonCommunity,
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       mockUseUserRoles.mockReturnValue({
         data: [{ communityId: 'marathon-community-123', role: 'participant' }],
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       const { result } = renderHook(
         () => useCanVote('pub-123', 'publication', 'marathon-community-123', 'author-123', false, false, false, false),
@@ -283,13 +283,13 @@ describe('useCanVote Hook', () => {
         data: restrictedCommunity,
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       mockUseUserRoles.mockReturnValue({
         data: [{ communityId: 'community-123', role: 'participant' }],
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       const { result } = renderHook(
         () => useCanVote('pub-123', 'publication', 'community-123', 'author-123', false, false, false, false),
@@ -313,13 +313,13 @@ describe('useCanVote Hook', () => {
         data: restrictedMarathonCommunity,
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       mockUseUserRoles.mockReturnValue({
         data: [{ communityId: 'marathon-community-123', role: 'participant' }],
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       const { result } = renderHook(
         () => useCanVote('pub-123', 'publication', 'marathon-community-123', 'author-123', false, false, false, false),
@@ -338,13 +338,13 @@ describe('useCanVote Hook', () => {
         data: mockFutureVisionCommunity,
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       mockUseUserRoles.mockReturnValue({
         data: [{ communityId: 'future-vision-community-123', role: 'participant' }],
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       const { result } = renderHook(
         () => useCanVote('pub-123', 'publication', 'future-vision-community-123', 'user-123', true, false, false, false),
@@ -361,13 +361,13 @@ describe('useCanVote Hook', () => {
         data: mockFutureVisionCommunity,
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       mockUseUserRoles.mockReturnValue({
         data: [{ communityId: 'future-vision-community-123', role: 'lead' }],
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       const { result } = renderHook(
         () => useCanVote('pub-123', 'publication', 'future-vision-community-123', 'user-123', true, false, false, false),
@@ -384,7 +384,7 @@ describe('useCanVote Hook', () => {
         data: mockFutureVisionCommunity,
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       mockUseAuth.mockReturnValue({
         user: { id: 'user-123', globalRole: 'superadmin' },
@@ -396,7 +396,7 @@ describe('useCanVote Hook', () => {
         handleDeepLink: jest.fn(),
         authError: null,
         setAuthError: jest.fn(),
-      } as any);
+      } as unknown);
 
       const { result } = renderHook(
         () => useCanVote('pub-123', 'publication', 'future-vision-community-123', 'user-123', true, false, false, false),
@@ -413,13 +413,13 @@ describe('useCanVote Hook', () => {
         data: mockFutureVisionCommunity,
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       mockUseUserRoles.mockReturnValue({
         data: [{ communityId: 'future-vision-community-123', role: 'viewer' }],
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       const { result } = renderHook(
         () => useCanVote('pub-123', 'publication', 'future-vision-community-123', 'user-123', true, false, false, false),
@@ -436,13 +436,13 @@ describe('useCanVote Hook', () => {
         data: mockCommunity,
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       mockUseUserRoles.mockReturnValue({
         data: [{ communityId: 'community-123', role: 'participant' }],
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       const { result } = renderHook(
         () => useCanVote('pub-123', 'publication', 'community-123', 'user-123', true, false, false, false),

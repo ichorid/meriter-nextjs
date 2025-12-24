@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { _useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
@@ -12,9 +12,9 @@ import { useWallets } from '@/hooks/api';
 import { Loader2 } from 'lucide-react';
 
 export default function ProfileProjectsPage() {
-  const router = useRouter();
+  const _router = useRouter();
   const searchParams = useSearchParams();
-  const t = useTranslations('profile');
+  const _t = useTranslations('profile');
   const { user, isLoading: userLoading, isAuthenticated } = useAuth();
   const { data: wallets = [] } = useWallets();
 
@@ -77,6 +77,5 @@ export default function ProfileProjectsPage() {
     </AdaptiveLayout>
   );
 }
-
 
 

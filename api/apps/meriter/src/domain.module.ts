@@ -6,54 +6,54 @@ import {
   PublicationSchemaClass,
   PublicationSchema,
 } from './domain/models/publication/publication.schema';
-import type { Publication } from './domain/models/publication/publication.schema';
+import type { _Publication } from './domain/models/publication/publication.schema';
 import { VoteSchemaClass, VoteSchema } from './domain/models/vote/vote.schema';
-import type { Vote } from './domain/models/vote/vote.schema';
+import type { _Vote } from './domain/models/vote/vote.schema';
 import { PollSchemaClass, PollSchema } from './domain/models/poll/poll.schema';
-import type { Poll } from './domain/models/poll/poll.schema';
+import type { _Poll } from './domain/models/poll/poll.schema';
 import {
   PollCastSchemaClass,
   PollCastSchema,
 } from './domain/models/poll/poll-cast.schema';
-import type { PollCast } from './domain/models/poll/poll-cast.schema';
+import type { _PollCast } from './domain/models/poll/poll-cast.schema';
 import { WalletSchemaClass, WalletSchema } from './domain/models/wallet/wallet.schema';
-import type { Wallet } from './domain/models/wallet/wallet.schema';
+import type { _Wallet } from './domain/models/wallet/wallet.schema';
 import { UserSchemaClass, UserSchema } from './domain/models/user/user.schema';
-import type { User } from './domain/models/user/user.schema';
+import type { _User } from './domain/models/user/user.schema';
 import {
   CommunitySchemaClass,
   CommunitySchema,
 } from './domain/models/community/community.schema';
-import type { Community } from './domain/models/community/community.schema';
+import type { _Community } from './domain/models/community/community.schema';
 import {
   UserSettingsSchemaClass,
   UserSettingsSchema,
 } from './domain/models/user-settings.schema';
-import type { UserSettings } from './domain/models/user-settings.schema';
+import type { _UserSettings } from './domain/models/user-settings.schema';
 import {
   TransactionSchemaClass,
   TransactionSchema,
 } from './domain/models/transaction/transaction.schema';
-import type { Transaction } from './domain/models/transaction/transaction.schema';
+import type { _Transaction } from './domain/models/transaction/transaction.schema';
 import { CommentSchemaClass, CommentSchema } from './domain/models/comment/comment.schema';
-import type { Comment } from './domain/models/comment/comment.schema';
+import type { _Comment } from './domain/models/comment/comment.schema';
 import {
   UserCommunityRoleSchemaClass,
   UserCommunityRoleSchema,
 } from './domain/models/user-community-role/user-community-role.schema';
-import type { UserCommunityRole } from './domain/models/user-community-role/user-community-role.schema';
+import type { _UserCommunityRole } from './domain/models/user-community-role/user-community-role.schema';
 import { InviteSchemaClass, InviteSchema } from './domain/models/invite/invite.schema';
-import type { Invite } from './domain/models/invite/invite.schema';
+import type { _Invite } from './domain/models/invite/invite.schema';
 import {
   NotificationSchemaClass,
   NotificationSchema,
 } from './domain/models/notification/notification.schema';
-import type { Notification } from './domain/models/notification/notification.schema';
+import type { _Notification } from './domain/models/notification/notification.schema';
 import {
   QuotaUsageSchemaClass,
   QuotaUsageSchema,
 } from './domain/models/quota-usage/quota-usage.schema';
-import type { QuotaUsage } from './domain/models/quota-usage/quota-usage.schema';
+import type { _QuotaUsage } from './domain/models/quota-usage/quota-usage.schema';
 import { PasskeyChallenge, PasskeyChallengeSchema } from './domain/models/auth/passkey-challenge.schema';
 
 // Import repositories (only those with valuable logic)

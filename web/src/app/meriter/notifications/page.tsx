@@ -23,7 +23,7 @@ import { Loader2 } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import {
-  useNotifications,
+  _useNotifications,
   useInfiniteNotifications,
   useMarkAsRead,
   useMarkAllAsRead,
@@ -419,5 +419,4 @@ function NotificationPreferencesPanel() {
     </div>
   );
 }
-
 

@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { _useQueryClient } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc/client";
 
 export interface CommunityMember {

@@ -1,11 +1,11 @@
-import { Injectable, Logger, forwardRef, Inject } from '@nestjs/common';
+import { Injectable, Logger, _forwardRef, _Inject } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CommunityService } from './community.service';
 import { PublicationService } from './publication.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { CommentService } from './comment.service';
 import { PollService } from './poll.service';
-import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_PARTICIPANT, COMMUNITY_ROLE_VIEWER } from '../common/constants/roles.constants';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_PARTICIPANT, _COMMUNITY_ROLE_VIEWER } from '../common/constants/roles.constants';
 import { ActionType } from '../common/constants/action-types.constants';
 import { PermissionRuleEngine } from './permission-rule-engine.service';
 import { PermissionContextService } from './permission-context.service';
@@ -204,7 +204,7 @@ export class PermissionService {
     // Get community to check editWindowDays
     const community = await this.communityService.getCommunity(communityId);
     if (community && context.daysSinceCreation !== undefined) {
-      const editWindowDays = community.settings?.editWindowDays ?? 7;
+      const _editWindowDays = community.settings?.editWindowDays ?? 7;
       // Update context with edit window days for condition evaluation
       // This is handled in the rule engine's condition evaluation
     }
@@ -265,7 +265,7 @@ export class PermissionService {
     // Get community to check editWindowDays
     const community = await this.communityService.getCommunity(communityId);
     if (community && context.daysSinceCreation !== undefined) {
-      const editWindowDays = community.settings?.editWindowDays ?? 7;
+      const _editWindowDays = community.settings?.editWindowDays ?? 7;
       // Update context with edit window days for condition evaluation
     }
 

@@ -28,7 +28,7 @@ export class UserEnrichmentService {
           if (user) {
             usersMap.set(userId, user);
           }
-        } catch (error) {
+        } catch {
           // Silently skip users that don't exist
         }
       })
@@ -52,4 +52,3 @@ export class UserEnrichmentService {
     return UserFormatter.formatUserForApi(user, userId);
   }
 }
-

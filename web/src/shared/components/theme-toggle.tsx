@@ -7,7 +7,7 @@ export function ThemeToggle() {
     const { theme, setTheme, resolvedTheme } = useTheme();
     
     // Check if Telegram theme is active
-    const isTelegramTheme = typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp?.themeParams;
+    const isTelegramTheme = typeof window !== 'undefined' && !!(window as unknown).Telegram?.WebApp?.themeParams;
 
     const cycleTheme = () => {
         if (isTelegramTheme) {

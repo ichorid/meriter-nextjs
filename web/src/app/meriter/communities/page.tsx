@@ -13,7 +13,7 @@ import Link from 'next/link';
 
 export default function CommunitiesPage() {
     const pathname = usePathname();
-    const { user, isLoading: userLoading } = useAuth();
+    const { _user, isLoading: userLoading } = useAuth();
 
     // Get user's communities with wallets and quotas (handles both regular users and superadmin)
     const { communities: allCommunities, walletsMap, quotasMap, isLoading: communitiesLoading } = useUserCommunities();

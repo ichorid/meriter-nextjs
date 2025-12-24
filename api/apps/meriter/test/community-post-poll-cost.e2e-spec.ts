@@ -40,10 +40,10 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let publicationModel: Model<PublicationDocument>;
-  let pollModel: Model<PollDocument>;
+  let _publicationModel: Model<PublicationDocument>;
+  let _pollModel: Model<PollDocument>;
   let quotaUsageModel: Model<QuotaUsageDocument>;
-  let walletModel: Model<WalletDocument>;
+  let _walletModel: Model<WalletDocument>;
   let userCommunityRoleService: UserCommunityRoleService;
   let walletService: WalletService;
 
@@ -628,4 +628,3 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
     });
   });
 });
-

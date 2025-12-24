@@ -3,8 +3,8 @@
 import React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCommunity, useWallets } from '@/hooks/api';
-import { useUserQuota } from '@/hooks/api/useQuota';
+import { useCommunity, _useWallets } from '@/hooks/api';
+import { _useUserQuota } from '@/hooks/api/useQuota';
 import { useTranslations } from 'next-intl';
 import { isFakeDataMode } from '@/config';
 import { trpc } from '@/lib/trpc/client';
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
 import { cn } from '@/lib/utils';
-import { Clock, TrendingUp, Loader2, Search, X, ArrowLeft, Settings } from 'lucide-react';
+import { _Clock, _TrendingUp, Loader2, Search, X, ArrowLeft, Settings } from 'lucide-react';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import type { TabSortState } from '@/hooks/useProfileTabState';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -92,7 +92,7 @@ export const ProfileTopBar: React.FC<{ asStickyHeader?: boolean }> = ({ asSticky
     }
   }, [searchParams, currentTab, setSortByTab]);
 
-  const handleBackClick = () => {
+  const _handleBackClick = () => {
     router.push('/meriter/profile');
   };
 
@@ -276,8 +276,8 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('pages.communities');
-  const [showTagDropdown, setShowTagDropdown] = React.useState(false);
-  const [showSnack, setShowSnack] = React.useState(false);
+  const [_showTagDropdown, setShowTagDropdown] = React.useState(false);
+  const [_showSnack, setShowSnack] = React.useState(false);
   const [showSearchModal, setShowSearchModal] = React.useState(false);
 
   // Fake data generation state
@@ -300,7 +300,7 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
   };
 
   // Handle tag filter
-  const handleTagClick = (tag: string) => {
+  const _handleTagClick = (tag: string) => {
     const params = new URLSearchParams(searchParams?.toString() ?? '');
     if (selectedTag === tag) {
       params.delete('tag');
@@ -312,7 +312,7 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
   };
 
   // Handle clear tag filter (show all)
-  const handleShowAll = () => {
+  const _handleShowAll = () => {
     const params = new URLSearchParams(searchParams?.toString() ?? '');
     params.delete('tag');
     router.push(`?${params.toString()}`);
@@ -359,7 +359,7 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
       setFakeDataMessage(`Created ${result.count} user post(s)`);
       setTimeout(() => setFakeDataMessage(''), 3000);
       router.refresh();
-    } catch (error) {
+    } catch {
       console.error('Generate user posts error:', error);
       setFakeDataMessage('Failed to generate user posts');
       setTimeout(() => setFakeDataMessage(''), 3000);
@@ -380,7 +380,7 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
       setFakeDataMessage(`Created ${result.count} post(s) with beneficiary`);
       setTimeout(() => setFakeDataMessage(''), 3000);
       router.refresh();
-    } catch (error) {
+    } catch {
       console.error('Generate beneficiary posts error:', error);
       setFakeDataMessage('Failed to generate posts with beneficiary');
       setTimeout(() => setFakeDataMessage(''), 3000);
@@ -406,7 +406,7 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
     return null;
   }
 
-  const hashtags = community.hashtags || [];
+  const _hashtags = community.hashtags || [];
   // Determine admin rights
   const isAdmin = Boolean(
     user?.globalRole === 'superadmin' ||

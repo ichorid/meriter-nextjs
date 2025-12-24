@@ -48,10 +48,10 @@ function TestComponent({
   updateWalletBalance,
   updateAll,
 }: {
-  publication: any;
-  wallets?: any[];
-  updateWalletBalance?: any;
-  updateAll?: any;
+  publication: unknown;
+  wallets?: unknown[];
+  updateWalletBalance?: unknown;
+  updateAll?: unknown;
 }) {
   const [error, setError] = React.useState<string | null>(null);
   const hook = usePublication({
@@ -64,7 +64,7 @@ function TestComponent({
   const handleCommentNegative = async () => {
     try {
       await hook.handleComment('Bad post!', 1, false);
-    } catch (err: any) {
+    } catch {
       setError(err.message || 'Unknown error');
     }
   };
@@ -72,7 +72,7 @@ function TestComponent({
   const handleCommentPositive = async () => {
     try {
       await hook.handleComment('Great post!', 1, true);
-    } catch (err: any) {
+    } catch {
       setError(err.message || 'Unknown error');
     }
   };
@@ -139,28 +139,28 @@ describe('usePublication Hook', () => {
       handleDeepLink: jest.fn(),
       authError: null,
       setAuthError: jest.fn(),
-    } as any);
+    } as unknown);
 
     mockUseVoteOnPublication.mockReturnValue({
       mutateAsync: mockMutateAsync,
       isPending: false,
-    } as any);
+    } as unknown);
 
     mockUseVoteOnVote.mockReturnValue({
       mutateAsync: mockMutateAsync,
       isPending: false,
-    } as any);
+    } as unknown);
 
     mockUseVoteOnPublicationWithComment.mockReturnValue({
       mutateAsync: mockMutateAsync,
       isPending: false,
-    } as any);
+    } as unknown);
 
     mockUseUserQuota.mockReturnValue({
       data: { remainingToday: 10 },
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     mockGetWalletBalance.mockReturnValue(0);
   });
@@ -344,7 +344,7 @@ describe('usePublication Hook', () => {
         data: { remainingToday: 5 },
         isLoading: false,
         error: null,
-      } as any);
+      } as unknown);
 
       mockGetWalletBalance.mockReturnValue(10);
       mockMutateAsync.mockResolvedValue({ vote: { id: 'vote-1' }, comment: { id: 'comment-1' } });
@@ -354,7 +354,7 @@ describe('usePublication Hook', () => {
       );
 
       // Test with vote amount of 10
-      const testComponent = getByTestId('comment-positive').parentElement;
+      const _testComponent = getByTestId('comment-positive').parentElement;
       
       // We need to test the hook directly since we can't easily pass custom amount
       // This test verifies the logic works - the actual implementation should handle it
@@ -362,4 +362,3 @@ describe('usePublication Hook', () => {
     });
   });
 });
-

@@ -13,10 +13,10 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { _useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useMe, useFakeAuth, useFakeSuperadminAuth, useLogout, useClearCookies } from '@/hooks/api/useAuth';
-import { trpc } from '@/lib/trpc/client';
+import { _trpc } from '@/lib/trpc/client';
 import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
 import { clearAuthStorage, redirectToLogin, clearJwtCookie, setHasPreviousSession } from '@/lib/utils/auth';
 import { useToastStore } from '@/shared/stores/toast.store';
@@ -47,7 +47,7 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
 
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Check if we have a 401 error (unauthorized) - memoized
   const is401Error = useMemo(() => {
-    const errorStatus = userError ? ((userError as any)?.details?.status || (userError as any)?.code) : null;
+    const errorStatus = userError ? ((userError as unknown)?.details?.status || (userError as unknown)?.code) : null;
     return errorStatus === 401 || errorStatus === 'HTTP_401';
   }, [userError]);
 
@@ -81,10 +81,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setIsAuthenticating(true);
       setAuthError(null);
-      // Clear any existing JWT cookies before authentication to ensure clean state
+      // Clear unknown existing JWT cookies before authentication to ensure clean state
       clearJwtCookie();
       await fakeAuthMutation.mutateAsync();
-    } catch (error: unknown) {
+    } catch {
       const message = error instanceof Error ? error.message : 'Authentication failed';
       setAuthError(message);
       throw error;
@@ -97,10 +97,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setIsAuthenticating(true);
       setAuthError(null);
-      // Clear any existing JWT cookies before authentication to ensure clean state
+      // Clear unknown existing JWT cookies before authentication to ensure clean state
       clearJwtCookie();
       await fakeSuperadminAuthMutation.mutateAsync();
-    } catch (error: unknown) {
+    } catch {
       const message = error instanceof Error ? error.message : 'Authentication failed';
       setAuthError(message);
       throw error;
@@ -118,20 +118,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Call server-side clear-cookies to ensure HttpOnly cookies are removed
       try {
         await clearCookiesMutation.mutateAsync();
-      } catch (e) {
+      } catch {
         console.error('Failed to clear server cookies:', e);
       }
 
       clearAuthStorage();
       redirectToLogin();
-    } catch (error: unknown) {
+    } catch {
       const message = error instanceof Error ? error.message : tCommon('logoutFailed');
       setAuthError(message);
 
       // Still clear everything and redirect on error
       try {
         await clearCookiesMutation.mutateAsync();
-      } catch (e) {
+      } catch {
         console.error('Failed to clear server cookies:', e);
       }
       clearAuthStorage();
@@ -157,7 +157,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     if (userError) {
       // Check if it's a 401 error - invalid/expired JWT
-      const errorStatus = (userError as any)?.details?.status || (userError as any)?.code;
+      const errorStatus = (userError as unknown)?.details?.status || (userError as unknown)?.code;
       if (errorStatus === 401 || errorStatus === 'HTTP_401') {
         // Clear auth storage on 401 errors to allow re-login
         clearAuthStorage();
@@ -168,7 +168,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         clearCookiesMutation.mutateAsync().catch(e => console.error('Failed to clear server cookies on 401:', e));
 
         // Toast is now handled globally in api/client.ts
-        // const currentErrorId = `${errorStatus}-${(userError as any)?.message || '401'}`;
+        // const currentErrorId = `${errorStatus}-${(userError as unknown)?.message || '401'}`;
 
         // if (last401ErrorRef.current !== currentErrorId) {
         //   last401ErrorRef.current = currentErrorId;

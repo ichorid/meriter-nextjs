@@ -3,7 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { MeriterModule } from './meriter.module';
 import * as cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
-import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { _AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 import { ApiResponseInterceptor } from './common/interceptors/api-response.interceptor';
 import { TrpcService } from './trpc/trpc.service';

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { _useState, _useEffect, useCallback, _useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { VerticalSidebar, ContextTopBar, BottomNavigation } from '@/components/organisms';
@@ -8,7 +8,7 @@ import { CommentsColumn } from '@/components/organisms/CommentsColumn';
 import { VotingPopup } from '@/components/organisms/VotingPopup';
 import { WithdrawPopup } from '@/components/organisms/WithdrawPopup';
 import { ResizeHandle } from '@/components/atoms';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { _useLocalStorage } from '@/hooks/useLocalStorage';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useInspectorWidth } from '@/hooks/useInspectorWidth';
 import { createCommentsColumnProps } from './helpers';
@@ -17,8 +17,8 @@ export interface AdaptiveLayoutProps {
   children: React.ReactNode;
   className?: string;
   communityId?: string;
-  balance?: any;
-  wallets?: any[];
+  balance?: unknown;
+  wallets?: unknown[];
   myId?: string;
   highlightTransactionId?: string;
   activeCommentHook?: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
@@ -27,7 +27,7 @@ export interface AdaptiveLayoutProps {
   /** Sticky header that stays at top of scroll area */
   stickyHeader?: React.ReactNode;
   /** Custom tabs for mobile bottom navigation */
-  bottomNavTabs?: any[];
+  bottomNavTabs?: unknown[];
 }
 
 /**
@@ -55,7 +55,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   const pathname = usePathname();
   const selectedPostSlug = searchParams?.get('post');
   const showComments = !!selectedPostSlug;
-  const tCommon = useTranslations('common');
+  const _tCommon = useTranslations('common');
 
   // Comments state - controlled by URL param
   const commentsOpen = !!(showComments && selectedPostSlug && communityId);
@@ -274,4 +274,3 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
     </div>
   );
 };
-

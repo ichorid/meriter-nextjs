@@ -24,18 +24,18 @@ export const CardCommentVote = ({
     showCommunityAvatar,
     communityAvatarUrl,
     communityName,
-    communityIconUrl,
+    _communityIconUrl,
     onCommunityClick,
-    currencyIcon,
+    _currencyIcon,
     voteType,
-    amountFree,
-    amountWallet,
+    _amountFree,
+    _amountWallet,
     beneficiaryName,
     beneficiaryAvatarUrl,
     communityNeedsSetup,
-    communityIsAdmin,
-    upvotes,
-    downvotes,
+    _communityIsAdmin,
+    _upvotes,
+    _downvotes,
     onDetailsClick,
     authorId,
     beneficiaryId,
@@ -43,8 +43,8 @@ export const CardCommentVote = ({
     publicationSlug,
     commentId,
     images = [],
-}:any) => {
-    const t = useTranslations('comments');
+}:unknown) => {
+    const _t = useTranslations('comments');
     const tShared = useTranslations('shared');
     const router = useRouter();
     const [viewingImageIndex, setViewingImageIndex] = useState<number | null>(null);
@@ -64,7 +64,7 @@ export const CardCommentVote = ({
     };
     
     // Determine direction from voteType or rate
-    const isUpvote = voteType?.includes('upvote') || (!voteType && rate && !rate.startsWith('-'));
+    const _isUpvote = voteType?.includes('upvote') || (!voteType && rate && !rate.startsWith('-'));
     
     // Handle card click - open details popup if onDetailsClick provided, otherwise use onClick
     const handleCardClick = (e: React.MouseEvent) => {

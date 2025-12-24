@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { ImagePlus, X, Loader2 } from 'lucide-react';
 import { ImageViewer } from '../ImageViewer/ImageViewer';
-import { ImageUploader, UploadResult } from '../ImageUploader/ImageUploader';
+import { _ImageUploader, _UploadResult } from '../ImageUploader/ImageUploader';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -33,7 +33,7 @@ export function ImageGallery({
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = useCallback((url: string) => {
+  const _handleUpload = useCallback((url: string) => {
     if (images.length >= MAX_IMAGES) return;
     onImagesChange([...images, url]);
   }, [images, onImagesChange]);
@@ -92,7 +92,7 @@ export function ImageGallery({
       
       // Add all uploaded images at once
       onImagesChange([...images, ...uploadedUrls]);
-    } catch (err) {
+    } catch {
       console.error('Upload error:', err);
     } finally {
       setIsUploading(false);
@@ -114,7 +114,7 @@ export function ImageGallery({
     setViewingIndex(null);
   }, []);
 
-  const handleViewerNext = useCallback(() => {
+  const _handleViewerNext = useCallback(() => {
     if (viewingIndex !== null && viewingIndex < images.length - 1) {
       setViewingIndex(viewingIndex + 1);
     } else if (viewingIndex !== null && viewingIndex === images.length - 1) {
@@ -122,7 +122,7 @@ export function ImageGallery({
     }
   }, [viewingIndex, images.length]);
 
-  const handleViewerPrev = useCallback(() => {
+  const _handleViewerPrev = useCallback(() => {
     if (viewingIndex !== null && viewingIndex > 0) {
       setViewingIndex(viewingIndex - 1);
     } else if (viewingIndex !== null && viewingIndex === 0) {
@@ -203,4 +203,3 @@ export function ImageGallery({
 }
 
 export default ImageGallery;
-

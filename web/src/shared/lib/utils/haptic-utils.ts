@@ -1,17 +1,17 @@
 /**
  * Universal haptic feedback utility
- * Works in any environment - silently fails if not available
+ * Works in unknown environment - silently fails if not available
  */
 
 export function hapticImpact(type: 'light' | 'medium' | 'heavy' | 'soft' | 'rigid' = 'light'): void {
   if (typeof window === 'undefined') return;
   
   try {
-    const tgWebApp = (window as any).Telegram?.WebApp;
+    const tgWebApp = (window as unknown).Telegram?.WebApp;
     if (tgWebApp?.HapticFeedback?.impactOccurred) {
       tgWebApp.HapticFeedback.impactOccurred(type);
     }
-  } catch (error) {
+  } catch {
     // Silently fail - haptic feedback is optional
   }
 }
@@ -20,11 +20,11 @@ export function hapticNotification(type: 'error' | 'success' | 'warning'): void 
   if (typeof window === 'undefined') return;
   
   try {
-    const tgWebApp = (window as any).Telegram?.WebApp;
+    const tgWebApp = (window as unknown).Telegram?.WebApp;
     if (tgWebApp?.HapticFeedback?.notificationOccurred) {
       tgWebApp.HapticFeedback.notificationOccurred(type);
     }
-  } catch (error) {
+  } catch {
     // Silently fail - haptic feedback is optional
   }
 }

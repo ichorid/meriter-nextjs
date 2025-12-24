@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { DomainModule } from '../../domain.module';
 import { CommunitySchemaClass, CommunitySchema } from '../../domain/models/community/community.schema';
 import { PasskeyChallenge, PasskeyChallengeSchema } from '../../domain/models/auth/passkey-challenge.schema';
+import { GoogleStrategy } from './strategies/google.strategy';
 
 // Conditionally import GoogleStrategy only if Google OAuth is configured
 // Google is one of many possible auth providers - it's optional
@@ -35,14 +36,8 @@ function getGoogleStrategy() {
     return null;
   }
 
-  // All credentials present - try to load strategy
-  try {
-    const { GoogleStrategy } = require('./strategies/google.strategy');
-    return GoogleStrategy;
-  } catch (e) {
-    // Strategy file doesn't exist or has errors - skip it
-    return null;
-  }
+  // All credentials present - use strategy
+  return GoogleStrategy;
 }
 
 const GoogleStrategy = getGoogleStrategy();

@@ -1,4 +1,4 @@
-import { Schema } from 'mongoose';
+import { _Schema } from 'mongoose';
 import {
   UserSchema as ZodUserSchema,
   CommunitySchema as ZodCommunitySchema,
@@ -113,4 +113,3 @@ describe('Schema Alignment', () => {
     });
   });
 });
-

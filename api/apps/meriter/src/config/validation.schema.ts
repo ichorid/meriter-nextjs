@@ -14,7 +14,7 @@ const validateSync = (config: Record<string, unknown>) => {
     if (config.APP_URL) {
       try {
         domain = new URL(config.APP_URL as string).hostname;
-      } catch (error) {
+      } catch {
         throw new Error('DOMAIN is required. Either set DOMAIN environment variable or provide a valid APP_URL to derive it from.');
       }
     } else if (nodeEnv === 'test') {
@@ -78,4 +78,3 @@ export const validationSchema = {
   },
   validateSync,
 };
-

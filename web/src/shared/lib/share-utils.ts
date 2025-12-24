@@ -21,7 +21,7 @@ export async function shareUrl(url: string, toastMessage?: string): Promise<void
         url: absoluteUrl,
       });
       return;
-    } catch (error) {
+    } catch {
       // User cancelled or error occurred
       // If user cancelled, don't fall back to clipboard
       if ((error as Error).name === 'AbortError') {
@@ -36,7 +36,7 @@ export async function shareUrl(url: string, toastMessage?: string): Promise<void
     await navigator.clipboard.writeText(absoluteUrl);
     const toast = useToastStore.getState().addToast;
     toast(toastMessage || 'URL copied to buffer', 'success');
-  } catch (error) {
+  } catch {
     // Fallback for older browsers
     const textArea = document.createElement('textarea');
     textArea.value = absoluteUrl;
@@ -48,7 +48,7 @@ export async function shareUrl(url: string, toastMessage?: string): Promise<void
       document.execCommand('copy');
       const toast = useToastStore.getState().addToast;
       toast(toastMessage || 'URL copied to buffer', 'success');
-    } catch (err) {
+    } catch {
       const toast = useToastStore.getState().addToast;
       toast('Failed to copy URL', 'error');
     } finally {
@@ -70,4 +70,3 @@ export function getPostUrl(communityId: string, slug: string): string {
 export function getCommentUrl(communityId: string, publicationSlug: string, commentId: string): string {
   return `/meriter/communities/${communityId}/posts/${publicationSlug}?highlight=${commentId}`;
 }
-

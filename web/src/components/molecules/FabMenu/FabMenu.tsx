@@ -31,7 +31,7 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
     // "Create Poll" is available when canCreate === true AND community is not future-vision
     const hasAvailableActions = canCreate === true; // At least "Create Post" is available if canCreate is true
 
-    // Check if any popup is active using UI store
+    // Check if unknown popup is active using UI store
     const { activeVotingTarget, activeWithdrawTarget, activeModal } = useUIStore();
     const hasActivePopup = activeVotingTarget !== null || activeWithdrawTarget !== null || activeModal !== null;
 
@@ -93,7 +93,7 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
         return undefined;
     }, [isOpen]);
 
-    // Hide FAB when any popup is active (unless the FAB menu itself is open)
+    // Hide FAB when unknown popup is active (unless the FAB menu itself is open)
     if (hasActivePopup && !isOpen) {
         return null;
     }

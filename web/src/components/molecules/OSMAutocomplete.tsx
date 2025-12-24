@@ -17,7 +17,7 @@ interface OSMAutocompleteProps {
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
-    type?: "city" | "state" | "country" | "any";
+    type?: "city" | "state" | "country" | "unknown";
     className?: string;
     error?: string;
     disabled?: boolean;
@@ -62,7 +62,7 @@ export function OSMAutocomplete({
     value,
     onChange,
     placeholder,
-    type = "any",
+    type = "unknown",
     className,
     error,
     disabled = false,
@@ -203,7 +203,7 @@ export function OSMAutocomplete({
                 setResults(finalData);
                 setSearchState(finalData.length > 0 ? "success" : "no-results");
                 setHighlightedIndex(-1);
-            } catch (err) {
+            } catch {
                 if (err instanceof Error && err.name === "AbortError") {
                     return; // Ignore aborted requests
                 }

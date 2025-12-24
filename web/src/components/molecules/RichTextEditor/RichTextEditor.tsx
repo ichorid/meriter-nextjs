@@ -5,7 +5,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Bold, Italic, List, ListOrdered, Link as LinkIcon, Heading1, Heading2, Quote, Code } from 'lucide-react';
+import { Bold, Italic, List, ListOrdered, Link as LinkIcon, Heading1, _Heading2, Quote, _Code } from 'lucide-react';
 import { cn } from '@/lib/utils'; // Assuming this exists, or I'll use classNames
 
 interface RichTextEditorProps {
@@ -16,7 +16,7 @@ interface RichTextEditorProps {
     editable?: boolean;
 }
 
-const MenuBar = ({ editor }: { editor: any }) => {
+const MenuBar = ({ editor }: { editor: unknown }) => {
     const tProfile = useTranslations('profile');
     
     if (!editor) {

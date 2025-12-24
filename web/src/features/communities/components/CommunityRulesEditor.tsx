@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/shadcn/input';
 import { Checkbox } from '@/components/ui/shadcn/checkbox';
 import { Label } from '@/components/ui/shadcn/label';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
-import { Check, RotateCcw, Eye, EyeOff, Download, Upload, History, Loader2 } from 'lucide-react';
+import { _Check, RotateCcw, Eye, EyeOff, Download, Upload, History, Loader2 } from 'lucide-react';
 import type { CommunityWithComputedFields, LegacyPostingRules, LegacyVotingRules, LegacyVisibilityRules, LegacyMeritRules } from '@/types/api-v1';
 import { useToastStore } from '@/shared/stores/toast.store';
 
@@ -81,10 +81,10 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     id: string;
     timestamp: string;
     rules: {
-      postingRules: any;
-      votingRules: any;
-      visibilityRules: any;
-      meritRules: any;
+      postingRules: unknown;
+      votingRules: unknown;
+      visibilityRules: unknown;
+      meritRules: unknown;
       linkedCurrencies: string[];
     };
   }
@@ -102,10 +102,10 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   };
 
   const saveToHistory = (rules: {
-    postingRules: any;
-    votingRules: any;
-    visibilityRules: any;
-    meritRules: any;
+    postingRules: unknown;
+    votingRules: unknown;
+    visibilityRules: unknown;
+    meritRules: unknown;
     linkedCurrencies: string[];
   }) => {
     const history = getHistory();
@@ -310,7 +310,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           setValidationErrors({});
 
           addToast(t('rulesImported'), 'success');
-        } catch (error) {
+        } catch {
           console.error('Failed to import rules:', error);
           addToast(t('rulesImportError'), 'error');
         }

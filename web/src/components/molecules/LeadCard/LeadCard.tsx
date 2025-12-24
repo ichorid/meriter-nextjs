@@ -28,7 +28,7 @@ interface LeadCardProps {
 }
 
 export const LeadCard: React.FC<LeadCardProps> = ({
-    id,
+    _id,
     displayName,
     username,
     avatarUrl,
@@ -169,4 +169,3 @@ export const LeadCard: React.FC<LeadCardProps> = ({
         </Component>
     );
 };
-

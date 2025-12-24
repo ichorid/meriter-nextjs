@@ -6,7 +6,7 @@
 
 import { createTRPCMsw } from 'msw-trpc';
 import type { AppRouter } from '@/lib/trpc/types';
-import { http, HttpResponse } from 'msw';
+import { _http, _HttpResponse } from 'msw';
 
 /**
  * Create a tRPC MSW handler for mocking tRPC endpoints in tests
@@ -26,14 +26,14 @@ export const trpcMsw = createTRPCMsw<AppRouter>({
  * });
  * ```
  */
-export function createMockTrpcClient(mocks: Partial<any>) {
-  return mocks as any;
+export function createMockTrpcClient(mocks: Partial<unknown>) {
+  return mocks as unknown;
 }
 
 /**
  * Helper to create a mock tRPC query hook
  */
-export function createMockQueryHook<T>(data: T, isLoading = false, error: any = null) {
+export function createMockQueryHook<T>(data: T, isLoading = false, error: unknown = null) {
   return () => ({
     data,
     isLoading,
@@ -47,7 +47,7 @@ export function createMockQueryHook<T>(data: T, isLoading = false, error: any = 
 /**
  * Helper to create a mock tRPC mutation hook
  */
-export function createMockMutationHook<TData = any, TVariables = any>() {
+export function createMockMutationHook<TData = unknown, TVariables = unknown>() {
   return () => ({
     mutate: jest.fn(),
     mutateAsync: jest.fn(),
@@ -78,4 +78,3 @@ export function createMockInfiniteQueryHook<T>(data: T[], hasNextPage = false) {
     hasNextPage,
   });
 }
-

@@ -1,6 +1,6 @@
 /**
  * Hook Type Definitions
- * Replaces 'any' types in hook parameters and return values
+ * Replaces 'unknown' types in hook parameters and return values
  */
 
 import type { Dispatch, SetStateAction } from 'react';

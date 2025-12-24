@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback } from 'react';
-import { Camera, X, Loader2, RotateCcw, ZoomIn, ZoomOut, Check } from 'lucide-react';
+import { Camera, _X, Loader2, RotateCcw, ZoomIn, ZoomOut, Check } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import {
   Dialog,
@@ -185,7 +185,7 @@ export function AvatarUploader({
       } else {
         throw new Error(labels.uploadFailed);
       }
-    } catch (err) {
+    } catch {
       console.error('Avatar upload error:', err);
       setError(err instanceof Error ? err.message : labels.uploadFailed);
     } finally {

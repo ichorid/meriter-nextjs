@@ -28,7 +28,7 @@ export interface ImageGalleryDisplayProps {
 export function ImageGalleryDisplay({
     images,
     altPrefix = "Image",
-    maxColumns = 3,
+    _maxColumns = 3,
     className = "",
     initialIndex = null,
     onClose,
@@ -144,7 +144,7 @@ export function ImageGalleryDisplay({
         return "grid-cols-3";
     };
 
-    const getImageAspect = (index: number) => {
+    const getImageAspect = (_index: number) => {
         // All images should be thumbnails (smaller size) - they open in lightbox
         // Use square aspect for consistency, but with max height limit
         return "aspect-square";

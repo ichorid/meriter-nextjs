@@ -38,7 +38,7 @@ describe('Publication and Comment Edit Permissions', () => {
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let publicationModel: Model<PublicationDocument>;
+  let _publicationModel: Model<PublicationDocument>;
   let commentModel: Model<CommentDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
@@ -546,4 +546,3 @@ describe('Publication and Comment Edit Permissions', () => {
     });
   });
 });
-

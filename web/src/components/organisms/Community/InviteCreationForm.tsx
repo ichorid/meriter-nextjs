@@ -65,7 +65,7 @@ export const InviteCreationForm: React.FC<InviteCreationFormProps> = ({
                 ? new Date(Date.now() + inviteExpiresInDays * 24 * 60 * 60 * 1000).toISOString()
                 : undefined;
 
-            const inviteData: any = {
+            const inviteData: unknown = {
                 type: inviteType,
                 ...(selectedCommunityId && { communityId: selectedCommunityId }),
                 expiresAt,
@@ -78,7 +78,7 @@ export const InviteCreationForm: React.FC<InviteCreationFormProps> = ({
                 onInviteGenerated(invite);
             }
             addToast(t('inviteGenerated'), 'success');
-        } catch (error) {
+        } catch {
             console.error('Failed to create invite:', error);
             addToast(t('inviteError'), 'error');
         }

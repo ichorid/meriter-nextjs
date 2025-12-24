@@ -13,7 +13,7 @@ import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/co
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
-import { Wallet as WalletEntity } from '../src/domain/aggregates/wallet/wallet.entity';
+import { Wallet as _WalletEntity } from '../src/domain/aggregates/wallet/wallet.entity';
 import { VoteSchemaClass, VoteDocument } from '../src/domain/models/vote/vote.schema';
 import { TransactionSchemaClass, TransactionDocument } from '../src/domain/models/transaction/transaction.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
@@ -44,7 +44,7 @@ describe('Special Groups Merit Accumulation', () => {
   let communityService: CommunityService;
   let publicationService: PublicationService;
   let walletService: WalletService;
-  let voteService: VoteService;
+  let _voteService: VoteService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -378,7 +378,7 @@ describe('Special Groups Merit Accumulation', () => {
       expect(fvCommunityUsed?.typeTag).toBe('future-vision');
 
       // Check that Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
-      let fvWallet = await walletService.getWallet(authorId, fvCommunityId);
+      const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
       
       // Wallet should not exist or have 0 balance (no automatic crediting)
       if (fvWallet) {
@@ -493,7 +493,7 @@ describe('Special Groups Merit Accumulation', () => {
       const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
 
       // Check that Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
-      let fvWallet = await walletService.getWallet(beneficiaryId, fvCommunityId);
+      const fvWallet = await walletService.getWallet(beneficiaryId, fvCommunityId);
       
       // Wallet should not exist or have 0 balance (no automatic crediting)
       if (fvWallet) {
@@ -550,7 +550,7 @@ describe('Special Groups Merit Accumulation', () => {
       // Verify Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
       const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
       const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-      let fvWallet = await walletService.getWallet(authorId, fvCommunityId);
+      const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
       
       // Wallet should not exist or have 0 balance (no automatic crediting)
       if (fvWallet) {
@@ -603,7 +603,7 @@ describe('Special Groups Merit Accumulation', () => {
       const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
 
       // Verify Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
-      let fvWallet = await walletService.getWallet(authorId, fvCommunityId);
+      const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
       
       // Wallet should not exist or have 0 balance (no automatic crediting)
       if (fvWallet) {
@@ -703,7 +703,7 @@ describe('Special Groups Merit Accumulation', () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Verify Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
-      let fvWallet = await walletService.getWallet(authorId, fvCommunityId);
+      const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
       
       // Wallet should not exist or have 0 balance (no automatic crediting)
       if (fvWallet) {
@@ -808,7 +808,7 @@ describe('Special Groups Merit Accumulation', () => {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Check that regular community wallet was NOT automatically credited (automatic crediting is disabled)
-      let wallet = await walletService.getWallet(authorId, regularCommunityId);
+      const wallet = await walletService.getWallet(authorId, regularCommunityId);
       
       // Wallet should not exist or have 0 balance (no automatic crediting)
       if (wallet) {
@@ -839,7 +839,7 @@ describe('Special Groups Merit Accumulation', () => {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Check that wallet was NOT automatically credited (automatic crediting is disabled)
-      let wallet = await walletService.getWallet(authorId, regularCommunityId);
+      const wallet = await walletService.getWallet(authorId, regularCommunityId);
       
       // Wallet should not exist or have 0 balance (no automatic crediting)
       if (wallet) {
@@ -875,4 +875,3 @@ describe('Special Groups Merit Accumulation', () => {
     });
   });
 });
-

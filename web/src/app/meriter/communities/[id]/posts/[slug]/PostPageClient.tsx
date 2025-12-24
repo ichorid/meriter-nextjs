@@ -211,16 +211,16 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                 {publication && (
                     <article
                         className="relative rounded-2xl overflow-hidden border border-base-content/5"
-                        style={(publication as any).imageUrl ? {
-                            backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.6)), url(${(publication as any).imageUrl})`,
+                        style={(publication as unknown).imageUrl ? {
+                            backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.6)), url(${(publication as unknown).imageUrl})`,
                             backgroundSize: 'cover',
                             backgroundPosition: 'center',
                             minHeight: '200px',
                         } : undefined}
                     >
-                        <div className={`p-5 h-full flex flex-col justify-end ${(publication as any).imageUrl ? 'text-white min-h-[200px]' : 'bg-base-100'}`}>
+                        <div className={`p-5 h-full flex flex-col justify-end ${(publication as unknown).imageUrl ? 'text-white min-h-[200px]' : 'bg-base-100'}`}>
                             {/* Post Type Badge */}
-                            {(publication as any).isProject && (
+                            {(publication as unknown).isProject && (
                                 <div className="mb-3">
                                     <span className="inline-block px-2 py-1 text-xs font-semibold bg-blue-600 text-white rounded">
                                         ПРОЕКТ
@@ -229,34 +229,34 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                             )}
 
                             {/* Title */}
-                            {(publication as any).title && (
-                                <h1 className={`text-xl sm:text-2xl font-bold mb-3 ${(publication as any).imageUrl ? 'text-white drop-shadow-lg' : 'text-base-content'}`}>
-                                    {(publication as any).title}
+                            {(publication as unknown).title && (
+                                <h1 className={`text-xl sm:text-2xl font-bold mb-3 ${(publication as unknown).imageUrl ? 'text-white drop-shadow-lg' : 'text-base-content'}`}>
+                                    {(publication as unknown).title}
                                 </h1>
                             )}
 
                             {/* Author Info */}
-                            <div className={`flex items-center gap-3 ${(publication as any).imageUrl ? '' : 'mt-2 pt-2 border-t border-base-content/10'}`}>
+                            <div className={`flex items-center gap-3 ${(publication as unknown).imageUrl ? '' : 'mt-2 pt-2 border-t border-base-content/10'}`}>
                                 <Avatar className="w-10 h-10 text-sm">
                                     {author?.avatarUrl && (
-                                        <AvatarImage src={author.avatarUrl} alt={author?.displayName || (publication as any).authorDisplay || 'Author'} />
+                                        <AvatarImage src={author.avatarUrl} alt={author?.displayName || (publication as unknown).authorDisplay || 'Author'} />
                                     )}
                                     <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
-                                        {(author?.displayName || (publication as any).authorDisplay) ? (author?.displayName || (publication as any).authorDisplay).slice(0, 2).toUpperCase() : <User size={18} />}
+                                        {(author?.displayName || (publication as unknown).authorDisplay) ? (author?.displayName || (publication as unknown).authorDisplay).slice(0, 2).toUpperCase() : <User size={18} />}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                    <div className={`font-medium ${(publication as any).imageUrl ? 'text-white drop-shadow' : 'text-base-content'}`}>
-                                        {author?.displayName || (publication as any).authorDisplay || 'Author'}
+                                    <div className={`font-medium ${(publication as unknown).imageUrl ? 'text-white drop-shadow' : 'text-base-content'}`}>
+                                        {author?.displayName || (publication as unknown).authorDisplay || 'Author'}
                                     </div>
-                                    <div className={`text-xs ${(publication as any).imageUrl ? 'text-white/80' : 'text-base-content/60'}`}>
+                                    <div className={`text-xs ${(publication as unknown).imageUrl ? 'text-white/80' : 'text-base-content/60'}`}>
                                         {new Date(publication.createdAt).toLocaleDateString()}
                                     </div>
                                 </div>
 
                                 {/* Score */}
                                 {publication.metrics?.score !== undefined && (
-                                    <div className={`ml-auto text-lg font-bold ${(publication as any).imageUrl ? 'text-white drop-shadow' : 'text-base-content'}`}>
+                                    <div className={`ml-auto text-lg font-bold ${(publication as unknown).imageUrl ? 'text-white drop-shadow' : 'text-base-content'}`}>
                                         {publication.metrics.score > 0 ? '+' : ''}{publication.metrics.score}
                                     </div>
                                 )}
@@ -266,11 +266,11 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                 )}
 
                 {/* Post Content - Outside the card */}
-                {publication && ((publication as any).description || publication.content) && (
+                {publication && ((publication as unknown).description || publication.content) && (
                     <div className="bg-base-100 rounded-2xl p-5 border border-base-content/5">
                         <div className="prose prose-sm dark:prose-invert max-w-none">
                             {(() => {
-                                const content = (publication as any).description || publication.content || '';
+                                const content = (publication as unknown).description || publication.content || '';
                                 const isHtml = content.includes('<') && content.includes('>');
                                 if (isHtml && typeof window !== 'undefined') {
                                     const sanitized = DOMPurify.sanitize(content, {
@@ -303,7 +303,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
 
                         {/* Comments List */}
                         <div className="space-y-4">
-                            {comments?.map((c: any, index: number) => (
+                            {comments?.map((c: unknown, index: number) => (
                                 <Comment
                                     key={c.id || c._id || `comment-${index}`}
                                     {...c}

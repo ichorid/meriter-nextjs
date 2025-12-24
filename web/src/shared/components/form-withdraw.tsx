@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { etv } from '@shared/lib/input-utils';
+import { _etv } from '@shared/lib/input-utils';
 import { Slider, SliderTrack, SliderFilledTrack, SliderThumb } from '@/components/ui/slider';
 import { useTranslations } from 'next-intl';
 
@@ -18,8 +18,8 @@ interface FormWithdrawProps {
 }
 
 export const FormWithdraw: React.FC<FormWithdrawProps> = ({
-    comment,
-    setComment,
+    _comment,
+    _setComment,
     amount,
     setAmount,
     maxWithdrawAmount,
@@ -29,7 +29,7 @@ export const FormWithdraw: React.FC<FormWithdrawProps> = ({
     isWithdrawal,
 }) => {
     const t = useTranslations('shared');
-    const [selected, setSelected] = useState(false);
+    const [_selected, _setSelected] = useState(false);
 
     return (
         <div className="card bg-base-100 shadow-lg dark:border dark:border-base-content/20 rounded-2xl p-5">

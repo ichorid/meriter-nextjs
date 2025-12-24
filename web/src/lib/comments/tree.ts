@@ -1,4 +1,4 @@
-import type { Comment, TreeNode, FlatItem } from './types';
+import type { Comment, TreeNode, _FlatItem } from './types';
 
 /**
  * Tree Utilities
@@ -107,4 +107,3 @@ export function getSubtreeSize(node: TreeNode): number {
   }
   return count;
 }
-

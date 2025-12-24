@@ -25,7 +25,7 @@ export class ZodValidationPipe implements PipeTransform {
             data: raw,
             issues: error.issues,
           });
-        } catch (_) {
+        } catch {
           // eslint-disable-next-line no-console
           console.error('[ZodValidationPipe] Validation failed (could not stringify value)', {
             type: metadata?.type,
@@ -45,4 +45,3 @@ export class ZodValidationPipe implements PipeTransform {
     }
   }
 }
-

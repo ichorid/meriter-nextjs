@@ -33,7 +33,7 @@ function clearTelegramSDKStorage(): void {
       sessionStorage.removeItem(key);
       console.log('🧹 Cleared Telegram SDK session storage key:', key);
     });
-  } catch (error) {
+  } catch {
     console.warn('⚠️ Failed to clear Telegram SDK storage:', error);
   }
 }
@@ -49,7 +49,7 @@ export async function mockEnv(): Promise<void> {
     const urlParams = new URLSearchParams(window.location.search);
     const shouldMock = urlParams.get('mock-telegram') === 'true';
     
-    // If not in Telegram environment and not mocking, clear any persisted SDK state
+    // If not in Telegram environment and not mocking, clear unknown persisted SDK state
     if (!isTma && !shouldMock) {
       clearTelegramSDKStorage();
     }

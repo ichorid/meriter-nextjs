@@ -3,9 +3,9 @@ import { useMemo } from 'react';
 import { usePoll, usePollResults } from './api/usePolls';
 
 interface PollCardData {
-  pollData: any;
-  userCast: any;
-  userCastSummary: any;
+  pollData: unknown;
+  userCast: unknown;
+  userCastSummary: unknown;
 }
 
 export function usePollCardData(pollId: string | undefined) {
@@ -25,7 +25,7 @@ export function usePollCardData(pollId: string | undefined) {
     const pollData = {
       title: poll.question,
       description: poll.description,
-      options: poll.options.map((opt: any) => ({
+      options: poll.options.map((opt: unknown) => ({
         id: opt.id,
         text: opt.text,
         votes: opt.votes || 0,

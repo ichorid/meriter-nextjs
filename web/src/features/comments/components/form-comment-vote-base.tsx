@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, memo, useEffect } from "react";
+import { useState, _useMemo, useCallback, memo, useEffect } from "react";
 import { etv } from "@shared/lib/input-utils";
 import {
     Slider,
@@ -21,7 +21,7 @@ export interface FormCommentVoteBaseProps {
     setAmount: (amount: number) => void;
     maxPlus: number;
     maxMinus: number;
-    commentAdd: (data: any) => void;
+    commentAdd: (data: unknown) => void;
     error: string;
     reason?: string;
     isWithdrawMode?: boolean;
@@ -45,10 +45,10 @@ export const FormCommentVoteBase = memo(
         error,
         reason,
         isWithdrawMode = false,
-        quotaAmount = 0,
-        walletAmount = 0,
-        quotaRemaining = 0,
-        currencyIconUrl,
+        _quotaAmount = 0,
+        _walletAmount = 0,
+        _quotaRemaining = 0,
+        _currencyIconUrl,
     }: FormCommentVoteBaseProps) => {
         const t = useTranslations("comments");
         const addToast = useToastStore((state) => state.addToast);

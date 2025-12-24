@@ -27,17 +27,17 @@ describe('Notifications E2E Tests', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let communityService: CommunityService;
+  let _communityService: CommunityService;
   let voteService: VoteService;
   let publicationService: PublicationService;
   let notificationService: NotificationService;
-  let userService: UserService;
+  let _userService: UserService;
   let jwtService: JwtService;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
-  let voteModel: Model<VoteDocument>;
+  let _voteModel: Model<VoteDocument>;
   let walletModel: Model<WalletDocument>;
   let notificationModel: Model<NotificationDocument>;
 
@@ -46,8 +46,8 @@ describe('Notifications E2E Tests', () => {
   let testUserId3: string;
   let testCommunityId: string;
   let testPublicationId: string;
-  let testToken: string;
-  let testToken2: string;
+  let _testToken: string;
+  let _testToken2: string;
 
   beforeAll(async () => {
     jest.setTimeout(30000);
@@ -224,7 +224,7 @@ describe('Notifications E2E Tests', () => {
       const collection = collections[key];
       try {
         await collection.dropIndex('token_1').catch(() => {});
-      } catch (err) {
+      } catch {
         // Index doesn't exist, ignore
       }
       await collection.deleteMany({});
@@ -594,4 +594,3 @@ describe('Notifications E2E Tests', () => {
     });
   });
 });
-

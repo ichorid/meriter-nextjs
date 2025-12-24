@@ -11,12 +11,12 @@ import {
   PublicationSchemaClass,
   PublicationDocument,
 } from '../models/publication/publication.schema';
-import type { Publication as PublicationSchema } from '../models/publication/publication.schema';
+import type { Publication as _PublicationSchema } from '../models/publication/publication.schema';
 import {
   PublicationId,
   UserId,
   CommunityId,
-  PublicationContent,
+  _PublicationContent,
 } from '../value-objects';
 import { PublicationCreatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
@@ -340,7 +340,7 @@ export class PublicationService {
 
   async deletePublication(
     publicationId: string,
-    userId: string,
+    _userId: string,
   ): Promise<boolean> {
     const publication = await this.getPublication(publicationId);
     if (!publication) {

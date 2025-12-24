@@ -16,7 +16,7 @@ export default function TelegramSDKWrapper({ children }: PropsWithChildren) {
   useEffect(() => {
     // Check for Telegram theme
     try {
-      const tgWebApp = (window as any).Telegram?.WebApp;
+      const tgWebApp = (window as unknown).Telegram?.WebApp;
       if (tgWebApp) {
         const isDark = tgWebApp.isDark || false;
         setAppearance(isDark ? 'dark' : 'light');
@@ -26,7 +26,7 @@ export default function TelegramSDKWrapper({ children }: PropsWithChildren) {
           setPlatform('ios');
         }
       }
-    } catch (e) {
+    } catch {
       // Not in Telegram environment
     }
   }, []);

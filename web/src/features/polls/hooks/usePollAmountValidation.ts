@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { _useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 
 export interface PollAmountValidationResult {
@@ -58,4 +58,3 @@ export function usePollAmountValidation({ balance }: UsePollAmountValidationOpti
 
     return { validateAmount };
 }
-

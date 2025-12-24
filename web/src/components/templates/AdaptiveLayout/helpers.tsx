@@ -1,12 +1,12 @@
 import React from 'react';
-import { CommentsColumn } from '@/components/organisms/CommentsColumn';
+import { _CommentsColumn } from '@/components/organisms/CommentsColumn';
 import { useSearchParams } from 'next/navigation';
 
 export interface CommentsColumnHelperProps {
   publicationSlug: string;
   communityId: string;
-  balance: any;
-  wallets: any[];
+  balance: unknown;
+  wallets: unknown[];
   myId?: string;
   highlightTransactionId?: string;
   activeCommentHook: [string | null, React.Dispatch<React.SetStateAction<string | null>>];
@@ -33,4 +33,3 @@ export function createCommentsColumnProps(
     },
   };
 }
-

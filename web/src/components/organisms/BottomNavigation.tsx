@@ -78,14 +78,14 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
     // Get marathon-of-good community ID for navigation
     const { communities: userCommunities } = useUserCommunities();
     const marathonOfGoodCommunityId = useMemo(() => {
-        const marathonCommunity = userCommunities.find((c: any) => c?.typeTag === 'marathon-of-good');
+        const marathonCommunity = userCommunities.find((c: unknown) => c?.typeTag === 'marathon-of-good');
         return marathonCommunity?.id || null;
     }, [userCommunities]);
 
     // Get current community or first community ID for currency icon
     const communityIdForIcon = useMemo(() => {
         if (communityContextId) return communityContextId;
-        const walletWithCommunity = wallets.find((w: any) => w?.communityId);
+        const walletWithCommunity = wallets.find((w: unknown) => w?.communityId);
         return walletWithCommunity?.communityId;
     }, [communityContextId, wallets]);
 

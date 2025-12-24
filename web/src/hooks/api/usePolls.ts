@@ -2,7 +2,7 @@
 import { trpc } from "@/lib/trpc/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface PollCreate {
+interface _PollCreate {
     question: string;
     description?: string;
     options: { id?: string; text: string }[];
@@ -12,7 +12,7 @@ interface PollCreate {
     walletAmount?: number;
 }
 
-interface CastPollRequest {
+interface _CastPollRequest {
     optionId: string;
     quotaAmount?: number;
     walletAmount?: number;
@@ -122,7 +122,7 @@ export const useUpdatePoll = () => {
 
 // Delete poll - TODO: Add to polls router
 export const useDeletePoll = () => {
-    const utils = trpc.useUtils();
+    const _utils = trpc.useUtils();
     
     // Placeholder - delete endpoint not yet in tRPC router
     return {

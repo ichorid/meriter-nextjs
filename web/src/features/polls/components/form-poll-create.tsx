@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from 'next-intl';
 import { initDataRaw, useSignal, mainButton, backButton } from '@telegram-apps/sdk-react';
-import { useCreatePoll, useUpdatePoll } from '@/hooks/api/usePolls';
+import { _useCreatePoll, useUpdatePoll } from '@/hooks/api/usePolls';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { useWallet } from '@/hooks/api/useWallet';
@@ -12,7 +12,7 @@ import { safeHapticFeedback } from '@/shared/lib/utils/haptic-utils';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
-import { Label } from '@/components/ui/shadcn/label';
+import { _Label } from '@/components/ui/shadcn/label';
 import { Loader2 } from 'lucide-react';
 import {
     Select,
@@ -31,7 +31,7 @@ interface IPollOption {
 }
 
 interface IFormPollCreateProps {
-    wallets?: any[];
+    wallets?: unknown[];
     communityId?: string;
     onSuccess?: (pollId: string) => void;
     onCancel?: () => void;
@@ -187,7 +187,7 @@ export const FormPollCreate = ({
         if (isInTelegram && isMountedRef.current) {
             try {
                 mainButton.setParams({ isLoaderVisible: true });
-            } catch (error: unknown) {
+            } catch {
                 const message = error instanceof Error ? error.message : 'Unknown error';
                 console.warn('MainButton already unmounted:', message);
             }
@@ -249,7 +249,7 @@ export const FormPollCreate = ({
 
             safeHapticFeedback('success', isInTelegram);
             onSuccess && onSuccess(poll.id);
-        } catch (err: unknown) {
+        } catch {
             console.error('📊 Poll creation error:', err);
             const errorMessage = extractErrorMessage(err, t('errorCreating'));
             setError(errorMessage);
@@ -259,7 +259,7 @@ export const FormPollCreate = ({
             if (isInTelegram && isMountedRef.current) {
                 try {
                     mainButton.setParams({ isLoaderVisible: false });
-                } catch (error: unknown) {
+                } catch {
                     const message = error instanceof Error ? error.message : 'Unknown error';
                     console.warn('MainButton already unmounted:', message);
                 }
@@ -278,7 +278,7 @@ export const FormPollCreate = ({
                 try {
                     // Try to mount the mainButton first
                     mainButton.mount();
-                } catch (error: unknown) {
+                } catch {
                     // MainButton might already be mounted, that's okay
                     const message = error instanceof Error ? error.message : 'Unknown error';
                     console.warn('MainButton mount warning (expected if already mounted):', message);
@@ -305,7 +305,7 @@ export const FormPollCreate = ({
                                 if (isMountedRef.current) {
                                     try {
                                         mainButton.setParams({ isVisible: false });
-                                    } catch (error: unknown) {
+                                    } catch {
                                         const message = error instanceof Error ? error.message : 'Unknown error';
                                         console.warn('MainButton cleanup warning:', message);
                                     }
@@ -314,7 +314,7 @@ export const FormPollCreate = ({
                                 backButton.hide();
                                 backCleanup();
                             };
-                        } catch (error: unknown) {
+                        } catch {
                             const message = error instanceof Error ? error.message : 'Unknown error';
                             console.error('Failed to setup back button:', message);
                         }
@@ -324,7 +324,7 @@ export const FormPollCreate = ({
                         if (isMountedRef.current) {
                             try {
                                 mainButton.setParams({ isVisible: false });
-                            } catch (error: unknown) {
+                            } catch {
                                 const message = error instanceof Error ? error.message : 'Unknown error';
                                 console.warn('MainButton cleanup warning:', message);
                             }
@@ -332,7 +332,7 @@ export const FormPollCreate = ({
                         if (cleanup) cleanup();
                     };
 
-                } catch (error: unknown) {
+                } catch {
                     const message = error instanceof Error ? error.message : 'Unknown error';
                     console.error('Failed to initialize mainButton:', message);
                     // If mainButton fails, we'll just return a no-op cleanup
@@ -492,7 +492,7 @@ export const FormPollCreate = ({
                     <div className="flex-1">
                         <Select
                             value={timeUnit}
-                            onValueChange={(val) => setTimeUnit(val as any)}
+                            onValueChange={(val) => setTimeUnit(val as unknown)}
                             disabled={isCreating}
                         >
                             <SelectTrigger className={cn('h-11 rounded-xl w-full')}>

@@ -43,17 +43,17 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
   
-  let communityService: CommunityService;
-  let voteService: VoteService;
-  let publicationService: PublicationService;
+  let _communityService: CommunityService;
+  let _voteService: VoteService;
+  let _publicationService: PublicationService;
   let commentService: CommentService;
-  let userService: UserService;
+  let _userService: UserService;
   let walletService: WalletService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
-  let commentModel: Model<CommentDocument>;
+  let _commentModel: Model<CommentDocument>;
   let voteModel: Model<VoteDocument>;
   let walletModel: Model<WalletDocument>;
 
@@ -202,7 +202,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
         const collection = collections[key];
         try {
           await collection.dropIndex('token_1').catch(() => {});
-        } catch (err) {
+        } catch {
           // Index doesn't exist, ignore
         }
         await collection.deleteMany({});

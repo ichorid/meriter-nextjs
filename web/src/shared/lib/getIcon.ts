@@ -1,4 +1,4 @@
-import Axios from 'axios'
+import _Axios from 'axios'
 
 // Built-in list of popular emojis (LogoJoy service is deprecated)
 const POPULAR_EMOJIS = [
@@ -26,7 +26,7 @@ const POPULAR_EMOJIS = [
 
 // Removed dead getIconsLogojoyProxy function - endpoint /api/geticonslogojoy doesn't exist
 
-export const getIconsLogojoy = (term: string, page: number) => {
+export const getIconsLogojoy = (term: string, _page: number) => {
     // Filter emojis based on search term
     const searchTerm = (term || '').toLowerCase();
     

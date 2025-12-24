@@ -8,7 +8,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avat
 import { User } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { SearchInput } from '@/components/molecules/SearchInput';
-import { Loader2, Users } from 'lucide-react';
+import { _Loader2, Users } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
 import { MemberInfoCard } from './MemberInfoCard';
 import { useCanViewUserMerits } from '@/hooks/useCanViewUserMerits';

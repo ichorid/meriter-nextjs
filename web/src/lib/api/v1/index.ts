@@ -22,20 +22,20 @@ import {
     convertPaginationToSkipLimit,
     mergeQueryParams,
 } from "@/lib/utils/query-params";
-import { validateApiResponse, validatePaginatedResponse } from "../validation";
+import { validateApiResponse, _validatePaginatedResponse } from "../validation";
 import { handleAuthResponse } from "./endpoint-helpers";
 import {
-    UserSchema,
-    CommunitySchema,
-    PublicationSchema,
+    _UserSchema,
+    _CommunitySchema,
+    _PublicationSchema,
     CommentSchema,
     PollSchema,
-    CreatePublicationDtoSchema,
-    CreateCommentDtoSchema,
-    CreateVoteDtoSchema,
-    CreatePollDtoSchema,
-    CreatePollCastDtoSchema,
-    UpdateCommunityDtoSchema,
+    _CreatePublicationDtoSchema,
+    _CreateCommentDtoSchema,
+    _CreateVoteDtoSchema,
+    _CreatePollDtoSchema,
+    _CreatePollCastDtoSchema,
+    _UpdateCommunityDtoSchema,
 } from "@/types/api-v1/schemas";
 import type {
     User,
@@ -49,7 +49,7 @@ import type {
     Transaction,
     CreatePublicationDto,
     CreateCommentDto,
-    CreateVoteRequest,
+    _CreateVoteRequest,
     CreatePollDto,
     CreatePollCastDto,
     UpdateCommunityDto,
@@ -61,13 +61,13 @@ import type {
     AuthResult,
     CommunityMember,
     LeaderboardEntry,
-    PollCastResult,
+    _PollCastResult,
 } from "@/types/api-responses";
-import type { UpdateEvent } from "@/types/updates";
+import type { _UpdateEvent } from "@/types/updates";
 import {
     VoteWithCommentDto,
-    VoteWithCommentDtoSchema,
-    WithdrawAmountDtoSchema,
+    _VoteWithCommentDtoSchema,
+    _WithdrawAmountDtoSchema,
 } from "@meriter/shared-types";
 
 // Auth API with enhanced response handling
@@ -160,7 +160,7 @@ export const usersApiV1 = {
         userId: string,
         params: { skip?: number; limit?: number } = {}
     ): Promise<PaginatedResponse<Comment>> {
-        const response = await apiClient.get<{ success?: boolean; data?: any }>(
+        const response = await apiClient.get<{ success?: boolean; data?: unknown }>(
             `/api/v1/comments/users/${userId}`,
             { params }
         );
@@ -172,7 +172,7 @@ export const usersApiV1 = {
             Array.isArray(response.data.data)
         ) {
             // Direct format from backend
-            const backendData = response.data as any;
+            const backendData = response.data as unknown;
             return {
                 data: backendData.data || [],
                 meta: {
@@ -255,7 +255,7 @@ export const usersApiV1 = {
                 remainingToday: number;
                 resetAt: string;
             };
-            meta?: any;
+            meta?: unknown;
         }>(`/api/v1/users/${userId}/quota`, { params });
         // Extract data from wrapped response
         return response?.data || response;
@@ -323,7 +323,7 @@ export const communitiesApiV1 = {
 
     async getCommunity(id: string): Promise<Community> {
         // Backend may return either a wrapped { success, data } or a direct object.
-        const response = await apiClient.get<any>(`/api/v1/communities/${id}`);
+        const response = await apiClient.get<unknown>(`/api/v1/communities/${id}`);
         if (
             response &&
             typeof response === "object" &&
@@ -488,7 +488,7 @@ export const communitiesApiV1 = {
             tag?: string;
             search?: string; // Optional search query parameter
         } = {}
-    ): Promise<PaginatedResponse<any>> {
+    ): Promise<PaginatedResponse<unknown>> {
         const queryParams = mergeQueryParams(
             params.page !== undefined ? { page: params.page } : {},
             params.pageSize !== undefined ? { pageSize: params.pageSize } : {},
@@ -499,7 +499,7 @@ export const communitiesApiV1 = {
 
         const response = await apiClient.get<{
             success: true;
-            data: any[];
+            data: unknown[];
             meta: {
                 pagination: {
                     page: number;
@@ -737,7 +737,7 @@ export const commentsApiV1 = {
             data
         );
         // Workaround for TypeScript's "Type instantiation is excessively deep" error
-        return validateApiResponse(CommentSchema as any, response, "createComment");
+        return validateApiResponse(CommentSchema as unknown, response, "createComment");
     },
 
     async updateComment(
@@ -966,10 +966,10 @@ export const votesApiV1 = {
             const response = await apiClient.post<{
                 success: boolean;
                 data: { amount: number; balance: number; message: string };
-                meta: any;
+                meta: unknown;
             }>(`/api/v1/publications/${publicationId}/withdraw`, data);
             return response;
-        } catch (error: any) {
+        } catch {
             console.error("[API] withdrawFromPublication error:", {
                 error,
                 errorType: typeof error,
@@ -993,7 +993,7 @@ export const votesApiV1 = {
         const response = await apiClient.post<{
             success: boolean;
             data: { amount: number; balance: number; message: string };
-            meta: any;
+            meta: unknown;
         }>(`/api/v1/votes/${voteId}/withdraw`, data);
         return response;
     },
@@ -1004,9 +1004,9 @@ export const votesApiV1 = {
  * Throws error if response structure is invalid
  * @deprecated Use validateApiResponse directly instead
  */
-function unwrapApiResponse<T>(
+function _unwrapApiResponse<T>(
     response: { success: true; data: T },
-    schema?: any,
+    schema?: unknown,
     context?: string
 ): T {
     if (!response || !response.success || response.data === undefined) {
@@ -1041,7 +1041,7 @@ export const pollsApiV1 = {
             `/api/v1/polls/${id}`
         );
         // Workaround for TypeScript's "Type instantiation is excessively deep" error
-        return validateApiResponse(PollSchema as any, response, "getPoll");
+        return validateApiResponse(PollSchema as unknown, response, "getPoll");
     },
 
     async createPoll(data: CreatePollDto): Promise<Poll> {
@@ -1050,7 +1050,7 @@ export const pollsApiV1 = {
             data
         );
         // Workaround for TypeScript's "Type instantiation is excessively deep" error
-        return validateApiResponse(PollSchema as any, response, "createPoll");
+        return validateApiResponse(PollSchema as unknown, response, "createPoll");
     },
 
     async updatePoll(id: string, data: UpdatePollDto): Promise<Poll> {
@@ -1059,7 +1059,7 @@ export const pollsApiV1 = {
             data
         );
         // Workaround for TypeScript's "Type instantiation is excessively deep" error
-        return validateApiResponse(PollSchema as any, response, "updatePoll");
+        return validateApiResponse(PollSchema as unknown, response, "updatePoll");
     },
 
     async deletePoll(id: string): Promise<void> {
@@ -1075,15 +1075,15 @@ export const pollsApiV1 = {
         return response.data;
     },
 
-    async getPollResults(pollId: string): Promise<any> {
-        const response = await apiClient.get<{ success: true; data: any }>(
+    async getPollResults(pollId: string): Promise<unknown> {
+        const response = await apiClient.get<{ success: true; data: unknown }>(
             `/api/v1/polls/${pollId}/results`
         );
         return response.data;
     },
 
-    async getMyPollCasts(pollId: string): Promise<any> {
-        const response = await apiClient.get<{ success: true; data: any }>(
+    async getMyPollCasts(pollId: string): Promise<unknown> {
+        const response = await apiClient.get<{ success: true; data: unknown }>(
             `/api/v1/polls/${pollId}/my-casts`
         );
         return response.data;
@@ -1226,8 +1226,8 @@ export const searchApiV1 = {
             tags,
             authorId,
             communityId,
-            dateFrom,
-            dateTo,
+            _dateFrom,
+            _dateTo,
             page = 1,
             pageSize = 20,
         } = params;
@@ -1245,7 +1245,7 @@ export const searchApiV1 = {
             };
         }
 
-        const results: any[] = [];
+        const results: unknown[] = [];
 
         // Search publications
         if (contentType === "all" || contentType === "publications") {
@@ -1270,7 +1270,7 @@ export const searchApiV1 = {
                     }
 
                     // Use type assertion to avoid TypeScript errors with Publication type
-                    const pubAny = pub as any;
+                    const pubAny = pub as unknown;
                     const author = pubAny.author
                         ? {
                               id: pubAny.author.id || "",
@@ -1302,7 +1302,7 @@ export const searchApiV1 = {
                         }/publications/${pub.id}`,
                     });
                 });
-            } catch (error) {
+            } catch {
                 console.warn("Search publications failed:", error);
             }
         }
@@ -1334,7 +1334,7 @@ export const searchApiV1 = {
                         url: `/meriter/communities/${comm.id}`,
                     });
                 });
-            } catch (error) {
+            } catch {
                 console.warn("Search communities failed:", error);
             }
         }
@@ -1349,7 +1349,7 @@ export const searchApiV1 = {
                 });
 
                 polls.data.forEach((poll: Poll) => {
-                    const pollAny = poll as any;
+                    const pollAny = poll as unknown;
                     if (query) {
                         const searchText = `${
                             pollAny.question || pollAny.title || ""
@@ -1383,7 +1383,7 @@ export const searchApiV1 = {
                         }/polls/${poll.id}`,
                     });
                 });
-            } catch (error) {
+            } catch {
                 console.warn("Search polls failed:", error);
             }
         }

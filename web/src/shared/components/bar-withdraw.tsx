@@ -18,7 +18,7 @@ interface BarWithdrawProps {
 
 export const BarWithdraw: React.FC<BarWithdrawProps> = ({ 
     onWithdraw, 
-    onTopup, 
+    _onTopup, 
     balance, 
     score,
     totalVotes,

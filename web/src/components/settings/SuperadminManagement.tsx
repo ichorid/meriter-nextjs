@@ -21,10 +21,10 @@ export const SuperadminManagement = () => {
     const handleToggleRole = async (user: User) => {
         const newRole = user.globalRole === 'superadmin' ? 'user' : 'superadmin';
         try {
-            const updatedUser = await updateGlobalRole.mutateAsync({ userId: user.id, role: newRole });
+            const _updatedUser = await updateGlobalRole.mutateAsync({ userId: user.id, role: newRole });
             setMessage(`Successfully ${newRole === 'superadmin' ? 'promoted' : 'demoted'} ${user.displayName}`);
             setTimeout(() => setMessage(''), 3000);
-        } catch (error) {
+        } catch {
             console.error('Update role error:', error);
             setMessage('Failed to update role');
         }

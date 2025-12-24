@@ -20,7 +20,7 @@ export function extractErrorMessage(err: unknown, fallback: string): string {
     // Check for tRPC errors first
     // tRPC errors have a shape property with error data
     if ('shape' in err && err.shape && typeof err.shape === 'object') {
-      const shape = err.shape as any;
+      const shape = err.shape as unknown;
       // tRPC errors can have message in shape.data.message or shape.message
       if (shape.data?.message && typeof shape.data.message === 'string') {
         return shape.data.message;
@@ -45,7 +45,7 @@ export function extractErrorMessage(err: unknown, fallback: string): string {
     
     // Check for Axios error format (legacy compatibility)
     if ('response' in err && err.response && typeof err.response === 'object') {
-      const response = err.response as any;
+      const response = err.response as unknown;
       const data = response.data;
       
       if (data && typeof data === 'object') {
@@ -73,7 +73,7 @@ export function extractErrorMessage(err: unknown, fallback: string): string {
   }
   
   if (err && typeof err === 'object' && 'message' in err) {
-    const message = (err as any).message;
+    const message = (err as unknown).message;
     if (typeof message === 'string') {
       return message;
     }

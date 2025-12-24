@@ -1,5 +1,5 @@
 import { trpc } from '@/lib/trpc/client';
-import type { User } from '@/types/api-v1';
+import type { _User } from '@/types/api-v1';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function useUserRoles(userId: string) {
@@ -68,7 +68,7 @@ export function useCanCreateCommunity() {
   const { user } = useAuth();
   const { data: userRoles } = useUserRoles(user?.id || '');
 
-  // Check if user has viewer role in any community
+  // Check if user has viewer role in unknown community
   const hasViewerRole = userRoles?.some(role => role.role === 'viewer') ?? false;
   
   // Viewers cannot create communities

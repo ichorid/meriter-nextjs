@@ -8,9 +8,9 @@ import { Loader2 } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 interface ProfileProjectsTabProps {
-  projects: any[];
+  projects: unknown[];
   isLoading: boolean;
-  wallets: any[];
+  wallets: unknown[];
   sortOrder: SortOrder;
   fetchNextPage?: () => void;
   hasNextPage?: boolean;
@@ -59,7 +59,7 @@ export function ProfileProjectsTab({
 
   return (
     <div className="space-y-4 bg-base-100 dark:bg-base-100">
-      {sortItems(projects, sortOrder).map((project: any, index: number) => {
+      {sortItems(projects, sortOrder).map((project: unknown, index: number) => {
         const key = generateKey(project?.id, index, 'project');
         return (
           <PublicationCard

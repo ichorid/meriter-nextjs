@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { _MongooseModule } from '@nestjs/mongoose';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { WalletService } from '../src/domain/services/wallet.service';
@@ -40,15 +40,15 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
   
-  let communityService: CommunityService;
+  let _communityService: CommunityService;
   let walletService: WalletService;
-  let voteService: VoteService;
+  let _voteService: VoteService;
   let userCommunityRoleService: UserCommunityRoleService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let voteModel: Model<VoteDocument>;
-  let walletModel: Model<WalletDocument>;
+  let _voteModel: Model<VoteDocument>;
+  let _walletModel: Model<WalletDocument>;
   let publicationModel: Model<PublicationDocument>;
 
   let testUserId: string;
@@ -373,4 +373,3 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
     });
   });
 });
-

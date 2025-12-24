@@ -40,14 +40,14 @@ export function InviteInput({ className = '', hideLabel = false }: InviteInputPr
             addToast(t('inviteUsedSuccess'), 'success');
 
             // Check for teamGroupId in response and redirect if present
-            if ((response as any)?.teamGroupId) {
-                router.push(`/meriter/communities/${(response as any).teamGroupId}/settings`);
+            if ((response as unknown)?.teamGroupId) {
+                router.push(`/meriter/communities/${(response as unknown).teamGroupId}/settings`);
                 return;
             }
 
             // Clear the input on success
             setInviteCode('');
-        } catch (error: any) {
+        } catch {
             console.error('Failed to use invite:', error);
             const errorMessage = extractErrorMessage(
                 error,

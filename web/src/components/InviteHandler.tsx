@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import _React, { useEffect, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInvite, useInviteByCode } from '@/hooks/api/useInvites';
@@ -107,15 +107,15 @@ export function InviteHandler() {
 
           // Check for teamGroupId in response and redirect if present
           // The response is the data object itself, not wrapped in 'data' property
-          if ((response as any)?.teamGroupId) {
-            router.push(`/meriter/communities/${(response as any).teamGroupId}/settings`);
+          if ((response as unknown)?.teamGroupId) {
+            router.push(`/meriter/communities/${(response as unknown).teamGroupId}/settings`);
             return;
           }
 
           // Redirect to returnTo if specified, otherwise to profile page
           const redirectUrl = returnTo && returnTo !== '/meriter/login' ? returnTo : '/meriter/profile';
           router.replace(redirectUrl);
-        } catch (error: any) {
+        } catch {
           console.error('Failed to use invite:', error);
           // Extract error message from various possible formats
           const errorMessage = error?.response?.data?.error?.message || 
@@ -143,5 +143,4 @@ export function InviteHandler() {
 
   return null; // This component doesn't render anything
 }
-
 

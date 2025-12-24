@@ -142,8 +142,8 @@ export function mockTelegramWidgetAuth(userData: TelegramUser) {
   };
   
   // Simulate widget callback
-  if (typeof window !== 'undefined' && (window as any).onTelegramAuth) {
-    (window as any).onTelegramAuth(authData);
+  if (typeof window !== 'undefined' && (window as unknown).onTelegramAuth) {
+    (window as unknown).onTelegramAuth(authData);
   }
   
   return authData;

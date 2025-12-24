@@ -1,11 +1,11 @@
 'use client';
 
 import React, { Component, ReactNode } from 'react';
-import { ErrorDisplay } from './atoms/ErrorDisplay';
+import { _ErrorDisplay } from './atoms/ErrorDisplay';
 import { ErrorBoundaryContent } from './ErrorBoundaryContent';
 
 // Use plain HTML button instead of Gluestack UI Button to avoid SSR issues
-const Button = ({ variant, onClick, children }: { variant?: string; onClick?: () => void; children: ReactNode }) => {
+const _Button = ({ variant, onClick, children }: { variant?: string; onClick?: () => void; children: ReactNode }) => {
   const baseClasses = 'px-6 py-3 rounded-lg font-medium transition-colors w-full sm:w-auto';
   const variantClasses = variant === 'primary' 
     ? 'bg-primary text-primary-content hover:bg-primary/90' 

@@ -3,9 +3,9 @@ import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
 import { Cron } from '@nestjs/schedule';
 import { CommunitySchemaClass, CommunityDocument } from '../models/community/community.schema';
-import type { Community } from '../models/community/community.schema';
+import type { _Community } from '../models/community/community.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../models/user-community-role/user-community-role.schema';
-import type { UserCommunityRole } from '../models/user-community-role/user-community-role.schema';
+import type { _UserCommunityRole } from '../models/user-community-role/user-community-role.schema';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { NotificationService, CreateNotificationDto } from './notification.service';
@@ -286,4 +286,3 @@ export class QuotaResetService {
     await this.resetAllCommunitiesQuota();
   }
 }
-

@@ -27,7 +27,7 @@ export class CommunityEnrichmentService {
           if (community) {
             communitiesMap.set(communityId, community);
           }
-        } catch (error) {
+        } catch {
           // Silently skip communities that don't exist
         }
       })
@@ -53,4 +53,3 @@ export class CommunityEnrichmentService {
     };
   }
 }
-

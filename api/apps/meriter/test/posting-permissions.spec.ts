@@ -16,7 +16,7 @@ import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/
 import { uid } from 'uid';
 import { ActionType } from '../src/domain/common/constants/action-types.constants';
 
-class AllowAllGuard implements CanActivate {
+class _AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest();
     req.user = { 
@@ -38,14 +38,14 @@ describe('Posting Permissions', () => {
   let connection: Connection;
   
   let permissionService: PermissionService;
-  let publicationService: PublicationService;
-  let communityService: CommunityService;
-  let userService: UserService;
-  let userCommunityRoleService: UserCommunityRoleService;
+  let _publicationService: PublicationService;
+  let _communityService: CommunityService;
+  let _userService: UserService;
+  let _userCommunityRoleService: UserCommunityRoleService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let publicationModel: Model<PublicationDocument>;
+  let _publicationModel: Model<PublicationDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   // Test user IDs
@@ -292,4 +292,3 @@ describe('Posting Permissions', () => {
     });
   });
 });
-

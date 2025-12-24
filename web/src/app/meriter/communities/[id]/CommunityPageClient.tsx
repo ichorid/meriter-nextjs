@@ -77,7 +77,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const futureVisionCommunityId = useMemo(() => {
         if (!isMarathonOfGood || !communitiesData?.data) return null;
         const futureVisionCommunity = communitiesData.data.find(
-            (c: any) => c.typeTag === 'future-vision'
+            (c: unknown) => c.typeTag === 'future-vision'
         );
         return futureVisionCommunity?.id || null;
     }, [isMarathonOfGood, communitiesData?.data]);
@@ -127,7 +127,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     // Memoize feed items array (can contain both publications and polls)
     const publications = useMemo(() => {
         return (data?.pages ?? [])
-            .flatMap((page: any) => {
+            .flatMap((page: unknown) => {
                 // The API returns PaginatedResponse which has a 'data' property with the array
                 if (page?.data && Array.isArray(page.data)) {
                     return page.data;
@@ -135,7 +135,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 // Fallback: empty array
                 return [];
             })
-            .map((p: any) => ({
+            .map((p: unknown) => ({
                 ...p,
                 slug: p.slug || p.id, // Ensure slug is set (use id as fallback)
                 beneficiaryId: p.beneficiaryId || p.meta?.beneficiary?.username,
@@ -153,7 +153,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     // Memoize vision feed items array
     const visionPublications = useMemo(() => {
         return (visionData?.pages ?? [])
-            .flatMap((page: any) => {
+            .flatMap((page: unknown) => {
                 // The API returns PaginatedResponse which has a 'data' property with the array
                 if (page?.data && Array.isArray(page.data)) {
                     return page.data;
@@ -161,7 +161,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 // Fallback: empty array
                 return [];
             })
-            .map((p: any) => ({
+            .map((p: unknown) => ({
                 ...p,
                 slug: p.slug || p.id, // Ensure slug is set (use id as fallback)
                 beneficiaryId: p.beneficiaryId || p.meta?.beneficiary?.username,
@@ -312,7 +312,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
 
     // Filter publications by tag and search query
-    // This useMemo MUST be called before any conditional returns
+    // This useMemo MUST be called before unknown conditional returns
     const filteredPublications = useMemo(() => {
         let filtered = publications;
 

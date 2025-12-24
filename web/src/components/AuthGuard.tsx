@@ -29,7 +29,7 @@ export function AuthGuard({
   redirectTo = '/meriter/login',
   requireAuth = true 
 }: AuthGuardProps) {
-  const { user, isLoading, isAuthenticated, authError } = useAuth();
+  const { _user, isLoading, isAuthenticated, authError } = useAuth();
   const router = useRouter();
   const addToast = useToastStore((state) => state.addToast);
   const [hasChecked, setHasChecked] = useState(false);

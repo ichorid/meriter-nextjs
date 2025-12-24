@@ -73,7 +73,7 @@ describe('Comment Voting Mode Restrictions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
-    mockUseFeaturesConfig.mockReturnValue({ commentVoting: true } as any);
+    mockUseFeaturesConfig.mockReturnValue({ commentVoting: true } as unknown);
   });
 
   it('should use quota-only mode for comments in non-special groups', () => {
@@ -85,7 +85,7 @@ describe('Comment Voting Mode Restrictions', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(
       <Comment
@@ -117,7 +117,7 @@ describe('Comment Voting Mode Restrictions', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(
       <Comment
@@ -142,7 +142,7 @@ describe('Comment Voting Mode Restrictions', () => {
       },
       isLoading: false,
       error: null,
-    } as any);
+    } as unknown);
 
     render(
       <Comment

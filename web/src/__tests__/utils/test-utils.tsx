@@ -49,7 +49,7 @@ const mockMessages = {
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   queryClient?: QueryClient;
   locale?: string;
-  messages?: Record<string, any>;
+  messages?: Record<string, unknown>;
   authContextValue?: Partial<AuthContextType>;
 }
 
@@ -229,7 +229,7 @@ export const mockTelegramData = {
 };
 
 // Mock fetch responses
-export const mockFetch = (response: any, status = 200) => {
+export const mockFetch = (response: unknown, status = 200) => {
   const mockResponse = {
     ok: status >= 200 && status < 300,
     status,
@@ -317,7 +317,7 @@ export const testUtils = {
   },
   
   // Create mock query client with specific data
-  createMockQueryClient: (initialData: Array<{ queryKey: readonly unknown[]; data: any }> = []) => {
+  createMockQueryClient: (initialData: Array<{ queryKey: readonly unknown[]; data: unknown }> = []) => {
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
