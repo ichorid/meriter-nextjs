@@ -1,7 +1,7 @@
 'use client';
 
 import { NextIntlClientProvider } from 'next-intl';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Suspense } from 'react';
 import { DEFAULT_LOCALE, type Locale } from '@/i18n/request';
 import { Root } from '@/components/Root';
 import { QueryProvider } from '@/providers/QueryProvider';
@@ -74,7 +74,9 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
       <AppModeProvider>
         <QueryProvider>
           <NextIntlClientProvider locale={locale} messages={messages}>
-            <ClientRouter />
+            <Suspense fallback={null}>
+              <ClientRouter />
+            </Suspense>
             <AuthProvider>
               <RuntimeConfigProvider
                 fallbackEnabledProviders={fallbackEnabledProviders}

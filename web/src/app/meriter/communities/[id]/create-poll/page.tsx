@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { CreatePollPageClient } from './CreatePollPageClient';
 
 interface CreatePollPageProps {
@@ -13,7 +14,11 @@ export async function generateStaticParams(): Promise<Array<{ id: string }>> {
 
 export default function CreatePollPage({ params }: CreatePollPageProps) {
   const { id } = params;
-  return <CreatePollPageClient communityId={id} />;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CreatePollPageClient communityId={id} />
+    </Suspense>
+  );
 }
 
 
