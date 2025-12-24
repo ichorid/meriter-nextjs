@@ -55,10 +55,7 @@ export function ImageGalleryDisplay({
         }
     }, [initialIndex]);
 
-    if (!images || images.length === 0) {
-        return null;
-    }
-
+    // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     const handleNext = useCallback(() => {
         setViewingIndex((prev) => {
             if (prev === null) return null;
@@ -112,6 +109,11 @@ export function ImageGalleryDisplay({
             document.body.style.overflow = "";
         };
     }, [viewingIndex]);
+
+    // Early return AFTER all hooks have been called
+    if (!images || images.length === 0) {
+        return null;
+    }
 
     const handleImageClick = (index: number) => {
         if (onImageClick) {

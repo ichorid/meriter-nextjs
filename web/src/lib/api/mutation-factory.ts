@@ -13,7 +13,7 @@ import {
     invalidateCommunities,
     invalidatePolls,
 } from './invalidation-helpers';
-import { useValidatedMutation } from './validated-query';
+import { validateData, validateApiResponse, ValidationError } from './validation';
 
     export interface InvalidationConfig {
         wallet?: {
@@ -205,8 +205,46 @@ export function createMutation<
     return function useMutationHook() {
         const queryClient = useQueryClient();
 
-        const mutationOptions: any = {
-            mutationFn: config.mutationFn,
+        // Wrap mutationFn with validation if schemas are provided
+        // This allows us to always call the same hook (useMutation)
+        const wrappedMutationFn = async (variables: TVariables) => {
+            try {
+                // Validate input if schema provided
+                let validatedInput = variables;
+                if (config.inputSchema) {
+                    validatedInput = validateData(
+                        config.inputSchema,
+                        variables,
+                        `${config.validationContext || config.errorContext || 'mutation'}.input`
+                    ) as TVariables;
+                }
+
+                // Execute mutation
+                const response = await config.mutationFn(validatedInput);
+
+                // Validate output if schema provided
+                if (config.outputSchema) {
+                    return validateApiResponse(
+                        config.outputSchema,
+                        response,
+                        `${config.validationContext || config.errorContext || 'mutation'}.output`
+                    );
+                }
+
+                return response;
+            } catch (error) {
+                if (error instanceof ValidationError) {
+                    console.error('Validation error:', error.zodError, error.context);
+                    throw error;
+                }
+                throw error;
+            }
+        };
+
+        // Always call the same hook to maintain consistent hook order
+        // Validation is applied conditionally in the mutationFn wrapper above
+        return useMutation({
+            mutationFn: wrappedMutationFn,
             onSuccess: (result: TData, variables: TVariables) => {
                 // Apply automatic invalidations
                 if (config.invalidations) {
@@ -243,20 +281,7 @@ export function createMutation<
                     config.onError(error, variables);
                 }
             },
-        };
-
-        // Use validated mutation if schemas are provided
-        if (config.inputSchema || config.outputSchema) {
-            return useValidatedMutation({
-                ...mutationOptions,
-                inputSchema: config.inputSchema,
-                outputSchema: config.outputSchema!,
-                context: config.validationContext || config.errorContext,
-            } as any);
-        }
-
-        // Use standard mutation
-        return useMutation(mutationOptions);
+        });
     };
 }
 

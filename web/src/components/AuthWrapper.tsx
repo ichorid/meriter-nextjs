@@ -87,15 +87,8 @@ export function AuthWrapper({ children, enabledProviders, authnEnabled }: AuthWr
         userMembershipsCount,
     ]);
 
-    // If disabled, just render children
-    if (DISABLE_AUTH_WRAPPER) {
-        if (DEBUG_MODE) {
-            console.log("[AuthWrapper] DISABLED - rendering children directly");
-        }
-        return <>{children}</>;
-    }
-
     // If authenticated and on login page, redirect to home
+    // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     useEffect(() => {
         if (isAuthenticated && pathname === "/meriter/login") {
             if (DEBUG_MODE) {
@@ -110,6 +103,15 @@ export function AuthWrapper({ children, enabledProviders, authnEnabled }: AuthWr
             router.push("/meriter/profile");
         }
     }, [isAuthenticated, pathname, router]);
+
+    // If disabled, just render children
+    // This conditional return is AFTER all hooks have been called
+    if (DISABLE_AUTH_WRAPPER) {
+        if (DEBUG_MODE) {
+            console.log("[AuthWrapper] DISABLED - rendering children directly");
+        }
+        return <>{children}</>;
+    }
 
     // If loading, show loading state
     if (isLoading) {
