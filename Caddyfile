@@ -1,6 +1,11 @@
 # Caddyfile for Meriter application
 # Replace {$DOMAIN} with your actual domain or use environment variable
 
+# Enable admin API for reloading without restart (only accessible from localhost)
+{
+	admin localhost:2019
+}
+
 # Support both HTTP and HTTPS for localhost development
 {$DOMAIN} {
     # Enable access logs

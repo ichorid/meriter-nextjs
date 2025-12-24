@@ -83,6 +83,17 @@ if [ -n "$ARTIFACT_FILE" ] && [ -f "$ARTIFACT_FILE" ]; then
     # Atomic swap: mv is atomic on the same filesystem
     mv "${SYMLINK}.new" "${SYMLINK}"
     
+    # Reload Caddy to pick up the new symlink target
+    # Caddy needs to be reloaded to re-resolve the symlink after it changes
+    echo "[deploy] Reloading Caddy to pick up new symlink..."
+    # Use Caddy's admin API to reload configuration (re-resolves file paths including symlinks)
+    # The reload command uses the admin API (localhost:2019) to reload without restarting
+    # If reload fails, fall back to restarting the container
+    if ! docker compose exec -T caddy caddy reload 2>/dev/null; then
+        echo "[deploy] Reload failed, restarting Caddy container..."
+        docker compose restart caddy || echo "[deploy] Warning: Could not restart Caddy"
+    fi
+    
     # Clean up uploaded artifact
     rm -f "${ARTIFACT_FILE}"
     
