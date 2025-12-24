@@ -6,6 +6,8 @@ import { ConfigService } from '@nestjs/config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 import { ApiResponseInterceptor } from './common/interceptors/api-response.interceptor';
+import { TrpcService } from './trpc/trpc.service';
+import { createExpressMiddleware } from '@trpc/server/adapters/express';
 declare const module: any;
 
 async function bootstrap() {
@@ -90,6 +92,18 @@ async function bootstrap() {
   );
 
   app.use(cookieParser());
+  
+  // Register tRPC middleware directly with Express to handle batch requests with commas
+  // This bypasses NestJS routing which doesn't handle comma-separated paths well
+  const trpcService = app.get(TrpcService);
+  const trpcMiddleware = createExpressMiddleware({
+    router: trpcService.getRouter(),
+    createContext: ({ req, res }) => trpcService.createContext(req, res),
+    onError({ error, path }) {
+      logger.error(`tRPC error on '${path}':`, error);
+    },
+  });
+  app.use('/trpc', trpcMiddleware);
   
   const port = configService.get<number>('app.port') ?? 8002;
   await app.listen(port);
