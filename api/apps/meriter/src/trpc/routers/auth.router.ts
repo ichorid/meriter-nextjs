@@ -8,7 +8,7 @@ export const authRouter = router({
   logout: protectedProcedure.mutation(async ({ ctx }) => {
     const cookieDomain = ctx.cookieManager.getCookieDomain();
     const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
-    const nodeEnv = ctx.configService.get<string>('NODE_ENV') || 'development';
+    const nodeEnv = ctx.configService.get('NODE_ENV', 'development');
     const isProduction = nodeEnv === 'production' || isSecure;
     ctx.cookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
 
@@ -22,7 +22,7 @@ export const authRouter = router({
   clearCookies: publicProcedure.mutation(async ({ ctx }) => {
     const cookieDomain = ctx.cookieManager.getCookieDomain();
     const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
-    const nodeEnv = ctx.configService.get<string>('NODE_ENV') || 'development';
+    const nodeEnv = ctx.configService.get('NODE_ENV', 'development');
     const isProduction = nodeEnv === 'production' || isSecure;
 
     // Get all cookie names from the request
@@ -51,8 +51,8 @@ export const authRouter = router({
    */
   authenticateFake: publicProcedure.mutation(async ({ ctx }) => {
     // Check if fake data mode is enabled
-    const fakeDataMode = ctx.configService.get<string>('FAKE_DATA_MODE');
-    if (fakeDataMode !== 'true') {
+    const fakeDataMode = ctx.configService.get('dev.fakeDataMode', false);
+    if (!fakeDataMode) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: 'Fake data mode is not enabled',
@@ -74,7 +74,7 @@ export const authRouter = router({
     // Set JWT cookie with proper domain for Caddy reverse proxy
     const cookieDomain = ctx.cookieManager.getCookieDomain();
     const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
-    const nodeEnv = ctx.configService.get<string>('NODE_ENV') || 'development';
+    const nodeEnv = ctx.configService.get('NODE_ENV', 'development');
     const isProduction = nodeEnv === 'production' || isSecure;
 
     // Clear any existing JWT cookie first to ensure clean state
@@ -103,8 +103,8 @@ export const authRouter = router({
    */
   authenticateFakeSuperadmin: publicProcedure.mutation(async ({ ctx }) => {
     // Check if fake data mode is enabled
-    const fakeDataMode = ctx.configService.get<string>('FAKE_DATA_MODE');
-    if (fakeDataMode !== 'true') {
+    const fakeDataMode = ctx.configService.get('dev.fakeDataMode', false);
+    if (!fakeDataMode) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: 'Fake data mode is not enabled',
@@ -126,7 +126,7 @@ export const authRouter = router({
     // Set JWT cookie with proper domain for Caddy reverse proxy
     const cookieDomain = ctx.cookieManager.getCookieDomain();
     const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
-    const nodeEnv = ctx.configService.get<string>('NODE_ENV') || 'development';
+    const nodeEnv = ctx.configService.get('NODE_ENV', 'development');
     const isProduction = nodeEnv === 'production' || isSecure;
 
     // Clear any existing JWT cookie first to ensure clean state

@@ -4,12 +4,13 @@ import { MeriterService } from './meriter.service';
 import { Response } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
+import { AppConfig } from './config/configuration';
 
 @Controller()
 export class MeriterController {
   constructor(
     private readonly meriterService: MeriterService,
-    private readonly configService: ConfigService,
+    private readonly configService: ConfigService<AppConfig>,
   ) {}
 
   @Get()

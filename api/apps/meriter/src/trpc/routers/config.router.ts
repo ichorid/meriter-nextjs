@@ -1,4 +1,5 @@
 import { router, publicProcedure } from '../trpc';
+import { AppConfig } from '../../config/configuration';
 
 export const configRouter = router({
   /**
@@ -13,33 +14,33 @@ export const configRouter = router({
     const configService = ctx.configService;
     
     // Get BOT_USERNAME from environment (optional)
-    const botUsername = configService.get<string>('BOT_USERNAME')?.trim() || null;
+    const botUsername = configService.get('bot.username')?.trim() || null;
 
-    // OAuth provider flags - read from environment variables via ConfigService only
+    // OAuth provider flags - read from typed ConfigService
     const oauth = {
-      google: configService.get<string>('OAUTH_GOOGLE_ENABLED') === 'true',
-      yandex: configService.get<string>('OAUTH_YANDEX_ENABLED') === 'true',
-      vk: configService.get<string>('OAUTH_VK_ENABLED') === 'true',
-      telegram: configService.get<string>('OAUTH_TELEGRAM_ENABLED') === 'true',
-      apple: configService.get<string>('OAUTH_APPLE_ENABLED') === 'true',
-      twitter: configService.get<string>('OAUTH_TWITTER_ENABLED') === 'true',
-      instagram: configService.get<string>('OAUTH_INSTAGRAM_ENABLED') === 'true',
-      sber: configService.get<string>('OAUTH_SBER_ENABLED') === 'true',
-      mailru: configService.get<string>('OAUTH_MAILRU_ENABLED') === 'true',
+      google: configService.get('oauth.google.enabled', false),
+      yandex: configService.get('oauth.yandex.enabled', false),
+      vk: configService.get('oauth.vk.enabled', false),
+      telegram: configService.get('oauth.telegram.enabled', false),
+      apple: configService.get('oauth.apple.enabled', false),
+      twitter: configService.get('oauth.twitter.enabled', false),
+      instagram: configService.get('oauth.instagram.enabled', false),
+      sber: configService.get('oauth.sber.enabled', false),
+      mailru: configService.get('oauth.mailru.enabled', false),
     };
 
     // AUTHN (WebAuthn/Passkey) flag
     const authn = {
-      enabled: configService.get<string>('AUTHN_ENABLED') === 'true',
+      enabled: configService.get('authn.enabled', false),
     };
 
-    // Feature flags - use ConfigService for consistency
+    // Feature flags - use typed ConfigService
     const features = {
-      analytics: configService.get<string>('ENABLE_ANALYTICS') === 'true' || configService.get<string>('NEXT_PUBLIC_ENABLE_ANALYTICS') === 'true',
-      debug: configService.get<string>('ENABLE_DEBUG') === 'true' || configService.get<string>('NEXT_PUBLIC_ENABLE_DEBUG') === 'true',
-      commentVoting: configService.get<string>('ENABLE_COMMENT_VOTING') === 'true' || configService.get<string>('NEXT_PUBLIC_ENABLE_COMMENT_VOTING') === 'true',
-      commentImageUploads: configService.get<string>('ENABLE_COMMENT_IMAGE_UPLOADS') === 'true' || configService.get<string>('NEXT_PUBLIC_ENABLE_COMMENT_IMAGE_UPLOADS') === 'true',
-      loginInviteForm: configService.get<string>('ENABLE_LOGIN_INVITE_FORM') === 'true' || configService.get<string>('NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM') === 'true',
+      analytics: configService.get('features.analytics', false),
+      debug: configService.get('features.debug', false),
+      commentVoting: configService.get('features.commentVoting', false),
+      commentImageUploads: configService.get('features.commentImageUploadsEnabled', false),
+      loginInviteForm: configService.get('features.loginInviteForm', false),
     };
 
     return {

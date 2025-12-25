@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectModel } from "@nestjs/mongoose";
+import { AppConfig } from "../config/configuration";
 import { Model } from "mongoose";
 import { uid } from "uid";
 import * as sharp from "sharp";
@@ -43,13 +44,13 @@ export class TgBotsService {
     @InjectModel(CommunitySchemaClass.name) private communityModel: Model<CommunityDocument>,
     private userCommunityRoleService: UserCommunityRoleService,
     private featureFlagsService: FeatureFlagsService,
-    private configService: ConfigService,
+    private configService: ConfigService<AppConfig>,
   ) {
     // S3 is completely optional - only initialize if fully configured
-    const s3Endpoint = this.configService.get<string>('S3_ENDPOINT');
-    const s3BucketName = this.configService.get<string>('S3_BUCKET_NAME');
-    const s3AccessKeyId = this.configService.get<string>('S3_ACCESS_KEY_ID');
-    const s3SecretAccessKey = this.configService.get<string>('S3_SECRET_ACCESS_KEY');
+    const s3Endpoint = this.configService.get('storage.s3.endpoint');
+    const s3BucketName = this.configService.get('storage.s3.bucketName');
+    const s3AccessKeyId = this.configService.get('storage.s3.accessKeyId');
+    const s3SecretAccessKey = this.configService.get('storage.s3.secretAccessKey');
 
     const isS3Configured = !!(s3Endpoint && s3BucketName && s3AccessKeyId && s3SecretAccessKey);
 
@@ -61,7 +62,7 @@ export class TgBotsService {
           secretAccessKey: s3SecretAccessKey,
         },
         endpoint: s3Endpoint,
-        region: this.configService.get<string>('S3_REGION') || "ru-msk",
+        region: this.configService.get('storage.s3.region', "ru-msk"),
       });
       this.s3Bucket = s3BucketName;
     } else {
@@ -70,7 +71,7 @@ export class TgBotsService {
       this.s3Bucket = undefined;
     }
 
-    this.telegramApiUrl = this.configService.get<string>('TELEGRAM_API_URL') || "https://api.telegram.org";
+    this.telegramApiUrl = this.configService.get('telegram.apiUrl', "https://api.telegram.org");
   }
 
   async sendUserUpdates(userId: string, events: UpdateEventItem[], locale: 'en' | 'ru' = 'en') {
@@ -633,7 +634,7 @@ export class TgBotsService {
           tgChatId: chat_id,
           meta: params,
           ts: Date.now(),
-        })*/ !this.configService.get<string>('noAxios') &&
+        })*/ !this.configService.get('noAxios') &&
         Axios.get(BOT_URL + "/sendMessage", {
           params,
         }),
@@ -660,10 +661,10 @@ export class TgBotsService {
   }
 
   async tgGetChat(tgChatId: string | number) {
-    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
     if (String(tgChatId).length < 4 && nodeEnv !== "test") return;
     const params = { chat_id: tgChatId };
-    const noAxios = this.configService.get<string>('noAxios');
+    const noAxios = this.configService.get('noAxios');
     if (noAxios) return null;
     return await Axios.get(BOT_URL + "/getChat", {
       params,
@@ -675,7 +676,7 @@ export class TgBotsService {
   async tgGetChatMember(tgChatId: string | number, tgUserId: string | number) {
     //if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
     const params = { chat_id: tgChatId, user_id: tgUserId };
-    const noAxios = this.configService.get<string>('noAxios');
+    const noAxios = this.configService.get('noAxios');
     if (noAxios) return null;
     return await Axios.get(BOT_URL + "/getChatMember", {
       params,
@@ -697,7 +698,7 @@ export class TgBotsService {
     // Remove @ prefix if present
     const cleanUsername = username.replace(/^@/, '');
 
-    const noAxios = this.configService.get<string>('noAxios');
+    const noAxios = this.configService.get('noAxios');
     if (noAxios) return null;
 
     try {
@@ -730,9 +731,9 @@ export class TgBotsService {
       return "ok";
     }
     //console.log(tgChatId, text )
-    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
     if (String(tgChatId).length < 4 && nodeEnv !== "test") return;
-    const botToken = this.configService.get<string>('BOT_TOKEN');
+    const botToken = this.configService.get('bot.token');
     if (!botToken) {
       this.logger.warn('BOT_TOKEN is empty; Telegram send skipped');
       return "ok";
@@ -740,7 +741,7 @@ export class TgBotsService {
     this.logger.log(`Sending Telegram message`);
     const params = { chat_id: tgChatId, text, parse_mode: "MarkdownV2" };
     try {
-      const noAxios = this.configService.get<string>('noAxios');
+      const noAxios = this.configService.get('noAxios');
       if (!noAxios) {
         await Axios.get(BOT_URL + "/sendMessage", { params });
       }
@@ -766,9 +767,9 @@ export class TgBotsService {
   */
 
   async tgChatGetAdmins({ tgChatId }: { tgChatId: string | number }) {
-    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
     if (String(tgChatId).length < 4 && nodeEnv !== "test") return;
-    const noAxios = this.configService.get<string>('noAxios');
+    const noAxios = this.configService.get('noAxios');
     if (noAxios) return [{ id: "1" }];
 
     return Axios.get(BOT_URL + "/getChatAdministrators", {
@@ -782,10 +783,10 @@ export class TgBotsService {
   }
 
   async tgChatIsAdmin({ tgChatId, tgUserId }: { tgChatId: string | number; tgUserId: string | number }) {
-    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
     if (String(tgChatId).length < 4 && nodeEnv !== "test") return;
-    const noAxios = this.configService.get<string>('noAxios');
-    const admin = this.configService.get<string>('admin');
+    const noAxios = this.configService.get('noAxios');
+    const admin = this.configService.get('admin');
     if (noAxios) return admin == "true" ? true : false;
     const admins = await this.tgChatGetAdmins({ tgChatId });
     if (!admins) return false;
@@ -795,7 +796,7 @@ export class TgBotsService {
   }
 
   async tgChatGetKeywords({ tgChatId }: { tgChatId: string | number }) {
-    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
     if (String(tgChatId).length < 4 && nodeEnv !== "test") return;
     const chat = await this.communityModel.findOne({
 
@@ -811,7 +812,7 @@ export class TgBotsService {
    * @returns Public S3 URL of the uploaded avatar
    */
   async downloadAndUploadTelegramPhoto(photoUrl: string, telegramId: string): Promise<string> {
-    const avatarBaseUrl = this.configService.get<string>('TELEGRAM_AVATAR_BASE_URL') || 'https://telegram.hb.bizmrg.com/telegram_small_avatars';
+    const avatarBaseUrl = this.configService.get('telegram.avatarBaseUrl', 'https://telegram.hb.bizmrg.com/telegram_small_avatars');
     const s3Key = `telegram_small_avatars/${telegramId}.jpg`;
 
     try {
@@ -847,7 +848,7 @@ export class TgBotsService {
   async telegramGetChatPhotoUrl(token: string, chat_id: string | number, _revalidate = false) {
     //if (process.env.NODE_ENV === 'test') return ``;
 
-    const avatarBaseUrl = this.configService.get<string>('TELEGRAM_AVATAR_BASE_URL') || 'https://telegram.hb.bizmrg.com/telegram_small_avatars';
+    const avatarBaseUrl = this.configService.get('telegram.avatarBaseUrl', 'https://telegram.hb.bizmrg.com/telegram_small_avatars');
     try {
       const url = `${avatarBaseUrl}/${chat_id}.jpg`;
       const status = await Axios.head(url).then((d) => d.status);
@@ -875,7 +876,7 @@ export class TgBotsService {
 
           .jpeg({ quality: 100 });
 
-        const dicebarApiUrl = this.configService.get<string>('DICEBEAR_API_URL') || 'https://avatars.dicebear.com/api/jdenticon';
+        const dicebarApiUrl = this.configService.get('telegram.dicebearApiUrl', 'https://avatars.dicebear.com/api/jdenticon');
         await Axios({
           method: "get",
           url: `${dicebarApiUrl}/${chat_id}.svg`,
@@ -931,7 +932,7 @@ export class TgBotsService {
           .resize(200, 200)
           .jpeg({ quality: 100 });
 
-        const dicebarApiUrl = this.configService.get<string>('DICEBEAR_API_URL') || 'https://avatars.dicebear.com/api/jdenticon';
+        const dicebarApiUrl = this.configService.get('telegram.dicebearApiUrl', 'https://avatars.dicebear.com/api/jdenticon');
         await Axios({
           method: "get",
           url: `${dicebarApiUrl}/${chat_id}.svg`,
@@ -954,7 +955,7 @@ export class TgBotsService {
     if (!chat_id || chat_id == "undefined") return;
     //apiGET("/api/telegram/updatechatphoto", { chat_id }).then((d) => d);
 
-    const avatarBaseUrl = this.configService.get<string>('TELEGRAM_AVATAR_BASE_URL') || 'https://telegram.hb.bizmrg.com/telegram_small_avatars';
+    const avatarBaseUrl = this.configService.get('telegram.avatarBaseUrl', 'https://telegram.hb.bizmrg.com/telegram_small_avatars');
     return `${avatarBaseUrl}/${chat_id}.jpg`;
   }
 
@@ -1024,7 +1025,7 @@ export class TgBotsService {
   }
 
   async telegramChatGetAdmins(token: string, chat_id: string | number) {
-    const noAxios = this.configService.get<string>('noAxios');
+    const noAxios = this.configService.get('noAxios');
     if (noAxios) return [{ id: "1" }];
 
     return Axios.get(

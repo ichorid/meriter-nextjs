@@ -73,11 +73,14 @@ async function bootstrap() {
 
   // Validate critical configuration after app creation (using ConfigService)
   // Early checks above use process.env because they run before DI is available
-  const jwtSecret = configService.get<string>('jwt.secret');
-  if (isProduction && (!jwtSecret || jwtSecret.trim() === '')) {
-    logger.error('❌ JWT_SECRET environment variable is required but not set');
-    logger.error('Application cannot start without JWT_SECRET in production');
-    process.exit(1);
+  if (isProduction) {
+    try {
+      configService.getOrThrow('jwt.secret');
+    } catch (error) {
+      logger.error('❌ JWT_SECRET environment variable is required but not set');
+      logger.error('Application cannot start without JWT_SECRET in production');
+      process.exit(1);
+    }
   }
 
   // Global exception filter - using standardized API exception filter for all endpoints

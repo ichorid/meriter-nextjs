@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AppConfig } from '../../../config/configuration';
 
 /**
  * Injectable service for managing JWT cookies
  */
 @Injectable()
 export class CookieManager {
-  constructor(private configService: ConfigService) {}
+  constructor(private configService: ConfigService<AppConfig>) {}
 
   /**
    * Get cookie domain from DOMAIN environment variable
@@ -14,7 +15,7 @@ export class CookieManager {
    * Falls back to APP_URL extraction for backward compatibility if DOMAIN is not set
    */
   getCookieDomain(): string | undefined {
-    const domain = this.configService.get<string>('DOMAIN');
+    const domain = this.configService.get('DOMAIN');
     
     if (domain) {
       // localhost doesn't need domain restriction
@@ -22,7 +23,7 @@ export class CookieManager {
     }
     
     // Backward compatibility: if APP_URL exists but DOMAIN doesn't, extract domain from APP_URL
-    const appUrl = this.configService.get<string>('APP_URL');
+    const appUrl = this.configService.get('APP_URL');
     if (appUrl) {
       try {
         const url = new URL(appUrl);
@@ -48,7 +49,7 @@ export class CookieManager {
     cookieDomain?: string | undefined,
     isProduction?: boolean
   ): void {
-    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
     const production = isProduction ?? nodeEnv === 'production';
     const domain = cookieDomain ?? this.getCookieDomain();
     
@@ -135,7 +136,7 @@ export class CookieManager {
     cookieDomain?: string | undefined,
     isProduction?: boolean
   ): void {
-    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
     const production = isProduction ?? nodeEnv === 'production';
     const domain = cookieDomain ?? this.getCookieDomain();
     
@@ -233,7 +234,7 @@ export class CookieManager {
     cookieDomain?: string | undefined,
     isProduction?: boolean
   ): void {
-    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
     const production = isProduction ?? nodeEnv === 'production';
     let domain = cookieDomain ?? this.getCookieDomain();
     

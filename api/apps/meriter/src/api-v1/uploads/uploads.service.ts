@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { AppConfig } from '../../config/configuration';
 import * as sharp from 'sharp';
 import { uid } from 'uid';
 
@@ -70,18 +71,18 @@ export class UploadsService {
   private readonly bucketName?: string;
   private readonly s3Endpoint?: string;
 
-  constructor(private configService: ConfigService) {
-    const s3Endpoint = this.configService.get<string>('S3_ENDPOINT');
-    const bucketName = this.configService.get<string>('S3_BUCKET_NAME');
-    const s3AccessKeyId = this.configService.get<string>('S3_ACCESS_KEY_ID');
-    const s3SecretAccessKey = this.configService.get<string>('S3_SECRET_ACCESS_KEY');
+  constructor(private configService: ConfigService<AppConfig>) {
+    const s3Endpoint = this.configService.get('storage.s3.endpoint');
+    const bucketName = this.configService.get('storage.s3.bucketName');
+    const s3AccessKeyId = this.configService.get('storage.s3.accessKeyId');
+    const s3SecretAccessKey = this.configService.get('storage.s3.secretAccessKey');
 
     const isS3Configured = !!(s3Endpoint && bucketName && s3AccessKeyId && s3SecretAccessKey);
 
     if (isS3Configured) {
       this.logger.log('✅ S3 storage is configured for uploads');
       this.s3Client = new S3Client({
-        region: this.configService.get<string>('S3_REGION') || 'us-east-1',
+        region: this.configService.get('storage.s3.region', 'us-east-1'),
         endpoint: s3Endpoint,
         credentials: {
           accessKeyId: s3AccessKeyId,

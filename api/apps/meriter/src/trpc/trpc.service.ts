@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
+import { AppConfig } from '../config/configuration';
 import { UserService } from '../domain/services/user.service';
 import { CommunityService } from '../domain/services/community.service';
 import { UserCommunityRoleService } from '../domain/services/user-community-role.service';
@@ -55,7 +56,7 @@ export class TrpcService {
     private voteCommentResolverService: VoteCommentResolverService,
     private commentEnrichmentService: CommentEnrichmentService,
     @InjectConnection() private connection: Connection,
-    private configService: ConfigService,
+    private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
   ) {}
 

@@ -1,6 +1,7 @@
 import { inferAsyncReturnType } from '@trpc/server';
 import { ConfigService } from '@nestjs/config';
 import { verify } from 'jsonwebtoken';
+import { AppConfig } from '../config/configuration';
 import { UserService } from '../domain/services/user.service';
 import { CommunityService } from '../domain/services/community.service';
 import { UserCommunityRoleService } from '../domain/services/user-community-role.service';
@@ -54,7 +55,7 @@ export interface CreateContextOptions {
   voteCommentResolverService: VoteCommentResolverService;
   commentEnrichmentService: CommentEnrichmentService;
   connection: Connection;
-  configService: ConfigService;
+  configService: ConfigService<AppConfig>;
   cookieManager: CookieManager;
 }
 
@@ -172,14 +173,7 @@ export async function createContext(opts: CreateContextOptions) {
 
     if (jwt) {
       try {
-      const jwtSecret = configService.get<string>('jwt.secret');
-
-      if (!jwtSecret || jwtSecret.trim() === '') {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'JWT secret not configured',
-        });
-      }
+      const jwtSecret = configService.getOrThrow('jwt.secret');
 
       const data: any = verify(jwt, jwtSecret);
       const uid = data.uid;

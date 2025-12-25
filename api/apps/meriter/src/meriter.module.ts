@@ -24,6 +24,7 @@ import { TrpcModule } from './trpc/trpc.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [
+        `.env.${process.env.NODE_ENV || 'development'}`, // Environment-specific .env file
         join(process.cwd(), '../.env'),      // Root .env when running from api/ directory
         join(process.cwd(), '.env'),          // api/.env (if exists)
         join(__dirname, '../../../../.env'),  // Root .env from compiled location

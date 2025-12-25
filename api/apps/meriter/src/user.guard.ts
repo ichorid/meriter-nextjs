@@ -10,6 +10,7 @@ import { verify } from 'jsonwebtoken';
 
 import { UserService } from './domain/services/user.service';
 import { CookieManager } from './api-v1/common/utils/cookie-manager.util';
+import { AppConfig } from './config/configuration';
 
 @Injectable()
 export class UserGuard implements CanActivate {
@@ -17,13 +18,13 @@ export class UserGuard implements CanActivate {
 
   constructor(
     private userService: UserService,
-    private configService: ConfigService,
+    private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
   ) {}
 
   private clearJwtCookie(response: any): void {
     const cookieDomain = this.cookieManager.getCookieDomain();
-    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
     const isProduction = nodeEnv === 'production';
     this.cookieManager.clearAllJwtCookieVariants(response, cookieDomain, isProduction);
   }
@@ -56,14 +57,7 @@ export class UserGuard implements CanActivate {
     }
 
     try {
-      const jwtSecret = this.configService.get<string>('jwt.secret');
-      
-      // Validate JWT secret is configured and not empty
-      if (!jwtSecret || jwtSecret.trim() === '') {
-        this.logger.error('JWT_SECRET is not configured or is empty. Please set JWT_SECRET environment variable.');
-        this.logger.debug(`JWT_SECRET check: exists=${!!jwtSecret}, length=${jwtSecret?.length || 0}, trimmed=${jwtSecret?.trim() || ''}`);
-        throw new UnauthorizedException('JWT secret not configured');
-      }
+      const jwtSecret = this.configService.getOrThrow('jwt.secret');
 
       // Log secret status for debugging (without exposing the actual value)
       this.logger.debug(`JWT secret configured: length=${jwtSecret.length}, firstChar=${jwtSecret[0]}, lastChar=${jwtSecret[jwtSecret.length - 1]}`);
@@ -127,10 +121,10 @@ export class UserGuard implements CanActivate {
         this.logger.warn(`[SECURITY] Authentication failed: Invalid JWT signature - IP: ${clientIp}, Path: ${path}, User-Agent: ${userAgent.substring(0, 100)}`);
         
         // Log diagnostic info (without exposing secret)
-        const jwtSecret = this.configService.get<string>('jwt.secret');
-        if (jwtSecret) {
+        try {
+          const jwtSecret = this.configService.getOrThrow('jwt.secret');
           this.logger.debug(`Current JWT_SECRET status: configured=true, length=${jwtSecret.length}`);
-        } else {
+        } catch (e) {
           this.logger.error('JWT_SECRET is not configured in ConfigService');
         }
         // Clear the invalid JWT cookie so the user can login again

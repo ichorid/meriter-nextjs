@@ -406,8 +406,8 @@ export const communitiesRouter = router({
    */
   createFakeCommunity: protectedProcedure.mutation(async ({ ctx }) => {
     // Check if fake data mode is enabled
-    const fakeDataMode = ctx.configService.get<string>('FAKE_DATA_MODE');
-    if (fakeDataMode !== 'true') {
+           const fakeDataMode = ctx.configService.get('dev.fakeDataMode', false);
+           if (!fakeDataMode) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: 'Fake data mode is not enabled',
@@ -456,8 +456,8 @@ export const communitiesRouter = router({
    */
   addUserToAllCommunities: protectedProcedure.mutation(async ({ ctx }) => {
     // Check if fake data mode is enabled
-    const fakeDataMode = ctx.configService.get<string>('FAKE_DATA_MODE');
-    if (fakeDataMode !== 'true') {
+           const fakeDataMode = ctx.configService.get('dev.fakeDataMode', false);
+           if (!fakeDataMode) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: 'Fake data mode is not enabled',

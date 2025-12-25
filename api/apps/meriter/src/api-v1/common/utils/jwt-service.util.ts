@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { signJWT, JwtPayload } from '../../../common/helpers/jwt';
 import { User } from '@meriter/shared-types';
+import { AppConfig } from '../../../config/configuration';
 
 /**
  * Service for JWT token generation and user mapping
@@ -48,13 +49,11 @@ export class JwtService {
     authProvider: string,
     authId: string,
     communityTags: string[],
-    configService: ConfigService
+    configService: ConfigService<AppConfig>
   ): string {
-    const jwtSecret = configService.get<string>('jwt.secret');
-    if (!jwtSecret) {
-      throw new Error('JWT secret not configured');
-    }
-
+    // ConfigService supports dot notation for nested paths at runtime
+    // TypeScript doesn't understand this, so we use type assertion
+    const jwtSecret = configService.getOrThrow('jwt.secret' as any);
     return this.generateToken(userId, authProvider, authId, communityTags, jwtSecret);
   }
 
