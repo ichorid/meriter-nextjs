@@ -12,38 +12,25 @@ export const configRouter = router({
     }
     const configService = ctx.configService;
     
-    // Debug: Log environment variables to verify they're loaded
-    // Try both ConfigService and process.env as fallback
-    const oauthGoogleEnabled = configService.get<string>('OAUTH_GOOGLE_ENABLED') || process.env.OAUTH_GOOGLE_ENABLED;
-    const authnEnabled = configService.get<string>('AUTHN_ENABLED') || process.env.AUTHN_ENABLED;
-    console.log('[config.getConfig] Environment check:', {
-      'configService.OAUTH_GOOGLE_ENABLED': configService.get('OAUTH_GOOGLE_ENABLED'),
-      'process.env.OAUTH_GOOGLE_ENABLED': process.env.OAUTH_GOOGLE_ENABLED,
-      'configService.AUTHN_ENABLED': configService.get('AUTHN_ENABLED'),
-      'process.env.AUTHN_ENABLED': process.env.AUTHN_ENABLED,
-      'final oauthGoogleEnabled': oauthGoogleEnabled,
-      'final authnEnabled': authnEnabled,
-    });
-    
     // Get BOT_USERNAME from environment (optional)
     const botUsername = configService.get<string>('BOT_USERNAME')?.trim() || null;
 
-    // OAuth provider flags - read from environment variables via ConfigService, fallback to process.env
+    // OAuth provider flags - read from environment variables via ConfigService only
     const oauth = {
-      google: (configService.get<string>('OAUTH_GOOGLE_ENABLED') || process.env.OAUTH_GOOGLE_ENABLED) === 'true',
-      yandex: (configService.get<string>('OAUTH_YANDEX_ENABLED') || process.env.OAUTH_YANDEX_ENABLED) === 'true',
-      vk: (configService.get<string>('OAUTH_VK_ENABLED') || process.env.OAUTH_VK_ENABLED) === 'true',
-      telegram: (configService.get<string>('OAUTH_TELEGRAM_ENABLED') || process.env.OAUTH_TELEGRAM_ENABLED) === 'true',
-      apple: (configService.get<string>('OAUTH_APPLE_ENABLED') || process.env.OAUTH_APPLE_ENABLED) === 'true',
-      twitter: (configService.get<string>('OAUTH_TWITTER_ENABLED') || process.env.OAUTH_TWITTER_ENABLED) === 'true',
-      instagram: (configService.get<string>('OAUTH_INSTAGRAM_ENABLED') || process.env.OAUTH_INSTAGRAM_ENABLED) === 'true',
-      sber: (configService.get<string>('OAUTH_SBER_ENABLED') || process.env.OAUTH_SBER_ENABLED) === 'true',
-      mailru: (configService.get<string>('OAUTH_MAILRU_ENABLED') || process.env.OAUTH_MAILRU_ENABLED) === 'true',
+      google: configService.get<string>('OAUTH_GOOGLE_ENABLED') === 'true',
+      yandex: configService.get<string>('OAUTH_YANDEX_ENABLED') === 'true',
+      vk: configService.get<string>('OAUTH_VK_ENABLED') === 'true',
+      telegram: configService.get<string>('OAUTH_TELEGRAM_ENABLED') === 'true',
+      apple: configService.get<string>('OAUTH_APPLE_ENABLED') === 'true',
+      twitter: configService.get<string>('OAUTH_TWITTER_ENABLED') === 'true',
+      instagram: configService.get<string>('OAUTH_INSTAGRAM_ENABLED') === 'true',
+      sber: configService.get<string>('OAUTH_SBER_ENABLED') === 'true',
+      mailru: configService.get<string>('OAUTH_MAILRU_ENABLED') === 'true',
     };
 
     // AUTHN (WebAuthn/Passkey) flag
     const authn = {
-      enabled: (configService.get<string>('AUTHN_ENABLED') || process.env.AUTHN_ENABLED) === 'true',
+      enabled: configService.get<string>('AUTHN_ENABLED') === 'true',
     };
 
     // Feature flags - use ConfigService for consistency

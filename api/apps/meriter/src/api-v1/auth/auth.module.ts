@@ -9,6 +9,9 @@ import { PasskeyChallenge, PasskeyChallengeSchema } from '../../domain/models/au
 
 // Conditionally import GoogleStrategy only if Google OAuth is configured
 // Google is one of many possible auth providers - it's optional
+// Note: This function runs at module load time, before DI is available.
+// We use process.env directly here as ConfigService is not available at module definition time.
+// The actual strategy constructor will use ConfigService via DI.
 function getGoogleStrategy() {
   // Check if Google OAuth is explicitly disabled
   const enabled = process.env.OAUTH_GOOGLE_ENABLED;

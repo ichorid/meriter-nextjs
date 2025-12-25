@@ -1,5 +1,4 @@
 import { router, protectedProcedure, publicProcedure } from '../trpc';
-import { CookieManager } from '../../api-v1/common/utils/cookie-manager.util';
 import { TRPCError } from '@trpc/server';
 
 export const authRouter = router({
@@ -7,10 +6,11 @@ export const authRouter = router({
    * Logout - clear JWT cookie
    */
   logout: protectedProcedure.mutation(async ({ ctx }) => {
-    const cookieDomain = CookieManager.getCookieDomain();
+    const cookieDomain = ctx.cookieManager.getCookieDomain();
     const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
-    const isProduction = process.env.NODE_ENV === 'production' || isSecure;
-    CookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
+    const nodeEnv = ctx.configService.get<string>('NODE_ENV') || 'development';
+    const isProduction = nodeEnv === 'production' || isSecure;
+    ctx.cookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
 
     return { message: 'Logged out successfully' };
   }),
@@ -20,9 +20,10 @@ export const authRouter = router({
    * Must be public - used to clear cookies when authentication fails
    */
   clearCookies: publicProcedure.mutation(async ({ ctx }) => {
-    const cookieDomain = CookieManager.getCookieDomain();
+    const cookieDomain = ctx.cookieManager.getCookieDomain();
     const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
-    const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+    const nodeEnv = ctx.configService.get<string>('NODE_ENV') || 'development';
+    const isProduction = nodeEnv === 'production' || isSecure;
 
     // Get all cookie names from the request
     const cookieNames = new Set<string>();
@@ -39,7 +40,7 @@ export const authRouter = router({
 
     // Clear each cookie with all possible attribute combinations
     for (const cookieName of cookieNames) {
-      CookieManager.clearCookieVariants(ctx.res, cookieName, cookieDomain, isProduction);
+      ctx.cookieManager.clearCookieVariants(ctx.res, cookieName, cookieDomain, isProduction);
     }
 
     return { message: 'Cookies cleared successfully' };
@@ -71,15 +72,16 @@ export const authRouter = router({
     const result = await ctx.authService.authenticateFakeUser(fakeUserId);
 
     // Set JWT cookie with proper domain for Caddy reverse proxy
-    const cookieDomain = CookieManager.getCookieDomain();
+    const cookieDomain = ctx.cookieManager.getCookieDomain();
     const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
-    const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+    const nodeEnv = ctx.configService.get<string>('NODE_ENV') || 'development';
+    const isProduction = nodeEnv === 'production' || isSecure;
 
     // Clear any existing JWT cookie first to ensure clean state
-    CookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
+    ctx.cookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
 
     // Set new JWT cookie
-    CookieManager.setJwtCookie(ctx.res, result.jwt, cookieDomain, isProduction);
+    ctx.cookieManager.setJwtCookie(ctx.res, result.jwt, cookieDomain, isProduction);
 
     // Set fake_user_id cookie (session cookie - expires when browser closes)
     ctx.res.cookie('fake_user_id', fakeUserId, {
@@ -122,15 +124,16 @@ export const authRouter = router({
     const result = await ctx.authService.authenticateFakeSuperadmin(fakeUserId);
 
     // Set JWT cookie with proper domain for Caddy reverse proxy
-    const cookieDomain = CookieManager.getCookieDomain();
+    const cookieDomain = ctx.cookieManager.getCookieDomain();
     const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
-    const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+    const nodeEnv = ctx.configService.get<string>('NODE_ENV') || 'development';
+    const isProduction = nodeEnv === 'production' || isSecure;
 
     // Clear any existing JWT cookie first to ensure clean state
-    CookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
+    ctx.cookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
 
     // Set new JWT cookie
-    CookieManager.setJwtCookie(ctx.res, result.jwt, cookieDomain, isProduction);
+    ctx.cookieManager.setJwtCookie(ctx.res, result.jwt, cookieDomain, isProduction);
 
     // Set fake_superadmin_id cookie (session cookie - expires when browser closes)
     ctx.res.cookie('fake_superadmin_id', fakeUserId, {

@@ -18,12 +18,14 @@ export class UserGuard implements CanActivate {
   constructor(
     private userService: UserService,
     private configService: ConfigService,
+    private cookieManager: CookieManager,
   ) {}
 
   private clearJwtCookie(response: any): void {
-    const cookieDomain = CookieManager.getCookieDomain();
-    const isProduction = process.env.NODE_ENV === 'production';
-    CookieManager.clearAllJwtCookieVariants(response, cookieDomain, isProduction);
+    const cookieDomain = this.cookieManager.getCookieDomain();
+    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const isProduction = nodeEnv === 'production';
+    this.cookieManager.clearAllJwtCookieVariants(response, cookieDomain, isProduction);
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

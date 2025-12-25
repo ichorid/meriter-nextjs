@@ -45,9 +45,10 @@ export class AuthController {
     this.logger.log('User logout request');
 
     // Clear the JWT cookie
-    const cookieDomain = CookieManager.getCookieDomain();
-    const isProduction = process.env.NODE_ENV === 'production';
-    CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+    const cookieDomain = this.cookieManager.getCookieDomain();
+    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const isProduction = nodeEnv === 'production';
+    this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
 
     return res.json({
       success: true,
@@ -59,8 +60,9 @@ export class AuthController {
   async clearCookies(@Req() req: any, @Res() res: any) {
     // Clear ALL cookies from the request, not just JWT variants
     // This prevents login loops caused by stale cookies with mismatched attributes
-    const cookieDomain = CookieManager.getCookieDomain();
-    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieDomain = this.cookieManager.getCookieDomain();
+    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const isProduction = nodeEnv === 'production';
 
     // Get all cookie names from the request
     const cookieNames = new Set<string>();
@@ -77,7 +79,7 @@ export class AuthController {
 
     // Clear each cookie with all possible attribute combinations
     for (const cookieName of cookieNames) {
-      CookieManager.clearCookieVariants(res, cookieName, cookieDomain, isProduction);
+      this.cookieManager.clearCookieVariants(res, cookieName, cookieDomain, isProduction);
     }
 
     return res.json({
@@ -115,16 +117,16 @@ export class AuthController {
       const result = await this.authService.authenticateFakeUser(fakeUserId);
 
       // Set JWT cookie with proper domain for Caddy reverse proxy
-      const cookieDomain = CookieManager.getCookieDomain();
+      const cookieDomain = this.cookieManager.getCookieDomain();
       // Treat as production (Secure=true, SameSite=None) if explicitly production OR if accessed via HTTPS
       const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
       const isProduction = process.env.NODE_ENV === 'production' || isSecure;
 
       // Clear any existing JWT cookie first to ensure clean state
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
 
       // Set new JWT cookie
-      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
 
       // Set fake_user_id cookie (session cookie - expires when browser closes)
       res.cookie('fake_user_id', fakeUserId, {
@@ -184,16 +186,16 @@ export class AuthController {
       const result = await this.authService.authenticateFakeSuperadmin(fakeUserId);
 
       // Set JWT cookie with proper domain for Caddy reverse proxy
-      const cookieDomain = CookieManager.getCookieDomain();
+      const cookieDomain = this.cookieManager.getCookieDomain();
       // Treat as production (Secure=true, SameSite=None) if explicitly production OR if accessed via HTTPS
       const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
       const isProduction = process.env.NODE_ENV === 'production' || isSecure;
 
       // Clear any existing JWT cookie first to ensure clean state
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
 
       // Set new JWT cookie
-      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
 
       // Set fake_superadmin_id cookie (session cookie - expires when browser closes)
       res.cookie('fake_superadmin_id', fakeUserId, {
@@ -238,7 +240,7 @@ export class AuthController {
       const returnTo = req.query.returnTo || '/meriter/profile';
 
       // Check if Google OAuth is explicitly disabled
-      const enabled = process.env.OAUTH_GOOGLE_ENABLED;
+      const enabled = this.configService.get<string>('OAUTH_GOOGLE_ENABLED');
       if (enabled === 'false' || enabled === '0') {
         this.logger.error('Google OAuth is explicitly disabled via OAUTH_GOOGLE_ENABLED');
         throw new Error('Google OAuth is disabled');
@@ -247,10 +249,10 @@ export class AuthController {
       // Get Google OAuth credentials
       // Support both OAUTH_GOOGLE_REDIRECT_URI and OAUTH_GOOGLE_CALLBACK_URL
       // Note: clientSecret is not needed for initiation, only for callback
-      const clientId = process.env.OAUTH_GOOGLE_CLIENT_ID;
-      const callbackUrl = process.env.OAUTH_GOOGLE_REDIRECT_URI
-        || process.env.OAUTH_GOOGLE_CALLBACK_URL
-        || process.env.GOOGLE_REDIRECT_URI;
+      const clientId = this.configService.get<string>('OAUTH_GOOGLE_CLIENT_ID');
+      const callbackUrl = this.configService.get<string>('OAUTH_GOOGLE_REDIRECT_URI')
+        || this.configService.get<string>('OAUTH_GOOGLE_CALLBACK_URL')
+        || this.configService.get<string>('GOOGLE_REDIRECT_URI');
 
       // Check if credentials are present (clientId and callbackUrl are required for initiation)
       if (!clientId || !callbackUrl) {
@@ -309,8 +311,9 @@ export class AuthController {
     if (!path.startsWith('/')) {
       return path; // Already a full URL
     }
-    const domain = process.env.DOMAIN || 'localhost';
-    const isDocker = process.env.NODE_ENV === 'production';
+    const domain = this.configService.get<string>('DOMAIN') || 'localhost';
+    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const isDocker = nodeEnv === 'production';
     const protocol = domain === 'localhost' && !isDocker ? 'http' : (domain === 'localhost' ? 'http' : 'https');
     const webPort = domain === 'localhost' ? ':8001' : '';
     return `${protocol}://${domain}${webPort}${path}`;
@@ -334,12 +337,13 @@ export class AuthController {
       const result = await this.authService.authenticateGoogle(code);
 
       // Set JWT cookie
-      const cookieDomain = CookieManager.getCookieDomain();
+      const cookieDomain = this.cookieManager.getCookieDomain();
       const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+      const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+      const isProduction = nodeEnv === 'production' || isSecure;
 
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
 
       // New users go to welcome page, existing users go to profile
       const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/profile';
@@ -367,15 +371,15 @@ export class AuthController {
       const returnTo = req.query.returnTo || '/meriter/profile';
 
       // Check if Yandex OAuth is explicitly disabled
-      const enabled = process.env.OAUTH_YANDEX_ENABLED;
+      const enabled = this.configService.get<string>('OAUTH_YANDEX_ENABLED');
       if (enabled === 'false' || enabled === '0') {
         this.logger.error('Yandex OAuth is explicitly disabled via OAUTH_YANDEX_ENABLED');
         throw new Error('Yandex OAuth is disabled');
       }
 
-      const clientId = process.env.OAUTH_YANDEX_CLIENT_ID;
-      const callbackUrl = process.env.OAUTH_YANDEX_REDIRECT_URI
-        || process.env.OAUTH_YANDEX_CALLBACK_URL;
+      const clientId = this.configService.get<string>('OAUTH_YANDEX_CLIENT_ID');
+      const callbackUrl = this.configService.get<string>('OAUTH_YANDEX_REDIRECT_URI')
+        || this.configService.get<string>('OAUTH_YANDEX_CALLBACK_URL');
 
       if (!clientId || !callbackUrl) {
         const missing = [];
@@ -434,12 +438,12 @@ export class AuthController {
 
       const result = await this.authService.authenticateYandex(code);
 
-      const cookieDomain = CookieManager.getCookieDomain();
+      const cookieDomain = this.cookieManager.getCookieDomain();
       const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
       const isProduction = process.env.NODE_ENV === 'production' || isSecure;
 
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
 
       // New users go to welcome page, existing users go to profile
       const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/profile';
@@ -473,7 +477,7 @@ export class AuthController {
   @Post('passkey/register/start')
   async generatePasskeyRegistrationOptions(@Body() body: { username?: string; userId?: string }, @Res() res: any) {
     try {
-      if (process.env.AUTHN_ENABLED !== 'true') throw new ForbiddenException('Passkeys disabled');
+      if (this.configService.get<string>('AUTHN_ENABLED') !== 'true') throw new ForbiddenException('Passkeys disabled');
 
       const { username, userId } = body;
       if (!username && !userId) throw new Error('Username or userId required');
@@ -495,7 +499,7 @@ export class AuthController {
   @Post('passkey/register/finish')
   async verifyPasskeyRegistration(@Body() body: any, @Res() res: any, @Req() req: any) {
     try {
-      if (process.env.AUTHN_ENABLED !== 'true') throw new ForbiddenException('Passkeys disabled');
+      if (this.configService.get<string>('AUTHN_ENABLED') !== 'true') throw new ForbiddenException('Passkeys disabled');
 
       // The body contains the registration response and context
       // We expect { userId: "...", deviceName: "...", ...credentialResponse }
@@ -506,13 +510,14 @@ export class AuthController {
       const result = await this.authService.verifyPasskeyRegistration(body, userIdOrUsername, deviceName);
 
       // Set JWT cookie (sign-up + sign-in)
-      const cookieDomain = CookieManager.getCookieDomain();
+      const cookieDomain = this.cookieManager.getCookieDomain();
       const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+      const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+      const isProduction = nodeEnv === 'production' || isSecure;
 
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
       if (result.jwt) {
-        CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+        this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
       }
 
       return res.json({
@@ -528,7 +533,7 @@ export class AuthController {
   @Post('passkey/login/start')
   async generatePasskeyLoginOptions(@Body() body: { username?: string }) {
     try {
-      if (process.env.AUTHN_ENABLED !== 'true') throw new ForbiddenException('Passkeys disabled');
+      if (this.configService.get<string>('AUTHN_ENABLED') !== 'true') throw new ForbiddenException('Passkeys disabled');
       const result = await this.authService.generatePasskeyLoginOptions(body.username);
       return result;
     } catch (error) {
@@ -540,17 +545,18 @@ export class AuthController {
   @Post('passkey/login/finish')
   async verifyPasskeyLogin(@Body() body: any, @Res() res: any, @Req() req: any) {
     try {
-      if (process.env.AUTHN_ENABLED !== 'true') throw new ForbiddenException('Passkeys disabled');
+      if (this.configService.get<string>('AUTHN_ENABLED') !== 'true') throw new ForbiddenException('Passkeys disabled');
 
       const result = await this.authService.verifyPasskeyLogin(body);
 
       // Set JWT cookie
-      const cookieDomain = CookieManager.getCookieDomain();
+      const cookieDomain = this.cookieManager.getCookieDomain();
       const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+      const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+      const isProduction = nodeEnv === 'production' || isSecure;
 
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
 
       return res.json({ success: true, user: result.user });
     } catch (error) {
@@ -566,7 +572,7 @@ export class AuthController {
   @Post('passkey/authenticate/start')
   async generatePasskeyAuthenticationOptions(@Res() res: any) {
     try {
-      if (process.env.AUTHN_ENABLED !== 'true') {
+      if (this.configService.get<string>('AUTHN_ENABLED') !== 'true') {
         throw new ForbiddenException('Passkeys disabled');
       }
 
@@ -586,19 +592,19 @@ export class AuthController {
   @Post('passkey/authenticate/finish')
   async authenticateWithPasskey(@Body() body: any, @Res() res: any, @Req() req: any) {
     try {
-      if (process.env.AUTHN_ENABLED !== 'true') {
+      if (this.configService.get<string>('AUTHN_ENABLED') !== 'true') {
         throw new ForbiddenException('Passkeys disabled');
       }
 
       const result = await this.authService.authenticateWithPasskey(body);
 
       // Set JWT cookie (same as OAuth)
-      const cookieDomain = CookieManager.getCookieDomain();
+      const cookieDomain = this.cookieManager.getCookieDomain();
       const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
       const isProduction = process.env.NODE_ENV === 'production' || isSecure;
 
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
 
       // Return isNewUser flag for frontend redirect (like OAuth)
       return res.json({

@@ -213,24 +213,25 @@ export class AuthService {
   }> {
     this.logger.log('Authenticating with Google OAuth code');
 
-    const clientId = process.env.OAUTH_GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.OAUTH_GOOGLE_CLIENT_SECRET;
+    const clientId = this.configService.get<string>('OAUTH_GOOGLE_CLIENT_ID');
+    const clientSecret = this.configService.get<string>('OAUTH_GOOGLE_CLIENT_SECRET');
 
     if (!clientId || !clientSecret) {
       throw new Error('Google OAuth credentials not configured');
     }
 
     let callbackUrl =
-      process.env.OAUTH_GOOGLE_REDIRECT_URI ||
-      process.env.OAUTH_GOOGLE_CALLBACK_URL ||
-      process.env.GOOGLE_REDIRECT_URI;
+      this.configService.get<string>('OAUTH_GOOGLE_REDIRECT_URI') ||
+      this.configService.get<string>('OAUTH_GOOGLE_CALLBACK_URL') ||
+      this.configService.get<string>('GOOGLE_REDIRECT_URI');
 
     if (!callbackUrl) {
       const domain =
-        process.env.DOMAIN ||
-        process.env.APP_URL?.replace(/^https?:\/\//, '') ||
+        this.configService.get<string>('DOMAIN') ||
+        this.configService.get<string>('APP_URL')?.replace(/^https?:\/\//, '') ||
         'localhost';
-      const isDocker = process.env.NODE_ENV === 'production';
+      const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+      const isDocker = nodeEnv === 'production';
       const protocol =
         domain === 'localhost' && !isDocker
           ? 'http'
@@ -667,10 +668,10 @@ export class AuthService {
       this.logger.debug(`RP ID computed: ${cleaned} (from request: ${requestRpId})`);
       return cleaned;
     }
-    const rpId = process.env.RP_ID || 'localhost';
+    const rpId = this.configService.get<string>('RP_ID') || 'localhost';
     // Remove protocol and port if present, though users should provide clean domains
     const cleaned = rpId.replace(/^https?:\/\//, '').split(':')[0];
-    this.logger.debug(`RP ID computed: ${cleaned} (from env: ${process.env.RP_ID || 'default'})`);
+    this.logger.debug(`RP ID computed: ${cleaned} (from env: ${this.configService.get<string>('RP_ID') || 'default'})`);
     return cleaned;
   }
 
@@ -679,18 +680,20 @@ export class AuthService {
       this.logger.debug(`Origin computed: ${requestOrigin} (from request)`);
       return requestOrigin;
     }
-    let origin = process.env.RP_ORIGIN || process.env.APP_URL || 'http://localhost:3000';
+    let origin = this.configService.get<string>('RP_ORIGIN') || 
+                 this.configService.get<string>('APP_URL') || 
+                 'http://localhost:3000';
     // Ensure protocol is present
     if (!origin.startsWith('http')) {
       origin = `https://${origin}`;
     }
     const cleaned = origin.replace(/\/$/, ''); // Remove trailing slash
-    this.logger.debug(`Origin computed: ${cleaned} (from env: ${process.env.RP_ORIGIN || process.env.APP_URL || 'default'})`);
+    this.logger.debug(`Origin computed: ${cleaned} (from env: ${this.configService.get<string>('RP_ORIGIN') || this.configService.get<string>('APP_URL') || 'default'})`);
     return cleaned;
   }
 
   private getRpName(): string {
-    return process.env.RP_NAME || 'Meriter';
+    return this.configService.get<string>('RP_NAME') || 'Meriter';
   }
 
   async generatePasskeyRegistrationOptions(
@@ -883,7 +886,7 @@ export class AuthService {
         }
 
         // Generate JWT for immediate login
-        const jwtSecret = process.env.JWT_SECRET;
+        const jwtSecret = this.configService.get<string>('jwt.secret');
         if (!jwtSecret) {
           throw new Error('JWT secret not configured');
         }

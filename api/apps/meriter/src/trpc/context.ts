@@ -23,6 +23,7 @@ import { QuotaResetService } from '../domain/services/quota-reset.service';
 import { UserSettingsService } from '../domain/services/user-settings.service';
 import { VoteCommentResolverService } from '../api-v1/common/services/vote-comment-resolver.service';
 import { CommentEnrichmentService } from '../api-v1/common/services/comment-enrichment.service';
+import { CookieManager } from '../api-v1/common/utils/cookie-manager.util';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 import { TRPCError } from '@trpc/server';
 import { Connection } from 'mongoose';
@@ -54,6 +55,7 @@ export interface CreateContextOptions {
   commentEnrichmentService: CommentEnrichmentService;
   connection: Connection;
   configService: ConfigService;
+  cookieManager: CookieManager;
 }
 
 /**
@@ -90,6 +92,7 @@ export async function createContext(opts: CreateContextOptions) {
     commentEnrichmentService,
     connection,
     configService,
+    cookieManager,
     pollCastService,
   } = opts;
 
@@ -207,12 +210,13 @@ export async function createContext(opts: CreateContextOptions) {
           permissionsHelperService,
           communityFeedService,
           authService,
-          quotaResetService,
-          userSettingsService,
-          voteCommentResolverService,
-          commentEnrichmentService,
-          connection,
-        };
+      quotaResetService,
+      userSettingsService,
+      voteCommentResolverService,
+      commentEnrichmentService,
+      connection,
+      cookieManager,
+    };
       }
 
       user = {
@@ -262,6 +266,7 @@ export async function createContext(opts: CreateContextOptions) {
     commentEnrichmentService,
     connection,
     configService,
+    cookieManager,
   };
 }
 

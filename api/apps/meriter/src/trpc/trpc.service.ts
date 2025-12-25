@@ -24,6 +24,7 @@ import { QuotaResetService } from '../domain/services/quota-reset.service';
 import { UserSettingsService } from '../domain/services/user-settings.service';
 import { VoteCommentResolverService } from '../api-v1/common/services/vote-comment-resolver.service';
 import { CommentEnrichmentService } from '../api-v1/common/services/comment-enrichment.service';
+import { CookieManager } from '../api-v1/common/utils/cookie-manager.util';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
@@ -55,6 +56,7 @@ export class TrpcService {
     private commentEnrichmentService: CommentEnrichmentService,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService,
+    private cookieManager: CookieManager,
   ) {}
 
   getRouter(): AppRouter {
@@ -89,6 +91,7 @@ export class TrpcService {
       commentEnrichmentService: this.commentEnrichmentService,
       connection: this.connection,
       configService: this.configService,
+      cookieManager: this.cookieManager,
     });
   }
 }

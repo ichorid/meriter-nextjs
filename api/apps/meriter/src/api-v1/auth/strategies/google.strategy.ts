@@ -14,12 +14,12 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   private readonly logger = new Logger(GoogleStrategy.name);
 
   constructor(private configService: ConfigService) {
-    const clientID = process.env.OAUTH_GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.OAUTH_GOOGLE_CLIENT_SECRET;
+    const clientID = this.configService.get<string>('OAUTH_GOOGLE_CLIENT_ID');
+    const clientSecret = this.configService.get<string>('OAUTH_GOOGLE_CLIENT_SECRET');
     // Support both OAUTH_GOOGLE_REDIRECT_URI and OAUTH_GOOGLE_CALLBACK_URL
-    const callbackURL = process.env.OAUTH_GOOGLE_REDIRECT_URI 
-      || process.env.OAUTH_GOOGLE_CALLBACK_URL 
-      || process.env.GOOGLE_REDIRECT_URI;
+    const callbackURL = this.configService.get<string>('OAUTH_GOOGLE_REDIRECT_URI')
+      || this.configService.get<string>('OAUTH_GOOGLE_CALLBACK_URL')
+      || this.configService.get<string>('GOOGLE_REDIRECT_URI');
 
     // This strategy should only be instantiated if credentials are present
     // AuthModule checks this before registering the strategy

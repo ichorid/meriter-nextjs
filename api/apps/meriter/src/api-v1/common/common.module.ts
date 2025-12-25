@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CookieManager } from './utils/cookie-manager.util';
 import { UserEnrichmentService } from './services/user-enrichment.service';
 import { CommunityEnrichmentService } from './services/community-enrichment.service';
 import { VoteCommentResolverService } from './services/vote-comment-resolver.service';
@@ -12,6 +13,7 @@ import { DomainModule } from '../../domain.module';
 @Module({
   imports: [DomainModule],
   providers: [
+    CookieManager,
     UserEnrichmentService,
     CommunityEnrichmentService,
     VoteCommentResolverService,
@@ -19,6 +21,7 @@ import { DomainModule } from '../../domain.module';
     PermissionsHelperService,
   ],
   exports: [
+    CookieManager,
     UserEnrichmentService,
     CommunityEnrichmentService,
     VoteCommentResolverService,

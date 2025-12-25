@@ -1,14 +1,20 @@
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
 /**
- * Utility class for managing JWT cookies
+ * Injectable service for managing JWT cookies
  */
+@Injectable()
 export class CookieManager {
+  constructor(private configService: ConfigService) {}
+
   /**
    * Get cookie domain from DOMAIN environment variable
    * Returns undefined for localhost (no domain restriction needed)
    * Falls back to APP_URL extraction for backward compatibility if DOMAIN is not set
    */
-  static getCookieDomain(): string | undefined {
-    const domain = process.env.DOMAIN;
+  getCookieDomain(): string | undefined {
+    const domain = this.configService.get<string>('DOMAIN');
     
     if (domain) {
       // localhost doesn't need domain restriction
@@ -16,9 +22,10 @@ export class CookieManager {
     }
     
     // Backward compatibility: if APP_URL exists but DOMAIN doesn't, extract domain from APP_URL
-    if (process.env.APP_URL) {
+    const appUrl = this.configService.get<string>('APP_URL');
+    if (appUrl) {
       try {
-        const url = new URL(process.env.APP_URL);
+        const url = new URL(appUrl);
         const hostname = url.hostname.split(':')[0]; // Remove port if present
         return hostname === 'localhost' ? undefined : hostname;
       } catch (_error) {
@@ -36,12 +43,13 @@ export class CookieManager {
    * @param cookieDomain Cookie domain (optional)
    * @param isProduction Whether running in production mode
    */
-  static clearAllJwtCookieVariants(
+  clearAllJwtCookieVariants(
     response: any,
     cookieDomain?: string | undefined,
     isProduction?: boolean
   ): void {
-    const production = isProduction ?? process.env.NODE_ENV === 'production';
+    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const production = isProduction ?? nodeEnv === 'production';
     const domain = cookieDomain ?? this.getCookieDomain();
     
     const baseOptions = {
@@ -121,13 +129,14 @@ export class CookieManager {
    * @param cookieDomain Cookie domain (optional)
    * @param isProduction Whether running in production mode
    */
-  static clearCookieVariants(
+  clearCookieVariants(
     response: any,
     cookieName: string,
     cookieDomain?: string | undefined,
     isProduction?: boolean
   ): void {
-    const production = isProduction ?? process.env.NODE_ENV === 'production';
+    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const production = isProduction ?? nodeEnv === 'production';
     const domain = cookieDomain ?? this.getCookieDomain();
     
     const baseOptions = {
@@ -218,13 +227,14 @@ export class CookieManager {
    * @param cookieDomain Cookie domain (optional, will be derived if not provided)
    * @param isProduction Whether running in production mode
    */
-  static setJwtCookie(
+  setJwtCookie(
     response: any,
     jwtToken: string,
     cookieDomain?: string | undefined,
     isProduction?: boolean
   ): void {
-    const production = isProduction ?? process.env.NODE_ENV === 'production';
+    const nodeEnv = this.configService.get<string>('NODE_ENV') || 'development';
+    const production = isProduction ?? nodeEnv === 'production';
     let domain = cookieDomain ?? this.getCookieDomain();
     
     // For localhost, don't set domain to allow cookie sharing across ports

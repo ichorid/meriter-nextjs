@@ -41,6 +41,8 @@ async function bootstrap() {
     logger.debug(`Telegram bot status: username=${!!botUsername}, token=${!!botToken}`);
   }
   
+  // Early validation before DI - use process.env
+  // Full validation with ConfigService happens after app creation
   if (isProduction) {
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret || jwtSecret.trim() === '') {
@@ -68,6 +70,15 @@ async function bootstrap() {
   }
   
   const configService = app.get(ConfigService);
+
+  // Validate critical configuration after app creation (using ConfigService)
+  // Early checks above use process.env because they run before DI is available
+  const jwtSecret = configService.get<string>('jwt.secret');
+  if (isProduction && (!jwtSecret || jwtSecret.trim() === '')) {
+    logger.error('❌ JWT_SECRET environment variable is required but not set');
+    logger.error('Application cannot start without JWT_SECRET in production');
+    process.exit(1);
+  }
 
   // Global exception filter - using standardized API exception filter for all endpoints
   app.useGlobalFilters(new ApiExceptionFilter());
