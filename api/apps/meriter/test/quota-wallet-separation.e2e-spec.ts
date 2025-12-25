@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { WalletService } from '../src/domain/services/wallet.service';
@@ -13,22 +13,8 @@ import { User, UserDocument } from '../src/domain/models/user/user.schema';
 import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { uid } from 'uid';
-import { UserGuard } from '../src/user.guard';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    req.user = { 
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-    };
-    return true;
-  }
-}
+import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Quota Wallet Separation (e2e)', () => {
   jest.setTimeout(60000);
@@ -58,11 +44,13 @@ describe('Quota Wallet Separation (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MeriterModule],
     })
-      .overrideGuard(UserGuard)
-      .useClass(AllowAllGuard)
       .compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Setup tRPC middleware for tRPC tests
+    TestSetupHelper.setupTrpcMiddleware(app);
+    
     await app.init();
 
     walletService = app.get<WalletService>(WalletService);

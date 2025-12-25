@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { MeriterModule } from '../src/meriter.module';
 import { TestDatabaseHelper } from './test-db.helper';
 import { createTestPublication } from './helpers/fixtures';
@@ -10,22 +10,8 @@ import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/co
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
-import { UserGuard } from '../src/user.guard';
 import { uid } from 'uid';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    req.user = { 
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-    };
-    return true;
-  }
-}
+import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Publication Edit - Participant Author Scenario', () => {
   jest.setTimeout(60000);
@@ -54,11 +40,13 @@ describe('Publication Edit - Participant Author Scenario', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MeriterModule],
     })
-      .overrideGuard(UserGuard)
-      .useClass(AllowAllGuard)
       .compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Setup tRPC middleware for tRPC tests
+    TestSetupHelper.setupTrpcMiddleware(app);
+    
     await app.init();
 
     // Wait for onModuleInit

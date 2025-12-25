@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
@@ -17,22 +17,7 @@ import { Publication, PublicationDocument } from '../src/domain/models/publicati
 import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
-import { UserGuard } from '../src/user.guard';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    req.user = { 
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-    };
-    return true;
-  }
-}
 
 describe('Special Groups Updated Voting Rules (e2e)', () => {
   jest.setTimeout(60000);
@@ -67,8 +52,6 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MongooseModule.forRoot(uri), MeriterModule],
     })
-      .overrideGuard(UserGuard)
-      .useClass(AllowAllGuard)
       .compile();
 
     app = moduleFixture.createNestApplication();

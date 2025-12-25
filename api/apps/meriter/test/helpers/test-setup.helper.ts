@@ -1,16 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MeriterModule } from '../../src/meriter.module';
 import { TestDatabaseHelper } from '../test-db.helper';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    req.user = { id: 'test-user-id' };
-    return true;
-  }
-}
+import { TrpcService } from '../../src/trpc/trpc.service';
+import { createExpressMiddleware } from '@trpc/server/adapters/express';
+import * as cookieParser from 'cookie-parser';
 
 export interface TestAppContext {
   app: INestApplication;
@@ -23,6 +18,7 @@ export interface TestAppContext {
 export class TestSetupHelper {
   /**
    * Create a test application with database
+   * Note: For tRPC tests, set (global as any).testUserId before making requests
    * @returns Test application context
    */
   static async createTestApp(): Promise<TestAppContext> {
@@ -32,14 +28,47 @@ export class TestSetupHelper {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MongooseModule.forRoot(uri), MeriterModule],
     })
-      .overrideGuard((MeriterModule as any).prototype?.UserGuard || ({} as any))
-      .useClass(AllowAllGuard as any)
       .compile();
 
     const app = moduleFixture.createNestApplication();
+    
+    // Add cookie parser middleware (same as main.ts)
+    app.use(cookieParser());
+    
+    // Register tRPC middleware (same as main.ts)
+    const trpcService = app.get(TrpcService);
+    const trpcMiddleware = createExpressMiddleware({
+      router: trpcService.getRouter(),
+      createContext: ({ req, res }) => trpcService.createContext(req, res),
+      onError({ error, path }) {
+        console.error(`tRPC error on '${path}':`, error);
+      },
+    });
+    app.use('/trpc', trpcMiddleware);
+    
     await app.init();
 
     return { app, testDb };
+  }
+  
+  /**
+   * Setup tRPC middleware for an existing app instance
+   * Use this when you need to customize app setup but still need tRPC
+   */
+  static setupTrpcMiddleware(app: INestApplication): void {
+    // Add cookie parser middleware (same as main.ts)
+    app.use(cookieParser());
+    
+    // Register tRPC middleware (same as main.ts)
+    const trpcService = app.get(TrpcService);
+    const trpcMiddleware = createExpressMiddleware({
+      router: trpcService.getRouter(),
+      createContext: ({ req, res }) => trpcService.createContext(req, res),
+      onError({ error, path }) {
+        console.error(`tRPC error on '${path}':`, error);
+      },
+    });
+    app.use('/trpc', trpcMiddleware);
   }
 
   /**
@@ -55,11 +84,5 @@ export class TestSetupHelper {
     }
   }
 
-  /**
-   * Get the AllowAllGuard class for custom test setups
-   */
-  static getAllowAllGuard(): typeof AllowAllGuard {
-    return AllowAllGuard;
-  }
 }
 

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { WalletService } from '../src/domain/services/wallet.service';
@@ -12,23 +12,8 @@ import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.sc
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { uid } from 'uid';
-import { UserGuard } from '../src/user.guard';
 import { trpcQuery, trpcMutation } from './helpers/trpc-test-helper';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    // Set a mock user based on testUserId
-    req.user = { 
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-    };
-    return true;
-  }
-}
+import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Daily Quota Wallet Balance (e2e)', () => {
   jest.setTimeout(60000); // Set timeout for all tests in this suite
@@ -58,11 +43,13 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MeriterModule],
     })
-      .overrideGuard(UserGuard)
-      .useClass(AllowAllGuard)
       .compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Setup tRPC middleware for tRPC tests
+    TestSetupHelper.setupTrpcMiddleware(app);
+    
     await app.init();
 
     // Get services

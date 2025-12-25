@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
@@ -18,23 +18,8 @@ import { Publication, PublicationDocument } from '../src/domain/models/publicati
 import { Comment, CommentDocument } from '../src/domain/models/comment/comment.schema';
 import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { uid } from 'uid';
-import { UserGuard } from '../src/user.guard';
 import { trpcMutation, trpcMutationWithError } from './helpers/trpc-test-helper';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    // Set a mock user based on testUserId
-    req.user = { 
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-    };
-    return true;
-  }
-}
+import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Votes Wallet and Quota Validation (e2e)', () => {
   jest.setTimeout(60000); // Set timeout for all tests in this suite
@@ -69,11 +54,13 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MongooseModule.forRoot(uri), MeriterModule],
     })
-      .overrideGuard(UserGuard)
-      .useClass(AllowAllGuard)
       .compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Setup tRPC middleware for tRPC tests
+    TestSetupHelper.setupTrpcMiddleware(app);
+    
     await app.init();
 
     // Get services

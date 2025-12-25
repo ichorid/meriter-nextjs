@@ -1,8 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
-import { UserGuard } from '../src/user.guard';
 import { CommunityService } from '../src/domain/services/community.service';
 import { PublicationService } from '../src/domain/services/publication.service';
 import { WalletService } from '../src/domain/services/wallet.service';
@@ -20,20 +19,6 @@ import { trpcMutation } from './helpers/trpc-test-helper';
 import { TrpcService } from '../src/trpc/trpc.service';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import * as cookieParser from 'cookie-parser';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    req.user = { 
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-    };
-    return true;
-  }
-}
 
 describe('Special Groups Merit Accumulation', () => {
   jest.setTimeout(60000);
@@ -78,8 +63,6 @@ describe('Special Groups Merit Accumulation', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MeriterModule],
     })
-      .overrideGuard(UserGuard)
-      .useClass(AllowAllGuard)
       .compile();
 
     app = moduleFixture.createNestApplication();

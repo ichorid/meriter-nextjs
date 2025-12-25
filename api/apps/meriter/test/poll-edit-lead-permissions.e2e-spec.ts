@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MeriterModule } from '../src/meriter.module';
 import { TestDatabaseHelper } from './test-db.helper';
@@ -14,20 +14,7 @@ import { Publication, PublicationDocument } from '../src/domain/models/publicati
 import { Comment, CommentDocument } from '../src/domain/models/comment/comment.schema';
 import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    req.user = { 
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-    };
-    return true;
-  }
-}
+import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Poll Edit and Lead Permissions E2E', () => {
   jest.setTimeout(60000);
@@ -60,11 +47,13 @@ describe('Poll Edit and Lead Permissions E2E', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MongooseModule.forRoot(mongoUri), MeriterModule],
     })
-      .overrideGuard((MeriterModule as any).prototype?.UserGuard || ({} as any))
-      .useClass(AllowAllGuard as any)
       .compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Setup tRPC middleware for tRPC tests
+    TestSetupHelper.setupTrpcMiddleware(app);
+    
     await app.init();
 
     // Wait for onModuleInit

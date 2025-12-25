@@ -1,8 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
-import { UserGuard } from '../src/user.guard';
 import { UserService } from '../src/domain/services/user.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { CommunityService } from '../src/domain/services/community.service';
@@ -13,21 +12,7 @@ import { UserCommunityRoleDocument } from '../src/domain/models/user-community-r
 import { CommunityDocument } from '../src/domain/models/community/community.schema';
 import { trpcQuery } from './helpers/trpc-test-helper';
 import { uid } from 'uid';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    req.user = {
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-      globalRole: 'user',
-    };
-    return true;
-  }
-}
+import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Users - Get All Leads', () => {
   jest.setTimeout(60000);
@@ -63,11 +48,13 @@ describe('Users - Get All Leads', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MeriterModule],
     })
-      .overrideGuard(UserGuard)
-      .useClass(AllowAllGuard)
       .compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Setup tRPC middleware for tRPC tests
+    TestSetupHelper.setupTrpcMiddleware(app);
+    
     await app.init();
 
     // Wait for onModuleInit to complete

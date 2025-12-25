@@ -2,6 +2,8 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { ImagePlus, X, Loader2, AlertCircle } from 'lucide-react';
+import { useUploadImage } from '@/hooks/api/useUploads';
+import { fileToBase64 } from '@/lib/utils/file-utils';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -56,7 +58,7 @@ export interface ImageUploaderProps {
   onUploadComplete?: (result: UploadResult) => void;
   /** Callback when image is removed */
   onRemove?: () => void;
-  /** Upload endpoint */
+  /** Upload endpoint (deprecated - now uses tRPC) */
   uploadEndpoint?: string;
   /** Aspect ratio for preview (e.g., 16/9, 1, 4/3) */
   aspectRatio?: number;
@@ -82,7 +84,7 @@ export function ImageUploader({
   onUpload,
   onUploadComplete,
   onRemove,
-  uploadEndpoint = '/api/v1/uploads/image',
+  uploadEndpoint, // Deprecated - kept for backward compatibility but not used
   aspectRatio,
   maxWidth = 1920,
   maxHeight = 1080,
@@ -96,6 +98,7 @@ export function ImageUploader({
   // Merge custom labels with defaults
   const labels = { ...DEFAULT_LABELS, ...customLabels };
   
+  const uploadMutation = useUploadImage();
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -117,7 +120,7 @@ export function ImageUploader({
     return null;
   }, [labels.invalidType, labels.tooLarge]);
 
-  const uploadFile = useCallback(async (file: File) => {
+  const handleFileUpload = useCallback(async (file: File) => {
     const validationError = validateFile(file);
     if (validationError) {
       setError(validationError);
@@ -132,42 +135,35 @@ export function ImageUploader({
     setPreview(localPreview);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch(uploadEndpoint, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || labels.uploadFailed);
-      }
-
-      const result = await response.json();
+      const base64 = await import('@/lib/utils/file-utils').then(m => m.fileToBase64(file));
       
-      if (result.success && result.data?.url) {
-        const uploadResult = result.data as UploadResult;
-        // Use medium version for preview if available, otherwise use main URL
-        const previewUrl = uploadResult.medium?.url || uploadResult.url;
-        setPreview(previewUrl);
-        onUpload(uploadResult.url);
-        // Call onUploadComplete with full result if provided
-        onUploadComplete?.(uploadResult);
-      } else {
-        throw new Error(labels.uploadFailed);
-      }
+      const result = await uploadMutation.mutateAsync({
+        fileData: base64,
+        fileName: file.name,
+        mimeType: file.type,
+        maxWidth,
+        maxHeight,
+        quality: 85,
+      });
+      
+      // Use medium version for preview if available, otherwise use main URL
+      const previewUrl = result.medium?.url || result.url;
+      setPreview(previewUrl);
+      onUpload(result.url);
+      // Call onUploadComplete with full result if provided
+      onUploadComplete?.(result as UploadResult);
     } catch (err) {
       console.error('Upload error:', err);
-      setError(err instanceof Error ? err.message : labels.uploadFailed);
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : uploadMutation.error?.message || labels.uploadFailed;
+      setError(errorMessage);
       setPreview(null);
     } finally {
       setIsUploading(false);
       URL.revokeObjectURL(localPreview);
     }
-  }, [uploadEndpoint, onUpload, validateFile, labels.uploadFailed]);
+  }, [uploadMutation, onUpload, onUploadComplete, validateFile, labels.uploadFailed, maxWidth, maxHeight]);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -197,18 +193,18 @@ export function ImageUploader({
 
     const file = e.dataTransfer.files[0];
     if (file) {
-      uploadFile(file);
+      handleFileUpload(file);
     }
-  }, [disabled, isUploading, uploadFile]);
+  }, [disabled, isUploading, handleFileUpload]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      uploadFile(file);
+      handleFileUpload(file);
     }
     // Reset input so same file can be selected again
     e.target.value = '';
-  }, [uploadFile]);
+  }, [handleFileUpload]);
 
   const handleClick = useCallback(() => {
     if (!disabled && !isUploading) {

@@ -28,7 +28,7 @@ import { AppConfig } from '../../config/configuration';
  * Still using REST (required for OAuth redirects):
  * - GET /api/v1/auth/{provider} -> OAuth redirects (must stay REST)
  * - GET /api/v1/auth/{provider}/callback -> OAuth callbacks (must stay REST)
- * - GET /api/v1/auth/me -> Still REST (used by UserGuard middleware)
+ * - GET /api/v1/auth/me -> @deprecated Use trpc.users.getMe instead
  */
 @Controller('api/v1/auth')
 export class AuthController {
@@ -458,6 +458,9 @@ export class AuthController {
     }
   }
 
+  /**
+   * @deprecated Use trpc.users.getMe instead. This endpoint is deprecated.
+   */
   @Get('me')
   @UseGuards(UserGuard)
   async getCurrentUser(@Res() res: any, @Req() req: any) {

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { Model, Connection } from 'mongoose';
@@ -8,23 +8,9 @@ import { Community, CommunityDocument } from '../src/domain/models/community/com
 import { User, UserDocument } from '../src/domain/models/user/user.schema';
 import { QuotaUsage, QuotaUsageDocument } from '../src/domain/models/quota-usage/quota-usage.schema';
 import { uid } from 'uid';
-import { UserGuard } from '../src/user.guard';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    req.user = {
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-    };
-    return true;
-  }
-}
+import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Publication and Poll Quota Consumption (e2e)', () => {
   jest.setTimeout(60000);
@@ -52,11 +38,13 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MeriterModule],
     })
-      .overrideGuard(UserGuard)
-      .useClass(AllowAllGuard)
       .compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Setup tRPC middleware for tRPC tests
+    TestSetupHelper.setupTrpcMiddleware(app);
+    
     await app.init();
 
     connection = app.get(getConnectionToken());

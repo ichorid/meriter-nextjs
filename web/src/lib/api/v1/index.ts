@@ -72,6 +72,9 @@ import {
 
 // Auth API with enhanced response handling
 export const authApiV1 = {
+    /**
+     * @deprecated Use trpc.users.getMe instead. This endpoint is deprecated.
+     */
     async getMe(): Promise<User> {
         const response = await apiClient.get<{ success: true; data: User }>(
             "/api/v1/auth/me"

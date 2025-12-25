@@ -26,6 +26,7 @@ import { UserSettingsService } from '../domain/services/user-settings.service';
 import { VoteCommentResolverService } from '../api-v1/common/services/vote-comment-resolver.service';
 import { CommentEnrichmentService } from '../api-v1/common/services/comment-enrichment.service';
 import { CookieManager } from '../api-v1/common/utils/cookie-manager.util';
+import { UploadsService } from '../api-v1/uploads/uploads.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
@@ -55,6 +56,7 @@ export class TrpcService {
     private userSettingsService: UserSettingsService,
     private voteCommentResolverService: VoteCommentResolverService,
     private commentEnrichmentService: CommentEnrichmentService,
+    private uploadsService: UploadsService,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
@@ -90,6 +92,7 @@ export class TrpcService {
       userSettingsService: this.userSettingsService,
       voteCommentResolverService: this.voteCommentResolverService,
       commentEnrichmentService: this.commentEnrichmentService,
+      uploadsService: this.uploadsService,
       connection: this.connection,
       configService: this.configService,
       cookieManager: this.cookieManager,

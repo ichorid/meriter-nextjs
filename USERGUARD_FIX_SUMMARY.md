@@ -6,12 +6,13 @@
 
 ### The Issue
 
-1. **TrpcController** uses Express middleware directly (`createExpressMiddleware`)
-2. The `@All('*')` handler calls the middleware, but **no guards are applied** to the controller
-3. tRPC `createContext` function only checked JWT cookies, never `req.user` set by guards
-4. Tests that override `UserGuard` with `AllowAllGuard` had no effect because:
-   - Guards aren't applied to `TrpcController` 
-   - Even if they were, tRPC context creation happens independently
+1. **tRPC uses Express middleware directly** - Registered in `main.ts` via `app.use('/trpc', trpcMiddleware)`
+2. Express middleware **bypasses NestJS routing** - This is intentional to support batch requests with comma-separated paths
+3. **No guards are applied** - Express middleware runs before NestJS guards/interceptors
+4. tRPC `createContext` function only checked JWT cookies, never `req.user` set by guards
+5. Tests that override `UserGuard` with `AllowAllGuard` had no effect because:
+   - Guards aren't applied to Express middleware routes
+   - tRPC context creation happens independently of NestJS guard execution
 
 ### Evidence
 
@@ -84,10 +85,20 @@ These require separate investigation and fixes.
 
 ## Key Learnings
 
-1. **tRPC bypasses NestJS guards** - Context creation is independent of guard execution
-2. **Test guards need explicit support** - Can't rely on guard override alone
-3. **Multiple authentication paths needed** - Support guards, test globals, and JWT cookies
-4. **Separation of concerns** - Authentication vs validation vs authorization are separate issues
+1. **tRPC uses Express middleware** - Registered directly in `main.ts` to bypass NestJS routing (required for batch requests)
+2. **Express middleware bypasses NestJS guards** - Guards/interceptors don't run for Express middleware routes
+3. **Context creation is independent** - tRPC context creation happens before any NestJS guard execution
+4. **Test guards need explicit support** - Can't rely on guard override alone, must check `req.user` and test globals
+5. **Multiple authentication paths needed** - Support guards (if applied), test globals, and JWT cookies
+6. **Separation of concerns** - Authentication vs validation vs authorization are separate issues
+
+## Architecture
+
+tRPC is integrated via Express middleware (not a NestJS controller):
+- **Location**: `api/apps/meriter/src/main.ts` (line 119)
+- **Method**: `app.use('/trpc', trpcMiddleware)`
+- **Why**: NestJS routing doesn't handle comma-separated batch request paths properly
+- **Trade-off**: Express middleware bypasses NestJS guards/interceptors, requiring explicit authentication handling in context creation
 
 ## Files Modified
 

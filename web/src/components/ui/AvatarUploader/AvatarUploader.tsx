@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from '@/components/ui/shadcn/dialog';
 import { cn } from '@/lib/utils';
+import { useUploadAvatar } from '@/hooks/api/useUploads';
+import { fileToBase64 } from '@/lib/utils/file-utils';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -61,7 +63,7 @@ export interface AvatarUploaderProps {
   disabled?: boolean;
   /** Custom class name */
   className?: string;
-  /** Upload endpoint */
+  /** Upload endpoint (deprecated - now uses tRPC) */
   uploadEndpoint?: string;
   /** Custom labels */
   labels?: AvatarUploaderLabels;
@@ -73,10 +75,11 @@ export function AvatarUploader({
   size = 96,
   disabled = false,
   className = '',
-  uploadEndpoint = '/api/v1/uploads/avatar',
+  uploadEndpoint, // Deprecated - kept for backward compatibility but not used
   labels: customLabels,
 }: AvatarUploaderProps) {
   const labels = { ...DEFAULT_LABELS, ...customLabels };
+  const uploadMutation = useUploadAvatar();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -162,36 +165,27 @@ export function AvatarUploader({
         height: Math.min(cropSize, img.naturalHeight),
       };
 
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('crop', JSON.stringify(crop));
-
-      const response = await fetch(uploadEndpoint, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || labels.uploadFailed);
-      }
-
-      const result = await response.json();
+      const base64 = await fileToBase64(selectedFile);
       
-      if (result.success && result.data?.url) {
-        onUpload(result.data.url);
-        handleClose();
-      } else {
-        throw new Error(labels.uploadFailed);
-      }
+      const result = await uploadMutation.mutateAsync({
+        fileData: base64,
+        fileName: selectedFile.name,
+        mimeType: selectedFile.type,
+        crop,
+      });
+      
+      onUpload(result.url);
+      handleClose();
     } catch (err) {
       console.error('Avatar upload error:', err);
-      setError(err instanceof Error ? err.message : labels.uploadFailed);
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : uploadMutation.error?.message || labels.uploadFailed;
+      setError(errorMessage);
     } finally {
       setIsUploading(false);
     }
-  }, [selectedFile, uploadEndpoint, onUpload, zoom, position, labels.uploadFailed, handleClose]);
+  }, [selectedFile, uploadMutation, onUpload, zoom, position, labels.uploadFailed, handleClose]);
 
   const handleZoomIn = useCallback(() => {
     setZoom(prev => Math.min(prev + 0.1, 3));

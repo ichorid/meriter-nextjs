@@ -4,9 +4,10 @@ import { DomainModule } from '../domain.module';
 import { ApiV1CommonModule } from '../api-v1/common/common.module';
 import { AuthModule } from '../api-v1/auth/auth.module';
 import { QuotaResetModule } from '../domain/services/quota-reset.module';
+import { UploadsModule } from '../api-v1/uploads/uploads.module';
 
 @Module({
-  imports: [DomainModule, ApiV1CommonModule, AuthModule, QuotaResetModule],
+  imports: [DomainModule, ApiV1CommonModule, AuthModule, QuotaResetModule, UploadsModule],
   // TrpcController removed - tRPC is handled via Express middleware in main.ts
   // to properly support batch requests with comma-separated paths
   providers: [TrpcService],

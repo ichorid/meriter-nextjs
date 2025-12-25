@@ -4,6 +4,8 @@ import React, { useState, useRef, useCallback } from 'react';
 import { ImagePlus, X, Loader2 } from 'lucide-react';
 import { ImageViewer } from '../ImageViewer/ImageViewer';
 import { ImageUploader, UploadResult } from '../ImageUploader/ImageUploader';
+import { useUploadImage } from '@/hooks/api/useUploads';
+import { fileToBase64 } from '@/lib/utils/file-utils';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -14,7 +16,7 @@ export interface ImageGalleryProps {
   images?: string[];
   /** Callback when images change */
   onImagesChange: (images: string[]) => void;
-  /** Upload endpoint */
+  /** Upload endpoint (deprecated - now uses tRPC) */
   uploadEndpoint?: string;
   /** Whether upload is disabled */
   disabled?: boolean;
@@ -25,10 +27,11 @@ export interface ImageGalleryProps {
 export function ImageGallery({
   images = [],
   onImagesChange,
-  uploadEndpoint = '/api/v1/uploads/image',
+  uploadEndpoint, // Deprecated - kept for backward compatibility but not used
   disabled = false,
   className = '',
 }: ImageGalleryProps) {
+  const uploadMutation = useUploadImage();
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,28 +67,18 @@ export function ImageGallery({
     setIsUploading(true);
 
     try {
-      // Upload all files in parallel
-      const uploadPromises = filesToUpload.map((file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        return fetch(uploadEndpoint, {
-          method: 'POST',
-          body: formData,
-          credentials: 'include',
-        })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error('Upload failed');
-            }
-            return response.json();
-          })
-          .then((result) => {
-            if (result.success && result.data?.url) {
-              return result.data.url;
-            }
-            throw new Error('Invalid response');
-          });
+      // Upload all files in parallel using tRPC
+      const uploadPromises = filesToUpload.map(async (file) => {
+        const base64 = await fileToBase64(file);
+        const result = await uploadMutation.mutateAsync({
+          fileData: base64,
+          fileName: file.name,
+          mimeType: file.type,
+          maxWidth: 1920,
+          maxHeight: 1080,
+          quality: 85,
+        });
+        return result.url;
       });
 
       const uploadedUrls = await Promise.all(uploadPromises);
@@ -98,7 +91,7 @@ export function ImageGallery({
       setIsUploading(false);
       e.target.value = '';
     }
-  }, [images, uploadEndpoint, onImagesChange]);
+  }, [images, uploadMutation, onImagesChange]);
 
   const handleClick = useCallback(() => {
     if (!disabled && !isUploading && images.length < MAX_IMAGES) {

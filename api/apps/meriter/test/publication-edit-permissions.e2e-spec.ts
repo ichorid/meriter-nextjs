@@ -1,8 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MeriterModule } from '../src/meriter.module';
-import { UserGuard } from '../src/user.guard';
 import { TestDatabaseHelper } from './test-db.helper';
 import { createTestPublication, createTestComment } from './helpers/fixtures';
 import { trpcMutation, trpcMutationWithError } from './helpers/trpc-test-helper';
@@ -14,20 +13,7 @@ import { Publication, PublicationDocument, PublicationSchema } from '../src/doma
 import { Comment, CommentDocument, CommentSchema } from '../src/domain/models/comment/comment.schema';
 import { UserCommunityRole, UserCommunityRoleDocument, UserCommunityRoleSchema } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    req.user = { 
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-    };
-    return true;
-  }
-}
+import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Publication and Comment Edit Permissions', () => {
   jest.setTimeout(60000);
@@ -62,11 +48,13 @@ describe('Publication and Comment Edit Permissions', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MongooseModule.forRoot(mongoUri), MeriterModule],
     })
-      .overrideGuard(UserGuard)
-      .useClass(AllowAllGuard)
       .compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Setup tRPC middleware for tRPC tests
+    TestSetupHelper.setupTrpcMiddleware(app);
+    
     await app.init();
 
     // Wait for onModuleInit
