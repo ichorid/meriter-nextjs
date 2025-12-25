@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { TrpcController } from './trpc.controller';
 import { TrpcService } from './trpc.service';
 import { DomainModule } from '../domain.module';
 import { ApiV1CommonModule } from '../api-v1/common/common.module';
@@ -8,7 +7,8 @@ import { QuotaResetModule } from '../domain/services/quota-reset.module';
 
 @Module({
   imports: [DomainModule, ApiV1CommonModule, AuthModule, QuotaResetModule],
-  controllers: [TrpcController],
+  // TrpcController removed - tRPC is handled via Express middleware in main.ts
+  // to properly support batch requests with comma-separated paths
   providers: [TrpcService],
   exports: [TrpcService],
 })

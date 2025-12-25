@@ -101,7 +101,7 @@ export async function createContext(opts: CreateContextOptions) {
 
   // Check if req.user is already set by guards (e.g., AllowAllGuard in tests)
   // This allows test guards to bypass JWT authentication
-  // Also check for test globals as fallback (when guards aren't applied to TrpcController)
+  // Also check for test globals as fallback (when guards aren't applied - Express middleware bypasses NestJS guards)
   const testUserId = (global as any).testUserId;
   const testUserGlobalRole = (global as any).testUserGlobalRole;
   
@@ -140,7 +140,7 @@ export async function createContext(opts: CreateContextOptions) {
     }
   } else if (testUserId) {
     // Test mode: Use global testUserId (set by tests before making requests)
-    // This allows tests to work even when guards aren't applied to TrpcController
+    // This allows tests to work even when guards aren't applied (Express middleware bypasses NestJS guards)
     const dbUser = await userService.getUserById(testUserId);
     
     if (dbUser) {
