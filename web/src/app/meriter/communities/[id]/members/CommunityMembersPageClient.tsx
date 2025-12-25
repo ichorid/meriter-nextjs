@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { routes } from '@/lib/constants/routes';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';

@@ -7,6 +7,13 @@ import { cn } from '@/lib/utils';
 export type BadgeVariant = 'primary' | 'secondary' | 'accent' | 'info' | 'success' | 'warning' | 'error' | 'default' | 'destructive' | 'outline';
 export type BadgeSize = 'xs' | 'sm' | 'md' | 'lg';
 
+const SIZE_STYLES: Record<BadgeSize, string> = {
+  xs: "text-[10px] px-1.5 py-0.5",
+  sm: "text-xs px-2 py-0.5",
+  md: "text-sm px-2.5 py-0.5",
+  lg: "text-base px-3 py-1",
+};
+
 export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: BadgeVariant;
   size?: BadgeSize;
@@ -28,12 +35,6 @@ export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
     },
     ref
   ) => {
-    const sizeStyles = {
-      xs: "text-[10px] px-1.5 py-0.5",
-      sm: "text-xs px-2 py-0.5",
-      md: "text-sm px-2.5 py-0.5",
-      lg: "text-base px-3 py-1",
-    };
 
     // Map custom variants to shadcn variants or use custom classes
     const getVariantClass = () => {
@@ -94,7 +95,7 @@ export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
         ref={ref as any}
         className={cn(
           badgeVariants({ variant: shadcnVariant }),
-          sizeStyles[size],
+          SIZE_STYLES[size],
           getVariantClass(),
           onClick && 'cursor-pointer hover:opacity-80 transition-opacity',
           className

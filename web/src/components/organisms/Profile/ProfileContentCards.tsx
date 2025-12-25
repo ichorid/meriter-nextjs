@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { FileText, MessageSquare, BarChart3 } from 'lucide-react';
@@ -24,7 +24,7 @@ export function ProfileContentCards({
   const tProfile = useTranslations('profile');
   const router = useRouter();
 
-  const statCards = [
+  const statCards = useMemo(() => [
     {
       label: t('hero.stats.publications'),
       value: stats.publications,
@@ -49,7 +49,7 @@ export function ProfileContentCards({
       bgColor: 'bg-base-200/50',
       route: `${routes.profile}/polls`,
     },
-  ];
+  ], [t, stats.publications, stats.comments, stats.polls]);
 
   const handleCardClick = (route: string) => {
     router.push(route);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
     Select,
     SelectContent,
@@ -38,11 +38,11 @@ export function LanguageSelector() {
         }
     };
 
-    const options = [
+    const options = useMemo(() => [
         { label: t('languageAuto'), value: 'auto' },
         { label: t('languageEnglish'), value: 'en' },
         { label: t('languageRussian'), value: 'ru' },
-    ];
+    ], [t]);
 
     return (
         <BrandFormControl label={t('language')}>

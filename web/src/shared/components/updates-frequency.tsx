@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslations } from 'next-intl';
 import { useUpdatesFrequency, useSetUpdatesFrequency } from '@/hooks/api/useUsers';
 import {
@@ -31,7 +31,7 @@ export const UpdatesFrequency = () => {
         }
     };
 
-    const options = [
+    const options = useMemo(() => [
         {
             frequency: 'immediate',
             label: t('updateFrequency.immediately'),
@@ -49,7 +49,7 @@ export const UpdatesFrequency = () => {
             frequency: 'never',
             label: t('updateFrequency.never'),
         },
-    ];
+    ], [t]);
 
     const currentFrequency = frequency || options.find((o) => o.default)?.frequency || 'daily';
     const selectOptions = options.map(o => ({ label: o.label, value: o.frequency }));

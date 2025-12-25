@@ -203,14 +203,14 @@ export default function NotificationsPage() {
     }
   };
 
-  const filterOptions = [
+  const filterOptions = useMemo(() => [
     { value: 'all', label: t('filters.all') },
     { value: 'unread', label: t('filters.unread') },
     { value: 'mention', label: t('filters.mention') },
     { value: 'reply', label: t('filters.reply') },
     { value: 'vote', label: t('filters.vote') },
     { value: 'invite', label: t('filters.invite') },
-  ];
+  ], [t]);
 
   return (
     <AdaptiveLayout

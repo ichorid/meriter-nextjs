@@ -1,7 +1,7 @@
 // Publication header component
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Edit, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/atoms';
@@ -86,12 +86,12 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   const deletePoll = useDeletePoll();
   const addToast = useToastStore((state) => state.addToast);
 
-  const author = {
+  const author = useMemo(() => ({
     name: publication.meta?.author?.name || 'Unknown',
     photoUrl: publication.meta?.author?.photoUrl,
     username: publication.meta?.author?.username,
     id: authorId,
-  };
+  }), [publication.meta?.author?.name, publication.meta?.author?.photoUrl, publication.meta?.author?.username, authorId]);
 
   const beneficiary = publication.meta?.beneficiary ? {
     name: publication.meta.beneficiary.name,

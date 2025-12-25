@@ -1,7 +1,7 @@
 'use client';
 
 import { useComments } from "@shared/hooks/use-comments";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { CardPublication } from "./card-publication";
 import { useCommunity, usePoll } from '@/hooks/api';
 import { dateVerbose } from "@shared/lib/date";
@@ -197,12 +197,12 @@ export const Publication = (props: any) => {
     // Display title - use meta.author.name
     const displayTitle = displayAuthorName;
     
-    const tagsStr = [
+    const tagsStr = useMemo(() => [
         "#" + keyword,
         ...(Object.entries(dimensions || {}) || [])
             .map(([slug, dim]) => "#" + dim)
             .flat(),
-    ].join(" ");
+    ].join(" "), [keyword, dimensions]);
 
     const avatarUrl = authorPhotoUrl || meta?.author?.photoUrl;
     

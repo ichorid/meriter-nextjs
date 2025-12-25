@@ -7,6 +7,22 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
  * Client-side router component that replaces Next.js middleware
  * Handles redirects that were previously done server-side
  */
+const KNOWN_STATIC_ROUTES = [
+  '/meriter/login',
+  '/meriter/communities',
+  '/meriter/spaces',
+  '/meriter/settings',
+  '/meriter/profile',
+  '/meriter/new-user',
+  '/meriter/welcome',
+  '/meriter/search',
+  '/meriter/notifications',
+  '/meriter/invite',
+  '/meriter/invites',
+  '/meriter/teams',
+  '/meriter/about',
+];
+
 export function ClientRouter() {
     const pathname = usePathname();
     const router = useRouter();
@@ -50,25 +66,9 @@ export function ClientRouter() {
         }
 
         // Handle old space slug redirects
-        const knownStaticRoutes = [
-            '/meriter/login',
-            '/meriter/communities',
-            '/meriter/spaces',
-            '/meriter/settings',
-            '/meriter/profile',
-            '/meriter/new-user',
-            '/meriter/welcome',
-            '/meriter/search',
-            '/meriter/notifications',
-            '/meriter/invite',
-            '/meriter/invites',
-            '/meriter/teams',
-            '/meriter/about',
-        ];
-
         if (
             pathname.startsWith('/meriter/') &&
-            !knownStaticRoutes.some(route => pathname.startsWith(route)) &&
+            !KNOWN_STATIC_ROUTES.some(route => pathname.startsWith(route)) &&
             pathname.split('/').length === 3
         ) {
             const slug = pathname.split('/')[2];

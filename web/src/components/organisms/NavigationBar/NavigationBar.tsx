@@ -13,6 +13,13 @@ import { useWallets } from '@/hooks/api/useWallet';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { useTranslations } from 'next-intl';
 
+const NAV_LINKS = [
+  { href: routes.profile, label: 'Profile', icon: 'home' },
+  { href: routes.communities, label: 'Communities', icon: 'group' },
+  { href: routes.polls, label: 'Polls', icon: 'poll' },
+  { href: routes.wallet, label: 'Wallet', icon: 'account_balance_wallet' },
+];
+
 export interface NavigationBarProps {
   className?: string;
 }
@@ -42,13 +49,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
     });
     return total;
   }, [quotasMap]);
-  
-  const navLinks = [
-    { href: routes.profile, label: 'Profile', icon: 'home' },
-    { href: routes.communities, label: 'Communities', icon: 'group' },
-    { href: routes.polls, label: 'Polls', icon: 'poll' },
-    { href: routes.wallet, label: 'Wallet', icon: 'account_balance_wallet' },
-  ];
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -83,7 +83,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex gap-1">
-            {navLinks.map((link) => (
+            {NAV_LINKS.map((link) => (
               <Link key={link.href} href={link.href}>
                 <Button 
                   variant="ghost" 

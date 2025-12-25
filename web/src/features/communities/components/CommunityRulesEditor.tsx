@@ -11,6 +11,8 @@ import { Check, RotateCcw, Eye, EyeOff, Download, Upload, History, Loader2 } fro
 import type { CommunityWithComputedFields, LegacyPostingRules, LegacyVotingRules, LegacyVisibilityRules, LegacyMeritRules } from '@/types/api-v1';
 import { useToastStore } from '@/shared/stores/toast.store';
 
+const TEAM_ROLES = ['lead', 'participant'] as const;
+
 interface CommunityRulesEditorProps {
   community: CommunityWithComputedFields;
   onSave: (rules: {
@@ -174,8 +176,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     // Validate posting rules
     if (postingRules.requiresTeamMembership && postingRules.allowedRoles) {
       // If requiresTeamMembership is true, allowedRoles should only include team roles
-      const teamRoles = ['lead', 'participant'];
-      const hasNonTeamRole = postingRules.allowedRoles.some((role: string) => !teamRoles.includes(role));
+      const hasNonTeamRole = postingRules.allowedRoles.some((role: string) => !TEAM_ROLES.includes(role as typeof TEAM_ROLES[number]));
       if (hasNonTeamRole) {
         errors.postingRules = t('validationErrors.requiresTeamMembershipConflict');
       }
@@ -196,8 +197,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     }
 
     if (visibilityRules.teamOnly && visibilityRules.visibleToRoles) {
-      const teamRoles = ['lead', 'participant'];
-      const hasNonTeamRole = visibilityRules.visibleToRoles.some((role: string) => !teamRoles.includes(role));
+      const hasNonTeamRole = visibilityRules.visibleToRoles.some((role: string) => !TEAM_ROLES.includes(role as typeof TEAM_ROLES[number]));
       if (hasNonTeamRole) {
         errors.visibilityRules = t('validationErrors.teamOnlyConflict');
       }
