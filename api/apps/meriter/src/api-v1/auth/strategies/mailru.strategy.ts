@@ -13,9 +13,10 @@ export class MailruStrategy extends PassportStrategy(Strategy, 'mailru') {
     private readonly logger = new Logger(MailruStrategy.name);
 
     constructor(private configService: ConfigService<AppConfig>) {
-        const clientID = this.configService.get('oauth.mailru.clientId');
-        const clientSecret = this.configService.get('oauth.mailru.clientSecret');
-        const callbackURL = this.configService.get('oauth.mailru.redirectUri');
+        // Use configService parameter directly (not this.configService) before super()
+        const clientID = configService.get('oauth.mailru.clientId');
+        const clientSecret = configService.get('oauth.mailru.clientSecret');
+        const callbackURL = configService.get('oauth.mailru.redirectUri');
 
         if (!clientID || !clientSecret || !callbackURL) {
             throw new Error(
