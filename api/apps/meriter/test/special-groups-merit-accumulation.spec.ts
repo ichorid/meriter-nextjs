@@ -17,6 +17,9 @@ import { TransactionSchemaClass, TransactionDocument } from '../src/domain/model
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 import { trpcMutation } from './helpers/trpc-test-helper';
+import { TrpcService } from '../src/trpc/trpc.service';
+import { createExpressMiddleware } from '@trpc/server/adapters/express';
+import * as cookieParser from 'cookie-parser';
 
 class AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -80,6 +83,21 @@ describe('Special Groups Merit Accumulation', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Add cookie parser middleware (same as main.ts)
+    app.use(cookieParser());
+    
+    // Register tRPC middleware (same as main.ts)
+    const trpcService = app.get(TrpcService);
+    const trpcMiddleware = createExpressMiddleware({
+      router: trpcService.getRouter(),
+      createContext: ({ req, res }) => trpcService.createContext(req, res),
+      onError({ error, path }) {
+        console.error(`tRPC error on '${path}':`, error);
+      },
+    });
+    app.use('/trpc', trpcMiddleware);
+    
     await app.init();
 
     // Wait for onModuleInit to complete
