@@ -53,10 +53,14 @@ export class CookieManager {
     const production = isProduction ?? nodeEnv === 'production';
     const domain = cookieDomain ?? this.getCookieDomain();
     
+    const sameSite = (production ? 'none' : 'lax') as 'none' | 'lax';
+    // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
+    const secure = sameSite === 'none' ? true : production;
+    
     const baseOptions = {
       httpOnly: true,
-      secure: production,
-      sameSite: (production ? 'none' : 'lax') as 'none' | 'lax',
+      secure,
+      sameSite,
       path: '/',
     };
     
@@ -104,15 +108,17 @@ export class CookieManager {
     
     // Also try without httpOnly in case there's a non-httpOnly cookie (shouldn't happen, but be safe)
     try {
+      const sameSiteNoHttpOnly = (production ? 'none' : 'lax') as 'none' | 'lax';
+      const secureNoHttpOnly = sameSiteNoHttpOnly === 'none' ? true : production;
       response.clearCookie('jwt', {
-        secure: production,
-        sameSite: (production ? 'none' : 'lax') as 'none' | 'lax',
+        secure: secureNoHttpOnly,
+        sameSite: sameSiteNoHttpOnly,
         path: '/',
         domain,
       });
       response.cookie('jwt', '', {
-        secure: production,
-        sameSite: (production ? 'none' : 'lax') as 'none' | 'lax',
+        secure: secureNoHttpOnly,
+        sameSite: sameSiteNoHttpOnly,
         path: '/',
         domain,
         expires: new Date(0),
@@ -140,10 +146,14 @@ export class CookieManager {
     const production = isProduction ?? nodeEnv === 'production';
     const domain = cookieDomain ?? this.getCookieDomain();
     
+    const sameSite = (production ? 'none' : 'lax') as 'none' | 'lax';
+    // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
+    const secure = sameSite === 'none' ? true : production;
+    
     const baseOptions = {
       httpOnly: true,
-      secure: production,
-      sameSite: (production ? 'none' : 'lax') as 'none' | 'lax',
+      secure,
+      sameSite,
       path: '/',
     };
     
@@ -200,15 +210,17 @@ export class CookieManager {
     for (const domainVariant of uniqueDomains) {
       for (const path of pathsToTry) {
         try {
+          const sameSiteNoHttpOnly = (production ? 'none' : 'lax') as 'none' | 'lax';
+          const secureNoHttpOnly = sameSiteNoHttpOnly === 'none' ? true : production;
           response.clearCookie(cookieName, {
-            secure: production,
-            sameSite: (production ? 'none' : 'lax') as 'none' | 'lax',
+            secure: secureNoHttpOnly,
+            sameSite: sameSiteNoHttpOnly,
             path,
             domain: domainVariant,
           });
           response.cookie(cookieName, '', {
-            secure: production,
-            sameSite: (production ? 'none' : 'lax') as 'none' | 'lax',
+            secure: secureNoHttpOnly,
+            sameSite: sameSiteNoHttpOnly,
             path,
             domain: domainVariant,
             expires: new Date(0),
@@ -244,12 +256,17 @@ export class CookieManager {
       domain = undefined; // No domain restriction for localhost
     }
     
+    const sameSite = production ? 'none' : 'lax';
+    // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
+    // This is required for cross-site cookies (e.g., OAuth redirects)
+    const secure = sameSite === 'none' ? true : production;
+    
     const cookieOptions: any = {
       httpOnly: true,
-      secure: production,
+      secure,
       // For localhost in dev, use 'lax' (sameSite='none' requires secure=true in modern browsers)
       // 'lax' works fine for same-origin requests (Next.js rewrites proxy to same origin)
-      sameSite: production ? 'none' : 'lax',
+      sameSite,
       maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
       path: '/',
     };

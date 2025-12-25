@@ -84,10 +84,13 @@ export const authRouter = router({
     ctx.cookieManager.setJwtCookie(ctx.res, result.jwt, cookieDomain, isProduction);
 
     // Set fake_user_id cookie (session cookie - expires when browser closes)
+    const sameSite = isProduction ? 'none' : 'lax';
+    // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
+    const secure = sameSite === 'none' ? true : isProduction;
     ctx.res.cookie('fake_user_id', fakeUserId, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
+      secure,
+      sameSite,
       path: '/',
       domain: cookieDomain,
     });
@@ -136,10 +139,13 @@ export const authRouter = router({
     ctx.cookieManager.setJwtCookie(ctx.res, result.jwt, cookieDomain, isProduction);
 
     // Set fake_superadmin_id cookie (session cookie - expires when browser closes)
+    const sameSite = isProduction ? 'none' : 'lax';
+    // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
+    const secure = sameSite === 'none' ? true : isProduction;
     ctx.res.cookie('fake_superadmin_id', fakeUserId, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
+      secure,
+      sameSite,
       path: '/',
       domain: cookieDomain,
     });

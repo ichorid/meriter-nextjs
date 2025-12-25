@@ -29,7 +29,10 @@ export function LanguageSelector() {
 
         try {
             // Set cookie directly
-            document.cookie = `NEXT_LOCALE=${value}; max-age=${365 * 24 * 60 * 60}; path=/; samesite=lax`;
+            // Use secure flag when on HTTPS (required for cross-site cookies, good practice for HTTPS)
+            const isSecure = window.location.protocol === 'https:';
+            const secureFlag = isSecure ? '; secure' : '';
+            document.cookie = `NEXT_LOCALE=${value}; max-age=${365 * 24 * 60 * 60}; path=/; samesite=lax${secureFlag}`;
 
             // Reload page to get server-side rendering with new language
             window.location.reload();

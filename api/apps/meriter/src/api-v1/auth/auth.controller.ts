@@ -130,10 +130,13 @@ export class AuthController {
       this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
 
       // Set fake_user_id cookie (session cookie - expires when browser closes)
+      const sameSite = isProduction ? 'none' : 'lax';
+      // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
+      const secure = sameSite === 'none' ? true : isProduction;
       res.cookie('fake_user_id', fakeUserId, {
         httpOnly: true,
-        secure: isProduction,
-        sameSite: isProduction ? 'none' : 'lax',
+        secure,
+        sameSite,
         // No maxAge - this makes it a session cookie that expires when browser closes
         path: '/',
         domain: cookieDomain,
@@ -199,10 +202,13 @@ export class AuthController {
       this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
 
       // Set fake_superadmin_id cookie (session cookie - expires when browser closes)
+      const sameSite = isProduction ? 'none' : 'lax';
+      // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
+      const secure = sameSite === 'none' ? true : isProduction;
       res.cookie('fake_superadmin_id', fakeUserId, {
         httpOnly: true,
-        secure: isProduction,
-        sameSite: isProduction ? 'none' : 'lax',
+        secure,
+        sameSite,
         // No maxAge - this makes it a session cookie that expires when browser closes
         path: '/',
         domain: cookieDomain,
