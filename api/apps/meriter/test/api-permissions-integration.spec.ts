@@ -13,6 +13,7 @@ import { Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { uid } from 'uid';
 import { signJWT } from '../src/common/helpers/jwt';
+import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('API Permissions Integration', () => {
   jest.setTimeout(60000);
@@ -61,10 +62,10 @@ describe('API Permissions Integration', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
-    // Add cookie parser middleware (same as main.ts)
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const cookieParser = require('cookie-parser');
-    app.use(cookieParser());
+    
+    // Setup tRPC middleware for tRPC tests
+    TestSetupHelper.setupTrpcMiddleware(app);
+    
     await app.init();
 
     // Wait a bit for onModuleInit to complete
