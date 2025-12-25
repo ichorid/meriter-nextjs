@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 /**
@@ -27,13 +27,27 @@ export function ClientRouter() {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
+    
+    // Extract search param value to avoid unstable object reference in dependencies
+    // useSearchParams() returns a new object on each render, but the actual param value is stable
+    const tgWebAppStartParam = searchParams?.get('tgWebAppStartParam');
+    
+    // Use ref to track the last processed pathname to prevent infinite loops
+    // This ensures we only process each pathname once
+    const lastProcessedPathnameRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (!pathname) return;
         
+        // Skip if we've already processed this exact pathname
+        // This prevents infinite loops when router.replace() triggers re-renders
+        if (lastProcessedPathnameRef.current === pathname) {
+            return;
+        }
+        
         // Handle root path redirects
         if (pathname === '/') {
-            const tgWebAppStartParam = searchParams?.get('tgWebAppStartParam');
+            lastProcessedPathnameRef.current = pathname;
             
             if (tgWebAppStartParam) {
                 router.replace(`/meriter/login?tgWebAppStartParam=${encodeURIComponent(tgWebAppStartParam)}`);
@@ -55,12 +69,14 @@ export function ClientRouter() {
 
         // Handle backward compatibility redirects
         if (pathname === '/meriter/balance' || pathname === '/meriter/home') {
+            lastProcessedPathnameRef.current = pathname;
             router.replace('/meriter/profile');
             return;
         }
 
         if (pathname.startsWith('/meriter/c/')) {
             const newPath = pathname.replace('/meriter/c/', '/meriter/communities/');
+            lastProcessedPathnameRef.current = pathname;
             router.replace(newPath);
             return;
         }
@@ -74,11 +90,15 @@ export function ClientRouter() {
             const slug = pathname.split('/')[2];
             if (slug && !slug.includes('.')) {
                 // Not a file - redirect to spaces
+                lastProcessedPathnameRef.current = pathname;
                 router.replace(`/meriter/spaces/${slug}`);
                 return;
             }
         }
-    }, [pathname, router, searchParams]);
+        
+        // Mark this pathname as processed (even if no redirect was needed)
+        lastProcessedPathnameRef.current = pathname;
+    }, [pathname, router, tgWebAppStartParam]);
 
     // This component doesn't render anything
     return null;
