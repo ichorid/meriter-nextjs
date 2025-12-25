@@ -33,12 +33,8 @@ export function useRuntimeConfig(): {
         meta: {
             skipErrorToast: true,
         },
-        // Use select to ensure stable reference - only update when data actually changes
-        // This prevents infinite loops from object reference changes
-        select: (data) => {
-            console.log('[useRuntimeConfig] Raw data received:', JSON.stringify(data, null, 2));
-            return data;
-        },
+        // Don't use select - let React Query handle data references naturally
+        // The memoization below handles stable references
         onError: (err) => {
             // Log warning but don't throw - we'll fall back to build-time defaults
             // Include more context for transformation errors
@@ -74,7 +70,8 @@ export function useRuntimeConfig(): {
         
         // Data actually changed, update ref and return new config
         const newConfig = data || null;
-        console.log('[useRuntimeConfig] Processed config:', JSON.stringify(newConfig, null, 2));
+        console.log('[useRuntimeConfig] Raw data:', data);
+        console.log('[useRuntimeConfig] Processed config:', newConfig);
         prevDataRef.current = { data: newConfig, key: currentKey };
         return newConfig;
     }, [data]);
