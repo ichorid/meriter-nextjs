@@ -17,8 +17,9 @@ export const authRouter = router({
 
   /**
    * Clear all cookies
+   * Must be public - used to clear cookies when authentication fails
    */
-  clearCookies: protectedProcedure.mutation(async ({ ctx }) => {
+  clearCookies: publicProcedure.mutation(async ({ ctx }) => {
     const cookieDomain = CookieManager.getCookieDomain();
     const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
     const isProduction = process.env.NODE_ENV === 'production' || isSecure;
