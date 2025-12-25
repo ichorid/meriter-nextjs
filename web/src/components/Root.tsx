@@ -1,6 +1,6 @@
 'use client';
 
-import { type PropsWithChildren, useState, useEffect } from 'react';
+import { type PropsWithChildren, useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 
@@ -30,10 +30,16 @@ function AppWrapper({ children }: PropsWithChildren) {
 
 function RootInner({ children }: PropsWithChildren) {
   const addToast = useToastStore((state) => state.addToast);
+  const handlerRef = useRef<typeof addToast | null>(null);
 
   // Set global toast handler for QueryProvider
+  // Use ref to prevent infinite loops - only update if handler actually changed
   useEffect(() => {
-    setGlobalToastHandler(addToast);
+    // Only update if handler reference changed (Zustand should provide stable refs, but be safe)
+    if (handlerRef.current !== addToast) {
+      handlerRef.current = addToast;
+      setGlobalToastHandler(addToast);
+    }
   }, [addToast]);
 
   return <AppWrapper>{children}</AppWrapper>;

@@ -39,7 +39,26 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
+    // Enhanced error logging for React error #310 (Maximum update depth exceeded)
+    const isInfiniteRenderError = error.message.includes('Maximum update depth exceeded') || 
+                                  error.message.includes('310') ||
+                                  error.stack?.includes('310');
+    
+    if (isInfiniteRenderError) {
+      console.error(
+        '🚨 React Error #310 (Infinite Render Loop) caught by boundary:',
+        '\nError:', error.message,
+        '\nStack:', error.stack,
+        '\nComponent Stack:', errorInfo.componentStack,
+        '\n\nThis usually indicates:',
+        '\n- Unstable dependencies in useEffect/useMemo/useCallback',
+        '\n- State updates in render (outside useEffect)',
+        '\n- Missing memoization of callbacks/values',
+        '\n- Circular dependencies between components'
+      );
+    } else {
+      console.error('Error caught by boundary:', error, errorInfo);
+    }
   }
 
   render() {

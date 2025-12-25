@@ -19,7 +19,8 @@ const nextConfig = {
     // Note: SWC minification is always enabled in Next.js 16+ and cannot be disabled
     // Enable source maps when NEXT_PUBLIC_DEV_BUILD is true for dev server debugging
     // Disable in production to avoid source map errors and reduce bundle size
-    productionBrowserSourceMaps: false,
+    // Enable source maps conditionally for better error reporting (can be disabled via env var)
+    productionBrowserSourceMaps: process.env.NEXT_PUBLIC_DEV_BUILD === 'true' || process.env.NEXT_PUBLIC_ENABLE_SOURCE_MAPS === 'true',
     // Note: OAuth provider flags and AUTHN are fetched from backend at runtime via useRuntimeConfig()
     // No need to expose them as build-time env vars
     transpilePackages: [
