@@ -46,7 +46,7 @@ async function enhancedFetch(url: string, options?: RequestInit): Promise<Respon
         url,
         status: response.status,
         statusText: response.statusText,
-        errorBody,
+        errorBody: errorBody ? JSON.stringify(errorBody, null, 2) : errorBody,
       });
     }
 

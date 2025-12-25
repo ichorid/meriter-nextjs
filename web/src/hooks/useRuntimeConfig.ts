@@ -35,10 +35,20 @@ export function useRuntimeConfig(): {
         },
         // Use select to ensure stable reference - only update when data actually changes
         // This prevents infinite loops from object reference changes
-        select: (data) => data,
+        select: (data) => {
+            console.log('[useRuntimeConfig] Raw data received:', JSON.stringify(data, null, 2));
+            return data;
+        },
         onError: (err) => {
             // Log warning but don't throw - we'll fall back to build-time defaults
             // Include more context for transformation errors
+            console.error('[useRuntimeConfig] Error details:', {
+                message: err?.message,
+                code: err?.code,
+                data: err?.data,
+                stack: err?.stack,
+                fullError: JSON.stringify(err, Object.getOwnPropertyNames(err), 2),
+            });
             const errorMessage = err?.message || String(err);
             if (errorMessage.includes('transform') || errorMessage.includes('deserialize')) {
                 console.warn('Failed to fetch runtime config (transformation error). This usually means the backend API is not accessible or returned an invalid response. Falling back to build-time defaults.');
@@ -64,6 +74,7 @@ export function useRuntimeConfig(): {
         
         // Data actually changed, update ref and return new config
         const newConfig = data || null;
+        console.log('[useRuntimeConfig] Processed config:', JSON.stringify(newConfig, null, 2));
         prevDataRef.current = { data: newConfig, key: currentKey };
         return newConfig;
     }, [data]);
