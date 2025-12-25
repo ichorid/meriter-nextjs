@@ -1,7 +1,7 @@
 'use client';
 
 import { NextIntlClientProvider } from 'next-intl';
-import { useEffect, useState, useRef, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense, startTransition } from 'react';
 import { DEFAULT_LOCALE, type Locale } from '@/i18n/request';
 import { Root } from '@/components/Root';
 import { QueryProvider } from '@/providers/QueryProvider';
@@ -77,19 +77,21 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
     
     // Always update locale if different from DEFAULT_LOCALE
     // This ensures the UI reflects the user's language preference
+    // Use startTransition to batch the state update and prevent refresh loops
     if (detectedLocale !== DEFAULT_LOCALE) {
-      setLocale(detectedLocale);
-      setMessages(detectedLocale === 'ru' ? ruMessages : enMessages);
+      startTransition(() => {
+        setLocale(detectedLocale);
+        setMessages(detectedLocale === 'ru' ? ruMessages : enMessages);
+      });
     }
 
     // Always update document language attribute
     document.documentElement.lang = detectedLocale;
 
-    // Set cookie if not already set
+    // Set cookie if not already set - use detectedLocale to ensure consistency
+    // This prevents mismatches between detected locale and cookie value
     if (!document.cookie.includes('NEXT_LOCALE=')) {
-      const browserLang = navigator.language?.split('-')[0]?.toLowerCase() || 'en';
-      const defaultLocale = browserLang === 'ru' ? 'ru' : 'en';
-      document.cookie = `NEXT_LOCALE=${defaultLocale}; max-age=${365 * 24 * 60 * 60}; path=/; samesite=lax`;
+      document.cookie = `NEXT_LOCALE=${detectedLocale}; max-age=${365 * 24 * 60 * 60}; path=/; samesite=lax`;
     }
   }, []); // Empty deps - only run once after mount
 
@@ -112,8 +114,7 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
             locale={locale} 
             messages={messages}
             timeZone="UTC"
-            suppressHydrationWarning
-            // Suppress hydration warning since locale detection happens client-side after mount
+            // Locale detection happens client-side after mount to avoid hydration mismatches
             // This is safe because NextIntl handles locale changes gracefully
           >
             <Suspense fallback={null}>
