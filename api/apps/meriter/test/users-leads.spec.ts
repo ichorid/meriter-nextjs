@@ -3,9 +3,6 @@ import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common'
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { UserGuard } from '../src/user.guard';
-import { UserService } from '../src/domain/services/user.service';
-import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
-import { CommunityService } from '../src/domain/services/community.service';
 import { trpcQuery } from './helpers/trpc-test-helper';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
@@ -70,11 +67,6 @@ describe('Users - Get All Leads', () => {
     // Wait for onModuleInit to complete
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const _userService = app.get<UserService>(UserService);
-    const _userCommunityRoleService = app.get<UserCommunityRoleService>(
-      UserCommunityRoleService,
-    );
-    const _communityService = app.get<CommunityService>(CommunityService);
 
     connection = app.get<Connection>(getConnectionToken());
     userModel = connection.model<UserDocument>(UserSchemaClass.name);

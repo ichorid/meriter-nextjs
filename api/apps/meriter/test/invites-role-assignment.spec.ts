@@ -3,11 +3,9 @@ import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common'
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { UserGuard } from '../src/user.guard';
-import { InviteService } from '../src/domain/services/invite.service';
 import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
-import { WalletService } from '../src/domain/services/wallet.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -80,13 +78,11 @@ describe('Invites - New Role Assignment Logic', () => {
     // Wait for onModuleInit to complete
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const _inviteService = app.get<InviteService>(InviteService);
     communityService = app.get<CommunityService>(CommunityService);
     userService = app.get<UserService>(UserService);
     userCommunityRoleService = app.get<UserCommunityRoleService>(
       UserCommunityRoleService,
     );
-    const _walletService = app.get<WalletService>(WalletService);
 
     connection = app.get<Connection>(getConnectionToken());
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);

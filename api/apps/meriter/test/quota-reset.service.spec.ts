@@ -3,10 +3,6 @@ import { INestApplication } from '@nestjs/common';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { QuotaResetService } from '../src/domain/services/quota-reset.service';
-import { CommunityService } from '../src/domain/services/community.service';
-import { NotificationService } from '../src/domain/services/notification.service';
-import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
-import { PermissionService } from '../src/domain/services/permission.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -31,9 +27,6 @@ describe('QuotaResetService', () => {
   let connection: Connection;
 
   let quotaResetService: QuotaResetService;
-  let _communityService: CommunityService;
-  let _notificationService: NotificationService;
-  let _permissionService: PermissionService;
   let schedulerRegistry: SchedulerRegistry;
 
   let communityModel: Model<CommunityDocument>;
@@ -64,10 +57,6 @@ describe('QuotaResetService', () => {
 
     // Get services
     quotaResetService = app.get<QuotaResetService>(QuotaResetService);
-    _communityService = app.get<CommunityService>(CommunityService);
-    _notificationService = app.get<NotificationService>(NotificationService);
-    const _userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
-    _permissionService = app.get<PermissionService>(PermissionService);
     schedulerRegistry = app.get<SchedulerRegistry>(SchedulerRegistry);
 
     connection = app.get(getConnectionToken());

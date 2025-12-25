@@ -3,10 +3,6 @@ import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common'
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { PermissionService } from '../src/domain/services/permission.service';
-import { PublicationService } from '../src/domain/services/publication.service';
-import { CommunityService } from '../src/domain/services/community.service';
-import { UserService } from '../src/domain/services/user.service';
-import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -38,9 +34,6 @@ describe('Posting Permissions', () => {
   let connection: Connection;
   
   let permissionService: PermissionService;
-  let _publicationService: PublicationService;
-  let _communityService: CommunityService;
-  let _userService: UserService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -77,10 +70,6 @@ describe('Posting Permissions', () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     permissionService = app.get<PermissionService>(PermissionService);
-    _publicationService = app.get<PublicationService>(PublicationService);
-    _communityService = app.get<CommunityService>(CommunityService);
-    _userService = app.get<UserService>(UserService);
-    const _userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     
     connection = app.get(getConnectionToken());
     

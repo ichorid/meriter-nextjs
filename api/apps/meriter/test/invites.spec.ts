@@ -3,11 +3,8 @@ import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common'
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { UserGuard } from '../src/user.guard';
-import { InviteService } from '../src/domain/services/invite.service';
 import { CommunityService } from '../src/domain/services/community.service';
-import { UserService } from '../src/domain/services/user.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
-import { WalletService } from '../src/domain/services/wallet.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -40,11 +37,8 @@ describe('Invites - Superadmin-to-Lead', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let _inviteService: InviteService;
   let communityService: CommunityService;
-  let _userService: UserService;
   let userCommunityRoleService: UserCommunityRoleService;
-  let _walletService: WalletService;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -57,7 +51,6 @@ describe('Invites - Superadmin-to-Lead', () => {
   let newLeadId: string;
 
   // Test community IDs
-  let targetCommunityId: string;
   let marathonCommunityId: string;
   let visionCommunityId: string;
 
@@ -80,13 +73,10 @@ describe('Invites - Superadmin-to-Lead', () => {
     // Wait for onModuleInit to complete
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const _inviteService2 = app.get<InviteService>(InviteService);
     communityService = app.get<CommunityService>(CommunityService);
-    const _userService2 = app.get<UserService>(UserService);
     userCommunityRoleService = app.get<UserCommunityRoleService>(
       UserCommunityRoleService,
     );
-    _walletService = app.get<WalletService>(WalletService);
 
     connection = app.get<Connection>(getConnectionToken());
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
@@ -98,7 +88,6 @@ describe('Invites - Superadmin-to-Lead', () => {
     // Generate test IDs
     superadminId = uid();
     newLeadId = uid();
-    targetCommunityId = uid();
     marathonCommunityId = uid();
     visionCommunityId = uid();
   });
@@ -132,24 +121,6 @@ describe('Invites - Superadmin-to-Lead', () => {
       authProvider: 'telegram',
       authId: `tg-${newLeadId}`,
       displayName: 'New Lead',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    // Create target community
-    await communityModel.create({
-      id: targetCommunityId,
-      name: 'Target Community',
-      typeTag: 'custom',
-      members: [],
-      settings: {
-        dailyEmission: 10,
-        currencyNames: {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-      },
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -485,9 +456,6 @@ describe('Invites - Role Restrictions', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const _inviteService2 = app.get<InviteService>(InviteService);
-    const _communityService2 = app.get<CommunityService>(CommunityService);
-    const _userService2 = app.get<UserService>(UserService);
     userCommunityRoleService = app.get<UserCommunityRoleService>(
       UserCommunityRoleService,
     );

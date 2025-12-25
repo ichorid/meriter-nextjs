@@ -4,9 +4,6 @@ import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { PermissionService } from '../src/domain/services/permission.service';
 import { PollService } from '../src/domain/services/poll.service';
-import { CommunityService } from '../src/domain/services/community.service';
-import { UserService } from '../src/domain/services/user.service';
-import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -25,9 +22,6 @@ describe('Poll Permissions', () => {
   
   let permissionService: PermissionService;
   let pollService: PollService;
-  let _communityService: CommunityService;
-  let _userService: UserService;
-  let _userCommunityRoleService: UserCommunityRoleService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -64,9 +58,6 @@ describe('Poll Permissions', () => {
 
     permissionService = app.get<PermissionService>(PermissionService);
     pollService = app.get<PollService>(PollService);
-    _communityService = app.get<CommunityService>(CommunityService);
-    _userService = app.get<UserService>(UserService);
-    _userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     
     connection = app.get(getConnectionToken());
     

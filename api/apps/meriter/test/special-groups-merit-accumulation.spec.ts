@@ -6,7 +6,6 @@ import { UserGuard } from '../src/user.guard';
 import { CommunityService } from '../src/domain/services/community.service';
 import { PublicationService } from '../src/domain/services/publication.service';
 import { WalletService } from '../src/domain/services/wallet.service';
-import { VoteService } from '../src/domain/services/vote.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -43,7 +42,6 @@ describe('Special Groups Merit Accumulation', () => {
   let communityService: CommunityService;
   let publicationService: PublicationService;
   let walletService: WalletService;
-  let _voteService: VoteService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -90,7 +88,6 @@ describe('Special Groups Merit Accumulation', () => {
     communityService = app.get<CommunityService>(CommunityService);
     publicationService = app.get<PublicationService>(PublicationService);
     walletService = app.get<WalletService>(WalletService);
-    _voteService = app.get<VoteService>(VoteService);
 
     connection = app.get<Connection>(getConnectionToken());
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);

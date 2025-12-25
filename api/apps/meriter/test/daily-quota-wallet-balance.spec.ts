@@ -3,8 +3,6 @@ import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common'
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { WalletService } from '../src/domain/services/wallet.service';
-import { CommunityService } from '../src/domain/services/community.service';
-import { VoteService } from '../src/domain/services/vote.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
@@ -39,7 +37,6 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
   
-  let _communityService: CommunityService;
   let walletService: WalletService;
   let userCommunityRoleService: UserCommunityRoleService;
   
@@ -69,9 +66,7 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
     await app.init();
 
     // Get services
-    _communityService = app.get<CommunityService>(CommunityService);
     walletService = app.get<WalletService>(WalletService);
-    const _voteService = app.get<VoteService>(VoteService);
     userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     
     connection = app.get(getConnectionToken());
