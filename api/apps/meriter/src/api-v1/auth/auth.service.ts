@@ -303,11 +303,6 @@ export class AuthService {
     await this.userService.ensureUserInBaseCommunities(user.id);
 
     const jwtSecret = this.configService.getOrThrow('jwt.secret');
-      this.logger.error(
-        'JWT_SECRET is not configured. Cannot generate JWT token.',
-      );
-      throw new Error('JWT secret not configured');
-    }
 
     const jwtToken = signJWT(
       {
