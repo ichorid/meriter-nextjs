@@ -185,3 +185,4 @@ NEXT_PUBLIC_AUTHN_ENABLED=true
 
 The runtime config approach allows enabling/disabling providers without rebuilding the frontend.
 
+

@@ -44,6 +44,7 @@ describe('Invites - Superadmin-to-Lead', () => {
   let communityService: CommunityService;
   let _userService: UserService;
   let userCommunityRoleService: UserCommunityRoleService;
+  let _walletService: WalletService;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -80,12 +81,12 @@ describe('Invites - Superadmin-to-Lead', () => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const _inviteService2 = app.get<InviteService>(InviteService);
-    const _communityService2 = app.get<CommunityService>(CommunityService);
+    communityService = app.get<CommunityService>(CommunityService);
     const _userService2 = app.get<UserService>(UserService);
     userCommunityRoleService = app.get<UserCommunityRoleService>(
       UserCommunityRoleService,
     );
-    walletService = app.get<WalletService>(WalletService);
+    _walletService = app.get<WalletService>(WalletService);
 
     connection = app.get<Connection>(getConnectionToken());
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
