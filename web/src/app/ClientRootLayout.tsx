@@ -100,6 +100,7 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
           <NextIntlClientProvider 
             locale={locale} 
             messages={messages}
+            timeZone="UTC"
             // Suppress hydration warning since locale detection happens client-side after mount
             // This is safe because NextIntl handles locale changes gracefully
           >

@@ -193,7 +193,7 @@ export class TgBotsService {
       chat,
       new_chat_members: _new_chat_members,
       left_chat_member: _left_chat_member,
-      text: _text,
+      text,
       caption,
       entities,
       connected_website,

@@ -689,6 +689,7 @@ export const FeedItemSchema = z.discriminatedUnion("type", [
 ]);
 
 // Export types
+export type Authenticator = z.infer<typeof AuthenticatorSchema>;
 export type User = z.infer<typeof UserSchema>;
 export type UserCommunityRole = z.infer<typeof UserCommunityRoleSchema>;
 export type Invite = z.infer<typeof InviteSchema>;

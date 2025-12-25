@@ -6,8 +6,6 @@ import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { VoteTransactionCalculatorService } from '../../api-v1/common/services/vote-transaction-calculator.service';
 import { UserFormatter } from '../../api-v1/common/utils/user-formatter.util';
-import { VoteTransactionCalculatorService } from '../../api-v1/common/services/vote-transaction-calculator.service';
-import { UserFormatter } from '../../api-v1/common/utils/user-formatter.util';
 
 export const commentsRouter = router({
   /**

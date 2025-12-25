@@ -72,6 +72,7 @@ export {
 
 // Export inferred types explicitly (type-only to reduce memory usage)
 export type {
+    Authenticator,
     User,
     UserCommunityRole,
     Invite,

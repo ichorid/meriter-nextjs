@@ -4,7 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserService } from '../../domain/services/user.service';
 import { CommunityService } from '../../domain/services/community.service';
-import { User } from '../../../../../../libs/shared-types/dist/index';
+import { User } from '../../domain/models/user/user.schema';
 import { signJWT } from '../../common/helpers/jwt';
 import {
   CommunitySchemaClass,
@@ -22,7 +22,7 @@ import {
   PasskeyChallenge,
   PasskeyChallengeDocument,
 } from '../../domain/models/auth/passkey-challenge.schema';
-import { Authenticator } from '../../../../../../libs/shared-types/dist/index';
+import { Authenticator } from '../../domain/models/user/user.schema';
 
 interface TelegramAuthData {
   id: number;
@@ -733,7 +733,7 @@ export class AuthService {
 
     // Log options for debugging (without sensitive data)
     this.logger.log(`Registration options generated:`, {
-      rpId: options.rpID,
+      rpId: options.rp.id,
       rpName: options.rp.name,
       userName: username,
       authenticatorAttachment: 'platform',
@@ -769,7 +769,13 @@ export class AuthService {
 
     this.logger.log(`clientDataJSON type: ${typeof clientDataJSON}, length: ${clientDataJSON?.length}`);
 
-    const bodyForLib = { id, rawId, response: { clientDataJSON, attestationObject }, type };
+    const bodyForLib = { 
+      id, 
+      rawId, 
+      response: { clientDataJSON, attestationObject }, 
+      type,
+      clientExtensionResults: {}
+    };
 
     try {
       const clientData = JSON.parse(Buffer.from(clientDataJSON, 'base64').toString('utf8'));
@@ -896,7 +902,7 @@ export class AuthService {
 
       throw new Error('Verification failed');
     } catch (error) {
-      this.logger.error(`Passkey verification error: ${error.message}`);
+      this.logger.error(`Passkey verification error: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }
@@ -937,7 +943,7 @@ export class AuthService {
 
   async verifyPasskeyLogin(body: any) {
     const { response: { clientDataJSON, authenticatorData, signature, userHandle }, id, rawId, type } = body;
-    const bodyForLib = { id, rawId, response: { clientDataJSON, authenticatorData, signature, userHandle }, type };
+    const bodyForLib = { id, rawId, response: { clientDataJSON, authenticatorData, signature, userHandle }, type, clientExtensionResults: {} };
 
     // Find challenge
     const clientData = JSON.parse(Buffer.from(clientDataJSON, 'base64').toString('utf8'));
@@ -1005,7 +1011,7 @@ export class AuthService {
     }
 
     const verification = await verifyAuthenticationResponse({
-      response: bodyForLib,
+      response: { ...bodyForLib, clientExtensionResults: {} },
       expectedChallenge: storedChallenge.challenge,
       expectedOrigin: this.getOrigin(),
       expectedRPID: this.getRpId(),
@@ -1016,7 +1022,7 @@ export class AuthService {
         transports: authenticator.transports as AuthenticatorTransport[],
       },
       requireUserVerification: true,
-    });
+    } as any);
 
     if (verification.verified) {
       const { authenticationInfo } = verification;
@@ -1068,7 +1074,7 @@ export class AuthService {
     jwt: string;
   }> {
     const { response: { clientDataJSON, authenticatorData, signature, userHandle }, id, rawId, type } = body;
-    const bodyForLib = { id, rawId, response: { clientDataJSON, authenticatorData, signature, userHandle }, type };
+    const bodyForLib = { id, rawId, response: { clientDataJSON, authenticatorData, signature, userHandle }, type, clientExtensionResults: {} };
 
     // Find challenge
     const clientData = JSON.parse(Buffer.from(clientDataJSON, 'base64').toString('utf8'));
@@ -1111,7 +1117,7 @@ export class AuthService {
         firstName: '',
         lastName: '',
         displayName: 'Passkey User',
-        avatarUrl: null,
+        avatarUrl: undefined,
       });
 
       if (!user) {
@@ -1132,8 +1138,19 @@ export class AuthService {
       // Check if this is a registration response (has attestationObject)
       if (body.response.attestationObject) {
         // This is registration - verify as registration
+        // Create proper registration body with attestationObject
+        const registrationBodyForLib = {
+          id,
+          rawId,
+          response: {
+            clientDataJSON,
+            attestationObject: body.response.attestationObject,
+          },
+          type,
+          clientExtensionResults: {},
+        };
         const verification = await verifyRegistrationResponse({
-          response: bodyForLib,
+          response: registrationBodyForLib,
           expectedChallenge: storedChallenge.challenge,
           expectedOrigin: this.getOrigin(),
           expectedRPID: this.getRpId(),
@@ -1145,10 +1162,32 @@ export class AuthService {
         }
 
         const { registrationInfo } = verification;
+        const info: any = registrationInfo;
+        const credential = info.credential;
+        
+        // Extract values from the nested credential object or root if fallback
+        const credentialID = credential?.id || info.credentialID;
+        const credentialPublicKey = credential?.publicKey || info.credentialPublicKey;
+        const counter = credential?.counter || info.counter;
+        
+        const finalCredentialID = credentialID
+          ? Buffer.from(credentialID).toString('base64url')
+          : body.id;
+        
+        const finalPublicKey = credentialPublicKey
+          ? Buffer.from(credentialPublicKey).toString('base64url')
+          : '';
+        
+        if (!finalPublicKey) {
+          throw new Error('Missing credentialPublicKey from verification result');
+        }
+        
         authenticator = {
-          credentialID: Buffer.from(registrationInfo.credentialID).toString('base64url'),
-          credentialPublicKey: Buffer.from(registrationInfo.credentialPublicKey).toString('base64url'),
-          counter: registrationInfo.counter,
+          credentialID: finalCredentialID,
+          credentialPublicKey: finalPublicKey,
+          counter: counter || 0,
+          credentialDeviceType: registrationInfo.credentialDeviceType,
+          credentialBackedUp: registrationInfo.credentialBackedUp,
           transports: body.response.transports || [],
           deviceName: body.deviceName || 'Unknown Device',
         };
@@ -1165,7 +1204,7 @@ export class AuthService {
     } else {
       // Existing authenticator - verify as authentication
       const verification = await verifyAuthenticationResponse({
-        response: bodyForLib,
+        response: { ...bodyForLib, clientExtensionResults: {} },
         expectedChallenge: storedChallenge.challenge,
         expectedOrigin: this.getOrigin(),
         expectedRPID: this.getRpId(),
@@ -1173,10 +1212,10 @@ export class AuthService {
           credentialID: authenticator.credentialID,
           credentialPublicKey: Buffer.from(authenticator.credentialPublicKey, 'base64url'),
           counter: authenticator.counter,
-          transports: authenticator.transports as any[],
+          transports: authenticator.transports as AuthenticatorTransport[],
         },
         requireUserVerification: true,
-      });
+      } as any);
 
       if (!verification.verified) {
         throw new Error('Authentication verification failed');
@@ -1238,7 +1277,7 @@ export class AuthService {
 
     // Log options for debugging
     this.logger.log(`Authentication options generated:`, {
-      rpId: options.rpID,
+      rpId: options.rpId,
       allowCredentialsCount: 0,
       userVerification: 'preferred',
       challengeLength: options.challenge?.length || 0,

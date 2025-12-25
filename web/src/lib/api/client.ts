@@ -68,7 +68,10 @@ export class ApiClient {
               import('@/lib/trpc/client').then(({ trpc }) => {
                 trpc.auth.clearCookies.mutate().catch((e: any) => {
                   // Silently fail - we've already cleared client-side cookies
-                  console.error('Failed to clear server cookies on 401:', e);
+                  // Only log if it's not a 401 (expected when not authenticated)
+                  if (!isUnauthorizedError(e)) {
+                    console.error('Failed to clear server cookies:', e);
+                  }
                 });
               }).catch(() => {
                 // Silently fail if import fails

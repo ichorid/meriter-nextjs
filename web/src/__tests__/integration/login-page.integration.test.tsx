@@ -195,7 +195,7 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <NextIntlClientProvider locale="en" messages={mockMessages}>
+        <NextIntlClientProvider locale="en" messages={mockMessages} timeZone="UTC">
           <AppModeProvider>
             <AuthProvider>
               {children}

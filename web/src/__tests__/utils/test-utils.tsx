@@ -90,7 +90,7 @@ export function renderWithProviders(
     return (
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
-          <NextIntlClientProvider locale={locale} messages={messages}>
+          <NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC">
             <AuthContext.Provider value={defaultAuthValue}>
               {children}
             </AuthContext.Provider>
@@ -120,7 +120,7 @@ export function createTestWrapper(options: CustomRenderOptions = {}) {
     return (
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
-          <NextIntlClientProvider locale={locale} messages={messages}>
+          <NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC">
             <AuthContext.Provider value={defaultAuthValue}>
               {children}
             </AuthContext.Provider>

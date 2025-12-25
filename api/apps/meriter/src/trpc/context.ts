@@ -261,6 +261,7 @@ export async function createContext(opts: CreateContextOptions) {
     voteCommentResolverService,
     commentEnrichmentService,
     connection,
+    configService,
   };
 }
 

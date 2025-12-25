@@ -382,7 +382,7 @@ export class PermissionRuleEngine {
 
     // Check participantsCannotVoteForLead
     if (conditions.participantsCannotVoteForLead && action === ActionType.VOTE) {
-      if (context?.authorRole === 'lead' && context?.sharedTeamCommunities?.length > 0) {
+      if (context?.authorRole === 'lead' && (context?.sharedTeamCommunities?.length ?? 0) > 0) {
         return false;
       }
     }

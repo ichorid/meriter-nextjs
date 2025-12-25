@@ -519,7 +519,7 @@ export const votesRouter = router({
 
       // Get updated wallet balance
       const wallet = await ctx.walletService.getWallet(beneficiaryId, targetCommunityId);
-      const balance = wallet?.balance || 0;
+      const balance = wallet ? wallet.getBalance() : 0;
 
       return {
         amount,
@@ -569,7 +569,7 @@ export const votesRouter = router({
       }
 
       // Get current score
-      const currentScore = comment.getScore();
+      const currentScore = comment.getScore;
       if (currentScore <= 0) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
@@ -596,14 +596,14 @@ export const votesRouter = router({
       let publicationId: string | null = null;
       let currentComment = comment;
       let depth = 0;
-      while (currentComment.getTargetType() === 'comment' && depth < 20) {
-        const parentComment = await ctx.commentService.getComment(currentComment.getTargetId());
+      while (currentComment.getTargetType === 'comment' && depth < 20) {
+        const parentComment = await ctx.commentService.getComment(currentComment.getTargetId);
         if (!parentComment) break;
         currentComment = parentComment;
         depth++;
       }
-      if (currentComment.getTargetType() === 'publication') {
-        publicationId = currentComment.getTargetId();
+      if (currentComment.getTargetType === 'publication') {
+        publicationId = currentComment.getTargetId;
       }
 
       if (!publicationId) {
@@ -639,7 +639,7 @@ export const votesRouter = router({
 
       // Get updated wallet balance
       const wallet = await ctx.walletService.getWallet(beneficiaryId, targetCommunityId);
-      const balance = wallet?.balance || 0;
+      const balance = wallet ? wallet.getBalance() : 0;
 
       return {
         amount,

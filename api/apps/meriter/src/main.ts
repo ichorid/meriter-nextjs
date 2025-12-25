@@ -7,7 +7,29 @@ import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 import { ApiResponseInterceptor } from './common/interceptors/api-response.interceptor';
 import { TrpcService } from './trpc/trpc.service';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
+import { join } from 'path';
+import { readFileSync } from 'fs';
 declare const module: any;
+
+// Explicitly load .env file before NestJS starts
+// This ensures environment variables are available in process.env
+// NestJS ConfigModule will also load it, but this ensures it's loaded early
+try {
+  const envPath = join(__dirname, '../../../../.env');
+  const envContent = readFileSync(envPath, 'utf8');
+  envContent.split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+      const [key, ...valueParts] = trimmed.split('=');
+      const value = valueParts.join('=').trim();
+      if (key && !process.env[key]) {
+        process.env[key] = value;
+      }
+    }
+  });
+  } catch (_error) {
+    // .env file might not exist, that's okay - ConfigModule will handle it
+  }
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -59,7 +81,7 @@ async function bootstrap() {
   // In production, Caddy handles routing and CORS is not needed
   if (!isProduction) {
     app.enableCors({
-      origin: ['http://localhost:8001', 'http://localhost:3000', 'http://localhost:8080'],
+      origin: ['http://localhost:8001', 'http://localhost:3000', 'http://localhost:8080', 'http://127.0.0.1:8001', 'http://127.0.0.1:3000'],
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],

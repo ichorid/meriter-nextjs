@@ -70,8 +70,16 @@ export function useRuntimeConfig(): {
         
         // Data actually changed, update ref and return new config
         const newConfig = data || null;
-        console.log('[useRuntimeConfig] Raw data:', data);
-        console.log('[useRuntimeConfig] Processed config:', newConfig);
+        if (process.env.NODE_ENV === 'development') {
+            console.log('[useRuntimeConfig] Raw data:', JSON.stringify(data, null, 2));
+            console.log('[useRuntimeConfig] Raw data type:', typeof data);
+            console.log('[useRuntimeConfig] Raw data keys:', data ? Object.keys(data) : 'null');
+            if (data && typeof data === 'object') {
+                console.log('[useRuntimeConfig] OAuth config:', JSON.stringify((data as any).oauth, null, 2));
+                console.log('[useRuntimeConfig] Authn config:', JSON.stringify((data as any).authn, null, 2));
+            }
+            console.log('[useRuntimeConfig] Processed config:', JSON.stringify(newConfig, null, 2));
+        }
         prevDataRef.current = { data: newConfig, key: currentKey };
         return newConfig;
     }, [data]);

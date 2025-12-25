@@ -1,31 +1,32 @@
 // Auth React Query hooks
 import { useQueryClient } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
+import { isUnauthorizedError } from '@/lib/utils/auth-errors';
 
 export const useMe = () => {
   // Use tRPC for getMe - provides automatic type safety
+  // Use throwOnError: false to handle errors in AuthContext instead of throwing
   return trpc.users.getMe.useQuery(undefined, {
     // Use longer staleTime for auth data since it doesn't change frequently during a session
     staleTime: 5 * 60 * 1000, // 5 minutes - auth data stays fresh for 5 minutes
     // Don't refetch on mount if data is fresh - prevents excessive refetches on navigation
     refetchOnMount: false,
+    // Don't throw errors - handle them in AuthContext
+    throwOnError: false,
     // Don't refetch on reconnect if query failed with 401
     refetchOnReconnect: (query) => {
-      const lastError = query.state.error as any;
-      const errorStatus = lastError?.data?.httpStatus || lastError?.details?.status || lastError?.code;
-      if (errorStatus === 401 || errorStatus === 'HTTP_401' || errorStatus === 'UNAUTHORIZED') {
-        return false;
-      }
-      return true;
+      return !isUnauthorizedError(query.state.error);
     },
-    // Retry once on 401 to handle cases where cookie was just set
-    retry: (failureCount, error: any) => {
-      const errorStatus = error?.data?.httpStatus || error?.details?.status || error?.code;
-      const is401 = errorStatus === 401 || errorStatus === 'HTTP_401' || errorStatus === 'UNAUTHORIZED';
-      // Don't retry on 401 errors (token is invalid/expired)
-      if (is401) return false;
+    // Don't retry on 401 errors (token is invalid/expired)
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error)) return false;
       // Retry other errors up to 1 time
       return failureCount < 1;
+    },
+    // Suppress error toast for 401 errors - they're expected when not authenticated
+    // AuthContext handles 401 errors appropriately
+    meta: {
+      skipErrorToast: true,
     },
   });
 };

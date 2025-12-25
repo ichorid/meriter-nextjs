@@ -200,42 +200,44 @@ export const searchRouter = router({
             polls = allPolls.flat().map((p) => p.toSnapshot());
           }
 
-          polls.forEach((poll) => {
-            if (query) {
-              const searchText = `${poll.question || poll.title || ''} ${
-                poll.description || ''
-              }`.toLowerCase();
-              if (!searchText.includes(query.toLowerCase())) {
+          await Promise.all(
+            polls.map(async (poll) => {
+              if (query) {
+                const searchText = `${poll.question || poll.title || ''} ${
+                  poll.description || ''
+                }`.toLowerCase();
+                if (!searchText.includes(query.toLowerCase())) {
+                  return;
+                }
+              }
+
+              // Filter by author if provided
+              if (authorId && poll.authorId !== authorId) {
                 return;
               }
-            }
 
-            // Filter by author if provided
-            if (authorId && poll.authorId !== authorId) {
-              return;
-            }
+              // Get community info
+              const community = poll.communityId
+                ? await ctx.communityService.getCommunity(poll.communityId)
+                : null;
 
-            // Get community info
-            const community = poll.communityId
-              ? ctx.communityService.getCommunity(poll.communityId)
-              : null;
-
-            results.push({
-              type: 'polls',
-              id: poll.id,
-              title: poll.question || poll.title || 'Untitled Poll',
-              description: poll.description,
-              createdAt: poll.createdAt?.toISOString() || new Date().toISOString(),
-              url: `/meriter/communities/${poll.communityId}/polls/${poll.id}`,
-              community: community
-                ? {
-                    id: community.id,
-                    name: community.name || 'Unknown',
-                    avatarUrl: community.avatarUrl,
-                  }
-                : undefined,
-            });
-          });
+              results.push({
+                type: 'polls',
+                id: poll.id,
+                title: poll.question || poll.title || 'Untitled Poll',
+                description: poll.description,
+                createdAt: poll.createdAt?.toISOString() || new Date().toISOString(),
+                url: `/meriter/communities/${poll.communityId}/polls/${poll.id}`,
+                community: community
+                  ? {
+                      id: community.id,
+                      name: community.name || 'Unknown',
+                      avatarUrl: community.avatarUrl,
+                    }
+                  : undefined,
+              });
+            })
+          );
         } catch (_error) {
           // Continue with other content types if polls search fails
         }
