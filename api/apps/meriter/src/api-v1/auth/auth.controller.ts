@@ -9,6 +9,7 @@ import {
   Logger,
   ForbiddenException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { UserGuard } from '../../user.guard';
 import { CookieManager } from '../common/utils/cookie-manager.util';
@@ -32,7 +33,10 @@ import { UnauthorizedError, InternalServerError } from '../../common/exceptions/
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
-  constructor(private readonly authService: AuthService) { }
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) { }
 
   // Telegram authentication endpoints removed: Telegram is fully disabled in this project.
 
@@ -86,7 +90,8 @@ export class AuthController {
   async authenticateFake(@Req() req: any, @Res() res: any) {
     try {
       // Check if fake data mode is enabled
-      if (process.env.FAKE_DATA_MODE !== 'true') {
+      const fakeDataMode = this.configService.get<string>('FAKE_DATA_MODE');
+      if (fakeDataMode !== 'true') {
         throw new ForbiddenException('Fake data mode is not enabled');
       }
 
@@ -154,7 +159,8 @@ export class AuthController {
   async authenticateFakeSuperadmin(@Req() req: any, @Res() res: any) {
     try {
       // Check if fake data mode is enabled
-      if (process.env.FAKE_DATA_MODE !== 'true') {
+      const fakeDataMode = this.configService.get<string>('FAKE_DATA_MODE');
+      if (fakeDataMode !== 'true') {
         throw new ForbiddenException('Fake data mode is not enabled');
       }
 

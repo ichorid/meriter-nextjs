@@ -54,9 +54,16 @@ export function useInfiniteMyPublications(
             pageSize,
         },
         {
-            getNextPageParam: (lastPage) => {
-                if (lastPage.pagination.hasNext) {
-                    return lastPage.pagination.page + 1;
+            getNextPageParam: (lastPage, allPages) => {
+                // Backend returns { data, total, skip, limit }
+                // If we got a full page (data.length === pageSize), there might be more
+                // Calculate current page from all pages fetched so far
+                if (!lastPage || !lastPage.data) {
+                    return undefined;
+                }
+                const currentPage = allPages.length;
+                if (lastPage.data.length === pageSize) {
+                    return currentPage + 1;
                 }
                 return undefined;
             },
@@ -85,9 +92,16 @@ export function useInfinitePublicationsByCommunity(
             pageSize,
         },
         {
-            getNextPageParam: (lastPage) => {
-                if (lastPage.pagination.hasNext) {
-                    return lastPage.pagination.page + 1;
+            getNextPageParam: (lastPage, allPages) => {
+                // Backend returns { data, total, skip, limit }
+                // If we got a full page (data.length === pageSize), there might be more
+                // Calculate current page from all pages fetched so far
+                if (!lastPage || !lastPage.data) {
+                    return undefined;
+                }
+                const currentPage = allPages.length;
+                if (lastPage.data.length === pageSize) {
+                    return currentPage + 1;
                 }
                 return undefined;
             },

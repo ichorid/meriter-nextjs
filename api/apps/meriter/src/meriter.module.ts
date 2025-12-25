@@ -24,10 +24,11 @@ import { TrpcModule } from './trpc/trpc.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [
-        join(process.cwd(), '.env'), // Root .env file (when running from root)
-        join(__dirname, '../../../../.env'), // Root .env from compiled location
-        join(__dirname, '../../../.env'), // API .env file (if exists)
-        '.env', // Current working directory .env (fallback)
+        join(process.cwd(), '../.env'),      // Root .env when running from api/ directory
+        join(process.cwd(), '.env'),          // api/.env (if exists)
+        join(__dirname, '../../../../.env'),  // Root .env from compiled location
+        join(__dirname, '../../../.env'),     // API .env from compiled location
+        '.env',                               // Current working directory .env (fallback)
       ],
       load: [configuration],
       validationSchema,

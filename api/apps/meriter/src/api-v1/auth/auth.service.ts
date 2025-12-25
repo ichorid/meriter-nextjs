@@ -49,7 +49,9 @@ export class AuthService {
   ) { }
 
   private isFakeDataMode(): boolean {
-    return process.env.FAKE_DATA_MODE === 'true';
+    // ConfigService is injected via constructor, use it instead of process.env
+    // This ensures proper environment variable loading in all contexts (local, Docker, production)
+    return this.configService.get<string>('FAKE_DATA_MODE') === 'true';
   }
 
   // Telegram authentication methods removed: Telegram is fully disabled in this project.
