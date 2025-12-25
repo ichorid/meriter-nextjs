@@ -246,7 +246,7 @@ async function createVoteLogic(
   }
 
   // Determine direction
-  let direction: 'up' | 'down' = input.direction || (quotaAmount > 0 ? 'up' : 'down');
+  const direction: 'up' | 'down' = input.direction || (quotaAmount > 0 ? 'up' : 'down');
 
   // Validate quota cannot be used for downvotes
   if (direction === 'down' && quotaAmount > 0) {
@@ -391,6 +391,7 @@ export const votesRouter = router({
    */
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     .mutation(async ({ ctx, input }) => {
       // TODO: Implement vote deletion logic
       // This should check permissions and handle wallet refunds if needed

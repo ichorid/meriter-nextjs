@@ -4,7 +4,6 @@ import { TRPCError } from '@trpc/server';
 import { CreateCommentDtoSchema, UpdateCommentDtoSchema } from '@meriter/shared-types';
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
-import { NotFoundError, ForbiddenError } from '../../common/exceptions/api.exceptions';
 import { VoteTransactionCalculatorService } from '../../api-v1/common/services/vote-transaction-calculator.service';
 import { UserFormatter } from '../../api-v1/common/utils/user-formatter.util';
 import { VoteTransactionCalculatorService } from '../../api-v1/common/services/vote-transaction-calculator.service';
@@ -24,7 +23,7 @@ export const commentsRouter = router({
 
       try {
         comment = await ctx.commentService.getComment(input.id);
-      } catch (err) {
+      } catch (_err) {
         // Comment not found, might be a vote
       }
 
@@ -32,7 +31,7 @@ export const commentsRouter = router({
         // Try to get as vote
         try {
           vote = await ctx.voteService.getVoteById(input.id);
-        } catch (err) {
+        } catch (_err) {
           // Vote not found either
         }
       }
@@ -501,7 +500,7 @@ export const commentsRouter = router({
                 communityId: publication.getCommunityId.getValue(),
               });
             }
-          } catch (error) {
+          } catch (_error) {
             // Silently fail - publication might not exist
           }
         }),
@@ -509,7 +508,7 @@ export const commentsRouter = router({
 
       // Enrich comments with author metadata and publication data using EntityMappers
       const enrichedComments = comments.map((comment) => {
-        const authorId = comment.getAuthorId.getValue();
+        const _authorId = comment.getAuthorId.getValue();
 
         // Get publication data if comment targets a publication
         let publicationSlug: string | undefined;
@@ -575,7 +574,7 @@ export const commentsRouter = router({
           // For regular comments (legacy), try to get votes (though this might not work anymore)
           commentVotes = await ctx.voteService.getTargetVotes('comment', input.id);
         }
-      } catch (error) {
+      } catch (_error) {
         // Silently fail - votes might not exist
       }
 
@@ -598,7 +597,7 @@ export const commentsRouter = router({
         if (vote) {
           totalReceived = await ctx.voteService.getPositiveSumForVote(input.id);
         }
-      } catch (err) {
+      } catch (_err) {
         // Silently fail
       }
       try {
@@ -611,7 +610,7 @@ export const commentsRouter = router({
             input.id,
           );
         }
-      } catch (err) {
+      } catch (_err) {
         // Silently fail
       }
 

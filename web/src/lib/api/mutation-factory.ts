@@ -4,8 +4,8 @@
  * with configurable invalidations and error handling
  */
 
-import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
-import { z, ZodTypeAny } from 'zod';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ZodTypeAny } from 'zod';
 import {
     invalidateWallet,
     invalidatePublications,

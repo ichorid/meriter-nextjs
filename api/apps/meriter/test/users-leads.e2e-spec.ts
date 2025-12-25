@@ -8,9 +8,9 @@ import { UserCommunityRoleService } from '../src/domain/services/user-community-
 import { CommunityService } from '../src/domain/services/community.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { UserDocument } from '../src/domain/models/user/user.schema';
+import { UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { CommunityDocument } from '../src/domain/models/community/community.schema';
 import { trpcQuery } from './helpers/trpc-test-helper';
 import { uid } from 'uid';
 
@@ -36,9 +36,8 @@ describe('Users - Get All Leads', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let userService: UserService;
-  let userCommunityRoleService: UserCommunityRoleService;
-  let communityService: CommunityService;
+  let _userService: UserService;
+  let _communityService: CommunityService;
 
   let userModel: Model<UserDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
@@ -74,11 +73,11 @@ describe('Users - Get All Leads', () => {
     // Wait for onModuleInit to complete
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    userService = app.get<UserService>(UserService);
-    userCommunityRoleService = app.get<UserCommunityRoleService>(
+    _userService = app.get<UserService>(UserService);
+    const _userCommunityRoleService = app.get<UserCommunityRoleService>(
       UserCommunityRoleService,
     );
-    communityService = app.get<CommunityService>(CommunityService);
+    _communityService = app.get<CommunityService>(CommunityService);
 
     connection = app.get<Connection>(getConnectionToken());
     userModel = connection.model('User');

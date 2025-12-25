@@ -40,10 +40,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let publicationModel: Model<PublicationDocument>;
-  let pollModel: Model<PollDocument>;
   let quotaUsageModel: Model<QuotaUsageDocument>;
-  let walletModel: Model<WalletDocument>;
   let userCommunityRoleService: UserCommunityRoleService;
   let walletService: WalletService;
 
@@ -73,10 +70,10 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     communityModel = connection.model<CommunityDocument>(Community.name);
     userModel = connection.model<UserDocument>(User.name);
-    publicationModel = connection.model<PublicationDocument>(Publication.name);
-    pollModel = connection.model<PollDocument>(Poll.name);
+    const _publicationModel = connection.model<PublicationDocument>(Publication.name);
+    const _pollModel = connection.model<PollDocument>(Poll.name);
     quotaUsageModel = connection.model<QuotaUsageDocument>(QuotaUsage.name);
-    walletModel = connection.model<WalletDocument>(Wallet.name);
+    const _walletModel = connection.model<WalletDocument>(Wallet.name);
 
     testUserId = uid();
     testLeadId = uid();

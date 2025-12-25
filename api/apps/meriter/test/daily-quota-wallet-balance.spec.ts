@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { WalletService } from '../src/domain/services/wallet.service';
@@ -40,15 +39,12 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
   
-  let communityService: CommunityService;
+  let _communityService: CommunityService;
   let walletService: WalletService;
-  let voteService: VoteService;
   let userCommunityRoleService: UserCommunityRoleService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let voteModel: Model<VoteDocument>;
-  let walletModel: Model<WalletDocument>;
   let publicationModel: Model<PublicationDocument>;
 
   let testUserId: string;
@@ -73,17 +69,17 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
     await app.init();
 
     // Get services
-    communityService = app.get<CommunityService>(CommunityService);
+    _communityService = app.get<CommunityService>(CommunityService);
     walletService = app.get<WalletService>(WalletService);
-    voteService = app.get<VoteService>(VoteService);
+    const _voteService = app.get<VoteService>(VoteService);
     userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     
     connection = app.get(getConnectionToken());
     
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
-    voteModel = connection.model<VoteDocument>(VoteSchemaClass.name);
-    walletModel = connection.model<WalletDocument>(WalletSchemaClass.name);
+    const _voteModel = connection.model<VoteDocument>(VoteSchemaClass.name);
+    const _walletModel = connection.model<WalletDocument>(WalletSchemaClass.name);
     publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
 
     // Initialize test IDs (will be used in beforeEach)

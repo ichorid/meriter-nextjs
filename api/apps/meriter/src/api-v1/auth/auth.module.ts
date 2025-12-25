@@ -37,9 +37,10 @@ function getGoogleStrategy() {
 
   // All credentials present - try to load strategy
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { GoogleStrategy } = require('./strategies/google.strategy');
     return GoogleStrategy;
-  } catch (e) {
+  } catch (_e) {
     // Strategy file doesn't exist or has errors - skip it
     return null;
   }

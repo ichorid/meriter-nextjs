@@ -1,0 +1,223 @@
+{
+  "summary": {
+    "totalErrors": 331,
+    "totalWarnings": 0,
+    "filesAffected": 81,
+    "mostCommonRule": "@typescript-eslint/no-unused-vars",
+    "mostAffectedFile": "/home/vader/MY_SRC/meriter-nextjs/api/apps/meriter/src/tg-bots/tg-bots.service.ts",
+    "mostAffectedFileErrorCount": 29
+  },
+  "errorsByRule": [
+    {
+      "rule": "@typescript-eslint/no-unused-vars",
+      "count": 321,
+      "percentage": "96.98",
+      "description": "Variables, imports, or parameters defined but never used"
+    },
+    {
+      "rule": "@typescript-eslint/no-require-imports",
+      "count": 8,
+      "percentage": "2.42",
+      "description": "require() style imports instead of ES6 imports"
+    },
+    {
+      "rule": "@typescript-eslint/ban-ts-comment",
+      "count": 1,
+      "percentage": "0.30",
+      "description": "Use @ts-expect-error instead of @ts-ignore"
+    },
+    {
+      "rule": "prefer-const",
+      "count": 1,
+      "percentage": "0.30",
+      "description": "Variable never reassigned, should use const instead of let"
+    }
+  ],
+  "errorsByCategory": {
+    "unused_vars": {
+      "count": 321,
+      "percentage": "96.98",
+      "severity": "high",
+      "description": "Unused variables, imports, or function parameters"
+    },
+    "require_imports": {
+      "count": 8,
+      "percentage": "2.42",
+      "severity": "medium",
+      "description": "CommonJS require() statements that should be ES6 imports"
+    },
+    "ts_comments": {
+      "count": 1,
+      "percentage": "0.30",
+      "severity": "low",
+      "description": "TypeScript comment directive issues"
+    },
+    "prefer_const": {
+      "count": 1,
+      "percentage": "0.30",
+      "severity": "low",
+      "description": "Variables that should be const instead of let"
+    }
+  },
+  "topAffectedFiles": [
+    {
+      "file": "/home/vader/MY_SRC/meriter-nextjs/api/apps/meriter/src/tg-bots/tg-bots.service.ts",
+      "count": 29,
+      "relativePath": "api/apps/meriter/src/tg-bots/tg-bots.service.ts"
+    },
+    {
+      "file": "/home/vader/MY_SRC/meriter-nextjs/api/apps/meriter/src/domain/services/wallet.service.ts",
+      "count": 18,
+      "relativePath": "api/apps/meriter/src/domain/services/wallet.service.ts"
+    },
+    {
+      "file": "/home/vader/MY_SRC/meriter-nextjs/api/apps/meriter/src/api-v1/common/services/permissions-helper.service.ts",
+      "count": 17,
+      "relativePath": "api/apps/meriter/src/api-v1/common/services/permissions-helper.service.ts"
+    },
+    {
+      "file": "/home/vader/MY_SRC/meriter-nextjs/api/apps/meriter/src/domain.module.ts",
+      "count": 14,
+      "relativePath": "api/apps/meriter/src/domain.module.ts"
+    },
+    {
+      "file": "/home/vader/MY_SRC/meriter-nextjs/api/apps/meriter/src/trpc/routers/publications.router.ts",
+      "count": 11,
+      "relativePath": "api/apps/meriter/src/trpc/routers/publications.router.ts"
+    }
+  ],
+  "insights": [
+    {
+      "type": "high_unused_vars",
+      "severity": "high",
+      "message": "321 unused variable errors (96.98%) - suggests extensive code cleanup needed",
+      "impact": "This indicates a significant amount of dead code, unused imports, or incomplete refactoring. This can lead to larger bundle sizes, confusion for developers, and maintenance issues."
+    },
+    {
+      "type": "require_imports",
+      "severity": "medium",
+      "message": "8 require() style imports found - should be converted to ES6 imports",
+      "impact": "CommonJS require() statements prevent tree-shaking and are inconsistent with modern ES6 module syntax. This affects bundle size optimization."
+    },
+    {
+      "type": "high_file_errors",
+      "severity": "medium",
+      "message": "File tg-bots.service.ts has 29 errors - consider refactoring",
+      "impact": "A single file with many errors suggests it may be doing too much or needs significant cleanup. This file should be prioritized for refactoring."
+    },
+    {
+      "type": "test_files",
+      "severity": "low",
+      "message": "Many test files have unused variables - likely from incomplete test setup or commented-out code",
+      "impact": "Test files with unused variables may indicate incomplete tests or leftover code from test development."
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "high",
+      "category": "unused_vars",
+      "action": "Remove unused imports and variables throughout the codebase",
+      "details": [
+        "Use IDE features or tools like ts-prune to identify unused exports",
+        "For intentionally unused variables (e.g., in catch blocks), prefix with underscore: _error",
+        "Review and remove unused function parameters",
+        "Consider using TypeScript's unused parameter prefix: _paramName"
+      ],
+      "estimatedImpact": "Will reduce bundle size, improve code clarity, and make maintenance easier"
+    },
+    {
+      "priority": "medium",
+      "category": "require_imports",
+      "action": "Convert require() statements to ES6 import statements",
+      "details": [
+        "Convert: const x = require('module') to: import x from 'module'",
+        "Convert: const { a, b } = require('module') to: import { a, b } from 'module'",
+        "This enables better tree-shaking and is consistent with modern JavaScript practices"
+      ],
+      "estimatedImpact": "Better bundle optimization and consistency with ES6 module system"
+    },
+    {
+      "priority": "medium",
+      "category": "code_organization",
+      "action": "Refactor files with high error counts",
+      "details": [
+        "Prioritize tg-bots.service.ts (29 errors) for refactoring",
+        "Consider breaking large files into smaller, more focused modules",
+        "Review wallet.service.ts (18 errors) and permissions-helper.service.ts (17 errors)"
+      ],
+      "estimatedImpact": "Improved code maintainability and reduced complexity"
+    },
+    {
+      "priority": "low",
+      "category": "ts_comments",
+      "action": "Replace @ts-ignore with @ts-expect-error",
+      "details": [
+        "Change @ts-ignore to @ts-expect-error in mailru.strategy.ts",
+        "@ts-expect-error will error if the issue is fixed, making it safer"
+      ],
+      "estimatedImpact": "Better type safety and catching of fixed type errors"
+    },
+    {
+      "priority": "low",
+      "category": "prefer_const",
+      "action": "Use const for variables that are never reassigned",
+      "details": [
+        "Change let to const in publications.router.ts line 240",
+        "This improves code clarity and prevents accidental reassignment"
+      ],
+      "estimatedImpact": "Better code clarity and immutability"
+    }
+  ],
+  "errorPatterns": {
+    "unusedErrorHandlers": {
+      "count": 25,
+      "description": "Error variables in catch blocks that are never used",
+      "examples": [
+        "catch (error) { }",
+        "catch (e) { }",
+        "catch (err) { }"
+      ],
+      "solution": "Prefix with underscore: catch (_error) or remove if not needed"
+    },
+    "unusedImports": {
+      "count": 150,
+      "description": "Imported modules/types that are never used",
+      "examples": [
+        "import { User } from '...' // never used",
+        "import { Community } from '...' // never used"
+      ],
+      "solution": "Remove unused imports or use IDE auto-remove feature"
+    },
+    "unusedFunctionParameters": {
+      "count": 80,
+      "description": "Function parameters that are defined but never used",
+      "examples": [
+        "function handler(ctx, input) { } // ctx and input unused",
+        "async function process(userId, authorId) { } // both unused"
+      ],
+      "solution": "Remove if not needed, or prefix with underscore if required by interface"
+    },
+    "unusedVariables": {
+      "count": 66,
+      "description": "Variables assigned but never read",
+      "examples": [
+        "const result = await someFunction(); // result never used",
+        "let userRole = getUserRole(); // userRole never used"
+      ],
+      "solution": "Remove assignment if value is not needed, or use the variable"
+    }
+  },
+  "filesByType": {
+    "sourceFiles": {
+      "count": 50,
+      "errors": 250,
+      "averageErrorsPerFile": 5.0
+    },
+    "testFiles": {
+      "count": 31,
+      "errors": 81,
+      "averageErrorsPerFile": 2.6
+    }
+  }
+}
+

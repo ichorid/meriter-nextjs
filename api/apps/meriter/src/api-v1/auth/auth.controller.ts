@@ -9,27 +9,10 @@ import {
   Logger,
   ForbiddenException,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { UserGuard } from '../../user.guard';
 import { CookieManager } from '../common/utils/cookie-manager.util';
-import { ApiError, UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
-import { TelegramAuthDataSchema, TelegramWebAppDataSchema } from '../../../../../../libs/shared-types/dist/index';
-import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
-
-interface TelegramAuthData {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
-  auth_date: number;
-  hash: string;
-}
-
-interface TelegramWebAppData {
-  initData: string;
-}
+import { UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
 
 /**
  * @deprecated Some endpoints have been migrated to tRPC.

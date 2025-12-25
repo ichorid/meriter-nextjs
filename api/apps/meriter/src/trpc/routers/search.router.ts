@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
-import { TRPCError } from '@trpc/server';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 
 export const searchRouter = router({
@@ -32,8 +31,8 @@ export const searchRouter = router({
         tags,
         authorId,
         communityId,
-        dateFrom,
-        dateTo,
+        dateFrom: _dateFrom,
+        dateTo: _dateTo,
         page = 1,
         pageSize = 20,
       } = input;
@@ -141,7 +140,7 @@ export const searchRouter = router({
                 : undefined,
             });
           }
-        } catch (error) {
+        } catch (_error) {
           // Continue with other content types if publications search fails
         }
       }
@@ -168,7 +167,7 @@ export const searchRouter = router({
               url: `/meriter/communities/${comm.id}`,
             });
           });
-        } catch (error) {
+        } catch (_error) {
           // Continue with other content types if communities search fails
         }
       }
@@ -237,7 +236,7 @@ export const searchRouter = router({
                 : undefined,
             });
           });
-        } catch (error) {
+        } catch (_error) {
           // Continue with other content types if polls search fails
         }
       }
@@ -263,7 +262,7 @@ export const searchRouter = router({
               });
             });
           }
-        } catch (error) {
+        } catch (_error) {
           // Continue if user search fails
         }
       }

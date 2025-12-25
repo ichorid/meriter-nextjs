@@ -21,7 +21,7 @@ export class CookieManager {
         const url = new URL(process.env.APP_URL);
         const hostname = url.hostname.split(':')[0]; // Remove port if present
         return hostname === 'localhost' ? undefined : hostname;
-      } catch (error) {
+      } catch (_error) {
         // If APP_URL is not a valid URL, return undefined
         return undefined;
       }
@@ -88,7 +88,7 @@ export class CookieManager {
           expires: new Date(0),
           maxAge: 0,
         });
-      } catch (error) {
+      } catch (_error) {
         // Ignore errors when clearing - some combinations may fail
       }
     }
@@ -109,7 +109,7 @@ export class CookieManager {
         expires: new Date(0),
         maxAge: 0,
       });
-    } catch (error) {
+    } catch (_error) {
       // Ignore errors
     }
   }
@@ -180,7 +180,7 @@ export class CookieManager {
             expires: new Date(0),
             maxAge: 0,
           });
-        } catch (error) {
+        } catch (_error) {
           // Ignore errors when clearing - some combinations may fail
         }
       }
@@ -204,7 +204,7 @@ export class CookieManager {
             expires: new Date(0),
             maxAge: 0,
           });
-        } catch (error) {
+        } catch (_error) {
           // Ignore errors
         }
       }

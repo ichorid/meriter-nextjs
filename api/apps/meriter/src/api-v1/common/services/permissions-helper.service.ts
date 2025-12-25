@@ -8,7 +8,7 @@ import { UserService } from '../../../domain/services/user.service';
 import { VoteService } from '../../../domain/services/vote.service';
 import { VoteCommentResolverService } from './vote-comment-resolver.service';
 import { ResourcePermissions } from '../interfaces/resource-permissions.interface';
-import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_PARTICIPANT, COMMUNITY_ROLE_VIEWER } from '../../../domain/common/constants/roles.constants';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_VIEWER } from '../../../domain/common/constants/roles.constants';
 
 /**
  * Service to calculate and batch-calculate permissions for resources
@@ -98,7 +98,7 @@ export class PermissionsHelperService {
     const isAuthor = authorId === userId;
     const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== authorId);
     const isBeneficiary = hasBeneficiary && beneficiaryId === userId;
-    const isEffectiveBeneficiary = isBeneficiary || (isAuthor && !hasBeneficiary);
+    const _isEffectiveBeneficiary = isBeneficiary || (isAuthor && !hasBeneficiary);
 
     // Check permissions
     const canVote = await this.permissionService.canVote(userId, publicationId);
@@ -166,7 +166,7 @@ export class PermissionsHelperService {
 
     const authorId = comment.getAuthorId.getValue();
     const communityId = await this.commentService.resolveCommentCommunityId(commentId);
-    const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
+    const _userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
     const isAuthor = authorId === userId;
 
     // Check permissions
@@ -212,7 +212,7 @@ export class PermissionsHelperService {
             canVote = true;
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // If resolution fails, default to false
         canVote = false;
         voteDisabledReason = 'voteDisabled.commentVotingDisabled';
@@ -226,6 +226,7 @@ export class PermissionsHelperService {
       canEdit,
       canDelete,
       canComment,
+      voteDisabledReason: canVote ? undefined : voteDisabledReason,
       editDisabledReason: canEdit ? undefined : this.getCommentEditDisabledReason(comment, userId, authorId),
       deleteDisabledReason: canDelete ? undefined : 'Cannot delete comment',
     };
@@ -260,8 +261,8 @@ export class PermissionsHelperService {
 
     const authorId = poll.getAuthorId;
     const communityId = poll.getCommunityId;
-    const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
-    const isAuthor = authorId === userId;
+    const _userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
+    const _isAuthor = authorId === userId;
 
     // Check permissions
     const canEdit = await this.permissionService.canEditPoll(userId, pollId);
@@ -364,7 +365,7 @@ export class PermissionsHelperService {
     isBeneficiary: boolean,
     hasBeneficiary: boolean,
     isProject: boolean,
-    publicationId: string,
+    _publicationId: string,
   ): string {
     if (!user) {
       return 'voteDisabled.notLoggedIn';
@@ -431,8 +432,8 @@ export class PermissionsHelperService {
    */
   private getEditDisabledReason(
     publication: any,
-    userId: string,
-    authorId: string,
+    _userId: string,
+    _authorId: string,
   ): string | undefined {
     const metrics = publication.getMetrics;
     const metricsSnapshot = metrics.toSnapshot();
@@ -456,8 +457,8 @@ export class PermissionsHelperService {
    */
   private getDeleteDisabledReason(
     publication: any,
-    userId: string,
-    authorId: string,
+    _userId: string,
+    _authorId: string,
   ): string | undefined {
     const metrics = publication.getMetrics;
     const metricsSnapshot = metrics.toSnapshot();
@@ -480,8 +481,8 @@ export class PermissionsHelperService {
    */
   private getCommentEditDisabledReason(
     comment: any,
-    userId: string,
-    authorId: string,
+    _userId: string,
+    _authorId: string,
   ): string | undefined {
     const metrics = comment.getMetrics;
     const metricsSnapshot = metrics.toSnapshot();

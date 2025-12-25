@@ -31,10 +31,9 @@ describe('QuotaResetService', () => {
   let connection: Connection;
 
   let quotaResetService: QuotaResetService;
-  let communityService: CommunityService;
-  let notificationService: NotificationService;
-  let userCommunityRoleService: UserCommunityRoleService;
-  let permissionService: PermissionService;
+  let _communityService: CommunityService;
+  let _notificationService: NotificationService;
+  let _permissionService: PermissionService;
   let schedulerRegistry: SchedulerRegistry;
 
   let communityModel: Model<CommunityDocument>;
@@ -65,10 +64,10 @@ describe('QuotaResetService', () => {
 
     // Get services
     quotaResetService = app.get<QuotaResetService>(QuotaResetService);
-    communityService = app.get<CommunityService>(CommunityService);
-    notificationService = app.get<NotificationService>(NotificationService);
-    userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
-    permissionService = app.get<PermissionService>(PermissionService);
+    _communityService = app.get<CommunityService>(CommunityService);
+    _notificationService = app.get<NotificationService>(NotificationService);
+    const _userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
+    _permissionService = app.get<PermissionService>(PermissionService);
     schedulerRegistry = app.get<SchedulerRegistry>(SchedulerRegistry);
 
     connection = app.get(getConnectionToken());

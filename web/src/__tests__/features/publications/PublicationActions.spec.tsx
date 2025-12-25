@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { PublicationActions } from '@/components/organisms/Publication/PublicationActions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommunity } from '@/hooks/api/useCommunities';

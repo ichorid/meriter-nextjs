@@ -10,7 +10,7 @@
  */
 
 import React from 'react';
-import { renderWithProviders, testUtils } from '../utils/test-utils';
+import { renderWithProviders } from '../utils/test-utils';
 import { AuthGuard, withAuthGuard, useAuthGuard } from '@/components/AuthGuard';
 import { useAuth } from '@/contexts/AuthContext';
 

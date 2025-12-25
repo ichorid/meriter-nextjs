@@ -8,7 +8,7 @@ import { PublicationService } from '../src/domain/services/publication.service';
 import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
 import { WalletService } from '../src/domain/services/wallet.service';
-import { Model, Connection } from 'mongoose';
+import { Model } from 'mongoose';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { Vote, VoteDocument } from '../src/domain/models/vote/vote.schema';
@@ -39,13 +39,11 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
   
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
-  let connection: Connection;
   
-  let communityService: CommunityService;
   let voteService: VoteService;
-  let publicationService: PublicationService;
-  let userService: UserService;
-  let walletService: WalletService;
+  let _publicationService: PublicationService;
+  let _userService: UserService;
+  let _walletService: WalletService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -60,8 +58,6 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
   let visionCommunityId: string;
   let marathonPubId: string;
   let visionPubId: string;
-  let marathonVoteId: string;
-  let visionVoteId: string;
 
   beforeAll(async () => {
     testDb = new TestDatabaseHelper();
@@ -78,13 +74,13 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
     app = moduleFixture.createNestApplication();
     await app.init();
 
-    communityService = app.get<CommunityService>(CommunityService);
+    const _communityService = app.get<CommunityService>(CommunityService);
     voteService = app.get<VoteService>(VoteService);
-    publicationService = app.get<PublicationService>(PublicationService);
-    userService = app.get<UserService>(UserService);
-    walletService = app.get<WalletService>(WalletService);
+    _publicationService = app.get<PublicationService>(PublicationService);
+    _userService = app.get<UserService>(UserService);
+    _walletService = app.get<WalletService>(WalletService);
     
-    connection = app.get(getConnectionToken());
+    const _connection = app.get(getConnectionToken());
     
     communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
     userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
@@ -346,7 +342,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       });
 
       const voteId = voteResponse.id;
-      marathonVoteId = voteId;
+      const _marathonVoteId = voteId;
 
       // Now vote on the vote (comment) with quota only using testUserId2
       (global as any).testUserId = testUserId2;
@@ -447,7 +443,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       });
 
       const voteId = voteResponse.id;
-      visionVoteId = voteId;
+      const _visionVoteId = voteId;
 
       // Try to vote on the vote (comment) with quota
       const result = await trpcMutationWithError(app, 'votes.createWithComment', {

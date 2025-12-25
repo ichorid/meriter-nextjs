@@ -305,7 +305,7 @@ export const pollsRouter = router({
               'poll_creation',
               pollId,
             );
-          } catch (error) {
+          } catch (_error) {
             // Don't fail the request if quota consumption fails - poll is already created
           }
         }
@@ -330,7 +330,7 @@ export const pollsRouter = router({
               currency,
               `Payment for creating poll`,
             );
-          } catch (error) {
+          } catch (_error) {
             // Don't fail the request if wallet deduction fails - poll is already created
           }
         }

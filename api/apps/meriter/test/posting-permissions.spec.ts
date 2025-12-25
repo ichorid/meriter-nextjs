@@ -16,7 +16,7 @@ import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/
 import { uid } from 'uid';
 import { ActionType } from '../src/domain/common/constants/action-types.constants';
 
-class AllowAllGuard implements CanActivate {
+class _AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest();
     req.user = { 
@@ -38,14 +38,12 @@ describe('Posting Permissions', () => {
   let connection: Connection;
   
   let permissionService: PermissionService;
-  let publicationService: PublicationService;
-  let communityService: CommunityService;
-  let userService: UserService;
-  let userCommunityRoleService: UserCommunityRoleService;
+  let _publicationService: PublicationService;
+  let _communityService: CommunityService;
+  let _userService: UserService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let publicationModel: Model<PublicationDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   // Test user IDs
@@ -79,16 +77,16 @@ describe('Posting Permissions', () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     permissionService = app.get<PermissionService>(PermissionService);
-    publicationService = app.get<PublicationService>(PublicationService);
-    communityService = app.get<CommunityService>(CommunityService);
-    userService = app.get<UserService>(UserService);
-    userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
+    _publicationService = app.get<PublicationService>(PublicationService);
+    _communityService = app.get<CommunityService>(CommunityService);
+    _userService = app.get<UserService>(UserService);
+    const _userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     
     connection = app.get(getConnectionToken());
     
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
-    publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
+    const _publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
 
     // Initialize test IDs

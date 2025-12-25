@@ -40,11 +40,10 @@ describe('Invites - Superadmin-to-Lead', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let inviteService: InviteService;
+  let _inviteService: InviteService;
   let communityService: CommunityService;
-  let userService: UserService;
+  let _userService: UserService;
   let userCommunityRoleService: UserCommunityRoleService;
-  let walletService: WalletService;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -80,9 +79,9 @@ describe('Invites - Superadmin-to-Lead', () => {
     // Wait for onModuleInit to complete
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    inviteService = app.get<InviteService>(InviteService);
-    communityService = app.get<CommunityService>(CommunityService);
-    userService = app.get<UserService>(UserService);
+    const _inviteService2 = app.get<InviteService>(InviteService);
+    const _communityService2 = app.get<CommunityService>(CommunityService);
+    const _userService2 = app.get<UserService>(UserService);
     userCommunityRoleService = app.get<UserCommunityRoleService>(
       UserCommunityRoleService,
     );
@@ -453,9 +452,6 @@ describe('Invites - Role Restrictions', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let inviteService: InviteService;
-  let communityService: CommunityService;
-  let userService: UserService;
   let userCommunityRoleService: UserCommunityRoleService;
 
   let communityModel: Model<CommunityDocument>;
@@ -488,9 +484,9 @@ describe('Invites - Role Restrictions', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    inviteService = app.get<InviteService>(InviteService);
-    communityService = app.get<CommunityService>(CommunityService);
-    userService = app.get<UserService>(UserService);
+    const _inviteService2 = app.get<InviteService>(InviteService);
+    const _communityService2 = app.get<CommunityService>(CommunityService);
+    const _userService2 = app.get<UserService>(UserService);
     userCommunityRoleService = app.get<UserCommunityRoleService>(
       UserCommunityRoleService,
     );

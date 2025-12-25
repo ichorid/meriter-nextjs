@@ -21,7 +21,6 @@ describe('Comment Vote Amount - API E2E', () => {
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
-  let commentModel: Model<CommentDocument>;
   let walletModel: Model<WalletDocument>;
 
   let testUserId: string;
@@ -46,6 +45,7 @@ describe('Comment Vote Amount - API E2E', () => {
 
     app = moduleFixture.createNestApplication();
     // Add cookie parser middleware (same as main.ts)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const cookieParser = require('cookie-parser');
     app.use(cookieParser());
     await app.init();
@@ -55,7 +55,7 @@ describe('Comment Vote Amount - API E2E', () => {
     communityModel = connection.model<CommunityDocument>(Community.name);
     userModel = connection.model<UserDocument>(User.name);
     publicationModel = connection.model<PublicationDocument>(Publication.name);
-    commentModel = connection.model<CommentDocument>(Comment.name);
+    const _commentModel = connection.model<CommentDocument>(Comment.name);
     walletModel = connection.model<WalletDocument>(Wallet.name);
   });
 
@@ -143,7 +143,7 @@ describe('Comment Vote Amount - API E2E', () => {
       const collection = collections[key];
       try {
         await collection.dropIndex('token_1').catch(() => { });
-      } catch (err) {
+      } catch (_err) {
         // Index doesn't exist, ignore
       }
       await collection.deleteMany({});

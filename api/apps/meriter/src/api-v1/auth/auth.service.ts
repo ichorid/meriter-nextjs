@@ -10,7 +10,6 @@ import {
   CommunitySchemaClass,
   CommunityDocument,
 } from '../../domain/models/community/community.schema';
-import type { Community } from '../../domain/models/community/community.schema';
 import { JwtService } from '../common/utils/jwt-service.util';
 import * as crypto from 'crypto';
 import {
@@ -652,7 +651,7 @@ export class AuthService {
     }
   }
 
-  private async discoverUserCommunities(userId: string): Promise<number> {
+  private async discoverUserCommunities(_userId: string): Promise<number> {
     // Telegram-based community discovery is disabled
     return 0;
   }
@@ -695,7 +694,7 @@ export class AuthService {
   async generatePasskeyRegistrationOptions(
     username: string,
     existingUserId?: string, // If linking to existing user
-    requestRpId?: string,
+    _requestRpId?: string,
   ) {
     // Check if user exists (for new users, we want to ensure username isn't taken by an AUTH-based user)
     // For WebAuthn, we treat username as the primary handle for initial discovery if they don't have a device yet
@@ -707,7 +706,7 @@ export class AuthService {
       if (!user) throw new Error('User not found');
     }
 
-    const authenticators: Authenticator[] = user?.authenticators || [];
+    const _authenticators: Authenticator[] = user?.authenticators || [];
 
     const rpId = this.getRpId();
     const options = await generateRegistrationOptions({
@@ -1093,7 +1092,7 @@ export class AuthService {
     if (!user) {
       try {
         user = await (this.userService as any).getUserByCredentialId(id);
-      } catch (e) {
+      } catch (_e) {
         // Method might not exist yet, continue
       }
     }

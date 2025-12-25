@@ -59,7 +59,7 @@ describe('PublicationActions - Voting Mode Restrictions', () => {
       error: null,
     } as any);
 
-    const { rerender } = render(
+    const { rerender: _rerender } = render(
       <PublicationActions
         publication={mockPublication}
         onVote={jest.fn()}

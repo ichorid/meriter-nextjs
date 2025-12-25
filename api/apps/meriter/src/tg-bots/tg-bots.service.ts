@@ -5,13 +5,11 @@ import { uid } from "uid";
 import * as sharp from "sharp";
 
 import {
-  ADDED_PUBLICATION_REPLY,
   APPROVED_PEDNDING_WORDS,
   AUTH_USER_MESSAGE,
   BOT_TOKEN,
   BOT_URL,
   BOT_USERNAME,
-  LEADER_MESSAGE_AFTER_ADDED,
   WELCOME_LEADER_MESSAGE,
   WELCOME_USER_MESSAGE,
   URL as WEB_BASE_URL,
@@ -19,14 +17,9 @@ import {
 import * as TelegramTypes from "@common/extapis/telegram/telegram.types";
 import Axios from "axios";
 import { UserSchemaClass, UserDocument } from "../domain/models/user/user.schema";
-import type { User } from "../domain/models/user/user.schema";
 import { PublicationSchemaClass, PublicationDocument } from "../domain/models/publication/publication.schema";
-import type { Publication } from "../domain/models/publication/publication.schema";
 import { CommunitySchemaClass, CommunityDocument } from "../domain/models/community/community.schema";
-import type { Community } from "../domain/models/community/community.schema";
 import { UserCommunityRoleService } from "../domain/services/user-community-role.service";
-
-import * as config from "../config";
 
 import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
@@ -156,7 +149,7 @@ export class TgBotsService {
     };
     await this.sendUserUpdates(userId, [event], locale);
   }
-  async processHookBody(body: TelegramTypes.Update, botUsername: string) {
+  async processHookBody(body: TelegramTypes.Update, _botUsername: string) {
     if (!this.featureFlagsService.isTelegramBotEnabled()) {
       this.logger.debug('Telegram bot is disabled; ignoring webhook update');
       return;
@@ -198,9 +191,9 @@ export class TgBotsService {
       message_id,
       from,
       chat,
-      new_chat_members,
-      left_chat_member,
-      text,
+      new_chat_members: _new_chat_members,
+      left_chat_member: _left_chat_member,
+      text: _text,
       caption,
       entities,
       connected_website,
@@ -260,7 +253,7 @@ export class TgBotsService {
     this.logger.log(`ℹ️  Community auto-creation is disabled. Communities must be created manually through the API.`);
   }
 
-  async processRemovedFromChat({ chatId, chat_username }: { chatId: string; chat_username?: string }) {
+  async processRemovedFromChat({ chatId, chat_username: _chat_username }: { chatId: string; chat_username?: string }) {
     if (!this.featureFlagsService.isTelegramBotEnabled()) {
       this.logger.debug('Telegram bot is disabled; skipping processRemovedFromChat');
       return;
@@ -406,7 +399,7 @@ export class TgBotsService {
   async processRecieveMessageFromGroup({
     tgChatId: numTgChatId,
     tgUserId: numTgUserId,
-    tgAuthorUsername,
+    tgAuthorUsername: _tgAuthorUsername,
     tgAuthorName,
     messageText,
     messageId,
@@ -540,7 +533,7 @@ export class TgBotsService {
       entities,
       beneficiary,
     });
-    const [result, updUserdata] = await Promise.all([
+    const [result, _updUserdata] = await Promise.all([
       promisePublication,
       promiseUpdUserdata,
     ]);
@@ -575,8 +568,8 @@ export class TgBotsService {
     this.logger.log(`👤 Processing direct message from user ${tgUserId}: "${messageText}"`);
     this.logger.log(`🔍 Parsed referral: ${referal || 'none'}`);
 
-    let authJWT;
-    let redirect;
+    let _authJWT;
+    let _redirect;
     const auth = messageText.match("/auth");
 
     if (referal !== false) {
@@ -836,7 +829,7 @@ export class TgBotsService {
     }
   }
 
-  async telegramGetChatPhotoUrl(token: string, chat_id: string | number, revalidate = false) {
+  async telegramGetChatPhotoUrl(token: string, chat_id: string | number, _revalidate = false) {
     //if (process.env.NODE_ENV === 'test') return ``;
 
     const avatarBaseUrl = process.env.TELEGRAM_AVATAR_BASE_URL || 'https://telegram.hb.bizmrg.com/telegram_small_avatars';
@@ -845,7 +838,7 @@ export class TgBotsService {
       const status = await Axios.head(url).then((d) => d.status);
       if (status === 200)
         return `${avatarBaseUrl}/${chat_id}.jpg`;
-    } catch (e) {
+    } catch (_e) {
       this.logger.warn("not found ", chat_id);
     }
 
@@ -885,7 +878,7 @@ export class TgBotsService {
     }
 
     try {
-      const { small_file_id, small_file_unique_id, big_file_id } = photo;
+      const { small_file_id, small_file_unique_id, big_file_id: _big_file_id } = photo;
       const { file_path } = await this.telegramPrepareFile(token, small_file_id);
       const photoUrl = `telegram_images/${small_file_unique_id}.jpg`;
       const photoUrl2 = `telegram_small_avatars/${chat_id}.jpg`;
@@ -897,7 +890,7 @@ export class TgBotsService {
         this.awsUploadStream({
           Key: photoUrl2,
         });
-      const f = await this.telegramGetFile(token, file_path).then((d) => {
+      const _f = await this.telegramGetFile(token, file_path).then((d) => {
         d.data.pipe(writeStream);
         d.data.pipe(writeStream2);
         //console.log(d.headers);
@@ -1003,7 +996,7 @@ export class TgBotsService {
   async telegramSendMessage(token: string, chat_id: string | number, text: string) {
     const params = { chat_id, text, parse_mode: "MarkdownV2" };
     try {
-      const r = await Promise.all([
+      const _r = await Promise.all([
         Axios.get(`${this.telegramApiUrl}/bot${token}/sendMessage`, {
           params,
         }),
@@ -1032,17 +1025,17 @@ export class TgBotsService {
   async publicationAdd({
     tgChatId: tgChatIdInt,
     fromTgChatId,
-    tgAuthorName,
-    tgAuthorUsername,
-    tgMessageId,
+    tgAuthorName: _tgAuthorName,
+    tgAuthorUsername: _tgAuthorUsername,
+    tgMessageId: _tgMessageId,
     tgAuthorId,
-    tgChatName,
-    tgChatUsername,
+    tgChatName: _tgChatName,
+    tgChatUsername: _tgChatUsername,
     keyword,
-    text,
+    text: _text,
     messageText,
-    authorPhotoUrl,
-    entities,
+    authorPhotoUrl: _authorPhotoUrl,
+    entities: _entities,
     beneficiary,
   }: {
     tgChatId: string | number;
@@ -1060,7 +1053,7 @@ export class TgBotsService {
     entities?: any;
     beneficiary?: { telegramId: string; name: string; photoUrl?: string | null; username?: string } | null;
   }) {
-    const tgChatId = String(tgChatIdInt);
+    const _tgChatId = String(tgChatIdInt);
 
     // Fetch community and validate hashtag exists
     const community = await this.communityModel.findOne({
@@ -1149,7 +1142,7 @@ export class TgBotsService {
     };
   };
 
-  async sendInfoLetter(aboutChatId: string, toTgChatId: string) {
+  async sendInfoLetter(aboutChatId: string, _toTgChatId: string) {
     // Community lookup by Telegram chat ID is no longer supported
     // Communities must be created manually through the API
     this.logger.warn(`⚠️  sendInfoLetter called for chat ${aboutChatId}, but community lookup by chatId is not supported. Communities must be created manually.`);

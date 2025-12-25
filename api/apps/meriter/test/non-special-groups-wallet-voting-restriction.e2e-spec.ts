@@ -39,13 +39,13 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
   
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
-  let connection: Connection;
+  let _connection: Connection;
   
-  let communityService: CommunityService;
+  let _communityService: CommunityService;
   let voteService: VoteService;
-  let publicationService: PublicationService;
-  let userService: UserService;
-  let walletService: WalletService;
+  let _publicationService: PublicationService;
+  let _userService: UserService;
+  let _walletService: WalletService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -62,7 +62,6 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
   let regularPubId: string;
   let marathonPubId: string;
   let visionPubId: string;
-  let regularVoteId: string;
 
   beforeAll(async () => {
     testDb = new TestDatabaseHelper();
@@ -79,13 +78,13 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
     app = moduleFixture.createNestApplication();
     await app.init();
 
-    communityService = app.get<CommunityService>(CommunityService);
+    _communityService = app.get<CommunityService>(CommunityService);
     voteService = app.get<VoteService>(VoteService);
-    publicationService = app.get<PublicationService>(PublicationService);
-    userService = app.get<UserService>(UserService);
-    walletService = app.get<WalletService>(WalletService);
+    _publicationService = app.get<PublicationService>(PublicationService);
+    _userService = app.get<UserService>(UserService);
+    _walletService = app.get<WalletService>(WalletService);
     
-    connection = app.get(getConnectionToken());
+    _connection = app.get(getConnectionToken());
     
     // Access models registered via MongooseModule.forFeature() using getModelToken
     communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));

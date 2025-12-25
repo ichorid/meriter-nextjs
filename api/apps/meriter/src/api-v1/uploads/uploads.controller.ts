@@ -112,7 +112,7 @@ export class UploadsController {
     @UploadedFile() file: Express.Multer.File,
     @Param('communityId') communityId: string,
     @Body('crop') cropJson: string,
-    @Req() req: any,
+    @Req() _req: any,
   ): Promise<{ success: true; data: UploadResult }> {
     if (!this.uploadsService.isConfigured()) {
       throw new BadRequestException('Image upload is not available. S3 storage is not configured.');

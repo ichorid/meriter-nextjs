@@ -419,6 +419,7 @@ export const invitesRouter = router({
    */
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     .mutation(async ({ ctx, input }) => {
       // TODO: Implement invite deletion with permission checks
       throw new TRPCError({

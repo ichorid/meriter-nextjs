@@ -27,17 +27,14 @@ describe('Notifications E2E Tests', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let communityService: CommunityService;
   let voteService: VoteService;
   let publicationService: PublicationService;
   let notificationService: NotificationService;
-  let userService: UserService;
   let jwtService: JwtService;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
-  let voteModel: Model<VoteDocument>;
   let walletModel: Model<WalletDocument>;
   let notificationModel: Model<NotificationDocument>;
 
@@ -46,8 +43,6 @@ describe('Notifications E2E Tests', () => {
   let testUserId3: string;
   let testCommunityId: string;
   let testPublicationId: string;
-  let testToken: string;
-  let testToken2: string;
 
   beforeAll(async () => {
     jest.setTimeout(30000);
@@ -64,11 +59,11 @@ describe('Notifications E2E Tests', () => {
     await app.init();
 
     // Get services
-    communityService = app.get<CommunityService>(CommunityService);
+    _communityService = app.get<CommunityService>(CommunityService);
     voteService = app.get<VoteService>(VoteService);
     publicationService = app.get<PublicationService>(PublicationService);
     notificationService = app.get<NotificationService>(NotificationService);
-    userService = app.get<UserService>(UserService);
+    const _userService = app.get<UserService>(UserService);
     jwtService = app.get<JwtService>(JwtService);
 
     connection = app.get(getConnectionToken());
@@ -76,7 +71,7 @@ describe('Notifications E2E Tests', () => {
     communityModel = connection.model<CommunityDocument>(Community.name);
     userModel = connection.model<UserDocument>(User.name);
     publicationModel = connection.model<PublicationDocument>(Publication.name);
-    voteModel = connection.model<VoteDocument>(Vote.name);
+    const _voteModel = connection.model<VoteDocument>(Vote.name);
     walletModel = connection.model<WalletDocument>(Wallet.name);
     notificationModel = connection.model<NotificationDocument>(Notification.name);
   });
@@ -214,8 +209,8 @@ describe('Notifications E2E Tests', () => {
     });
 
     // Create tokens for authentication
-    testToken = jwtService.generateToken({ id: testUserId });
-    testToken2 = jwtService.generateToken({ id: testUserId2 });
+    const _testToken = jwtService.generateToken({ id: testUserId });
+    const _testToken2 = jwtService.generateToken({ id: testUserId2 });
   });
 
   afterEach(async () => {
@@ -224,7 +219,7 @@ describe('Notifications E2E Tests', () => {
       const collection = collections[key];
       try {
         await collection.dropIndex('token_1').catch(() => {});
-      } catch (err) {
+      } catch (_err) {
         // Index doesn't exist, ignore
       }
       await collection.deleteMany({});

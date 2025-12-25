@@ -28,9 +28,6 @@ describe('Marathon and Vision Groups Integration Test', () => {
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let walletModel: Model<WalletDocument>;
-  let publicationModel: Model<PublicationDocument>;
-  let voteModel: Model<VoteDocument>;
 
   // User IDs
   let aliceId: string;
@@ -59,7 +56,7 @@ describe('Marathon and Vision Groups Integration Test', () => {
   beforeAll(async () => {
     jest.setTimeout(120000); // Increase timeout for database setup
     // Clear MONGO_URL to ensure we create a fresh in-memory server
-    const originalMongoUrl = process.env.MONGO_URL;
+    const _originalMongoUrl = process.env.MONGO_URL;
     delete process.env.MONGO_URL;
     
     testDb = new TestDatabaseHelper();
@@ -102,9 +99,9 @@ describe('Marathon and Vision Groups Integration Test', () => {
     connection = app.get(getConnectionToken());
     communityModel = connection.model<CommunityDocument>(Community.name);
     userModel = connection.model<UserDocument>(User.name);
-    walletModel = connection.model<WalletDocument>(Wallet.name);
-    publicationModel = connection.model<PublicationDocument>(Publication.name);
-    voteModel = connection.model<VoteDocument>(Vote.name);
+    const _walletModel = connection.model<WalletDocument>(Wallet.name);
+    const _publicationModel = connection.model<PublicationDocument>(Publication.name);
+    const _voteModel = connection.model<VoteDocument>(Vote.name);
 
     // Generate test IDs
     aliceId = uid();
@@ -120,7 +117,7 @@ describe('Marathon and Vision Groups Integration Test', () => {
       const collection = collections[key];
       try {
         await collection.dropIndex('token_1').catch(() => {});
-      } catch (err) {
+      } catch (_err) {
         // Index doesn't exist, ignore
       }
       await collection.deleteMany({});

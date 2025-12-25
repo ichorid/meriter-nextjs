@@ -40,11 +40,9 @@ describe('Invites - New Role Assignment Logic', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let inviteService: InviteService;
   let communityService: CommunityService;
   let userService: UserService;
   let userCommunityRoleService: UserCommunityRoleService;
-  let walletService: WalletService;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -82,13 +80,13 @@ describe('Invites - New Role Assignment Logic', () => {
     // Wait for onModuleInit to complete
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    inviteService = app.get<InviteService>(InviteService);
+    const _inviteService = app.get<InviteService>(InviteService);
     communityService = app.get<CommunityService>(CommunityService);
     userService = app.get<UserService>(UserService);
     userCommunityRoleService = app.get<UserCommunityRoleService>(
       UserCommunityRoleService,
     );
-    walletService = app.get<WalletService>(WalletService);
+    const _walletService = app.get<WalletService>(WalletService);
 
     connection = app.get<Connection>(getConnectionToken());
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);

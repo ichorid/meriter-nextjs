@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
@@ -9,7 +9,6 @@ import { SortToggle } from '@/components/ui/SortToggle';
 import { type SortValue } from '@/components/ui/SortTabs';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { User } from 'lucide-react';
-import { useRouter } from "next/navigation";
 import { Comment } from "@features/comments/components/comment";
 import { useUIStore } from '@/stores/ui.store';
 import { useComments } from "@shared/hooks/use-comments";

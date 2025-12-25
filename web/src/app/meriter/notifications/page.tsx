@@ -23,7 +23,6 @@ import { Loader2 } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import {
-  useNotifications,
   useInfiniteNotifications,
   useMarkAsRead,
   useMarkAllAsRead,

@@ -19,7 +19,7 @@ describe('API Permissions Integration', () => {
   
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
-  let connection: Connection;
+  let _connection: Connection;
   
   let publicationService: PublicationService;
   let commentService: CommentService;
@@ -47,9 +47,7 @@ describe('API Permissions Integration', () => {
   // JWT tokens
   let participant1Token: string;
   let participant2Token: string;
-  let lead1Token: string;
   let superadminToken: string;
-  let viewerToken: string;
 
   beforeAll(async () => {
     testDb = new TestDatabaseHelper();
@@ -64,6 +62,7 @@ describe('API Permissions Integration', () => {
 
     app = moduleFixture.createNestApplication();
     // Add cookie parser middleware (same as main.ts)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const cookieParser = require('cookie-parser');
     app.use(cookieParser());
     await app.init();
@@ -78,7 +77,7 @@ describe('API Permissions Integration', () => {
     userService = app.get<UserService>(UserService);
     userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     
-    connection = app.get(getConnectionToken());
+    _connection = app.get(getConnectionToken());
 
     // Initialize test authIds (for user creation)
     const participant1AuthId = uid();
@@ -196,9 +195,9 @@ describe('API Permissions Integration', () => {
     // Generate JWT tokens (use internal IDs for uid, original authIds for authId)
     participant1Token = signJWT({ uid: participant1Id, authProvider: 'test', authId: participant1AuthId, communityTags: [] }, process.env.JWT_SECRET!, '365d');
     participant2Token = signJWT({ uid: participant2Id, authProvider: 'test', authId: participant2AuthId, communityTags: [] }, process.env.JWT_SECRET!, '365d');
-    lead1Token = signJWT({ uid: lead1Id, authProvider: 'test', authId: lead1AuthId, communityTags: [] }, process.env.JWT_SECRET!, '365d');
+    const _lead1Token = signJWT({ uid: lead1Id, authProvider: 'test', authId: lead1AuthId, communityTags: [] }, process.env.JWT_SECRET!, '365d');
     superadminToken = signJWT({ uid: superadminId, authProvider: 'test', authId: superadminAuthId, communityTags: [] }, process.env.JWT_SECRET!, '365d');
-    viewerToken = signJWT({ uid: viewerId, authProvider: 'test', authId: viewerAuthId, communityTags: [] }, process.env.JWT_SECRET!, '365d');
+    const _viewerToken = signJWT({ uid: viewerId, authProvider: 'test', authId: viewerAuthId, communityTags: [] }, process.env.JWT_SECRET!, '365d');
   });
 
   afterAll(async () => {

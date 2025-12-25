@@ -4,12 +4,8 @@ import {
   UpdatesConductorSchemaClass,
   UpdatesConductorDocument,
 } from './model/updates-conductor.schema';
-import type { UpdatesConductor } from './model/updates-conductor.schema';
 import { Model } from 'mongoose';
-import { fillDefined } from '@common/lambdas/pure/objects';
-import { Cron, SchedulerRegistry } from '@nestjs/schedule';
-import { URL as WEB_BASE_URL, BOT_USERNAME } from '../config';
-import { formatDualLinks } from '../common/helpers/telegram';
+import { Cron } from '@nestjs/schedule';
 import { UserSettingsService } from '../domain/services/user-settings.service';
 import { UserUpdatesService } from '../domain/services/user-updates.service';
 
@@ -38,7 +34,7 @@ export class UpdatesConductorsService {
   }
 
   async pushUpdate(dto: PushUpdateDto) {
-    const upd = await this.model.findOneAndUpdate(
+    const _upd = await this.model.findOneAndUpdate(
       {
         actorUri: dto.actorUri,
         //   currencyOfTgChatId: dto.currencyOfTgChatId,

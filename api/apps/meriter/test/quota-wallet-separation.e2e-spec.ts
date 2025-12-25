@@ -38,13 +38,10 @@ describe('Quota Wallet Separation (e2e)', () => {
   let connection: Connection;
   
   let walletService: WalletService;
-  let voteService: VoteService;
   let communityService: CommunityService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let voteModel: Model<VoteDocument>;
-  let walletModel: Model<WalletDocument>;
   let publicationModel: Model<PublicationDocument>;
 
   let testUserId: string;
@@ -69,15 +66,15 @@ describe('Quota Wallet Separation (e2e)', () => {
     await app.init();
 
     walletService = app.get<WalletService>(WalletService);
-    voteService = app.get<VoteService>(VoteService);
+    const _voteService = app.get<VoteService>(VoteService);
     communityService = app.get<CommunityService>(CommunityService);
     
     connection = app.get(getConnectionToken());
     
     communityModel = connection.model<CommunityDocument>(Community.name);
     userModel = connection.model<UserDocument>(User.name);
-    voteModel = connection.model<VoteDocument>(Vote.name);
-    walletModel = connection.model<WalletDocument>(Wallet.name);
+    const _voteModel = connection.model<VoteDocument>(Vote.name);
+    const _walletModel = connection.model<WalletDocument>(Wallet.name);
     publicationModel = connection.model<PublicationDocument>(Publication.name);
 
     testUserId = uid();

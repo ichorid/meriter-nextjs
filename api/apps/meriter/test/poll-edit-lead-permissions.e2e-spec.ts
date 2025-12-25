@@ -38,9 +38,6 @@ describe('Poll Edit and Lead Permissions E2E', () => {
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let pollModel: Model<PollDocument>;
-  let publicationModel: Model<PublicationDocument>;
-  let commentModel: Model<CommentDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   // Test user IDs
@@ -77,9 +74,9 @@ describe('Poll Edit and Lead Permissions E2E', () => {
     
     communityModel = connection.model<CommunityDocument>(Community.name);
     userModel = connection.model<UserDocument>(User.name);
-    pollModel = connection.model<PollDocument>(Poll.name);
-    publicationModel = connection.model<PublicationDocument>(Publication.name);
-    commentModel = connection.model<CommentDocument>(Comment.name);
+    const _pollModel = connection.model<PollDocument>(Poll.name);
+    const _publicationModel = connection.model<PublicationDocument>(Publication.name);
+    const _commentModel = connection.model<CommentDocument>(Comment.name);
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRole.name);
 
     // Initialize test IDs

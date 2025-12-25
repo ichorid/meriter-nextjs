@@ -14,7 +14,6 @@ import { useWallets, useCommunity, useCommunities } from '@/hooks/api';
 import { useCommunityFeed } from '@/hooks/api/useCommunityFeed';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
-import { routes } from '@/lib/constants/routes';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
@@ -23,6 +22,7 @@ import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
 import { useUserQuota } from '@/hooks/api/useQuota';
+import { routes } from '@/lib/constants/routes';
 import { useTranslations as useCommonTranslations } from 'next-intl';
 
 interface CommunityPageClientProps {

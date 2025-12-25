@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
-import { TRPCError } from '@trpc/server';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 
 export const notificationsRouter = router({
@@ -135,6 +134,7 @@ export const notificationsRouter = router({
    */
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     .mutation(async ({ ctx, input }) => {
       // Since notifications are stored in DB, we could implement soft delete here
       // For now, this is a no-op as per original implementation
@@ -145,6 +145,7 @@ export const notificationsRouter = router({
    * Get notification preferences
    */
   getPreferences: protectedProcedure
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     .query(async ({ ctx }) => {
       // Return default preferences
       // Can be enhanced later to store in user_settings
@@ -174,6 +175,7 @@ export const notificationsRouter = router({
       polls: z.boolean().optional(),
       system: z.boolean().optional(),
     }))
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     .mutation(async ({ ctx, input }) => {
       // For now, just return success without storing
       // Can be enhanced later to store in user_settings

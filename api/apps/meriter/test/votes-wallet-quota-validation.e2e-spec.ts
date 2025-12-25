@@ -43,17 +43,16 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
   
-  let communityService: CommunityService;
-  let voteService: VoteService;
-  let publicationService: PublicationService;
+  let _communityService: CommunityService;
+  let _voteService: VoteService;
+  let _publicationService: PublicationService;
   let commentService: CommentService;
-  let userService: UserService;
+  let _userService: UserService;
   let walletService: WalletService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
-  let commentModel: Model<CommentDocument>;
   let voteModel: Model<VoteDocument>;
   let walletModel: Model<WalletDocument>;
 
@@ -78,11 +77,11 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
     await app.init();
 
     // Get services
-    communityService = app.get<CommunityService>(CommunityService);
-    voteService = app.get<VoteService>(VoteService);
-    publicationService = app.get<PublicationService>(PublicationService);
+    _communityService = app.get<CommunityService>(CommunityService);
+    _voteService = app.get<VoteService>(VoteService);
+    _publicationService = app.get<PublicationService>(PublicationService);
     commentService = app.get<CommentService>(CommentService);
-    userService = app.get<UserService>(UserService);
+    _userService = app.get<UserService>(UserService);
     walletService = app.get<WalletService>(WalletService);
     
     connection = app.get(getConnectionToken());
@@ -90,7 +89,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
     communityModel = connection.model<CommunityDocument>(Community.name);
     userModel = connection.model<UserDocument>(User.name);
     publicationModel = connection.model<PublicationDocument>(Publication.name);
-    commentModel = connection.model<CommentDocument>(Comment.name);
+    const _commentModel = connection.model<CommentDocument>(Comment.name);
     voteModel = connection.model<VoteDocument>(Vote.name);
     walletModel = connection.model<WalletDocument>(Wallet.name);
 
@@ -202,9 +201,9 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
         const collection = collections[key];
         try {
           await collection.dropIndex('token_1').catch(() => {});
-        } catch (err) {
-          // Index doesn't exist, ignore
-        }
+      } catch (_err) {
+        // Index doesn't exist, ignore
+      }
         await collection.deleteMany({});
       }
     }

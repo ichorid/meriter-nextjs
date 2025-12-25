@@ -13,7 +13,6 @@ import { useToastStore } from "@/shared/stores/toast.store";
 
 function NewUserPageContent() {
     const t = useTranslations("profile");
-    const tLogin = useTranslations("login");
     const router = useRouter();
     const { user, isLoading: authLoading } = useAuth();
     const { mutateAsync: updateUser, isPending: isUpdating } = useUpdateUser();

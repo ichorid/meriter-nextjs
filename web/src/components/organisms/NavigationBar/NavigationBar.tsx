@@ -9,7 +9,6 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avat
 import { routes } from '@/lib/constants/routes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUIStore } from '@/stores/ui.store';
-import { useRouter } from 'next/navigation';
 import { useWallets } from '@/hooks/api/useWallet';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { useTranslations } from 'next-intl';
@@ -21,10 +20,9 @@ export interface NavigationBarProps {
 export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) => {
   const auth = useAuth();
   const { user, isAuthenticated } = auth;
-  const { activeModal, setActiveSidebar } = useUIStore();
+  const { setActiveSidebar } = useUIStore();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations('common');
   

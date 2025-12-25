@@ -2,21 +2,17 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  OnModuleInit,
   Inject,
   forwardRef,
 } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
 import type { User } from '../models/user/user.schema';
 import {
   CommunitySchemaClass,
   CommunityDocument,
 } from '../models/community/community.schema';
-import type { Community } from '../models/community/community.schema';
-import { UserId } from '../value-objects';
-import { EventBus } from '../events/event-bus';
 import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
 import { uid } from 'uid';
 import { CommunityService } from './community.service';

@@ -35,6 +35,12 @@ module.exports = [
                 HTMLInputElement: 'readonly',
                 HTMLTextAreaElement: 'readonly',
                 HTMLButtonElement: 'readonly',
+                HTMLHeadingElement: 'readonly',
+                HTMLParagraphElement: 'readonly',
+                HTMLLabelElement: 'readonly',
+                HTMLSpanElement: 'readonly',
+                SVGSVGElement: 'readonly',
+                Node: 'readonly',
                 KeyboardEvent: 'readonly',
                 MouseEvent: 'readonly',
                 TouchEvent: 'readonly',
@@ -49,6 +55,11 @@ module.exports = [
                 DOMException: 'readonly',
                 crypto: 'readonly',
                 confirm: 'readonly',
+                AbortController: 'readonly',
+                requestAnimationFrame: 'readonly',
+                cancelAnimationFrame: 'readonly',
+                RequestInit: 'readonly',
+                Response: 'readonly',
                 // Node.js globals (for Next.js)
                 process: 'readonly',
                 global: 'readonly',
@@ -63,6 +74,8 @@ module.exports = [
             'react-hooks': reactHooks,
         },
         rules: {
+            // Disable base no-unused-vars in favor of TypeScript version
+            'no-unused-vars': 'off',
             // Enforce Rules of Hooks - catches conditional hook calls (prevents React error #310)
             'react-hooks/rules-of-hooks': 'error',
             // Warn about missing dependencies in useEffect, useMemo, etc.
@@ -76,10 +89,11 @@ module.exports = [
             '@typescript-eslint/no-explicit-any': 'warn',
             // Allow unused vars that start with underscore
             '@typescript-eslint/no-unused-vars': [
-                'warn',
+                'error',
                 {
                     argsIgnorePattern: '^_',
                     varsIgnorePattern: '^_',
+                    caughtErrorsIgnorePattern: '^_',
                     // Ignore parameters in type definitions (they're part of the API contract)
                     ignoreRestSiblings: true,
                 },

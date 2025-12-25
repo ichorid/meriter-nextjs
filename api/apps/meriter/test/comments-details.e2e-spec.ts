@@ -23,17 +23,15 @@ describe('Comment Details Endpoint E2E Tests', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let communityService: CommunityService;
+  let _communityService: CommunityService;
   let voteService: VoteService;
-  let publicationService: PublicationService;
+  let _publicationService: PublicationService;
   let commentService: CommentService;
-  let userService: UserService;
+  let _userService: UserService;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
-  let commentModel: Model<CommentDocument>;
-  let voteModel: Model<VoteDocument>;
   let walletModel: Model<WalletDocument>;
 
   let testUserId: string;
@@ -41,7 +39,6 @@ describe('Comment Details Endpoint E2E Tests', () => {
   let testUserId3: string;
   let testCommunityId: string;
   let testPublicationId: string;
-  let testToken: string;
 
   beforeAll(async () => {
     jest.setTimeout(30000);
@@ -58,19 +55,19 @@ describe('Comment Details Endpoint E2E Tests', () => {
     await app.init();
 
     // Get services
-    communityService = app.get<CommunityService>(CommunityService);
+    _communityService = app.get<CommunityService>(CommunityService);
     voteService = app.get<VoteService>(VoteService);
-    publicationService = app.get<PublicationService>(PublicationService);
+    _publicationService = app.get<PublicationService>(PublicationService);
     commentService = app.get<CommentService>(CommentService);
-    userService = app.get<UserService>(UserService);
+    _userService = app.get<UserService>(UserService);
 
     connection = app.get(getConnectionToken());
 
     communityModel = connection.model<CommunityDocument>(Community.name);
     userModel = connection.model<UserDocument>(User.name);
     publicationModel = connection.model<PublicationDocument>(Publication.name);
-    commentModel = connection.model<CommentDocument>(Comment.name);
-    voteModel = connection.model<VoteDocument>(Vote.name);
+    const _commentModel = connection.model<CommentDocument>(Comment.name);
+    const _voteModel = connection.model<VoteDocument>(Vote.name);
     walletModel = connection.model<WalletDocument>(Wallet.name);
 
     // Create a test user with token for authentication
@@ -78,7 +75,7 @@ describe('Comment Details Endpoint E2E Tests', () => {
     testUserId2 = uid();
     testUserId3 = uid();
     testCommunityId = uid();
-    testToken = uid();
+    const _testToken = uid();
 
     await userModel.create([
       {
@@ -218,7 +215,7 @@ describe('Comment Details Endpoint E2E Tests', () => {
       const collection = collections[key];
       try {
         await collection.dropIndex('token_1').catch(() => { });
-      } catch (err) {
+      } catch (_err) {
         // Index doesn't exist, ignore
       }
       await collection.deleteMany({});

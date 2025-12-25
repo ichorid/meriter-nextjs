@@ -6,7 +6,6 @@
 
 import { createTRPCMsw } from 'msw-trpc';
 import type { AppRouter } from '@/lib/trpc/types';
-import { http, HttpResponse } from 'msw';
 
 /**
  * Create a tRPC MSW handler for mocking tRPC endpoints in tests

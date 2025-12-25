@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { PermissionService } from '../src/domain/services/permission.service';
@@ -16,7 +15,7 @@ import { PublicationSchemaClass, PublicationDocument } from '../src/domain/model
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 
-class AllowAllGuard implements CanActivate {
+class _AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest();
     req.user = { 
@@ -39,13 +38,12 @@ describe('Voting Permissions', () => {
   
   let permissionService: PermissionService;
   let publicationService: PublicationService;
-  let communityService: CommunityService;
-  let userService: UserService;
-  let userCommunityRoleService: UserCommunityRoleService;
+  let _communityService: CommunityService;
+  let _userService: UserService;
+  let _userCommunityRoleService: UserCommunityRoleService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let publicationModel: Model<PublicationDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   // Test user IDs
@@ -89,21 +87,21 @@ describe('Voting Permissions', () => {
 
     permissionService = app.get<PermissionService>(PermissionService);
     publicationService = app.get<PublicationService>(PublicationService);
-    communityService = app.get<CommunityService>(CommunityService);
-    userService = app.get<UserService>(UserService);
-    userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
+    _communityService = app.get<CommunityService>(CommunityService);
+    _userService = app.get<UserService>(UserService);
+    _userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     
     connection = app.get(getConnectionToken());
     
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
-    publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
+    const _publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
 
     // Drop telegramChatId index if it exists (legacy index from old schema)
     try {
       await communityModel.collection.dropIndex('telegramChatId_1');
-    } catch (e) {
+    } catch (_e) {
       // Index doesn't exist or already dropped, ignore
     }
 

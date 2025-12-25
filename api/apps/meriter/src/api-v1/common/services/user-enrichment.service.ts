@@ -28,7 +28,7 @@ export class UserEnrichmentService {
           if (user) {
             usersMap.set(userId, user);
           }
-        } catch (error) {
+        } catch (_error) {
           // Silently skip users that don't exist
         }
       })

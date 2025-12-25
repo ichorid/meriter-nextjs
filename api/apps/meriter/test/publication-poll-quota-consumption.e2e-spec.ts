@@ -298,7 +298,7 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
         postType: 'basic',
       });
 
-      const publicationId = createdPub.id;
+      const _publicationId = createdPub.id;
 
       // Create a publication by testAuthorId for voting
       (global as any).testUserId = testAuthorId;

@@ -61,7 +61,7 @@ export class CommunityDefaultsService {
    * Base rules that apply to all community types
    */
   private getBaseRules(): PermissionRule[] {
-    const roles: Array<'superadmin' | 'lead' | 'participant' | 'viewer'> = [
+    const _roles: Array<'superadmin' | 'lead' | 'participant' | 'viewer'> = [
       'superadmin',
       'lead',
       'participant',
@@ -316,7 +316,7 @@ export class CommunityDefaultsService {
   /**
    * Get default voting settings based on community typeTag
    */
-  getDefaultVotingSettings(typeTag?: string): CommunityVotingSettings {
+  getDefaultVotingSettings(_typeTag?: string): CommunityVotingSettings {
     return {
       spendsMerits: true,
       awardsMerits: true,

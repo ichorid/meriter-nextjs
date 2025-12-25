@@ -4,7 +4,6 @@ import { TRPCError } from '@trpc/server';
 import { JwtService } from '../../api-v1/common/utils/jwt-service.util';
 import { UpdateUserProfileSchema } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
-import { NotFoundError } from '../../common/exceptions/api.exceptions';
 
 export const usersRouter = router({
   /**

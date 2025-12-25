@@ -36,9 +36,9 @@ async function enhancedFetch(url: string, options?: RequestInit): Promise<Respon
           const text = await clonedResponse.text();
           errorBody = text || null;
         }
-      } catch (e) {
+      } catch (_e) {
         // If we can't parse the error body, that's okay
-        console.warn('Failed to parse error response body:', e);
+        console.warn('Failed to parse error response body:', _e);
       }
 
       // Log the error details for debugging

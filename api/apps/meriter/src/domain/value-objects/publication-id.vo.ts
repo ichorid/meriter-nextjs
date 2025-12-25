@@ -1,8 +1,9 @@
+import { uid } from 'uid';
+
 export class PublicationId {
   private constructor(private readonly value: string) {}
 
   static generate(): PublicationId {
-    const { uid } = require('uid');
     return new PublicationId(uid());
   }
 

@@ -25,13 +25,13 @@ describe('Poll Permissions', () => {
   
   let permissionService: PermissionService;
   let pollService: PollService;
-  let communityService: CommunityService;
-  let userService: UserService;
-  let userCommunityRoleService: UserCommunityRoleService;
+  let _communityService: CommunityService;
+  let _userService: UserService;
+  let _userCommunityRoleService: UserCommunityRoleService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let pollModel: Model<PollDocument>;
+  let _pollModel: Model<PollDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   // Test user IDs
@@ -64,15 +64,15 @@ describe('Poll Permissions', () => {
 
     permissionService = app.get<PermissionService>(PermissionService);
     pollService = app.get<PollService>(PollService);
-    communityService = app.get<CommunityService>(CommunityService);
-    userService = app.get<UserService>(UserService);
-    userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
+    _communityService = app.get<CommunityService>(CommunityService);
+    _userService = app.get<UserService>(UserService);
+    _userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     
     connection = app.get(getConnectionToken());
     
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
-    pollModel = connection.model<PollDocument>(PollSchemaClass.name);
+    _pollModel = connection.model<PollDocument>(PollSchemaClass.name);
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
 
     // Initialize test IDs

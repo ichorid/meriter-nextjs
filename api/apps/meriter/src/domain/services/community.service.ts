@@ -3,7 +3,6 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
-  OnModuleInit,
   forwardRef,
   Inject,
 } from '@nestjs/common';
@@ -20,9 +19,7 @@ import type {
   CommunityVotingSettings,
 } from '../models/community/community.schema';
 import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
-import type { User } from '../models/user/user.schema';
 import { WalletSchemaClass, WalletDocument } from '../models/wallet/wallet.schema';
-import { CommunityId, UserId } from '../value-objects';
 import { EventBus } from '../events/event-bus';
 import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
 import { uid } from 'uid';

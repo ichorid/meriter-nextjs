@@ -38,7 +38,6 @@ describe('Publication and Comment Edit Permissions', () => {
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let publicationModel: Model<PublicationDocument>;
   let commentModel: Model<CommentDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
@@ -77,7 +76,7 @@ describe('Publication and Comment Edit Permissions', () => {
     
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
-    publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
+    const _publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
     commentModel = connection.model<CommentDocument>(CommentSchemaClass.name);
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
 

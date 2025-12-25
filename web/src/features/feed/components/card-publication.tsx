@@ -4,10 +4,7 @@ import { useState } from 'react';
 import { classList } from '@lib/classList';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { CommunityAvatar } from '@shared/components/community-avatar';
-import { useRouter } from 'next/navigation';
-import { routes } from '@/lib/constants/routes';
 import { ImageLightbox } from '@shared/components/image-lightbox';
-import { ImageViewer } from '@/components/ui/ImageViewer/ImageViewer';
 import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
 
 interface CardPublicationProps {

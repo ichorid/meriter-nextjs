@@ -36,10 +36,6 @@ describe('Users - Get All Leads', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let userService: UserService;
-  let userCommunityRoleService: UserCommunityRoleService;
-  let communityService: CommunityService;
-
   let userModel: Model<UserDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
   let communityModel: Model<CommunityDocument>;
@@ -74,11 +70,11 @@ describe('Users - Get All Leads', () => {
     // Wait for onModuleInit to complete
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    userService = app.get<UserService>(UserService);
-    userCommunityRoleService = app.get<UserCommunityRoleService>(
+    const _userService = app.get<UserService>(UserService);
+    const _userCommunityRoleService = app.get<UserCommunityRoleService>(
       UserCommunityRoleService,
     );
-    communityService = app.get<CommunityService>(CommunityService);
+    const _communityService = app.get<CommunityService>(CommunityService);
 
     connection = app.get<Connection>(getConnectionToken());
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
