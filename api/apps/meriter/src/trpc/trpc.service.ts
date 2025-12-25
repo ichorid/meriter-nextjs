@@ -30,6 +30,7 @@ import { UploadsService } from '../api-v1/uploads/uploads.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
+import { AuthenticationService } from '../common/services/authentication.service';
 
 @Injectable()
 export class TrpcService {
@@ -60,6 +61,7 @@ export class TrpcService {
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
+    private authenticationService: AuthenticationService,
   ) {}
 
   getRouter(): AppRouter {
@@ -96,6 +98,7 @@ export class TrpcService {
       connection: this.connection,
       configService: this.configService,
       cookieManager: this.cookieManager,
+      authenticationService: this.authenticationService,
     });
   }
 }

@@ -6,12 +6,13 @@ import { VoteCommentResolverService } from './services/vote-comment-resolver.ser
 import { CommentEnrichmentService } from './services/comment-enrichment.service';
 import { PermissionsHelperService } from './services/permissions-helper.service';
 import { DomainModule } from '../../domain.module';
+import { CommonServicesModule } from '../../common/services/common-services.module';
 
 /**
  * Common module for API v1 shared services and utilities
  */
 @Module({
-  imports: [DomainModule],
+  imports: [DomainModule, CommonServicesModule], // CommonServicesModule provides AuthenticationService for UserGuard
   providers: [
     CookieManager,
     UserEnrichmentService,
@@ -27,6 +28,7 @@ import { DomainModule } from '../../domain.module';
     VoteCommentResolverService,
     CommentEnrichmentService,
     PermissionsHelperService,
+    CommonServicesModule, // Re-export CommonServicesModule so AuthenticationService is available to modules importing ApiV1CommonModule
   ],
 })
 export class ApiV1CommonModule {}
