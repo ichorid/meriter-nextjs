@@ -60,13 +60,14 @@ async function enhancedFetch(input: RequestInfo | URL, init?: RequestInit): Prom
         }
       } else {
         // Log actual errors at error level
-        console.error('tRPC request failed:', {
-          url,
+        const errorDetails = {
+          url: String(url),
           status: response.status,
-          statusText: response.statusText,
+          statusText: response.statusText || 'Unknown',
           headers: Object.fromEntries(response.headers.entries()),
-          errorBody: errorBody ? JSON.stringify(errorBody, null, 2) : errorBody,
-        });
+          errorBody: errorBody ? (typeof errorBody === 'string' ? errorBody : JSON.stringify(errorBody, null, 2)) : null,
+        };
+        console.error('tRPC request failed:', errorDetails);
       }
     } else if (response.status === 207) {
       // Log batch request success for debugging (207 = Multi-Status for batch)
@@ -78,10 +79,13 @@ async function enhancedFetch(input: RequestInfo | URL, init?: RequestInit): Prom
     return response;
   } catch (error) {
     // Network error or fetch failed
-    console.error('tRPC fetch error:', {
-      url,
+    const errorDetails = {
+      url: String(url),
       error: error instanceof Error ? error.message : String(error),
-    });
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      stack: error instanceof Error ? error.stack : undefined,
+    };
+    console.error('tRPC fetch error:', errorDetails);
     throw error;
   }
 }
