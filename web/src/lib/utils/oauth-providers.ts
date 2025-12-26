@@ -6,6 +6,7 @@
  */
 
 import * as LucideIcons from 'lucide-react';
+import { config } from '@/config';
 
 export interface OAuthProvider {
   id: string;
@@ -116,7 +117,9 @@ export function getOAuthUrl(providerId: string, returnTo?: string): string {
   const isLocalDev = typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || (isLocalDev ? 'http://localhost:8002' : '');
+  // Prefer config.api.baseUrl (which is forced to '' on non-localhost to avoid mixed-content).
+  // Keep localhost fallback for convenience when not using rewrites.
+  const apiBaseUrl = config.api.baseUrl || (isLocalDev ? 'http://localhost:8002' : '');
 
   const oauthUrl = apiBaseUrl
     ? `${apiBaseUrl}/api/v1/auth/${providerId}?returnTo=${encodeURIComponent(returnUrl)}`

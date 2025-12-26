@@ -161,6 +161,39 @@ const s3Region = env.S3_REGION;
 const s3Bucket = env.S3_BUCKET_NAME;
 const isS3Configured = !!(s3Endpoint && s3Region && s3Bucket && env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY);
 
+/**
+ * Determine the API base URL to use in the browser.
+ *
+ * IMPORTANT:
+ * In production-like deployments (non-localhost), the app expects to reach the API via the same origin
+ * (Caddy proxies /api and /trpc). If someone sets NEXT_PUBLIC_API_URL to an http:// URL on an https://
+ * site, browsers will block mixed-content requests and Secure cookies won't work, causing auth loops.
+ *
+ * Therefore:
+ * - On non-localhost in the browser, always use relative URLs (baseUrl = '').
+ * - On localhost, allow NEXT_PUBLIC_API_URL (or default to relative and rely on rewrites).
+ */
+function getApiBaseUrl(): string {
+  const raw = normalizeUrl(env.NEXT_PUBLIC_API_URL) ?? '';
+
+  if (typeof window === 'undefined') {
+    // Server-side: keep configured value (used for SSR/build-time; should be empty in prod).
+    return raw;
+  }
+
+  const hostname = window.location.hostname;
+  const isLocal =
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1';
+
+  // On real domains (dev/stage/prod), always go through same-origin proxy.
+  if (!isLocal) {
+    return '';
+  }
+
+  return raw;
+}
+
 // Configuration object with computed values
 export const config = {
   // Application
@@ -183,7 +216,7 @@ export const config = {
     // In production with Caddy, use empty string (relative URLs)
     // In development, also use empty string to go through Next.js rewrites
     // Only use absolute URL if explicitly set via NEXT_PUBLIC_API_URL
-    baseUrl: env.NEXT_PUBLIC_API_URL ?? '',
+    baseUrl: getApiBaseUrl(),
     endpoints: {
       auth: '/api/v1/auth',
       publications: '/api/v1/publications',

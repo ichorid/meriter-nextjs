@@ -5,6 +5,7 @@ import superjson from 'superjson';
 // Using types.ts ensures we only import types, not runtime code
 import type { AppRouter } from '../../../../api/apps/meriter/src/trpc/types';
 import { isUnauthorizedError } from '../utils/auth-errors';
+import { config } from '@/config';
 
 /**
  * tRPC React Query client
@@ -90,11 +91,9 @@ async function enhancedFetch(input: RequestInfo | URL, init?: RequestInit): Prom
  * Used by TRPCReactProvider in QueryProvider
  */
 export function getTrpcClient() {
-  // In dev mode, use full URL if NEXT_PUBLIC_API_URL is set, otherwise use relative URL
-  // In production, use relative URL (Caddy will proxy)
-  const apiUrl = typeof window !== 'undefined' 
-    ? (process.env.NEXT_PUBLIC_API_URL || '')
-    : '';
+  // Always prefer relative URLs on non-localhost to avoid mixed-content issues
+  // and ensure Secure cookies work (Caddy proxies /trpc on the same origin).
+  const apiUrl = typeof window !== 'undefined' ? (config.api.baseUrl || '') : '';
   const trpcUrl = apiUrl ? `${apiUrl}/trpc` : '/trpc';
   
   return trpc.createClient({
