@@ -1,0 +1,10 @@
+---
+alwaysApply: true
+---
+
+
+When doing significant changes in the web package, bump its package version according to semantic versioning
+
+When doing significant changes in the api package, bump its package version according to semantic versioning
+
+Bump the root package accordingly
