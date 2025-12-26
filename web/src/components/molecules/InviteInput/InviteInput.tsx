@@ -36,7 +36,7 @@ export function InviteInput({ className = '', hideLabel = false }: InviteInputPr
         setInviteError('');
 
         try {
-            const response = await useInviteMutation.mutateAsync(inviteCode.trim());
+            const response = await useInviteMutation.mutateAsync({ code: inviteCode.trim() });
             addToast(t('inviteUsedSuccess'), 'success');
 
             // Check for teamGroupId in response and redirect if present

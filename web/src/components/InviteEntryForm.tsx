@@ -42,7 +42,7 @@ export function InviteEntryForm({ className = '', inviteCode: inviteCodeProp }: 
         setIsSubmitting(true);
 
         try {
-            await useInviteMutation.mutateAsync(inviteCode.trim());
+            await useInviteMutation.mutateAsync({ code: inviteCode.trim() });
             addToast(t('success'), 'success');
             router.push('/meriter/profile');
         } catch (error: any) {
