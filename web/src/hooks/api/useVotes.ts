@@ -77,9 +77,9 @@ export function useRemovePublicationVote() {
   });
   
   return {
+    ...deleteMutation,
     mutate: (publicationId: string) => deleteMutation.mutate({ targetType: 'publication', targetId: publicationId }),
     mutateAsync: (publicationId: string) => deleteMutation.mutateAsync({ targetType: 'publication', targetId: publicationId }),
-    ...deleteMutation,
   };
 }
 
@@ -97,9 +97,9 @@ export function useRemoveCommentVote() {
   });
   
   return {
+    ...deleteMutation,
     mutate: (commentId: string) => deleteMutation.mutate({ targetType: 'vote', targetId: commentId }),
     mutateAsync: (commentId: string) => deleteMutation.mutateAsync({ targetType: 'vote', targetId: commentId }),
-    ...deleteMutation,
   };
 }
 
@@ -110,7 +110,11 @@ export function useVoteOnPublicationWithComment() {
   
   const mutation = trpc.votes.createWithComment.useMutation({
     onMutate: async (input) => {
-      const { communityId, quotaAmount = 0, walletAmount = 0 } = input;
+      // Input should already be transformed by the wrapper function
+      // It should have quotaAmount and walletAmount at the top level
+      const quotaAmount = (input as any).quotaAmount ?? 0;
+      const walletAmount = (input as any).walletAmount ?? 0;
+      const communityId = (input as any).communityId;
       const shouldOptimistic = !!user?.id && !!communityId;
       if (!shouldOptimistic) return {} as OptimisticUpdateContext;
       
@@ -186,6 +190,7 @@ export function useVoteOnPublicationWithComment() {
   });
   
   return {
+    ...mutation,
     mutateAsync: ({ 
       publicationId, 
       data, 
@@ -200,17 +205,28 @@ export function useVoteOnPublicationWithComment() {
         images?: string[];
       }; 
       communityId?: string; 
-    }) => mutation.mutateAsync({
-      targetType: 'publication',
-      targetId: publicationId,
-      quotaAmount: data.quotaAmount ?? 0,
-      walletAmount: data.walletAmount ?? 0,
-      direction: data.direction ?? 'up',
-      comment: data.comment ?? '',
-      images: data.images,
-      communityId: communityId!,
-    }),
-    ...mutation,
+    }) => {
+      const quotaAmount = data.quotaAmount ?? 0;
+      const walletAmount = data.walletAmount ?? 0;
+      
+      // Validate that at least one amount is non-zero
+      if (quotaAmount === 0 && walletAmount === 0) {
+        throw new Error('At least one of quotaAmount or walletAmount must be non-zero. Please ensure you have quota or wallet balance.');
+      }
+      
+      const mutationInput = {
+        targetType: 'publication' as const,
+        targetId: publicationId,
+        quotaAmount,
+        walletAmount,
+        direction: data.direction ?? 'up' as const,
+        comment: data.comment ?? '',
+        images: data.images,
+        communityId: communityId || '',
+      };
+      
+      return mutation.mutateAsync(mutationInput);
+    },
   };
 }
 

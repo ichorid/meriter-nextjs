@@ -155,7 +155,11 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   };
 
   const handleSubmit = async (directionPlus: boolean) => {
-    if (!activeVotingTarget || !votingTargetType || !targetCommunityId) return;
+    console.log('[VotingPopup] handleSubmit called', { directionPlus });
+    if (!activeVotingTarget || !votingTargetType || !targetCommunityId) {
+      console.log('[VotingPopup] Early return: missing required data', { activeVotingTarget, votingTargetType, targetCommunityId });
+      return;
+    }
 
     // Check feature flag - comment voting is disabled by default
     if (votingTargetType === 'comment' && !enableCommentVoting) {
@@ -164,6 +168,15 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     }
 
     const delta = formData.delta;
+    console.log('[VotingPopup] Initial values', {
+      delta,
+      quotaRemaining,
+      walletBalance,
+      effectiveVotingMode,
+      isViewer,
+      'quotaRemaining type': typeof quotaRemaining,
+      'walletBalance type': typeof walletBalance,
+    });
     if (delta === 0) {
       updateVotingFormData({ error: t('pleaseAdjustSlider') });
       return;
@@ -177,30 +190,96 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       return;
     }
     const absoluteAmount = Math.abs(delta);
+    console.log('[VotingPopup] After initial checks', {
+      absoluteAmount,
+      isUpvote,
+      'absoluteAmount type': typeof absoluteAmount,
+      'absoluteAmount value': absoluteAmount,
+    });
 
     // Calculate vote breakdown
     let quotaAmount = 0;
     let walletAmount = 0;
 
     if (isUpvote) {
+      console.log('[VotingPopup] Calculating upvote amounts, effectiveVotingMode:', effectiveVotingMode);
       if (effectiveVotingMode === 'wallet-only') {
         walletAmount = absoluteAmount;
         quotaAmount = 0;
+        console.log('[VotingPopup] Wallet-only mode:', { quotaAmount, walletAmount });
       } else if (effectiveVotingMode === 'quota-only') {
-        quotaAmount = Math.min(absoluteAmount, quotaRemaining);
+        // If quotaRemaining is 0 (might be stale), still try quota - server will validate
+        quotaAmount = quotaRemaining > 0 ? Math.min(absoluteAmount, quotaRemaining) : absoluteAmount;
         walletAmount = 0;
+        console.log('[VotingPopup] Quota-only mode:', {
+          quotaAmount,
+          walletAmount,
+          quotaRemaining,
+          absoluteAmount,
+          'quotaAmount type': typeof quotaAmount,
+          'calculation': `quotaRemaining > 0 ? Math.min(${absoluteAmount}, ${quotaRemaining}) : ${absoluteAmount}`,
+        });
       } else {
-        quotaAmount = Math.min(absoluteAmount, quotaRemaining);
-        walletAmount = Math.max(0, absoluteAmount - quotaRemaining);
+        // Use quota first, then wallet
+        // If quotaRemaining is 0 (might be stale), still try quota first - server will validate
+        if (quotaRemaining > 0) {
+          quotaAmount = Math.min(absoluteAmount, quotaRemaining);
+          walletAmount = Math.max(0, absoluteAmount - quotaRemaining);
+          console.log('[VotingPopup] Mixed mode (quota available):', { quotaAmount, walletAmount, quotaRemaining });
+        } else {
+          // Quota appears 0 (might be stale) - try quota first anyway, server will validate
+          quotaAmount = absoluteAmount;
+          walletAmount = 0;
+          console.log('[VotingPopup] Mixed mode (quota appears 0, using absoluteAmount):', { quotaAmount, walletAmount });
+        }
       }
     } else {
       // Downvotes use wallet only (but viewers can't downvote since they can't use wallet)
+      console.log('[VotingPopup] Calculating downvote amounts');
       if (isViewer) {
         updateVotingFormData({ error: 'Viewers can only vote using daily quota. Downvotes require wallet merits.' });
         return;
       }
       walletAmount = absoluteAmount;
+      console.log('[VotingPopup] Downvote mode:', { quotaAmount, walletAmount });
     }
+
+    // Validate that at least one amount is non-zero before submission
+    // This handles edge cases where calculation resulted in both being 0
+    // (e.g., downvotes with no wallet balance, though walletAmount should be > 0 if absoluteAmount > 0)
+    console.log('[VotingPopup] After calculation, before validation:', {
+      quotaAmount,
+      walletAmount,
+      absoluteAmount,
+      'quotaAmount === 0': quotaAmount === 0,
+      'walletAmount === 0': walletAmount === 0,
+      'both zero?': quotaAmount === 0 && walletAmount === 0,
+    });
+    if (quotaAmount === 0 && walletAmount === 0) {
+      console.warn('[VotingPopup] Both amounts are 0! This should not happen. Fixing...', { isUpvote, absoluteAmount });
+      if (!isUpvote) {
+        // For downvotes, we need wallet - can't proceed without it
+        updateVotingFormData({ error: 'You have insufficient wallet balance for downvotes.' });
+        return;
+      }
+      // For upvotes, this shouldn't happen due to calculation above, but if it does,
+      // try quota anyway (might be stale data) - server will validate
+      quotaAmount = absoluteAmount;
+      walletAmount = 0;
+      console.log('[VotingPopup] Fixed amounts for upvote:', { quotaAmount, walletAmount });
+    }
+
+    console.log('[VotingPopup] Final amounts before API call:', {
+      quotaAmount,
+      walletAmount,
+      absoluteAmount,
+      isUpvote,
+      votingTargetType,
+      'quotaAmount type': typeof quotaAmount,
+      'walletAmount type': typeof walletAmount,
+      'quotaAmount value': quotaAmount,
+      'walletAmount value': walletAmount,
+    });
 
     try {
       updateVotingFormData({ error: '' });
@@ -209,6 +288,24 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
       // For publications, use the combined endpoint that creates comment and vote atomically
       if (votingTargetType === 'publication') {
+        const mutationPayload = {
+          publicationId: targetId,
+          data: {
+            quotaAmount,
+            walletAmount,
+            comment: formData.comment.trim() || undefined,
+            direction: isUpvote ? 'up' : 'down' as const,
+            images: enableCommentImageUploads && formData.images && formData.images.length > 0 ? formData.images : undefined,
+          },
+          communityId: targetCommunityId,
+        };
+        console.log('[VotingPopup] Calling voteOnPublicationWithCommentMutation with:', JSON.stringify(mutationPayload, null, 2));
+        console.log('[VotingPopup] Raw values:', {
+          quotaAmount,
+          walletAmount,
+          'quotaAmount === 0': quotaAmount === 0,
+          'walletAmount === 0': walletAmount === 0,
+        });
         // Single vote with both quota and wallet amounts
         await voteOnPublicationWithCommentMutation.mutateAsync({
           publicationId: targetId,
@@ -224,6 +321,13 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       } else {
         // For votes, use the vote-on-vote endpoint
         // Include comment field for vote-comments (L2, L3, etc.)
+        console.log('[VotingPopup] Calling voteOnVoteMutation with:', {
+          voteId: targetId,
+          quotaAmount,
+          walletAmount,
+          comment: formData.comment?.trim() || undefined,
+          direction: isUpvote ? 'up' : 'down',
+        });
         await voteOnVoteMutation.mutateAsync({
           voteId: targetId,
           data: {
@@ -238,9 +342,11 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       }
 
       // Close popup and reset form
+      console.log('[VotingPopup] Vote submitted successfully');
       handleClose();
     } catch (err: unknown) {
       // Mutation hooks handle rollback automatically via onError
+      console.error('[VotingPopup] Error submitting vote:', err);
       const message = err instanceof Error ? err.message : t('errorCommenting');
       updateVotingFormData({ error: message });
     }
