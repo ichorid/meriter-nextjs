@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoginForm } from "@/components/LoginForm";
@@ -37,11 +37,16 @@ export function AuthWrapper({ children, enabledProviders, authnEnabled }: AuthWr
         renderCount.current += 1;
     }
 
-    // Extract stable user properties for dependency tracking
-    const userId = user?.id;
-    const userGlobalRole = user?.globalRole;
-    const userInviteCode = user?.inviteCode;
-    const userMembershipsCount = user?.communityMemberships?.length || 0;
+    // Memoize extracted user properties to prevent recalculation on every render
+    // This ensures stable references when user object reference changes but values don't
+    const userId = useMemo(() => user?.id, [user?.id]);
+    const userGlobalRole = useMemo(() => user?.globalRole, [user?.globalRole]);
+    const userInviteCode = useMemo(() => user?.inviteCode, [user?.inviteCode]);
+    // Use nullish coalescing to handle undefined consistently
+    const userMembershipsCount = useMemo(
+        () => user?.communityMemberships?.length ?? 0,
+        [user?.communityMemberships?.length ?? 0]
+    );
 
     // Optimized debug logging - only log when meaningful values change
     useEffect(() => {
@@ -89,7 +94,8 @@ export function AuthWrapper({ children, enabledProviders, authnEnabled }: AuthWr
 
     // If authenticated and on login page, redirect to home
     // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
-    useEffect(() => {
+    // Use useCallback to stabilize the redirect function
+    const handleRedirect = useCallback(() => {
         if (isAuthenticated && pathname === "/meriter/login") {
             if (DEBUG_MODE) {
                 console.log("[AuthWrapper] Redirect check:", {
@@ -103,6 +109,10 @@ export function AuthWrapper({ children, enabledProviders, authnEnabled }: AuthWr
             router.push("/meriter/profile");
         }
     }, [isAuthenticated, pathname, router]);
+
+    useEffect(() => {
+        handleRedirect();
+    }, [handleRedirect]);
 
     // If disabled, just render children
     // This conditional return is AFTER all hooks have been called

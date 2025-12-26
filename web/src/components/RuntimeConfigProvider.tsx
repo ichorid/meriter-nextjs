@@ -3,7 +3,7 @@
 import { useRuntimeConfig } from '@/hooks/useRuntimeConfig';
 import { getEnabledProviders, getAuthEnv } from '@/lib/utils/oauth-providers';
 import { AuthWrapper } from '@/components/AuthWrapper';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
 
 interface RuntimeConfigProviderProps {
@@ -38,11 +38,30 @@ export function RuntimeConfigProvider({
     const oauthMailru = runtimeConfig?.oauth?.mailru ?? false;
     const authnEnabled = runtimeConfig?.authn?.enabled ?? false;
     
+    // Store previous array to compare by value and maintain stable reference
+    const prevProvidersRef = useRef<string[] | null>(null);
+    
     // Memoize enabled providers using primitive dependencies
-    // This ensures we only recompute when oauth config values actually change
+    // Compare by serialization to maintain stable array reference when values don't change
     const enabledProviders = useMemo(() => {
         const env = getAuthEnv(runtimeConfig);
-        return getEnabledProviders(env);
+        const newProviders = getEnabledProviders(env);
+        
+        // Compare by serialization to detect actual changes
+        // Sort copies to avoid mutating original arrays
+        const newProvidersSerialized = JSON.stringify([...newProviders].sort());
+        const prevProvidersSerialized = prevProvidersRef.current 
+            ? JSON.stringify([...prevProvidersRef.current].sort())
+            : null;
+        
+        // If values are the same, return previous array reference for stability
+        if (prevProvidersSerialized === newProvidersSerialized && prevProvidersRef.current) {
+            return prevProvidersRef.current;
+        }
+        
+        // Values changed, update ref and return new array
+        prevProvidersRef.current = newProviders;
+        return newProviders;
     }, [
         oauthGoogle,
         oauthYandex,
