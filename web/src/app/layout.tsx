@@ -42,6 +42,78 @@ export default function RootLayout({
                         `,
                     }}
                 />
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+// Global chunk loading error handler
+(function() {
+  // Handle script loading errors (chunk load failures)
+  window.addEventListener('error', function(event) {
+    const target = event.target;
+    const isChunkError = target && (
+      (target.tagName === 'SCRIPT' && target.src) ||
+      (target.tagName === 'LINK' && target.href && target.rel === 'preload')
+    );
+    
+    if (isChunkError) {
+      const src = target.src || target.href;
+      const isNextChunk = src && (
+        src.includes('/_next/static/chunks/') ||
+        src.includes('/_next/static/css/')
+      );
+      
+      if (isNextChunk) {
+        console.error('ChunkLoadError: Failed to load', src);
+        // Prevent default error handling
+        event.preventDefault();
+        
+        // Retry by reloading the page after a short delay
+        // This helps recover from stale chunk references after deployments
+        const retryCount = parseInt(sessionStorage.getItem('chunkRetryCount') || '0', 10);
+        if (retryCount < 2) {
+          sessionStorage.setItem('chunkRetryCount', String(retryCount + 1));
+          setTimeout(function() {
+            window.location.reload();
+          }, 1000);
+        } else {
+          // Too many retries, clear counter and show error
+          sessionStorage.removeItem('chunkRetryCount');
+          console.error('ChunkLoadError: Max retries reached. Please refresh manually.');
+        }
+      }
+    }
+  }, true); // Use capture phase to catch errors early
+  
+  // Handle unhandled promise rejections from chunk loading
+  window.addEventListener('unhandledrejection', function(event) {
+    const error = event.reason;
+    if (error && (
+      error.message && (
+        error.message.includes('Failed to load chunk') ||
+        error.message.includes('Loading chunk') ||
+        error.message.includes('ChunkLoadError')
+      ) ||
+      error.name === 'ChunkLoadError'
+    )) {
+      console.error('ChunkLoadError (unhandled rejection):', error);
+      event.preventDefault();
+      
+      const retryCount = parseInt(sessionStorage.getItem('chunkRetryCount') || '0', 10);
+      if (retryCount < 2) {
+        sessionStorage.setItem('chunkRetryCount', String(retryCount + 1));
+        setTimeout(function() {
+          window.location.reload();
+        }, 1000);
+      } else {
+        sessionStorage.removeItem('chunkRetryCount');
+        console.error('ChunkLoadError: Max retries reached. Please refresh manually.');
+      }
+    }
+  });
+})();
+                        `,
+                    }}
+                />
                 <link
                     href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap"
                     rel="stylesheet"

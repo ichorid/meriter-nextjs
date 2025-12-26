@@ -44,6 +44,12 @@ export class ErrorBoundary extends Component<Props, State> {
                                   error.message.includes('310') ||
                                   error.stack?.includes('310');
     
+    // Check for ChunkLoadError (Next.js chunk loading failures)
+    const isChunkLoadError = error.name === 'ChunkLoadError' || 
+                             error.message.includes('Failed to load chunk') ||
+                             error.message.includes('Loading chunk') ||
+                             error.message.includes('ChunkLoadError');
+    
     if (isInfiniteRenderError) {
       console.error(
         '🚨 React Error #310 (Infinite Render Loop) caught by boundary:',
@@ -56,6 +62,23 @@ export class ErrorBoundary extends Component<Props, State> {
         '\n- Missing memoization of callbacks/values',
         '\n- Circular dependencies between components'
       );
+    } else if (isChunkLoadError) {
+      console.error(
+        '🚨 ChunkLoadError caught by boundary:',
+        '\nError:', error.message,
+        '\nStack:', error.stack,
+        '\nComponent Stack:', errorInfo.componentStack,
+        '\n\nThis usually indicates:',
+        '\n- Stale chunk references after deployment',
+        '\n- Network/CDN caching issues',
+        '\n- Missing static assets',
+        '\n\nAttempting to reload page to fetch fresh chunks...'
+      );
+      // Auto-retry by reloading the page for chunk errors
+      // This helps recover from stale chunk references after deployments
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } else {
       console.error('Error caught by boundary:', error, errorInfo);
     }

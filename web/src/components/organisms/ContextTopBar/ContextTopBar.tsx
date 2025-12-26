@@ -277,6 +277,15 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
   const searchParams = useSearchParams();
   const t = useTranslations('pages.communities');
   const tCommon = useTranslations('common');
+  
+  // Safe translation helper to prevent MISSING_MESSAGE errors
+  const safeTranslate = (key: string, fallback: string): string => {
+    try {
+      return tCommon(key);
+    } catch {
+      return fallback;
+    }
+  };
   const [showTagDropdown, setShowTagDropdown] = React.useState(false);
   const [showSnack, setShowSnack] = React.useState(false);
   const [showSearchModal, setShowSearchModal] = React.useState(false);
@@ -500,7 +509,7 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
             variant="ghost"
             size="sm"
             onClick={() => router.push(`/meriter/communities/${communityId}/rules`)}
-            aria-label={tCommon('info') || 'Community info'}
+            aria-label={safeTranslate('info', 'Community info')}
             className="rounded-xl active:scale-[0.98] px-2"
           >
             <Info size={18} className="text-base-content/70" />

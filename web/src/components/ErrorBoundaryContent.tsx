@@ -25,27 +25,57 @@ interface ErrorBoundaryContentProps {
 export function ErrorBoundaryContent({ error }: ErrorBoundaryContentProps) {
   const tCommon = useTranslations('common');
   
+  // Check if this is a ChunkLoadError
+  const isChunkLoadError = error?.name === 'ChunkLoadError' || 
+                           error?.message?.includes('Failed to load chunk') ||
+                           error?.message?.includes('Loading chunk') ||
+                           error?.message?.includes('ChunkLoadError');
+  
+  // Safe translation helper
+  const safeTranslate = (key: string, fallback: string): string => {
+    try {
+      return tCommon(key);
+    } catch {
+      return fallback;
+    }
+  };
+  
+  const errorMessage = isChunkLoadError
+    ? 'Failed to load application resources. This usually happens after an update. Reloading the page should fix this.'
+    : (error?.message || safeTranslate('unexpectedError', 'An unexpected error occurred'));
+  
   return (
     <ErrorDisplay
-      message={error?.message || tCommon('unexpectedError')}
+      message={errorMessage}
       variant="card"
       fullScreen
       error={error || undefined}
-      showDetails={!!error}
+      showDetails={!!error && !isChunkLoadError}
       actions={
         <div className="flex flex-col sm:flex-row gap-3 w-full">
-          <Button 
-            variant="primary" 
-            onClick={() => window.location.href = '/meriter/profile'}
-          >
-            {tCommon('goHome')}
-          </Button>
-          <Button 
-            variant="secondary" 
-            onClick={() => window.location.reload()}
-          >
-            {tCommon('reloadPage')}
-          </Button>
+          {isChunkLoadError ? (
+            <Button 
+              variant="primary" 
+              onClick={() => window.location.reload()}
+            >
+              {safeTranslate('reloadPage', 'Reload Page')}
+            </Button>
+          ) : (
+            <>
+              <Button 
+                variant="primary" 
+                onClick={() => window.location.href = '/meriter/profile'}
+              >
+                {safeTranslate('goHome', 'Go Home')}
+              </Button>
+              <Button 
+                variant="secondary" 
+                onClick={() => window.location.reload()}
+              >
+                {safeTranslate('reloadPage', 'Reload Page')}
+              </Button>
+            </>
+          )}
         </div>
       }
     />
