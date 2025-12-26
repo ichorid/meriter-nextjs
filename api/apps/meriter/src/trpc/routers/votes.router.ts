@@ -443,6 +443,7 @@ export const votesRouter = router({
 
   /**
    * Withdraw from publication
+   * @deprecated Use publications.withdraw instead. This endpoint is kept for backward compatibility.
    */
   withdraw: protectedProcedure
     .input(WithdrawAmountDtoSchema.extend({ id: z.string() }))

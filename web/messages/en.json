@@ -77,7 +77,8 @@
             "settings": "Settings"
         },
         "profile": "Profile",
-        "account": "Account"
+        "account": "Account",
+        "info": "Info"
     },
     "home": {
         "breadcrumb": "Home",

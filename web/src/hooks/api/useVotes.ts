@@ -149,7 +149,7 @@ export function useWithdrawFromPublication() {
     onSuccess: (_, variables) => {
       invalidatePublications(queryClient, { 
         lists: true, 
-        detail: variables.id,
+        detail: variables.publicationId,
         exact: false 
       });
       queryClient.invalidateQueries({ queryKey: ['publications'], exact: false });

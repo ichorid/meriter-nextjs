@@ -78,7 +78,8 @@
             "settings": "Настройки"
         },
         "profile": "Профиль",
-        "account": "Аккаунт"
+        "account": "Аккаунт",
+        "info": "Информация"
     },
     "home": {
         "breadcrumb": "Главная",
