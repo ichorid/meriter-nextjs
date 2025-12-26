@@ -515,17 +515,6 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
             <Info size={18} className="text-base-content/70" />
           </Button>
 
-          {/* General Settings Button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push('/meriter/settings')}
-            aria-label={tCommon('settings')}
-            className="rounded-xl active:scale-[0.98] px-2"
-          >
-            <Settings size={20} className="text-base-content/70" />
-          </Button>
-
           {/* Admin Settings */}
           {isAdmin && (
             <Button
