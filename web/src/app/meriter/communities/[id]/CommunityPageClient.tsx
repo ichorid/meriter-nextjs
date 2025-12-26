@@ -484,7 +484,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     },
                     {
                         id: 'members',
-                        label: tCommunities('members') || 'Members',
+                        label: tCommunities('members.title') || 'Members',
                         icon: <Users size={16} />,
                     },
                 ]}

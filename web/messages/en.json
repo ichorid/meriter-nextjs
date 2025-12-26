@@ -532,7 +532,10 @@
             "createPost": "Create Post",
             "joinByInvite": "Or join by invite",
             "publications": "Publications",
-            "members": "Members",
+            "members": {
+                "title": "Members",
+                "empty": "No members found"
+            },
             "vision": "Future",
             "noVisionPosts": "No future posts yet",
             "visionCommunityNotFound": "Future community not found",

@@ -534,7 +534,10 @@
             "createPost": "Создать пост",
             "joinByInvite": "Или присоединиться по приглашению",
             "publications": "Публикации",
-            "members": "Участники",
+            "members": {
+                "title": "Участники",
+                "empty": "Участники не найдены"
+            },
             "vision": "Будущее",
             "noVisionPosts": "Пока нет постов будущего",
             "visionCommunityNotFound": "Сообщество будущего не найдено",

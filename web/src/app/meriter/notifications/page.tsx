@@ -150,7 +150,7 @@ export default function NotificationsPage() {
 
   const handleNotificationClick = (notification: typeof notifications[0]) => {
     if (!notification.read) {
-      markAsRead.mutate(notification.id);
+      markAsRead.mutate({ id: notification.id });
     }
     if (notification.url) {
       router.push(notification.url);
@@ -314,7 +314,7 @@ export default function NotificationsPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            markAsRead.mutate(notification.id);
+                            markAsRead.mutate({ id: notification.id });
                           }}
                           className="p-1 hover:bg-base-200 rounded-full transition-colors"
                           aria-label={t('ariaLabels.markAsRead')}
