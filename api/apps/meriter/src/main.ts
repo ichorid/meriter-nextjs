@@ -71,6 +71,12 @@ async function bootstrap() {
   // ---------------------------------------------------------------------------
   try {
     const expressApp = app.getHttpAdapter().getInstance();
+    
+    // CRITICAL: Mount cookie parser BEFORE tRPC middleware
+    // This ensures cookies are parsed and available in req.cookies for tRPC context
+    expressApp.use(cookieParser());
+    logger.log('✅ Cookie parser middleware mounted (before tRPC)');
+    
     const trpcService = app.get(TrpcService);
     const trpcMiddleware = createExpressMiddleware({
       router: trpcService.getRouter(),
@@ -140,7 +146,10 @@ async function bootstrap() {
     }),
   );
 
+  // Note: Cookie parser is already mounted above (before tRPC middleware)
+  // This second mount is for other routes, but it's redundant - keeping for backward compatibility
   app.use(cookieParser());
+  logger.debug('Cookie parser also mounted globally (redundant but safe)');
   
   const port = configService.get<number>('app.port') ?? 8002;
   // Ensure Nest finishes initialization after our early Express middleware mounts.

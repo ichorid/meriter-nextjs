@@ -12,6 +12,8 @@ import { AppModeProvider } from '@/contexts/AppModeContext';
 import StyledJsxRegistry from '@/registry';
 import { getEnabledProviders, getAuthEnv } from '@/lib/utils/oauth-providers';
 import { ClientRouter } from '@/components/ClientRouter';
+// Import auth debug utilities (only active in development)
+import '@/lib/utils/auth-debug';
 
 import enMessages from '../../messages/en.json';
 import ruMessages from '../../messages/ru.json';

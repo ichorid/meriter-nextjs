@@ -1,4 +1,5 @@
 // Auth React Query hooks
+import React from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
 import { isUnauthorizedError } from '@/lib/utils/auth-errors';
@@ -7,7 +8,7 @@ import { authApiV1 } from '@/lib/api/v1';
 export const useMe = () => {
   // Use tRPC for getMe - provides automatic type safety
   // Use throwOnError: false to handle errors in AuthContext instead of throwing
-  return trpc.users.getMe.useQuery(undefined, {
+  const query = trpc.users.getMe.useQuery(undefined, {
     // Use longer staleTime for auth data since it doesn't change frequently during a session
     staleTime: 5 * 60 * 1000, // 5 minutes - auth data stays fresh for 5 minutes
     // Don't refetch on mount if data is fresh - prevents excessive refetches on navigation
@@ -30,6 +31,37 @@ export const useMe = () => {
       skipErrorToast: true,
     },
   });
+
+  // DEBUG: Log query state changes
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    const prevDataRef = React.useRef(query.data);
+    const prevErrorRef = React.useRef(query.error);
+    
+    React.useEffect(() => {
+      if (query.data !== prevDataRef.current) {
+        console.log('[AUTH-DEBUG] useMe data changed:', {
+          hasUser: !!query.data,
+          userId: query.data?.id,
+          username: query.data?.username,
+          isLoading: query.isLoading,
+          isFetching: query.isFetching,
+        });
+        prevDataRef.current = query.data;
+      }
+      
+      if (query.error !== prevErrorRef.current) {
+        console.warn('[AUTH-DEBUG] useMe error:', {
+          error: query.error,
+          isUnauthorized: isUnauthorizedError(query.error),
+          isLoading: query.isLoading,
+          isFetching: query.isFetching,
+        });
+        prevErrorRef.current = query.error;
+      }
+    }, [query.data, query.error, query.isLoading, query.isFetching]);
+  }
+
+  return query;
 };
 
 export const useFakeAuth = () => {

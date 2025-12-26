@@ -1,5 +1,6 @@
 import { inferAsyncReturnType } from '@trpc/server';
 import { ConfigService } from '@nestjs/config';
+import { Logger } from '@nestjs/common';
 import { AppConfig } from '../config/configuration';
 import { UserService } from '../domain/services/user.service';
 import { CommunityService } from '../domain/services/community.service';
@@ -100,11 +101,56 @@ export async function createContext(opts: CreateContextOptions) {
     authenticationService,
   } = opts;
 
+  const logger = new Logger('tRPC-Context');
+  const path = req.url || req.path || 'unknown';
+  const method = req.method || 'unknown';
+
+  // DEBUG: Log request details
+  logger.debug(
+    `[AUTH-DEBUG] tRPC context creation: method=${method}, path=${path}, host=${req.headers?.host || 'unknown'}`
+  );
+
+  // DEBUG: Log cookie parser status
+  const hasCookies = !!req.cookies;
+  const cookieHeader = req.headers?.cookie;
+  const jwtCookie = req.cookies?.jwt;
+  const cookieKeys = req.cookies ? Object.keys(req.cookies) : [];
+  
+  logger.debug(
+    `[AUTH-DEBUG] Cookie parser status: hasCookies=${hasCookies}, cookieHeader exists=${!!cookieHeader}, cookieHeader length=${cookieHeader?.length || 0}, cookieKeys=[${cookieKeys.join(', ')}]`
+  );
+
+  if (jwtCookie) {
+    logger.debug(
+      `[AUTH-DEBUG] JWT cookie found: length=${jwtCookie.length}, first 30 chars: ${jwtCookie.substring(0, 30)}..., last 10 chars: ...${jwtCookie.substring(jwtCookie.length - 10)}`
+    );
+  } else {
+    logger.warn(
+      `[AUTH-DEBUG] JWT cookie NOT found. req.user exists: ${!!req.user}, req.user.id: ${req.user?.id || 'none'}`
+    );
+  }
+
+  // DEBUG: Log request headers that might affect cookie parsing
+  logger.debug(
+    `[AUTH-DEBUG] Request headers: user-agent=${req.headers?.['user-agent']?.substring(0, 50) || 'none'}, referer=${req.headers?.referer || 'none'}, origin=${req.headers?.origin || 'none'}`
+  );
+
   // Authenticate using JwtVerificationService (supports req.user, test globals, and JWT)
   const authResult = await authenticationService.authenticateFromRequest({
     req,
     allowTestMode: true, // Allow test globals for tRPC (guards aren't applied to Express middleware)
   });
+
+  // DEBUG: Log authentication result
+  if (authResult.user) {
+    logger.debug(
+      `[AUTH-DEBUG] Authentication SUCCESS: userId=${authResult.user.id}, username=${authResult.user.username || 'none'}, authProvider=${authResult.user.authProvider}`
+    );
+  } else {
+    logger.warn(
+      `[AUTH-DEBUG] Authentication FAILED: error=${authResult.error || 'UNKNOWN'}, errorMessage=${authResult.errorMessage || 'none'}`
+    );
+  }
 
   // Use authenticated user (null if authentication failed - protected procedures will handle it)
   const user = authResult.user;

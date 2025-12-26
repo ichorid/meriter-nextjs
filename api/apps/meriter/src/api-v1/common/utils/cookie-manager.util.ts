@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../../../config/configuration';
 
@@ -7,6 +7,8 @@ import { AppConfig } from '../../../config/configuration';
  */
 @Injectable()
 export class CookieManager {
+  private readonly logger = new Logger(CookieManager.name);
+
   constructor(private configService: ConfigService<AppConfig>) {}
 
   /**
@@ -316,8 +318,15 @@ export class CookieManager {
       path: '/',
     };
 
+    this.logger.debug(
+      `[COOKIE-DEBUG] Setting JWT cookie: domain=${normalizedConfiguredDomain || 'none (host-only)'}, secure=${secure}, sameSite=${sameSite}, requestHost=${requestHost || 'none'}, isProduction=${production}, tokenLength=${jwtToken.length}`
+    );
+
     // 1) Always set a host-only cookie (no Domain attribute). This is the most reliable option.
     response.cookie('jwt', jwtToken, cookieOptions);
+    this.logger.debug(
+      `[COOKIE-DEBUG] Host-only JWT cookie set: path=/, httpOnly=true, secure=${secure}, sameSite=${sameSite}`
+    );
 
     // 2) Optionally also set a domain cookie ONLY if explicitly configured with a leading dot
     // and it matches the request hostname (avoid setting unrelated domains).
@@ -330,9 +339,19 @@ export class CookieManager {
             ...cookieOptions,
             domain: normalizedConfiguredDomain,
           });
-        } catch {
+          this.logger.debug(
+            `[COOKIE-DEBUG] Domain JWT cookie also set: domain=${normalizedConfiguredDomain}`
+          );
+        } catch (error) {
+          this.logger.warn(
+            `[COOKIE-DEBUG] Failed to set domain cookie: ${error instanceof Error ? error.message : String(error)}`
+          );
           // If domain cookie setting fails, host-only cookie is still set.
         }
+      } else {
+        this.logger.debug(
+          `[COOKIE-DEBUG] Skipping domain cookie: reqHost=${reqHost || 'none'}, domainWithoutDot=${domainWithoutDot}, match=${reqHost === domainWithoutDot || (reqHost?.endsWith(`.${domainWithoutDot}`) || false)}`
+        );
       }
     }
   }

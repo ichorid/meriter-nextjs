@@ -75,6 +75,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // 2. There's no error OR the error is not a 401 (401 means not authenticated)
   const isAuthenticated = useMemo(() => !!user && !is401Error, [user, is401Error]);
 
+  // DEBUG: Log authentication state changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.log('[AUTH-DEBUG] AuthContext state:', {
+        hasUser: !!user,
+        userId: user?.id,
+        username: user?.username,
+        isLoading: userLoading,
+        isAuthenticated,
+        hasError: !!userError,
+        errorType: userError ? (isUnauthorizedError(userError) ? '401' : 'other') : 'none',
+        errorMessage: userError?.message,
+        pathname: window.location.pathname,
+      });
+    }
+  }, [user, userLoading, isAuthenticated, userError]);
+
   const authenticateFakeUser = useCallback(async () => {
     try {
       setIsAuthenticating(true);
@@ -173,8 +190,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // If the user never had a successful session, a 401 is expected and we should not
           // aggressively clear cookies (this can spam /auth/clear-cookies and interfere with login).
           if (!hadSession) {
+            if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+              console.log('[AUTH-DEBUG] 401 error but no previous session - skipping cookie clear');
+            }
             setAuthError(null);
             return;
+          }
+          
+          if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+            console.warn('[AUTH-DEBUG] 401 error with previous session - clearing cookies', {
+              pathname: window.location.pathname,
+              hadSession,
+            });
           }
 
           // Session expired on a protected route.
