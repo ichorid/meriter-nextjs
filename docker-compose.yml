@@ -121,6 +121,38 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  web:
+    image: ghcr.io/ichorid/meriter-nextjs-web:${VERSION_WEB:-latest}
+    container_name: meriter-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PORT=8001
+      - NODE_ENV=production
+    # Security: Web port not exposed to host, only accessible through Caddy
+    # ports:
+    #   - "8001:8001"
+    networks:
+      - meriter-frontend-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:8001 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+
   caddy:
     image: caddy:2.7-alpine
     container_name: meriter-caddy
@@ -135,11 +167,12 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-      # Mount web-static directory - symlinks inside this directory can be swapped dynamically
-      - ./web-static:/var/www/meriter-web:ro
     networks:
+      - meriter-frontend-network
       - meriter-backend-network
     depends_on:
+      web:
+        condition: service_healthy
       api:
         condition: service_healthy
     healthcheck:
@@ -158,6 +191,10 @@ services:
     # read_only: true  # Cannot use read_only due to certificate storage
 
 networks:
+  # Frontend network: web and caddy
+  meriter-frontend-network:
+    driver: bridge
+    internal: false
   # Backend network: api, init containers, and caddy
   meriter-backend-network:
     driver: bridge

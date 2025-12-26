@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
-import { User } from 'lucide-react';
+import { User as UserIcon } from 'lucide-react';
 import { Edit } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/atoms/Badge/Badge';
@@ -98,7 +98,7 @@ export function ProfileHero({ user, stats, onEdit, showEdit = false, userRoles =
                 <AvatarImage src={avatarUrl} alt={displayName} />
               )}
               <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
-                {displayName ? displayName.slice(0, 2).toUpperCase() : <User size={32} />}
+                {displayName ? displayName.slice(0, 2).toUpperCase() : <UserIcon size={32} />}
               </AvatarFallback>
             </Avatar>
             {/* Online indicator */}

@@ -194,6 +194,8 @@ export interface AppConfig {
   DOMAIN?: string;
   /** Application URL (from APP_URL env var, optional) */
   APP_URL?: string;
+  /** Google OAuth redirect URI (legacy env var, optional) */
+  GOOGLE_REDIRECT_URI?: string;
 }
 
 /**
@@ -340,5 +342,6 @@ export default (): AppConfig => {
     NODE_ENV: nodeEnv,
     DOMAIN: env.DOMAIN,
     APP_URL: env.APP_URL,
+    GOOGLE_REDIRECT_URI: env.GOOGLE_REDIRECT_URI,
   };
 };

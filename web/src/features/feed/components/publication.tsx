@@ -147,6 +147,13 @@ export const Publication = (props: any) => {
     }, [onlyPublication, isDetailPage, setShowComments]);
     
     const [showDimensionsEditor, setShowDimensionsEditor] = useState(false);
+
+    const tagsStr = useMemo(() => [
+        "#" + keyword,
+        ...(Object.entries(dimensions || {}) || [])
+            .map(([slug, dim]) => "#" + dim)
+            .flat(),
+    ].join(" "), [keyword, dimensions]);
     
     // NOW we can do conditional returns after all hooks are called
     // Use internal IDs only - no legacy fallbacks
@@ -197,13 +204,6 @@ export const Publication = (props: any) => {
     // Display title - use meta.author.name
     const displayTitle = displayAuthorName;
     
-    const tagsStr = useMemo(() => [
-        "#" + keyword,
-        ...(Object.entries(dimensions || {}) || [])
-            .map(([slug, dim]) => "#" + dim)
-            .flat(),
-    ].join(" "), [keyword, dimensions]);
-
     const avatarUrl = authorPhotoUrl || meta?.author?.photoUrl;
     
     return (

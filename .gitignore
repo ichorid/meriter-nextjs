@@ -6,6 +6,7 @@ secrets/*
 
 # Build outputs
 dist/
+dist-types/
 build/
 .next/
 out/

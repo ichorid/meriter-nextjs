@@ -17,6 +17,32 @@ services:
       retries: 5
       start_period: 30s
 
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=
+    container_name: meriter-web
+    restart: unless-stopped
+    # Load ALL variables from .env file
+    env_file:
+      - .env
+    environment:
+      - PORT=8001
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-}
+    ports:
+      - "8001:8001"
+    networks:
+      - meriter-network
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:8001 || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   api:
     build:
       context: .
@@ -129,13 +155,13 @@ services:
       - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-      # Mount web-static directory - symlinks inside this directory can be swapped dynamically
-      - ./web-static:/var/www/meriter-web:ro
     networks:
       - meriter-network
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
+      web:
+        condition: service_started
       api:
         condition: service_started
     healthcheck:

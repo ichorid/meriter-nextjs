@@ -11,9 +11,6 @@ inputs:
   commit-sha:
     description: 'Short commit SHA for image tag'
     required: false
-  web-static-artifact:
-    description: 'Path to the static web artifact directory (contains tgz file)'
-    required: false
 
 runs:
   using: 'composite'
@@ -29,44 +26,15 @@ runs:
       run: |
         mkdir -p ~/.ssh
         ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
-    - name: Upload static web artifact
-      if: inputs.web-static-artifact != ''
-      shell: bash
-      env:
-        VPS_HOST: ${{ inputs.vps-host }}
-        COMMIT_SHA: ${{ inputs.commit-sha }}
-      run: |
-        # Find the tgz file in the artifact directory
-        ARTIFACT_FILE=$(find "${{ inputs.web-static-artifact }}" -name "*.tar.gz" -type f | head -n 1)
-        if [ -z "$ARTIFACT_FILE" ]; then
-          echo "Error: No .tar.gz file found in artifact directory"
-          exit 1
-        fi
-        
-        # Extract the original filename (basename)
-        ARTIFACT_NAME=$(basename "$ARTIFACT_FILE")
-        echo "Uploading artifact: $ARTIFACT_FILE as /tmp/$ARTIFACT_NAME"
-        scp "$ARTIFACT_FILE" "deploy@$VPS_HOST:/tmp/$ARTIFACT_NAME"
-        
-        # Store artifact name in a file for the next step
-        echo "$ARTIFACT_NAME" > /tmp/web_artifact_name.txt
     - name: Run remote deploy script
       shell: bash
       env:
         VPS_HOST: ${{ inputs.vps-host }}
         COMMIT_SHA: ${{ inputs.commit-sha }}
       run: |
-        # Read artifact name from file
-        if [ -f /tmp/web_artifact_name.txt ]; then
-          WEB_STATIC_ARTIFACT_NAME=$(cat /tmp/web_artifact_name.txt)
-        else
-          WEB_STATIC_ARTIFACT_NAME=""
-        fi
-        
         ssh "deploy@$VPS_HOST" <<EOF
           cd /opt/meriter
           export COMMIT_SHA="$COMMIT_SHA"
-          export WEB_STATIC_ARTIFACT_NAME="$WEB_STATIC_ARTIFACT_NAME"
           ./deploy.sh
         EOF
 

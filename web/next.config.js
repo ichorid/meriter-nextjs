@@ -7,13 +7,11 @@ const path = require('path');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: true,
-    // Enable Turbopack for faster builds (used in dev mode with --turbo flag)
-    // Production builds still use Webpack (see webpack config below)
-    // Note: Turbopack config is limited in Next.js 16.1.1, webpack config is used for production
-    // Re-enable strict type checking now that shared types have been trimmed for memory safety
     // Temporarily allow errors from backend imports (tRPC types) - these are type-only and don't affect runtime
     typescript: {
-        ignoreBuildErrors: true, // TODO: Fix tRPC type imports to not pull in backend runtime code
+        // TODO: Stop importing backend source types into the frontend build (generate a types-only artifact instead).
+        // Until then, Next's typecheck may traverse backend NestJS code and fail on mismatched tsconfig settings.
+        ignoreBuildErrors: true,
     },
     // Enable source maps for debugging in dev builds (works with static export)
     // Note: In Next.js 16+, SWC minification cannot be disabled, but source maps will still work
@@ -27,14 +25,28 @@ const nextConfig = {
         '@meriter/shared-types',
         '@expo/html-elements',
     ],
-    // Static export - generates fully static HTML/CSS/JS files
-    // No server-side rendering or API routes supported
-    output: 'export',
+    // Serverful Next.js (Docker) - required for robust dynamic routing and auth flows
+    // Used by web/Dockerfile via `.next/standalone`
+    output: 'standalone',
     // Fix monorepo/workspace output tracing root
     outputFileTracingRoot: path.join(__dirname, '..'),
-    // Note: Static export doesn't support rewrites()
-    // API calls must use relative URLs (/api/*) or absolute URLs via NEXT_PUBLIC_API_URL
-    // Caddy will handle proxying /api/* to the backend API server
+    // Ensure server-side fetches to `/api/*` and `/trpc/*` work inside the Docker network.
+    // When running behind Caddy, clients still use relative URLs and Caddy routes them.
+    async rewrites() {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        if (apiUrl && apiUrl.trim() !== '') {
+            // If API URL is set, do not proxy via rewrites.
+            return [];
+        }
+
+        const isProduction = process.env.NODE_ENV === 'production';
+        const apiHost = isProduction ? 'http://api:8002' : 'http://localhost:8002';
+
+        return [
+            { source: '/api/:path*', destination: `${apiHost}/api/:path*` },
+            { source: '/trpc/:path*', destination: `${apiHost}/trpc/:path*` },
+        ];
+    },
     webpack: (config, { isServer, dev }) => {
         // Check dev mode at runtime (not at config load time)
         const isDevMode = process.env.NEXT_PUBLIC_DEV_BUILD === 'true' || process.env.NODE_ENV === 'development';

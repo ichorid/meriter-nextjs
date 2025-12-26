@@ -130,15 +130,6 @@ export function LocationPicker({ initialRegion, initialCity, onLocationSelect }:
                         </button>
                     )}
                 </div>
-                        <button
-                            onClick={handleSearch}
-                            className="p-1 hover:bg-base-200 rounded-full transition-colors"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? <Loader2 className="w-5 h-5 animate-spin text-brand-primary" /> : <Search className="w-5 h-5 text-base-content/60" />}
-                        </button>
-                    }
-                />
 
                 {results.length > 0 && (
                     <div className="absolute z-50 w-full mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">

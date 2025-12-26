@@ -335,7 +335,7 @@ export class CookieManager {
     // Meriter runs the API behind the same origin (Caddy proxies /api and /trpc),
     // so a first-party cookie with SameSite=Lax is the correct default and avoids
     // "SameSite=None requires Secure" rejection issues.
-    const sameSite: 'lax' = 'lax';
+    const sameSite = 'lax' as const;
 
     // Secure cookies are recommended on any non-localhost host.
     // We force Secure if we can determine we're on a real hostname, even if proxy headers are imperfect.

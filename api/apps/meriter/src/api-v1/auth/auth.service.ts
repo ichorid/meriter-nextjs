@@ -52,7 +52,8 @@ export class AuthService {
   private isFakeDataMode(): boolean {
     // ConfigService is injected via constructor, use it instead of process.env
     // This ensures proper environment variable loading in all contexts (local, Docker, production)
-    return this.configService.get('dev.fakeDataMode', false);
+    const devConfig = this.configService.get('dev');
+    return devConfig?.fakeDataMode === true;
   }
 
   // Telegram authentication methods removed: Telegram is fully disabled in this project.
@@ -99,7 +100,7 @@ export class AuthService {
     await this.userService.ensureUserInBaseCommunities(user.id);
 
     // Generate JWT
-    const jwtSecret = this.configService.getOrThrow('jwt.secret');
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
     const jwtToken = signJWT(
       {
@@ -172,7 +173,7 @@ export class AuthService {
     await this.userService.ensureUserInBaseCommunities(updatedUser.id);
 
     // Generate JWT
-    const jwtSecret = this.configService.getOrThrow('jwt.secret');
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
     const jwtToken = signJWT(
       {
@@ -202,16 +203,15 @@ export class AuthService {
   }> {
     this.logger.log('Authenticating with Google OAuth code');
 
-    const clientId = this.configService.get('oauth.google.clientId');
-    const clientSecret = this.configService.get('oauth.google.clientSecret');
+    const oauth = this.configService.get('oauth');
+    const clientId = oauth?.google?.clientId;
+    const clientSecret = oauth?.google?.clientSecret;
 
     if (!clientId || !clientSecret) {
       throw new Error('Google OAuth credentials not configured');
     }
 
-    let callbackUrl =
-      this.configService.get('oauth.google.redirectUri') ||
-      this.configService.get('GOOGLE_REDIRECT_URI');
+    let callbackUrl = oauth?.google?.redirectUri || this.configService.get('GOOGLE_REDIRECT_URI');
 
     if (!callbackUrl) {
       const domain =
@@ -303,7 +303,7 @@ export class AuthService {
 
     await this.userService.ensureUserInBaseCommunities(user.id);
 
-    const jwtSecret = this.configService.getOrThrow('jwt.secret');
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
     const jwtToken = signJWT(
       {
@@ -334,8 +334,9 @@ export class AuthService {
   }> {
     this.logger.log('Authenticating with Yandex OAuth code');
 
-    const clientId = this.configService.get('oauth.yandex.clientId');
-    const clientSecret = this.configService.get('oauth.yandex.clientSecret');
+    const oauth = this.configService.get('oauth');
+    const clientId = oauth?.yandex?.clientId;
+    const clientSecret = oauth?.yandex?.clientSecret;
 
     if (!clientId || !clientSecret) {
       throw new Error('Yandex OAuth credentials not configured');
@@ -410,7 +411,7 @@ export class AuthService {
 
     await this.userService.ensureUserInBaseCommunities(user.id);
 
-    const jwtSecret = this.configService.getOrThrow('jwt.secret');
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
     const jwtToken = signJWT(
       {
@@ -503,7 +504,7 @@ export class AuthService {
     await this.userService.ensureUserInBaseCommunities(user.id);
 
     // Generate JWT
-    const jwtSecret = this.configService.getOrThrow('jwt.secret');
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
     const jwtToken = signJWT(
       {
@@ -640,10 +641,11 @@ export class AuthService {
       this.logger.debug(`RP ID computed: ${cleaned} (from request: ${requestRpId})`);
       return cleaned;
     }
-    const rpId = this.configService.get('authn.rpId', 'localhost');
+    const authn = this.configService.get('authn');
+    const rpId = authn?.rpId ?? 'localhost';
     // Remove protocol and port if present, though users should provide clean domains
     const cleaned = rpId.replace(/^https?:\/\//, '').split(':')[0];
-    this.logger.debug(`RP ID computed: ${cleaned} (from env: ${this.configService.get('authn.rpId', 'default')})`);
+    this.logger.debug(`RP ID computed: ${cleaned} (from env: ${authn?.rpId ?? 'default'})`);
     return cleaned;
   }
 
@@ -652,20 +654,20 @@ export class AuthService {
       this.logger.debug(`Origin computed: ${requestOrigin} (from request)`);
       return requestOrigin;
     }
-    let origin = this.configService.get('authn.rpOrigin') || 
-                 this.configService.get('APP_URL') || 
-                 'http://localhost:3000';
+    const authn = this.configService.get('authn');
+    let origin = authn?.rpOrigin || this.configService.get('APP_URL') || 'http://localhost:3000';
     // Ensure protocol is present
     if (!origin.startsWith('http')) {
       origin = `https://${origin}`;
     }
     const cleaned = origin.replace(/\/$/, ''); // Remove trailing slash
-    this.logger.debug(`Origin computed: ${cleaned} (from env: ${this.configService.get('authn.rpOrigin') || this.configService.get('APP_URL') || 'default'})`);
+    this.logger.debug(`Origin computed: ${cleaned} (from env: ${authn?.rpOrigin || this.configService.get('APP_URL') || 'default'})`);
     return cleaned;
   }
 
   private getRpName(): string {
-    return this.configService.get('authn.rpName', 'Meriter');
+    const authn = this.configService.get('authn');
+    return authn?.rpName ?? 'Meriter';
   }
 
   async generatePasskeyRegistrationOptions(
@@ -858,7 +860,7 @@ export class AuthService {
         }
 
         // Generate JWT for immediate login
-        const jwtSecret = this.configService.getOrThrow('jwt.secret');
+        const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
         const jwtToken = signJWT(
           {
@@ -1012,7 +1014,7 @@ export class AuthService {
       await this.passkeyChallengeModel.deleteMany({ challengeId: storedChallenge.challengeId });
 
       // Generate Token
-      const jwtSecret = this.configService.getOrThrow('jwt.secret');
+      const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
       const jwtToken = signJWT(
         {
@@ -1204,7 +1206,7 @@ export class AuthService {
     await this.passkeyChallengeModel.deleteMany({ challengeId: storedChallenge.challengeId });
 
     // Generate JWT
-    const jwtSecret = this.configService.getOrThrow('jwt.secret');
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
     const jwtToken = signJWT(
       {
