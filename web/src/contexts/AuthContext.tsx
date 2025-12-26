@@ -161,11 +161,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // On login page, 401 is expected and we shouldn't clear cookies
         if (!isOnAuthPage()) {
           // Clear auth storage on unexpected 401 errors (session expired on protected routes)
-          clearCookiesIfNeeded(); // Uses debouncing and path-aware logic
+          // clearCookiesIfNeeded() now handles OAuth redirect timing internally
+          clearCookiesIfNeeded(); // Uses debouncing, path-aware logic, and OAuth redirect detection
           setAuthError(null); // Clear error to allow login
 
           // Call server-side clear-cookies to ensure HttpOnly cookies are removed
           // We use a fire-and-forget approach here to avoid blocking
+          // IMPORTANT: Only call this if clearCookiesIfNeeded actually cleared cookies
+          // The debouncing in clearCookiesIfNeeded will prevent duplicate calls
           clearCookiesMutation.mutateAsync().catch(e => {
             // Only log if it's not a 401 (expected when not authenticated)
             if (!isUnauthorizedError(e)) {

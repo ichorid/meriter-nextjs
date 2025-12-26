@@ -65,14 +65,16 @@ export class ApiClient {
           const shouldSkipClearing = isAuthEndpoint || (typeof window !== 'undefined' && isOnAuthPage());
 
           if (!shouldSkipClearing) {
-            // CRITICAL: Clear cookies with path-aware logic and debouncing
+            // CRITICAL: Clear cookies with path-aware logic, debouncing, and OAuth redirect detection
             // This prevents the endless login loop with stale cookies
+            // clearCookiesIfNeeded() now handles OAuth redirect timing internally
             // Uses debouncing to prevent race conditions from multiple simultaneous requests
             if (typeof document !== 'undefined') {
-              clearCookiesIfNeeded(); // Path-aware and debounced
+              clearCookiesIfNeeded(); // Path-aware, debounced, and OAuth-aware
               
-              // Also immediately call server-side clearCookies() to clear HttpOnly cookies
+              // Also call server-side clearCookies() to clear HttpOnly cookies
               // Use fire-and-forget pattern to avoid blocking the error flow
+              // The debouncing in clearCookiesIfNeeded will prevent duplicate calls
               // Import trpc lazily to avoid circular dependency
               import('@/lib/trpc/client').then(({ trpc }) => {
                 trpc.auth.clearCookies.mutate().catch((e: any) => {

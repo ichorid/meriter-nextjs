@@ -296,7 +296,46 @@ export function isOnPublicPage(): boolean {
  */
 let cookieClearingInProgress = false;
 let cookieClearingTimeout: NodeJS.Timeout | null = null;
+let lastCookieClearTime = 0;
 const COOKIE_CLEARING_DEBOUNCE_DELAY = 100; // milliseconds
+const MIN_TIME_BETWEEN_CLEARS = 1000; // milliseconds - prevent clearing too frequently
+
+/**
+ * Check if we just came from an OAuth redirect
+ * OAuth redirects typically happen within the last few seconds
+ * This helps prevent clearing cookies that were just set by OAuth callback
+ */
+function isRecentOAuthRedirect(): boolean {
+  if (typeof window === 'undefined') return false;
+  
+  // Check if we're on profile page (common OAuth redirect target)
+  const pathname = window.location.pathname;
+  const isProfilePage = pathname === '/meriter/profile' || pathname.startsWith('/meriter/profile') ||
+                        pathname === '/meriter/welcome' || pathname.startsWith('/meriter/welcome');
+  
+  // Check if page was just loaded (navigation timing)
+  // OAuth redirects are full page navigations, so we can detect them via navigation timing
+  try {
+    const navigationTiming = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+    if (navigationTiming) {
+      // Calculate time since navigation started
+      const now = Date.now();
+      const navigationStart = navigationTiming.fetchStart;
+      const timeSinceNavigation = now - navigationStart;
+      
+      // If page loaded less than 2 seconds ago, might be from OAuth redirect
+      // OAuth redirects are typically very fast (< 1 second)
+      const isRecentLoad = timeSinceNavigation < 2000;
+      return isProfilePage && isRecentLoad;
+    }
+  } catch (e) {
+    // If performance API is not available, fall back to checking if we're on profile page
+    // and assume it might be from OAuth if we're on profile page
+    return isProfilePage;
+  }
+  
+  return false;
+}
 
 /**
  * Debounced cookie clearing to prevent multiple simultaneous operations
@@ -308,6 +347,12 @@ function debounceCookieClearing(clearFn: () => void): void {
     return;
   }
   
+  // Prevent clearing too frequently (rate limiting)
+  const now = Date.now();
+  if (now - lastCookieClearTime < MIN_TIME_BETWEEN_CLEARS) {
+    return;
+  }
+  
   // Clear any pending timeout
   if (cookieClearingTimeout) {
     clearTimeout(cookieClearingTimeout);
@@ -315,6 +360,7 @@ function debounceCookieClearing(clearFn: () => void): void {
   }
   
   cookieClearingInProgress = true;
+  lastCookieClearTime = now;
   
   try {
     clearFn();
@@ -330,10 +376,31 @@ function debounceCookieClearing(clearFn: () => void): void {
 /**
  * Clears cookies with debouncing and path awareness
  * Skips clearing on auth pages where 401 errors are expected
+ * Also skips clearing immediately after OAuth redirects to allow cookie to be set
  */
-export function clearCookiesIfNeeded(): void {
+export function clearCookiesIfNeeded(options?: { force?: boolean }): void {
   // Skip clearing on auth pages where 401 is expected
-  if (isOnAuthPage()) {
+  if (!options?.force && isOnAuthPage()) {
+    return;
+  }
+  
+  // Skip clearing immediately after OAuth redirect (give cookie time to be set)
+  // OAuth redirects set cookies via server redirect, which may take a moment to process
+  // The browser needs time to process the Set-Cookie header from the redirect response
+  if (!options?.force && isRecentOAuthRedirect()) {
+    // Wait a bit before clearing to allow cookie to be set
+    // This prevents clearing the cookie that was just set by OAuth callback
+    // Note: hasJwtCookie() only checks document.cookie, which won't include HttpOnly cookies
+    // So we can't reliably check if the cookie exists, but we can delay clearing
+    setTimeout(() => {
+      // After delay, check if we still need to clear
+      // If we're still on the profile page and it's been a while, it's probably safe to clear
+      if (!isOnAuthPage()) {
+        debounceCookieClearing(() => {
+          clearAllCookies();
+        });
+      }
+    }, 1000); // Wait 1 second after OAuth redirect before clearing
     return;
   }
   
