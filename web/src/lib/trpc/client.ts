@@ -67,7 +67,9 @@ async function enhancedFetch(input: RequestInfo | URL, init?: RequestInit): Prom
           headers: Object.fromEntries(response.headers.entries()),
           errorBody: errorBody ? (typeof errorBody === 'string' ? errorBody : JSON.stringify(errorBody, null, 2)) : null,
         };
+        // Log both as object (for console inspection) and as JSON (for guaranteed serialization)
         console.error('tRPC request failed:', errorDetails);
+        console.error('tRPC request failed (JSON):', JSON.stringify(errorDetails, null, 2));
       }
     } else if (response.status === 207) {
       // Log batch request success for debugging (207 = Multi-Status for batch)
@@ -85,7 +87,9 @@ async function enhancedFetch(input: RequestInfo | URL, init?: RequestInit): Prom
       errorType: error instanceof Error ? error.constructor.name : typeof error,
       stack: error instanceof Error ? error.stack : undefined,
     };
+    // Log both as object (for console inspection) and as JSON (for guaranteed serialization)
     console.error('tRPC fetch error:', errorDetails);
+    console.error('tRPC fetch error (JSON):', JSON.stringify(errorDetails, null, 2));
     throw error;
   }
 }
