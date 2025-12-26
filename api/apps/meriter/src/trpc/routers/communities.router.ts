@@ -287,14 +287,17 @@ export const communitiesRouter = router({
       z.object({
         communityId: z.string(),
         page: z.number().int().min(1).optional().default(1),
+        cursor: z.number().int().min(1).optional(), // tRPC adds this automatically for infinite queries
         pageSize: z.number().int().min(1).max(100).optional().default(5),
         sort: z.enum(['recent', 'score']).optional().default('score'),
         tag: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
+      // Use cursor if provided (from tRPC infinite query), otherwise use page
+      const page = input.cursor ?? input.page;
       const pagination = PaginationHelper.parseOptions({
-        page: input.page,
+        page,
         limit: input.pageSize,
       });
 

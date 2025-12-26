@@ -16,13 +16,14 @@ export function useCommunityFeed(
   return trpc.communities.getFeed.useInfiniteQuery(
     {
       communityId,
+      page: 1, // Initial page - tRPC uses cursor parameter for pagination
       pageSize,
       sort,
       tag,
     },
     {
       getNextPageParam: (lastPage) => {
-        if (lastPage.pagination.hasNext) {
+        if (lastPage?.pagination?.hasNext) {
           return lastPage.pagination.page + 1;
         }
         return undefined;

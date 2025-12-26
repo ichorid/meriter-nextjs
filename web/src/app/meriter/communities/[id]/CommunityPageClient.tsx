@@ -94,6 +94,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         tag: selectedTag || undefined,
     });
 
+
     // Fetch vision posts when vision tab is active and future-vision community exists
     const {
         data: visionData,
