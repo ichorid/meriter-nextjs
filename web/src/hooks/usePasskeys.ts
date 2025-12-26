@@ -44,34 +44,8 @@ export const usePasskeys = (): UsePasskeysReturn => {
 
             let credential;
             try {
-                // Try conditional mediation first (if supported) for autofill UI
-                // Check if conditional mediation is available
-                if (typeof window !== 'undefined' && 
-                    window.PublicKeyCredential && 
-                    'isConditionalMediationAvailable' in window.PublicKeyCredential) {
-                    try {
-                        const isConditionalAvailable = await (window.PublicKeyCredential as any)
-                            .isConditionalMediationAvailable();
-                        
-                        if (isConditionalAvailable) {
-                            console.log('[WebAuthn] Using conditional mediation for autofill UI');
-                            // SimpleWebAuthn's startAuthentication should handle this automatically
-                            // when allowCredentials is empty, but we can explicitly request it
-                            credential = await startAuthentication({
-                                ...authOptions,
-                                mediation: 'conditional' as any, // Type may not be in types yet
-                            });
-                        } else {
-                            credential = await startAuthentication(authOptions);
-                        }
-                    } catch (mediationCheckError) {
-                        // If conditional mediation check fails, fall back to regular authentication
-                        console.log('[WebAuthn] Conditional mediation check failed, using regular authentication');
-                        credential = await startAuthentication(authOptions);
-                    }
-                } else {
-                    credential = await startAuthentication(authOptions);
-                }
+                // SimpleWebAuthn handles conditional mediation automatically when allowCredentials is empty
+                credential = await startAuthentication(authOptions);
                 
                 console.log('[WebAuthn Auth] Credential created:', {
                     id: credential.id?.substring(0, 20) + '...',

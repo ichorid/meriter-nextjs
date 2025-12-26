@@ -6,6 +6,7 @@ import { UserService } from '../../domain/services/user.service';
 import { CommunityService } from '../../domain/services/community.service';
 import { User } from '../../domain/models/user/user.schema';
 import { signJWT } from '../../common/helpers/jwt';
+import { AppConfig } from '../../config/configuration';
 import {
   CommunitySchemaClass,
   CommunityDocument,
@@ -701,10 +702,10 @@ export class AuthService {
         // Prefer platform authenticators (passkeys) but allow fallback to cross-platform
         authenticatorAttachment: 'platform',
         residentKey: 'required', // Required for discoverable credentials (passkeys)
-        userVerification: 'preferred',
+        userVerification: 'discouraged',
       },
-      // Explicitly include ES256 (required for passkeys)
-      supportedAlgorithmIDs: [-7], // ES256
+      // Explicitly include ES256 and RS256 (required for passkeys and broader compatibility)
+      supportedAlgorithmIDs: [-7, -257], // ES256, RS256
     });
 
     // Log options for debugging (without sensitive data)
@@ -901,7 +902,7 @@ export class AuthService {
         type: 'public-key',
         transports: auth.transports as AuthenticatorTransport[],
       })),
-      userVerification: 'preferred',
+      userVerification: 'discouraged',
     });
 
     // Save challenge
@@ -994,7 +995,6 @@ export class AuthService {
         counter: authenticator.counter,
         transports: authenticator.transports as AuthenticatorTransport[],
       },
-      requireUserVerification: true,
     } as any);
 
     if (verification.verified) {
@@ -1126,7 +1126,6 @@ export class AuthService {
           expectedChallenge: storedChallenge.challenge,
           expectedOrigin: this.getOrigin(),
           expectedRPID: this.getRpId(),
-          requireUserVerification: true,
         });
 
         if (!verification.verified) {
@@ -1186,7 +1185,6 @@ export class AuthService {
           counter: authenticator.counter,
           transports: authenticator.transports as AuthenticatorTransport[],
         },
-        requireUserVerification: true,
       } as any);
 
       if (!verification.verified) {
@@ -1241,14 +1239,14 @@ export class AuthService {
     const options = await generateAuthenticationOptions({
       rpID: rpId,
       allowCredentials: [], // Empty = conditional UI, shows all user's passkeys
-      userVerification: 'preferred',
+      userVerification: 'discouraged',
     });
 
     // Log options for debugging
     this.logger.log(`Authentication options generated:`, {
       rpId: options.rpId,
       allowCredentialsCount: 0,
-      userVerification: 'preferred',
+      userVerification: 'discouraged',
       challengeLength: options.challenge?.length || 0,
     });
 
