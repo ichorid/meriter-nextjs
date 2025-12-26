@@ -51,6 +51,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const last401ErrorRef = useRef<string | null>(null);
+  const lastServerClearCookiesAtRef = useRef<number>(0);
 
   const { data: user, isLoading: userLoading, error: userError } = useMe();
   const fakeAuthMutation = useFakeAuth();
@@ -156,25 +157,44 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (isUnauthorizedError(userError)) {
         // 401 error - user is not authenticated
         const hadSession = hasPreviousSession();
+
+        // Prevent handling the same 401 repeatedly (avoids loops and request storms).
+        // React Query / tRPC can surface new Error instances with the same message/path.
+        const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+        const errorKey = `${pathname}|${userError.message || 'unauthorized'}`;
+        if (last401ErrorRef.current === errorKey) {
+          return;
+        }
+        last401ErrorRef.current = errorKey;
         
         // Only clear cookies if we're NOT on an auth page (where 401 is expected)
         // On login page, 401 is expected and we shouldn't clear cookies
         if (!isOnAuthPage()) {
-          // Clear auth storage on unexpected 401 errors (session expired on protected routes)
-          // clearCookiesIfNeeded() now handles OAuth redirect timing internally
-          clearCookiesIfNeeded(); // Uses debouncing, path-aware logic, and OAuth redirect detection
-          setAuthError(null); // Clear error to allow login
+          // If the user never had a successful session, a 401 is expected and we should not
+          // aggressively clear cookies (this can spam /auth/clear-cookies and interfere with login).
+          if (!hadSession) {
+            setAuthError(null);
+            return;
+          }
+
+          // Session expired on a protected route.
+          // clearCookiesIfNeeded() handles debouncing and OAuth redirect timing internally.
+          clearCookiesIfNeeded();
+          setAuthError(null);
 
           // Call server-side clear-cookies to ensure HttpOnly cookies are removed
           // We use a fire-and-forget approach here to avoid blocking
-          // IMPORTANT: Only call this if clearCookiesIfNeeded actually cleared cookies
-          // The debouncing in clearCookiesIfNeeded will prevent duplicate calls
-          clearCookiesMutation.mutateAsync().catch(e => {
-            // Only log if it's not a 401 (expected when not authenticated)
-            if (!isUnauthorizedError(e)) {
-              console.error('Failed to clear server cookies:', e);
-            }
-          });
+          // Throttle this call to prevent request storms during repeated 401s.
+          const now = Date.now();
+          if (now - lastServerClearCookiesAtRef.current > 5000) {
+            lastServerClearCookiesAtRef.current = now;
+            clearCookiesMutation.mutateAsync().catch(e => {
+              // Only log if it's not a 401 (expected when not authenticated)
+              if (!isUnauthorizedError(e)) {
+                console.error('Failed to clear server cookies:', e);
+              }
+            });
+          }
 
           // Log session expiration for debugging (only if user had a session)
           if (hadSession && process.env.NODE_ENV === 'development') {

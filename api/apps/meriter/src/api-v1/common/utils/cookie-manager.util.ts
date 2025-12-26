@@ -98,104 +98,57 @@ export class CookieManager {
     cookieDomain?: string | undefined,
     _isProduction?: boolean
   ): void {
-    const domain = cookieDomain ?? this.getCookieDomain();
-    
-    // Derive all possible domain variants from cookie domain
-    const domainsToTry: (string | undefined)[] = [undefined]; // Always try no domain
-    
-    if (domain && domain !== 'localhost') {
-      domainsToTry.push(domain);
-      
-      // Add variant with leading dot if it doesn't have one
-      if (!domain.startsWith('.')) {
-        domainsToTry.push(`.${domain}`);
-      }
-      
-      // Add variant without leading dot if it has one
-      if (domain.startsWith('.')) {
-        domainsToTry.push(domain.substring(1));
+    // IMPORTANT:
+    // Do NOT emit dozens of Set-Cookie headers in an attempt to clear "every possible variant".
+    // Large Set-Cookie header payloads can get truncated by proxies/browsers, causing the *real*
+    // JWT cookie set during OAuth to be dropped -> users.getMe keeps returning 401 -> infinite loops.
+    //
+    // For deletion, browsers key cookies by (name, domain, path). Attributes like SameSite/Secure/HttpOnly
+    // do not need combinatorial clearing. We clear the minimal, known variants:
+    // - host-only cookie (no Domain attribute)
+    // - configured domain cookies (with/without leading dot) if a domain is configured
+    const configured = this.normalizeHostname(cookieDomain ?? this.getCookieDomain());
+
+    const domainsToTry: (string | undefined)[] = [undefined];
+    if (configured) {
+      domainsToTry.push(configured);
+      if (configured.startsWith('.')) {
+        domainsToTry.push(configured.slice(1));
+      } else {
+        domainsToTry.push(`.${configured}`);
       }
     }
-    
-    // Remove duplicates while preserving undefined
-    const uniqueDomains = Array.from(
-      new Set(domainsToTry.map(d => d ?? 'undefined'))
-    ).map(d => d === 'undefined' ? undefined : d);
-    
-    // Try ALL VALID SameSite and Secure combinations to clear old/invalid cookies
-    // Browsers require exact attribute matching to clear cookies, so we must try all combinations
-    // BUT: Skip invalid combinations (SameSite=None requires Secure=true) - browsers reject them anyway
+
+    const uniqueDomains = Array.from(new Set(domainsToTry.map((d) => d ?? 'undefined'))).map((d) =>
+      d === 'undefined' ? undefined : d
+    );
+
+    // Keep deletion options stable and small.
+    // We always delete Path=/ since that's the only path we ever set for jwt.
+    // We use SameSite=Lax (first-party). Secure depends on environment.
     const nodeEnv = this.configService.get('NODE_ENV', 'development');
-    const isProduction = _isProduction ?? (nodeEnv === 'production');
-    
-    // Only try valid combinations:
-    // - SameSite=Lax + Secure=true/false (works in all environments)
-    // - SameSite=Strict + Secure=true/false (works in all environments)
-    // - SameSite=None + Secure=true (only valid combination for SameSite=None, typically production/HTTPS)
-    const sameSiteOptions: Array<'lax' | 'strict'> = ['lax', 'strict'];
-    const secureOptions = [true, false];
-    const httpOnlyOptions = [true, false];
-    
+    const production = _isProduction ?? (nodeEnv === 'production');
+    const sameSite = 'lax' as const;
+    const secure = production;
+
     for (const domainVariant of uniqueDomains) {
-      // Try SameSite=Lax and SameSite=Strict with all Secure/httpOnly combinations
-      for (const sameSite of sameSiteOptions) {
-        for (const secure of secureOptions) {
-          for (const httpOnly of httpOnlyOptions) {
-            try {
-              // Method 1: clearCookie
-              response.clearCookie('jwt', {
-                httpOnly,
-                secure,
-                sameSite,
-                path: '/',
-                domain: domainVariant,
-              });
-              
-              // Method 2: Set cookie to empty with immediate expiry (more reliable)
-              response.cookie('jwt', '', {
-                httpOnly,
-                secure,
-                sameSite,
-                path: '/',
-                domain: domainVariant,
-                expires: new Date(0),
-                maxAge: 0,
-              });
-            } catch (_error) {
-              // Ignore errors when clearing - some combinations may fail
-            }
-          }
-        }
+      try {
+        response.clearCookie('jwt', { path: '/', domain: domainVariant });
+      } catch (_e) {
+        // ignore
       }
-      
-      // Try SameSite=None + Secure=true (only valid combination for SameSite=None)
-      // Only in production/HTTPS environments where this is typically used
-      if (isProduction) {
-        for (const httpOnly of httpOnlyOptions) {
-          try {
-            // Method 1: clearCookie
-            response.clearCookie('jwt', {
-              httpOnly,
-              secure: true, // Required for SameSite=None
-              sameSite: 'none',
-              path: '/',
-              domain: domainVariant,
-            });
-            
-            // Method 2: Set cookie to empty with immediate expiry (more reliable)
-            response.cookie('jwt', '', {
-              httpOnly,
-              secure: true, // Required for SameSite=None
-              sameSite: 'none',
-              path: '/',
-              domain: domainVariant,
-              expires: new Date(0),
-              maxAge: 0,
-            });
-          } catch (_error) {
-            // Ignore errors when clearing - some combinations may fail
-          }
-        }
+      try {
+        response.cookie('jwt', '', {
+          httpOnly: true,
+          secure,
+          sameSite,
+          path: '/',
+          domain: domainVariant,
+          expires: new Date(0),
+          maxAge: 0,
+        });
+      } catch (_e) {
+        // ignore
       }
     }
   }
@@ -213,137 +166,48 @@ export class CookieManager {
     cookieDomain?: string | undefined,
     isProduction?: boolean
   ): void {
+    // Same rationale as clearAllJwtCookieVariants: keep Set-Cookie headers minimal.
+    // For clearing, only (name, domain, path) matter.
+    const configured = this.normalizeHostname(cookieDomain ?? this.getCookieDomain());
+
+    const domainsToTry: (string | undefined)[] = [undefined];
+    if (configured) {
+      domainsToTry.push(configured);
+      if (configured.startsWith('.')) {
+        domainsToTry.push(configured.slice(1));
+      } else {
+        domainsToTry.push(`.${configured}`);
+      }
+    }
+
+    const uniqueDomains = Array.from(new Set(domainsToTry.map((d) => d ?? 'undefined'))).map((d) =>
+      d === 'undefined' ? undefined : d
+    );
+
+    // We only ever set cookies at Path=/ in this app; keep it simple and reliable.
     const nodeEnv = this.configService.get('NODE_ENV', 'development');
-    const production = isProduction ?? nodeEnv === 'production';
-    const domain = cookieDomain ?? this.getCookieDomain();
-    
-    const sameSite = (production ? 'none' : 'lax') as 'none' | 'lax';
-    // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
-    const secure = sameSite === 'none' ? true : production;
-    
-    const baseOptions = {
-      httpOnly: true,
-      secure,
-      sameSite,
-      path: '/',
-    };
-    
-    // Derive all possible domain variants from cookie domain
-    const domainsToTry: (string | undefined)[] = [undefined]; // Always try no domain
-    
-    if (domain && domain !== 'localhost') {
-      domainsToTry.push(domain);
-      
-      // Add variant with leading dot if it doesn't have one
-      if (!domain.startsWith('.')) {
-        domainsToTry.push(`.${domain}`);
-      }
-      
-      // Add variant without leading dot if it has one
-      if (domain.startsWith('.')) {
-        domainsToTry.push(domain.substring(1));
-      }
-    }
-    
-    // Remove duplicates while preserving undefined
-    const uniqueDomains = Array.from(
-      new Set(domainsToTry.map(d => d ?? 'undefined'))
-    ).map(d => d === 'undefined' ? undefined : d);
-    
-    // Try different path combinations
-    const pathsToTry = ['/', '']; // Root path and no path
-    
+    const production = isProduction ?? (nodeEnv === 'production');
+    const sameSite = 'lax' as const;
+    const secure = production;
+
     for (const domainVariant of uniqueDomains) {
-      for (const path of pathsToTry) {
-        try {
-          // Method 1: clearCookie
-          response.clearCookie(cookieName, {
-            ...baseOptions,
-            domain: domainVariant,
-            path,
-          });
-          
-          // Method 2: Set cookie to empty with immediate expiry (more reliable)
-          response.cookie(cookieName, '', {
-            ...baseOptions,
-            domain: domainVariant,
-            path,
-            expires: new Date(0),
-            maxAge: 0,
-          });
-        } catch (_error) {
-          // Ignore errors when clearing - some combinations may fail
-        }
+      try {
+        response.clearCookie(cookieName, { path: '/', domain: domainVariant });
+      } catch (_e) {
+        // ignore
       }
-    }
-    
-    // Also try without httpOnly in case there's a non-httpOnly cookie
-    // Only try valid combinations (no SameSite=None + Secure=false)
-    for (const domainVariant of uniqueDomains) {
-      for (const path of pathsToTry) {
-        // Try SameSite=Lax (works with/without Secure)
-        try {
-          response.clearCookie(cookieName, {
-            secure: production,
-            sameSite: 'lax',
-            path,
-            domain: domainVariant,
-          });
-          response.cookie(cookieName, '', {
-            secure: production,
-            sameSite: 'lax',
-            path,
-            domain: domainVariant,
-            expires: new Date(0),
-            maxAge: 0,
-          });
-        } catch (_error) {
-          // Ignore errors
-        }
-        
-        // Try SameSite=Lax without Secure (for localhost/dev)
-        if (!production) {
-          try {
-            response.clearCookie(cookieName, {
-              secure: false,
-              sameSite: 'lax',
-              path,
-              domain: domainVariant,
-            });
-            response.cookie(cookieName, '', {
-              secure: false,
-              sameSite: 'lax',
-              path,
-              domain: domainVariant,
-              expires: new Date(0),
-              maxAge: 0,
-            });
-          } catch (_error) {
-            // Ignore errors
-          }
-        }
-        
-        // Try SameSite=None + Secure=true (only valid combination, typically production)
-        if (production) {
-          try {
-            response.clearCookie(cookieName, {
-              secure: true, // Required for SameSite=None
-              sameSite: 'none',
-              path,
-              domain: domainVariant,
-            });
-            response.cookie(cookieName, '', {
-              secure: true, // Required for SameSite=None
-              sameSite: 'none',
-              path,
-              domain: domainVariant,
-              expires: new Date(0),
-              maxAge: 0,
-            });
-          } catch (_error) {
-            // Ignore errors
-          }
-        }
+      try {
+        response.cookie(cookieName, '', {
+          httpOnly: true,
+          secure,
+          sameSite,
+          path: '/',
+          domain: domainVariant,
+          expires: new Date(0),
+          maxAge: 0,
+        });
+      } catch (_e) {
+        // ignore
       }
     }
   }
