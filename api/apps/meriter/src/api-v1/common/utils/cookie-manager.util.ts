@@ -295,10 +295,12 @@ export class CookieManager {
     }
     // Fallback: check X-Forwarded-Proto header directly
     const forwardedProto = request.headers?.['x-forwarded-proto'];
-    if (forwardedProto === 'https') {
-      return true;
-    }
-    return false;
+    if (!forwardedProto) return false;
+
+    const raw = Array.isArray(forwardedProto) ? forwardedProto[0] : String(forwardedProto);
+    // Can be "https" or "https,http" depending on proxy chain
+    const first = raw.split(',')[0]?.trim().toLowerCase();
+    return first === 'https';
   }
 
   /**
@@ -323,11 +325,15 @@ export class CookieManager {
     // e.g. ".meriter.pro" (meaning "share across subdomains").
     const normalizedConfiguredDomain = this.normalizeHostname(cookieDomain ?? this.getCookieDomain());
     
-    // Detect if request is secure (HTTPS) - use request if provided, otherwise fall back to isProduction
+    // Detect if request is secure (HTTPS)
     const isSecure = request ? this.isRequestSecure(request) : false;
+    const requestHost = request ? this.getRequestHostname(request) : undefined;
+    // If we're not on localhost-like hostnames, always force Secure cookies.
+    // This prevents broken auth on HTTPS behind proxies when x-forwarded-proto is missing/misformatted.
+    const shouldForceSecure = Boolean(requestHost);
     
     // Determine production mode: explicit isProduction OR NODE_ENV=production OR request is HTTPS
-    const production = isProduction ?? (nodeEnv === 'production' || isSecure);
+    const production = isProduction ?? (nodeEnv === 'production' || isSecure || shouldForceSecure);
     
     // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
     // Use 'none' for production/HTTPS (cross-site cookies), 'lax' for development/HTTP (same-site)
@@ -336,7 +342,7 @@ export class CookieManager {
     // CRITICAL: Force secure=true if sameSite='none', regardless of other conditions
     // This defensive check ensures cookies work even if isProduction is incorrectly determined
     // Also set secure=true if request is actually HTTPS (even in dev mode)
-    const secure = sameSite === 'none' ? true : (isSecure || production);
+    const secure = shouldForceSecure ? true : (sameSite === 'none' ? true : (isSecure || production));
     
     const cookieOptions: any = {
       httpOnly: true,

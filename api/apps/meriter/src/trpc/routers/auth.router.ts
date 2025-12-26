@@ -1,13 +1,22 @@
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 
+function isHttpsRequest(req: any): boolean {
+  if (req?.secure === true) return true;
+  const forwardedProto = req?.headers?.['x-forwarded-proto'];
+  if (!forwardedProto) return false;
+  const raw = Array.isArray(forwardedProto) ? forwardedProto[0] : String(forwardedProto);
+  const first = raw.split(',')[0]?.trim().toLowerCase();
+  return first === 'https';
+}
+
 export const authRouter = router({
   /**
    * Logout - clear JWT cookie
    */
   logout: protectedProcedure.mutation(async ({ ctx }) => {
     const cookieDomain = ctx.cookieManager.getCookieDomain();
-    const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
+    const isSecure = isHttpsRequest(ctx.req);
     const nodeEnv = ctx.configService.get('NODE_ENV', 'development');
     const isProduction = nodeEnv === 'production' || isSecure;
     ctx.cookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
@@ -24,7 +33,7 @@ export const authRouter = router({
    */
   clearCookies: publicProcedure.mutation(async ({ ctx }) => {
     const cookieDomain = ctx.cookieManager.getCookieDomain();
-    const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
+    const isSecure = isHttpsRequest(ctx.req);
     const nodeEnv = ctx.configService.get('NODE_ENV', 'development');
     const isProduction = nodeEnv === 'production' || isSecure;
 
@@ -79,7 +88,7 @@ export const authRouter = router({
 
     // Set JWT cookie with proper domain for Caddy reverse proxy
     const cookieDomain = ctx.cookieManager.getCookieDomain();
-    const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
+    const isSecure = isHttpsRequest(ctx.req);
     const nodeEnv = ctx.configService.get('NODE_ENV', 'development');
     const isProduction = nodeEnv === 'production' || isSecure;
 
@@ -91,7 +100,7 @@ export const authRouter = router({
 
     // Set fake_user_id cookie (session cookie - expires when browser closes)
     // Use same robust HTTPS detection as JWT cookie
-    const actualIsSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
+    const actualIsSecure = isHttpsRequest(ctx.req);
     const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
     const sameSite = actualIsProduction ? 'none' : 'lax';
     // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
@@ -140,7 +149,7 @@ export const authRouter = router({
 
     // Set JWT cookie with proper domain for Caddy reverse proxy
     const cookieDomain = ctx.cookieManager.getCookieDomain();
-    const isSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
+    const isSecure = isHttpsRequest(ctx.req);
     const nodeEnv = ctx.configService.get('NODE_ENV', 'development');
     const isProduction = nodeEnv === 'production' || isSecure;
 
@@ -152,7 +161,7 @@ export const authRouter = router({
 
     // Set fake_superadmin_id cookie (session cookie - expires when browser closes)
     // Use same robust HTTPS detection as JWT cookie
-    const actualIsSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
+    const actualIsSecure = isHttpsRequest(ctx.req);
     const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
     const sameSite = actualIsProduction ? 'none' : 'lax';
     // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)

@@ -32,6 +32,15 @@ import { AppConfig } from '../../config/configuration';
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
+  private isHttpsRequest(req: any): boolean {
+    if (req?.secure === true) return true;
+    const forwardedProto = req?.headers?.['x-forwarded-proto'];
+    if (!forwardedProto) return false;
+    const raw = Array.isArray(forwardedProto) ? forwardedProto[0] : String(forwardedProto);
+    const first = raw.split(',')[0]?.trim().toLowerCase();
+    return first === 'https';
+  }
+
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService<AppConfig>,
@@ -61,7 +70,7 @@ export class AuthController {
     // Clear ALL cookies from the request, not just JWT variants
     // This prevents login loops caused by stale cookies with mismatched attributes
     const cookieDomain = this.cookieManager.getCookieDomain();
-    const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    const isSecure = this.isHttpsRequest(req);
     const nodeEnv = this.configService.get('NODE_ENV', 'development');
     const isProduction = nodeEnv === 'production' || isSecure;
 
@@ -120,7 +129,7 @@ export class AuthController {
       // Set JWT cookie with proper domain for Caddy reverse proxy
       const cookieDomain = this.cookieManager.getCookieDomain();
       // Treat as production (Secure=true, SameSite=None) if explicitly production OR if accessed via HTTPS
-      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const isSecure = this.isHttpsRequest(req);
       const nodeEnv = this.configService.get('NODE_ENV', 'development');
       const isProduction = nodeEnv === 'production' || isSecure;
 
@@ -132,7 +141,7 @@ export class AuthController {
 
       // Set fake_user_id cookie (session cookie - expires when browser closes)
       // Recalculate isSecure to ensure it's correct (trust proxy should make req.secure work)
-      const actualIsSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const actualIsSecure = this.isHttpsRequest(req);
       // Recalculate isProduction with actual isSecure value
       const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
       const sameSite = actualIsProduction ? 'none' : 'lax';
@@ -197,7 +206,7 @@ export class AuthController {
       // Set JWT cookie with proper domain for Caddy reverse proxy
       const cookieDomain = this.cookieManager.getCookieDomain();
       // Treat as production (Secure=true, SameSite=None) if explicitly production OR if accessed via HTTPS
-      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const isSecure = this.isHttpsRequest(req);
       const nodeEnv = this.configService.get('NODE_ENV', 'development');
       const isProduction = nodeEnv === 'production' || isSecure;
 
@@ -209,7 +218,7 @@ export class AuthController {
 
       // Set fake_superadmin_id cookie (session cookie - expires when browser closes)
       // Recalculate isSecure to ensure it's correct (trust proxy should make req.secure work)
-      const actualIsSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const actualIsSecure = this.isHttpsRequest(req);
       // Recalculate isProduction with actual isSecure value
       const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
       const sameSite = actualIsProduction ? 'none' : 'lax';
@@ -354,7 +363,7 @@ export class AuthController {
 
       // Set JWT cookie
       const cookieDomain = this.cookieManager.getCookieDomain();
-      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const isSecure = this.isHttpsRequest(req);
       const nodeEnv = this.configService.get('NODE_ENV', 'development');
       const isProduction = nodeEnv === 'production' || isSecure;
 
@@ -454,7 +463,7 @@ export class AuthController {
       const result = await this.authService.authenticateYandex(code);
 
       const cookieDomain = this.cookieManager.getCookieDomain();
-      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const isSecure = this.isHttpsRequest(req);
       const nodeEnv = this.configService.get('NODE_ENV', 'development');
       const isProduction = nodeEnv === 'production' || isSecure;
 
@@ -530,7 +539,7 @@ export class AuthController {
 
       // Set JWT cookie (sign-up + sign-in)
       const cookieDomain = this.cookieManager.getCookieDomain();
-      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const isSecure = this.isHttpsRequest(req);
       const nodeEnv = this.configService.get('NODE_ENV', 'development');
       const isProduction = nodeEnv === 'production' || isSecure;
 
@@ -570,7 +579,7 @@ export class AuthController {
 
       // Set JWT cookie
       const cookieDomain = this.cookieManager.getCookieDomain();
-      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const isSecure = this.isHttpsRequest(req);
       const nodeEnv = this.configService.get('NODE_ENV', 'development');
       const isProduction = nodeEnv === 'production' || isSecure;
 
@@ -619,7 +628,7 @@ export class AuthController {
 
       // Set JWT cookie (same as OAuth)
       const cookieDomain = this.cookieManager.getCookieDomain();
-      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      const isSecure = this.isHttpsRequest(req);
       const nodeEnv = this.configService.get('NODE_ENV', 'development');
       const isProduction = nodeEnv === 'production' || isSecure;
 
