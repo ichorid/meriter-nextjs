@@ -44,11 +44,27 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
         }
     };
 
+    const pageHeader = (
+        <SimpleStickyHeader
+            title={t('members.title')}
+            showBack={true}
+            onBack={() => router.push(routes.community(communityId))}
+            asStickyHeader={true}
+        />
+    );
+
     if (communityLoading) {
         return (
-            <div className="flex justify-center items-center min-h-screen">
-                <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
-            </div>
+            <AdaptiveLayout
+                className="members"
+                communityId={communityId}
+                myId={user?.id}
+                stickyHeader={pageHeader}
+            >
+                <div className="flex justify-center items-center min-h-[400px]">
+                    <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+                </div>
+            </AdaptiveLayout>
         );
     }
 
@@ -57,14 +73,7 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
             className="members"
             communityId={communityId}
             myId={user?.id}
-            stickyHeader={
-                <SimpleStickyHeader
-                    title={t('members.title')}
-                    showBack={true}
-                    onBack={() => router.push(routes.community(communityId))}
-                    asStickyHeader={true}
-                />
-            }
+            stickyHeader={pageHeader}
         >
             <div className="space-y-4">
                 {membersLoading ? (
