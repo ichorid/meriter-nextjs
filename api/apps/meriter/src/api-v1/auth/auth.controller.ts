@@ -37,6 +37,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService<AppConfig>,
+    private readonly cookieManager: CookieManager,
   ) { }
 
   // Telegram authentication endpoints removed: Telegram is fully disabled in this project.

@@ -83,7 +83,7 @@ async function bootstrap() {
   if (isProduction) {
     try {
       configService.getOrThrow('jwt.secret');
-    } catch (error) {
+    } catch (_error) {
       logger.error('❌ JWT_SECRET environment variable is required but not set');
       logger.error('Application cannot start without JWT_SECRET in production');
       process.exit(1);

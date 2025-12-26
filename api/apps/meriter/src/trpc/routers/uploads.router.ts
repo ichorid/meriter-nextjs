@@ -38,7 +38,7 @@ export const uploadsRouter = router({
           ? input.fileData.split(',')[1]
           : input.fileData;
         fileBuffer = Buffer.from(base64Data, 'base64');
-      } catch (error) {
+      } catch (_error) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'Invalid base64 file data',
@@ -106,7 +106,7 @@ export const uploadsRouter = router({
           ? input.fileData.split(',')[1]
           : input.fileData;
         fileBuffer = Buffer.from(base64Data, 'base64');
-      } catch (error) {
+      } catch (_error) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'Invalid base64 file data',
@@ -185,7 +185,7 @@ export const uploadsRouter = router({
           ? input.fileData.split(',')[1]
           : input.fileData;
         fileBuffer = Buffer.from(base64Data, 'base64');
-      } catch (error) {
+      } catch (_error) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'Invalid base64 file data',

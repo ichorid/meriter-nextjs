@@ -132,7 +132,7 @@ const validateSync = (config: Record<string, unknown>) => {
   const awsRegionValidator = z.string().regex(/^[a-z0-9-]+$/).optional();
   
   // Helper function to validate MongoDB URI format
-  const mongoUriValidator = z.string().regex(/^mongodb(\+srv)?:\/\//).optional();
+  const _mongoUriValidator = z.string().regex(/^mongodb(\+srv)?:\/\//).optional();
 
   const envSchema = z.object({
     // Core required

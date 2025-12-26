@@ -1,5 +1,4 @@
 import { router, publicProcedure } from '../trpc';
-import { AppConfig } from '../../config/configuration';
 
 export const configRouter = router({
   /**
