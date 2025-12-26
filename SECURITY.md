@@ -91,9 +91,8 @@ All services have CPU and memory limits:
 
 ### Network Isolation
 
-Three separate networks:
-- **meriter-frontend-network**: Web and Caddy (public-facing)
-- **meriter-backend-network**: API and init containers
+Two separate networks:
+- **meriter-backend-network**: API, init containers, and Caddy
 - **meriter-database-network**: MongoDB and API only (internal)
 
 ## Secrets Management

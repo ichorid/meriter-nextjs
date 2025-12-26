@@ -138,7 +138,6 @@ services:
       # Mount web-static directory - symlinks inside this directory can be swapped dynamically
       - ./web-static:/var/www/meriter-web:ro
     networks:
-      - meriter-frontend-network
       - meriter-backend-network
     depends_on:
       api:
@@ -159,11 +158,7 @@ services:
     # read_only: true  # Cannot use read_only due to certificate storage
 
 networks:
-  # Frontend network: caddy
-  meriter-frontend-network:
-    driver: bridge
-    internal: false
-  # Backend network: api and init containers
+  # Backend network: api, init containers, and caddy
   meriter-backend-network:
     driver: bridge
     internal: false
