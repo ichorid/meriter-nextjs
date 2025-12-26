@@ -32,6 +32,7 @@ export function AuthWrapper({ children, enabledProviders, authnEnabled }: AuthWr
     const { user, isLoading, isAuthenticated } = useAuth();
     const renderCount = useRef(0);
     const lastLoggedPathname = useRef<string | null>(null);
+    const redirectAttemptedRef = useRef<string | null>(null);
 
     if (DEBUG_MODE) {
         renderCount.current += 1;
@@ -47,6 +48,13 @@ export function AuthWrapper({ children, enabledProviders, authnEnabled }: AuthWr
         () => user?.communityMemberships?.length ?? 0,
         [user?.communityMemberships?.length ?? 0]
     );
+
+    // Reset redirect tracking when pathname changes (allows redirects on new navigation)
+    useEffect(() => {
+        if (pathname !== redirectAttemptedRef.current) {
+            redirectAttemptedRef.current = null;
+        }
+    }, [pathname]);
 
     // Optimized debug logging - only log when meaningful values change
     useEffect(() => {
@@ -90,29 +98,32 @@ export function AuthWrapper({ children, enabledProviders, authnEnabled }: AuthWr
         userGlobalRole,
         userInviteCode,
         userMembershipsCount,
+        user,
     ]);
 
     // If authenticated and on login page, redirect to home
     // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
-    // Use useCallback to stabilize the redirect function
-    const handleRedirect = useCallback(() => {
+    // Use ref to prevent multiple redirect attempts on the same pathname
+    useEffect(() => {
         if (isAuthenticated && pathname === "/meriter/login") {
+            // Prevent multiple redirect attempts for the same pathname
+            if (redirectAttemptedRef.current === pathname) {
+                return;
+            }
+            
+            redirectAttemptedRef.current = pathname;
+            
             if (DEBUG_MODE) {
                 console.log("[AuthWrapper] Redirect check:", {
                     isAuthenticated,
                     pathname,
                 });
-            }
-            if (DEBUG_MODE) {
                 console.log("[AuthWrapper] Redirecting to /meriter/profile");
             }
+            
             router.push("/meriter/profile");
         }
     }, [isAuthenticated, pathname, router]);
-
-    useEffect(() => {
-        handleRedirect();
-    }, [handleRedirect]);
 
     // If disabled, just render children
     // This conditional return is AFTER all hooks have been called
