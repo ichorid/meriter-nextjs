@@ -96,22 +96,9 @@ export class CookieManager {
   clearAllJwtCookieVariants(
     response: any,
     cookieDomain?: string | undefined,
-    isProduction?: boolean
+    _isProduction?: boolean
   ): void {
-    const nodeEnv = this.configService.get('NODE_ENV', 'development');
-    const production = isProduction ?? nodeEnv === 'production';
     const domain = cookieDomain ?? this.getCookieDomain();
-    
-    const sameSite = (production ? 'none' : 'lax') as 'none' | 'lax';
-    // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
-    const secure = sameSite === 'none' ? true : production;
-    
-    const baseOptions = {
-      httpOnly: true,
-      secure,
-      sameSite,
-      path: '/',
-    };
     
     // Derive all possible domain variants from cookie domain
     const domainsToTry: (string | undefined)[] = [undefined]; // Always try no domain
@@ -135,46 +122,69 @@ export class CookieManager {
       new Set(domainsToTry.map(d => d ?? 'undefined'))
     ).map(d => d === 'undefined' ? undefined : d);
     
-    for (const domainVariant of uniqueDomains) {
-      try {
-        // Method 1: clearCookie
-        response.clearCookie('jwt', {
-          ...baseOptions,
-          domain: domainVariant,
-        });
-        
-        // Method 2: Set cookie to empty with immediate expiry (more reliable)
-        response.cookie('jwt', '', {
-          ...baseOptions,
-          domain: domainVariant,
-          expires: new Date(0),
-          maxAge: 0,
-        });
-      } catch (_error) {
-        // Ignore errors when clearing - some combinations may fail
-      }
-    }
+    // Try ALL possible SameSite and Secure combinations to clear old/invalid cookies
+    // Browsers require exact attribute matching to clear cookies, so we must try all combinations
+    const sameSiteOptions: Array<'none' | 'lax' | 'strict'> = ['none', 'lax', 'strict'];
+    const secureOptions = [true, false];
+    const httpOnlyOptions = [true, false];
     
-    // Also try without httpOnly in case there's a non-httpOnly cookie (shouldn't happen, but be safe)
-    try {
-      const sameSiteNoHttpOnly = (production ? 'none' : 'lax') as 'none' | 'lax';
-      const secureNoHttpOnly = sameSiteNoHttpOnly === 'none' ? true : production;
-      response.clearCookie('jwt', {
-        secure: secureNoHttpOnly,
-        sameSite: sameSiteNoHttpOnly,
-        path: '/',
-        domain,
-      });
-      response.cookie('jwt', '', {
-        secure: secureNoHttpOnly,
-        sameSite: sameSiteNoHttpOnly,
-        path: '/',
-        domain,
-        expires: new Date(0),
-        maxAge: 0,
-      });
-    } catch (_error) {
-      // Ignore errors
+    for (const domainVariant of uniqueDomains) {
+      for (const sameSite of sameSiteOptions) {
+        for (const secure of secureOptions) {
+          // Skip invalid combinations (SameSite=None requires Secure=true)
+          if (sameSite === 'none' && !secure) {
+            // Still try to clear invalid cookies that might exist from old code
+            // Use clearCookie and set empty cookie with matching attributes
+            try {
+              response.clearCookie('jwt', {
+                httpOnly: true,
+                secure: false,
+                sameSite: 'none',
+                path: '/',
+                domain: domainVariant,
+              });
+              response.cookie('jwt', '', {
+                httpOnly: true,
+                secure: false,
+                sameSite: 'none',
+                path: '/',
+                domain: domainVariant,
+                expires: new Date(0),
+                maxAge: 0,
+              });
+            } catch (_error) {
+              // Ignore errors
+            }
+            continue;
+          }
+          
+          for (const httpOnly of httpOnlyOptions) {
+            try {
+              // Method 1: clearCookie
+              response.clearCookie('jwt', {
+                httpOnly,
+                secure,
+                sameSite,
+                path: '/',
+                domain: domainVariant,
+              });
+              
+              // Method 2: Set cookie to empty with immediate expiry (more reliable)
+              response.cookie('jwt', '', {
+                httpOnly,
+                secure,
+                sameSite,
+                path: '/',
+                domain: domainVariant,
+                expires: new Date(0),
+                maxAge: 0,
+              });
+            } catch (_error) {
+              // Ignore errors when clearing - some combinations may fail
+            }
+          }
+        }
+      }
     }
   }
 

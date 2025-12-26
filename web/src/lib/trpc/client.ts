@@ -1,9 +1,9 @@
 import { createTRPCReact } from '@trpc/react-query';
 import { httpBatchLink } from '@trpc/client';
 import superjson from 'superjson';
-// Import AppRouter type from generated declaration output.
-// This avoids pulling backend source files (Nest decorators, different tsconfig) into Next.js typechecking.
-import type { AppRouter } from '../../../../api/dist-types/apps/meriter/src/trpc/types';
+// Import AppRouter type from backend types-only export
+// Using types.ts ensures we only import types, not runtime code
+import type { AppRouter } from '../../../../api/apps/meriter/src/trpc/types';
 import { isUnauthorizedError } from '../utils/auth-errors';
 
 /**
