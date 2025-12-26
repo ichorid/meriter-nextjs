@@ -1024,7 +1024,8 @@
             "inviteRole": "Invite Role",
             "inviteRoleHelp": "Select the role for the invited user",
             "roleLead": "Lead",
-            "roleParticipant": "Participant"
+            "roleParticipant": "Participant",
+            "inviteCode": "Invite Code"
         }
     },
     "search": {

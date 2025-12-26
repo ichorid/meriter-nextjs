@@ -1032,7 +1032,8 @@
             "inviteRole": "Роль приглашения",
             "inviteRoleHelp": "Выберите роль для приглашенного пользователя",
             "roleLead": "Лид",
-            "roleParticipant": "Участник"
+            "roleParticipant": "Участник",
+            "inviteCode": "Код приглашения"
         }
     },
     "search": {
