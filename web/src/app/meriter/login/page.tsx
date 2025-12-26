@@ -94,7 +94,7 @@ export default function PageMeriterLogin() {
                 <LoginForm enabledProviders={enabledProviders} authnEnabled={authnEnabled} />
 
                 <div className="mt-8 flex justify-center">
-                    <VersionDisplay />
+                    <VersionDisplay showBuildInfo />
                 </div>
             </div>
         </div>

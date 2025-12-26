@@ -14,7 +14,7 @@
         "lint": "eslint src --ext .ts,.tsx",
         "lint:fix": "eslint src --ext .ts,.tsx --fix",
         "check:render-loops": "node scripts/check-render-loops.js",
-        "prebuild": "pnpm check:render-loops"
+        "prebuild": "node scripts/generate-build-info.js && pnpm check:render-loops"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.940.0",

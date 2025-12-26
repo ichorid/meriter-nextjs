@@ -49,6 +49,10 @@ export class ApiClient {
         return response;
       },
       (error: AxiosError) => {
+        const skipToast =
+          Boolean((error.config as any)?.skipToast) ||
+          Boolean((error.config as any)?.meta?.skipToast);
+
         // Handle 401 Unauthorized errors - clear auth storage and allow re-login
         if (error.response?.status === 401) {
           // Don't clear if this is an auth endpoint (might be during login flow)
@@ -88,7 +92,9 @@ export class ApiClient {
               const serverMessage = (error.response?.data as any)?.error?.message ||
                 (error.response?.data as any)?.message ||
                 'Session expired. Please login again.';
-              useToastStore.getState().addToast(serverMessage, 'error');
+              if (!skipToast) {
+                useToastStore.getState().addToast(serverMessage, 'error');
+              }
             }
           }
         }
@@ -100,18 +106,24 @@ export class ApiClient {
           const serverMessage = (error.response?.data as any)?.error?.message ||
             (error.response?.data as any)?.message ||
             'Server error. Please try again later.';
-          useToastStore.getState().addToast(serverMessage, 'error');
+          if (!skipToast) {
+            useToastStore.getState().addToast(serverMessage, 'error');
+          }
         }
 
         // Handle Network Errors globally
         if (apiError.code === 'NETWORK_ERROR') {
-          useToastStore.getState().addToast('Network error. Please check your connection.', 'error');
+          if (!skipToast) {
+            useToastStore.getState().addToast('Network error. Please check your connection.', 'error');
+          }
         } else if (!error.response?.status || error.response.status < 500) {
           // Handle other API errors (except 500s which are already handled)
           // We also skip 401s here because they are handled above with a specific message
           // But we need to make sure we don't duplicate toasts if we add more specific handlers later
           if (error.response?.status !== 401) {
-            useToastStore.getState().addToast(apiError.message || 'An error occurred', 'error');
+            if (!skipToast) {
+              useToastStore.getState().addToast(apiError.message || 'An error occurred', 'error');
+            }
           }
         }
 
@@ -120,7 +132,7 @@ export class ApiClient {
     );
   }
 
-  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async get<T = any>(url: string, config?: (AxiosRequestConfig & { skipToast?: boolean; meta?: { skipToast?: boolean } })): Promise<T> {
     const response = await this.client.get<T>(url, config);
     return response.data;
   }
