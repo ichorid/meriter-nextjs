@@ -122,42 +122,24 @@ export class CookieManager {
       new Set(domainsToTry.map(d => d ?? 'undefined'))
     ).map(d => d === 'undefined' ? undefined : d);
     
-    // Try ALL possible SameSite and Secure combinations to clear old/invalid cookies
+    // Try ALL VALID SameSite and Secure combinations to clear old/invalid cookies
     // Browsers require exact attribute matching to clear cookies, so we must try all combinations
-    const sameSiteOptions: Array<'none' | 'lax' | 'strict'> = ['none', 'lax', 'strict'];
+    // BUT: Skip invalid combinations (SameSite=None requires Secure=true) - browsers reject them anyway
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
+    const isProduction = _isProduction ?? (nodeEnv === 'production');
+    
+    // Only try valid combinations:
+    // - SameSite=Lax + Secure=true/false (works in all environments)
+    // - SameSite=Strict + Secure=true/false (works in all environments)
+    // - SameSite=None + Secure=true (only valid combination for SameSite=None, typically production/HTTPS)
+    const sameSiteOptions: Array<'lax' | 'strict'> = ['lax', 'strict'];
     const secureOptions = [true, false];
     const httpOnlyOptions = [true, false];
     
     for (const domainVariant of uniqueDomains) {
+      // Try SameSite=Lax and SameSite=Strict with all Secure/httpOnly combinations
       for (const sameSite of sameSiteOptions) {
         for (const secure of secureOptions) {
-          // Skip invalid combinations (SameSite=None requires Secure=true)
-          if (sameSite === 'none' && !secure) {
-            // Still try to clear invalid cookies that might exist from old code
-            // Use clearCookie and set empty cookie with matching attributes
-            try {
-              response.clearCookie('jwt', {
-                httpOnly: true,
-                secure: false,
-                sameSite: 'none',
-                path: '/',
-                domain: domainVariant,
-              });
-              response.cookie('jwt', '', {
-                httpOnly: true,
-                secure: false,
-                sameSite: 'none',
-                path: '/',
-                domain: domainVariant,
-                expires: new Date(0),
-                maxAge: 0,
-              });
-            } catch (_error) {
-              // Ignore errors
-            }
-            continue;
-          }
-          
           for (const httpOnly of httpOnlyOptions) {
             try {
               // Method 1: clearCookie
@@ -182,6 +164,36 @@ export class CookieManager {
             } catch (_error) {
               // Ignore errors when clearing - some combinations may fail
             }
+          }
+        }
+      }
+      
+      // Try SameSite=None + Secure=true (only valid combination for SameSite=None)
+      // Only in production/HTTPS environments where this is typically used
+      if (isProduction) {
+        for (const httpOnly of httpOnlyOptions) {
+          try {
+            // Method 1: clearCookie
+            response.clearCookie('jwt', {
+              httpOnly,
+              secure: true, // Required for SameSite=None
+              sameSite: 'none',
+              path: '/',
+              domain: domainVariant,
+            });
+            
+            // Method 2: Set cookie to empty with immediate expiry (more reliable)
+            response.cookie('jwt', '', {
+              httpOnly,
+              secure: true, // Required for SameSite=None
+              sameSite: 'none',
+              path: '/',
+              domain: domainVariant,
+              expires: new Date(0),
+              maxAge: 0,
+            });
+          } catch (_error) {
+            // Ignore errors when clearing - some combinations may fail
           }
         }
       }
@@ -266,20 +278,20 @@ export class CookieManager {
     }
     
     // Also try without httpOnly in case there's a non-httpOnly cookie
+    // Only try valid combinations (no SameSite=None + Secure=false)
     for (const domainVariant of uniqueDomains) {
       for (const path of pathsToTry) {
+        // Try SameSite=Lax (works with/without Secure)
         try {
-          const sameSiteNoHttpOnly = (production ? 'none' : 'lax') as 'none' | 'lax';
-          const secureNoHttpOnly = sameSiteNoHttpOnly === 'none' ? true : production;
           response.clearCookie(cookieName, {
-            secure: secureNoHttpOnly,
-            sameSite: sameSiteNoHttpOnly,
+            secure: production,
+            sameSite: 'lax',
             path,
             domain: domainVariant,
           });
           response.cookie(cookieName, '', {
-            secure: secureNoHttpOnly,
-            sameSite: sameSiteNoHttpOnly,
+            secure: production,
+            sameSite: 'lax',
             path,
             domain: domainVariant,
             expires: new Date(0),
@@ -287,6 +299,50 @@ export class CookieManager {
           });
         } catch (_error) {
           // Ignore errors
+        }
+        
+        // Try SameSite=Lax without Secure (for localhost/dev)
+        if (!production) {
+          try {
+            response.clearCookie(cookieName, {
+              secure: false,
+              sameSite: 'lax',
+              path,
+              domain: domainVariant,
+            });
+            response.cookie(cookieName, '', {
+              secure: false,
+              sameSite: 'lax',
+              path,
+              domain: domainVariant,
+              expires: new Date(0),
+              maxAge: 0,
+            });
+          } catch (_error) {
+            // Ignore errors
+          }
+        }
+        
+        // Try SameSite=None + Secure=true (only valid combination, typically production)
+        if (production) {
+          try {
+            response.clearCookie(cookieName, {
+              secure: true, // Required for SameSite=None
+              sameSite: 'none',
+              path,
+              domain: domainVariant,
+            });
+            response.cookie(cookieName, '', {
+              secure: true, // Required for SameSite=None
+              sameSite: 'none',
+              path,
+              domain: domainVariant,
+              expires: new Date(0),
+              maxAge: 0,
+            });
+          } catch (_error) {
+            // Ignore errors
+          }
         }
       }
     }

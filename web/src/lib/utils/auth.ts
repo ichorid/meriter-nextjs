@@ -104,35 +104,56 @@ function clearCookieVariants(cookieName: string, cookieDomain?: string | undefin
     }
   }
   
-  // Try clearing with all combinations of attributes
+  // Try clearing with all VALID combinations of attributes
+  // Only try valid combinations (no SameSite=None + Secure=false)
   const pathsToTry = ['/', '']; // Root path and no path
-  const sameSiteOptions = isProduction 
-    ? ['none', 'lax'] as const
-    : ['lax', 'none'] as const;
   
   for (const domainVariant of domainsToTry) {
     for (const path of pathsToTry) {
-      for (const sameSite of sameSiteOptions) {
-        // Try with secure flag
-        let cookieStr = `${cookieName}=;expires=${expiry};path=${path}`;
+      // Try SameSite=Lax with Secure (works in all environments)
+      let cookieStr = `${cookieName}=;expires=${expiry};path=${path}`;
+      if (domainVariant) {
+        cookieStr += `;domain=${domainVariant}`;
+      }
+      cookieStr += `;secure;sameSite=lax`;
+      document.cookie = cookieStr;
+      
+      // Try SameSite=Lax without Secure (for localhost/dev)
+      if (!isProduction) {
+        cookieStr = `${cookieName}=;expires=${expiry};path=${path}`;
         if (domainVariant) {
           cookieStr += `;domain=${domainVariant}`;
         }
-        if (isProduction || sameSite === 'none') {
-          cookieStr += `;secure`;
-        }
-        cookieStr += `;sameSite=${sameSite}`;
+        cookieStr += `;sameSite=lax`;
         document.cookie = cookieStr;
-        
-        // Also try without secure flag (for localhost/dev)
-        if (isProduction) {
-          cookieStr = `${cookieName}=;expires=${expiry};path=${path}`;
-          if (domainVariant) {
-            cookieStr += `;domain=${domainVariant}`;
-          }
-          cookieStr += `;sameSite=${sameSite}`;
-          document.cookie = cookieStr;
+      }
+      
+      // Try SameSite=Strict with Secure
+      cookieStr = `${cookieName}=;expires=${expiry};path=${path}`;
+      if (domainVariant) {
+        cookieStr += `;domain=${domainVariant}`;
+      }
+      cookieStr += `;secure;sameSite=strict`;
+      document.cookie = cookieStr;
+      
+      // Try SameSite=Strict without Secure (for localhost/dev)
+      if (!isProduction) {
+        cookieStr = `${cookieName}=;expires=${expiry};path=${path}`;
+        if (domainVariant) {
+          cookieStr += `;domain=${domainVariant}`;
         }
+        cookieStr += `;sameSite=strict`;
+        document.cookie = cookieStr;
+      }
+      
+      // Try SameSite=None + Secure=true (only valid combination for SameSite=None, typically production)
+      if (isProduction) {
+        cookieStr = `${cookieName}=;expires=${expiry};path=${path}`;
+        if (domainVariant) {
+          cookieStr += `;domain=${domainVariant}`;
+        }
+        cookieStr += `;secure;sameSite=none`;
+        document.cookie = cookieStr;
       }
     }
   }
@@ -231,6 +252,94 @@ export function handleAuthRedirect(returnTo?: string | null, fallbackUrl: string
   // Always use fallbackUrl (/meriter/profile) if returnTo is not specified or is login page
   const redirectUrl = returnTo && returnTo !== '/meriter/login' ? returnTo : fallbackUrl;
   window.location.href = redirectUrl;
+}
+
+/**
+ * Path-aware cookie clearing utilities
+ * Detects if we're on pages where 401 errors are expected (login, auth pages)
+ */
+
+/**
+ * Check if current path is a login or auth-related page where 401 errors are expected
+ * @returns true if on login/auth page, false otherwise
+ */
+export function isOnAuthPage(): boolean {
+  if (typeof window === 'undefined') return false;
+  
+  const pathname = window.location.pathname;
+  return (
+    pathname === '/meriter/login' ||
+    pathname.startsWith('/meriter/login/') ||
+    pathname.startsWith('/api/v1/auth/') ||
+    pathname.startsWith('/trpc/auth.')
+  );
+}
+
+/**
+ * Check if current path is a public page where authentication is not required
+ * @returns true if on public page, false otherwise
+ */
+export function isOnPublicPage(): boolean {
+  if (typeof window === 'undefined') return false;
+  
+  const pathname = window.location.pathname;
+  return (
+    isOnAuthPage() ||
+    pathname === '/' ||
+    pathname.startsWith('/meriter/about') ||
+    pathname.startsWith('/meriter/help')
+  );
+}
+
+/**
+ * Cookie clearing debounce mechanism to prevent race conditions
+ */
+let cookieClearingInProgress = false;
+let cookieClearingTimeout: NodeJS.Timeout | null = null;
+const COOKIE_CLEARING_DEBOUNCE_DELAY = 100; // milliseconds
+
+/**
+ * Debounced cookie clearing to prevent multiple simultaneous operations
+ * @param clearFn Function to execute for clearing cookies
+ */
+function debounceCookieClearing(clearFn: () => void): void {
+  // If already in progress, skip this call (debounce)
+  if (cookieClearingInProgress) {
+    return;
+  }
+  
+  // Clear any pending timeout
+  if (cookieClearingTimeout) {
+    clearTimeout(cookieClearingTimeout);
+    cookieClearingTimeout = null;
+  }
+  
+  cookieClearingInProgress = true;
+  
+  try {
+    clearFn();
+  } finally {
+    // Reset after a short delay to allow cookie operations to complete
+    cookieClearingTimeout = setTimeout(() => {
+      cookieClearingInProgress = false;
+      cookieClearingTimeout = null;
+    }, COOKIE_CLEARING_DEBOUNCE_DELAY);
+  }
+}
+
+/**
+ * Clears cookies with debouncing and path awareness
+ * Skips clearing on auth pages where 401 errors are expected
+ */
+export function clearCookiesIfNeeded(): void {
+  // Skip clearing on auth pages where 401 is expected
+  if (isOnAuthPage()) {
+    return;
+  }
+  
+  debounceCookieClearing(() => {
+    clearAllCookies();
+  });
 }
 
 /**

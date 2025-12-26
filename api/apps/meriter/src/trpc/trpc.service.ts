@@ -20,7 +20,7 @@ import { UserEnrichmentService } from '../api-v1/common/services/user-enrichment
 import { CommunityEnrichmentService } from '../api-v1/common/services/community-enrichment.service';
 import { PermissionsHelperService } from '../api-v1/common/services/permissions-helper.service';
 import { CommunityFeedService } from '../domain/services/community-feed.service';
-import { AuthService } from '../api-v1/auth/auth.service';
+import { AuthProviderService } from '../api-v1/auth/auth.service';
 import { QuotaResetService } from '../domain/services/quota-reset.service';
 import { UserSettingsService } from '../domain/services/user-settings.service';
 import { VoteCommentResolverService } from '../api-v1/common/services/vote-comment-resolver.service';
@@ -30,7 +30,7 @@ import { UploadsService } from '../api-v1/uploads/uploads.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
-import { AuthenticationService } from '../common/services/authentication.service';
+import { JwtVerificationService } from '../common/services/authentication.service';
 
 @Injectable()
 export class TrpcService {
@@ -52,7 +52,7 @@ export class TrpcService {
     private communityEnrichmentService: CommunityEnrichmentService,
     private permissionsHelperService: PermissionsHelperService,
     private communityFeedService: CommunityFeedService,
-    private authService: AuthService,
+    private authService: AuthProviderService,
     private quotaResetService: QuotaResetService,
     private userSettingsService: UserSettingsService,
     private voteCommentResolverService: VoteCommentResolverService,
@@ -61,7 +61,7 @@ export class TrpcService {
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
-    private authenticationService: AuthenticationService,
+    private authenticationService: JwtVerificationService,
   ) {}
 
   getRouter(): AppRouter {

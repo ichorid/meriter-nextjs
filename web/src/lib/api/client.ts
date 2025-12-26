@@ -5,9 +5,10 @@ import { config } from '@/config';
 import { transformAxiosError } from './errors';
 import { ValidationError as ZodValidationError } from './validation';
 import { formatValidationError, logValidationError } from './validation-error-handler';
-import { clearAuthStorage, hasPreviousSession } from '@/lib/utils/auth';
+import { clearAuthStorage, hasPreviousSession, isOnAuthPage, clearCookiesIfNeeded } from '@/lib/utils/auth';
 import { invalidateAuthQueries } from '@/lib/utils/query-client-cache';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { isUnauthorizedError } from '@/lib/utils/auth-errors';
 
 interface RequestConfig {
   timeout?: number;
@@ -60,11 +61,15 @@ export class ApiClient {
           const isAuthEndpoint = url.includes('/api/v1/auth/telegram/widget') ||
             url.includes('/api/v1/auth/telegram/webapp');
 
-          if (!isAuthEndpoint) {
-            // CRITICAL: Clear ALL cookies immediately before showing toast
+          // Skip cookie clearing on auth pages where 401 is expected (login page, etc.)
+          const shouldSkipClearing = isAuthEndpoint || (typeof window !== 'undefined' && isOnAuthPage());
+
+          if (!shouldSkipClearing) {
+            // CRITICAL: Clear cookies with path-aware logic and debouncing
             // This prevents the endless login loop with stale cookies
+            // Uses debouncing to prevent race conditions from multiple simultaneous requests
             if (typeof document !== 'undefined') {
-              clearAuthStorage();
+              clearCookiesIfNeeded(); // Path-aware and debounced
               
               // Also immediately call server-side clearCookies() to clear HttpOnly cookies
               // Use fire-and-forget pattern to avoid blocking the error flow

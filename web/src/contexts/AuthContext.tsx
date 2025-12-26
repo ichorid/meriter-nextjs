@@ -13,12 +13,11 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useMe, useFakeAuth, useFakeSuperadminAuth, useLogout, useClearCookies } from '@/hooks/api/useAuth';
-import { trpc } from '@/lib/trpc/client';
 import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
-import { clearAuthStorage, redirectToLogin, clearJwtCookie, setHasPreviousSession, hasPreviousSession } from '@/lib/utils/auth';
+import { clearAuthStorage, redirectToLogin, clearJwtCookie, setHasPreviousSession, hasPreviousSession, isOnAuthPage, clearCookiesIfNeeded } from '@/lib/utils/auth';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { isUnauthorizedError } from '@/lib/utils/auth-errors';
 import type { User } from '@/types/api-v1';
@@ -48,11 +47,9 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const addToast = useToastStore((state) => state.addToast);
   const last401ErrorRef = useRef<string | null>(null);
 
   const { data: user, isLoading: userLoading, error: userError } = useMe();
@@ -139,7 +136,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsAuthenticating(false);
     }
-  }, [logoutMutation]);
+  }, [logoutMutation, clearCookiesMutation, tCommon]);
 
   // Memoize setAuthError wrapper to ensure stable reference
   const setAuthErrorMemoized = useCallback((error: string | null) => {
@@ -160,22 +157,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // 401 error - user is not authenticated
         const hadSession = hasPreviousSession();
         
-        // Clear auth storage on 401 errors to allow re-login
-        clearAuthStorage();
-        setAuthError(null); // Clear error to allow login
+        // Only clear cookies if we're NOT on an auth page (where 401 is expected)
+        // On login page, 401 is expected and we shouldn't clear cookies
+        if (!isOnAuthPage()) {
+          // Clear auth storage on unexpected 401 errors (session expired on protected routes)
+          clearCookiesIfNeeded(); // Uses debouncing and path-aware logic
+          setAuthError(null); // Clear error to allow login
 
-        // Call server-side clear-cookies to ensure HttpOnly cookies are removed
-        // We use a fire-and-forget approach here to avoid blocking
-        clearCookiesMutation.mutateAsync().catch(e => {
-          // Only log if it's not a 401 (expected when not authenticated)
-          if (!isUnauthorizedError(e)) {
-            console.error('Failed to clear server cookies:', e);
+          // Call server-side clear-cookies to ensure HttpOnly cookies are removed
+          // We use a fire-and-forget approach here to avoid blocking
+          clearCookiesMutation.mutateAsync().catch(e => {
+            // Only log if it's not a 401 (expected when not authenticated)
+            if (!isUnauthorizedError(e)) {
+              console.error('Failed to clear server cookies:', e);
+            }
+          });
+
+          // Log session expiration for debugging (only if user had a session)
+          if (hadSession && process.env.NODE_ENV === 'development') {
+            console.info('Session expired - user needs to re-authenticate');
           }
-        });
-
-        // Log session expiration for debugging (only if user had a session)
-        if (hadSession && process.env.NODE_ENV === 'development') {
-          console.info('Session expired - user needs to re-authenticate');
+        } else {
+          // On auth page, 401 is expected - just clear the error state
+          setAuthError(null);
         }
       } else {
         // Non-401 error - set as auth error
@@ -187,7 +191,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Reset ref when there's no error
       last401ErrorRef.current = null;
     }
-  }, [userError]);
+  }, [userError, clearCookiesMutation]);
 
   // Memoize context value to prevent unnecessary re-renders of consumers
   // Only recreate when actual values change, not object references

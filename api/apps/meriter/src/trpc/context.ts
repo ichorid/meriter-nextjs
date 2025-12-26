@@ -18,7 +18,7 @@ import { UserEnrichmentService } from '../api-v1/common/services/user-enrichment
 import { CommunityEnrichmentService } from '../api-v1/common/services/community-enrichment.service';
 import { PermissionsHelperService } from '../api-v1/common/services/permissions-helper.service';
 import { CommunityFeedService } from '../domain/services/community-feed.service';
-import { AuthService } from '../api-v1/auth/auth.service';
+import { AuthProviderService } from '../api-v1/auth/auth.service';
 import { QuotaResetService } from '../domain/services/quota-reset.service';
 import { UserSettingsService } from '../domain/services/user-settings.service';
 import { VoteCommentResolverService } from '../api-v1/common/services/vote-comment-resolver.service';
@@ -26,7 +26,7 @@ import { CommentEnrichmentService } from '../api-v1/common/services/comment-enri
 import { CookieManager } from '../api-v1/common/utils/cookie-manager.util';
 import { UploadsService } from '../api-v1/uploads/uploads.service';
 import { Connection } from 'mongoose';
-import { AuthenticationService } from '../common/services/authentication.service';
+import { JwtVerificationService } from '../common/services/authentication.service';
 
 export interface CreateContextOptions {
   req: any;
@@ -48,7 +48,7 @@ export interface CreateContextOptions {
   communityEnrichmentService: CommunityEnrichmentService;
   permissionsHelperService: PermissionsHelperService;
   communityFeedService: CommunityFeedService;
-  authService: AuthService;
+  authService: AuthProviderService;
   quotaResetService: QuotaResetService;
   userSettingsService: UserSettingsService;
   voteCommentResolverService: VoteCommentResolverService;
@@ -57,15 +57,15 @@ export interface CreateContextOptions {
   connection: Connection;
   configService: ConfigService<AppConfig>;
   cookieManager: CookieManager;
-  authenticationService: AuthenticationService;
+  authenticationService: JwtVerificationService;
 }
 
 /**
  * Creates tRPC context with authenticated user from JWT cookie
- * Uses AuthenticationService for consistent authentication logic with UserGuard
+ * Uses JwtVerificationService for consistent authentication logic with UserGuard
  * 
  * In test environments, guards (like AllowAllGuard) may set req.user directly.
- * AuthenticationService checks req.user first, then test globals, then JWT cookie authentication.
+ * JwtVerificationService checks req.user first, then test globals, then JWT cookie authentication.
  */
 export async function createContext(opts: CreateContextOptions) {
   const {
@@ -100,7 +100,7 @@ export async function createContext(opts: CreateContextOptions) {
     authenticationService,
   } = opts;
 
-  // Authenticate using AuthenticationService (supports req.user, test globals, and JWT)
+  // Authenticate using JwtVerificationService (supports req.user, test globals, and JWT)
   const authResult = await authenticationService.authenticateFromRequest({
     req,
     allowTestMode: true, // Allow test globals for tRPC (guards aren't applied to Express middleware)

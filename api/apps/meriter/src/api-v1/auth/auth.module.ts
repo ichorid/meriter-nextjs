@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
+import { AuthProviderService } from './auth.service';
 import { DomainModule } from '../../domain.module';
 import { ApiV1CommonModule } from '../common/common.module';
 import { CommunitySchemaClass, CommunitySchema } from '../../domain/models/community/community.schema';
@@ -64,10 +64,10 @@ const GoogleStrategy = getGoogleStrategy();
   ],
   controllers: [AuthController],
   providers: [
-    AuthService,
+    AuthProviderService,
     // Conditionally register GoogleStrategy only if Google OAuth is configured
     ...(GoogleStrategy ? [GoogleStrategy] : []),
   ],
-  exports: [AuthService],
+  exports: [AuthProviderService],
 })
 export class AuthModule { }

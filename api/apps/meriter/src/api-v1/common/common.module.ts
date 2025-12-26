@@ -12,7 +12,7 @@ import { CommonServicesModule } from '../../common/services/common-services.modu
  * Common module for API v1 shared services and utilities
  */
 @Module({
-  imports: [DomainModule, CommonServicesModule], // CommonServicesModule provides AuthenticationService for UserGuard
+  imports: [DomainModule, CommonServicesModule], // CommonServicesModule provides JwtVerificationService for UserGuard
   providers: [
     CookieManager,
     UserEnrichmentService,
@@ -28,7 +28,7 @@ import { CommonServicesModule } from '../../common/services/common-services.modu
     VoteCommentResolverService,
     CommentEnrichmentService,
     PermissionsHelperService,
-    CommonServicesModule, // Re-export CommonServicesModule so AuthenticationService is available to modules importing ApiV1CommonModule
+    CommonServicesModule, // Re-export CommonServicesModule so JwtVerificationService is available to modules importing ApiV1CommonModule
   ],
 })
 export class ApiV1CommonModule {}

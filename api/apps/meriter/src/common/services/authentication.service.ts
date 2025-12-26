@@ -24,8 +24,8 @@ export interface AuthenticationResult {
  * UserGuard (NestJS guards) and tRPC context creation.
  */
 @Injectable()
-export class AuthenticationService {
-  private readonly logger = new Logger(AuthenticationService.name);
+export class JwtVerificationService {
+  private readonly logger = new Logger(JwtVerificationService.name);
 
   constructor(
     private userService: UserService,

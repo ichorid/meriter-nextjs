@@ -36,8 +36,8 @@ interface TelegramAuthData {
 }
 
 @Injectable()
-export class AuthService {
-  private readonly logger = new Logger(AuthService.name);
+export class AuthProviderService {
+  private readonly logger = new Logger(AuthProviderService.name);
 
   constructor(
     private readonly userService: UserService,
@@ -938,7 +938,7 @@ export class AuthService {
     // In Mongoose: findOne({ 'authenticators.credentialID': id })
     // I need to add that to UserService or access model directly.
     // I'll use userService if I can, or just execute query if I had model access.
-    // AuthService doesn't have User Model injected directly, only UserService.
+    // AuthProviderService doesn't have User Model injected directly, only UserService.
     // I will assume I need to add `getUserByAuthenticatorId` to UserService, OR
     // I can try to find user by `storedChallenge.userId` if it was set (username flow).
     // BUT for "Discoverable credentials" (login without username), userHandle is key.

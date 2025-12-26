@@ -14,7 +14,7 @@ import { CommonServicesModule } from '../common/services/common-services.module'
     AuthModule,
     QuotaResetModule,
     UploadsModule,
-    CommonServicesModule, // Provides AuthenticationService
+    CommonServicesModule, // Provides JwtVerificationService
   ],
   // TrpcController removed - tRPC is handled via Express middleware in main.ts
   // to properly support batch requests with comma-separated paths

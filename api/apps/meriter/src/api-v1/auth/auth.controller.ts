@@ -10,7 +10,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthService } from './auth.service';
+import { AuthProviderService } from './auth.service';
 import { UserGuard } from '../../user.guard';
 import { CookieManager } from '../common/utils/cookie-manager.util';
 import { UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
@@ -71,7 +71,7 @@ export class AuthController {
   }
 
   constructor(
-    private readonly authService: AuthService,
+    private readonly authService: AuthProviderService,
     private readonly configService: ConfigService<AppConfig>,
     private readonly cookieManager: CookieManager,
   ) { }
@@ -340,7 +340,7 @@ export class AuthController {
   /**
    * Google OAuth callback endpoint
    * Handles OAuth callback and extracts return_url from OAuth2 state parameter
-   * Uses AuthService.authenticateGoogle for code exchange and user creation
+   * Uses AuthProviderService.authenticateGoogle for code exchange and user creation
    */
   @Get('google/callback')
   async googleCallback(@Req() req: any, @Res() res: any) {
