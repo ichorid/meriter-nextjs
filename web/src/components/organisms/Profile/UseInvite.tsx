@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles, useLeadCommunities } from '@/hooks/api/useProfile';
 import { InviteInput } from '@/components/molecules/InviteInput/InviteInput';
 import { Ticket } from 'lucide-react';
 
-export function UseInvite() {
+function UseInviteComponent() {
   const t = useTranslations('profile.useInvite');
   const { user } = useAuth();
 
@@ -47,4 +47,7 @@ export function UseInvite() {
     </div>
   );
 }
+
+// Memoize UseInvite to prevent unnecessary re-renders
+export const UseInvite = memo(UseInviteComponent);
 

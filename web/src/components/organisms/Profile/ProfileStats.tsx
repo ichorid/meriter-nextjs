@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Award } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -15,7 +15,7 @@ interface ProfileStatsProps {
   isLoading?: boolean;
 }
 
-export function ProfileStats({ meritStats, isLoading }: ProfileStatsProps) {
+function ProfileStatsComponent({ meritStats, isLoading }: ProfileStatsProps) {
   const t = useTranslations('profile');
 
   if (isLoading) {
@@ -81,4 +81,7 @@ export function ProfileStats({ meritStats, isLoading }: ProfileStatsProps) {
     </div>
   );
 }
+
+// Memoize ProfileStats to prevent unnecessary re-renders
+export const ProfileStats = memo(ProfileStatsComponent);
 

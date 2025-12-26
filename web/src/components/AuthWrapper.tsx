@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useEffect, useRef, useMemo, memo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoginForm } from "@/components/LoginForm";
@@ -33,40 +33,44 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
     const { user, isLoading, isAuthenticated } = useAuth();
     const renderCount = useRef(0);
     const lastLoggedPathname = useRef<string | null>(null);
-    const redirectAttemptedRef = useRef<string | null>(null);
+    const redirectAttemptedRef = useRef<{ pathname: string; isAuthenticated: boolean } | null>(null);
     const renderLoopDetected = useRef(false);
-    
-    // Stabilize user object reference using ref-based comparison
-    const prevUserRef = useRef<{ user: typeof user; serialized: string } | null>(null);
-    
-    // Track what changed to help debug render loops
-    const prevValuesRef = useRef<{
-        pathname: string;
+    const lastDebugLogTime = useRef<number>(0);
+    const renderTimestamps = useRef<number[]>([]);
+    const lastStableStateRef = useRef<{
+        pathname: string | null;
         isLoading: boolean;
         isAuthenticated: boolean;
         userId: string | undefined;
-        userGlobalRole: string | undefined;
-        userInviteCode: string | undefined;
-        userMembershipsCount: number;
     } | null>(null);
     
-    // Compare current user with previous by serializing key fields
-    const currentSerialized = user ? JSON.stringify({ 
-        id: user.id, 
-        globalRole: user.globalRole, 
-        inviteCode: user.inviteCode,
-        membershipsLength: user.communityMemberships?.length 
-    }) : 'null';
+    // Stabilize user object reference using useMemo to avoid expensive operations on every render
+    const prevUserRef = useRef<{ user: typeof user; serialized: string } | null>(null);
     
-    // Use previous user reference if values haven't changed
-    const stableUser = prevUserRef.current && prevUserRef.current.serialized === currentSerialized
-        ? prevUserRef.current.user
-        : user;
-    
-    // Update ref if user actually changed
-    if (!prevUserRef.current || prevUserRef.current.serialized !== currentSerialized) {
+    // Memoize user serialization to avoid running on every render
+    const stableUser = useMemo(() => {
+        if (!user) {
+            prevUserRef.current = null;
+            return null;
+        }
+        
+        // Serialize key fields to detect actual changes
+        const currentSerialized = JSON.stringify({ 
+            id: user.id, 
+            globalRole: user.globalRole, 
+            inviteCode: user.inviteCode,
+            membershipsLength: user.communityMemberships?.length 
+        });
+        
+        // Return previous reference if values haven't changed
+        if (prevUserRef.current && prevUserRef.current.serialized === currentSerialized) {
+            return prevUserRef.current.user;
+        }
+        
+        // Values changed, update ref and return new user
         prevUserRef.current = { user, serialized: currentSerialized };
-    }
+        return user;
+    }, [user]);
 
     // Extract primitive values directly - these are stable even if user object reference changes
     const userId = stableUser?.id;
@@ -74,44 +78,17 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
     const userInviteCode = stableUser?.inviteCode;
     const userMembershipsCount = stableUser?.communityMemberships?.length ?? 0;
 
-    // Reset redirect tracking when pathname changes (allows redirects on new navigation)
-    useEffect(() => {
-        if (pathname !== redirectAttemptedRef.current) {
-            redirectAttemptedRef.current = null;
-        }
-    }, [pathname]);
-    
+    // Debug logging with throttling to avoid performance impact
     useEffect(() => {
         if (!DEBUG_MODE) return;
 
-        const currentValues = {
-            pathname,
-            isLoading,
-            isAuthenticated,
-            userId,
-            userGlobalRole,
-            userInviteCode,
-            userMembershipsCount,
-        };
-
-        // Determine what changed
-        const changed = prevValuesRef.current
-            ? Object.entries(currentValues).filter(
-                  ([key, value]) => {
-                      const prevValue = prevValuesRef.current![key as keyof typeof currentValues];
-                      return prevValue !== value;
-                  }
-              ).map(([key]) => key)
-            : ['initial'];
-
-        // Update ref for next comparison
-        prevValuesRef.current = currentValues;
-
-        // Only log when pathname changes or on significant state changes
-        const shouldLog =
+        // Throttle debug logs to once per 500ms to avoid performance impact
+        const now = Date.now();
+        const timeSinceLastLog = now - lastDebugLogTime.current;
+        const shouldLog = 
             pathname !== lastLoggedPathname.current ||
             renderCount.current === 1 ||
-            (changed.length > 0 && !changed.every(k => k === 'timestamp'));
+            timeSinceLastLog > 500;
 
         if (shouldLog) {
             const debugInfo = {
@@ -124,15 +101,15 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
                 userInviteCode,
                 userMemberships: userMembershipsCount,
                 userGlobalRole,
-                changed,
                 timestamp: new Date().toISOString(),
             };
 
             console.log("[AuthWrapper] Render:", debugInfo);
             lastLoggedPathname.current = pathname;
+            lastDebugLogTime.current = now;
 
-            // Check for potential infinite loop
-            if (renderCount.current > 50) {
+            // Check for potential infinite loop - lowered threshold
+            if (renderCount.current > 15) {
                 console.error(
                     "[AuthWrapper] WARNING: Excessive renders detected!",
                     {
@@ -162,48 +139,88 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
 
     // If authenticated and on login page, redirect to home
     // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
-    // Use ref to prevent multiple redirect attempts on the same pathname
+    // Use ref to prevent multiple redirect attempts by tracking both pathname AND isAuthenticated state
     useEffect(() => {
+        const targetPath = "/meriter/profile";
+        
+        // Only redirect if authenticated and on login page
         if (isAuthenticated && pathname === "/meriter/login") {
-            // Prevent multiple redirect attempts for the same pathname
-            if (redirectAttemptedRef.current === pathname) {
+            // Prevent multiple redirect attempts for the same pathname + auth state combination
+            if (redirectAttemptedRef.current && 
+                redirectAttemptedRef.current.pathname === pathname &&
+                redirectAttemptedRef.current.isAuthenticated === isAuthenticated) {
                 return;
             }
             
-            redirectAttemptedRef.current = pathname;
+            redirectAttemptedRef.current = { pathname, isAuthenticated };
             
             if (DEBUG_MODE) {
                 console.log("[AuthWrapper] Redirect check:", {
                     isAuthenticated,
                     pathname,
+                    targetPath,
                 });
-                console.log("[AuthWrapper] Redirecting to /meriter/profile");
+                console.log("[AuthWrapper] Redirecting to", targetPath);
             }
             
-            router.push("/meriter/profile");
+            router.push(targetPath);
         }
-    }, [isAuthenticated, pathname, router]);
+        
+        // Clear redirect tracking when pathname changes to a different route
+        // This allows redirects on new navigation but prevents loops
+        if (pathname !== "/meriter/login" && redirectAttemptedRef.current?.pathname === "/meriter/login") {
+            redirectAttemptedRef.current = null;
+        }
+    }, [isAuthenticated, pathname]); // Removed router from deps - Next.js 13+ router is stable
 
     // NOW ALL HOOKS ARE CALLED - safe to do conditional logic and early returns
     
-    // Track render count and detect render loops (simple version)
-    if (DEBUG_MODE) {
+    // Track render count and detect render loops - improved circuit breaker
+    // Only detect loops when renders happen rapidly with the same state (not legitimate navigation)
+    const currentState = {
+        pathname,
+        isLoading,
+        isAuthenticated,
+        userId: stableUser?.id,
+    };
+    
+    // Check if state actually changed (legitimate render)
+    const stateChanged = !lastStableStateRef.current || 
+        lastStableStateRef.current.pathname !== currentState.pathname ||
+        lastStableStateRef.current.isLoading !== currentState.isLoading ||
+        lastStableStateRef.current.isAuthenticated !== currentState.isAuthenticated ||
+        lastStableStateRef.current.userId !== currentState.userId;
+    
+    // If state changed, reset render tracking (legitimate render)
+    if (stateChanged) {
+        renderCount.current = 0;
+        renderTimestamps.current = [];
+        lastStableStateRef.current = currentState;
+    } else {
+        // State didn't change - this might be a loop
         renderCount.current += 1;
+        const now = Date.now();
+        renderTimestamps.current.push(now);
         
-        // Simple check: if we've rendered more than 100 times, something is wrong
-        if (renderCount.current > 100 && !renderLoopDetected.current) {
+        // Keep only timestamps from last 1 second
+        renderTimestamps.current = renderTimestamps.current.filter(ts => now - ts < 1000);
+        
+        // Detect loop: more than 5 renders in 1 second with same state
+        if (renderTimestamps.current.length > 5 && !renderLoopDetected.current) {
             renderLoopDetected.current = true;
-            console.error("[AuthWrapper] CRITICAL: Render loop detected! Component will return loading state to prevent crash.");
-            console.error("[AuthWrapper] Current values:", {
-                pathname,
-                isLoading,
-                isAuthenticated,
-                userId: user?.id,
-            });
+            if (DEBUG_MODE) {
+                console.error("[AuthWrapper] CRITICAL: Render loop detected! Component will return loading state to prevent crash.");
+                console.error("[AuthWrapper] Current values:", {
+                    ...currentState,
+                    renderCount: renderCount.current,
+                    rendersInLastSecond: renderTimestamps.current.length,
+                });
+            }
         }
     }
     
     // If render loop detected, return early with loading state
+    // This check happens after hooks but before expensive operations
     if (renderLoopDetected.current) {
         return <LoadingState fullScreen />;
     }
@@ -235,7 +252,19 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
     return <>{children}</>;
 }
 
-// Export AuthWrapper directly (React.memo removed as it doesn't help with context-based re-renders)
-// The component uses hooks (useAuth, useRouter, usePathname) which will cause re-renders
-// regardless of props when context/state changes
-export const AuthWrapper = AuthWrapperComponent;
+// Memoize AuthWrapper with custom comparison to prevent re-renders when props haven't changed
+// Note: We don't compare children as it's often a new reference, but we do compare the actual config props
+// Context changes will still cause re-renders, but this prevents unnecessary re-renders from prop changes
+const AuthWrapperMemoized = memo(AuthWrapperComponent, (prevProps, nextProps) => {
+    // Compare arrays by serialization since array references might differ
+    const prevProvidersStr = JSON.stringify(prevProps.enabledProviders?.sort() || []);
+    const nextProvidersStr = JSON.stringify(nextProps.enabledProviders?.sort() || []);
+    
+    // Only re-render if actual config props change (not children, which is often a new reference)
+    return (
+        prevProvidersStr === nextProvidersStr &&
+        prevProps.authnEnabled === nextProps.authnEnabled
+    );
+});
+
+export const AuthWrapper = AuthWrapperMemoized;

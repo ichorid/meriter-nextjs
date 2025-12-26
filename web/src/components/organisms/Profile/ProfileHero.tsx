@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { User as UserIcon, Edit, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
@@ -28,7 +28,7 @@ interface ProfileHeroProps {
   userRoles?: Array<{ role: string }>;
 }
 
-export function ProfileHero({ user, stats: _stats, onEdit, showEdit = false, userRoles = [] }: ProfileHeroProps) {
+function ProfileHeroComponent({ user, stats: _stats, onEdit, showEdit = false, userRoles = [] }: ProfileHeroProps) {
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
@@ -268,4 +268,7 @@ export function ProfileHero({ user, stats: _stats, onEdit, showEdit = false, use
     </div>
   );
 }
+
+// Memoize ProfileHero to prevent unnecessary re-renders
+export const ProfileHero = memo(ProfileHeroComponent);
 
