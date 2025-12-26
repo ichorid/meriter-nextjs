@@ -98,6 +98,66 @@
         file_server
         header Cache-Control "public, max-age=0, must-revalidate"
     }
+
+    # ----------------------------------------------------------------------------
+    # Dynamic route placeholders (Next.js static export)
+    #
+    # See production `Caddyfile` for rationale.
+    # ----------------------------------------------------------------------------
+
+    @community_post_dynamic {
+        path_regexp community_post_dynamic ^/meriter/communities/[^/]+/posts/[^/]+/?$
+    }
+    handle @community_post_dynamic {
+        file_server
+        try_files {path}.html /meriter/communities/_/posts/_.html /index.html
+        header Cache-Control "public, max-age=3600"
+    }
+
+    @community_edit_dynamic {
+        path_regexp community_edit_dynamic ^/meriter/communities/[^/]+/edit/[^/]+/?$
+    }
+    handle @community_edit_dynamic {
+        file_server
+        try_files {path}.html /meriter/communities/_/edit/_.html /index.html
+        header Cache-Control "public, max-age=3600"
+    }
+
+    @community_edit_poll_dynamic {
+        path_regexp community_edit_poll_dynamic ^/meriter/communities/[^/]+/edit-poll/[^/]+/?$
+    }
+    handle @community_edit_poll_dynamic {
+        file_server
+        try_files {path}.html /meriter/communities/_/edit-poll/_.html /index.html
+        header Cache-Control "public, max-age=3600"
+    }
+
+    @community_subpage_dynamic {
+        path_regexp community_subpage_dynamic ^/meriter/communities/[^/]+/(members|rules|settings|create|create-poll)/?$
+    }
+    handle @community_subpage_dynamic {
+        file_server
+        try_files {path}.html /meriter/communities/_/{re.community_subpage_dynamic.1}.html /index.html
+        header Cache-Control "public, max-age=3600"
+    }
+
+    @community_dynamic {
+        path_regexp community_dynamic ^/meriter/communities/[^/]+/?$
+    }
+    handle @community_dynamic {
+        file_server
+        try_files {path}.html /meriter/communities/_.html /index.html
+        header Cache-Control "public, max-age=3600"
+    }
+
+    @user_dynamic {
+        path_regexp user_dynamic ^/meriter/users/[^/]+/?$
+    }
+    handle @user_dynamic {
+        file_server
+        try_files {path}.html /meriter/users/_.html /index.html
+        header Cache-Control "public, max-age=3600"
+    }
     
     # Public assets and other /meriter routes
     # Try {path}.html first (Next.js generates .html files), then fallback to index.html
