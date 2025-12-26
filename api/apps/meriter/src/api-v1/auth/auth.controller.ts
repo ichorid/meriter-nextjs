@@ -405,10 +405,13 @@ export class AuthController {
 
       // New users go to welcome page, existing users go to profile
       const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/profile';
-      const redirectUrl = this.buildWebUrl(redirectPath);
+      
+      // Redirect to intermediate callback page to avoid SameSite=Lax cookie issues
+      // The callback page will retry users.getMe until cookie is available, then redirect to final destination
+      const callbackUrl = this.buildWebUrl(`/meriter/auth/callback?returnTo=${encodeURIComponent(redirectPath)}`);
 
-      this.logger.log(`Google authentication successful, isNewUser: ${result.isNewUser}, redirecting to: ${redirectUrl}`);
-      res.redirect(redirectUrl);
+      this.logger.log(`Google authentication successful, isNewUser: ${result.isNewUser}, redirecting to callback page: ${callbackUrl}`);
+      res.redirect(callbackUrl);
     } catch (error) {
       const errorStack = error instanceof Error ? error.stack : String(error);
       const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
@@ -509,10 +512,13 @@ export class AuthController {
 
       // New users go to welcome page, existing users go to profile
       const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/profile';
-      const redirectUrl = this.buildWebUrl(redirectPath);
+      
+      // Redirect to intermediate callback page to avoid SameSite=Lax cookie issues
+      // The callback page will retry users.getMe until cookie is available, then redirect to final destination
+      const callbackUrl = this.buildWebUrl(`/meriter/auth/callback?returnTo=${encodeURIComponent(redirectPath)}`);
 
-      this.logger.log(`Yandex authentication successful, isNewUser: ${result.isNewUser}, redirecting to: ${redirectUrl}`);
-      res.redirect(redirectUrl);
+      this.logger.log(`Yandex authentication successful, isNewUser: ${result.isNewUser}, redirecting to callback page: ${callbackUrl}`);
+      res.redirect(callbackUrl);
     } catch (error) {
       const errorStack = error instanceof Error ? error.stack : String(error);
       const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
