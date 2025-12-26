@@ -105,7 +105,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - determine-target
-      - test
     strategy:
       matrix:
         component: [api]
@@ -213,7 +212,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - determine-target
-      - test
     outputs:
       artifact_name: ${{ steps.artifact.outputs.name }}
     steps:
@@ -269,6 +267,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - determine-target
+      - test
       - build-images
       - build-static-web
     if: needs.determine-target.outputs.run_dev_deploy == 'true'
@@ -299,6 +298,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - determine-target
+      - test
       - build-images
       - build-static-web
     if: needs.determine-target.outputs.run_stage_deploy == 'true'
@@ -325,6 +325,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - determine-target
+      - test
       - deploy-stage
       - build-static-web
     if: needs.determine-target.outputs.run_prod_deploy == 'true'
