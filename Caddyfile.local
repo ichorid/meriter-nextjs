@@ -100,16 +100,18 @@
     }
     
     # Public assets and other /meriter routes
+    # Try {path}.html first (Next.js generates .html files), then fallback to index.html
     handle /meriter/* {
         file_server
-        try_files {path} /index.html
+        try_files {path}.html {path} /index.html
         header Cache-Control "public, max-age=3600"
     }
 
     # SPA fallback - all other routes
+    # Try {path}.html first (Next.js generates .html files), then fallback to index.html
     handle {
         file_server
-        try_files {path} /index.html
+        try_files {path}.html {path} /index.html
         header Cache-Control "public, max-age=0, must-revalidate"
     }
     
