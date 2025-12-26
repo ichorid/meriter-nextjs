@@ -36,18 +36,6 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
     const redirectAttemptedRef = useRef<string | null>(null);
     const renderLoopDetected = useRef(false);
     
-    // Track previous values to detect what's actually changing
-    const prevRenderValues = useRef<{
-        pathname: string;
-        isLoading: boolean;
-        isAuthenticated: boolean;
-        userId: string | undefined;
-    } | null>(null);
-    
-    // Track rapid renders to prevent processing during navigation storms
-    const lastRenderTimeRef = useRef<number>(Date.now());
-    const rapidRenderCountRef = useRef<number>(0);
-    
     // Stabilize user object reference using ref-based comparison
     const prevUserRef = useRef<{ user: typeof user; serialized: string } | null>(null);
     
@@ -61,10 +49,6 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
         userInviteCode: string | undefined;
         userMembershipsCount: number;
     } | null>(null);
-
-    // Optimized debug logging - only log when meaningful values change
-    // Use a ref to track if we're in a rapid render sequence (e.g., during navigation)
-    const rapidRenderRef = useRef<{ count: number; lastRenderTime: number }>({ count: 0, lastRenderTime: Date.now() });
     
     // Compare current user with previous by serializing key fields
     const currentSerialized = user ? JSON.stringify({ 
@@ -100,17 +84,6 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
     useEffect(() => {
         if (!DEBUG_MODE) return;
 
-        const now = Date.now();
-        const timeSinceLastRender = now - rapidRenderRef.current.lastRenderTime;
-        
-        // Detect rapid renders (more than 10 renders in 100ms indicates a loop)
-        if (timeSinceLastRender < 100) {
-            rapidRenderRef.current.count += 1;
-        } else {
-            rapidRenderRef.current.count = 1;
-        }
-        rapidRenderRef.current.lastRenderTime = now;
-
         const currentValues = {
             pathname,
             isLoading,
@@ -121,7 +94,7 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
             userMembershipsCount,
         };
 
-        // Determine what changed - always update ref for next comparison
+        // Determine what changed
         const changed = prevValuesRef.current
             ? Object.entries(currentValues).filter(
                   ([key, value]) => {
@@ -131,16 +104,14 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
               ).map(([key]) => key)
             : ['initial'];
 
-        // Always update ref for next comparison, even if we don't log
+        // Update ref for next comparison
         prevValuesRef.current = currentValues;
 
         // Only log when pathname changes or on significant state changes
-        // Skip logging during rapid render sequences to reduce noise
         const shouldLog =
-            (pathname !== lastLoggedPathname.current ||
+            pathname !== lastLoggedPathname.current ||
             renderCount.current === 1 ||
-            (changed.length > 0 && !changed.every(k => k === 'timestamp'))) &&
-            rapidRenderRef.current.count < 10; // Don't log during rapid render sequences
+            (changed.length > 0 && !changed.every(k => k === 'timestamp'));
 
         if (shouldLog) {
             const debugInfo = {
@@ -154,7 +125,6 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
                 userMemberships: userMembershipsCount,
                 userGlobalRole,
                 changed,
-                rapidRenders: rapidRenderRef.current.count,
                 timestamp: new Date().toISOString(),
             };
 
@@ -176,7 +146,6 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
                             userInviteCode,
                             userMembershipsCount,
                         },
-                        rapidRenderSequence: rapidRenderRef.current.count,
                     }
                 );
             }
@@ -217,15 +186,14 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
 
     // NOW ALL HOOKS ARE CALLED - safe to do conditional logic and early returns
     
-    // Track render count and detect render loops
+    // Track render count and detect render loops (simple version)
     if (DEBUG_MODE) {
         renderCount.current += 1;
         
-        // Safety check: if we detect excessive renders, prevent further processing
+        // Simple check: if we've rendered more than 100 times, something is wrong
         if (renderCount.current > 100 && !renderLoopDetected.current) {
             renderLoopDetected.current = true;
             console.error("[AuthWrapper] CRITICAL: Render loop detected! Component will return loading state to prevent crash.");
-            console.error("[AuthWrapper] Previous values:", prevRenderValues.current);
             console.error("[AuthWrapper] Current values:", {
                 pathname,
                 isLoading,
@@ -239,52 +207,6 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
     if (renderLoopDetected.current) {
         return <LoadingState fullScreen />;
     }
-    
-    // Track rapid renders to prevent processing during navigation storms
-    const now = Date.now();
-    
-    if (now - lastRenderTimeRef.current < 50) {
-        // Rapid render detected (less than 50ms since last render)
-        rapidRenderCountRef.current += 1;
-        
-        // If we're in a rapid render sequence (more than 5 renders in quick succession),
-        // skip processing and return cached result to break the loop
-        if (rapidRenderCountRef.current > 5) {
-            if (DEBUG_MODE && rapidRenderCountRef.current === 6) {
-                console.warn("[AuthWrapper] Rapid render sequence detected, skipping processing to prevent loop");
-            }
-            // Return cached children to prevent further processing
-            return <>{children}</>;
-        }
-    } else {
-        // Reset counter if enough time has passed
-        rapidRenderCountRef.current = 0;
-    }
-    lastRenderTimeRef.current = now;
-    
-    // Update previous values for next comparison
-    const currentUserId = user?.id;
-    if (prevRenderValues.current) {
-        const changed = {
-            pathname: prevRenderValues.current.pathname !== pathname,
-            isLoading: prevRenderValues.current.isLoading !== isLoading,
-            isAuthenticated: prevRenderValues.current.isAuthenticated !== isAuthenticated,
-            userId: prevRenderValues.current.userId !== currentUserId,
-        };
-        
-        if (DEBUG_MODE && renderCount.current <= 10) {
-            const hasChanges = Object.values(changed).some(v => v);
-            if (hasChanges) {
-                console.log("[AuthWrapper] Values changed:", changed);
-            }
-        }
-    }
-    prevRenderValues.current = {
-        pathname,
-        isLoading,
-        isAuthenticated,
-        userId: currentUserId,
-    };
 
     // If disabled, just render children
     // This conditional return is AFTER all hooks have been called
