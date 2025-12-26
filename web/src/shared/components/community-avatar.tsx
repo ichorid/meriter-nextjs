@@ -25,12 +25,13 @@ export const CommunityAvatar = ({
   onError,
   needsSetup,
 }: CommunityAvatarProps) => {
-  const sizeClass = size === 24 ? 'w-6 h-6' : size === 32 ? 'w-8 h-8' : size === 48 ? 'w-12 h-12' : size === 64 ? 'w-16 h-16' : `w-[${size}px] h-[${size}px]`;
+  const sizeClass = size === 24 ? 'w-6 h-6' : size === 32 ? 'w-8 h-8' : size === 48 ? 'w-12 h-12' : size === 64 ? 'w-16 h-16' : '';
+  const hasPredefinedSize = size === 24 || size === 32 || size === 48 || size === 64;
   
   return (
     <div className="relative inline-block">
-      <Avatar className={`${sizeClass} ${className}`} style={size > 64 || size < 24 ? { width: size, height: size } : undefined}>
-        <AvatarImage src={avatarUrl} alt={communityName} onError={onError} />
+      <Avatar className={`${sizeClass} ${className}`} style={!hasPredefinedSize ? { width: size, height: size } : undefined}>
+        <AvatarImage src={avatarUrl} alt={communityName} onError={onError} className="object-cover" />
         <AvatarFallback className="bg-muted text-muted-foreground font-medium">
           {communityName ? communityName.charAt(0).toUpperCase() : '?'}
         </AvatarFallback>
