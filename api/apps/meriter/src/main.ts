@@ -57,6 +57,13 @@ async function bootstrap() {
     rawBody: true,
   });
   
+  // CRITICAL: Trust proxy to read X-Forwarded-Proto header from Caddy
+  // This is essential for CI/CD dev targets where web is static (same as production)
+  // but requests come via HTTPS through Caddy reverse proxy
+  // Without this, req.secure will always be false even when requests are HTTPS
+  // Trust only the first proxy (Caddy) for better security (defense-in-depth)
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  
   // Enable CORS for development (when not using Caddy)
   // In production, Caddy handles routing and CORS is not needed
   if (!isProduction) {

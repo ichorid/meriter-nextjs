@@ -121,7 +121,8 @@ export class AuthController {
       const cookieDomain = this.cookieManager.getCookieDomain();
       // Treat as production (Secure=true, SameSite=None) if explicitly production OR if accessed via HTTPS
       const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
 
       // Clear any existing JWT cookie first to ensure clean state
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
@@ -193,7 +194,8 @@ export class AuthController {
       const cookieDomain = this.cookieManager.getCookieDomain();
       // Treat as production (Secure=true, SameSite=None) if explicitly production OR if accessed via HTTPS
       const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
 
       // Clear any existing JWT cookie first to ensure clean state
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
@@ -445,7 +447,8 @@ export class AuthController {
 
       const cookieDomain = this.cookieManager.getCookieDomain();
       const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
 
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
       this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
@@ -609,7 +612,8 @@ export class AuthController {
       // Set JWT cookie (same as OAuth)
       const cookieDomain = this.cookieManager.getCookieDomain();
       const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
 
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
       this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);

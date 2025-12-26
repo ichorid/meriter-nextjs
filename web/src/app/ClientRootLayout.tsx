@@ -91,10 +91,13 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
     // Set cookie if not already set - use detectedLocale to ensure consistency
     // This prevents mismatches between detected locale and cookie value
     if (!document.cookie.includes('NEXT_LOCALE=')) {
-      // Use secure flag when on HTTPS (required for cross-site cookies, good practice for HTTPS)
+      // Use SameSite=Lax for HTTP/localhost, SameSite=None with secure for HTTPS
+      // This ensures cookies work correctly in all environments
       const isSecure = window.location.protocol === 'https:';
-      const secureFlag = isSecure ? '; secure' : '';
-      document.cookie = `NEXT_LOCALE=${detectedLocale}; max-age=${365 * 24 * 60 * 60}; path=/; samesite=lax${secureFlag}`;
+      const sameSite = isSecure ? 'none' : 'lax';
+      const secure = sameSite === 'none' ? true : isSecure;
+      const secureFlag = secure ? '; secure' : '';
+      document.cookie = `NEXT_LOCALE=${detectedLocale}; max-age=${365 * 24 * 60 * 60}; path=/; samesite=${sameSite}${secureFlag}`;
     }
   }, []); // Empty deps - only run once after mount
 

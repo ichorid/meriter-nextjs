@@ -259,6 +259,8 @@ export class CookieManager {
     const sameSite = production ? 'none' : 'lax';
     // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
     // This is required for cross-site cookies (e.g., OAuth redirects)
+    // Force secure=true if sameSite='none', regardless of other conditions
+    // This defensive check ensures cookies work even if isProduction is incorrectly determined
     const secure = sameSite === 'none' ? true : production;
     
     const cookieOptions: any = {
