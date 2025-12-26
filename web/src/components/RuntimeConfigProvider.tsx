@@ -36,7 +36,12 @@ export function RuntimeConfigProvider({
     const oauthInstagram = runtimeConfig?.oauth?.instagram ?? false;
     const oauthSber = runtimeConfig?.oauth?.sber ?? false;
     const oauthMailru = runtimeConfig?.oauth?.mailru ?? false;
-    const authnEnabled = runtimeConfig?.authn?.enabled ?? false;
+    
+    // Memoize authnEnabled to ensure stable reference
+    const authnEnabled = useMemo(
+        () => runtimeConfig?.authn?.enabled ?? false,
+        [runtimeConfig?.authn?.enabled]
+    );
     
     // Store previous array to compare by value and maintain stable reference
     const prevProvidersRef = useRef<string[] | null>(null);

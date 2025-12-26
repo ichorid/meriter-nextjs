@@ -69,10 +69,11 @@ export function useRuntimeConfig(): {
         return newConfig;
     }, [data]);
 
-    return {
+    // Memoize return value to ensure stable reference
+    return useMemo(() => ({
         config,
         isLoading,
         error: error as Error | null,
-    };
+    }), [config, isLoading, error]);
 }
 

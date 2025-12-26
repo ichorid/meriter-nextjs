@@ -62,6 +62,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const { handleDeepLink } = useDeepLinkHandler(router as unknown as Router, null, undefined);
 
+  // Stabilize user object reference to prevent unnecessary re-renders
+  // React Query might return new object references even when values are the same
+  const prevUserRef = useRef<{ user: typeof user; serialized: string } | null>(null);
+  const stableUser = useMemo(() => {
+    if (!user) {
+      prevUserRef.current = null;
+      return null;
+    }
+    
+    // Serialize key fields to detect actual changes
+    const serialized = JSON.stringify({
+      id: user.id,
+      globalRole: user.globalRole,
+      inviteCode: user.inviteCode,
+      username: user.username,
+    });
+    
+    // Return previous reference if values haven't changed
+    if (prevUserRef.current && prevUserRef.current.serialized === serialized) {
+      return prevUserRef.current.user;
+    }
+    
+    // Values changed, update ref and return new user
+    prevUserRef.current = { user, serialized };
+    return user;
+  }, [user]);
+
   // Memoize derived values to prevent unnecessary recalculations
   const isLoading = useMemo(() => userLoading || isAuthenticating, [userLoading, isAuthenticating]);
 
@@ -73,7 +100,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // User is authenticated ONLY if:
   // 1. We have a user object (not null/undefined)
   // 2. There's no error OR the error is not a 401 (401 means not authenticated)
-  const isAuthenticated = useMemo(() => !!user && !is401Error, [user, is401Error]);
+  // Use stableUser to prevent re-renders from object reference changes
+  const isAuthenticated = useMemo(() => !!stableUser && !is401Error, [stableUser, is401Error]);
 
   // DEBUG: Log authentication state changes
   useEffect(() => {
@@ -245,8 +273,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Memoize context value to prevent unnecessary re-renders of consumers
   // Only recreate when actual values change, not object references
+  // Use stableUser instead of user to prevent re-renders from object reference changes
   const contextValue: AuthContextType = useMemo(() => ({
-    user: user || null,
+    user: stableUser || null,
     isLoading,
     isAuthenticated,
     authenticateFakeUser,
@@ -256,7 +285,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     authError,
     setAuthError: setAuthErrorMemoized,
   }), [
-    user,
+    stableUser,
     isLoading,
     isAuthenticated,
     authenticateFakeUser,
