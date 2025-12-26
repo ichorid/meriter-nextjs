@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { classList } from '@lib/classList';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { CommunityAvatar } from '@shared/components/community-avatar';
 import { ImageLightbox } from '@shared/components/image-lightbox';
 import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
+import { routes } from '@/lib/constants/routes';
 
 interface CardPublicationProps {
     title: any;
