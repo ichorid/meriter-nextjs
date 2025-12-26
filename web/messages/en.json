@@ -78,7 +78,8 @@
         },
         "profile": "Profile",
         "account": "Account",
-        "info": "Info"
+        "info": "Info",
+        "meritsAndQuota": "Merits & Quota"
     },
     "home": {
         "breadcrumb": "Home",
@@ -987,7 +988,10 @@
             "leadToParticipant": "Lead to Participant",
             "expires": "Expires",
             "usedAt": "Used at"
-        }
+        },
+        "teamsAndRoles": "Teams & Roles",
+        "changeAvatar": "Change avatar",
+        "cropAvatar": "Crop avatar"
     },
     "invites": {
         "create": {

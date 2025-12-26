@@ -79,7 +79,8 @@
         },
         "profile": "Профиль",
         "account": "Аккаунт",
-        "info": "Информация"
+        "info": "Информация",
+        "meritsAndQuota": "Мериты и Квота"
     },
     "home": {
         "breadcrumb": "Главная",
@@ -989,7 +990,10 @@
             "leadToParticipant": "От лида к участнику",
             "expires": "Истекает",
             "usedAt": "Использовано в"
-        }
+        },
+        "teamsAndRoles": "Команды и Роли",
+        "changeAvatar": "Изменить аватар",
+        "cropAvatar": "Обрезать аватар"
     },
     "about": {
         "noLeadsFound": "Лиды не найдены",
