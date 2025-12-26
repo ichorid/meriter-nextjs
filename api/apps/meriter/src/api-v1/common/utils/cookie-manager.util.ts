@@ -234,20 +234,40 @@ export class CookieManager {
   }
 
   /**
+   * Helper to detect if request is secure (HTTPS)
+   * Checks req.secure and X-Forwarded-Proto header
+   * @param request Express request object
+   * @returns true if request is over HTTPS
+   */
+  private isRequestSecure(request: any): boolean {
+    // Check req.secure (works when trust proxy is configured)
+    if (request.secure === true) {
+      return true;
+    }
+    // Fallback: check X-Forwarded-Proto header directly
+    const forwardedProto = request.headers?.['x-forwarded-proto'];
+    if (forwardedProto === 'https') {
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Set JWT cookie with proper domain and security settings
    * @param response Express response object
    * @param jwtToken JWT token string
    * @param cookieDomain Cookie domain (optional, will be derived if not provided)
-   * @param isProduction Whether running in production mode
+   * @param isProduction Whether running in production mode (optional, will be derived if not provided)
+   * @param request Express request object (optional, used to detect HTTPS more reliably)
    */
   setJwtCookie(
     response: any,
     jwtToken: string,
     cookieDomain?: string | undefined,
-    isProduction?: boolean
+    isProduction?: boolean,
+    request?: any
   ): void {
     const nodeEnv = this.configService.get('NODE_ENV', 'development');
-    const production = isProduction ?? nodeEnv === 'production';
     let domain = cookieDomain ?? this.getCookieDomain();
     
     // For localhost, don't set domain to allow cookie sharing across ports
@@ -256,12 +276,20 @@ export class CookieManager {
       domain = undefined; // No domain restriction for localhost
     }
     
-    const sameSite = production ? 'none' : 'lax';
+    // Detect if request is secure (HTTPS) - use request if provided, otherwise fall back to isProduction
+    const isSecure = request ? this.isRequestSecure(request) : false;
+    
+    // Determine production mode: explicit isProduction OR NODE_ENV=production OR request is HTTPS
+    const production = isProduction ?? (nodeEnv === 'production' || isSecure);
+    
     // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
-    // This is required for cross-site cookies (e.g., OAuth redirects)
-    // Force secure=true if sameSite='none', regardless of other conditions
+    // Use 'none' for production/HTTPS (cross-site cookies), 'lax' for development/HTTP (same-site)
+    const sameSite = production ? 'none' : 'lax';
+    
+    // CRITICAL: Force secure=true if sameSite='none', regardless of other conditions
     // This defensive check ensures cookies work even if isProduction is incorrectly determined
-    const secure = sameSite === 'none' ? true : production;
+    // Also set secure=true if request is actually HTTPS (even in dev mode)
+    const secure = sameSite === 'none' ? true : (isSecure || production);
     
     const cookieOptions: any = {
       httpOnly: true,

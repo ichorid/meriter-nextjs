@@ -80,13 +80,16 @@ export const authRouter = router({
     // Clear any existing JWT cookie first to ensure clean state
     ctx.cookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
 
-    // Set new JWT cookie
-    ctx.cookieManager.setJwtCookie(ctx.res, result.jwt, cookieDomain, isProduction);
+    // Set new JWT cookie (pass req to detect HTTPS reliably)
+    ctx.cookieManager.setJwtCookie(ctx.res, result.jwt, cookieDomain, isProduction, ctx.req);
 
     // Set fake_user_id cookie (session cookie - expires when browser closes)
-    const sameSite = isProduction ? 'none' : 'lax';
+    // Use same robust HTTPS detection as JWT cookie
+    const actualIsSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
+    const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
+    const sameSite = actualIsProduction ? 'none' : 'lax';
     // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
-    const secure = sameSite === 'none' ? true : isProduction;
+    const secure = sameSite === 'none' ? true : (actualIsSecure || actualIsProduction);
     ctx.res.cookie('fake_user_id', fakeUserId, {
       httpOnly: true,
       secure,
@@ -135,13 +138,16 @@ export const authRouter = router({
     // Clear any existing JWT cookie first to ensure clean state
     ctx.cookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
 
-    // Set new JWT cookie
-    ctx.cookieManager.setJwtCookie(ctx.res, result.jwt, cookieDomain, isProduction);
+    // Set new JWT cookie (pass req to detect HTTPS reliably)
+    ctx.cookieManager.setJwtCookie(ctx.res, result.jwt, cookieDomain, isProduction, ctx.req);
 
     // Set fake_superadmin_id cookie (session cookie - expires when browser closes)
-    const sameSite = isProduction ? 'none' : 'lax';
+    // Use same robust HTTPS detection as JWT cookie
+    const actualIsSecure = ctx.req.secure || ctx.req.headers['x-forwarded-proto'] === 'https';
+    const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
+    const sameSite = actualIsProduction ? 'none' : 'lax';
     // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
-    const secure = sameSite === 'none' ? true : isProduction;
+    const secure = sameSite === 'none' ? true : (actualIsSecure || actualIsProduction);
     ctx.res.cookie('fake_superadmin_id', fakeUserId, {
       httpOnly: true,
       secure,

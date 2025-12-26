@@ -67,6 +67,7 @@
         reverse_proxy api:8002 {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
         }
         encode gzip
     }
@@ -77,6 +78,7 @@
         reverse_proxy api:8002 {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
         }
         encode gzip
     }

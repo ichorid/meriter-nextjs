@@ -127,13 +127,17 @@ export class AuthController {
       // Clear any existing JWT cookie first to ensure clean state
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
 
-      // Set new JWT cookie
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      // Set new JWT cookie (pass req to detect HTTPS reliably)
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
 
       // Set fake_user_id cookie (session cookie - expires when browser closes)
-      const sameSite = isProduction ? 'none' : 'lax';
+      // Recalculate isSecure to ensure it's correct (trust proxy should make req.secure work)
+      const actualIsSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      // Recalculate isProduction with actual isSecure value
+      const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
+      const sameSite = actualIsProduction ? 'none' : 'lax';
       // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
-      const secure = sameSite === 'none' ? true : isProduction;
+      const secure = sameSite === 'none' ? true : (actualIsSecure || actualIsProduction);
       res.cookie('fake_user_id', fakeUserId, {
         httpOnly: true,
         secure,
@@ -200,13 +204,17 @@ export class AuthController {
       // Clear any existing JWT cookie first to ensure clean state
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
 
-      // Set new JWT cookie
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      // Set new JWT cookie (pass req to detect HTTPS reliably)
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
 
       // Set fake_superadmin_id cookie (session cookie - expires when browser closes)
-      const sameSite = isProduction ? 'none' : 'lax';
+      // Recalculate isSecure to ensure it's correct (trust proxy should make req.secure work)
+      const actualIsSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+      // Recalculate isProduction with actual isSecure value
+      const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
+      const sameSite = actualIsProduction ? 'none' : 'lax';
       // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
-      const secure = sameSite === 'none' ? true : isProduction;
+      const secure = sameSite === 'none' ? true : (actualIsSecure || actualIsProduction);
       res.cookie('fake_superadmin_id', fakeUserId, {
         httpOnly: true,
         secure,
@@ -351,7 +359,7 @@ export class AuthController {
       const isProduction = nodeEnv === 'production' || isSecure;
 
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
 
       // New users go to welcome page, existing users go to profile
       const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/profile';
@@ -451,7 +459,7 @@ export class AuthController {
       const isProduction = nodeEnv === 'production' || isSecure;
 
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
 
       // New users go to welcome page, existing users go to profile
       const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/profile';
@@ -528,7 +536,7 @@ export class AuthController {
 
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
       if (result.jwt) {
-        this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+        this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
       }
 
       return res.json({
@@ -567,7 +575,7 @@ export class AuthController {
       const isProduction = nodeEnv === 'production' || isSecure;
 
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
 
       return res.json({ success: true, user: result.user });
     } catch (error) {
@@ -616,7 +624,7 @@ export class AuthController {
       const isProduction = nodeEnv === 'production' || isSecure;
 
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
 
       // Return isNewUser flag for frontend redirect (like OAuth)
       return res.json({
