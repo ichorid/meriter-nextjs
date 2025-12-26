@@ -1,10 +1,10 @@
 import { PostPageClient } from './PostPageClient';
 
 interface PostPageProps {
-  params: { id: string; slug: string };
+  params: Promise<{ id: string; slug: string }>;
 }
 
-export default function PostPage({ params }: PostPageProps) {
-  const { id, slug } = params;
+export default async function PostPage({ params }: PostPageProps) {
+  const { id, slug } = await params;
   return <PostPageClient communityId={id} slug={slug} />;
 }

@@ -1,10 +1,10 @@
 import { CommunitySettingsPageClient } from './CommunitySettingsPageClient';
 
 interface CommunitySettingsPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default function CommunitySettingsPage({ params }: CommunitySettingsPageProps) {
-  const { id } = params;
+export default async function CommunitySettingsPage({ params }: CommunitySettingsPageProps) {
+  const { id } = await params;
   return <CommunitySettingsPageClient communityId={id} />;
 }

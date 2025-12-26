@@ -1,10 +1,10 @@
 import { UserProfilePageClient } from './UserProfilePageClient';
 
 interface UserProfilePageProps {
-  params: { userId: string };
+  params: Promise<{ userId: string }>;
 }
 
-export default function UserProfilePage({ params }: UserProfilePageProps) {
-  const { userId } = params;
+export default async function UserProfilePage({ params }: UserProfilePageProps) {
+  const { userId } = await params;
   return <UserProfilePageClient userId={userId} />;
 }

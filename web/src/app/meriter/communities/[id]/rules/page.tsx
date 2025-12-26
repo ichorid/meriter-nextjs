@@ -1,10 +1,10 @@
 import { CommunityRulesPageClient } from './CommunityRulesPageClient';
 
 interface CommunityRulesPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default function CommunityRulesPage({ params }: CommunityRulesPageProps) {
-  const { id } = params;
+export default async function CommunityRulesPage({ params }: CommunityRulesPageProps) {
+  const { id } = await params;
   return <CommunityRulesPageClient communityId={id} />;
 }

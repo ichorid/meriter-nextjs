@@ -1,11 +1,11 @@
 import { CreatePublicationPageClient } from './CreatePublicationPageClient';
 
 interface CreatePublicationPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default function CreatePublicationPage({ params }: CreatePublicationPageProps) {
-  const { id } = params;
+export default async function CreatePublicationPage({ params }: CreatePublicationPageProps) {
+  const { id } = await params;
   return <CreatePublicationPageClient communityId={id} />;
 }
 

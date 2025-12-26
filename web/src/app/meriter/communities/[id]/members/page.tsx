@@ -1,10 +1,10 @@
 import { CommunityMembersPageClient } from './CommunityMembersPageClient';
 
 interface CommunityMembersPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default function CommunityMembersPage({ params }: CommunityMembersPageProps) {
-  const { id } = params;
+export default async function CommunityMembersPage({ params }: CommunityMembersPageProps) {
+  const { id } = await params;
   return <CommunityMembersPageClient communityId={id} />;
 }
