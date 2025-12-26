@@ -91,13 +91,11 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
     // Set cookie if not already set - use detectedLocale to ensure consistency
     // This prevents mismatches between detected locale and cookie value
     if (!document.cookie.includes('NEXT_LOCALE=')) {
-      // Use SameSite=Lax for HTTP/localhost, SameSite=None with secure for HTTPS
-      // This ensures cookies work correctly in all environments
+      // Use SameSite=Lax (first-party) to avoid browser rejections on misconfigured Secure flags.
+      // This is correct because Meriter runs on a single origin (no cross-site cookie use required).
       const isSecure = window.location.protocol === 'https:';
-      const sameSite = isSecure ? 'none' : 'lax';
-      const secure = sameSite === 'none' ? true : isSecure;
-      const secureFlag = secure ? '; secure' : '';
-      document.cookie = `NEXT_LOCALE=${detectedLocale}; max-age=${365 * 24 * 60 * 60}; path=/; samesite=${sameSite}${secureFlag}`;
+      const secureFlag = isSecure ? '; secure' : '';
+      document.cookie = `NEXT_LOCALE=${detectedLocale}; max-age=${365 * 24 * 60 * 60}; path=/; samesite=lax${secureFlag}`;
     }
   }, []); // Empty deps - only run once after mount
 

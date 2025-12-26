@@ -32,13 +32,42 @@ import { AppConfig } from '../../config/configuration';
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
-  private isHttpsRequest(req: any): boolean {
-    if (req?.secure === true) return true;
-    const forwardedProto = req?.headers?.['x-forwarded-proto'];
+  private isHttpsRequest(req: unknown): boolean {
+    const r = req as { secure?: unknown; headers?: Record<string, unknown> } | null;
+    if (r?.secure === true) return true;
+    const forwardedProto = r?.headers?.['x-forwarded-proto'];
     if (!forwardedProto) return false;
     const raw = Array.isArray(forwardedProto) ? forwardedProto[0] : String(forwardedProto);
     const first = raw.split(',')[0]?.trim().toLowerCase();
     return first === 'https';
+  }
+
+  private getSanitizedSetCookieHeader(res: unknown): string[] | null {
+    try {
+      const r = res as { getHeader?: (name: string) => unknown } | null;
+      const raw = r?.getHeader?.('Set-Cookie');
+      const values: string[] =
+        typeof raw === 'string'
+          ? [raw]
+          : Array.isArray(raw)
+            ? raw.map(String)
+            : raw
+              ? [String(raw)]
+              : [];
+
+      if (values.length === 0) return null;
+
+      return values.map((v) =>
+        v
+          // redact jwt value
+          .replace(/(^|;\s*)jwt=[^;]*/i, '$1jwt=<redacted>')
+          // redact any fake ids
+          .replace(/(^|;\s*)fake_user_id=[^;]*/i, '$1fake_user_id=<redacted>')
+          .replace(/(^|;\s*)fake_superadmin_id=[^;]*/i, '$1fake_superadmin_id=<redacted>')
+      );
+    } catch {
+      return null;
+    }
   }
 
   constructor(
@@ -102,7 +131,7 @@ export class AuthController {
   async authenticateFake(@Req() req: any, @Res() res: any) {
     try {
       // Check if fake data mode is enabled
-      const fakeDataMode = this.configService.get('dev.fakeDataMode', false);
+      const fakeDataMode = this.configService.get('dev')?.fakeDataMode ?? false;
       if (!fakeDataMode) {
         throw new ForbiddenException('Fake data mode is not enabled');
       }
@@ -144,9 +173,8 @@ export class AuthController {
       const actualIsSecure = this.isHttpsRequest(req);
       // Recalculate isProduction with actual isSecure value
       const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
-      const sameSite = actualIsProduction ? 'none' : 'lax';
-      // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
-      const secure = sameSite === 'none' ? true : (actualIsSecure || actualIsProduction);
+      const sameSite = 'lax' as const;
+      const secure = actualIsSecure || actualIsProduction;
       res.cookie('fake_user_id', fakeUserId, {
         httpOnly: true,
         secure,
@@ -179,7 +207,7 @@ export class AuthController {
   async authenticateFakeSuperadmin(@Req() req: any, @Res() res: any) {
     try {
       // Check if fake data mode is enabled
-      const fakeDataMode = this.configService.get('dev.fakeDataMode', false);
+      const fakeDataMode = this.configService.get('dev')?.fakeDataMode ?? false;
       if (!fakeDataMode) {
         throw new ForbiddenException('Fake data mode is not enabled');
       }
@@ -221,9 +249,8 @@ export class AuthController {
       const actualIsSecure = this.isHttpsRequest(req);
       // Recalculate isProduction with actual isSecure value
       const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
-      const sameSite = actualIsProduction ? 'none' : 'lax';
-      // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
-      const secure = sameSite === 'none' ? true : (actualIsSecure || actualIsProduction);
+      const sameSite = 'lax' as const;
+      const secure = actualIsSecure || actualIsProduction;
       res.cookie('fake_superadmin_id', fakeUserId, {
         httpOnly: true,
         secure,
@@ -266,8 +293,8 @@ export class AuthController {
       const returnTo = req.query.returnTo || '/meriter/profile';
 
       // Check if Google OAuth is explicitly disabled
-      const enabled = this.configService.get('oauth.google.enabled');
-      if (enabled === 'false' || enabled === '0') {
+      const enabled = this.configService.get('oauth')?.google.enabled;
+      if (enabled === false) {
         this.logger.error('Google OAuth is explicitly disabled via OAUTH_GOOGLE_ENABLED');
         throw new Error('Google OAuth is disabled');
       }
@@ -275,9 +302,9 @@ export class AuthController {
       // Get Google OAuth credentials
       // Support both OAUTH_GOOGLE_REDIRECT_URI and OAUTH_GOOGLE_CALLBACK_URL
       // Note: clientSecret is not needed for initiation, only for callback
-      const clientId = this.configService.get('oauth.google.clientId');
-      const callbackUrl = this.configService.get('oauth.google.redirectUri')
-        || this.configService.get('GOOGLE_REDIRECT_URI');
+      const clientId = this.configService.get('oauth')?.google.clientId;
+      const callbackUrl = this.configService.get('oauth')?.google.redirectUri
+        || process.env.GOOGLE_REDIRECT_URI;
 
       // Check if credentials are present (clientId and callbackUrl are required for initiation)
       if (!clientId || !callbackUrl) {
@@ -370,6 +397,12 @@ export class AuthController {
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
       this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
 
+      // Debug: log cookie attributes (sanitized) to diagnose cookie rejection in browsers.
+      // Safe to keep at debug level; does not log token values.
+      this.logger.debug(
+        `[cookie-debug] google callback host=${req?.headers?.host} xfHost=${req?.headers?.['x-forwarded-host']} xfProto=${req?.headers?.['x-forwarded-proto']} req.secure=${String(req?.secure)} isSecure=${String(isSecure)} isProduction=${String(isProduction)} set-cookie=${JSON.stringify(this.getSanitizedSetCookieHeader(res))}`
+      );
+
       // New users go to welcome page, existing users go to profile
       const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/profile';
       const redirectUrl = this.buildWebUrl(redirectPath);
@@ -396,14 +429,14 @@ export class AuthController {
       const returnTo = req.query.returnTo || '/meriter/profile';
 
       // Check if Yandex OAuth is explicitly disabled
-      const enabled = this.configService.get('oauth.yandex.enabled');
-      if (enabled === 'false' || enabled === '0') {
+      const enabled = this.configService.get('oauth')?.yandex.enabled;
+      if (enabled === false) {
         this.logger.error('Yandex OAuth is explicitly disabled via OAUTH_YANDEX_ENABLED');
         throw new Error('Yandex OAuth is disabled');
       }
 
-      const clientId = this.configService.get('oauth.yandex.clientId');
-      const callbackUrl = this.configService.get('oauth.yandex.redirectUri');
+      const clientId = this.configService.get('oauth')?.yandex.clientId;
+      const callbackUrl = this.configService.get('oauth')?.yandex.redirectUri;
 
       if (!clientId || !callbackUrl) {
         const missing = [];
@@ -470,6 +503,10 @@ export class AuthController {
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
       this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
 
+      this.logger.debug(
+        `[cookie-debug] yandex callback host=${req?.headers?.host} xfHost=${req?.headers?.['x-forwarded-host']} xfProto=${req?.headers?.['x-forwarded-proto']} req.secure=${String(req?.secure)} isSecure=${String(isSecure)} isProduction=${String(isProduction)} set-cookie=${JSON.stringify(this.getSanitizedSetCookieHeader(res))}`
+      );
+
       // New users go to welcome page, existing users go to profile
       const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/profile';
       const redirectUrl = this.buildWebUrl(redirectPath);
@@ -505,7 +542,7 @@ export class AuthController {
   @Post('passkey/register/start')
   async generatePasskeyRegistrationOptions(@Body() body: { username?: string; userId?: string }, @Res() res: any) {
     try {
-      if (!this.configService.get('authn.enabled', false)) throw new ForbiddenException('Passkeys disabled');
+      if (!(this.configService.get('authn')?.enabled ?? false)) throw new ForbiddenException('Passkeys disabled');
 
       const { username, userId } = body;
       if (!username && !userId) throw new Error('Username or userId required');
@@ -527,7 +564,7 @@ export class AuthController {
   @Post('passkey/register/finish')
   async verifyPasskeyRegistration(@Body() body: any, @Res() res: any, @Req() req: any) {
     try {
-      if (!this.configService.get('authn.enabled', false)) throw new ForbiddenException('Passkeys disabled');
+      if (!(this.configService.get('authn')?.enabled ?? false)) throw new ForbiddenException('Passkeys disabled');
 
       // The body contains the registration response and context
       // We expect { userId: "...", deviceName: "...", ...credentialResponse }
@@ -561,7 +598,7 @@ export class AuthController {
   @Post('passkey/login/start')
   async generatePasskeyLoginOptions(@Body() body: { username?: string }) {
     try {
-      if (!this.configService.get('authn.enabled', false)) throw new ForbiddenException('Passkeys disabled');
+      if (!(this.configService.get('authn')?.enabled ?? false)) throw new ForbiddenException('Passkeys disabled');
       const result = await this.authService.generatePasskeyLoginOptions(body.username);
       return result;
     } catch (error) {
@@ -573,7 +610,7 @@ export class AuthController {
   @Post('passkey/login/finish')
   async verifyPasskeyLogin(@Body() body: any, @Res() res: any, @Req() req: any) {
     try {
-      if (!this.configService.get('authn.enabled', false)) throw new ForbiddenException('Passkeys disabled');
+      if (!(this.configService.get('authn')?.enabled ?? false)) throw new ForbiddenException('Passkeys disabled');
 
       const result = await this.authService.verifyPasskeyLogin(body);
 
@@ -600,7 +637,7 @@ export class AuthController {
   @Post('passkey/authenticate/start')
   async generatePasskeyAuthenticationOptions(@Res() res: any) {
     try {
-      if (!this.configService.get('authn.enabled', false)) {
+      if (!(this.configService.get('authn')?.enabled ?? false)) {
         throw new ForbiddenException('Passkeys disabled');
       }
 
@@ -620,7 +657,7 @@ export class AuthController {
   @Post('passkey/authenticate/finish')
   async authenticateWithPasskey(@Body() body: any, @Res() res: any, @Req() req: any) {
     try {
-      if (!this.configService.get('authn.enabled', false)) {
+      if (!(this.configService.get('authn')?.enabled ?? false)) {
         throw new ForbiddenException('Passkeys disabled');
       }
 

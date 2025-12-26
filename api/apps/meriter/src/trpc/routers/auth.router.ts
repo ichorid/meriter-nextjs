@@ -66,7 +66,7 @@ export const authRouter = router({
    */
   authenticateFake: publicProcedure.mutation(async ({ ctx }) => {
     // Check if fake data mode is enabled
-    const fakeDataMode = ctx.configService.get('dev.fakeDataMode', false);
+    const fakeDataMode = ctx.configService.get('dev')?.fakeDataMode ?? false;
     if (!fakeDataMode) {
       throw new TRPCError({
         code: 'FORBIDDEN',
@@ -102,9 +102,8 @@ export const authRouter = router({
     // Use same robust HTTPS detection as JWT cookie
     const actualIsSecure = isHttpsRequest(ctx.req);
     const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
-    const sameSite = actualIsProduction ? 'none' : 'lax';
-    // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
-    const secure = sameSite === 'none' ? true : (actualIsSecure || actualIsProduction);
+    const sameSite = 'lax' as const;
+    const secure = actualIsSecure || actualIsProduction;
     ctx.res.cookie('fake_user_id', fakeUserId, {
       httpOnly: true,
       secure,
@@ -127,7 +126,7 @@ export const authRouter = router({
    */
   authenticateFakeSuperadmin: publicProcedure.mutation(async ({ ctx }) => {
     // Check if fake data mode is enabled
-    const fakeDataMode = ctx.configService.get('dev.fakeDataMode', false);
+    const fakeDataMode = ctx.configService.get('dev')?.fakeDataMode ?? false;
     if (!fakeDataMode) {
       throw new TRPCError({
         code: 'FORBIDDEN',
@@ -163,9 +162,8 @@ export const authRouter = router({
     // Use same robust HTTPS detection as JWT cookie
     const actualIsSecure = isHttpsRequest(ctx.req);
     const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
-    const sameSite = actualIsProduction ? 'none' : 'lax';
-    // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
-    const secure = sameSite === 'none' ? true : (actualIsSecure || actualIsProduction);
+    const sameSite = 'lax' as const;
+    const secure = actualIsSecure || actualIsProduction;
     ctx.res.cookie('fake_superadmin_id', fakeUserId, {
       httpOnly: true,
       secure,

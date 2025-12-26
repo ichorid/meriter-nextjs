@@ -332,17 +332,15 @@ export class CookieManager {
     // This prevents broken auth on HTTPS behind proxies when x-forwarded-proto is missing/misformatted.
     const shouldForceSecure = Boolean(requestHost);
     
-    // Determine production mode: explicit isProduction OR NODE_ENV=production OR request is HTTPS
+    // Meriter runs the API behind the same origin (Caddy proxies /api and /trpc),
+    // so a first-party cookie with SameSite=Lax is the correct default and avoids
+    // "SameSite=None requires Secure" rejection issues.
+    const sameSite: 'lax' = 'lax';
+
+    // Secure cookies are recommended on any non-localhost host.
+    // We force Secure if we can determine we're on a real hostname, even if proxy headers are imperfect.
     const production = isProduction ?? (nodeEnv === 'production' || isSecure || shouldForceSecure);
-    
-    // CRITICAL: When sameSite='none', secure MUST be true (browser requirement)
-    // Use 'none' for production/HTTPS (cross-site cookies), 'lax' for development/HTTP (same-site)
-    const sameSite = production ? 'none' : 'lax';
-    
-    // CRITICAL: Force secure=true if sameSite='none', regardless of other conditions
-    // This defensive check ensures cookies work even if isProduction is incorrectly determined
-    // Also set secure=true if request is actually HTTPS (even in dev mode)
-    const secure = shouldForceSecure ? true : (sameSite === 'none' ? true : (isSecure || production));
+    const secure = shouldForceSecure ? true : (isSecure || production);
     
     const cookieOptions: any = {
       httpOnly: true,
