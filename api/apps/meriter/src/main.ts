@@ -56,6 +56,35 @@ async function bootstrap() {
     bodyParser: true,
     rawBody: true,
   });
+
+  // ---------------------------------------------------------------------------
+  // CRITICAL: Mount tRPC middleware on the raw Express instance *before*
+  // Nest registers its routes and its default 404 handler.
+  //
+  // In production, the web app sends batched tRPC requests where the path contains
+  // commas, e.g.:
+  //   /trpc/config.getConfig,users.getMe?batch=1&input=...
+  //
+  // If Nest's router gets this request first, it returns a plain 404 (Cannot GET ...).
+  // By attaching the middleware at the Express layer early, we ensure these requests
+  // are always handled by tRPC.
+  // ---------------------------------------------------------------------------
+  try {
+    const expressApp = app.getHttpAdapter().getInstance();
+    const trpcService = app.get(TrpcService);
+    const trpcMiddleware = createExpressMiddleware({
+      router: trpcService.getRouter(),
+      createContext: ({ req, res }) => trpcService.createContext(req, res),
+      onError({ error, path }) {
+        logger.error(`tRPC error on '${path}':`, error);
+      },
+    });
+    expressApp.use('/trpc', trpcMiddleware);
+    logger.log('✅ tRPC middleware mounted at /trpc');
+  } catch (error) {
+    logger.error('❌ Failed to mount tRPC middleware at /trpc', error as any);
+    throw error;
+  }
   
   // CRITICAL: Trust proxy to read X-Forwarded-Proto header from Caddy
   // This is essential for CI/CD dev targets where web is static (same as production)
@@ -113,19 +142,9 @@ async function bootstrap() {
 
   app.use(cookieParser());
   
-  // Register tRPC middleware directly with Express to handle batch requests with commas
-  // This bypasses NestJS routing which doesn't handle comma-separated paths well
-  const trpcService = app.get(TrpcService);
-  const trpcMiddleware = createExpressMiddleware({
-    router: trpcService.getRouter(),
-    createContext: ({ req, res }) => trpcService.createContext(req, res),
-    onError({ error, path }) {
-      logger.error(`tRPC error on '${path}':`, error);
-    },
-  });
-  app.use('/trpc', trpcMiddleware);
-  
   const port = configService.get<number>('app.port') ?? 8002;
+  // Ensure Nest finishes initialization after our early Express middleware mounts.
+  await app.init();
   await app.listen(port);
   logger.log(`Application is running on: http://localhost:${port}`);
 
