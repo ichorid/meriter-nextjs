@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import { Loader2 } from "lucide-react";
 import { OSMAutocomplete } from "@/components/molecules/OSMAutocomplete";
+import { AvatarUploader } from "@/components/ui/AvatarUploader";
 
 export interface UserFormData {
     displayName: string;
@@ -195,36 +196,22 @@ export function UserForm({
                     </h3>
 
                     {/* Avatar Row */}
-                    <div className="flex items-start gap-4 mb-5">
-                        <div className="relative w-16 h-16 rounded-full overflow-hidden bg-base-300/50 border-2 border-base-content/10 flex-shrink-0">
-                            {avatarUrl ? (
-                                <img
-                                    src={avatarUrl}
-                                    alt="Avatar"
-                                    className="w-full h-full object-cover"
-                                />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-base-content/20 text-xs">
-                                    —
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <BrandFormControl
-                                label={t("avatarUrl")}
-                                helperText={t("avatarUrlHelper")}
-                            >
-                                <Input
-                                    value={avatarUrl}
-                                    onChange={(e) =>
-                                        setAvatarUrl(e.target.value)
-                                    }
-                                    placeholder={tCommon('urlPlaceholder')}
-                                    className="h-11 rounded-xl w-full"
-                                />
-                            </BrandFormControl>
-                        </div>
-                    </div>
+                    <BrandFormControl
+                        label={t("avatarUrl")}
+                        helperText={t("avatarUrlHelper")}
+                    >
+                        <AvatarUploader
+                            value={avatarUrl}
+                            onUpload={(url) => setAvatarUrl(url)}
+                            size={80}
+                            labels={{
+                                upload: t("changeAvatar") || "Change avatar",
+                                cropTitle: t("cropAvatar") || "Crop avatar",
+                                cancel: tCommon("cancel") || "Cancel",
+                                save: t("save") || "Save",
+                            }}
+                        />
+                    </BrandFormControl>
 
                     {/* Display Name */}
                     <BrandFormControl

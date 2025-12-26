@@ -1,11 +1,22 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
-import { User } from 'lucide-react';
+import { User, Pencil } from 'lucide-react';
 import { Users, FileText, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/shadcn/dialog';
+import { AvatarUploader } from '@/components/ui/AvatarUploader';
+import { IconPicker } from '@/shared/components/iconpicker';
+import { useUpdateCommunity } from '@/hooks/api/useCommunities';
+import { useToastStore } from '@/shared/stores/toast.store';
+import { useTranslations } from 'next-intl';
 
 interface CommunityHeroCardProps {
   community: {
@@ -40,6 +51,12 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   onClick,
 }) => {
   const router = useRouter();
+  const t = useTranslations('pages.communitySettings');
+  const tCommon = useTranslations('common');
+  const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
+  const [isIconDialogOpen, setIsIconDialogOpen] = useState(false);
+  const { mutateAsync: updateCommunity } = useUpdateCommunity();
+  const addToast = useToastStore((state) => state.addToast);
   
   // Generate a gradient background based on community name if no cover image
   const generateGradient = (name: string): [string, string] => {
@@ -57,6 +74,44 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   
   const [gradientFrom, gradientTo] = generateGradient(community.name);
   const hasCoverImage = !!community.coverImageUrl;
+
+  const handleAvatarUpload = async (url: string) => {
+    try {
+      await updateCommunity({
+        id: community.id,
+        data: {
+          avatarUrl: url,
+        },
+      });
+      addToast(t('saved') || 'Avatar updated', 'success');
+      setIsAvatarDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to update community avatar:', error);
+      addToast(t('error') || 'Failed to update avatar', 'error');
+    }
+  };
+
+  const handleIconChange = (iconUrl: string) => {
+    // IconPicker calls setIcon immediately when emoji is clicked
+    // We need to save it to the backend
+    updateCommunity({
+      id: community.id,
+      data: {
+        settings: {
+          ...community.settings,
+          iconUrl: iconUrl,
+        },
+      },
+    })
+      .then(() => {
+        addToast(t('saved') || 'Icon updated', 'success');
+        setIsIconDialogOpen(false);
+      })
+      .catch((error) => {
+        console.error('Failed to update community icon:', error);
+        addToast(t('error') || 'Failed to update icon', 'error');
+      });
+  };
 
   // Compact mode renders a simpler, smaller card
   if (isCompact) {
@@ -145,7 +200,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
       {/* Avatar - overlapping cover */}
       <div className="relative px-4 sm:px-6">
         <div className="-mt-12 sm:-mt-14 mb-3 relative z-10">
-          <div className="inline-block ring-4 ring-base-100 rounded-full bg-base-100">
+          <div className="relative inline-block ring-4 ring-base-100 rounded-full bg-base-100">
             <Avatar className="w-20 h-20 sm:w-24 sm:h-24 text-xl bg-base-200">
               {community.avatarUrl && (
                 <AvatarImage src={community.avatarUrl} alt={community.name} />
@@ -154,6 +209,20 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                 {community.name ? community.name.slice(0, 2).toUpperCase() : <User size={32} />}
               </AvatarFallback>
             </Avatar>
+            {/* Edit icon overlay */}
+            {community.isAdmin && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsAvatarDialogOpen(true);
+                }}
+                className="absolute top-0 right-0 p-1.5 rounded-full bg-primary text-primary-content shadow-lg hover:bg-primary/90 transition-colors z-10"
+                title={t('changeAvatar') || 'Change avatar'}
+              >
+                <Pencil size={14} />
+              </button>
+            )}
           </div>
         </div>
         
@@ -165,11 +234,40 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
               {community.name}
             </h1>
             {community.settings?.iconUrl && (
-              <img 
-                src={community.settings.iconUrl} 
-                alt="" 
-                className="w-5 h-5 sm:w-6 sm:h-6" 
-              />
+              <div className="relative inline-block">
+                <img 
+                  src={community.settings.iconUrl} 
+                  alt="" 
+                  className="w-5 h-5 sm:w-6 sm:h-6" 
+                />
+                {/* Edit icon overlay */}
+                {community.isAdmin && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsIconDialogOpen(true);
+                    }}
+                    className="absolute -top-1 -right-1 p-0.5 rounded-full bg-primary text-primary-content shadow-lg hover:bg-primary/90 transition-colors z-10"
+                    title={t('selectIcon') || 'Change icon'}
+                  >
+                    <Pencil size={10} />
+                  </button>
+                )}
+              </div>
+            )}
+            {!community.settings?.iconUrl && community.isAdmin && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsIconDialogOpen(true);
+                }}
+                className="p-1 rounded-full bg-base-200 hover:bg-base-300 transition-colors"
+                title={t('selectIcon') || 'Add icon'}
+              >
+                <Pencil size={12} className="text-base-content/60" />
+              </button>
             )}
           </div>
           
@@ -206,6 +304,44 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Avatar Edit Dialog */}
+      <Dialog open={isAvatarDialogOpen} onOpenChange={setIsAvatarDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('changeAvatar') || 'Change avatar'}</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center py-4">
+            <AvatarUploader
+              value={community.avatarUrl}
+              onUpload={handleAvatarUpload}
+              size={120}
+              labels={{
+                upload: t('changeAvatar') || 'Change avatar',
+                cropTitle: t('cropAvatar') || 'Crop avatar',
+                cancel: tCommon('cancel') || 'Cancel',
+                save: t('save') || 'Save',
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Icon Edit Dialog */}
+      <Dialog open={isIconDialogOpen} onOpenChange={setIsIconDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('currencyIcon') || 'Currency Icon'}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <IconPicker
+              icon={community.settings?.iconUrl || ''}
+              cta={t('selectIcon') || 'Select Icon'}
+              setIcon={handleIconChange}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
