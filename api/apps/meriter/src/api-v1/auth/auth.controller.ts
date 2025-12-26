@@ -17,17 +17,15 @@ import { UnauthorizedError, InternalServerError } from '../../common/exceptions/
 import { AppConfig } from '../../config/configuration';
 
 /**
- * @deprecated Some endpoints have been migrated to tRPC.
+ * Authentication Controller
  * 
- * Migrated endpoints:
- * - POST /api/v1/auth/logout -> trpc.auth.logout
- * - POST /api/v1/auth/clear-cookies -> trpc.auth.clearCookies
- * - POST /api/v1/auth/fake -> trpc.auth.authenticateFake
- * - POST /api/v1/auth/fake/superadmin -> trpc.auth.authenticateFakeSuperadmin
+ * REST endpoints for authentication flows:
+ * - Public/unauthenticated endpoints (fake auth, clearCookies) - use REST for simplicity
+ * - OAuth redirects and callbacks - must stay REST (required by OAuth spec)
+ * - Passkey/WebAuthn endpoints - use REST (WebAuthn requires REST)
  * 
- * Still using REST (required for OAuth redirects):
- * - GET /api/v1/auth/{provider} -> OAuth redirects (must stay REST)
- * - GET /api/v1/auth/{provider}/callback -> OAuth callbacks (must stay REST)
+ * Authenticated endpoints:
+ * - POST /api/v1/auth/logout -> Use trpc.auth.logout (authenticated only)
  * - GET /api/v1/auth/me -> @deprecated Use trpc.users.getMe instead
  */
 @Controller('api/v1/auth')
@@ -63,8 +61,9 @@ export class AuthController {
     // Clear ALL cookies from the request, not just JWT variants
     // This prevents login loops caused by stale cookies with mismatched attributes
     const cookieDomain = this.cookieManager.getCookieDomain();
+    const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
     const nodeEnv = this.configService.get('NODE_ENV', 'development');
-    const isProduction = nodeEnv === 'production';
+    const isProduction = nodeEnv === 'production' || isSecure;
 
     // Get all cookie names from the request
     const cookieNames = new Set<string>();

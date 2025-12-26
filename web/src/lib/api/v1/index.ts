@@ -1,19 +1,17 @@
 /**
- * @deprecated This API client is deprecated. All endpoints have been migrated to tRPC.
+ * API v1 REST Client
  * 
- * Use tRPC hooks instead:
+ * This file provides REST API clients for endpoints that should remain REST:
+ * - Authentication endpoints (OAuth, fake auth, clearCookies) - use REST for unauthenticated flows
+ * - OAuth redirects and callbacks - must stay REST (required by OAuth spec)
+ * - File uploads - use REST (multipart/form-data)
+ * 
+ * For authenticated endpoints, use tRPC hooks:
  * - `trpc.*.useQuery()` for queries
  * - `trpc.*.useMutation()` for mutations
  * - `trpc.*.useInfiniteQuery()` for infinite queries
  * 
- * See LEGACY_DEPRECATED.md for migration guide.
- * 
- * This file is kept temporarily for:
- * - OAuth redirects (still use REST)
- * - File uploads (still use REST)
- * - Backward compatibility during migration
- * 
- * ⚠️ DO NOT USE FOR NEW CODE
+ * See LEGACY_DEPRECATED.md for migration guide for other endpoints.
  */
 // New v1 API client with improved types and structure
 import { apiClient } from "../client";

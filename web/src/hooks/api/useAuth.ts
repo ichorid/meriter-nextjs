@@ -1,7 +1,8 @@
 // Auth React Query hooks
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
 import { isUnauthorizedError } from '@/lib/utils/auth-errors';
+import { authApiV1 } from '@/lib/api/v1';
 
 export const useMe = () => {
   // Use tRPC for getMe - provides automatic type safety
@@ -34,7 +35,8 @@ export const useMe = () => {
 export const useFakeAuth = () => {
   const utils = trpc.useUtils();
   
-  return trpc.auth.authenticateFake.useMutation({
+  return useMutation({
+    mutationFn: () => authApiV1.authenticateFakeUser(),
     onSuccess: () => {
       // Invalidate queries but don't refetch immediately
       // Let the redirect and page reload handle the refetch
@@ -47,7 +49,8 @@ export const useFakeAuth = () => {
 export const useFakeSuperadminAuth = () => {
   const utils = trpc.useUtils();
   
-  return trpc.auth.authenticateFakeSuperadmin.useMutation({
+  return useMutation({
+    mutationFn: () => authApiV1.authenticateFakeSuperadmin(),
     onSuccess: () => {
       // Invalidate queries but don't refetch immediately
       // Let the redirect and page reload handle the refetch
@@ -69,5 +72,7 @@ export const useLogout = () => {
 };
 
 export const useClearCookies = () => {
-  return trpc.auth.clearCookies.useMutation();
+  return useMutation({
+    mutationFn: () => authApiV1.clearCookies(),
+  });
 };

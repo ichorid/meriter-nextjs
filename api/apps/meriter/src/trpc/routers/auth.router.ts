@@ -18,6 +18,9 @@ export const authRouter = router({
   /**
    * Clear all cookies
    * Must be public - used to clear cookies when authentication fails
+   * 
+   * @deprecated Use REST endpoint POST /api/v1/auth/clear-cookies instead.
+   * Public/unauthenticated endpoints should use REST for simplicity.
    */
   clearCookies: publicProcedure.mutation(async ({ ctx }) => {
     const cookieDomain = ctx.cookieManager.getCookieDomain();
@@ -48,6 +51,9 @@ export const authRouter = router({
 
   /**
    * Fake user authentication (development only)
+   * 
+   * @deprecated Use REST endpoint POST /api/v1/auth/fake instead.
+   * Public/unauthenticated endpoints should use REST for simplicity.
    */
   authenticateFake: publicProcedure.mutation(async ({ ctx }) => {
     // Check if fake data mode is enabled
@@ -106,6 +112,9 @@ export const authRouter = router({
 
   /**
    * Fake superadmin authentication (development only)
+   * 
+   * @deprecated Use REST endpoint POST /api/v1/auth/fake/superadmin instead.
+   * Public/unauthenticated endpoints should use REST for simplicity.
    */
   authenticateFakeSuperadmin: publicProcedure.mutation(async ({ ctx }) => {
     // Check if fake data mode is enabled
