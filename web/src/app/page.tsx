@@ -1,31 +1,17 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-
 /**
  * Root page component for static export
  * 
- * This component is only rendered when the user is actually on the root path '/'.
- * When Caddy serves index.html for other routes (like /meriter/profile),
- * Next.js router handles the routing and renders the correct page component.
+ * This component is rendered when Caddy serves index.html as fallback.
+ * All redirect logic is handled by ClientRouter component.
  * 
- * We redirect to profile when on root path. ClientRouter also handles this,
- * but this ensures it happens even if ClientRouter hasn't run yet.
+ * This page should be completely passive - it returns an empty fragment
+ * to allow Next.js router to handle routing via client-side navigation.
  */
 export default function Home() {
-    const router = useRouter();
-
-    useEffect(() => {
-        // Only redirect if we're actually on root path
-        // Check window.location.pathname directly for reliability
-        if (typeof window !== 'undefined' && window.location.pathname === '/') {
-            router.replace('/meriter/profile');
-        }
-    }, [router]);
-
     // Return empty fragment - Next.js router will handle rendering the correct page
-    // This allows hydration without interfering with routing
+    // ClientRouter (in ClientRootLayout) handles all redirects including root path
     return <></>;
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
@@ -15,11 +16,29 @@ import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { MeritsAndQuotaSection } from './MeritsAndQuotaSection';
 
 export function UserProfilePageClient({ userId }: { userId: string }) {
+  const router = useRouter();
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
 
-  const { data: user, isLoading, error } = useUserProfile(userId);
+  const { data: user, isLoading, error, isFetched } = useUserProfile(userId);
   const { data: userRoles = [], isLoading: rolesLoading } = useUserRoles(userId);
+
+  // Handle 404 - redirect to not-found if user doesn't exist
+  useEffect(() => {
+    // Only check after query has completed
+    if (isFetched && !isLoading) {
+      // Check if user doesn't exist (error with NOT_FOUND code)
+      const isNotFound = 
+        error && 
+        ((error as any)?.data?.code === 'NOT_FOUND' || 
+         (error as any)?.message?.includes('not found'));
+      
+      if (isNotFound) {
+        // Redirect to not-found page
+        router.replace('/meriter/not-found');
+      }
+    }
+  }, [isFetched, isLoading, error, router]);
 
   // Get unique community IDs from user roles
   const communityIds = useMemo(() => {

@@ -37,7 +37,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
 
     // Use v1 API hooks
     const { user } = useAuth();
-    const { data: publication, isLoading: publicationLoading, error: publicationError } = usePublication(slug);
+    const { data: publication, isLoading: publicationLoading, error: publicationError, isFetched: publicationFetched } = usePublication(slug);
     const { data: community } = useCommunity(chatId);
 
     // Fetch author profile
@@ -79,6 +79,23 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
             router.push("/meriter/login?returnTo=" + encodeURIComponent(window.location.pathname));
         }
     }, [user, router]);
+
+    // Handle 404 - redirect to not-found if publication doesn't exist
+    useEffect(() => {
+        // Only check after query has completed and user is authenticated
+        if (publicationFetched && !publicationLoading && user?.id) {
+            // Check if publication doesn't exist (error with NOT_FOUND code)
+            const isNotFound = 
+                publicationError && 
+                ((publicationError as any)?.data?.code === 'NOT_FOUND' || 
+                 (publicationError as any)?.message?.includes('not found'));
+            
+            if (isNotFound) {
+                // Redirect to not-found page
+                router.replace('/meriter/not-found');
+            }
+        }
+    }, [publicationFetched, publicationLoading, publicationError, user, router]);
 
     // Auto-scroll to highlighted comment when page loads
     useEffect(() => {

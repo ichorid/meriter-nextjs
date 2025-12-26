@@ -62,7 +62,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     };
 
     // Use v1 API hook
-    const { data: comms } = useCommunity(chatId);
+    const { data: comms, error: communityError, isLoading: communityLoading, isFetched: communityFetched } = useCommunity(chatId);
 
     // Fetch all communities to find the future-vision community when on marathon-of-good
     // This must be called before calculating futureVisionCommunityId
@@ -267,6 +267,23 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             router.push("/meriter/login?returnTo=" + encodeURIComponent(document.location.pathname));
         }
     }, [isAuthenticated, userLoading, router]);
+
+    // Handle 404 - redirect to not-found if community doesn't exist
+    useEffect(() => {
+        // Only check after query has completed and we're authenticated
+        if (communityFetched && !communityLoading && isAuthenticated) {
+            // Check if community doesn't exist (error with NOT_FOUND code)
+            const isNotFound = 
+                communityError && 
+                ((communityError as any)?.data?.code === 'NOT_FOUND' || 
+                 (communityError as any)?.message?.includes('not found'));
+            
+            if (isNotFound) {
+                // Redirect to not-found page
+                router.replace('/meriter/not-found');
+            }
+        }
+    }, [communityFetched, communityLoading, communityError, isAuthenticated, router]);
 
     // Redirect away from vision tab if it's active (tab is now hidden)
     useEffect(() => {
