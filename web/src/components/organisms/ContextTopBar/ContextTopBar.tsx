@@ -271,7 +271,7 @@ export const SimpleStickyHeader: React.FC<{
 
 // Community Top Bar
 export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: boolean }> = ({ communityId, asStickyHeader = false }) => {
-  const { data: community } = useCommunity(communityId);
+  const { data: community, isLoading: communityLoading } = useCommunity(communityId);
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -401,6 +401,25 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
     const timeout = setTimeout(() => setShowSnack(false), 2000);
     return () => clearTimeout(timeout);
   }, [communityId, isMobile]);
+
+  // Show loading state instead of returning null
+  if (communityLoading) {
+    const handleBack = () => {
+      router.push('/meriter/communities');
+    };
+    
+    return (
+      <SimpleStickyHeader
+        title=""
+        showBack={isLeftNavHidden}
+        onBack={handleBack}
+        asStickyHeader={asStickyHeader}
+        rightAction={
+          <Loader2 className="w-4 h-4 animate-spin text-base-content/70" />
+        }
+      />
+    );
+  }
 
   if (!community) {
     return null;
