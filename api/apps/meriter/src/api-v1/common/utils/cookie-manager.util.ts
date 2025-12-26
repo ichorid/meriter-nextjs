@@ -88,6 +88,40 @@ export class CookieManager {
   }
 
   /**
+   * Clear only the host-only JWT cookie (minimal clearing for OAuth callbacks)
+   * This reduces Set-Cookie header bloat during redirects, preventing truncation.
+   * @param response Express response object
+   * @param isProduction Whether running in production mode
+   */
+  clearHostOnlyJwtCookie(
+    response: any,
+    _isProduction?: boolean
+  ): void {
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
+    const production = _isProduction ?? (nodeEnv === 'production');
+    const sameSite = 'lax' as const;
+    const secure = production;
+
+    try {
+      response.clearCookie('jwt', { path: '/' });
+    } catch (_e) {
+      // ignore
+    }
+    try {
+      response.cookie('jwt', '', {
+        httpOnly: true,
+        secure,
+        sameSite,
+        path: '/',
+        expires: new Date(0),
+        maxAge: 0,
+      });
+    } catch (_e) {
+      // ignore
+    }
+  }
+
+  /**
    * Clear JWT cookie with multiple attribute combinations to ensure all variants are removed
    * @param response Express response object
    * @param cookieDomain Cookie domain (optional)

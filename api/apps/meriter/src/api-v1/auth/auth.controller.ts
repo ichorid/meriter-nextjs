@@ -389,12 +389,14 @@ export class AuthController {
       const result = await this.authService.authenticateGoogle(code);
 
       // Set JWT cookie
+      // For OAuth callbacks, use minimal clearing (host-only) to avoid Set-Cookie header bloat
+      // which can cause truncation and prevent the cookie from being set properly
       const cookieDomain = this.cookieManager.getCookieDomain();
       const isSecure = this.isHttpsRequest(req);
       const nodeEnv = this.configService.get('NODE_ENV', 'development');
       const isProduction = nodeEnv === 'production' || isSecure;
 
-      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.clearHostOnlyJwtCookie(res, isProduction);
       this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
 
       // Debug: log cookie attributes (sanitized) to diagnose cookie rejection in browsers.
@@ -498,12 +500,15 @@ export class AuthController {
 
       const result = await this.authService.authenticateYandex(code);
 
+      // Set JWT cookie
+      // For OAuth callbacks, use minimal clearing (host-only) to avoid Set-Cookie header bloat
+      // which can cause truncation and prevent the cookie from being set properly
       const cookieDomain = this.cookieManager.getCookieDomain();
       const isSecure = this.isHttpsRequest(req);
       const nodeEnv = this.configService.get('NODE_ENV', 'development');
       const isProduction = nodeEnv === 'production' || isSecure;
 
-      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.clearHostOnlyJwtCookie(res, isProduction);
       this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
 
       this.logger.debug(
