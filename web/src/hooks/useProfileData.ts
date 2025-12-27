@@ -23,6 +23,7 @@ export function useProfileData() {
     const {
         data: publicationsData,
         isLoading: publicationsLoading,
+        isFetching: publicationsFetching,
         fetchNextPage: fetchNextPublications,
         hasNextPage: hasNextPublications,
         isFetchingNextPage: isFetchingNextPublications,
@@ -72,6 +73,7 @@ export function useProfileData() {
         // Publications
         myPublications,
         publicationsLoading,
+        publicationsFetching,
         fetchNextPublications,
         hasNextPublications,
         isFetchingNextPublications,
