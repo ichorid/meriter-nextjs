@@ -129,8 +129,16 @@ export class UploadsService {
     quality: number,
     outputFormat: 'jpeg' | 'png',
     fit: 'inside' | 'cover' = 'inside',
+    skipRotation: boolean = false, // Skip rotation if already rotated
   ): Promise<{ buffer: Buffer; metadata: sharp.Metadata }> {
-    let sharpInstance = sharp(buffer).resize(width, height, {
+    let sharpInstance = sharp(buffer);
+    
+    // Only rotate if not already rotated (EXIF orientation handling)
+    if (!skipRotation) {
+      sharpInstance = sharpInstance.rotate(); // Auto-rotate based on EXIF orientation and strip EXIF data
+    }
+    
+    sharpInstance = sharpInstance.resize(width, height, {
       fit,
       withoutEnlargement: true,
       position: 'center',
@@ -189,8 +197,16 @@ export class UploadsService {
 
     try {
       let imageBuffer = file.buffer;
+      let isRotated = false;
       
-      // Apply crop if provided
+      // Rotate image based on EXIF orientation first (before any processing)
+      // This ensures correct orientation for cropping and resizing
+      imageBuffer = await sharp(imageBuffer)
+        .rotate() // Auto-rotate based on EXIF orientation and strip EXIF data
+        .toBuffer();
+      isRotated = true;
+      
+      // Apply crop if provided (image is already rotated)
       if (crop) {
         imageBuffer = await sharp(imageBuffer)
           .extract({
@@ -219,6 +235,7 @@ export class UploadsService {
           quality,
           outputFormat,
           'cover',
+          isRotated, // Skip rotation since already rotated
         );
 
         const key = `${folder}/${baseFileName}.${fileExtension}`;
@@ -251,6 +268,8 @@ export class UploadsService {
         maxHeight,
         quality,
         outputFormat,
+        'inside',
+        isRotated, // Skip rotation since already rotated
       );
       const largeKey = `${folder}/${baseFileName}.${fileExtension}`;
       await this.uploadToS3(largeBuffer, largeKey, contentType);
@@ -264,6 +283,7 @@ export class UploadsService {
           IMAGE_SIZES.thumbnail.quality,
           outputFormat,
           'cover',
+          isRotated, // Skip rotation since already rotated
         );
         const thumbKey = `${folder}/${baseFileName}_thumb.${fileExtension}`;
         await this.uploadToS3(thumbBuffer, thumbKey, contentType);
@@ -283,6 +303,8 @@ export class UploadsService {
           IMAGE_SIZES.medium.height,
           IMAGE_SIZES.medium.quality,
           outputFormat,
+          'inside',
+          isRotated, // Skip rotation since already rotated
         );
         const mediumKey = `${folder}/${baseFileName}_medium.${fileExtension}`;
         await this.uploadToS3(mediumBuffer, mediumKey, contentType);

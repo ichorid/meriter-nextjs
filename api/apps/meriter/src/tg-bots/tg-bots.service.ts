@@ -823,6 +823,7 @@ export class TgBotsService {
       });
 
       const toJpeg = sharp()
+        .rotate() // Auto-rotate based on EXIF orientation and strip EXIF data
         .resize(200, 200)
         .jpeg({ quality: 100 });
 
