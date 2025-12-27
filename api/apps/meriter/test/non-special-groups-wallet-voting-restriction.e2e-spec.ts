@@ -1,7 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
 import { VoteService } from '../src/domain/services/vote.service';
 import { PublicationService } from '../src/domain/services/publication.service';
 import { CommunityService } from '../src/domain/services/community.service';
@@ -23,7 +20,7 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
   jest.setTimeout(60000);
   
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
+  let testDb: any;
   let _connection: Connection;
 
   let originalEnableCommentVoting: string | undefined;
@@ -51,24 +48,12 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
   let visionPubId: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const uri = await testDb.start();
-    process.env.MONGO_URL = uri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-voting-tests';
     originalEnableCommentVoting = process.env.ENABLE_COMMENT_VOTING;
     process.env.ENABLE_COMMENT_VOTING = 'true';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MeriterModule],
-    })
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    
-    // Setup tRPC middleware for tRPC tests
-    TestSetupHelper.setupTrpcMiddleware(app);
-    
-    await app.init();
+    const ctx = await TestSetupHelper.createTestApp();
+    app = ctx.app;
+    testDb = ctx.testDb;
 
     _communityService = app.get<CommunityService>(CommunityService);
     voteService = app.get<VoteService>(VoteService);
@@ -383,12 +368,7 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
   });
 
   afterAll(async () => {
-    if (app) {
-      await app.close();
-    }
-    if (testDb) {
-      await testDb.stop();
-    }
+    await TestSetupHelper.cleanup({ app, testDb });
     process.env.ENABLE_COMMENT_VOTING = originalEnableCommentVoting;
   });
 

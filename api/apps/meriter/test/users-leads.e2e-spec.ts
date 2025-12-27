@@ -1,9 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
 import { UserService } from '../src/domain/services/user.service';
-import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { CommunityService } from '../src/domain/services/community.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
@@ -18,7 +14,7 @@ describe('Users - Get All Leads', () => {
   jest.setTimeout(60000);
 
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
+  let testDb: any;
   let _connection: Connection;
 
   let _userService: UserService;
@@ -40,30 +36,12 @@ describe('Users - Get All Leads', () => {
   let community3Id: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const mongoUri = await testDb.start();
-    process.env.MONGO_URL = mongoUri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-leads';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MeriterModule],
-    })
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    
-    // Setup tRPC middleware for tRPC tests
-    TestSetupHelper.setupTrpcMiddleware(app);
-    
-    await app.init();
-
-    // Wait for onModuleInit to complete
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const ctx = await TestSetupHelper.createTestApp();
+    app = ctx.app;
+    testDb = ctx.testDb;
 
     _userService = app.get<UserService>(UserService);
-    const _userCommunityRoleService = app.get<UserCommunityRoleService>(
-      UserCommunityRoleService,
-    );
     _communityService = app.get<CommunityService>(CommunityService);
 
     _connection = app.get<Connection>(getConnectionToken());
@@ -83,12 +61,7 @@ describe('Users - Get All Leads', () => {
   });
 
   afterAll(async () => {
-    if (app) {
-      await app.close();
-    }
-    if (testDb) {
-      await testDb.stop();
-    }
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
   beforeEach(async () => {

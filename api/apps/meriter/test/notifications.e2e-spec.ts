@@ -1,14 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
 import { CommunityService } from '../src/domain/services/community.service';
 import { VoteService } from '../src/domain/services/vote.service';
 import { PublicationService } from '../src/domain/services/publication.service';
 import { NotificationService } from '../src/domain/services/notification.service';
 import { UserService } from '../src/domain/services/user.service';
 import { Model, Connection } from 'mongoose';
-import { getConnectionToken } from '@nestjs/mongoose';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { VoteSchemaClass, VoteDocument } from '../src/domain/models/vote/vote.schema';
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
@@ -24,7 +21,7 @@ import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Notifications E2E Tests', () => {
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
+  let testDb: any;
   let connection: Connection;
   let originalEnableCommentVoting: string | undefined;
 
@@ -46,25 +43,33 @@ describe('Notifications E2E Tests', () => {
   let testCommunityId: string;
   let testPublicationId: string;
 
+  async function waitFor(
+    predicate: () => Promise<boolean>,
+    opts: { timeoutMs?: number; intervalMs?: number } = {},
+  ): Promise<void> {
+    const timeoutMs = opts.timeoutMs ?? 2000;
+    const intervalMs = opts.intervalMs ?? 25;
+    const started = Date.now();
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      if (await predicate()) return;
+      if (Date.now() - started > timeoutMs) {
+        throw new Error('Timed out waiting for condition');
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+
   beforeAll(async () => {
     jest.setTimeout(30000);
 
     originalEnableCommentVoting = process.env.ENABLE_COMMENT_VOTING;
     process.env.ENABLE_COMMENT_VOTING = 'true';
 
-    testDb = new TestDatabaseHelper();
-    const mongoUri = await testDb.start();
-    process.env.MONGO_URL = mongoUri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-notifications-e2e';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MeriterModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    // Setup tRPC middleware for tRPC tests
-    TestSetupHelper.setupTrpcMiddleware(app);
-    await app.init();
+    const ctx = await TestSetupHelper.createTestApp();
+    app = ctx.app;
+    testDb = ctx.testDb;
 
     // Get services
     _communityService = app.get<CommunityService>(CommunityService);
@@ -75,15 +80,26 @@ describe('Notifications E2E Tests', () => {
 
     connection = app.get(getConnectionToken());
 
-    communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
-    userModel = connection.model<UserDocument>(UserSchemaClass.name);
-    publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
-    const _voteModel = connection.model<VoteDocument>(VoteSchemaClass.name);
-    walletModel = connection.model<WalletDocument>(WalletSchemaClass.name);
-    notificationModel = connection.model<NotificationDocument>(NotificationSchemaClass.name);
+    communityModel = app.get<Model<CommunityDocument>>(getModelToken(CommunitySchemaClass.name));
+    userModel = app.get<Model<UserDocument>>(getModelToken(UserSchemaClass.name));
+    publicationModel = app.get<Model<PublicationDocument>>(getModelToken(PublicationSchemaClass.name));
+    app.get<Model<VoteDocument>>(getModelToken(VoteSchemaClass.name));
+    walletModel = app.get<Model<WalletDocument>>(getModelToken(WalletSchemaClass.name));
+    notificationModel = app.get<Model<NotificationDocument>>(getModelToken(NotificationSchemaClass.name));
   });
 
   beforeEach(async () => {
+    // Reset state between tests (suite creates many notifications)
+    await Promise.all([
+      communityModel.deleteMany({}),
+      userModel.deleteMany({}),
+      publicationModel.deleteMany({}),
+      walletModel.deleteMany({}),
+      notificationModel.deleteMany({}),
+      connection.db.collection('votes').deleteMany({}),
+      connection.db.collection('user_community_roles').deleteMany({}),
+    ]);
+
     // Create test users
     testUserId = uid();
     testUserId2 = uid();
@@ -467,13 +483,20 @@ describe('Notifications E2E Tests', () => {
         beneficiaryId: testUserId2,
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      const voteNotifications = await notificationService.getNotifications(testUserId2, {
-        type: 'vote',
+      await waitFor(async () => {
+        const count = await notificationModel.countDocuments({
+          userId: testUserId2,
+          type: 'beneficiary',
+        });
+        return count > 0;
       });
 
-      expect(voteNotifications.data.every((n) => n.type === 'vote')).toBe(true);
+      const beneficiaryNotifications = await notificationService.getNotifications(testUserId2, {
+        type: 'beneficiary',
+      });
+
+      expect(beneficiaryNotifications.data.length).toBeGreaterThan(0);
+      expect(beneficiaryNotifications.data.every((n) => n.type === 'beneficiary')).toBe(true);
     });
   });
 
@@ -494,7 +517,10 @@ describe('Notifications E2E Tests', () => {
         testCommunityId,
       );
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await waitFor(async () => {
+        const count = await notificationModel.countDocuments({ userId: testUserId });
+        return count > 0;
+      });
     });
 
     it('should get notifications via API', async () => {
@@ -549,7 +575,14 @@ describe('Notifications E2E Tests', () => {
         testCommunityId,
       );
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await waitFor(async () => {
+        const count = await notificationModel.countDocuments({
+          userId: testUserId,
+          type: 'vote',
+          'metadata.publicationId': testPublicationId,
+        });
+        return count >= 1;
+      });
 
       await voteService.createVote(
         testUserId2,
@@ -562,7 +595,14 @@ describe('Notifications E2E Tests', () => {
         testCommunityId,
       );
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await waitFor(async () => {
+        const count = await notificationModel.countDocuments({
+          userId: testUserId,
+          type: 'vote',
+          'metadata.publicationId': testPublicationId,
+        });
+        return count >= 2;
+      });
 
       const notifications = await notificationModel.find({
         userId: testUserId,
@@ -586,7 +626,10 @@ describe('Notifications E2E Tests', () => {
         testCommunityId,
       );
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await waitFor(async () => {
+        const count = await notificationModel.countDocuments({ userId: testUserId });
+        return count > 0;
+      });
 
       const notifications = await notificationModel.find({ userId: testUserId }).lean();
       expect(notifications.length).toBeGreaterThan(0);

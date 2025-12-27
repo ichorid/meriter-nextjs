@@ -1,9 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
 import { Model, Connection } from 'mongoose';
-import { getConnectionToken } from '@nestjs/mongoose';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { User, UserDocument } from '../src/domain/models/user/user.schema';
 import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
@@ -20,7 +17,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   jest.setTimeout(60000);
 
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
+  let testDb: any;
   let connection: Connection;
 
   let communityModel: Model<CommunityDocument>;
@@ -34,33 +31,22 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   let testCommunityId: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const mongoUri = await testDb.start();
-    process.env.MONGO_URL = mongoUri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-cost-tests';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MeriterModule],
-    })
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    
-    // Setup tRPC middleware for tRPC tests
-    TestSetupHelper.setupTrpcMiddleware(app);
-    
-    await app.init();
+    const ctx = await TestSetupHelper.createTestApp();
+    app = ctx.app;
+    testDb = ctx.testDb;
 
     connection = app.get(getConnectionToken());
     userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     walletService = app.get<WalletService>(WalletService);
 
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    const _publicationModel = connection.model<PublicationDocument>(Publication.name);
-    const _pollModel = connection.model<PollDocument>(Poll.name);
-    quotaUsageModel = connection.model<QuotaUsageDocument>(QuotaUsage.name);
-    const _walletModel = connection.model<WalletDocument>(Wallet.name);
+    communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
+    userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
+    // Ensure these models are registered (used by procedures/services)
+    app.get<Model<PublicationDocument>>(getModelToken(Publication.name));
+    app.get<Model<PollDocument>>(getModelToken(Poll.name));
+    quotaUsageModel = app.get<Model<QuotaUsageDocument>>(getModelToken(QuotaUsage.name));
+    app.get<Model<WalletDocument>>(getModelToken(Wallet.name));
 
     testUserId = uid();
     testLeadId = uid();
@@ -162,8 +148,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
-    await testDb.stop();
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
   describe('Community Settings - Post/Poll Cost', () => {

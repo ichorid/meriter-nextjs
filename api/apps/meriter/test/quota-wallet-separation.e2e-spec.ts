@@ -1,13 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
 import { WalletService } from '../src/domain/services/wallet.service';
 import { VoteService } from '../src/domain/services/vote.service';
 import { CommunityService } from '../src/domain/services/community.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { Model, Connection } from 'mongoose';
-import { getConnectionToken } from '@nestjs/mongoose';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { Vote, VoteDocument } from '../src/domain/models/vote/vote.schema';
 import { User, UserDocument } from '../src/domain/models/user/user.schema';
@@ -21,7 +18,7 @@ describe('Quota Wallet Separation (e2e)', () => {
   jest.setTimeout(60000);
   
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
+  let testDb: any;
   let connection: Connection;
   
   let walletService: WalletService;
@@ -40,22 +37,10 @@ describe('Quota Wallet Separation (e2e)', () => {
   let futureVisionPublicationId: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const mongoUri = await testDb.start();
-    process.env.MONGO_URL = mongoUri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-separation-tests';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MeriterModule],
-    })
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    
-    // Setup tRPC middleware for tRPC tests
-    TestSetupHelper.setupTrpcMiddleware(app);
-    
-    await app.init();
+    const ctx = await TestSetupHelper.createTestApp();
+    app = ctx.app;
+    testDb = ctx.testDb;
 
     walletService = app.get<WalletService>(WalletService);
     const _voteService = app.get<VoteService>(VoteService);
@@ -64,11 +49,12 @@ describe('Quota Wallet Separation (e2e)', () => {
     
     connection = app.get(getConnectionToken());
     
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    const _voteModel = connection.model<VoteDocument>(Vote.name);
-    const _walletModel = connection.model<WalletDocument>(Wallet.name);
-    publicationModel = connection.model<PublicationDocument>(Publication.name);
+    communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
+    userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
+    // Ensure these models are registered (used by services/procedures)
+    app.get<Model<VoteDocument>>(getModelToken(Vote.name));
+    app.get<Model<WalletDocument>>(getModelToken(Wallet.name));
+    publicationModel = app.get<Model<PublicationDocument>>(getModelToken(Publication.name));
 
     testUserId = uid();
     testAuthorId = uid();
@@ -201,8 +187,7 @@ describe('Quota Wallet Separation (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
-    await testDb.stop();
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
   describe('Quota-only voting', () => {

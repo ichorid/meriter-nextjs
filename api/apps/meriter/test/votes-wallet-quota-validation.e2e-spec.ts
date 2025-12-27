@@ -1,7 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
 import { VoteService } from '../src/domain/services/vote.service';
 import { PublicationService } from '../src/domain/services/publication.service';
 import { CommentService } from '../src/domain/services/comment.service';
@@ -9,7 +6,7 @@ import { UserService } from '../src/domain/services/user.service';
 import { WalletService } from '../src/domain/services/wallet.service';
 import { CommunityService } from '../src/domain/services/community.service';
 import { Model, Connection } from 'mongoose';
-import { getConnectionToken } from '@nestjs/mongoose';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { Vote, VoteDocument } from '../src/domain/models/vote/vote.schema';
 import { User, UserDocument } from '../src/domain/models/user/user.schema';
@@ -24,7 +21,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
   jest.setTimeout(60000); // Set timeout for all tests in this suite
   
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
+  let testDb: any;
   let connection: Connection;
   let originalEnableCommentVoting: string | undefined;
   
@@ -49,24 +46,12 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
   let futureVisionPublicationId: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const uri = await testDb.start();
-    process.env.MONGO_URL = uri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-voting-tests';
     originalEnableCommentVoting = process.env.ENABLE_COMMENT_VOTING;
     process.env.ENABLE_COMMENT_VOTING = 'true';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MeriterModule],
-    })
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    
-    // Setup tRPC middleware for tRPC tests
-    TestSetupHelper.setupTrpcMiddleware(app);
-    
-    await app.init();
+    const ctx = await TestSetupHelper.createTestApp();
+    app = ctx.app;
+    testDb = ctx.testDb;
 
     // Get services
     _communityService = app.get<CommunityService>(CommunityService);
@@ -78,12 +63,12 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
     
     connection = app.get(getConnectionToken());
     
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    publicationModel = connection.model<PublicationDocument>(Publication.name);
-    const _commentModel = connection.model<CommentDocument>(Comment.name);
-    voteModel = connection.model<VoteDocument>(Vote.name);
-    walletModel = connection.model<WalletDocument>(Wallet.name);
+    communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
+    userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
+    publicationModel = app.get<Model<PublicationDocument>>(getModelToken(Publication.name));
+    app.get<Model<CommentDocument>>(getModelToken(Comment.name));
+    voteModel = app.get<Model<VoteDocument>>(getModelToken(Vote.name));
+    walletModel = app.get<Model<WalletDocument>>(getModelToken(Wallet.name));
 
     // Initialize stable IDs for this suite (we re-seed DB before each test)
     testUserId = uid();
@@ -311,12 +296,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
   });
 
   afterAll(async () => {
-    if (app) {
-      await app.close();
-    }
-    if (testDb) {
-      await testDb.stop();
-    }
+    await TestSetupHelper.cleanup({ app, testDb });
     process.env.ENABLE_COMMENT_VOTING = originalEnableCommentVoting;
   });
 
