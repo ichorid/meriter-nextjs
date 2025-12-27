@@ -24,27 +24,31 @@ export function CollapsibleSection({
 }: CollapsibleSectionProps) {
   return (
     <div className="rounded-2xl border">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3"
-      >
-        <div className="min-w-0 text-left">
-          <div className="text-sm font-medium">{title}</div>
-          {summary ? (
-            <div className="mt-1 line-clamp-1 text-xs text-muted-foreground">{summary}</div>
-          ) : null}
-        </div>
-        <div className="flex items-center gap-2">
-          {right}
+      <div className="flex w-full items-center justify-between gap-3 px-4 py-3">
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="flex flex-1 items-center justify-between gap-3 min-w-0"
+        >
+          <div className="min-w-0 text-left">
+            <div className="text-sm font-medium">{title}</div>
+            {summary ? (
+              <div className="mt-1 line-clamp-1 text-xs text-muted-foreground">{summary}</div>
+            ) : null}
+          </div>
           <ChevronDown
             className={cn(
-              'h-4 w-4 text-muted-foreground transition',
+              'h-4 w-4 text-muted-foreground transition flex-shrink-0',
               open && 'rotate-180'
             )}
           />
-        </div>
-      </button>
+        </button>
+        {right ? (
+          <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+            {right}
+          </div>
+        ) : null}
+      </div>
       {open ? <div className="px-4 pb-4">{children}</div> : null}
     </div>
   );

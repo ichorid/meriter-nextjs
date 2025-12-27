@@ -40,7 +40,7 @@ import {
   type Method,
   type Stage,
   type HelpNeeded,
-} from '@/lib/constants/taxonomy';
+} from '@meriter/shared-types';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project';
 

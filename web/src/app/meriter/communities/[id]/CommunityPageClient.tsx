@@ -678,7 +678,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="any">Any</SelectItem>
-                                                {IMPACT_AREAS.map((x) => (
+                                                {(IMPACT_AREAS || []).map((x) => (
                                                     <SelectItem key={x} value={x}>{x}</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -695,7 +695,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="any">Any</SelectItem>
-                                                {STAGES.map((x) => (
+                                                {(STAGES || []).map((x) => (
                                                     <SelectItem key={x} value={x}>{x}</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -726,7 +726,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 >
                                     <div className="pt-1">
                                         <Checklist
-                                            options={BENEFICIARIES}
+                                            options={Array.isArray(BENEFICIARIES) ? [...BENEFICIARIES] : []}
                                             selected={fBeneficiaries}
                                             onToggle={(v) => setFBeneficiaries((s) => toggleInArray(s, v))}
                                         />
@@ -754,7 +754,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 >
                                     <div className="pt-1">
                                         <Checklist
-                                            options={METHODS}
+                                            options={Array.isArray(METHODS) ? [...METHODS] : []}
                                             selected={fMethods}
                                             onToggle={(v) => setFMethods((s) => toggleInArray(s, v))}
                                         />
@@ -782,7 +782,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 >
                                     <div className="pt-1">
                                         <Checklist
-                                            options={HELP_NEEDED}
+                                            options={Array.isArray(HELP_NEEDED) ? [...HELP_NEEDED] : []}
                                             selected={fHelpNeeded}
                                             onToggle={(v) => setFHelpNeeded((s) => toggleInArray(s, v))}
                                         />
