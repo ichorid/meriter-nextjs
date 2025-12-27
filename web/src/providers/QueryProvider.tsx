@@ -56,6 +56,9 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             staleTime: 60 * 1000, // 1 minute
             // Time before unused data is garbage collected
             gcTime: 5 * 60 * 1000, // 5 minutes (was cacheTime)
+            // Always refetch on mount after invalidation, even if data is fresh
+            // This ensures mutations trigger immediate refetches when components mount
+            refetchOnMount: 'always',
             // Retry failed requests, but not for 401 errors
             retry: (failureCount, error: any) => {
               // Don't retry on 401 Unauthorized errors
