@@ -177,25 +177,31 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
     
     // Track render count and detect render loops - improved circuit breaker
     // Only detect loops when renders happen rapidly with the same state (not legitimate navigation)
-    const currentState = {
-        pathname,
-        isLoading,
-        isAuthenticated,
-        userId: stableUser?.id,
-    };
+    // Use primitive values directly to avoid object reference issues
+    const currentPathname = pathname;
+    const currentIsLoading = isLoading;
+    const currentIsAuthenticated = isAuthenticated;
+    const currentUserId = stableUser?.id;
     
-    // Check if state actually changed (legitimate render)
+    // Check if state actually changed (legitimate render) by comparing primitives
     const stateChanged = !lastStableStateRef.current || 
-        lastStableStateRef.current.pathname !== currentState.pathname ||
-        lastStableStateRef.current.isLoading !== currentState.isLoading ||
-        lastStableStateRef.current.isAuthenticated !== currentState.isAuthenticated ||
-        lastStableStateRef.current.userId !== currentState.userId;
+        lastStableStateRef.current.pathname !== currentPathname ||
+        lastStableStateRef.current.isLoading !== currentIsLoading ||
+        lastStableStateRef.current.isAuthenticated !== currentIsAuthenticated ||
+        lastStableStateRef.current.userId !== currentUserId;
     
     // If state changed, reset render tracking (legitimate render)
     if (stateChanged) {
         renderCount.current = 0;
         renderTimestamps.current = [];
-        lastStableStateRef.current = currentState;
+        lastStableStateRef.current = {
+            pathname: currentPathname,
+            isLoading: currentIsLoading,
+            isAuthenticated: currentIsAuthenticated,
+            userId: currentUserId,
+        };
+        // Reset loop detection when state legitimately changes
+        renderLoopDetected.current = false;
     } else {
         // State didn't change - this might be a loop
         renderCount.current += 1;
@@ -211,7 +217,10 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
             if (DEBUG_MODE) {
                 console.error("[AuthWrapper] CRITICAL: Render loop detected! Component will return loading state to prevent crash.");
                 console.error("[AuthWrapper] Current values:", {
-                    ...currentState,
+                    pathname: currentPathname,
+                    isLoading: currentIsLoading,
+                    isAuthenticated: currentIsAuthenticated,
+                    userId: currentUserId,
                     renderCount: renderCount.current,
                     rendersInLastSecond: renderTimestamps.current.length,
                 });
