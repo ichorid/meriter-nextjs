@@ -178,10 +178,10 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
     // Track render count and detect render loops - improved circuit breaker
     // Only detect loops when renders happen rapidly with the same state (not legitimate navigation)
     // Use primitive values directly to avoid object reference issues
-    const currentPathname = pathname;
-    const currentIsLoading = isLoading;
-    const currentIsAuthenticated = isAuthenticated;
-    const currentUserId = stableUser?.id;
+    const currentPathname = pathname ?? null;
+    const currentIsLoading = isLoading ?? false;
+    const currentIsAuthenticated = isAuthenticated ?? false;
+    const currentUserId = stableUser?.id ?? undefined;
     
     // Check if state actually changed (legitimate render) by comparing primitives
     const stateChanged = !lastStableStateRef.current || 
@@ -215,15 +215,24 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
         if (renderTimestamps.current.length > 5 && !renderLoopDetected.current) {
             renderLoopDetected.current = true;
             if (DEBUG_MODE) {
+                // Capture values in a stable way to ensure they're logged correctly
+                const debugValues = {
+                    pathname: String(currentPathname),
+                    isLoading: Boolean(currentIsLoading),
+                    isAuthenticated: Boolean(currentIsAuthenticated),
+                    userId: currentUserId ? String(currentUserId) : 'undefined',
+                    renderCount: Number(renderCount.current),
+                    rendersInLastSecond: Number(renderTimestamps.current.length),
+                    lastStableState: lastStableStateRef.current ? {
+                        pathname: String(lastStableStateRef.current.pathname),
+                        isLoading: Boolean(lastStableStateRef.current.isLoading),
+                        isAuthenticated: Boolean(lastStableStateRef.current.isAuthenticated),
+                        userId: lastStableStateRef.current.userId ? String(lastStableStateRef.current.userId) : 'undefined',
+                    } : null,
+                };
                 console.error("[AuthWrapper] CRITICAL: Render loop detected! Component will return loading state to prevent crash.");
-                console.error("[AuthWrapper] Current values:", {
-                    pathname: currentPathname,
-                    isLoading: currentIsLoading,
-                    isAuthenticated: currentIsAuthenticated,
-                    userId: currentUserId,
-                    renderCount: renderCount.current,
-                    rendersInLastSecond: renderTimestamps.current.length,
-                });
+                console.error("[AuthWrapper] Current values:", debugValues);
+                console.error("[AuthWrapper] Stack trace:", new Error().stack);
             }
         }
     }
