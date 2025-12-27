@@ -41,13 +41,13 @@ export function PasskeySection({ isLoading, onSuccess, onError }: PasskeySection
     return (
         <Button
             variant="outline"
-            size="md"
-            className="rounded-xl active:scale-[0.98] w-full"
+            size="default"
+            className="rounded-xl active:scale-[0.98] w-full flex items-center justify-center gap-2"
             onClick={handleAuthenticate}
             disabled={isLoading || localLoading}
         >
             {localLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            {localLoading ? t("authenticating", { defaultMessage: "Authenticating..." }) : t("signInWithPasskey", { defaultMessage: "Sign in with Passkey" })}
+            <span>{localLoading ? t("authenticating", { defaultMessage: "Authenticating..." }) : t("signInWithPasskey", { defaultMessage: "Sign in with Passkey" })}</span>
         </Button>
     );
 }

@@ -55,10 +55,10 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     if (user?.globalRole === 'superadmin') {
       return { role: 'superadmin', label: t('superadmin'), variant: 'error' as const };
     }
-    
+
     // Find role in userRoles array matching the communityId
     const role = userRoles.find(r => r.communityId === communityId);
-    
+
     // Only show badge for lead, participant, and superadmin (not viewer)
     if (role?.role === 'lead') {
       return { role: 'lead', label: t('lead'), variant: 'accent' as const };
@@ -66,7 +66,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     if (role?.role === 'participant') {
       return { role: 'participant', label: t('participant'), variant: 'info' as const };
     }
-    
+
     return null;
   }, [user?.globalRole, user?.id, userRoles, communityId, t]);
 
@@ -98,7 +98,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
   // Fetch quota data for this community
   const { data: quotaData } = useUserQuota(communityId);
-  
+
   // Format balance and quota display
   const balance = wallet?.balance || 0;
   const remainingQuota = quotaData?.remainingToday ?? quota?.remainingToday ?? 0;
@@ -126,7 +126,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
       </div>
     );
   }
-  
+
   // Get currency icon from community settings (stored as data URL or image URL)
   const currencyIconUrl = community.settings?.iconUrl;
 
@@ -139,13 +139,12 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     return (
       <Link href={`/meriter/communities/${communityId}`}>
         <div
-          className={`w-full min-w-0 rounded-2xl flex flex-row items-start gap-3 py-3 pr-2 pl-4 cursor-pointer transition-all duration-200 overflow-hidden relative ${
-            isActive
-              ? 'bg-base-content text-base-100'
-              : hasCover 
-                ? 'text-white' 
+          className={`w-full min-w-0 rounded-2xl flex flex-row items-start gap-3 py-3 pr-2 pl-4 cursor-pointer transition-all duration-200 overflow-hidden relative ${isActive
+              ? 'bg-base-300 border-2 border-brand-primary'
+              : hasCover
+                ? 'text-white'
                 : 'bg-base-200 hover:bg-base-300'
-          }`}
+            }`}
           style={hasCover && !isActive ? {
             backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.7), rgba(0,0,0,0.4)), url(${coverImageUrl})`,
             backgroundSize: 'cover',
@@ -164,10 +163,9 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                 className="bg-base-300"
               />
               {userRoleBadge && (
-                <Badge 
-                  variant={userRoleBadge.variant} 
+                <Badge
+                  variant={userRoleBadge.variant}
                   size="xs"
-                  className={isActive ? 'bg-base-100/20 text-base-100 border-base-100/20' : ''}
                 >
                   {userRoleBadge.label}
                 </Badge>
@@ -178,9 +176,8 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
             <div className="flex flex-col items-start gap-3 flex-1 min-w-0">
               {/* Title section */}
               <div className="flex flex-col items-start gap-1 w-full">
-                <div className={`text-[15px] font-semibold leading-[18px] tracking-[0.374px] w-full ${
-                  isActive ? 'text-base-100' : hasCover ? 'text-white drop-shadow' : 'text-base-content'
-                }`}>
+                <div className={`text-[15px] font-semibold leading-[18px] tracking-[0.374px] w-full ${hasCover && !isActive ? 'text-white drop-shadow' : 'text-base-content'
+                  }`}>
                   {community.name}
                 </div>
                 {/* Merits/Quota indicators */}
@@ -189,18 +186,16 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                     {showMerits && (
                       <div className="flex items-center gap-1 min-w-0 flex-shrink">
                         {currencyIconUrl && (
-                          <img 
-                            src={currencyIconUrl} 
-                            alt="Currency" 
-                            className="w-3 h-3 flex-shrink-0" 
+                          <img
+                            src={currencyIconUrl}
+                            alt="Currency"
+                            className="w-3 h-3 flex-shrink-0"
                           />
                         )}
-                        <span className={`text-xs leading-[14px] tracking-[0.374px] min-w-0 ${
-                          isActive ? 'text-base-100/60' : hasCover ? 'text-white/70' : 'text-base-content/60'
-                        }`}>
-                          <span className="truncate">{t('permanentMerits')}:</span> <span className={`font-semibold whitespace-nowrap ${
-                            isActive ? 'text-base-100' : hasCover ? 'text-white' : 'text-base-content'
-                          }`}>{balance}</span>
+                        <span className={`text-xs leading-[14px] tracking-[0.374px] min-w-0 ${hasCover && !isActive ? 'text-white/70' : 'text-base-content/60'
+                          }`}>
+                          <span className="truncate">{t('permanentMerits')}:</span> <span className={`font-semibold whitespace-nowrap ${hasCover && !isActive ? 'text-white' : 'text-base-content'
+                            }`}>{balance}</span>
                         </span>
                       </div>
                     )}
@@ -211,7 +206,6 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                         className="w-5 h-5 flex-shrink-0"
                         asDiv={true}
                         variant={isMarathonOfGood ? 'golden' : 'default'}
-                        inverted={isActive}
                       />
                     )}
                   </div>
@@ -220,9 +214,8 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
               {/* Description */}
               {!hideDescription && community.description && (
-                <div className={`text-xs leading-[14px] tracking-[0.374px] line-clamp-2 w-full ${
-                  isActive ? 'text-base-100/60' : hasCover ? 'text-white/70' : 'text-base-content/60'
-                }`}>
+                <div className={`text-xs leading-[14px] tracking-[0.374px] line-clamp-2 w-full ${hasCover && !isActive ? 'text-white/70' : 'text-base-content/60'
+                  }`}>
                   {community.description}
                 </div>
               )}
@@ -231,10 +224,9 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
           {/* Right section: Chevron */}
           <div className="flex items-start flex-shrink-0 w-6 h-6">
-            <ChevronRight 
-              className={`w-6 h-6 ${
-                isActive ? 'text-base-100/60' : hasCover ? 'text-white/60' : 'text-base-content/60'
-              }`} 
+            <ChevronRight
+              className={`w-6 h-6 ${hasCover && !isActive ? 'text-white/60' : 'text-base-content/60'
+                }`}
             />
           </div>
         </div>
@@ -247,11 +239,10 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     <Link href={`/meriter/communities/${communityId}`}>
       <div className="flex flex-col items-center relative py-1">
         <div
-          className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer overflow-hidden ${
-            isActive
+          className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer overflow-hidden ${isActive
               ? 'ring-2 ring-base-content ring-offset-2 ring-offset-base-100'
               : 'hover:ring-2 hover:ring-base-content/10'
-          }`}
+            }`}
         >
           <CommunityAvatar
             avatarUrl={community.avatarUrl}
@@ -261,13 +252,12 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
           />
         </div>
         {userRoleBadge && (
-          <div 
-            className={`absolute top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-base-100 ${
-              userRoleBadge.variant === 'error' ? 'bg-error' :
-              userRoleBadge.variant === 'accent' ? 'bg-accent' :
-              userRoleBadge.variant === 'info' ? 'bg-info' : 'bg-accent'
-            }`} 
-            title={userRoleBadge.label} 
+          <div
+            className={`absolute top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-base-100 ${userRoleBadge.variant === 'error' ? 'bg-error' :
+                userRoleBadge.variant === 'accent' ? 'bg-accent' :
+                  userRoleBadge.variant === 'info' ? 'bg-info' : 'bg-accent'
+              }`}
+            title={userRoleBadge.label}
           />
         )}
         {(showMerits || showQuota) && (

@@ -26,7 +26,7 @@ import { routes } from '@/lib/constants/routes';
 import { useTranslations as useCommonTranslations } from 'next-intl';
 
 interface CommunityPageClientProps {
-  communityId: string;
+    communityId: string;
 }
 
 export function CommunityPageClient({ communityId: chatId }: CommunityPageClientProps) {
@@ -43,7 +43,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const sortBy = searchParams?.get('sort') || 'voted';
     const selectedTag = searchParams?.get('tag');
     const searchQuery = searchParams?.get('q') || '';
-    
+
     // Get active tab from URL params, default to 'publications'
     const activeTab = searchParams?.get('tab') || 'publications';
 
@@ -224,7 +224,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     // Get user roles and check if can create posts
     const { data: userRoles = [] } = useUserRoles(user?.id || '');
     const canCreatePost = useCanCreatePost(chatId);
-    
+
     const tCommon = useCommonTranslations('common');
 
     // Get user's role in current community
@@ -258,7 +258,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         // The teamChatUrl will be set if user has a role in a team community
         return null; // Simplified - team community lookup would require additional API calls
     }, [userRoles]);
-    
+
     // For now, teamChatUrl is not available without additional API calls
     // This functionality can be restored if needed by fetching user's communities and filtering for typeTag: 'team'
     const teamChatUrl = null;
@@ -274,11 +274,11 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         // Only check after query has completed and we're authenticated
         if (communityFetched && !communityLoading && isAuthenticated) {
             // Check if community doesn't exist (error with NOT_FOUND code)
-            const isNotFound = 
-                communityError && 
-                ((communityError as any)?.data?.code === 'NOT_FOUND' || 
-                 (communityError as any)?.message?.includes('not found'));
-            
+            const isNotFound =
+                communityError &&
+                ((communityError as any)?.data?.code === 'NOT_FOUND' ||
+                    (communityError as any)?.message?.includes('not found'));
+
             if (isNotFound) {
                 // Redirect to not-found page
                 router.replace('/meriter/not-found');
@@ -356,15 +356,15 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     const content = (pub.content || '').toLowerCase();
                     const authorName = (pub.meta?.author?.name || '').toLowerCase();
                     const hashtags = (pub.hashtags || []).join(' ').toLowerCase();
-                    
+
                     return content.includes(query) ||
-                           authorName.includes(query) ||
-                           hashtags.includes(query);
+                        authorName.includes(query) ||
+                        hashtags.includes(query);
                 } else if (p.type === 'poll') {
                     const poll = p as PollFeedItem;
                     const question = (poll.question || '').toLowerCase();
                     const authorName = (poll.meta?.author?.name || '').toLowerCase();
-                    
+
                     return question.includes(query) || authorName.includes(query);
                 }
                 return false;
@@ -400,15 +400,15 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     const content = (pub.content || '').toLowerCase();
                     const authorName = (pub.meta?.author?.name || '').toLowerCase();
                     const hashtags = (pub.hashtags || []).join(' ').toLowerCase();
-                    
+
                     return content.includes(query) ||
-                           authorName.includes(query) ||
-                           hashtags.includes(query);
+                        authorName.includes(query) ||
+                        hashtags.includes(query);
                 } else if (p.type === 'poll') {
                     const poll = p as PollFeedItem;
                     const question = (poll.question || '').toLowerCase();
                     const authorName = (poll.meta?.author?.name || '').toLowerCase();
-                    
+
                     return question.includes(query) || authorName.includes(query);
                 }
                 return false;
@@ -448,10 +448,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             {canEarnPermanentMerits && (
                                 <div className="flex items-center gap-1.5 text-sm">
                                     {currencyIconUrl && (
-                                        <img 
-                                            src={currencyIconUrl} 
-                                            alt={tCommunities('currency')} 
-                                            className="w-4 h-4 flex-shrink-0" 
+                                        <img
+                                            src={currencyIconUrl}
+                                            alt={tCommunities('currency')}
+                                            className="w-4 h-4 flex-shrink-0"
                                         />
                                     )}
                                     <span className="text-base-content/60">{tCommon('permanentMerits')}:</span>
@@ -495,18 +495,18 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             />
 
             {/* Banners */}
-            {error === false && 
-             userRoleInCommunity === 'participant' && 
-             isSpecialCommunity && 
-             !canCreatePost.canCreate && 
-             teamChatUrl && (
-                <div className="bg-info/10 text-base-content p-4 rounded-xl text-sm border border-info/20 mb-4">
-                    {t('communities.toAddPublication')}{" "}
-                    <a href={teamChatUrl} className="underline font-medium hover:opacity-80">
-                        {t('communities.writeToLeaderInTeamChat')}
-                    </a>
-                </div>
-            )}
+            {error === false &&
+                userRoleInCommunity === 'participant' &&
+                isSpecialCommunity &&
+                !canCreatePost.canCreate &&
+                teamChatUrl && (
+                    <div className="bg-info/10 text-base-content p-4 rounded-xl text-sm border border-info/20 mb-4">
+                        {t('communities.toAddPublication')}{" "}
+                        <a href={teamChatUrl} className="underline font-medium hover:opacity-80">
+                            {t('communities.writeToLeaderInTeamChat')}
+                        </a>
+                    </div>
+                )}
             {error === true && (
                 <div className="bg-error/10 text-error p-4 rounded-xl text-sm border border-error/20 text-center mb-4">
                     {t('communities.noAccess')}
@@ -562,10 +562,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                         id={`post-${p.id}`}
                                         className={
                                             highlightedPostId === p.id
-                                                ? 'ring-2 ring-brand-primary ring-opacity-50 rounded-lg p-1 bg-brand-primary/5'
+                                                ? 'rounded-lg scale-[1.02] bg-brand-primary/10 shadow-lg transition-all duration-300 p-2'
                                                 : isSelected
-                                                    ? 'ring-2 ring-brand-secondary ring-opacity-70 rounded-lg p-1 bg-brand-secondary/5 transition-all duration-300'
-                                                    : 'hover:shadow-md transition-shadow rounded-lg'
+                                                    ? 'rounded-lg scale-[1.02] bg-brand-secondary/10 shadow-lg transition-all duration-300 p-2'
+                                                    : 'hover:shadow-md transition-all duration-200 rounded-lg'
                                         }
                                     >
                                         <PublicationCard
@@ -617,10 +617,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                                 id={`post-${p.id}`}
                                                 className={
                                                     highlightedPostId === p.id
-                                                        ? 'ring-2 ring-brand-primary ring-opacity-50 rounded-lg p-1 bg-brand-primary/5'
+                                                        ? 'rounded-lg scale-[1.02] bg-brand-primary/10 shadow-lg transition-all duration-300 p-2'
                                                         : isSelected
-                                                            ? 'ring-2 ring-brand-secondary ring-opacity-70 rounded-lg p-1 bg-brand-secondary/5 transition-all duration-300'
-                                                            : 'hover:shadow-md transition-shadow rounded-lg'
+                                                            ? 'rounded-lg scale-[1.02] bg-brand-secondary/10 shadow-lg transition-all duration-300 p-2'
+                                                            : 'hover:shadow-md transition-all duration-200 rounded-lg'
                                                 }
                                             >
                                                 <div className="relative">

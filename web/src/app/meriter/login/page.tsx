@@ -10,7 +10,7 @@ import { Loader2 } from 'lucide-react';
 export default function PageMeriterLogin() {
     // Fetch runtime config (falls back to build-time defaults if API fails)
     const { config: runtimeConfig, isLoading, error } = useRuntimeConfig();
-    
+
     // Extract stable primitive values for dependencies to avoid object reference issues
     // React Query might return new object references even when values are the same
     const oauthGoogle = runtimeConfig?.oauth?.google ?? false;
@@ -23,7 +23,7 @@ export default function PageMeriterLogin() {
     const oauthSber = runtimeConfig?.oauth?.sber ?? false;
     const oauthMailru = runtimeConfig?.oauth?.mailru ?? false;
     const authnEnabled = runtimeConfig?.authn?.enabled ?? false;
-    
+
     // Memoize enabled providers using primitive dependencies
     // This ensures we only recompute when oauth config values actually change
     const enabledProviders = useMemo(() => {
@@ -60,37 +60,8 @@ export default function PageMeriterLogin() {
     }
 
     return (
-        <div className="min-h-screen bg-base-100 px-4 py-8 flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 px-4 py-12 flex items-center justify-center">
             <div className="w-full max-w-md">
-                <p>login page</p>
-                {/* DEBUG SECTION - REMOVE BEFORE PRODUCTION */}
-                {process.env.NODE_ENV === 'development' && (
-                    <div className="mb-4 p-2 bg-error/10 rounded-md border border-error/20">
-                        <p><strong>Debug Info:</strong></p>
-                        <pre style={{ fontSize: '10px', overflow: 'auto' }}>
-                            Enabled Providers: {JSON.stringify(enabledProviders, null, 2)}
-                            <br />
-                            Authn Enabled: {String(authnEnabled)}
-                            <br />
-                            Runtime Config: {runtimeConfig ? 'Loaded' : 'Not loaded'}
-                            {runtimeConfig && (
-                                <>
-                                    <br />
-                                    OAuth Config: {JSON.stringify(runtimeConfig.oauth, null, 2)}
-                                    <br />
-                                    Authn Config: {JSON.stringify(runtimeConfig.authn, null, 2)}
-                                </>
-                            )}
-                            {error && (
-                                <>
-                                    <br />
-                                    Config Error: {error.message}
-                                </>
-                            )}
-                        </pre>
-                    </div>
-                )}
-                {/* END DEBUG SECTION */}
                 <LoginForm enabledProviders={enabledProviders} authnEnabled={authnEnabled} />
 
                 <div className="mt-8 flex justify-center">

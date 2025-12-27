@@ -1,5 +1,9 @@
 {
-  "moduleFileExtensions": ["js", "json", "ts"],
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
   "rootDir": "../../..",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
@@ -8,15 +12,15 @@
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "moduleNameMapper": {
-    "@meriter/shared-types": "<rootDir>/libs/shared-types/src",
-    "@meriter/shared-types/(.*)": "<rootDir>/libs/shared-types/src/$1",
-    "@common/abstracts/(.*)": "<rootDir>/libs/abstracts/src/$1",
-    "@common/abstracts": "<rootDir>/libs/abstracts/src",
-    "@common/extapis/(.*)": "<rootDir>/libs/extapis/src/$1",
-    "@common/extapis": "<rootDir>/libs/extapis/src",
-    "@common/lambdas/(.*)": "<rootDir>/libs/lambdas/src/$1",
-    "@common/lambdas": "<rootDir>/libs/lambdas/src",
-    "@common/tg-sync/(.*)": "<rootDir>/libs/tg-sync/src/$1",
-    "@common/tg-sync": "<rootDir>/libs/tg-sync/src"
+    "@meriter/shared-types": "<rootDir>/../libs/shared-types/src",
+    "@meriter/shared-types/(.*)": "<rootDir>/../libs/shared-types/src/$1",
+    "@common/abstracts/(.*)": "<rootDir>/../libs/abstracts/src/$1",
+    "@common/abstracts": "<rootDir>/../libs/abstracts/src",
+    "@common/extapis/(.*)": "<rootDir>/../libs/extapis/src/$1",
+    "@common/extapis": "<rootDir>/../libs/extapis/src",
+    "@common/lambdas/(.*)": "<rootDir>/../libs/lambdas/src/$1",
+    "@common/lambdas": "<rootDir>/../libs/lambdas/src",
+    "@common/tg-sync/(.*)": "<rootDir>/../libs/tg-sync/src/$1",
+    "@common/tg-sync": "<rootDir>/../libs/tg-sync/src"
   }
 }
