@@ -244,6 +244,7 @@ export const publicationsRouter = router({
       authorId: z.string().optional(),
       hashtag: z.string().optional(),
       page: z.number().int().min(1).optional(),
+      cursor: z.number().int().min(1).optional(), // tRPC adds this automatically for infinite queries
       pageSize: z.number().int().min(1).max(100).optional(),
       limit: z.number().int().min(1).max(100).optional(),
       skip: z.number().int().min(0).optional(),
@@ -251,6 +252,8 @@ export const publicationsRouter = router({
     .query(async ({ ctx, input }) => {
       const query = input || {};
       // Support both pagination formats: limit/skip and page/pageSize
+      // Use cursor if provided (from tRPC infinite query), otherwise use page
+      const page = query.cursor ?? query.page;
       let parsedLimit = 20;
       let parsedSkip = 0;
 
@@ -260,8 +263,8 @@ export const publicationsRouter = router({
         parsedLimit = query.limit;
       }
 
-      if (query.page && query.pageSize) {
-        parsedSkip = (query.page - 1) * parsedLimit;
+      if (page && query.pageSize) {
+        parsedSkip = (page - 1) * parsedLimit;
       } else if (query.skip !== undefined) {
         parsedSkip = query.skip;
       }

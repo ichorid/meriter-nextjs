@@ -443,13 +443,16 @@ export const commentsRouter = router({
     .input(z.object({
       userId: z.string(),
       page: z.number().int().min(1).optional(),
+      cursor: z.number().int().min(1).optional(), // tRPC adds this automatically for infinite queries
       pageSize: z.number().int().min(1).max(100).optional(),
       limit: z.number().int().min(1).max(100).optional(),
       skip: z.number().int().min(0).optional(),
     }))
     .query(async ({ ctx, input }) => {
+      // Use cursor if provided (from tRPC infinite query), otherwise use page
+      const page = input.cursor ?? input.page;
       const pagination = PaginationHelper.parseOptions({
-        page: input.page,
+        page,
         pageSize: input.pageSize,
         limit: input.limit,
       });

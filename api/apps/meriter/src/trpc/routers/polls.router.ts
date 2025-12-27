@@ -150,12 +150,16 @@ export const pollsRouter = router({
       communityId: z.string().optional(),
       authorId: z.string().optional(),
       page: z.number().int().min(1).optional(),
+      cursor: z.number().int().min(1).optional(), // tRPC adds this automatically for infinite queries
       pageSize: z.number().int().min(1).max(100).optional(),
       limit: z.number().int().min(1).max(100).optional(),
       skip: z.number().int().min(0).optional(),
     }).optional())
     .query(async ({ ctx, input }) => {
-      const pagination = PaginationHelper.parseOptions(input || {});
+      // Use cursor if provided (from tRPC infinite query), otherwise use page
+      const query = input || {};
+      const page = query.cursor ?? query.page;
+      const pagination = PaginationHelper.parseOptions({ ...query, page });
       const skip = PaginationHelper.getSkip(pagination);
       const limit = pagination.limit || 20;
 
