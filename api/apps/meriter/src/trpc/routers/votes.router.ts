@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreateVoteDtoSchema, VoteWithCommentDtoSchema, WithdrawAmountDtoSchema } from '@meriter/shared-types';
+import { CreateVoteDtoSchema, VoteWithCommentDtoSchema, WithdrawAmountDtoSchema, IdInputSchema } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 
@@ -402,7 +402,7 @@ export const votesRouter = router({
    * Delete vote
    */
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     .mutation(async ({ ctx, input }) => {
       // TODO: Implement vote deletion logic
@@ -439,7 +439,7 @@ export const votesRouter = router({
    * Note: This endpoint is not fully implemented in REST controller
    */
   getDetails: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .query(async ({ ctx, input }) => {
       const vote = await ctx.voteService.getVoteById(input.id);
       if (!vote) {

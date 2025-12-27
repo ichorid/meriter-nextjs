@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreateCommentDtoSchema, UpdateCommentDtoSchema } from '@meriter/shared-types';
+import { CreateCommentDtoSchema, UpdateCommentDtoSchema, IdInputSchema } from '@meriter/shared-types';
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
 import { VoteTransactionCalculatorService } from '../../api-v1/common/services/vote-transaction-calculator.service';
 import { UserFormatter } from '../../api-v1/common/utils/user-formatter.util';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
@@ -13,7 +14,7 @@ export const commentsRouter = router({
    * Get comment by ID
    */
   getById: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .query(async ({ ctx, input }) => {
       // Comments can be either Comment entities or Vote objects (votes contain comments)
       // Try to get as comment first, then as vote
@@ -73,12 +74,8 @@ export const commentsRouter = router({
    * Note: Comments on publications are actually votes with comments
    */
   getByPublicationId: publicProcedure
-    .input(z.object({
+    .input(PaginationInputSchema.extend({
       publicationId: z.string(),
-      page: z.number().int().min(1).optional(),
-      pageSize: z.number().int().min(1).max(100).optional(),
-      limit: z.number().int().min(1).max(100).optional(),
-      skip: z.number().int().min(0).optional(),
       sort: z.string().optional(),
       order: z.enum(['asc', 'desc']).optional(),
     }))
@@ -181,12 +178,8 @@ export const commentsRouter = router({
    * Get replies to a comment (votes on a vote)
    */
   getReplies: publicProcedure
-    .input(z.object({
+    .input(PaginationInputSchema.extend({
       id: z.string(), // This is a vote ID
-      page: z.number().int().min(1).optional(),
-      pageSize: z.number().int().min(1).max(100).optional(),
-      limit: z.number().int().min(1).max(100).optional(),
-      skip: z.number().int().min(0).optional(),
       sort: z.string().optional(),
       order: z.enum(['asc', 'desc']).optional(),
     }))
@@ -427,7 +420,7 @@ export const commentsRouter = router({
    * Delete comment
    */
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .mutation(async ({ ctx, input }) => {
       // Check permissions
       await checkPermissionInHandler(ctx, 'delete', 'comment', input);
@@ -441,13 +434,9 @@ export const commentsRouter = router({
    * Note: Votes on publications contain comments, so this shows user's votes (comments) on publications
    */
   getByUserId: publicProcedure
-    .input(z.object({
+    .input(PaginationInputSchema.extend({
       userId: z.string(),
-      page: z.number().int().min(1).optional(),
       cursor: z.number().int().min(1).optional(), // tRPC adds this automatically for infinite queries
-      pageSize: z.number().int().min(1).max(100).optional(),
-      limit: z.number().int().min(1).max(100).optional(),
-      skip: z.number().int().min(0).optional(),
     }))
     .query(async ({ ctx, input }) => {
       // Use cursor if provided (from tRPC infinite query), otherwise use page
@@ -579,7 +568,7 @@ export const commentsRouter = router({
    * Get comment details with full enrichment (author, beneficiary, community, metrics, withdrawals)
    */
   getDetails: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .query(async ({ ctx, input }) => {
       const { vote, snapshot, authorId } =
         await ctx.voteCommentResolverService.resolve(input.id);

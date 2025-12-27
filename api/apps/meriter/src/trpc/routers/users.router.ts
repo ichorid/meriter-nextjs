@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { JwtService } from '../../api-v1/common/utils/jwt-service.util';
-import { UpdateUserProfileSchema } from '@meriter/shared-types';
+import { UpdateUserProfileSchema, IdInputSchema } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 
 export const usersRouter = router({
@@ -25,7 +25,7 @@ export const usersRouter = router({
    * Get user by ID
    */
   getUser: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .query(async ({ ctx, input }) => {
       const user = await ctx.userService.getUser(input.id);
       if (!user) {
@@ -41,7 +41,7 @@ export const usersRouter = router({
    * Get user profile (same as getUser for now)
    */
   getUserProfile: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .query(async ({ ctx, input }) => {
       const user = await ctx.userService.getUser(input.id);
       if (!user) {
@@ -477,4 +477,3 @@ export const usersRouter = router({
       return { frequency: updated.updatesFrequency };
     }),
 });
-

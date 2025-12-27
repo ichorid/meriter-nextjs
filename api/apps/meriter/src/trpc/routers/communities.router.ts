@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreateCommunityDtoSchema, UpdateCommunityDtoSchema, PaginationParamsSchema } from '@meriter/shared-types';
+import { CreateCommunityDtoSchema, UpdateCommunityDtoSchema, PaginationParamsSchema, IdInputSchema } from '@meriter/shared-types';
 import { CommunitySetupHelpers } from '../../api-v1/common/helpers/community-setup.helpers';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_VIEWER, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
@@ -11,7 +11,7 @@ export const communitiesRouter = router({
    * Get community by ID
    */
   getById: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .query(async ({ ctx, input }) => {
       const community = await ctx.communityService.getCommunity(input.id);
       if (!community) {
@@ -359,7 +359,7 @@ export const communitiesRouter = router({
    * Reset daily quota for a community (admin only)
    */
   resetDailyQuota: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .mutation(async ({ ctx, input }) => {
       // Check if user is superadmin (can reset quota in any community)
       const isSuperadmin = ctx.user.globalRole === GLOBAL_ROLE_SUPERADMIN;
@@ -393,7 +393,7 @@ export const communitiesRouter = router({
    * Note: Telegram notifications are disabled, this is a no-op
    */
   sendMemo: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .mutation(async ({ ctx, input }) => {
       const isAdmin = await ctx.communityService.isUserAdmin(input.id, ctx.user.id);
       if (!isAdmin) {
@@ -685,4 +685,3 @@ export const communitiesRouter = router({
       return users;
     }),
 });
-
