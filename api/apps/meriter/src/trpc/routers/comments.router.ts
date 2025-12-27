@@ -437,7 +437,8 @@ export const commentsRouter = router({
     }),
 
   /**
-   * Get comments by user ID
+   * Get votes by user ID
+   * Note: Votes on publications contain comments, so this shows user's votes (comments) on publications
    */
   getByUserId: publicProcedure
     .input(z.object({
@@ -458,28 +459,30 @@ export const commentsRouter = router({
       });
       const skip = PaginationHelper.getSkip(pagination);
 
-      // Get comments by author
-      const comments = await ctx.commentService.getCommentsByAuthor(
-        input.userId,
-        pagination.limit || 20,
-        skip,
+      // Get votes by user on publications (votes contain comments)
+      // Query votes directly with filter for targetType === 'publication'
+      const publicationVotes = await ctx.connection.db!
+        .collection('votes')
+        .find({
+          userId: input.userId,
+          targetType: 'publication',
+        })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(pagination.limit || 20)
+        .toArray();
+
+      // Extract unique user IDs (vote authors)
+      const userIdsArray = Array.from(
+        new Set(publicationVotes.map((v: any) => v.userId).filter(Boolean)),
       );
 
-      // Extract unique author IDs
-      const authorIds = Array.from(
-        new Set(comments.map((comment) => comment.getAuthorId.getValue()).filter(Boolean)),
-      );
+      // Batch fetch all users using enrichment service
+      const usersMap = await ctx.userEnrichmentService.batchFetchUsers(userIdsArray);
 
-      // Batch fetch all authors using enrichment service
-      const usersMap = await ctx.userEnrichmentService.batchFetchUsers(authorIds);
-
-      // Extract unique publication IDs for comments targeting publications
+      // Extract unique publication IDs
       const publicationIds = Array.from(
-        new Set(
-          comments
-            .filter((comment) => comment.getTargetType === 'publication')
-            .map((comment) => comment.getTargetId),
-        ),
+        new Set(publicationVotes.map((v: any) => v.targetId)),
       );
 
       // Batch fetch all publications to get slugs and community IDs
@@ -501,40 +504,73 @@ export const commentsRouter = router({
         }),
       );
 
-      // Enrich comments with author metadata and publication data using EntityMappers
-      const enrichedComments = comments.map((comment) => {
-        const _authorId = comment.getAuthorId.getValue();
+      // Batch fetch votes on votes (for nested replies and metrics)
+      const voteIds = publicationVotes.map((v: any) => v.id);
+      const votesOnVotesMap = await ctx.voteService.getVotesOnVotes(voteIds);
 
-        // Get publication data if comment targets a publication
-        let publicationSlug: string | undefined;
-        let communityId: string | undefined;
-        if (comment.getTargetType === 'publication') {
-          const publicationId = comment.getTargetId;
-          const publication = publicationsMap.get(publicationId);
-          if (publication) {
-            publicationSlug = publication.slug;
-            communityId = publication.communityId;
-          }
-        }
+      // Convert votes to comment-like objects using EntityMappers
+      const enrichedVotes = publicationVotes.map((vote: any) => {
+        const publicationId = vote.targetId;
+        const publication = publicationsMap.get(publicationId);
+        const publicationSlug = publication?.slug;
+        const communityId = publication?.communityId;
 
-        return EntityMappers.mapCommentToApi(
-          comment,
+        const baseComment = EntityMappers.mapCommentToApi(
+          vote,
           usersMap,
           publicationSlug,
           communityId,
         );
+
+        // Get votes on this vote (replies)
+        const replies = votesOnVotesMap.get(vote.id) || [];
+        const replyCount = replies.length;
+
+        // Calculate score from replies (sum of reply vote amounts)
+        const score = replies.reduce((sum, r) => {
+          const quota = r.amountQuota || 0;
+          const wallet = r.amountWallet || 0;
+          const total = quota + wallet;
+          return sum + (r.direction === 'up' ? total : -total);
+        }, 0);
+        const upvotes = replies.filter((r) => r.direction === 'up').length;
+        const downvotes = replies.filter((r) => r.direction === 'down').length;
+
+        return {
+          ...baseComment,
+          // Metrics from votes on this vote (replies)
+          metrics: {
+            upvotes,
+            downvotes,
+            score,
+            replyCount,
+          },
+        };
       });
 
-      // Get total count (need to query separately)
-      // Note: This is a simplified approach - for better performance, consider caching or optimizing
-      const totalComments = await ctx.connection.db
-        ?.collection('comments')
-        .countDocuments({ authorId: input.userId })
-        || comments.length;
+      // Batch calculate permissions for all votes (comments)
+      const voteIdsForPermissions = enrichedVotes.map((vote) => vote.id);
+      const permissionsMap = await ctx.permissionsHelperService.batchCalculateCommentPermissions(
+        ctx.user?.id || null,
+        voteIdsForPermissions,
+      );
+
+      // Add permissions to each vote
+      enrichedVotes.forEach((vote) => {
+        vote.permissions = permissionsMap.get(vote.id);
+      });
+
+      // Get total count (votes on publications by this user)
+      const totalVotes = await ctx.connection.db!
+        .collection('votes')
+        .countDocuments({
+          userId: input.userId,
+          targetType: 'publication',
+        });
 
       return PaginationHelper.createResult(
-        enrichedComments,
-        totalComments,
+        enrichedVotes,
+        totalVotes,
         pagination,
       );
     }),

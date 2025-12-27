@@ -94,7 +94,7 @@
             "subtitle": "Here's your activity overview",
             "stats": {
                 "publications": "Publications",
-                "comments": "Comments",
+                "comments": "Votes",
                 "polls": "Polls",
                 "updates": "Updates",
                 "projects": "Projects"
@@ -114,7 +114,7 @@
         "myCommunities": "My Communities",
         "tabs": {
             "publications": "My Publications",
-            "comments": "My Comments",
+            "comments": "My Votes",
             "polls": "Polls",
             "updates": "Updates"
         },
@@ -129,8 +129,8 @@
                 "message": "You haven't created any publications yet."
             },
             "comments": {
-                "title": "No Comments",
-                "message": "You haven't written any comments yet."
+                "title": "No Votes",
+                "message": "You haven't voted on any posts yet."
             },
             "polls": {
                 "title": "No Polls",
@@ -760,6 +760,11 @@
     },
     "communities": {
         "other": "Other",
+        "localGroups": {
+            "title": "Local",
+            "viewerNote": "Your current role in the project is Viewer. Local groups are only available to Project Participants.",
+            "contactNote": "If you want to become a Participant, contact one of the Leads."
+        },
         "create": {
             "title": "Create Community",
             "creating": "Creating...",

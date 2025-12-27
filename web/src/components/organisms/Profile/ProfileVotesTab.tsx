@@ -9,7 +9,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
-interface ProfileCommentsTabProps {
+interface ProfileVotesTabProps {
   comments: any[];
   isLoading: boolean;
   sortOrder: SortOrder;
@@ -20,7 +20,7 @@ interface ProfileCommentsTabProps {
   isFetchingNextPage?: boolean;
 }
 
-export function ProfileCommentsTab({
+export function ProfileVotesTab({
   comments,
   isLoading,
   sortOrder,
@@ -29,7 +29,7 @@ export function ProfileCommentsTab({
   fetchNextPage,
   hasNextPage = false,
   isFetchingNextPage = false,
-}: ProfileCommentsTabProps) {
+}: ProfileVotesTabProps) {
   const t = useTranslations('home');
   const queryClient = useQueryClient();
   const activeCommentHook = useState<string | null>(null);
