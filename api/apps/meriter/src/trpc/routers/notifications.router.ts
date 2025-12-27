@@ -1,17 +1,15 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
+import { IdInputSchema } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
 
 export const notificationsRouter = router({
   /**
    * Get notifications
    */
   getAll: protectedProcedure
-    .input(z.object({
-      page: z.number().int().min(1).optional(),
-      pageSize: z.number().int().min(1).max(100).optional(),
-      limit: z.number().int().min(1).max(100).optional(),
-      skip: z.number().int().min(0).optional(),
+    .input(PaginationInputSchema.extend({
       unreadOnly: z.boolean().optional(),
       type: z.string().optional(),
     }).optional())
@@ -114,7 +112,7 @@ export const notificationsRouter = router({
    * Mark notification as read
    */
   markAsRead: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .mutation(async ({ ctx, input }) => {
       await ctx.notificationService.markAsRead(ctx.user.id, input.id);
       return { success: true };
@@ -133,7 +131,7 @@ export const notificationsRouter = router({
    * Delete notification
    */
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     .mutation(async ({ ctx, input }) => {
       // Since notifications are stored in DB, we could implement soft delete here

@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
+import { IdInputSchema } from '@meriter/shared-types';
 import { TRPCError } from '@trpc/server';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../../domain/common/constants/roles.constants';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
 
 const CreateInviteDtoSchema = z.object({
   targetUserId: z.string().optional(),
@@ -17,12 +19,8 @@ export const invitesRouter = router({
    * Get all invites
    */
   getAll: protectedProcedure
-    .input(z.object({
+    .input(PaginationInputSchema.extend({
       communityId: z.string().optional(),
-      page: z.number().int().min(1).optional(),
-      pageSize: z.number().int().min(1).max(100).optional(),
-      limit: z.number().int().min(1).max(100).optional(),
-      skip: z.number().int().min(0).optional(),
     }).optional())
     .query(async ({ ctx, input }) => {
       const pagination = PaginationHelper.parseOptions(input || {});
@@ -418,7 +416,7 @@ export const invitesRouter = router({
    * Delete invite
    */
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     .mutation(async ({ ctx, input }) => {
       // TODO: Implement invite deletion with permission checks

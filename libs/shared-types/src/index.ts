@@ -5,6 +5,7 @@
 export {
     TimestampsSchema,
     IdentifiableSchema,
+    IdInputSchema,
     VotableMetricsSchema,
     PolymorphicReferenceSchema,
     CurrencySchema,

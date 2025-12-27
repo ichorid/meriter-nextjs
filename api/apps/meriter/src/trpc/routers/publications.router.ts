@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreatePublicationDtoSchema, UpdatePublicationDtoSchema, WithdrawAmountDtoSchema } from '@meriter/shared-types';
+import { CreatePublicationDtoSchema, UpdatePublicationDtoSchema, WithdrawAmountDtoSchema, IdInputSchema } from '@meriter/shared-types';
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
@@ -185,7 +185,7 @@ export const publicationsRouter = router({
    * Get publication by ID
    */
   getById: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .query(async ({ ctx, input }) => {
       const publication = await ctx.publicationService.getPublication(input.id);
 
@@ -560,7 +560,7 @@ export const publicationsRouter = router({
    * Delete publication
    */
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .mutation(async ({ ctx, input }) => {
       // Check permissions
       await checkPermissionInHandler(ctx, 'delete', 'publication', input);

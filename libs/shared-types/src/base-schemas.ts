@@ -18,6 +18,14 @@ export const IdentifiableSchema = z.object({
 });
 
 /**
+ * Input schema for id-only requests
+ * Keeps validation minimal for router inputs
+ */
+export const IdInputSchema = z.object({
+  id: z.string(),
+});
+
+/**
  * Base metrics schema for votable entities (publications, comments)
  * Common voting metrics with upvotes, downvotes, and score
  */
@@ -45,4 +53,3 @@ export const CurrencySchema = z.object({
   plural: z.string().min(1),
   genitive: z.string().min(1),
 });
-
