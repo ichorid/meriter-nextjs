@@ -6,10 +6,10 @@ import { UserService } from '../src/domain/services/user.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { CommunityService } from '../src/domain/services/community.service';
 import { Model, Connection } from 'mongoose';
-import { getConnectionToken } from '@nestjs/mongoose';
-import { UserDocument } from '../src/domain/models/user/user.schema';
-import { UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
-import { CommunityDocument } from '../src/domain/models/community/community.schema';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
+import { User, UserDocument } from '../src/domain/models/user/user.schema';
+import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { trpcQuery } from './helpers/trpc-test-helper';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
@@ -19,7 +19,7 @@ describe('Users - Get All Leads', () => {
 
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
-  let connection: Connection;
+  let _connection: Connection;
 
   let _userService: UserService;
   let _communityService: CommunityService;
@@ -66,10 +66,10 @@ describe('Users - Get All Leads', () => {
     );
     _communityService = app.get<CommunityService>(CommunityService);
 
-    connection = app.get<Connection>(getConnectionToken());
-    userModel = connection.model('User');
-    userCommunityRoleModel = connection.model('UserCommunityRole');
-    communityModel = connection.model('Community');
+    _connection = app.get<Connection>(getConnectionToken());
+    userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
+    userCommunityRoleModel = app.get<Model<UserCommunityRoleDocument>>(getModelToken(UserCommunityRole.name));
+    communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
 
     // Generate test IDs
     lead1Id = uid();

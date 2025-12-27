@@ -9,6 +9,7 @@ export type NotificationType =
   | 'comment'
   | 'publication'
   | 'poll'
+  | 'favorite_update'
   | 'system'
   | 'quota'
   | 'forward_proposal';
@@ -44,7 +45,7 @@ export class NotificationSchemaClass implements Notification {
 
   @Prop({
     required: true,
-    enum: ['vote', 'beneficiary', 'mention', 'reply', 'comment', 'publication', 'poll', 'system', 'quota', 'forward_proposal'],
+    enum: ['vote', 'beneficiary', 'mention', 'reply', 'comment', 'publication', 'poll', 'favorite_update', 'system', 'quota', 'forward_proposal'],
     index: true,
   })
   type!: NotificationType;

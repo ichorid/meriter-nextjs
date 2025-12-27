@@ -3,13 +3,13 @@ import { INestApplication } from '@nestjs/common';
 import { MeriterModule } from '../src/meriter.module';
 import { TestDatabaseHelper } from './test-db.helper';
 import { createTestPublication } from './helpers/fixtures';
-import { trpcMutation, trpcQuery, trpcQueryWithError, trpcMutationWithError } from './helpers/trpc-test-helper';
+import { trpcMutation, trpcQuery, trpcQueryWithError } from './helpers/trpc-test-helper';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument, CommunitySchema } from '../src/domain/models/community/community.schema';
-import { User, UserDocument, UserSchema } from '../src/domain/models/user/user.schema';
-import { Publication, PublicationDocument, PublicationSchema } from '../src/domain/models/publication/publication.schema';
-import { UserCommunityRole, UserCommunityRoleDocument, UserCommunityRoleSchema } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { User, UserDocument } from '../src/domain/models/user/user.schema';
+import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
+import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { getModelToken } from '@nestjs/mongoose';
@@ -88,48 +88,68 @@ describe('Publication Soft Delete E2E', () => {
     await userModel.create([
       {
         id: authorId,
+        authProvider: 'telegram',
+        authId: `tg-${authorId}`,
         telegramId: uid(),
         username: `author_${uid()}`,
         firstName: 'Author',
         lastName: 'User',
         displayName: 'Author User',
         globalRole: undefined,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         id: leadId,
+        authProvider: 'telegram',
+        authId: `tg-${leadId}`,
         telegramId: uid(),
         username: `lead_${uid()}`,
         firstName: 'Lead',
         lastName: 'User',
         displayName: 'Lead User',
         globalRole: undefined,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         id: superadminId,
+        authProvider: 'telegram',
+        authId: `tg-${superadminId}`,
         telegramId: uid(),
         username: `superadmin_${uid()}`,
         firstName: 'Superadmin',
         lastName: 'User',
         displayName: 'Superadmin User',
         globalRole: 'superadmin',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         id: participantId,
+        authProvider: 'telegram',
+        authId: `tg-${participantId}`,
         telegramId: uid(),
         username: `participant_${uid()}`,
         firstName: 'Participant',
         lastName: 'User',
         displayName: 'Participant User',
         globalRole: undefined,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         id: otherLeadId,
+        authProvider: 'telegram',
+        authId: `tg-${otherLeadId}`,
         telegramId: uid(),
         username: `otherlead_${uid()}`,
         firstName: 'Other Lead',
         lastName: 'User',
         displayName: 'Other Lead User',
         globalRole: undefined,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
 
@@ -155,6 +175,8 @@ describe('Publication Soft Delete E2E', () => {
           quotaRecipients: ['lead', 'participant'],
           canEarn: true,
         },
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         id: otherCommunityId,
@@ -176,6 +198,8 @@ describe('Publication Soft Delete E2E', () => {
           quotaRecipients: ['lead', 'participant'],
           canEarn: true,
         },
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
 

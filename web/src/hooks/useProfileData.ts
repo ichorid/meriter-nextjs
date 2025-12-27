@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { normalizeArray } from "@/lib/utils/profileContent";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useMemo } from "react";
+import { useFavoriteCount, useUnreadFavoritesCount } from "@/hooks/api/useFavorites";
 
 /**
  * Hook to fetch all profile page data with infinite scroll support
@@ -46,6 +47,10 @@ export function useProfileData() {
         hasNextPage: hasNextComments,
         isFetchingNextPage: isFetchingNextComments,
     } = useInfiniteMyComments(user?.id || "", pageSize);
+
+    const { data: favoritesCountData, isLoading: favoritesCountLoading } = useFavoriteCount();
+    const { data: unreadFavoritesCountData, isLoading: unreadFavoritesCountLoading } =
+        useUnreadFavoritesCount();
 
     // Flatten data from all pages and filter out projects
     const myPublications = useMemo(() => {
@@ -95,6 +100,12 @@ export function useProfileData() {
         // Wallets
         wallets: normalizeArray(wallets),
         walletsLoading,
+
+        // Favorites
+        favoritesCount: favoritesCountData?.count ?? 0,
+        unreadFavoritesCount: unreadFavoritesCountData?.count ?? 0,
+        favoritesCountLoading,
+        unreadFavoritesCountLoading,
     };
 }
 

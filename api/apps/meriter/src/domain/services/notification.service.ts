@@ -24,6 +24,11 @@ export interface CreateNotificationDto {
   message: string;
 }
 
+export interface NotificationDeduplicationKey {
+  targetType: string;
+  targetId: string;
+}
+
 export interface GetNotificationsOptions {
   page?: number;
   pageSize?: number;
@@ -57,6 +62,48 @@ export class NotificationService {
 
     this.logger.log(`Notification created: ${notification.id} for user ${dto.userId}`);
     return notification.toObject();
+  }
+
+  /**
+   * Create a notification, but deduplicate by replacing the *oldest unread* notification
+   * with the same (userId, type, metadata.targetType, metadata.targetId).
+   *
+   * This matches the "one unread notification per object" requirement for favorites updates.
+   */
+  async createOrReplaceOldestUnreadByTarget(
+    dto: CreateNotificationDto,
+    key: NotificationDeduplicationKey,
+  ): Promise<Notification> {
+    const existing = await this.notificationModel
+      .findOne({
+        userId: dto.userId,
+        type: dto.type,
+        read: false,
+        'metadata.targetType': key.targetType,
+        'metadata.targetId': key.targetId,
+      })
+      .sort({ createdAt: 1 })
+      .exec();
+
+    if (existing) {
+      existing.source = dto.source;
+      existing.sourceId = dto.sourceId;
+      existing.metadata = dto.metadata;
+      existing.title = dto.title;
+      existing.message = dto.message;
+      existing.read = false;
+      existing.readAt = undefined;
+      existing.createdAt = new Date();
+      existing.updatedAt = new Date();
+
+      const saved = await existing.save();
+      this.logger.log(
+        `Notification replaced (dedup): ${saved.id} for user ${dto.userId}`,
+      );
+      return saved.toObject();
+    }
+
+    return this.createNotification(dto);
   }
 
   async getNotifications(
@@ -141,6 +188,25 @@ export class NotificationService {
     const { type, metadata } = notification;
 
     switch (type) {
+      case 'favorite_update': {
+        const { communityId, publicationId, pollId, targetType } = metadata;
+        if (!communityId) {
+          return undefined;
+        }
+        if (targetType === 'poll' || pollId) {
+          const resolvedPollId = pollId;
+          if (!resolvedPollId) {
+            return undefined;
+          }
+          return `/meriter/communities/${communityId}?poll=${resolvedPollId}`;
+        }
+        const resolvedPublicationId = publicationId;
+        if (!resolvedPublicationId) {
+          return undefined;
+        }
+        return `/meriter/communities/${communityId}?post=${resolvedPublicationId}`;
+      }
+
       case 'vote':
       case 'beneficiary':
       case 'publication':

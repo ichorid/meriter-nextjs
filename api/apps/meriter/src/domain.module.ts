@@ -37,6 +37,10 @@ import {
   NotificationSchema,
 } from './domain/models/notification/notification.schema';
 import {
+  FavoriteSchemaClass,
+  FavoriteSchema,
+} from './domain/models/favorite/favorite.schema';
+import {
   QuotaUsageSchemaClass,
   QuotaUsageSchema,
 } from './domain/models/quota-usage/quota-usage.schema';
@@ -63,6 +67,7 @@ import { PermissionService } from './domain/services/permission.service';
 import { MeritService } from './domain/services/merit.service';
 import { NotificationService } from './domain/services/notification.service';
 import { NotificationHandlersService } from './domain/services/notification-handlers.service';
+import { FavoriteService } from './domain/services/favorite.service';
 import { QuotaUsageService } from './domain/services/quota-usage.service';
 import { CommunityDefaultsService } from './domain/services/community-defaults.service';
 import { PermissionRuleEngine } from './domain/services/permission-rule-engine.service';
@@ -88,6 +93,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: UserCommunityRoleSchemaClass.name, schema: UserCommunityRoleSchema },
       { name: InviteSchemaClass.name, schema: InviteSchema },
       { name: NotificationSchemaClass.name, schema: NotificationSchema },
+      { name: FavoriteSchemaClass.name, schema: FavoriteSchema },
       { name: QuotaUsageSchemaClass.name, schema: QuotaUsageSchema },
       { name: PasskeyChallenge.name, schema: PasskeyChallengeSchema },
     ]),
@@ -117,6 +123,7 @@ import { EventBus } from './domain/events/event-bus';
     MeritService,
     NotificationService,
     NotificationHandlersService,
+    FavoriteService,
     QuotaUsageService,
 
     // Event bus
@@ -147,6 +154,7 @@ import { EventBus } from './domain/events/event-bus';
     MeritService,
     NotificationService,
     NotificationHandlersService,
+    FavoriteService,
     QuotaUsageService,
 
     // Export event bus

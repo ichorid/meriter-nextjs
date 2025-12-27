@@ -5,12 +5,16 @@ import { EventBus } from '../events/event-bus';
 import {
   PublicationCreatedEvent,
   PublicationVotedEvent,
+  CommentAddedEvent,
   CommentVotedEvent,
+  PollCastedEvent,
 } from '../events';
 import { NotificationService, CreateNotificationDto } from './notification.service';
 import { PublicationService } from './publication.service';
 import { VoteService } from './vote.service';
 import { UserService } from './user.service';
+import { PollService } from './poll.service';
+import { FavoriteService } from './favorite.service';
 import type { Vote } from '../models/vote/vote.schema';
 
 @Injectable()
@@ -25,6 +29,9 @@ export class NotificationHandlersService implements OnModuleInit {
     @Inject(forwardRef(() => VoteService))
     private readonly voteService: VoteService,
     private readonly userService: UserService,
+    @Inject(forwardRef(() => PollService))
+    private readonly pollService: PollService,
+    private readonly favoriteService: FavoriteService,
     @InjectConnection() private readonly mongoose: Connection,
   ) {}
 
@@ -36,11 +43,58 @@ export class NotificationHandlersService implements OnModuleInit {
     this.eventBus.subscribe('PublicationVoted', (event) =>
       this.handlePublicationVoted(event as PublicationVotedEvent),
     );
+    this.eventBus.subscribe('CommentAdded', (event) =>
+      this.handleCommentAdded(event as CommentAddedEvent),
+    );
     this.eventBus.subscribe('CommentVoted', (event) =>
       this.handleCommentVoted(event as CommentVotedEvent),
     );
+    this.eventBus.subscribe('PollCasted', (event) =>
+      this.handlePollCasted(event as PollCastedEvent),
+    );
 
     this.logger.log('Notification handlers registered');
+  }
+
+  private async notifyFavoriteUpdate(params: {
+    actorId: string;
+    userIds: string[];
+    targetType: 'publication' | 'poll' | 'project';
+    targetId: string;
+    communityId: string;
+    publicationId?: string;
+    pollId?: string;
+    message: string;
+  }): Promise<void> {
+    const actor = await this.userService.getUser(params.actorId);
+    const actorName = actor?.displayName || 'Someone';
+
+    await Promise.all(
+      params.userIds
+        .filter((userId) => userId !== params.actorId)
+        .map(async (userId) => {
+          const dto: CreateNotificationDto = {
+            userId,
+            type: 'favorite_update',
+            source: 'user',
+            sourceId: params.actorId,
+            metadata: {
+              communityId: params.communityId,
+              publicationId: params.publicationId,
+              pollId: params.pollId,
+              targetType: params.targetType,
+              targetId: params.targetId,
+            },
+            title: 'Favorite updated',
+            message: `${actorName} ${params.message}`,
+          };
+
+          await this.notificationService.createOrReplaceOldestUnreadByTarget(dto, {
+            targetType: params.targetType,
+            targetId: params.targetId,
+          });
+        }),
+    );
   }
 
   async handlePublicationCreated(event: PublicationCreatedEvent): Promise<void> {
@@ -107,9 +161,17 @@ export class NotificationHandlersService implements OnModuleInit {
 
       const authorId = publication.getAuthorId.getValue();
       const communityId = publication.getCommunityId.getValue();
+      const publicationSnapshot = publication.toSnapshot();
+      const isProject =
+        publicationSnapshot.isProject === true || publicationSnapshot.postType === 'project';
 
       // Don't notify if user voted on their own content
       if (authorId === voterId) {
+        // Still update favorites activity (other users may have favorited it)
+        await this.favoriteService.touchFavoritesForTarget('publication', publicationId);
+        if (isProject) {
+          await this.favoriteService.touchFavoritesForTarget('project', publicationId);
+        }
         return;
       }
 
@@ -158,8 +220,120 @@ export class NotificationHandlersService implements OnModuleInit {
       this.logger.log(
         `Created vote notification for user ${authorId} from vote on publication ${publicationId}`,
       );
+
+      // Favorites: mark as updated + notify favoriting users (dedup)
+      await this.favoriteService.touchFavoritesForTarget('publication', publicationId);
+      const favUserIdsPublication = await this.favoriteService.getFavoriteUserIdsForTarget(
+        'publication',
+        publicationId,
+      );
+      await this.notifyFavoriteUpdate({
+        actorId: voterId,
+        userIds: favUserIdsPublication,
+        targetType: 'publication',
+        targetId: publicationId,
+        communityId,
+        publicationId,
+        message: direction === 'up' ? `upvoted a favorite post` : `downvoted a favorite post`,
+      });
+
+      if (isProject) {
+        await this.favoriteService.touchFavoritesForTarget('project', publicationId);
+        const favUserIdsProject = await this.favoriteService.getFavoriteUserIdsForTarget(
+          'project',
+          publicationId,
+        );
+        await this.notifyFavoriteUpdate({
+          actorId: voterId,
+          userIds: favUserIdsProject,
+          targetType: 'project',
+          targetId: publicationId,
+          communityId,
+          publicationId,
+          message: direction === 'up' ? `upvoted a favorite project` : `downvoted a favorite project`,
+        });
+      }
     } catch (error) {
       this.logger.error(`Error handling PublicationVoted event:`, error);
+    }
+  }
+
+  async handleCommentAdded(event: CommentAddedEvent): Promise<void> {
+    try {
+      const publicationId = event.getTargetId();
+      const commenterId = event.getAuthorId();
+
+      const publication = await this.publicationService.getPublication(publicationId);
+      if (!publication) {
+        return;
+      }
+      const communityId = publication.getCommunityId.getValue();
+      const publicationSnapshot = publication.toSnapshot();
+      const isProject =
+        publicationSnapshot.isProject === true || publicationSnapshot.postType === 'project';
+
+      await this.favoriteService.touchFavoritesForTarget('publication', publicationId);
+      const favUserIdsPublication = await this.favoriteService.getFavoriteUserIdsForTarget(
+        'publication',
+        publicationId,
+      );
+      await this.notifyFavoriteUpdate({
+        actorId: commenterId,
+        userIds: favUserIdsPublication,
+        targetType: 'publication',
+        targetId: publicationId,
+        communityId,
+        publicationId,
+        message: `commented on a favorite post`,
+      });
+
+      if (isProject) {
+        await this.favoriteService.touchFavoritesForTarget('project', publicationId);
+        const favUserIdsProject = await this.favoriteService.getFavoriteUserIdsForTarget(
+          'project',
+          publicationId,
+        );
+        await this.notifyFavoriteUpdate({
+          actorId: commenterId,
+          userIds: favUserIdsProject,
+          targetType: 'project',
+          targetId: publicationId,
+          communityId,
+          publicationId,
+          message: `commented on a favorite project`,
+        });
+      }
+    } catch (error) {
+      this.logger.error(`Error handling CommentAdded event:`, error);
+    }
+  }
+
+  async handlePollCasted(event: PollCastedEvent): Promise<void> {
+    try {
+      const pollId = event.getAggregateId();
+      const casterId = event.getUserId();
+
+      const poll = await this.pollService.getPoll(pollId);
+      if (!poll) {
+        return;
+      }
+
+      const snapshot = poll.toSnapshot();
+      const communityId = snapshot.communityId;
+
+      await this.favoriteService.touchFavoritesForTarget('poll', pollId);
+      const favUserIds = await this.favoriteService.getFavoriteUserIdsForTarget('poll', pollId);
+      await this.notifyFavoriteUpdate({
+        actorId: casterId,
+        userIds: favUserIds,
+        targetType: 'poll',
+        targetId: pollId,
+        communityId,
+        pollId,
+        message: `voted on a favorite poll`,
+      });
+    } catch (error) {
+      this.logger.error(`Error handling PollCasted event:`, error);
     }
   }
 

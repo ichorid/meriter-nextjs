@@ -35,6 +35,7 @@ function ProfilePageComponent() {
     commentsLoading,
     myPolls,
     pollsLoading,
+    favoritesCount,
   } = useProfileData();
 
   const { data: meritStatsData, isLoading: meritStatsLoading } = useMeritStats();
@@ -54,7 +55,8 @@ function ProfilePageComponent() {
     publications: myPublications.length,
     comments: myComments.length,
     polls: myPolls.length,
-  }), [myPublications.length, myComments.length, myPolls.length]);
+    favorites: favoritesCount,
+  }), [myPublications.length, myComments.length, myPolls.length, favoritesCount]);
 
   // Memoize loading state for content cards
   const contentCardsLoading = useMemo(() => 

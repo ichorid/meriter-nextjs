@@ -257,6 +257,7 @@ export type NotificationType =
     | "comment"
     | "publication"
     | "poll"
+    | "favorite_update"
     | "system"
     | "forward_proposal";
 
