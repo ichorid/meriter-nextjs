@@ -537,6 +537,8 @@
             "createPost": "Создать пост",
             "joinByInvite": "Или присоединиться по приглашению",
             "publications": "Публикации",
+            "deleted": "Удаленные",
+            "noDeletedPublications": "Нет удаленных публикаций",
             "members": {
                 "title": "Участники",
                 "empty": "Участники не найдены",
@@ -933,7 +935,7 @@
         "title": "Регистрация",
         "authTitle": "Авторизация",
         "inviteDescription": "Введите код приглашения для начала регистрации (необязательно)",
-        "inviteCodeLabel": "Код приглашения",
+        "inviteCodeLabel": "Код приглашения (необязательно)",
         "inviteCodePlaceholder": "Введите код приглашения",
         "continue": "Продолжить",
         "checkingInvite": "Проверка приглашения...",

@@ -10,7 +10,7 @@
 
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,6 +32,9 @@ import {
     CardTitle,
 } from "@/components/ui/shadcn/card";
 import { Separator } from "@/components/ui/shadcn/separator";
+import { Input } from "@/components/ui/shadcn/input";
+import { BrandFormControl } from "@/components/ui";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { PasskeySection } from "./PasskeySection";
 import { OAuthButton } from "./OAuthButton";
@@ -49,11 +52,16 @@ export function LoginForm({
 }: LoginFormProps) {
     const searchParams = useSearchParams();
     const t = useTranslations("login");
+    const tReg = useTranslations("registration");
     const fakeDataMode = isFakeDataMode();
 
     const { authenticateFakeUser, authenticateFakeSuperadmin, isLoading, authError, setAuthError } =
         useAuth();
     const addToast = useToastStore((state) => state.addToast);
+
+    // State for invite code input
+    const [inviteCode, setInviteCode] = useState("");
+    const [inviteCodeExpanded, setInviteCodeExpanded] = useState(false);
 
     // Get return URL from URL
     const returnTo = searchParams?.get("returnTo");
@@ -70,9 +78,26 @@ export function LoginForm({
         }
     }, [authError, addToast]);
 
-    // Helper function to construct redirect URL
+    // Helper function to construct redirect URL with invite code if present
     const buildRedirectUrl = (): string => {
-        return returnTo || "/meriter/profile";
+        const baseUrl = returnTo || "/meriter/profile";
+        
+        // If invite code is present, append it as a query parameter
+        if (inviteCode.trim()) {
+            try {
+                // Parse the base URL to handle existing query parameters
+                const url = new URL(baseUrl, typeof window !== "undefined" ? window.location.origin : "http://localhost");
+                url.searchParams.set("invite", inviteCode.trim());
+                // Return pathname + search (relative URL)
+                return url.pathname + url.search;
+            } catch (e) {
+                // If URL parsing fails (e.g., relative path without origin), use simple concatenation
+                const separator = baseUrl.includes("?") ? "&" : "?";
+                return `${baseUrl}${separator}invite=${encodeURIComponent(inviteCode.trim())}`;
+            }
+        }
+        
+        return baseUrl;
     };
 
     // Handle fake authentication
@@ -178,6 +203,44 @@ export function LoginForm({
                                             ))}
                                         </div>
                                     )}
+
+                                    {/* Collapsible Invite Code Input */}
+                                    <div className="border rounded-lg overflow-hidden">
+                                        <button
+                                            type="button"
+                                            onClick={() => setInviteCodeExpanded(!inviteCodeExpanded)}
+                                            className="flex items-center justify-between w-full px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                                        >
+                                            <div>
+                                                <div className="text-sm font-medium">{tReg("inviteCodeLabel")}</div>
+                                                <div className="text-xs text-muted-foreground mt-0.5">
+                                                    {tReg("inviteDescription")}
+                                                </div>
+                                            </div>
+                                            {inviteCodeExpanded ? (
+                                                <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
+                                            ) : (
+                                                <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
+                                            )}
+                                        </button>
+                                        {inviteCodeExpanded && (
+                                            <div className="px-4 pb-4 pt-2 border-t">
+                                                <BrandFormControl
+                                                    label={undefined}
+                                                    error={undefined}
+                                                >
+                                                    <Input
+                                                        value={inviteCode}
+                                                        onChange={(e) => setInviteCode(e.target.value)}
+                                                        placeholder={tReg("inviteCodePlaceholder")}
+                                                        autoCapitalize="none"
+                                                        autoComplete="off"
+                                                        className="h-11 rounded-xl w-full"
+                                                    />
+                                                </BrandFormControl>
+                                            </div>
+                                        )}
+                                    </div>
 
                                     {/* Separator between OAuth and Passkey */}
                                     {displayedProviders.length > 0 && authnEnabled && (

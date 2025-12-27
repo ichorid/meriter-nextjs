@@ -251,6 +251,8 @@ export const PublicationSchema = IdentifiableSchema.merge(
   forwardTargetCommunityId: z.string().optional(),
   forwardProposedBy: z.string().optional(),
   forwardProposedAt: z.date().optional(),
+  deleted: z.boolean().optional().default(false),
+  deletedAt: z.date().optional(),
 });
 
 export const CommentAuthorMetaSchema = z.object({
@@ -734,6 +736,8 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   methods: z.array(z.enum([...METHODS] as [string, ...string[]])).optional(),
   stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
   helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).optional(),
+  deleted: z.boolean().optional().default(false),
+  deletedAt: z.date().optional(),
 });
 
 export const PollFeedItemSchema = IdentifiableSchema.merge(

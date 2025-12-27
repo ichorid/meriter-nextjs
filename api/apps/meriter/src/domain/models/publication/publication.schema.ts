@@ -48,6 +48,8 @@ export interface Publication {
   forwardTargetCommunityId?: string;
   forwardProposedBy?: string;
   forwardProposedAt?: Date;
+  deleted?: boolean;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -149,6 +151,12 @@ export class PublicationSchemaClass implements Publication {
   @Prop()
   forwardProposedAt?: Date;
 
+  @Prop({ default: false })
+  deleted?: boolean;
+
+  @Prop()
+  deletedAt?: Date;
+
   @Prop({ required: true })
   createdAt!: Date;
 
@@ -168,3 +176,4 @@ PublicationSchema.index({ authorId: 1, createdAt: -1 });
 PublicationSchema.index({ hashtags: 1 });
 PublicationSchema.index({ 'metrics.score': -1 });
 PublicationSchema.index({ beneficiaryId: 1 });
+PublicationSchema.index({ communityId: 1, deleted: 1, createdAt: -1 }); // For querying deleted items by community

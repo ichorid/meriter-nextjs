@@ -125,6 +125,36 @@ export function useInfinitePublicationsByCommunity(
     );
 }
 
+export function useInfiniteDeletedPublications(
+    communityId: string,
+    pageSize: number = 20
+) {
+    return trpc.publications.getDeleted.useInfiniteQuery(
+        {
+            communityId,
+            pageSize,
+        },
+        {
+            getNextPageParam: (lastPage, allPages) => {
+                // Backend returns { data, total, skip, limit }
+                // If we got a full page (data.length === pageSize), there might be more
+                // Calculate current page from all pages fetched so far
+                if (!lastPage || !lastPage.data) {
+                    return undefined;
+                }
+                const currentPage = allPages.length;
+                if (lastPage.data.length === pageSize) {
+                    return currentPage + 1;
+                }
+                return undefined;
+            },
+            initialPageParam: 1,
+            enabled: !!communityId, // Ensure query only runs when communityId is available
+            staleTime: STALE_TIME.VERY_SHORT, // Always refetch when invalidated
+        },
+    );
+}
+
 export const useCreatePublication = () => {
     const utils = trpc.useUtils();
     const queryClient = useQueryClient();
@@ -367,7 +397,12 @@ export const useDeletePublication = () => {
             await utils.publications.getAll.invalidate();
             await utils.publications.getAll.refetch();
             
-            // Remove the deleted publication from cache
+            // Invalidate deleted publications query (so it appears in deleted tab for leads)
+            // We need to get the communityId to invalidate the correct query
+            // Since we don't have it in variables, we'll do a broad invalidation
+            await utils.publications.getDeleted.invalidate();
+            
+            // Remove the deleted publication from cache (but keep it in deleted query)
             utils.publications.getById.setData({ id: variables.id }, undefined);
             
             // Invalidate infinite queries (publication might have been in a community feed)

@@ -536,6 +536,8 @@
             "createPost": "Create Post",
             "joinByInvite": "Or join by invite",
             "publications": "Publications",
+            "deleted": "Deleted",
+            "noDeletedPublications": "No deleted publications",
             "members": {
                 "title": "Members",
                 "empty": "No members found",
@@ -931,7 +933,7 @@
         "title": "Registration",
         "authTitle": "Authentication",
         "inviteDescription": "Enter your invite code to begin registration (optional)",
-        "inviteCodeLabel": "Invite Code",
+        "inviteCodeLabel": "Invite Code (optional)",
         "inviteCodePlaceholder": "Enter invite code",
         "continue": "Continue",
         "checkingInvite": "Checking invite...",

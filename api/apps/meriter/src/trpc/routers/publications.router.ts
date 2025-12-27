@@ -570,6 +570,129 @@ export const publicationsRouter = router({
     }),
 
   /**
+   * Get deleted publications (leads only)
+   */
+  getDeleted: protectedProcedure
+    .input(z.object({
+      communityId: z.string(),
+      page: z.number().int().min(1).optional(),
+      cursor: z.number().int().min(1).optional(),
+      pageSize: z.number().int().min(1).max(100).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      skip: z.number().int().min(0).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      // Check if user is a lead in the community
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(
+        ctx.user.id,
+        input.communityId,
+      );
+
+      if (userRole !== 'lead' && ctx.user.globalRole !== 'superadmin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only leads can view deleted publications',
+        });
+      }
+
+      // Parse pagination
+      const query = input;
+      const page = query.cursor ?? query.page;
+      let parsedLimit = 20;
+      let parsedSkip = 0;
+
+      if (query.pageSize) {
+        parsedLimit = query.pageSize;
+      } else if (query.limit) {
+        parsedLimit = query.limit;
+      }
+
+      if (page && query.pageSize) {
+        parsedSkip = (page - 1) * parsedLimit;
+      } else if (query.skip !== undefined) {
+        parsedSkip = query.skip;
+      }
+
+      // Get deleted publications
+      const publications = await ctx.publicationService.getDeletedPublicationsByCommunity(
+        input.communityId,
+        parsedLimit,
+        parsedSkip,
+      );
+
+      // Extract unique user IDs (authors and beneficiaries) and community IDs
+      const userIds = new Set<string>();
+      const communityIds = new Set<string>();
+      publications.forEach((pub) => {
+        userIds.add(pub.getAuthorId.getValue());
+        if (pub.getBeneficiaryId) {
+          userIds.add(pub.getBeneficiaryId.getValue());
+        }
+        communityIds.add(pub.getCommunityId.getValue());
+      });
+
+      // Batch fetch all users and communities
+      const [usersMap, communitiesMap] = await Promise.all([
+        ctx.userEnrichmentService.batchFetchUsers(Array.from(userIds)),
+        ctx.communityEnrichmentService.batchFetchCommunities(Array.from(communityIds)),
+      ]);
+
+      // Convert domain entities to DTOs with enriched user metadata
+      const mappedPublications = publications.map((publication) =>
+        EntityMappers.mapPublicationToApi(
+          publication,
+          usersMap,
+          communitiesMap,
+        ),
+      );
+
+      // Batch calculate permissions for all publications
+      const publicationIds = mappedPublications.map((pub) => pub.id);
+      const permissionsMap = await ctx.permissionsHelperService.batchCalculatePublicationPermissions(
+        ctx.user?.id || null,
+        publicationIds,
+      );
+
+      // Batch fetch withdrawals data for all publications
+      const withdrawalsMap = new Map<string, number>();
+      try {
+        const withdrawals = await Promise.all(
+          publicationIds.map(async (id) => {
+            try {
+              const totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
+                'publication_withdrawal',
+                id,
+              );
+              return { id, totalWithdrawn };
+            } catch (_err) {
+              return { id, totalWithdrawn: 0 };
+            }
+          }),
+        );
+        withdrawals.forEach(({ id, totalWithdrawn }) => {
+          withdrawalsMap.set(id, totalWithdrawn);
+        });
+      } catch (_err) {
+        // Log but don't fail
+      }
+
+      // Add permissions and withdrawals to each publication
+      mappedPublications.forEach((pub) => {
+        pub.permissions = permissionsMap.get(pub.id);
+        pub.withdrawals = {
+          totalWithdrawn: withdrawalsMap.get(pub.id) || 0,
+        };
+      });
+
+      return {
+        data: mappedPublications,
+        total: mappedPublications.length,
+        skip: parsedSkip,
+        limit: parsedLimit,
+      };
+    }),
+
+  /**
    * Withdraw from publication
    */
   withdraw: protectedProcedure

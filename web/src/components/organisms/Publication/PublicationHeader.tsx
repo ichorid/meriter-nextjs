@@ -170,7 +170,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
         await deletePublication.mutateAsync({ id: publicationId!, communityId });
       }
       setShowDeleteModal(false);
-      addToast(isPoll ? 'Poll deleted successfully' : 'Post deleted successfully', 'success');
+      addToast(isPoll ? 'Poll moved to deleted' : 'Post moved to deleted', 'success');
       // Navigate away after deletion
       if (communityId) {
         router.push(`/meriter/communities/${communityId}`);
