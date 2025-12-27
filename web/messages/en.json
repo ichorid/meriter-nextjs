@@ -536,7 +536,9 @@
             "publications": "Publications",
             "members": {
                 "title": "Members",
-                "empty": "No members found"
+                "empty": "No members found",
+                "remove": "Remove member",
+                "confirmRemove": "Remove {name} from community?"
             },
             "vision": "Future",
             "noVisionPosts": "No future posts yet",

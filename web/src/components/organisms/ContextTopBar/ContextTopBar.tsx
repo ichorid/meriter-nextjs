@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
 import { cn } from '@/lib/utils';
-import { Clock, TrendingUp, Loader2, Search, X, ArrowLeft, Settings } from 'lucide-react';
+import { Clock, TrendingUp, Loader2, Search, X, ArrowLeft, Settings, Coins } from 'lucide-react';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import type { TabSortState } from '@/hooks/useProfileTabState';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -294,6 +294,7 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
   const fakeDataMode = isFakeDataMode();
   const [generatingUserPosts, setGeneratingUserPosts] = React.useState(false);
   const [generatingBeneficiaryPosts, setGeneratingBeneficiaryPosts] = React.useState(false);
+  const [addingMerits, setAddingMerits] = React.useState(false);
   const [fakeDataMessage, setFakeDataMessage] = React.useState('');
 
   // Get sortBy from URL params
@@ -356,6 +357,8 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
 
   // Handle fake data generation
   const generateFakeDataMutation = trpc.publications.generateFakeData.useMutation();
+  const addMeritsMutation = trpc.wallets.addMerits.useMutation();
+  const utils = trpc.useUtils();
 
   const handleGenerateUserPosts = async () => {
     setGeneratingUserPosts(true);
@@ -396,6 +399,29 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
       setTimeout(() => setFakeDataMessage(''), 3000);
     } finally {
       setGeneratingBeneficiaryPosts(false);
+    }
+  };
+
+  const handleAddMerits = async () => {
+    setAddingMerits(true);
+    setFakeDataMessage('');
+
+    try {
+      const result = await addMeritsMutation.mutateAsync({
+        communityId,
+        amount: 100,
+      });
+      setFakeDataMessage(result.message);
+      setTimeout(() => setFakeDataMessage(''), 3000);
+      // Invalidate wallets to refresh the balance
+      utils.wallets.getAll.invalidate();
+      utils.wallets.getBalance.invalidate({ communityId });
+    } catch (error) {
+      console.error('Add merits error:', error);
+      setFakeDataMessage('Failed to add merits');
+      setTimeout(() => setFakeDataMessage(''), 3000);
+    } finally {
+      setAddingMerits(false);
     }
   };
 
@@ -480,7 +506,7 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
                 variant="ghost"
                 size="sm"
                 onClick={handleGenerateUserPosts}
-                disabled={generatingUserPosts || generatingBeneficiaryPosts}
+                disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
                 className="rounded-xl active:scale-[0.98] px-2"
                 title="Generate user post"
               >
@@ -490,11 +516,21 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
                 variant="ghost"
                 size="sm"
                 onClick={handleGenerateBeneficiaryPosts}
-                disabled={generatingUserPosts || generatingBeneficiaryPosts}
+                disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
                 className="rounded-xl active:scale-[0.98] px-2"
                 title="Generate post with beneficiary"
               >
                 {generatingBeneficiaryPosts ? <Loader2 className="animate-spin" size={16} /> : <span>++</span>}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleAddMerits}
+                disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
+                className="rounded-xl active:scale-[0.98] px-2"
+                title="Add 100 wallet merits"
+              >
+                {addingMerits ? <Loader2 className="animate-spin" size={16} /> : <Coins size={16} className="text-base-content/70" />}
               </Button>
               {fakeDataMessage && (
                 <span className={`text-xs ${fakeDataMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>

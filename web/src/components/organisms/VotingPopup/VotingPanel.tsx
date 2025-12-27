@@ -266,8 +266,11 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                                         isPositive ? "bg-success" : "bg-error"
                                                     )}
                                                     style={{
-                                                        left: `${usedWidth}%`,
-                                                        width: `${voteWidth}%`,
+                                                        // For upvotes, fill from left (after used quota); for downvotes, fill from right
+                                                        ...(isPositive 
+                                                            ? { left: `${usedWidth}%`, width: `${voteWidth}%` }
+                                                            : { right: 0, width: `${voteWidth}%` }
+                                                        ),
                                                         zIndex: 2,
                                                     }}
                                                 />
@@ -323,23 +326,31 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                     }}
                                 >
                                     {(() => {
-                                        // Wallet bar only activates when quota is fully used
-                                        const quotaFullyUsed = quotaRemaining === 0 || voteBreakdown.quotaAmount >= quotaRemaining;
-                                        const walletPercent = quotaFullyUsed && voteBreakdown.walletAmount > 0
+                                        // For downvotes, always use wallet (wallet only)
+                                        // For upvotes, wallet only activates when quota is fully used
+                                        const shouldShowWallet = !isPositive 
+                                            ? voteBreakdown.walletAmount > 0  // Downvotes always use wallet
+                                            : (quotaRemaining === 0 || voteBreakdown.quotaAmount >= quotaRemaining); // Upvotes use wallet when quota exhausted
+                                        
+                                        const walletPercent = shouldShowWallet && voteBreakdown.walletAmount > 0
                                             ? (voteBreakdown.walletAmount / walletBalance) * 100
                                             : 0;
 
                                         return (
                                             <>
-                                                {/* Current vote overflow - colored by direction */}
-                                                {quotaFullyUsed && voteBreakdown.walletAmount > 0 && (
+                                                {/* Current vote - colored by direction */}
+                                                {shouldShowWallet && voteBreakdown.walletAmount > 0 && (
                                                     <div
                                                         className={classList(
-                                                            "absolute left-0 top-0 bottom-0",
+                                                            "absolute top-0 bottom-0",
                                                             isPositive ? "bg-success" : "bg-error"
                                                         )}
                                                         style={{
-                                                            width: `${Math.min(100, walletPercent)}%`,
+                                                            // For downvotes, fill from right to left; for upvotes, fill from left to right
+                                                            ...(isPositive 
+                                                                ? { left: 0, width: `${Math.min(100, walletPercent)}%` }
+                                                                : { right: 0, width: `${Math.min(100, walletPercent)}%` }
+                                                            ),
                                                             zIndex: 2,
                                                         }}
                                                     />

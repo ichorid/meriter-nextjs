@@ -40,7 +40,7 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
 
     const handleRemoveMember = (userId: string, userName: string) => {
         if (confirm(t('members.confirmRemove', { name: userName }))) {
-            removeMember(userId);
+            removeMember({ id: communityId, userId });
         }
     };
 

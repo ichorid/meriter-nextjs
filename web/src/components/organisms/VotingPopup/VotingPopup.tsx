@@ -77,6 +77,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   const hasPoints = freePlusAmount > 0 || walletBalance > 0;
 
+  // Check if wallet can be used for voting
+  const canUseWallet = walletBalance > 0 && community?.votingSettings?.spendsMerits !== false;
+
   // Calculate maxPlus based on effective voting mode (quota-only for viewers)
   let maxPlus = 0;
   if (effectiveVotingMode === 'wallet-only') {
@@ -84,7 +87,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   } else if (effectiveVotingMode === 'quota-only') {
     maxPlus = freePlusAmount;
   } else {
-    maxPlus = freePlusAmount + (walletBalance || 0);
+    // In mixed mode, include wallet only if it can be used
+    maxPlus = freePlusAmount + (canUseWallet ? (walletBalance || 0) : 0);
   }
 
   // maxMinus should use wallet balance for negative votes (downvotes use wallet only)

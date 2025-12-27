@@ -42,7 +42,7 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
 
     const handleRemoveMember = (userId: string, userName: string) => {
         if (confirm(t('members.confirmRemove', { name: userName }) || `Remove ${userName} from community?`)) {
-            removeMember(userId);
+            removeMember({ id: communityId, userId });
         }
     };
 

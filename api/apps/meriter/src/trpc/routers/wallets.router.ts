@@ -515,4 +515,61 @@ export const walletsRouter = router({
         message: 'Transfer functionality not implemented',
       });
     }),
+
+  /**
+   * Add wallet merits (fake data mode only)
+   */
+  addMerits: protectedProcedure
+    .input(
+      z.object({
+        communityId: z.string(),
+        amount: z.number().positive().default(100),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Check if fake data mode is enabled
+      const fakeDataMode = ctx.configService.get('dev.fakeDataMode', false);
+      if (!fakeDataMode) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Fake data mode is not enabled',
+        });
+      }
+
+      // Get community to get currency settings
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+
+      // Get currency settings
+      const currency = community.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+
+      // Add transaction to credit the wallet (creates wallet if it doesn't exist)
+      await ctx.walletService.addTransaction(
+        ctx.user.id,
+        input.communityId,
+        'credit',
+        input.amount,
+        'personal',
+        'fake_data_add',
+        `fake_add_${Date.now()}`,
+        currency,
+        'Added via fake data mode',
+      );
+
+      const updatedWallet = await ctx.walletService.getWallet(ctx.user.id, input.communityId);
+      return {
+        success: true,
+        balance: updatedWallet?.getBalance() || 0,
+        message: `Added ${input.amount} ${input.amount === 1 ? currency.singular : currency.plural}`,
+      };
+    }),
 });
