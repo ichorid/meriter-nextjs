@@ -11,6 +11,7 @@ import { useWallet } from '@/hooks/api/useWallet';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
+import { Checkbox } from '@/components/ui/shadcn/checkbox';
 import { Loader2 } from 'lucide-react';
 import {
     Select,
