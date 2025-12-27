@@ -105,7 +105,8 @@
                 "browseCommunities": "Browse Communities",
                 "search": "Search",
                 "createPost": "Create Post",
-                "createPoll": "Create Poll"
+                "createPoll": "Create Poll",
+                "createProject": "Create Project"
             }
         },
         "tip1": "Transfer points from publications and comments to your available balance to use them",
@@ -528,6 +529,7 @@
             "searchPlaceholder": "Search publications...",
             "noAccess": "No access",
             "createPoll": "Create Poll",
+            "createProject": "Create Project",
             "byDate": "By Date",
             "byRating": "By Rating",
             "loadMore": "Load more",
@@ -792,6 +794,7 @@
         },
         "createPost": "Create Post",
         "createPoll": "Create Poll",
+        "createProject": "Create Project",
         "rules": {
             "title": "Community Rules",
             "communityNotFound": "Community not found",

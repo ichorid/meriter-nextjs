@@ -40,7 +40,7 @@ import {
   type Method,
   type Stage,
   type HelpNeeded,
-} from '@meriter/shared-types';
+} from '@/lib/constants/taxonomy';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project';
 
@@ -105,8 +105,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const effectivePublicationId = publicationId || initialData?.id;
   const normalizedPublicationId = normalizeEntityId(effectivePublicationId);
 
-  // Check if this is Good Deeds Marathon community
+  // Check if this is Good Deeds Marathon or Team community (both allow project creation)
   const isGoodDeedsMarathon = community?.typeTag === 'marathon-of-good';
+  const isTeamCommunity = community?.typeTag === 'team';
+  const isFutureVision = community?.typeTag === 'future-vision';
+  const canCreateProjects = isGoodDeedsMarathon || isTeamCommunity;
   
   // Get post cost from community settings (default to 1 if not set)
   const postCost = community?.settings?.postCost ?? 1;
@@ -122,16 +125,24 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const hasInsufficientPayment = requiresPayment && quotaRemaining < postCost && walletBalance < postCost;
   const paymentMethod = willUseQuota ? 'quota' : (willUseWallet ? 'wallet' : null);
 
+  const initialPostType: PublicationPostType =
+    initialData?.postType === 'project' || initialData?.isProject
+      ? 'project'
+      : (initialData?.postType || defaultPostType);
+
   const [title, setTitle] = useState(initialData?.title || '');
-  const [description, setDescription] = useState(initialData?.description || initialData?.content || '');
-  const [postType, setPostType] = useState<PublicationPostType>(initialData?.postType || defaultPostType);
+  const [description, setDescription] = useState(
+    initialData?.description || initialData?.content || '',
+  );
+  const [postType, setPostType] = useState<PublicationPostType>(initialPostType);
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
   // Support both legacy single image and new multi-image
   const initialImages = initialData?.imageUrl 
     ? [initialData.imageUrl] 
     : ((initialData as any)?.images || []);
   const [images, setImages] = useState<string[]>(initialImages);
-  const [isProject, setIsProject] = useState(initialData?.isProject || false);
+  // Derive isProject from postType instead of separate checkbox
+  const isProject = postType === 'project' || initialData?.isProject || false;
   // Taxonomy fields
   const [impactArea, setImpactArea] = useState<ImpactArea | ''>((initialData as any)?.impactArea || '');
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>((initialData as any)?.beneficiaries || []);
@@ -192,10 +203,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         const draft: PublicationDraft = JSON.parse(savedDraft);
         setTitle(draft.title || '');
         setDescription(draft.description || '');
-        setPostType(draft.postType || defaultPostType);
+        // If draft has isProject but no postType, set postType to 'project' for backwards compatibility
+        const draftPostType = draft.postType || (draft.isProject ? 'project' : defaultPostType);
+        setPostType(draftPostType);
         setHashtags(draft.hashtags || []);
         setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
-        setIsProject(draft.isProject || false);
         setImpactArea((draft.impactArea as ImpactArea) || '');
         setBeneficiaries(draft.beneficiaries || []);
         setMethods(draft.methods || []);
@@ -268,10 +280,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         const draft: PublicationDraft = JSON.parse(savedDraft);
         setTitle(draft.title || '');
         setDescription(draft.description || '');
-        setPostType(draft.postType || defaultPostType);
+        // If draft has isProject but no postType, set postType to 'project' for backwards compatibility
+        const draftPostType = draft.postType || (draft.isProject ? 'project' : defaultPostType);
+        setPostType(draftPostType);
         setHashtags(draft.hashtags || []);
         setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
-        setIsProject(draft.isProject || false);
         setImpactArea((draft.impactArea as ImpactArea) || '');
         setBeneficiaries(draft.beneficiaries || []);
         setMethods(draft.methods || []);
@@ -293,7 +306,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     setDescription('');
     setHashtags([]);
     setImages([]);
-    setIsProject(false);
+    setPostType(defaultPostType);
     setImpactArea('');
     setBeneficiaries([]);
     setMethods([]);
@@ -327,8 +340,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     setErrors({});
 
     try {
-      // Ensure postType is 'project' if isProject is true
-      const finalPostType = isProject ? 'project' : postType;
+      // Use postType directly (isProject is derived from it)
+      const finalPostType = postType;
 
       let publication;
       if (isEditMode) {
@@ -353,6 +366,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             imageUrl: images.length > 0 ? images[0] : undefined, // Legacy: use first image
             // NOTE: backend UpdatePublicationDtoSchema is strict and currently does not support `images`.
             // We intentionally only send `imageUrl` when editing.
+            // Taxonomy fields (editable)
+            impactArea: impactArea || undefined,
+            beneficiaries,
+            methods,
+            stage: stage || undefined,
+            helpNeeded,
           },
         });
       } else {
@@ -367,7 +386,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           content: description.trim(), // Оставляем для обратной совместимости
           type: 'text',
           postType: finalPostType,
-          isProject: isProject,
+          isProject: finalPostType === 'project',
           hashtags,
           imageUrl: images.length > 0 ? images[0] : undefined, // Legacy: use first image
           images: images.length > 0 ? images : undefined, // New: support multiple images
@@ -411,15 +430,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     }
   };
 
-  // Handle PROJECT checkbox change
-  const handleProjectChange = (checked: boolean) => {
-    setIsProject(checked);
-    if (checked) {
-      setPostType('project');
-    } else {
-      setPostType('basic');
-    }
-  };
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -502,66 +512,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             />
           </BrandFormControl>
 
-          {/* PROJECT checkbox - only for Good Deeds Marathon */}
-          {isGoodDeedsMarathon && (
-            <BrandFormControl helperText={t('fields.markAsProjectHelp')}>
-              <div className="flex items-center gap-2.5">
-                <Checkbox
-                  id="isProject"
-                  checked={isProject}
-                  onCheckedChange={handleProjectChange}
-                  disabled={isSubmitting}
-                />
-                <Label htmlFor="isProject" className="text-sm cursor-pointer">
-                  {t('fields.markAsProject')}
-                </Label>
-              </div>
-            </BrandFormControl>
-          )}
-
-          {/* Post Type selector - hide if PROJECT checkbox is checked (in marathon communities) or when editing */}
-          {!isProject && !isEditMode && (
-            <BrandFormControl
-              label={t('fields.postType')}
-              helperText={t('fields.postTypeHelp')}
-            >
-              <Select
-                value={postType}
-                onValueChange={(value) => {
-                  const newType = value as PublicationPostType;
-                  setPostType(newType);
-                }}
-                disabled={isSubmitting}
-              >
-                <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
-                  <SelectValue placeholder={t('fields.postTypePlaceholder')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="basic">{t('postTypes.basic')}</SelectItem>
-                  <SelectItem value="poll">{t('postTypes.poll')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </BrandFormControl>
-          )}
-
-          {/* Show poll creation prompt when poll type is selected */}
-          {postType === 'poll' && !isProject && (
-            <div className="p-4 bg-info/10 border border-info/20 rounded-xl">
-              <p className="text-sm text-base-content mb-3">
-                {t('pollCreatePrompt')}
-              </p>
-              <Button
-                variant="default"
-                onClick={() => router.push(`/meriter/communities/${communityId}/create-poll`)}
-                className="rounded-xl active:scale-[0.98]"
-              >
-                {t('goToPollCreate')}
-              </Button>
-            </div>
-          )}
-
           {/* Taxonomy fields - show for project posts */}
-          {(isProject || postType === 'project') && (
+          {postType === 'project' && (
             <>
               <div className="text-xs text-muted-foreground mb-2">
                 {t('taxonomy.requiredForProjects') || 'Required fields for project posts'}
@@ -582,7 +534,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                       <SelectValue placeholder={t('taxonomy.selectImpactArea') || 'Choose one'} />
                     </SelectTrigger>
                     <SelectContent>
-                      {IMPACT_AREAS.map((area: ImpactArea) => (
+                      {(Array.isArray(IMPACT_AREAS) ? [...IMPACT_AREAS] : []).map((area: ImpactArea) => (
                         <SelectItem key={area} value={area}>
                           {area}
                         </SelectItem>
@@ -605,7 +557,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                       <SelectValue placeholder={t('taxonomy.selectStage') || 'Choose one'} />
                     </SelectTrigger>
                     <SelectContent>
-                      {STAGES.map((s: Stage) => (
+                      {(Array.isArray(STAGES) ? [...STAGES] : []).map((s: Stage) => (
                         <SelectItem key={s} value={s}>
                           {s}
                         </SelectItem>
@@ -640,7 +592,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               >
                 <div className="pt-1">
                   <Checklist
-                    options={BENEFICIARIES}
+                    options={Array.isArray(BENEFICIARIES) ? [...BENEFICIARIES] : []}
                     selected={beneficiaries}
                     cap={2}
                     hint={t('taxonomy.beneficiariesHint') || 'Who benefits directly?'}
@@ -670,7 +622,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               >
                 <div className="pt-1">
                   <Checklist
-                    options={METHODS}
+                    options={Array.isArray(METHODS) ? [...METHODS] : []}
                     selected={methods}
                     cap={3}
                     hint={t('taxonomy.methodsHint') || 'How does the project create impact?'}
@@ -700,7 +652,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               >
                 <div className="pt-1">
                   <Checklist
-                    options={HELP_NEEDED}
+                    options={Array.isArray(HELP_NEEDED) ? [...HELP_NEEDED] : []}
                     selected={helpNeeded}
                     cap={3}
                     hint={t('taxonomy.helpNeededHint') || 'What are you collecting right now?'}
@@ -761,6 +713,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     imageUrl: images.length > 0 ? images[0] : undefined,
                     images: images.length > 0 ? images : undefined,
                     isProject,
+                    postType: postType,
+                    impactArea: impactArea && impactArea.trim() ? impactArea : undefined,
+                    stage: stage && stage.trim() ? stage : undefined,
+                    beneficiaries: beneficiaries.length > 0 ? beneficiaries : undefined,
+                    methods: methods.length > 0 ? methods : undefined,
+                    helpNeeded: helpNeeded.length > 0 ? helpNeeded : undefined,
                     meta: {},
                   }}
                 />
@@ -813,7 +771,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                   isSubmittingRef.current ||
                   hasInsufficientPayment ||
                   (isEditMode && !normalizedPublicationId) ||
-                  ((isProject || postType === 'project') && (!impactArea || !stage))
+                  (postType === 'project' && (!impactArea || !stage))
                 }
                 className="rounded-xl active:scale-[0.98]"
               >

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { FileText, BarChart2, Info } from 'lucide-react';
+import { FileText, BarChart2, Info, FolderKanban } from 'lucide-react';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useCommunity } from '@/hooks/api/useCommunities';
@@ -32,6 +32,11 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
 
     // Check if community is future-vision (polls disabled)
     const isFutureVision = community?.typeTag === 'future-vision';
+    
+    // Check if community supports project creation (marathon-of-good or team)
+    const isGoodDeedsMarathon = community?.typeTag === 'marathon-of-good';
+    const isTeamCommunity = community?.typeTag === 'team';
+    const canCreateProjects = isGoodDeedsMarathon || isTeamCommunity;
 
     // Calculate available actions
     const hasAvailableActions = canCreate === true;
@@ -61,6 +66,20 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
             return;
         }
         router.push(`/meriter/communities/${communityId}/create-poll`);
+        setIsOpen(false);
+    };
+
+    const handleCreateProject = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!canCreate) {
+            addToast(
+                reason || t('noPermission'),
+                'info'
+            );
+            setIsOpen(false);
+            return;
+        }
+        router.push(`/meriter/communities/${communityId}/create?postType=project`);
         setIsOpen(false);
     };
 
@@ -142,6 +161,18 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
                                         <span className="text-sm font-medium text-base-content">{t('createPoll')}</span>
                                     </button>
                                 )}
+                                {canCreateProjects && (
+                                    <button
+                                        type="button"
+                                        onClick={handleCreateProject}
+                                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-base-content/5 transition-colors text-left"
+                                    >
+                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                            <FolderKanban size={16} className="text-primary" />
+                                        </div>
+                                        <span className="text-sm font-medium text-base-content">{t('createProject') || 'Create Project'}</span>
+                                    </button>
+                                )}
                             </>
                         ) : (
                             <>
@@ -165,6 +196,18 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
                                             <BarChart2 size={16} className="text-base-content/50" />
                                         </div>
                                         <span className="text-sm font-medium text-base-content/50">{t('createPoll')}</span>
+                                    </button>
+                                )}
+                                {canCreateProjects && (
+                                    <button
+                                        type="button"
+                                        disabled
+                                        className="w-full px-4 py-3 flex items-center gap-3 text-left opacity-40 cursor-not-allowed"
+                                    >
+                                        <div className="w-8 h-8 rounded-full bg-base-content/5 flex items-center justify-center">
+                                            <FolderKanban size={16} className="text-base-content/50" />
+                                        </div>
+                                        <span className="text-sm font-medium text-base-content/50">{t('createProject') || 'Create Project'}</span>
                                     </button>
                                 )}
                                 {reason && (

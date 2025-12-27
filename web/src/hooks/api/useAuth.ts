@@ -32,34 +32,42 @@ export const useMe = () => {
     },
   });
 
-  // DEBUG: Log query state changes
-  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-    const prevDataRef = React.useRef(query.data);
-    const prevErrorRef = React.useRef(query.error);
-    
-    React.useEffect(() => {
-      if (query.data !== prevDataRef.current) {
-        console.log('[AUTH-DEBUG] useMe data changed:', {
-          hasUser: !!query.data,
-          userId: query.data?.id,
-          username: query.data?.username,
-          isLoading: query.isLoading,
-          isFetching: query.isFetching,
-        });
-        prevDataRef.current = query.data;
-      }
-      
-      if (query.error !== prevErrorRef.current) {
-        console.warn('[AUTH-DEBUG] useMe error:', {
-          error: query.error,
-          isUnauthorized: isUnauthorizedError(query.error),
-          isLoading: query.isLoading,
-          isFetching: query.isFetching,
-        });
-        prevErrorRef.current = query.error;
-      }
-    }, [query.data, query.error, query.isLoading, query.isFetching]);
-  }
+  // DEBUG: Log query state changes (hooks must remain unconditional)
+  const isDevClient =
+    typeof window !== 'undefined' && process.env.NODE_ENV === 'development';
+  const prevDataRef = React.useRef(query.data);
+  const prevErrorRef = React.useRef(query.error);
+
+  React.useEffect(() => {
+    if (!isDevClient) return;
+
+    if (query.data !== prevDataRef.current) {
+      console.log('[AUTH-DEBUG] useMe data changed:', {
+        hasUser: !!query.data,
+        userId: query.data?.id,
+        username: query.data?.username,
+        isLoading: query.isLoading,
+        isFetching: query.isFetching,
+      });
+      prevDataRef.current = query.data;
+    }
+
+    if (query.error !== prevErrorRef.current) {
+      console.warn('[AUTH-DEBUG] useMe error:', {
+        error: query.error,
+        isUnauthorized: isUnauthorizedError(query.error),
+        isLoading: query.isLoading,
+        isFetching: query.isFetching,
+      });
+      prevErrorRef.current = query.error;
+    }
+  }, [
+    isDevClient,
+    query.data,
+    query.error,
+    query.isLoading,
+    query.isFetching,
+  ]);
 
   return query;
 };

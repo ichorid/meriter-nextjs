@@ -116,8 +116,8 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
         <p className="text-base-content mb-3">{description}</p>
       ) : null}
       
-      {/* Taxonomy badges */}
-      {((publication as any).impactArea || (publication as any).stage || (publication as any).beneficiaries?.length || (publication as any).methods?.length || (publication as any).helpNeeded?.length) && (
+      {/* Taxonomy badges - show for project posts */}
+      {((publication as any).postType === 'project' || (publication as any).isProject) && (
         <div className="mb-3 space-y-2">
           <div className="flex flex-wrap gap-2">
             {(publication as any).impactArea && (
@@ -127,7 +127,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
               <Badge variant="outline" className="font-normal">{(publication as any).stage}</Badge>
             )}
           </div>
-          {(publication as any).beneficiaries?.length > 0 && (
+          {(publication as any).beneficiaries && Array.isArray((publication as any).beneficiaries) && (publication as any).beneficiaries.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-muted-foreground">Beneficiaries:</span>
               {((publication as any).beneficiaries as string[]).map((x) => (
@@ -135,7 +135,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
               ))}
             </div>
           )}
-          {(publication as any).methods?.length > 0 && (
+          {(publication as any).methods && Array.isArray((publication as any).methods) && (publication as any).methods.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-muted-foreground">Methods:</span>
               {((publication as any).methods as string[]).map((x) => (
@@ -143,7 +143,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
               ))}
             </div>
           )}
-          {(publication as any).helpNeeded?.length > 0 && (
+          {(publication as any).helpNeeded && Array.isArray((publication as any).helpNeeded) && (publication as any).helpNeeded.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-muted-foreground">Help needed:</span>
               {((publication as any).helpNeeded as string[]).map((x) => (

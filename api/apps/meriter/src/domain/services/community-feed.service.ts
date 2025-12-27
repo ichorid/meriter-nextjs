@@ -184,6 +184,12 @@ export class CommunityFeedService {
           isProject: snapshot.isProject || false,
           hashtags: snapshot.hashtags || [],
           imageUrl: snapshot.imageUrl || undefined,
+          images: snapshot.images || undefined,
+          impactArea: snapshot.impactArea || undefined,
+          stage: snapshot.stage || undefined,
+          beneficiaries: snapshot.beneficiaries && snapshot.beneficiaries.length > 0 ? snapshot.beneficiaries : undefined,
+          methods: snapshot.methods && snapshot.methods.length > 0 ? snapshot.methods : undefined,
+          helpNeeded: snapshot.helpNeeded && snapshot.helpNeeded.length > 0 ? snapshot.helpNeeded : undefined,
           metrics: {
             upvotes: snapshot.metrics.upvotes,
             downvotes: snapshot.metrics.downvotes,

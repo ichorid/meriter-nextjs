@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { CommunityTopBar } from '@/components/organisms/ContextTopBar';
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
 import { MembersTab } from "@/components/organisms/Community/MembersTab";
 import { Tabs } from "@/components/ui/Tabs";
@@ -54,12 +54,14 @@ interface CommunityPageClientProps {
 export function CommunityPageClient({ communityId: chatId }: CommunityPageClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const pathname = usePathname();
     const t = useTranslations('pages');
     const tCommunities = useTranslations('pages.communities');
 
     // Get the post parameter from URL for deep linking
     const targetPostSlug = searchParams?.get('post');
     const targetPollId = searchParams?.get('poll');
+    const highlightPostSlug = searchParams?.get('highlight');
 
     // Get sort state from URL params
     const sortBy = searchParams?.get('sort') || 'voted';
@@ -214,13 +216,15 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     // Handle deep linking to specific post or poll
     useEffect(() => {
         const postsToSearch = activeTab === 'vision' ? visionPublications : publications;
-        if ((targetPostSlug || targetPollId) && postsToSearch.length > 0) {
+        if ((targetPostSlug || targetPollId || highlightPostSlug) && postsToSearch.length > 0) {
             let targetPost: FeedItem | undefined;
 
             if (targetPollId) {
                 targetPost = postsToSearch.find((p: FeedItem) => p.id === targetPollId && p.type === 'poll');
             } else if (targetPostSlug) {
                 targetPost = postsToSearch.find((p: FeedItem) => p.slug === targetPostSlug);
+            } else if (highlightPostSlug) {
+                targetPost = postsToSearch.find((p: FeedItem) => p.slug === highlightPostSlug);
             }
 
             if (targetPost) {
@@ -233,11 +237,18 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         // Remove highlight after 3 seconds
                         setTimeout(() => setHighlightedPostId(null), 3000);
+                        // Remove highlight parameter from URL after scrolling
+                        if (highlightPostSlug) {
+                            const params = new URLSearchParams(searchParams?.toString() || '');
+                            params.delete('highlight');
+                            const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+                            router.replace(newUrl);
+                        }
                     }
                 }, 500);
             }
         }
-    }, [targetPostSlug, targetPollId, publications, visionPublications, activeTab]);
+    }, [targetPostSlug, targetPollId, highlightPostSlug, publications, visionPublications, activeTab, searchParams, pathname, router]);
 
     const error =
         (publications ?? [])?.[0]?.error || err

@@ -712,10 +712,22 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   beneficiaryId: z.string().optional(),
   content: z.string().min(1),
   slug: z.string().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  postType: z.enum(["basic", "poll", "project"]).optional(),
+  isProject: z.boolean().optional(),
   hashtags: z.array(z.string()).default([]),
+  imageUrl: z.string().url().optional(),
+  images: z.array(z.string().url()).optional(),
   metrics: PublicationMetricsSchema,
   meta: FeedItemMetaSchema,
   permissions: ResourcePermissionsSchema.optional(),
+  // Taxonomy fields for project categorization
+  impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
+  beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).optional(),
+  methods: z.array(z.enum([...METHODS] as [string, ...string[]])).optional(),
+  stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
+  helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).optional(),
 });
 
 export const PollFeedItemSchema = IdentifiableSchema.merge(
