@@ -27,11 +27,18 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
     const { canView: canViewMerits } = useCanViewUserMerits(communityId);
 
     const members = useMemo(() => {
-        return membersData?.data || [];
+        const data = membersData?.data;
+        // Ensure we always return an array, even if data is not an array
+        return Array.isArray(data) ? data : [];
     }, [membersData]);
 
     // Filter members based on search query
     const filteredMembers = useMemo(() => {
+        // Ensure members is an array before filtering
+        if (!Array.isArray(members)) {
+            return [];
+        }
+        
         if (!searchQuery.trim()) {
             return members;
         }

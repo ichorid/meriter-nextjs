@@ -4,6 +4,7 @@ import { TRPCError } from '@trpc/server';
 import { CreatePollDtoSchema, UpdatePollDtoSchema, CreatePollCastDtoSchema } from '@meriter/shared-types';
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { checkPermissionInHandler } from '../middleware/permission.middleware';
 
 /**
  * Helper to calculate remaining quota for a user in a community (including poll casts)
@@ -221,6 +222,9 @@ export const pollsRouter = router({
   create: protectedProcedure
     .input(CreatePollDtoSchema)
     .mutation(async ({ ctx, input }) => {
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'create', 'poll', input);
+
       // Prevent poll creation in future-vision communities
       const community = await ctx.communityService.getCommunity(input.communityId);
       if (!community) {
@@ -357,6 +361,9 @@ export const pollsRouter = router({
       data: UpdatePollDtoSchema,
     }))
     .mutation(async ({ ctx, input }) => {
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'edit', 'poll', input);
+
       const poll = await ctx.pollService.updatePoll(input.id, ctx.user.id, input.data);
       const snapshot = poll.toSnapshot();
       

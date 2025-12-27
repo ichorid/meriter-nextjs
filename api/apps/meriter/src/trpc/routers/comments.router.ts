@@ -6,6 +6,7 @@ import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { VoteTransactionCalculatorService } from '../../api-v1/common/services/vote-transaction-calculator.service';
 import { UserFormatter } from '../../api-v1/common/utils/user-formatter.util';
+import { checkPermissionInHandler } from '../middleware/permission.middleware';
 
 export const commentsRouter = router({
   /**
@@ -391,17 +392,8 @@ export const commentsRouter = router({
       data: UpdateCommentDtoSchema,
     }))
     .mutation(async ({ ctx, input }) => {
-      // Check permissions before updating
-      const canEdit = await ctx.permissionService.canEditComment(
-        ctx.user.id,
-        input.id,
-      );
-      if (!canEdit) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'You do not have permission to edit this comment',
-        });
-      }
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'edit', 'comment', input);
 
       if (!input.data.content) {
         throw new TRPCError({
@@ -437,6 +429,9 @@ export const commentsRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'delete', 'comment', input);
+
       await ctx.commentService.deleteComment(input.id, ctx.user.id);
       return { success: true, message: 'Comment deleted successfully' };
     }),

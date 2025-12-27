@@ -80,7 +80,7 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
                     <div className="flex justify-center py-8">
                         <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
                     </div>
-                ) : membersData?.data && membersData.data.length > 0 ? (
+                ) : membersData?.data && Array.isArray(membersData.data) && membersData.data.length > 0 ? (
                     <div className="bg-base-100 rounded-lg border border-base-300 overflow-hidden">
                         {membersData.data.map((member) => (
                             <div key={member.id} className="relative group">

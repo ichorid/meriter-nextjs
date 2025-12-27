@@ -4,6 +4,7 @@ import { TRPCError } from '@trpc/server';
 import { CreatePublicationDtoSchema, UpdatePublicationDtoSchema, WithdrawAmountDtoSchema } from '@meriter/shared-types';
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
+import { checkPermissionInHandler } from '../middleware/permission.middleware';
 
 /**
  * Helper function to process withdrawal and credit wallet
@@ -370,6 +371,9 @@ export const publicationsRouter = router({
   create: protectedProcedure
     .input(CreatePublicationDtoSchema)
     .mutation(async ({ ctx, input }) => {
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'create', 'publication', input);
+
       // Get community to check payment requirements
       const community = await ctx.communityService.getCommunity(input.communityId);
       if (!community) {
@@ -512,17 +516,8 @@ export const publicationsRouter = router({
       data: UpdatePublicationDtoSchema,
     }))
     .mutation(async ({ ctx, input }) => {
-      // Check permissions before updating
-      const canEdit = await ctx.permissionService.canEditPublication(
-        ctx.user.id,
-        input.id,
-      );
-      if (!canEdit) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'You do not have permission to edit this publication',
-        });
-      }
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'edit', 'publication', input);
 
       // Clean up null values from update data
       const updateData: any = { ...input.data };
@@ -564,6 +559,9 @@ export const publicationsRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'delete', 'publication', input);
+
       await ctx.publicationService.deletePublication(input.id, ctx.user.id);
       return { success: true };
     }),
