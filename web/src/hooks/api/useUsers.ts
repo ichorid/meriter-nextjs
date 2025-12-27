@@ -7,8 +7,13 @@ export const useUserProfile = (userId: string) => {
   );
 };
 
-export function useAllLeads(params: { page?: number; pageSize?: number } = {}) {
-  return trpc.users.getAllLeads.useQuery(params);
+export function useAllLeads(
+  params: { page?: number; pageSize?: number } = {},
+  options?: { enabled?: boolean }
+) {
+  return trpc.users.getAllLeads.useQuery(params, {
+    enabled: options?.enabled ?? true,
+  });
 }
 
 export function useUpdatesFrequency(userId: string = 'me') {

@@ -32,8 +32,11 @@ export default function CommunitiesPage() {
     // Get user's communities with wallets and quotas (handles both regular users and superadmin)
     const { communities: allCommunities, walletsMap, quotasMap, isLoading: communitiesLoading } = useUserCommunities();
 
-    // Fetch leads
-    const { data: leadsData, isLoading: leadsLoading } = useAllLeads({ pageSize: 100 });
+    // Fetch leads only when the leads section is expanded
+    const { data: leadsData, isLoading: leadsLoading } = useAllLeads(
+        { pageSize: 100 },
+        { enabled: leadsExpanded }
+    );
     const leads = (leadsData?.data || []) as EnrichedLead[];
 
     // Filter leads based on search query
