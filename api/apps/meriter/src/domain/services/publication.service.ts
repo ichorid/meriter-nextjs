@@ -140,15 +140,15 @@ export class PublicationService {
       helpNeeded?: string[];
     },
   ): Promise<Publication[]> {
-    // Build query
-    const query: any = { communityId };
+    // Build query - exclude deleted items
+    const query: any = { communityId, deleted: { $ne: true } };
 
     // Apply hashtag filter if provided
     if (hashtag) {
       query.hashtags = hashtag;
     }
 
-    // Apply taxonomy filters with AND semantics
+    // Apply taxonomy filters with OR semantics for array fields
     if (filters) {
       if (filters.impactArea) {
         query.impactArea = filters.impactArea;
@@ -156,15 +156,15 @@ export class PublicationService {
       if (filters.stage) {
         query.stage = filters.stage;
       }
-      // Array fields: all selected items must be present (AND)
+      // Array fields: item matches if it has ANY of the selected tags (OR)
       if (filters.beneficiaries && filters.beneficiaries.length > 0) {
-        query.beneficiaries = { $all: filters.beneficiaries };
+        query.beneficiaries = { $in: filters.beneficiaries };
       }
       if (filters.methods && filters.methods.length > 0) {
-        query.methods = { $all: filters.methods };
+        query.methods = { $in: filters.methods };
       }
       if (filters.helpNeeded && filters.helpNeeded.length > 0) {
-        query.helpNeeded = { $all: filters.helpNeeded };
+        query.helpNeeded = { $in: filters.helpNeeded };
       }
     }
 
@@ -193,9 +193,9 @@ export class PublicationService {
     limit: number = 20,
     skip: number = 0,
   ): Promise<Publication[]> {
-    // Direct Mongoose query
+    // Direct Mongoose query - exclude deleted items
     const docs = await this.publicationModel
-      .find({})
+      .find({ deleted: { $ne: true } })
       .limit(limit)
       .skip(skip)
       .sort({ 'metrics.score': -1 })
@@ -268,7 +268,7 @@ export class PublicationService {
     skip: number = 0,
   ): Promise<Publication[]> {
     const docs = await this.publicationModel
-      .find({ authorId })
+      .find({ authorId, deleted: { $ne: true } })
       .limit(limit)
       .skip(skip)
       .sort({ createdAt: -1 })
@@ -285,10 +285,34 @@ export class PublicationService {
     skip: number = 0,
   ): Promise<Publication[]> {
     const docs = await this.publicationModel
-      .find({ hashtags: hashtag })
+      .find({ hashtags: hashtag, deleted: { $ne: true } })
       .limit(limit)
       .skip(skip)
       .sort({ createdAt: -1 })
+      .lean();
+
+    return docs.map((doc) =>
+      Publication.fromSnapshot(doc as IPublicationDocument),
+    );
+  }
+
+  /**
+   * Get deleted publications by community (for leads only)
+   */
+  async getDeletedPublicationsByCommunity(
+    communityId: string,
+    limit: number = 20,
+    skip: number = 0,
+  ): Promise<Publication[]> {
+    // Build query for deleted items
+    const query: any = { communityId, deleted: true };
+
+    // Direct Mongoose query
+    const docs = await this.publicationModel
+      .find(query)
+      .limit(limit)
+      .skip(skip)
+      .sort({ deletedAt: -1, createdAt: -1 })
       .lean();
 
     return docs.map((doc) =>
@@ -425,7 +449,17 @@ export class PublicationService {
     // Authorization is handled by PermissionGuard via PermissionService.canDeletePublication()
     // No need for redundant check here
 
-    await this.publicationModel.deleteOne({ id: publicationId });
+    // Soft delete: mark as deleted instead of removing from database
+    // This preserves votes, comments, and all related data
+    await this.publicationModel.updateOne(
+      { id: publicationId },
+      {
+        $set: {
+          deleted: true,
+          deletedAt: new Date(),
+        },
+      },
+    );
     return true;
   }
 

@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
-import { Loader2, FileText, Users, Eye, Filter, X, ChevronDown } from 'lucide-react';
+import { Loader2, FileText, Users, Eye, Filter, X, ChevronDown, Trash2 } from 'lucide-react';
 import {
   IMPACT_AREAS,
   BENEFICIARIES,
@@ -47,6 +47,7 @@ import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations as useCommonTranslations } from 'next-intl';
+import { useInfiniteDeletedPublications } from '@/hooks/api/usePublications';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -152,10 +153,26 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         tag: selectedTag || undefined,
     });
 
+    // Fetch deleted publications (will only return data if user is lead)
+    // Hook is called here so it's available for useEffect/useMemo below
+    const {
+        data: deletedData,
+        fetchNextPage: fetchNextDeletedPage,
+        hasNextPage: hasNextDeletedPage,
+        isFetchingNextPage: isFetchingNextDeletedPage,
+        error: _deletedErr
+    } = useInfiniteDeletedPublications(chatId, 20);
+
     // Derive paginationEnd from hasNextPage instead of setting it in getNextPageParam
     useEffect(() => {
         if (activeTab === 'vision') {
             if (!hasNextVisionPage) {
+                setPaginationEnd(true);
+            } else {
+                setPaginationEnd(false);
+            }
+        } else if (activeTab === 'deleted') {
+            if (!hasNextDeletedPage) {
                 setPaginationEnd(true);
             } else {
                 setPaginationEnd(false);
@@ -167,7 +184,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 setPaginationEnd(false);
             }
         }
-    }, [hasNextPage, hasNextVisionPage, activeTab]);
+    }, [hasNextPage, hasNextVisionPage, hasNextDeletedPage, activeTab]);
 
     // Memoize feed items array (can contain both publications and polls)
     const publications = useMemo(() => {
@@ -221,6 +238,29 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             );
     }, [visionData?.pages]); // Only recalculate when visionData.pages changes
 
+    // Memoize deleted publications array
+    const deletedPublications = useMemo(() => {
+        return (deletedData?.pages ?? [])
+            .flatMap((page: any) => {
+                if (page?.data && Array.isArray(page.data)) {
+                    return page.data;
+                }
+                return [];
+            })
+            .map((p: any) => ({
+                ...p,
+                slug: p.slug || p.id,
+                beneficiaryId: p.beneficiaryId || p.meta?.beneficiary?.username,
+                beneficiaryName: p.meta?.beneficiary?.name,
+                beneficiaryPhotoUrl: p.meta?.beneficiary?.photoUrl,
+                beneficiaryUsername: p.meta?.beneficiary?.username,
+                type: p.type || (p.content ? 'publication' : 'poll'),
+            }))
+            .filter((p: FeedItem, index: number, self: FeedItem[]) =>
+                index === self.findIndex((t: FeedItem) => t?.id === p?.id)
+            );
+    }, [deletedData?.pages]);
+
     // Handle deep linking to specific post or poll
     useEffect(() => {
         const postsToSearch = activeTab === 'vision' ? visionPublications : publications;
@@ -246,7 +286,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         // Remove highlight after 3 seconds
                         setTimeout(() => setHighlightedPostId(null), 3000);
                         // Remove highlight parameter from URL after scrolling
-                        if (highlightPostSlug) {
+                        if (highlightPostSlug && pathname) {
                             const params = new URLSearchParams(searchParams?.toString() || '');
                             params.delete('highlight');
                             const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
@@ -286,6 +326,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         const role = userRoles.find(r => r.communityId === chatId);
         return role?.role || null;
     }, [user?.globalRole, userRoles, chatId]);
+
+    // Check if user is a lead (for deleted tab visibility)
+    const isLead = userRoleInCommunity === 'lead' || user?.globalRole === 'superadmin';
 
     // Determine eligibility for permanent merits and quota
     const canEarnPermanentMerits = useMemo(() => {
@@ -424,7 +467,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             });
         }
 
-        // Filter by taxonomy fields (AND semantics)
+        // Filter by taxonomy fields (OR semantics for array fields)
         filtered = filtered.filter((p: FeedItem) => {
             if (p.type !== 'publication') return true; // Only filter publications
             
@@ -433,24 +476,21 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             if (fImpactArea !== 'any' && pub.impactArea !== fImpactArea) return false;
             if (fStage !== 'any' && pub.stage !== fStage) return false;
             
-            // Strict AND semantics across selected facets
+            // OR semantics across selected facets - item matches if it has ANY of the selected tags
             if (fBeneficiaries.length > 0) {
                 const pubBeneficiaries = pub.beneficiaries || [];
-                for (const b of fBeneficiaries) {
-                    if (!pubBeneficiaries.includes(b)) return false;
-                }
+                const hasAnyBeneficiary = fBeneficiaries.some(b => pubBeneficiaries.includes(b));
+                if (!hasAnyBeneficiary) return false;
             }
             if (fMethods.length > 0) {
                 const pubMethods = pub.methods || [];
-                for (const m of fMethods) {
-                    if (!pubMethods.includes(m)) return false;
-                }
+                const hasAnyMethod = fMethods.some(m => pubMethods.includes(m));
+                if (!hasAnyMethod) return false;
             }
             if (fHelpNeeded.length > 0) {
                 const pubHelpNeeded = pub.helpNeeded || [];
-                for (const h of fHelpNeeded) {
-                    if (!pubHelpNeeded.includes(h)) return false;
-                }
+                const hasAnyHelpNeeded = fHelpNeeded.some(h => pubHelpNeeded.includes(h));
+                if (!hasAnyHelpNeeded) return false;
             }
             
             return true;
@@ -573,6 +613,11 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         label: tCommunities('members.title') || 'Members',
                         icon: <Users size={16} />,
                     },
+                    ...(isLead ? [{
+                        id: 'deleted',
+                        label: tCommunities('deleted') || 'Deleted',
+                        icon: <Trash2 size={16} />,
+                    }] : []),
                 ]}
                 activeTab={activeTab}
                 onChange={handleTabChange}
@@ -938,6 +983,70 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     ) : (
                         <div className="text-center py-8 text-base-content/60">
                             <p>{tCommunities('visionCommunityNotFound')}</p>
+                        </div>
+                    )}
+                </div>
+            ) : activeTab === 'deleted' ? (
+                <div className="space-y-4">
+                    {isLead ? (
+                        <>
+                            {deletedPublications.map((p) => {
+                                const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug))
+                                    || !!(targetPollId && p.id === targetPollId);
+
+                                return (
+                                    <div
+                                        key={p.id}
+                                        id={`post-${p.id}`}
+                                        className={
+                                            highlightedPostId === p.id
+                                                ? 'rounded-lg scale-[1.02] bg-brand-primary/10 shadow-lg transition-all duration-300 p-2'
+                                                : isSelected
+                                                    ? 'rounded-lg scale-[1.02] bg-brand-secondary/10 shadow-lg transition-all duration-300 p-2'
+                                                    : 'hover:shadow-md transition-all duration-200 rounded-lg opacity-75'
+                                        }
+                                    >
+                                        <div className="relative">
+                                            {/* Deleted indicator badge */}
+                                            <div className="absolute -top-2 -right-2 z-10 bg-error text-error-content rounded-full px-2 py-1 text-xs font-semibold shadow-lg">
+                                                Deleted
+                                            </div>
+                                            <PublicationCard
+                                                publication={p}
+                                                wallets={Array.isArray(wallets) ? wallets : []}
+                                                showCommunityAvatar={false}
+                                                isSelected={isSelected}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            {isFetchingNextDeletedPage && (
+                                <div className="flex justify-center py-4">
+                                    <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+                                </div>
+                            )}
+
+                            {!paginationEnd && deletedPublications.length > 0 && !isFetchingNextDeletedPage && (
+                                <Button
+                                    variant="default"
+                                    onClick={() => fetchNextDeletedPage()}
+                                    className="rounded-xl active:scale-[0.98] w-full sm:w-auto mx-auto block"
+                                >
+                                    {t('communities.loadMore')}
+                                </Button>
+                            )}
+
+                            {deletedPublications.length === 0 && !isFetchingNextDeletedPage && (
+                                <div className="text-center py-8 text-base-content/60">
+                                    <p>{tCommunities('noDeletedPublications') || 'No deleted publications'}</p>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="text-center py-8 text-base-content/60">
+                            <p>{tCommunities('accessDenied') || 'Access denied'}</p>
                         </div>
                     )}
                 </div>
