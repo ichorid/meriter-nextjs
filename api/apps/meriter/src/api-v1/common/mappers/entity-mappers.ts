@@ -55,6 +55,21 @@ export class EntityMappers {
       description: publication.getDescription || undefined,
       postType: snapshot.postType || 'basic',
       isProject: snapshot.isProject || false,
+      // Project taxonomy (needed for edit prefill + cards outside community feed)
+      impactArea: snapshot.impactArea || undefined,
+      stage: snapshot.stage || undefined,
+      beneficiaries:
+        snapshot.beneficiaries && snapshot.beneficiaries.length > 0
+          ? snapshot.beneficiaries
+          : undefined,
+      methods:
+        snapshot.methods && snapshot.methods.length > 0
+          ? snapshot.methods
+          : undefined,
+      helpNeeded:
+        snapshot.helpNeeded && snapshot.helpNeeded.length > 0
+          ? snapshot.helpNeeded
+          : undefined,
       metrics: {
         upvotes: publication.getMetrics.upvotes,
         downvotes: publication.getMetrics.downvotes,
