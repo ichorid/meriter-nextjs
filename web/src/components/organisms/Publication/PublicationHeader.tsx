@@ -168,7 +168,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
           onClick={author.id ? handleAvatarClick : undefined}
         >
           <AvatarImage src={author.photoUrl} alt={author.name} />
-          <AvatarFallback className="bg-muted text-muted-foreground font-medium text-sm">
+          <AvatarFallback userId={author.id} className="font-medium text-sm">
             {author.name ? author.name.charAt(0).toUpperCase() : '?'}
           </AvatarFallback>
         </Avatar>

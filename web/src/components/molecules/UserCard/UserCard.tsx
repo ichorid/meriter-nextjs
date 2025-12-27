@@ -24,7 +24,7 @@ export const UserCard: React.FC<UserCardProps> = ({ userId, showBadges = false, 
     <div className="flex items-center gap-2">
       <Avatar className={avatarSizeClass}>
         <AvatarImage src={user.avatarUrl} alt={user.displayName} />
-        <AvatarFallback className={`bg-muted text-muted-foreground font-medium ${avatarTextSize}`}>
+        <AvatarFallback userId={user.id} className={`font-medium ${avatarTextSize}`}>
           {user.displayName ? user.displayName.charAt(0).toUpperCase() : '?'}
         </AvatarFallback>
       </Avatar>

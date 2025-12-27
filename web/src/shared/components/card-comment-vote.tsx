@@ -138,7 +138,7 @@ export const CardCommentVote = ({
                                         alt={title}
                                         onError={onAvatarUrlNotFound}
                                     />
-                                    <AvatarFallback className="bg-muted text-muted-foreground font-medium text-xs">
+                                    <AvatarFallback userId={authorId || title} className="font-medium text-xs">
                                         {title ? title.charAt(0).toUpperCase() : '?'}
                                     </AvatarFallback>
                                 </Avatar>
@@ -158,6 +158,7 @@ export const CardCommentVote = ({
                                     <CommunityAvatar
                                         avatarUrl={communityAvatarUrl}
                                         communityName={communityName}
+                                        communityId={communityId}
                                         size={28}
                                         needsSetup={communityNeedsSetup}
                                     />
@@ -190,7 +191,7 @@ export const CardCommentVote = ({
                                         src={beneficiaryAvatarUrl}
                                         alt={beneficiaryName}
                                     />
-                                    <AvatarFallback className="bg-muted text-muted-foreground font-medium text-[10px]">
+                                    <AvatarFallback userId={beneficiaryId || beneficiaryName} className="font-medium text-[10px]">
                                         {beneficiaryName ? beneficiaryName.charAt(0).toUpperCase() : '?'}
                                     </AvatarFallback>
                                 </Avatar>

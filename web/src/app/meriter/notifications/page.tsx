@@ -305,7 +305,7 @@ export default function NotificationsPage() {
                           {notification.actor.avatarUrl && (
                             <AvatarImage src={notification.actor.avatarUrl} alt={notification.actor.name} />
                           )}
-                          <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                          <AvatarFallback userId={notification.actor.id} className="font-medium uppercase">
                             {notification.actor.name ? notification.actor.name.slice(0, 2).toUpperCase() : <User size={14} />}
                           </AvatarFallback>
                         </Avatar>

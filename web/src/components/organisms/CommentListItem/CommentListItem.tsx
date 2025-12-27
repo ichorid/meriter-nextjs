@@ -103,7 +103,7 @@ export const CommentListItem: React.FC<CommentListItemProps> = ({
                     onClick={authorId ? handleAvatarClick : undefined}
                   >
                     <AvatarImage src={authorAvatarUrl} alt={authorName || 'Unknown'} />
-                    <AvatarFallback className="bg-muted text-muted-foreground font-medium text-xs">
+                    <AvatarFallback userId={authorId || authorName} className="font-medium text-xs">
                       {authorName ? authorName.charAt(0).toUpperCase() : '?'}
                     </AvatarFallback>
                   </Avatar>

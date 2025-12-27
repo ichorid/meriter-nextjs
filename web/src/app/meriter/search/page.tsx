@@ -165,7 +165,7 @@ export default function SearchResultsPage() {
                               {result.author.avatarUrl && (
                                 <AvatarImage src={result.author.avatarUrl} alt={result.author.name} />
                               )}
-                              <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                              <AvatarFallback userId={result.author.id} className="font-medium uppercase">
                                 {result.author.name ? result.author.name.slice(0, 2).toUpperCase() : <User size={14} />}
                               </AvatarFallback>
                             </Avatar>
@@ -174,7 +174,7 @@ export default function SearchResultsPage() {
                               {result.community.avatarUrl && (
                                 <AvatarImage src={result.community.avatarUrl} alt={result.community.name} />
                               )}
-                              <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                              <AvatarFallback communityId={result.community.id} className="font-medium uppercase">
                                 {result.community.name ? result.community.name.slice(0, 2).toUpperCase() : <User size={14} />}
                               </AvatarFallback>
                             </Avatar>

@@ -43,7 +43,7 @@ export function CardHeader({
             {avatarUrl && (
               <AvatarImage src={avatarUrl} alt={displayName} />
             )}
-            <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+            <AvatarFallback userId={author.id} className="font-medium uppercase">
               {displayName ? displayName.slice(0, 2).toUpperCase() : <User size={14} />}
             </AvatarFallback>
           </Avatar>

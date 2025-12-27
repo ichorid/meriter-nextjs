@@ -330,6 +330,7 @@ export const Comment: React.FC<CommentProps> = ({
                 showCommunityAvatar={showCommunityAvatar}
                 communityAvatarUrl={communityInfo?.avatarUrl}
                 communityName={communityInfo?.name}
+                communityId={communityId}
                 communityIconUrl={communityInfo?.settings?.iconUrl}
                 onCommunityClick={() => {
                     if (!communityId) return;
@@ -400,6 +401,7 @@ export const Comment: React.FC<CommentProps> = ({
                 commentContent={commentDetails?.comment?.content ?? commentText}
                 timestamp={commentDetails?.comment?.createdAt ?? commentTimestamp}
                 communityName={commentDetails?.community?.name ?? communityInfo?.name}
+                communityId={communityId}
                 communityAvatar={commentDetails?.community?.avatarUrl ?? communityInfo?.avatarUrl}
                 beneficiaryName={commentDetails?.beneficiary?.name ?? recipientName}
                 beneficiaryAvatar={commentDetails?.beneficiary?.photoUrl ?? recipientAvatar}

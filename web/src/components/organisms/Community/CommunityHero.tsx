@@ -105,7 +105,7 @@ export function CommunityHero({ community, stats }: CommunityHeroProps) {
               {avatarUrl && (
                 <AvatarImage src={avatarUrl} alt={name} />
               )}
-              <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+              <AvatarFallback communityId={community.id} className="font-medium uppercase">
                 {name ? name.slice(0, 2).toUpperCase() : <User size={24} />}
               </AvatarFallback>
             </Avatar>

@@ -110,7 +110,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
                   <div className="flex items-center gap-2">
                     <Avatar className="w-8 h-8">
                       <AvatarImage src={user.avatarUrl} alt={user.displayName} />
-                      <AvatarFallback className="bg-muted text-muted-foreground font-medium text-xs">
+                      <AvatarFallback userId={user.id} className="font-medium text-xs">
                         {user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
                       </AvatarFallback>
                     </Avatar>

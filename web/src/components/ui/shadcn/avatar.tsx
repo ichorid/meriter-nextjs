@@ -4,6 +4,7 @@ import * as React from "react"
 import * as AvatarPrimitive from "@radix-ui/react-avatar"
 
 import { cn } from "@/lib/utils"
+import { getColorFromString, getContrastTextColor } from "@/lib/utils/avatar"
 
 const Avatar = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
@@ -32,19 +33,47 @@ const AvatarImage = React.forwardRef<
 ))
 AvatarImage.displayName = AvatarPrimitive.Image.displayName
 
+interface AvatarFallbackProps extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback> {
+  userId?: string;
+  communityId?: string;
+}
+
 const AvatarFallback = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Fallback>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Fallback
-    ref={ref}
-    className={cn(
-      "flex h-full w-full items-center justify-center rounded-full bg-muted",
-      className
-    )}
-    {...props}
-  />
-))
+  AvatarFallbackProps
+>(({ className, userId, communityId, style, ...props }, ref) => {
+  // Generate color from userId or communityId if provided (prefer userId for backwards compatibility)
+  const idForColor = userId || communityId;
+  const backgroundColor = idForColor ? getColorFromString(idForColor) : undefined;
+  const textColor = backgroundColor ? getContrastTextColor(backgroundColor) : undefined;
+  
+  // Build style object
+  const fallbackStyle: React.CSSProperties = {
+    ...style,
+    ...(backgroundColor && {
+      backgroundColor,
+      color: textColor === 'white' ? '#FFFFFF' : '#000000',
+    }),
+  };
+  
+  // Remove bg-muted and text-muted-foreground classes if we have a custom color
+  const fallbackClassName = idForColor 
+    ? className?.replace(/\b(bg-muted|text-muted-foreground|bg-secondary|text-secondary-foreground)\b/g, '').replace(/\s+/g, ' ').trim()
+    : className;
+  
+  return (
+    <AvatarPrimitive.Fallback
+      ref={ref}
+      className={cn(
+        "flex h-full w-full items-center justify-center rounded-full",
+        !idForColor && "bg-muted text-muted-foreground",
+        fallbackClassName
+      )}
+      style={fallbackStyle}
+      {...props}
+    />
+  );
+})
 AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
 
 export { Avatar, AvatarImage, AvatarFallback }

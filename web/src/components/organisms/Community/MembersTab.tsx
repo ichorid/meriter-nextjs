@@ -135,7 +135,7 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                                         {member.avatarUrl && (
                                             <AvatarImage src={member.avatarUrl} alt={member.displayName || member.username || tCommon('user')} />
                                         )}
-                                        <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                                        <AvatarFallback userId={member.id} className="font-medium uppercase">
                                             {(member.displayName || member.username) ? (member.displayName || member.username).slice(0, 2).toUpperCase() : <User size={14} />}
                                         </AvatarFallback>
                                     </Avatar>

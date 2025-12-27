@@ -121,7 +121,7 @@ function ProfileHeroComponent({ user, stats: _stats, onEdit, showEdit = false, u
               {avatarUrl && (
                 <AvatarImage src={avatarUrl} alt={displayName} />
               )}
-              <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+              <AvatarFallback userId={user.id} className="font-medium uppercase">
                 {displayName ? displayName.slice(0, 2).toUpperCase() : <UserIcon size={32} />}
               </AvatarFallback>
             </Avatar>

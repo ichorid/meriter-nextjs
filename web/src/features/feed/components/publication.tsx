@@ -320,6 +320,7 @@ export const Publication = (props: any) => {
                 showCommunityAvatar={showCommunityAvatar}
                 communityAvatarUrl={communityInfo?.avatarUrl}
                 communityName={communityInfo?.name || displayChatName}
+                communityId={communityInfo?.id || communityIdForRouting}
                 communityIconUrl={communityInfo?.settings?.iconUrl}
                 onCommunityClick={() => {
                     // Use internal community ID for routing if available
