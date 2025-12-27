@@ -23,7 +23,8 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 }) => {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
-  const { data: unreadCount = 0 } = useUnreadCount();
+  const { data } = useUnreadCount();
+  const unreadCount = data?.count ?? 0;
   const t = useTranslations('common');
 
   // Get user's communities with wallets and quotas
