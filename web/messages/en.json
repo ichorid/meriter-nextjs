@@ -548,6 +548,10 @@
             "breadcrumb": "Settings",
             "settingsTitle": "Settings: {communityName}",
             "subtitle": "Manage settings for {communityName}",
+            "tabs": {
+                "general": "General",
+                "rules": "Rules"
+            },
             "communityProfile": "Community Profile",
             "name": "Name",
             "namePlaceholder": "Community Name",
@@ -790,6 +794,7 @@
             "enterCurrencyId": "Enter currency ID",
             "add": "Add",
             "remove": "Remove",
+            "save": "Save",
             "saveRules": "Save Rules",
             "saving": "Saving...",
             "showPreview": "Show Preview",

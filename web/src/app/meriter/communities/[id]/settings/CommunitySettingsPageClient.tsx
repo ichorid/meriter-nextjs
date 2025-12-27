@@ -1,12 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { CommunityForm } from '@/features/communities/components';
+import { CommunityRulesEditor } from '@/features/communities/components/CommunityRulesEditor';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
-import { useCommunity } from '@/hooks/api/useCommunities';
+import { useCommunity, useUpdateCommunity } from '@/hooks/api/useCommunities';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserRoles } from '@/hooks/api/useProfile';
+import { Loader2 } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/shadcn/tabs';
 
 interface CommunitySettingsPageClientProps {
   communityId: string;
@@ -15,11 +20,126 @@ interface CommunitySettingsPageClientProps {
 export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPageClientProps) {
     const router = useRouter();
     const t = useTranslations('pages.communitySettings');
-    const { data: community } = useCommunity(communityId);
+    const tRules = useTranslations('communities.rules');
+    const { data: community, isLoading: communityLoading } = useCommunity(communityId);
+    const { user } = useAuth();
+    const { data: userRoles = [], isLoading: rolesLoading } = useUserRoles(user?.id || '');
+    const updateCommunity = useUpdateCommunity();
+    const [activeTab, setActiveTab] = useState('general');
+
+    // Check if user is superadmin
+    const isSuperadmin = user?.globalRole === 'superadmin';
+
+    // Check if user is lead/admin of this community
+    const isUserLead = useMemo(() => {
+        if (!communityId || !user?.id || !userRoles) return false;
+        const role = userRoles.find((r) => r.communityId === communityId);
+        return role?.role === 'lead';
+    }, [communityId, user?.id, userRoles]);
+
+    // Check if user has access (superadmin or lead)
+    const hasAccess = isSuperadmin || isUserLead;
+
+    // Redirect if no access
+    useEffect(() => {
+        if (!communityLoading && !rolesLoading && !hasAccess && user) {
+            router.push(`/meriter/communities/${communityId}`);
+        }
+    }, [communityLoading, rolesLoading, hasAccess, user, communityId, router]);
+
+    const handleRulesSave = async (rules: {
+        postingRules?: any;
+        votingRules?: any;
+        visibilityRules?: any;
+        meritRules?: any;
+        linkedCurrencies?: string[];
+        settings?: {
+            dailyEmission?: number;
+            postCost?: number;
+            pollCost?: number;
+        };
+        votingSettings?: {
+            votingRestriction?: 'any' | 'not-own' | 'not-same-group';
+        };
+    }) => {
+        await updateCommunity.mutateAsync({
+            id: communityId,
+            data: rules,
+        });
+    };
 
     const pageTitle = community?.name
         ? t('settingsTitle', { communityName: community.name })
         : t('settingsTitle', { communityName: '' });
+
+    // Show loading state while checking permissions
+    if (communityLoading || rolesLoading || !user) {
+        return (
+            <AdaptiveLayout
+                communityId={communityId}
+                stickyHeader={
+                    <SimpleStickyHeader
+                        title={pageTitle}
+                        showBack={true}
+                        onBack={() => router.push(`/meriter/communities/${communityId}`)}
+                        asStickyHeader={true}
+                    />
+                }
+            >
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+                </div>
+            </AdaptiveLayout>
+        );
+    }
+
+    // Show access denied if user doesn't have access
+    if (!hasAccess) {
+        return (
+            <AdaptiveLayout
+                communityId={communityId}
+                stickyHeader={
+                    <SimpleStickyHeader
+                        title={pageTitle}
+                        showBack={true}
+                        onBack={() => router.push(`/meriter/communities/${communityId}`)}
+                        asStickyHeader={true}
+                    />
+                }
+            >
+                <div className="p-6 bg-base-200 rounded-lg border border-base-300">
+                    <p className="text-brand-text-primary text-lg font-medium mb-2">
+                        Access Restricted
+                    </p>
+                    <p className="text-brand-text-secondary">
+                        Only community leads and superadmins can access community settings.
+                    </p>
+                </div>
+            </AdaptiveLayout>
+        );
+    }
+
+    if (!community) {
+        return (
+            <AdaptiveLayout
+                communityId={communityId}
+                stickyHeader={
+                    <SimpleStickyHeader
+                        title={pageTitle}
+                        showBack={true}
+                        onBack={() => router.push(`/meriter/communities/${communityId}`)}
+                        asStickyHeader={true}
+                    />
+                }
+            >
+                <div className="p-6 bg-base-200 rounded-lg border border-base-300">
+                    <p className="text-brand-text-primary text-lg font-medium mb-2">
+                        Community Not Found
+                    </p>
+                </div>
+            </AdaptiveLayout>
+        );
+    }
 
     return (
         <AdaptiveLayout
@@ -34,7 +154,31 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
             }
         >
             <div className="space-y-6">
-                <CommunityForm communityId={communityId} />
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 bg-base-200 rounded-xl p-1">
+                        <TabsTrigger 
+                            value="general"
+                            className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
+                        >
+                            {t('tabs.general') || 'General'}
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="rules"
+                            className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
+                        >
+                            {t('tabs.rules') || tRules('title') || 'Rules'}
+                        </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="general" className="mt-6">
+                        <CommunityForm communityId={communityId} />
+                    </TabsContent>
+                    <TabsContent value="rules" className="mt-6">
+                        <CommunityRulesEditor
+                            community={community}
+                            onSave={handleRulesSave}
+                        />
+                    </TabsContent>
+                </Tabs>
             </div>
         </AdaptiveLayout>
     );

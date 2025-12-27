@@ -10,6 +10,11 @@ import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { Check, RotateCcw, Eye, EyeOff, Download, Upload, History, Loader2 } from 'lucide-react';
 import type { CommunityWithComputedFields, LegacyPostingRules, LegacyVotingRules, LegacyVisibilityRules, LegacyMeritRules } from '@/types/api-v1';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/shadcn/select';
+import { useResetDailyQuota } from '@/hooks/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserRoles } from '@/hooks/api/useProfile';
+import { cn } from '@/lib/utils';
 
 const TEAM_ROLES = ['lead', 'participant'] as const;
 
@@ -21,6 +26,14 @@ interface CommunityRulesEditorProps {
     visibilityRules?: LegacyVisibilityRules;
     meritRules?: LegacyMeritRules;
     linkedCurrencies?: string[];
+    settings?: {
+      dailyEmission?: number;
+      postCost?: number;
+      pollCost?: number;
+    };
+    votingSettings?: {
+      votingRestriction?: 'any' | 'not-own' | 'not-same-group';
+    };
   }) => Promise<void>;
 }
 
@@ -62,6 +75,28 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     community.linkedCurrencies || []
   );
   const [newCurrency, setNewCurrency] = useState('');
+
+  // Additional settings fields
+  const [dailyEmission, setDailyEmission] = useState<string>(
+    String(community.settings?.dailyEmission || community.meritRules?.dailyQuota || 100)
+  );
+  const [postCost, setPostCost] = useState<string>(
+    String(community.settings?.postCost ?? 1)
+  );
+  const [pollCost, setPollCost] = useState<string>(
+    String(community.settings?.pollCost ?? 1)
+  );
+  const [votingRestriction, setVotingRestriction] = useState<'any' | 'not-own' | 'not-same-group'>(
+    (community.votingSettings?.votingRestriction as 'any' | 'not-own' | 'not-same-group') || 'not-own'
+  );
+
+  const { user } = useAuth();
+  const { data: userRoles = [] } = useUserRoles(user?.id || '');
+  const isSuperadmin = user?.globalRole === 'superadmin';
+  const isUserLead = userRoles.some((r) => r.communityId === community.id && r.role === 'lead');
+  const canResetQuota = isSuperadmin || isUserLead;
+  const resetDailyQuota = useResetDailyQuota();
+  const tSettings = useTranslations('pages.communitySettings');
 
   const [isSaving, setIsSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -220,6 +255,14 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         visibilityRules,
         meritRules,
         linkedCurrencies,
+        settings: {
+          dailyEmission: parseInt(dailyEmission, 10),
+          postCost: parseInt(postCost, 10),
+          pollCost: parseInt(pollCost, 10),
+        },
+        votingSettings: {
+          votingRestriction,
+        },
       });
       setValidationErrors({});
       // Update original rules after successful save
@@ -235,6 +278,18 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       saveToHistory(savedRules);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleResetDailyQuota = async () => {
+    if (!confirm(tSettings('resetQuotaConfirm'))) return;
+
+    try {
+      await resetDailyQuota.mutateAsync(community.id);
+      addToast(tSettings('resetQuotaSuccess'), 'success');
+    } catch (error) {
+      console.error('Failed to reset daily quota:', error);
+      addToast(tSettings('resetQuotaError'), 'error');
     }
   };
 
@@ -562,10 +617,15 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-brand-text-primary">{t('meritRules')}</h2>
 
-        <BrandFormControl label={t('dailyQuota')}>
+        <BrandFormControl label={tSettings('dailyEmission')} helperText={tSettings('dailyEmissionHelp')}>
           <Input
-            value={String(meritRules.dailyQuota)}
-            onChange={(e) => setMeritRules({ ...meritRules, dailyQuota: parseInt(e.target.value, 10) || 0 })}
+            value={dailyEmission}
+            onChange={(e) => {
+              setDailyEmission(e.target.value);
+              // Also update meritRules.dailyQuota to keep them in sync
+              const value = parseInt(e.target.value, 10) || 0;
+              setMeritRules({ ...meritRules, dailyQuota: value });
+            }}
             type="number"
             className="h-11 rounded-xl w-full"
           />
@@ -622,6 +682,80 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             {t('canSpend')}
           </Label>
         </div>
+      </div>
+
+      {/* Quota and Cost Settings */}
+      <div className="space-y-4 border-t border-base-300 pt-6">
+        <h2 className="text-lg font-semibold text-brand-text-primary">{tSettings('configuration')}</h2>
+
+        {(isSuperadmin || isUserLead) && (
+          <>
+            <BrandFormControl
+              label={tSettings('postCost')}
+              helperText={tSettings('postCostHelp')}
+            >
+              <Input
+                type="number"
+                min="0"
+                value={postCost}
+                onChange={(e) => setPostCost(e.target.value)}
+                className="h-11 rounded-xl w-full"
+              />
+            </BrandFormControl>
+
+            <BrandFormControl
+              label={tSettings('pollCost')}
+              helperText={tSettings('pollCostHelp')}
+            >
+              <Input
+                type="number"
+                min="0"
+                value={pollCost}
+                onChange={(e) => setPollCost(e.target.value)}
+                className="h-11 rounded-xl w-full"
+              />
+            </BrandFormControl>
+          </>
+        )}
+
+        {canResetQuota && (
+          <BrandFormControl
+            label={tSettings('resetQuota')}
+            helperText={tSettings('resetQuotaDescription')}
+          >
+            <Button
+              variant="outline"
+              size="md"
+              onClick={handleResetDailyQuota}
+              disabled={resetDailyQuota.isPending}
+              className="rounded-xl active:scale-[0.98]"
+            >
+              {resetDailyQuota.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {resetDailyQuota.isPending
+                ? tSettings('saving')
+                : tSettings('resetQuota')}
+            </Button>
+          </BrandFormControl>
+        )}
+
+        <BrandFormControl
+          label={tSettings('votingRestriction')}
+          helperText={tSettings('votingRestrictionHelp')}
+        >
+          <Select
+            value={votingRestriction}
+            onValueChange={(value) => setVotingRestriction(value as 'any' | 'not-own' | 'not-same-group')}
+          >
+            <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="any">{tSettings('votingRestrictionOptions.any')}</SelectItem>
+              <SelectItem value="not-own">{tSettings('votingRestrictionOptions.notOwn')}</SelectItem>
+              <SelectItem value="not-same-group">{tSettings('votingRestrictionOptions.notSameGroup')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </BrandFormControl>
       </div>
 
       {/* Linked Currencies */}

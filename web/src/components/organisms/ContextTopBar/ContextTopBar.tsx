@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
 import { cn } from '@/lib/utils';
-import { Clock, TrendingUp, Loader2, Search, X, ArrowLeft, Settings, Info } from 'lucide-react';
+import { Clock, TrendingUp, Loader2, Search, X, ArrowLeft, Settings } from 'lucide-react';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import type { TabSortState } from '@/hooks/useProfileTabState';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -503,17 +503,6 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
               )}
             </>
           )}
-
-          {/* Info Button - Community Rules */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push(`/meriter/communities/${communityId}/rules`)}
-            aria-label={safeTranslate('info', 'Community info')}
-            className="rounded-xl active:scale-[0.98] px-2"
-          >
-            <Info size={18} className="text-base-content/70" />
-          </Button>
 
           {/* Admin Settings */}
           {isAdmin && (

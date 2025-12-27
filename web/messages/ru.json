@@ -550,6 +550,10 @@
             "breadcrumb": "Настройки",
             "settingsTitle": "Настройки: {communityName}",
             "subtitle": "Управление настройками для {communityName}",
+            "tabs": {
+                "general": "Общие",
+                "rules": "Правила"
+            },
             "communityProfile": "Профиль сообщества",
             "name": "Название",
             "namePlaceholder": "Название сообщества",
@@ -792,6 +796,7 @@
             "enterCurrencyId": "Введите ID валюты",
             "add": "Добавить",
             "remove": "Удалить",
+            "save": "Сохранить",
             "saveRules": "Сохранить правила",
             "saving": "Сохранение...",
             "showPreview": "Показать предпросмотр",

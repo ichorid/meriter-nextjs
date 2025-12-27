@@ -6,15 +6,9 @@ import {
     useCommunity,
     useUpdateCommunity,
     useCreateCommunity,
-    useCommunityMembers,
-    useRemoveCommunityMember,
-    useResetDailyQuota,
 } from "@/hooks/api";
-import type { CommunityMember } from "@/hooks/api/useCommunityMembers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles, useCanCreateCommunity } from "@/hooks/api/useProfile";
-import { useCommunityInvites } from "@/hooks/api/useInvites";
-import { useUserProfile } from "@/hooks/api/useUsers";
 import { HashtagInput } from "@/shared/components/hashtag-input";
 import { IconPicker } from "@/shared/components/iconpicker";
 import { Button } from "@/components/ui/shadcn/button";
@@ -30,9 +24,7 @@ import {
 import { BrandFormControl } from "@/components/ui/BrandFormControl";
 import { Checkbox } from "@/components/ui/shadcn/checkbox";
 import { cn } from '@/lib/utils';
-import { Loader2, X, UserX, CheckCircle2, Clock, Sparkles } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/shadcn/avatar";
-import { User } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { AvatarUploader } from "@/components/ui/AvatarUploader";
 import { ImageUploader } from "@/components/ui/ImageUploader";
 import { useToastStore } from "@/shared/stores/toast.store";
@@ -60,7 +52,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     );
     const updateCommunity = useUpdateCommunity();
     const createCommunity = useCreateCommunity();
-    const resetDailyQuota = useResetDailyQuota();
 
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
@@ -69,12 +60,8 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const [currencySingular, setCurrencySingular] = useState("merit");
     const [currencyPlural, setCurrencyPlural] = useState("merits");
     const [currencyGenitive, setCurrencyGenitive] = useState("merits");
-    const [dailyEmission, setDailyEmission] = useState("100");
-    const [postCost, setPostCost] = useState("1");
-    const [pollCost, setPollCost] = useState("1");
     const [hashtags, setHashtags] = useState<string[]>([]);
     const [isPriority, setIsPriority] = useState(false);
-    const [votingRestriction, setVotingRestriction] = useState<'any' | 'not-own' | 'not-same-group'>('not-own');
     // Default icon is "thanks" emoji (🙏)
     const defaultIconUrl = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">${encodeURIComponent(
         "🙏"
@@ -93,13 +80,9 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             setCurrencyGenitive(
                 c.settings?.currencyNames?.genitive || "merits"
             );
-            setDailyEmission(String(c.settings?.dailyEmission || 100));
-            setPostCost(String(c.settings?.postCost ?? 1));
-            setPollCost(String(c.settings?.pollCost ?? 1));
             setHashtags(c.hashtags || []);
             setIsPriority(c.isPriority || false);
             setIconUrl(c.settings?.iconUrl || defaultIconUrl);
-            setVotingRestriction(c.votingSettings?.votingRestriction || 'not-own');
         }
     }, [community, isEditMode]);
 
@@ -124,12 +107,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                         plural: currencyPlural,
                         genitive: currencyGenitive,
                     },
-                    dailyEmission: parseInt(dailyEmission, 10),
-                    postCost: parseInt(postCost, 10),
-                    pollCost: parseInt(pollCost, 10),
-                },
-                votingSettings: {
-                    votingRestriction,
                 },
             };
 
@@ -182,130 +159,8 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
         return role?.role === "lead";
     }, [communityId, user?.id, userRoles]);
 
-    // Check if user can reset quota (superadmin OR lead role)
-    const canResetQuota = useMemo(() => {
-        return isSuperadmin || isUserLead;
-    }, [isSuperadmin, isUserLead]);
 
-    // Superadmin can create invites for leads or participants in any community
-    // Lead can create invites for participants in their community
-    // Only fetch invites if user has admin/lead permissions
-    const canViewInvites = isSuperadmin || isUserLead;
 
-    // Get community members and invites for settings page
-    const { data: membersData, isLoading: membersLoading } =
-        useCommunityMembers(isEditMode ? communityId : "");
-    const { data: communityInvites = [] } = useCommunityInvites(
-        isEditMode ? communityId : "",
-        { enabled: canViewInvites }
-    );
-    const { mutate: removeMember, isPending: isRemoving } =
-        useRemoveCommunityMember(isEditMode ? communityId : "");
-
-    // Create a map of userId -> invite status
-    const memberInviteMap = useMemo(() => {
-        const map = new Map<
-            string,
-            { isUsed: boolean; inviteCode?: string; targetUserName?: string }
-        >();
-        communityInvites.forEach((invite) => {
-            // Match by targetUserId (for existing users) or usedBy (for used invites)
-            // If invite was used, use usedBy; otherwise use targetUserId
-            const userId = invite.isUsed ? invite.usedBy : invite.targetUserId;
-            if (userId) {
-                map.set(userId, {
-                    isUsed: invite.isUsed || false,
-                    inviteCode: invite.code,
-                    targetUserName: invite.targetUserName,
-                });
-            }
-        });
-        return map;
-    }, [communityInvites]);
-
-    // Create combined list of members and pending invites
-    const allMembersAndInvites = useMemo(() => {
-        const members = membersData?.data || [];
-        const memberIds = new Set(members.map((m) => m.id));
-
-        // Add pending invites for users not yet in members list
-        const pendingInvites = communityInvites
-            .filter((invite) => !invite.isUsed)
-            .map((invite) => {
-                // If invite has targetUserId and user is not in members, add as pending
-                if (
-                    invite.targetUserId &&
-                    !memberIds.has(invite.targetUserId)
-                ) {
-                    return {
-                        id: `invite-${invite.id}`,
-                        username: invite.targetUserId,
-                        displayName: invite.targetUserId,
-                        avatarUrl: undefined,
-                        globalRole: "",
-                        isPendingInvite: true,
-                        inviteCode: invite.code,
-                        targetUserName: invite.targetUserName,
-                        inviteType: invite.type,
-                    };
-                }
-                // If invite has targetUserName (new user), add as pending
-                if (invite.targetUserName && !invite.targetUserId) {
-                    return {
-                        id: `invite-${invite.id}`,
-                        username: invite.targetUserName,
-                        displayName: invite.targetUserName,
-                        avatarUrl: undefined,
-                        globalRole: "",
-                        isPendingInvite: true,
-                        inviteCode: invite.code,
-                        targetUserName: invite.targetUserName,
-                        inviteType: invite.type,
-                    };
-                }
-                return null;
-            })
-            .filter(Boolean) as Array<
-            CommunityMember & {
-                isPendingInvite?: boolean;
-                inviteCode?: string;
-                targetUserName?: string;
-                inviteType?: string;
-            }
-        >;
-
-        return [...members, ...pendingInvites];
-    }, [membersData?.data, communityInvites]);
-
-    const handleRemoveMember = (userId: string, userName: string) => {
-        if (
-            confirm(
-                t("members.confirmRemove", { name: userName }) ||
-                    `Remove ${userName} from community?`
-            )
-        ) {
-            removeMember(userId);
-        }
-    };
-
-    const handleResetDailyQuota = async () => {
-        if (!communityId) return;
-
-        const confirmed = confirm(t("resetQuotaConfirm"));
-        if (!confirmed) return;
-
-        try {
-            await resetDailyQuota.mutateAsync(communityId);
-            addToast(t("resetQuotaSuccess"), "success");
-        } catch (error) {
-            console.error("Failed to reset daily quota:", error);
-            const errorMessage = extractErrorMessage(
-                error,
-                t("resetQuotaError")
-            );
-            addToast(errorMessage, "error");
-        }
-    };
 
     if (isEditMode && isLoading) {
         return (
@@ -430,72 +285,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 </h2>
 
                 <div className="space-y-6">
-                    <BrandFormControl
-                        label={t("dailyEmission")}
-                        helperText={t("dailyEmissionHelp")}
-                    >
-                        <Input
-                            type="number"
-                            value={dailyEmission}
-                            onChange={(e) => setDailyEmission(e.target.value)}
-                            className="h-11 rounded-xl w-full"
-                        />
-                    </BrandFormControl>
-
-                    {(isSuperadmin || isUserLead) && (
-                        <>
-                            <BrandFormControl
-                                label={t("postCost")}
-                                helperText={t("postCostHelp")}
-                            >
-                                <Input
-                                    type="number"
-                                    min="0"
-                                    value={postCost}
-                                    onChange={(e) =>
-                                        setPostCost(e.target.value)
-                                    }
-                                    className="h-11 rounded-xl w-full"
-                                />
-                            </BrandFormControl>
-
-                            <BrandFormControl
-                                label={t("pollCost")}
-                                helperText={t("pollCostHelp")}
-                            >
-                                <Input
-                                    type="number"
-                                    min="0"
-                                    value={pollCost}
-                                    onChange={(e) =>
-                                        setPollCost(e.target.value)
-                                    }
-                                    className="h-11 rounded-xl w-full"
-                                />
-                            </BrandFormControl>
-                        </>
-                    )}
-
-                    {isEditMode && canResetQuota && (
-                        <BrandFormControl
-                            label={t("resetQuota")}
-                            helperText={t("resetQuotaDescription")}
-                        >
-                            <Button
-                                variant="outline"
-                                size="md"
-                                onClick={handleResetDailyQuota}
-                                disabled={resetDailyQuota.isPending}
-                                className="rounded-xl active:scale-[0.98]"
-                            >
-                                {resetDailyQuota.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {resetDailyQuota.isPending
-                                    ? t("saving")
-                                    : t("resetQuota")}
-                            </Button>
-                        </BrandFormControl>
-                    )}
-
                     <div>
                         <h3 className="text-base font-semibold text-brand-text-primary mb-3">
                             {t("currencyNames")}
@@ -540,25 +329,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                             cta={t("selectIcon")}
                             setIcon={setIconUrl}
                         />
-                    </BrandFormControl>
-
-                    <BrandFormControl
-                        label={t("votingRestriction")}
-                        helperText={t("votingRestrictionHelp")}
-                    >
-                        <Select
-                            value={votingRestriction}
-                            onValueChange={(value) => setVotingRestriction(value as 'any' | 'not-own' | 'not-same-group')}
-                        >
-                            <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="any">{t('votingRestrictionOptions.any')}</SelectItem>
-                                <SelectItem value="not-own">{t('votingRestrictionOptions.notOwn')}</SelectItem>
-                                <SelectItem value="not-same-group">{t('votingRestrictionOptions.notSameGroup')}</SelectItem>
-                            </SelectContent>
-                        </Select>
                     </BrandFormControl>
                 </div>
             </div>
@@ -622,181 +392,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 </>
             )}
 
-            {/* Members Section - only in edit mode */}
-            {isEditMode && (isSuperadmin || isUserLead) && (
-                <div className="mt-8 space-y-4">
-                    <h2 className="text-xl font-semibold text-brand-text-primary">
-                        {t("members.title") || "Community Members"}
-                    </h2>
-
-                    {membersLoading ? (
-                        <div className="flex justify-center py-8">
-                            <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
-                        </div>
-                    ) : allMembersAndInvites &&
-                      allMembersAndInvites.length > 0 ? (
-                        <div className="space-y-2">
-                            {allMembersAndInvites.map((member) => {
-                                const isPendingInvite = (member as any)
-                                    .isPendingInvite;
-                                const inviteInfo = isPendingInvite
-                                    ? {
-                                          isUsed: false,
-                                          inviteCode: (member as any)
-                                              .inviteCode,
-                                          targetUserName: (member as any)
-                                              .targetUserName,
-                                      }
-                                    : memberInviteMap.get(member.id);
-                                const hasInvite =
-                                    !!inviteInfo || isPendingInvite;
-                                const inviteUsed = inviteInfo?.isUsed || false;
-
-                                return (
-                                    <div
-                                        key={member.id}
-                                        className={`flex items-center justify-between p-3 bg-base-100 border border-brand-secondary/10 rounded-lg shadow-sm hover:shadow-md transition-shadow ${
-                                            isPendingInvite ? "opacity-75" : ""
-                                        }`}
-                                    >
-                                        <div className="flex items-center space-x-3 flex-1">
-                                            <Avatar className="w-10 h-10 text-sm">
-                                                {member.avatarUrl && (
-                                                    <AvatarImage src={member.avatarUrl} alt={member.displayName || member.username} />
-                                                )}
-                                                <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
-                                                    {(member.displayName || member.username) ? (member.displayName || member.username).slice(0, 2).toUpperCase() : <User size={18} />}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1">
-                                                <div className="font-medium text-brand-text-primary">
-                                                    {member.displayName ||
-                                                        member.username}
-                                                    {isPendingInvite && (
-                                                        <span className="ml-2 text-xs text-amber-600">
-                                                            (
-                                                            {t(
-                                                                "members.invited"
-                                                            ) || "Invited"}
-                                                            )
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="text-xs text-brand-text-secondary flex items-center gap-2">
-                                                    {!isPendingInvite && (
-                                                        <span>
-                                                            @{member.username}
-                                                        </span>
-                                                    )}
-                                                    {member.globalRole && (
-                                                        <>
-                                                            {!isPendingInvite && (
-                                                                <span>•</span>
-                                                            )}
-                                                            <span>
-                                                                {
-                                                                    member.globalRole
-                                                                }
-                                                            </span>
-                                                        </>
-                                                    )}
-                                                    {isPendingInvite &&
-                                                        (member as any)
-                                                            .inviteType && (
-                                                            <>
-                                                                <span>•</span>
-                                                                <span>
-                                                                    {(
-                                                                        member as any
-                                                                    )
-                                                                        .inviteType ===
-                                                                    "superadmin-to-lead"
-                                                                        ? "Lead"
-                                                                        : "Participant"}
-                                                                </span>
-                                                            </>
-                                                        )}
-                                                </div>
-                                                {hasInvite && (
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        {inviteUsed ? (
-                                                            <div className="flex items-center gap-1 text-xs text-green-600">
-                                                                <CheckCircle2 className="w-3 h-3" />
-                                                                <span>
-                                                                    {t(
-                                                                        "members.inviteUsed"
-                                                                    ) ||
-                                                                        "Invite used"}
-                                                                </span>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex items-center gap-1 text-xs text-amber-600">
-                                                                <Clock className="w-3 h-3" />
-                                                                <span>
-                                                                    {t(
-                                                                        "members.invitePending"
-                                                                    ) ||
-                                                                        "Invite pending"}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                        {inviteInfo?.inviteCode && (
-                                                            <span className="text-xs text-brand-text-secondary font-mono">
-                                                                (
-                                                                {
-                                                                    inviteInfo.inviteCode
-                                                                }
-                                                                )
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                {!hasInvite &&
-                                                    !isPendingInvite && (
-                                                        <div className="text-xs text-brand-text-secondary mt-1">
-                                                            {t(
-                                                                "members.noInvite"
-                                                            ) || "No invite"}
-                                                        </div>
-                                                    )}
-                                            </div>
-                                        </div>
-
-                                        {!isPendingInvite &&
-                                            member.id !== user?.id && (
-                                                <button
-                                                    onClick={() =>
-                                                        handleRemoveMember(
-                                                            member.id,
-                                                            member.displayName ||
-                                                                member.username
-                                                        )
-                                                    }
-                                                    disabled={isRemoving}
-                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                                                    title={
-                                                        t("members.remove") ||
-                                                        "Remove member"
-                                                    }
-                                                >
-                                                    {isRemoving ? (
-                                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                                    ) : (
-                                                        <UserX className="w-4 h-4" />
-                                                    )}
-                                                </button>
-                                            )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <div className="text-center py-12 text-brand-text-secondary">
-                            {t("members.noMembers") || "No members yet"}
-                        </div>
-                    )}
-                </div>
-            )}
 
             <div className="flex justify-end pt-4">
                 <Button
