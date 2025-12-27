@@ -17,7 +17,6 @@ import { InviteHandler } from '@/components/InviteHandler';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
-import { LogoutBlock } from '@/components/organisms/LogoutBlock';
 
 function ProfilePageComponent() {
   const t = useTranslations('profile');
@@ -132,11 +131,6 @@ function ProfilePageComponent() {
 
         {/* Use Invite Section (for viewers) */}
         <UseInvite />
-
-        {/* Logout Block */}
-        <div className="pt-4 pb-8">
-          <LogoutBlock />
-        </div>
       </div>
     </AdaptiveLayout>
   );
