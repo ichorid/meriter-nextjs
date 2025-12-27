@@ -745,7 +745,62 @@
                 "methodsHint": "How does the project create impact?",
                 "helpNeeded": "Help needed",
                 "helpNeededHint": "What are you collecting right now?",
-                "clear": "Clear"
+                "clear": "Clear",
+                "values": {
+                    "impactArea": {
+                        "Community & Mutual Aid": "Community & Mutual Aid",
+                        "Education & Youth": "Education & Youth",
+                        "Health & Wellbeing": "Health & Wellbeing",
+                        "Environment & Climate": "Environment & Climate",
+                        "Animals & Nature Protection": "Animals & Nature Protection",
+                        "Inclusion & Accessibility": "Inclusion & Accessibility",
+                        "Humanitarian Aid & Crisis Response": "Humanitarian Aid & Crisis Response",
+                        "Civic Engagement & Democracy": "Civic Engagement & Democracy",
+                        "Culture, Arts & Heritage": "Culture, Arts & Heritage",
+                        "Economic Empowerment": "Economic Empowerment",
+                        "Public Space & Local Infrastructure": "Public Space & Local Infrastructure",
+                        "Research, Advocacy & Awareness": "Research, Advocacy & Awareness"
+                    },
+                    "stage": {
+                        "Idea / looking for team": "Idea / looking for team",
+                        "Active / ongoing": "Active / ongoing",
+                        "Needs volunteers now": "Needs volunteers now",
+                        "Fundraising / collecting resources": "Fundraising / collecting resources",
+                        "Completed (showcase results)": "Completed (showcase results)"
+                    },
+                    "beneficiaries": {
+                        "Children & teens": "Children & teens",
+                        "Elderly": "Elderly",
+                        "People with disabilities": "People with disabilities",
+                        "Low-income families": "Low-income families",
+                        "Migrants & refugees": "Migrants & refugees",
+                        "Patients & caregivers": "Patients & caregivers",
+                        "Local community (general)": "Local community (general)",
+                        "Animals / wildlife": "Animals / wildlife",
+                        "Everyone (public-interest)": "Everyone (public-interest)"
+                    },
+                    "methods": {
+                        "Direct service": "Direct service",
+                        "Events & community building": "Events & community building",
+                        "Education & training": "Education & training",
+                        "Building / restoration": "Building / restoration",
+                        "Donations & distribution": "Donations & distribution",
+                        "Tech / tools / platforms": "Tech / tools / platforms",
+                        "Research & data": "Research & data",
+                        "Advocacy & campaigning": "Advocacy & campaigning",
+                        "Emergency response": "Emergency response"
+                    },
+                    "helpNeeded": {
+                        "Volunteers (time)": "Volunteers (time)",
+                        "Money": "Money",
+                        "Materials / equipment": "Materials / equipment",
+                        "Expertise": "Expertise",
+                        "Partnerships": "Partnerships",
+                        "Venue / space": "Venue / space",
+                        "Visibility / PR": "Visibility / PR",
+                        "Logistics / transport": "Logistics / transport"
+                    }
+                }
             },
             "cancel": "Cancel",
             "creating": "Creating...",

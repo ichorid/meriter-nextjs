@@ -11,6 +11,7 @@ interface ChecklistProps<T extends string> {
   onToggle: (value: T) => void;
   cap?: number;
   hint?: string;
+  translateValue?: (value: T) => string;
 }
 
 export function Checklist<T extends string>({
@@ -19,6 +20,7 @@ export function Checklist<T extends string>({
   onToggle,
   cap,
   hint,
+  translateValue,
 }: ChecklistProps<T>) {
   return (
     <div className="space-y-2">
@@ -27,6 +29,7 @@ export function Checklist<T extends string>({
         {options.map((opt) => {
           const checked = selected.includes(opt);
           const disabled = !checked && typeof cap === 'number' && selected.length >= cap;
+          const displayValue = translateValue ? translateValue(opt) : opt;
           return (
             <Label
               key={opt}
@@ -40,7 +43,7 @@ export function Checklist<T extends string>({
                 disabled={disabled}
                 onCheckedChange={() => onToggle(opt)}
               />
-              <span className="leading-tight">{opt}</span>
+              <span className="leading-tight">{displayValue}</span>
             </Label>
           );
         })}

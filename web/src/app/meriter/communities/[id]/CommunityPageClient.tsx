@@ -31,6 +31,7 @@ import {
 import { Checklist, CollapsibleSection } from '@/components/ui/taxonomy';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Separator } from '@/components/ui/shadcn/separator';
+import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
 import {
   Select,
   SelectContent,
@@ -57,6 +58,13 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const pathname = usePathname();
     const t = useTranslations('pages');
     const tCommunities = useTranslations('pages.communities');
+    const {
+      translateImpactArea,
+      translateStage,
+      translateBeneficiary,
+      translateMethod,
+      translateHelpNeeded,
+    } = useTaxonomyTranslations();
 
     // Get the post parameter from URL for deep linking
     const targetPostSlug = searchParams?.get('post');
@@ -690,7 +698,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                             <SelectContent>
                                                 <SelectItem value="any">Any</SelectItem>
                                                 {(IMPACT_AREAS || []).map((x) => (
-                                                    <SelectItem key={x} value={x}>{x}</SelectItem>
+                                                    <SelectItem key={x} value={x}>{translateImpactArea(x)}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -707,7 +715,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                             <SelectContent>
                                                 <SelectItem value="any">Any</SelectItem>
                                                 {(STAGES || []).map((x) => (
-                                                    <SelectItem key={x} value={x}>{x}</SelectItem>
+                                                    <SelectItem key={x} value={x}>{translateStage(x)}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -720,7 +728,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     title={`Beneficiaries (${fBeneficiaries.length})`}
                                     open={bOpenBeneficiaries}
                                     setOpen={setBOpenBeneficiaries}
-                                    summary={fBeneficiaries.length ? fBeneficiaries.join(', ') : 'Who benefits?'}
+                                    summary={fBeneficiaries.length ? fBeneficiaries.map(translateBeneficiary).join(', ') : 'Who benefits?'}
                                     right={
                                         <Button
                                             variant="ghost"
@@ -739,6 +747,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                         <Checklist
                                             options={Array.isArray(BENEFICIARIES) ? [...BENEFICIARIES] : []}
                                             selected={fBeneficiaries}
+                                            translateValue={translateBeneficiary}
                                             onToggle={(v) => setFBeneficiaries((s) => toggleInArray(s, v))}
                                         />
                                     </div>
@@ -748,7 +757,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     title={`Methods (${fMethods.length})`}
                                     open={bOpenMethods}
                                     setOpen={setBOpenMethods}
-                                    summary={fMethods.length ? fMethods.join(', ') : 'How do they act?'}
+                                    summary={fMethods.length ? fMethods.map(translateMethod).join(', ') : 'How do they act?'}
                                     right={
                                         <Button
                                             variant="ghost"
@@ -767,6 +776,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                         <Checklist
                                             options={Array.isArray(METHODS) ? [...METHODS] : []}
                                             selected={fMethods}
+                                            translateValue={translateMethod}
                                             onToggle={(v) => setFMethods((s) => toggleInArray(s, v))}
                                         />
                                     </div>
@@ -776,7 +786,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     title={`Help needed (${fHelpNeeded.length})`}
                                     open={bOpenHelp}
                                     setOpen={setBOpenHelp}
-                                    summary={fHelpNeeded.length ? fHelpNeeded.join(', ') : 'What do they need?'}
+                                    summary={fHelpNeeded.length ? fHelpNeeded.map(translateHelpNeeded).join(', ') : 'What do they need?'}
                                     right={
                                         <Button
                                             variant="ghost"
@@ -795,6 +805,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                         <Checklist
                                             options={Array.isArray(HELP_NEEDED) ? [...HELP_NEEDED] : []}
                                             selected={fHelpNeeded}
+                                            translateValue={translateHelpNeeded}
                                             onToggle={(v) => setFHelpNeeded((s) => toggleInArray(s, v))}
                                         />
                                     </div>

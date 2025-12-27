@@ -7,6 +7,8 @@ import { ImageLightbox } from '@shared/components/image-lightbox';
 import { ImageViewer } from '@/components/ui/ImageViewer/ImageViewer';
 import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
 import { Badge } from '@/components/ui/shadcn/badge';
+import { useTranslations } from 'next-intl';
+import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
 
 interface Publication {
   id: string;
@@ -49,6 +51,15 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
   publication,
   className = '',
 }) => {
+  const t = useTranslations('publications.create.taxonomy');
+  const {
+    translateImpactArea,
+    translateStage,
+    translateBeneficiary,
+    translateMethod,
+    translateHelpNeeded,
+  } = useTaxonomyTranslations();
+
   const title = (publication as any).title;
   const description = (publication as any).description;
   const isProject = (publication as any).isProject;
@@ -121,33 +132,33 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
         <div className="mb-3 space-y-2">
           <div className="flex flex-wrap gap-2">
             {(publication as any).impactArea && (
-              <Badge className="font-normal">{(publication as any).impactArea}</Badge>
+              <Badge className="font-normal">{translateImpactArea((publication as any).impactArea)}</Badge>
             )}
             {(publication as any).stage && (
-              <Badge variant="outline" className="font-normal">{(publication as any).stage}</Badge>
+              <Badge variant="outline" className="font-normal">{translateStage((publication as any).stage)}</Badge>
             )}
           </div>
           {(publication as any).beneficiaries && Array.isArray((publication as any).beneficiaries) && (publication as any).beneficiaries.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted-foreground">Beneficiaries:</span>
+              <span className="text-xs text-muted-foreground">{t('beneficiaries')}:</span>
               {((publication as any).beneficiaries as string[]).map((x) => (
-                <Badge key={x} variant="secondary" className="font-normal">{x}</Badge>
+                <Badge key={x} variant="secondary" className="font-normal">{translateBeneficiary(x)}</Badge>
               ))}
             </div>
           )}
           {(publication as any).methods && Array.isArray((publication as any).methods) && (publication as any).methods.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted-foreground">Methods:</span>
+              <span className="text-xs text-muted-foreground">{t('methods')}:</span>
               {((publication as any).methods as string[]).map((x) => (
-                <Badge key={x} variant="secondary" className="font-normal">{x}</Badge>
+                <Badge key={x} variant="secondary" className="font-normal">{translateMethod(x)}</Badge>
               ))}
             </div>
           )}
           {(publication as any).helpNeeded && Array.isArray((publication as any).helpNeeded) && (publication as any).helpNeeded.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted-foreground">Help needed:</span>
+              <span className="text-xs text-muted-foreground">{t('helpNeeded')}:</span>
               {((publication as any).helpNeeded as string[]).map((x) => (
-                <Badge key={x} variant="secondary" className="font-normal">{x}</Badge>
+                <Badge key={x} variant="secondary" className="font-normal">{translateHelpNeeded(x)}</Badge>
               ))}
             </div>
           )}

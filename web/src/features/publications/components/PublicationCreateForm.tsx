@@ -41,6 +41,7 @@ import {
   type Stage,
   type HelpNeeded,
 } from '@/lib/constants/taxonomy';
+import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project';
 
@@ -86,6 +87,13 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   initialData,
 }) => {
   const t = useTranslations('publications.create');
+  const {
+    translateImpactArea,
+    translateStage,
+    translateBeneficiary,
+    translateMethod,
+    translateHelpNeeded,
+  } = useTaxonomyTranslations();
   const router = useRouter();
   const createPublication = useCreatePublication();
   const updatePublication = useUpdatePublication();
@@ -536,7 +544,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     <SelectContent>
                       {(Array.isArray(IMPACT_AREAS) ? [...IMPACT_AREAS] : []).map((area: ImpactArea) => (
                         <SelectItem key={area} value={area}>
-                          {area}
+                          {translateImpactArea(area)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -559,7 +567,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     <SelectContent>
                       {(Array.isArray(STAGES) ? [...STAGES] : []).map((s: Stage) => (
                         <SelectItem key={s} value={s}>
-                          {s}
+                          {translateStage(s)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -575,7 +583,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                 title={`${t('taxonomy.beneficiaries') || 'Beneficiaries'} (≤2)${beneficiaries.length ? ` • ${beneficiaries.length}` : ''}`}
                 open={openBeneficiaries}
                 setOpen={setOpenBeneficiaries}
-                summary={beneficiaries.length ? beneficiaries.join(', ') : t('taxonomy.beneficiariesHint') || 'Who benefits directly?'}
+                summary={beneficiaries.length ? beneficiaries.map(translateBeneficiary).join(', ') : t('taxonomy.beneficiariesHint') || 'Who benefits directly?'}
                 right={
                   <Button
                     variant="ghost"
@@ -596,6 +604,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     selected={beneficiaries}
                     cap={2}
                     hint={t('taxonomy.beneficiariesHint') || 'Who benefits directly?'}
+                    translateValue={translateBeneficiary}
                     onToggle={(v: Beneficiary) => setBeneficiaries((s) => toggleInArray(s, v))}
                   />
                 </div>
@@ -605,7 +614,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                 title={`${t('taxonomy.methods') || 'What you do'} (≤3)${methods.length ? ` • ${methods.length}` : ''}`}
                 open={openMethods}
                 setOpen={setOpenMethods}
-                summary={methods.length ? methods.join(', ') : t('taxonomy.methodsHint') || 'How does the project create impact?'}
+                summary={methods.length ? methods.map(translateMethod).join(', ') : t('taxonomy.methodsHint') || 'How does the project create impact?'}
                 right={
                   <Button
                     variant="ghost"
@@ -626,6 +635,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     selected={methods}
                     cap={3}
                     hint={t('taxonomy.methodsHint') || 'How does the project create impact?'}
+                    translateValue={translateMethod}
                     onToggle={(v) => setMethods((s) => toggleInArray(s, v))}
                   />
                 </div>
@@ -635,7 +645,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                 title={`${t('taxonomy.helpNeeded') || 'Help needed'} (≤3)${helpNeeded.length ? ` • ${helpNeeded.length}` : ''}`}
                 open={openHelp}
                 setOpen={setOpenHelp}
-                summary={helpNeeded.length ? helpNeeded.join(', ') : t('taxonomy.helpNeededHint') || 'What are you collecting right now?'}
+                summary={helpNeeded.length ? helpNeeded.map(translateHelpNeeded).join(', ') : t('taxonomy.helpNeededHint') || 'What are you collecting right now?'}
                 right={
                   <Button
                     variant="ghost"
@@ -656,6 +666,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     selected={helpNeeded}
                     cap={3}
                     hint={t('taxonomy.helpNeededHint') || 'What are you collecting right now?'}
+                    translateValue={translateHelpNeeded}
                     onToggle={(v: HelpNeeded) => setHelpNeeded((s) => toggleInArray(s, v))}
                   />
                 </div>
