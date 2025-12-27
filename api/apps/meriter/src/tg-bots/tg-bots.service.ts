@@ -47,10 +47,10 @@ export class TgBotsService {
     private configService: ConfigService<AppConfig>,
   ) {
     // S3 is completely optional - only initialize if fully configured
-    const s3Endpoint = this.configService.get('storage.s3.endpoint');
-    const s3BucketName = this.configService.get('storage.s3.bucketName');
-    const s3AccessKeyId = this.configService.get('storage.s3.accessKeyId');
-    const s3SecretAccessKey = this.configService.get('storage.s3.secretAccessKey');
+    const s3Endpoint = (this.configService.get as any)('storage.s3.endpoint') as string | undefined;
+    const s3BucketName = (this.configService.get as any)('storage.s3.bucketName') as string | undefined;
+    const s3AccessKeyId = (this.configService.get as any)('storage.s3.accessKeyId') as string | undefined;
+    const s3SecretAccessKey = (this.configService.get as any)('storage.s3.secretAccessKey') as string | undefined;
 
     const isS3Configured = !!(s3Endpoint && s3BucketName && s3AccessKeyId && s3SecretAccessKey);
 
@@ -62,7 +62,7 @@ export class TgBotsService {
           secretAccessKey: s3SecretAccessKey,
         },
         endpoint: s3Endpoint,
-        region: this.configService.get('storage.s3.region', "ru-msk"),
+        region: ((this.configService.get as any)('storage.s3.region') ?? "ru-msk") as string,
       });
       this.s3Bucket = s3BucketName;
     } else {
@@ -71,7 +71,7 @@ export class TgBotsService {
       this.s3Bucket = undefined;
     }
 
-    this.telegramApiUrl = this.configService.get('telegram.apiUrl', "https://api.telegram.org");
+    this.telegramApiUrl = ((this.configService.get as any)('telegram.apiUrl') ?? "https://api.telegram.org") as string;
   }
 
   async sendUserUpdates(userId: string, events: UpdateEventItem[], locale: 'en' | 'ru' = 'en') {
@@ -634,7 +634,7 @@ export class TgBotsService {
           tgChatId: chat_id,
           meta: params,
           ts: Date.now(),
-        })*/ !this.configService.get('noAxios') &&
+        })*/ !((this.configService.get as any)('noAxios') as boolean | undefined) &&
         Axios.get(BOT_URL + "/sendMessage", {
           params,
         }),
@@ -733,7 +733,7 @@ export class TgBotsService {
     //console.log(tgChatId, text )
     const nodeEnv = this.configService.get('NODE_ENV', 'development');
     if (String(tgChatId).length < 4 && nodeEnv !== "test") return;
-    const botToken = this.configService.get('bot.token');
+    const botToken = (this.configService.get as any)('bot.token') as string | undefined;
     if (!botToken) {
       this.logger.warn('BOT_TOKEN is empty; Telegram send skipped');
       return "ok";
@@ -812,7 +812,7 @@ export class TgBotsService {
    * @returns Public S3 URL of the uploaded avatar
    */
   async downloadAndUploadTelegramPhoto(photoUrl: string, telegramId: string): Promise<string> {
-    const avatarBaseUrl = this.configService.get('telegram.avatarBaseUrl', 'https://telegram.hb.bizmrg.com/telegram_small_avatars');
+    const avatarBaseUrl =  ((this.configService.get as any)('telegram.avatarBaseUrl') ?? 'https://telegram.hb.bizmrg.com/telegram_small_avatars') as string;
     const s3Key = `telegram_small_avatars/${telegramId}.jpg`;
 
     try {
@@ -849,7 +849,7 @@ export class TgBotsService {
   async telegramGetChatPhotoUrl(token: string, chat_id: string | number, _revalidate = false) {
     //if (process.env.NODE_ENV === 'test') return ``;
 
-    const avatarBaseUrl = this.configService.get('telegram.avatarBaseUrl', 'https://telegram.hb.bizmrg.com/telegram_small_avatars');
+    const avatarBaseUrl =  ((this.configService.get as any)('telegram.avatarBaseUrl') ?? 'https://telegram.hb.bizmrg.com/telegram_small_avatars') as string;
     try {
       const url = `${avatarBaseUrl}/${chat_id}.jpg`;
       const status = await Axios.head(url).then((d) => d.status);
@@ -877,7 +877,7 @@ export class TgBotsService {
 
           .jpeg({ quality: 100 });
 
-        const dicebarApiUrl = this.configService.get('telegram.dicebearApiUrl', 'https://avatars.dicebear.com/api/jdenticon');
+        const dicebarApiUrl =  ((this.configService.get as any)('telegram.dicebearApiUrl') ?? 'https://avatars.dicebear.com/api/jdenticon') as string;
         await Axios({
           method: "get",
           url: `${dicebarApiUrl}/${chat_id}.svg`,
@@ -933,7 +933,7 @@ export class TgBotsService {
           .resize(200, 200)
           .jpeg({ quality: 100 });
 
-        const dicebarApiUrl = this.configService.get('telegram.dicebearApiUrl', 'https://avatars.dicebear.com/api/jdenticon');
+        const dicebarApiUrl =  ((this.configService.get as any)('telegram.dicebearApiUrl') ?? 'https://avatars.dicebear.com/api/jdenticon') as string;
         await Axios({
           method: "get",
           url: `${dicebarApiUrl}/${chat_id}.svg`,
@@ -956,7 +956,7 @@ export class TgBotsService {
     if (!chat_id || chat_id == "undefined") return;
     //apiGET("/api/telegram/updatechatphoto", { chat_id }).then((d) => d);
 
-    const avatarBaseUrl = this.configService.get('telegram.avatarBaseUrl', 'https://telegram.hb.bizmrg.com/telegram_small_avatars');
+    const avatarBaseUrl =  ((this.configService.get as any)('telegram.avatarBaseUrl') ?? 'https://telegram.hb.bizmrg.com/telegram_small_avatars') as string;
     return `${avatarBaseUrl}/${chat_id}.jpg`;
   }
 

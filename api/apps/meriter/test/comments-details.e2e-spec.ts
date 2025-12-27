@@ -81,6 +81,8 @@ describe('Comment Details Endpoint E2E Tests', () => {
       {
         id: testUserId,
         telegramId: `user1_${testUserId}`,
+        authProvider: 'telegram',
+        authId: `user1_${testUserId}`,
         displayName: 'Test User 1',
         username: 'testuser1',
         firstName: 'Test',
@@ -95,6 +97,8 @@ describe('Comment Details Endpoint E2E Tests', () => {
       {
         id: testUserId2,
         telegramId: `user2_${testUserId2}`,
+        authProvider: 'telegram',
+        authId: `user2_${testUserId2}`,
         displayName: 'Test User 2',
         username: 'testuser2',
         firstName: 'Test2',
@@ -109,6 +113,8 @@ describe('Comment Details Endpoint E2E Tests', () => {
       {
         id: testUserId3,
         telegramId: `user3_${testUserId3}`,
+        authProvider: 'telegram',
+        authId: `user3_${testUserId3}`,
         displayName: 'Test User 3',
         username: 'testuser3',
         firstName: 'Test3',

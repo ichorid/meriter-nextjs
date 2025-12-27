@@ -66,6 +66,9 @@ export class VoteSchemaClass implements Vote {
 export const VoteSchema = SchemaFactory.createForClass(VoteSchemaClass);
 export type VoteDocument = VoteSchemaClass & Document;
 
+// Backwards-compatible runtime alias (many tests use `Vote.name`)
+export const Vote = VoteSchemaClass;
+
 // Add indexes for common queries
 VoteSchema.index({ targetType: 1, targetId: 1 });
 VoteSchema.index({ userId: 1, createdAt: -1 });

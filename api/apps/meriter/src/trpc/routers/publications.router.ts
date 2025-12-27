@@ -668,7 +668,7 @@ export const publicationsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Check if fake data mode is enabled
-             const fakeDataMode = ctx.configService.get('dev.fakeDataMode', false);
+             const fakeDataMode = ((ctx.configService.get as any)('dev.fakeDataMode') ?? false) as boolean;
              if (!fakeDataMode) {
         throw new TRPCError({
           code: 'FORBIDDEN',
@@ -791,5 +791,319 @@ export const publicationsRouter = router({
         publications: createdPublications,
         count: createdPublications.length,
       };
+    }),
+
+  /**
+   * Propose to forward a publication (for non-leads)
+   */
+  proposeForward: protectedProcedure
+    .input(z.object({
+      publicationId: z.string(),
+      targetCommunityId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+      const { publicationId, targetCommunityId } = input;
+
+      // Get publication
+      const publication = await ctx.publicationService.getPublication(publicationId);
+      if (!publication) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Publication not found',
+        });
+      }
+
+      const sourceCommunityId = publication.getCommunityId.getValue();
+      const sourceCommunity = await ctx.communityService.getCommunity(sourceCommunityId);
+      
+      // Validate: must be in a team group
+      if (!sourceCommunity || sourceCommunity.typeTag !== 'team') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Can only forward posts from team groups',
+        });
+      }
+
+      // Validate: post type must be 'basic' or 'project' (not 'poll')
+      const postType = (publication as any).postType || 'basic';
+      if (postType === 'poll') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Cannot forward polls',
+        });
+      }
+
+      // Validate: user is not a lead
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(userId, sourceCommunityId);
+      if (userRole === 'lead' || userRole === 'superadmin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Leads should use the forward endpoint directly',
+        });
+      }
+
+      // Validate: target community supports the post type
+      const targetSupports = await ctx.permissionService.targetCommunitySupportsPostType(
+        targetCommunityId,
+        postType as 'basic' | 'project',
+        userId,
+      );
+      if (!targetSupports) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Target community does not support this post type',
+        });
+      }
+
+      // Check quota
+      const forwardCost = sourceCommunity.settings?.forwardCost ?? 1;
+      if (forwardCost > 0) {
+        const remainingQuota = await getRemainingQuota(
+          userId,
+          sourceCommunityId,
+          sourceCommunity,
+          ctx.connection,
+        );
+        if (remainingQuota < forwardCost) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `Insufficient quota. Required: ${forwardCost}, available: ${remainingQuota}`,
+          });
+        }
+      }
+
+      // Consume quota
+      if (forwardCost > 0) {
+        await ctx.quotaUsageService.consumeQuota(
+          userId,
+          sourceCommunityId,
+          forwardCost,
+          'forward_proposal',
+          publicationId,
+        );
+      }
+
+      // Update publication with forward proposal
+      await ctx.publicationService.updateForwardProposal(
+        publicationId,
+        targetCommunityId,
+        userId,
+      );
+
+      // Get all leads of source community
+      const leadRoles = await ctx.userCommunityRoleService.getUsersByRole(
+        sourceCommunityId,
+        'lead',
+      );
+
+      // Create notification for each lead
+      const targetCommunity = await ctx.communityService.getCommunity(targetCommunityId);
+      const proposer = await ctx.userService.getUser(userId);
+      const proposerName = proposer?.displayName || 'Someone';
+
+      for (const leadRole of leadRoles) {
+        const leadId = leadRole.userId;
+        await ctx.notificationService.createNotification({
+          userId: leadId,
+          type: 'forward_proposal',
+          source: 'user',
+          sourceId: userId,
+          metadata: {
+            publicationId,
+            communityId: sourceCommunityId,
+            forwardProposedBy: userId,
+            forwardTargetCommunityId: targetCommunityId,
+            targetCommunityName: targetCommunity?.name || targetCommunityId,
+          },
+          title: 'Forward proposal',
+          message: `${proposerName} proposed to forward a post to ${targetCommunity?.name || targetCommunityId}`,
+        });
+      }
+
+      return { success: true };
+    }),
+
+  /**
+   * Forward a publication (for leads - immediate forward or confirm proposal)
+   */
+  forward: protectedProcedure
+    .input(z.object({
+      publicationId: z.string(),
+      targetCommunityId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+      const { publicationId, targetCommunityId } = input;
+
+      // Get publication
+      const publication = await ctx.publicationService.getPublication(publicationId);
+      if (!publication) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Publication not found',
+        });
+      }
+
+      const sourceCommunityId = publication.getCommunityId.getValue();
+      const sourceCommunity = await ctx.communityService.getCommunity(sourceCommunityId);
+      
+      // Validate: must be in a team group
+      if (!sourceCommunity || sourceCommunity.typeTag !== 'team') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Can only forward posts from team groups',
+        });
+      }
+
+      // Validate: post type must be 'basic' or 'project' (not 'poll')
+      const postType = (publication as any).postType || 'basic';
+      if (postType === 'poll') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Cannot forward polls',
+        });
+      }
+
+      // Validate: user is a lead or superadmin
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(userId, sourceCommunityId);
+      if (userRole !== 'lead' && userRole !== 'superadmin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only leads can forward posts',
+        });
+      }
+
+      // Get publication document to check forward status
+      const publicationDoc = await ctx.publicationService.getPublicationDocument(publicationId);
+      const isPending = publicationDoc?.forwardStatus === 'pending';
+
+      // If pending, validate target matches
+      if (isPending && publicationDoc?.forwardTargetCommunityId !== targetCommunityId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Target community does not match the proposal',
+        });
+      }
+
+      // Validate: target community supports the post type
+      const targetSupports = await ctx.permissionService.targetCommunitySupportsPostType(
+        targetCommunityId,
+        postType as 'basic' | 'project',
+        userId,
+      );
+      if (!targetSupports) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Target community does not support this post type',
+        });
+      }
+
+      // If not pending, check and consume quota
+      if (!isPending) {
+        const forwardCost = sourceCommunity.settings?.forwardCost ?? 1;
+        if (forwardCost > 0) {
+          const remainingQuota = await getRemainingQuota(
+            userId,
+            sourceCommunityId,
+            sourceCommunity,
+            ctx.connection,
+          );
+          if (remainingQuota < forwardCost) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: `Insufficient quota. Required: ${forwardCost}, available: ${remainingQuota}`,
+            });
+          }
+
+          await ctx.quotaUsageService.consumeQuota(
+            userId,
+            sourceCommunityId,
+            forwardCost,
+            'forward',
+            publicationId,
+          );
+        }
+      }
+
+      // Get original publication data
+      const originalAuthorId = publication.getAuthorId.getValue();
+      const originalBeneficiaryId = publication.getBeneficiaryId?.getValue();
+
+      // Create new publication in target community
+      const newPublication = await ctx.publicationService.createPublication(
+        originalAuthorId, // Keep original author
+        {
+          communityId: targetCommunityId,
+          // Publication aggregate getters already return primitive values
+          content: publication.getContent,
+          type: publication.getType,
+          postType: postType as 'basic' | 'project',
+          isProject: postType === 'project',
+          title: (publicationDoc as any)?.title,
+          description: (publicationDoc as any)?.description,
+          hashtags: (publicationDoc as any)?.hashtags || [],
+          imageUrl: (publicationDoc as any)?.imageUrl,
+          images: (publicationDoc as any)?.images,
+          videoUrl: (publicationDoc as any)?.videoUrl,
+          beneficiaryId: originalBeneficiaryId,
+          impactArea: (publicationDoc as any)?.impactArea,
+          beneficiaries: (publicationDoc as any)?.beneficiaries,
+          methods: (publicationDoc as any)?.methods,
+          stage: (publicationDoc as any)?.stage,
+          helpNeeded: (publicationDoc as any)?.helpNeeded,
+        },
+      );
+
+      // Update original publication: mark as forwarded
+      await ctx.publicationService.markAsForwarded(publicationId, targetCommunityId);
+
+      return { success: true, forwardedPublicationId: newPublication.getId.getValue() };
+    }),
+
+  /**
+   * Reject a forward proposal (for leads)
+   */
+  rejectForward: protectedProcedure
+    .input(z.object({
+      publicationId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+      const { publicationId } = input;
+
+      // Get publication
+      const publication = await ctx.publicationService.getPublication(publicationId);
+      if (!publication) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Publication not found',
+        });
+      }
+
+      const sourceCommunityId = publication.getCommunityId.getValue();
+      
+      // Get publication document to check forward status
+      const publicationDoc = await ctx.publicationService.getPublicationDocument(publicationId);
+      if (!publicationDoc || publicationDoc.forwardStatus !== 'pending') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Publication is not pending forward approval',
+        });
+      }
+
+      // Validate: user is a lead or superadmin
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(userId, sourceCommunityId);
+      if (userRole !== 'lead' && userRole !== 'superadmin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only leads can reject forward proposals',
+        });
+      }
+
+      // Clear forward fields
+      await ctx.publicationService.clearForwardProposal(publicationId);
+
+      return { success: true };
     }),
 });

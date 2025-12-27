@@ -43,6 +43,11 @@ export interface Publication {
   methods?: string[];
   stage?: string;
   helpNeeded?: string[];
+  // Forward fields
+  forwardStatus?: 'pending' | 'forwarded' | null;
+  forwardTargetCommunityId?: string;
+  forwardProposedBy?: string;
+  forwardProposedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -131,6 +136,19 @@ export class PublicationSchemaClass implements Publication {
   @Prop({ type: [String], default: [] })
   helpNeeded?: string[];
 
+  // Forward fields
+  @Prop({ type: String, enum: ['pending', 'forwarded'], default: null })
+  forwardStatus?: 'pending' | 'forwarded' | null;
+
+  @Prop()
+  forwardTargetCommunityId?: string;
+
+  @Prop()
+  forwardProposedBy?: string;
+
+  @Prop()
+  forwardProposedAt?: Date;
+
   @Prop({ required: true })
   createdAt!: Date;
 
@@ -140,6 +158,9 @@ export class PublicationSchemaClass implements Publication {
 
 export const PublicationSchema = SchemaFactory.createForClass(PublicationSchemaClass);
 export type PublicationDocument = PublicationSchemaClass & Document;
+
+// Backwards-compatible runtime alias (many tests use `Publication.name`)
+export const Publication = PublicationSchemaClass;
 
 // Add indexes for common queries
 PublicationSchema.index({ communityId: 1, createdAt: -1 });

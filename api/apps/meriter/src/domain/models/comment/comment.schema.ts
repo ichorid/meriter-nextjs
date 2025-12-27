@@ -82,6 +82,9 @@ export class CommentSchemaClass implements Comment {
 export const CommentSchema = SchemaFactory.createForClass(CommentSchemaClass);
 export type CommentDocument = CommentSchemaClass & Document;
 
+// Backwards-compatible runtime alias (many tests use `Comment.name`)
+export const Comment = CommentSchemaClass;
+
 // Add indexes for common queries
 CommentSchema.index({ targetType: 1, targetId: 1, createdAt: -1 });
 CommentSchema.index({ authorId: 1, createdAt: -1 });

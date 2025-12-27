@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, ArrowRight, Eye } from 'lucide-react';
 import { Badge } from '@/components/atoms';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Badge as BrandBadge } from '@/components/ui/Badge';
@@ -17,6 +17,10 @@ import { DeleteConfirmationModal } from '@/components/organisms/DeleteConfirmati
 import { useToastStore } from '@/shared/stores/toast.store';
 import { ResourcePermissions } from '@/types/api-v1';
 import { useTranslations } from 'next-intl';
+import { useCommunity } from '@/hooks/api';
+import { useUserRoles } from '@/hooks/api/useProfile';
+import { ForwardPopup } from './ForwardPopup';
+import { ReviewForwardPopup } from './ReviewForwardPopup';
 
 // Local Publication type definition
 interface Publication {
@@ -80,11 +84,41 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   const { user } = useAuth();
   const currentUserId = user?.id;
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showForwardPopup, setShowForwardPopup] = useState(false);
+  const [showReviewPopup, setShowReviewPopup] = useState(false);
   const t = useTranslations('shared');
   
   const deletePublication = useDeletePublication();
   const deletePoll = useDeletePoll();
   const addToast = useToastStore((state) => state.addToast);
+
+  // Get community and user role for forward button
+  const { data: community } = useCommunity(communityId || '');
+  const { data: userRoles = [] } = useUserRoles(user?.id || '');
+  
+  // Check if user is a lead
+  const isLead = useMemo(() => {
+    if (!communityId || !user?.id) return false;
+    if (user.globalRole === 'superadmin') return true;
+    const role = userRoles.find((r) => r.communityId === communityId);
+    return role?.role === 'lead';
+  }, [communityId, user?.id, user?.globalRole, userRoles]);
+
+  // Check if post is forwardable (team group, not poll, not already forwarded)
+  const canForward = useMemo(() => {
+    if (!communityId || !community) return false;
+    if (community.typeTag !== 'team') return false;
+    const postType = (publication as any).postType || 'basic';
+    if (postType === 'poll') return false;
+    const forwardStatus = (publication as any).forwardStatus;
+    if (forwardStatus === 'forwarded') return false;
+    return true;
+  }, [communityId, community, publication]);
+
+  // Check if post is pending forward approval
+  const isPendingForward = useMemo(() => {
+    return (publication as any).forwardStatus === 'pending';
+  }, [publication]);
 
   const author = useMemo(() => ({
     name: publication.meta?.author?.name || 'Unknown',
@@ -229,11 +263,39 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             <Trash2 size={16} />
           </Button>
         )}
+        {canForward && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isLead && isPendingForward) {
+                setShowReviewPopup(true);
+              } else {
+                setShowForwardPopup(true);
+              }
+            }}
+            className="rounded-xl active:scale-[0.98] p-1.5 h-auto min-h-0"
+            title={isLead && isPendingForward ? 'Review forward proposal' : 'Forward post'}
+          >
+            {isLead && isPendingForward ? <Eye size={16} /> : <ArrowRight size={16} />}
+          </Button>
+        )}
         {(publication as any).postType === 'project' || (publication as any).isProject ? (
           <BrandBadge variant="warning" size="sm">
             PROJECT
           </BrandBadge>
         ) : null}
+        {(publication as any).forwardStatus === 'pending' && (
+          <BrandBadge variant="info" size="sm">
+            PENDING FORWARD
+          </BrandBadge>
+        )}
+        {(publication as any).forwardStatus === 'forwarded' && (publication as any).forwardTargetCommunityId && (
+          <BrandBadge variant="success" size="sm">
+            FORWARDED
+          </BrandBadge>
+        )}
         {publication.meta?.hashtagName && (
           <Badge variant="primary" size="sm">
             #{publication.meta?.hashtagName}
@@ -246,6 +308,26 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
         )}
       </div>
       
+      {/* Forward Popup */}
+      {showForwardPopup && publicationId && communityId && (
+        <ForwardPopup
+          publicationId={publicationId}
+          communityId={communityId}
+          isLead={isLead}
+          onClose={() => setShowForwardPopup(false)}
+        />
+      )}
+
+      {/* Review Forward Popup */}
+      {showReviewPopup && publicationId && (publication as any).forwardProposedBy && (publication as any).forwardTargetCommunityId && (
+        <ReviewForwardPopup
+          publicationId={publicationId}
+          proposedBy={(publication as any).forwardProposedBy}
+          targetCommunityId={(publication as any).forwardTargetCommunityId}
+          onClose={() => setShowReviewPopup(false)}
+        />
+      )}
+
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
         isOpen={showDeleteModal}

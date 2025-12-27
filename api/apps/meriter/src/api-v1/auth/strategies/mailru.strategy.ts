@@ -3,7 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 // @ts-expect-error - passport-oauth2 types may not be available
 import { Strategy } from 'passport-oauth2';
 import { ConfigService } from '@nestjs/config';
-import { AppConfig } from '../../config/configuration';
+import { AppConfig } from '../../../config/configuration';
 
 /**
  * Mail.ru OAuth Strategy
@@ -14,9 +14,9 @@ export class MailruStrategy extends PassportStrategy(Strategy, 'mailru') {
 
     constructor(private configService: ConfigService<AppConfig>) {
         // Use configService parameter directly (not this.configService) before super()
-        const clientID = configService.get('oauth.mailru.clientId');
-        const clientSecret = configService.get('oauth.mailru.clientSecret');
-        const callbackURL = configService.get('oauth.mailru.redirectUri');
+        const clientID = (configService.get as any)('oauth.mailru.clientId') as string | undefined;
+        const clientSecret = (configService.get as any)('oauth.mailru.clientSecret') as string | undefined;
+        const callbackURL = (configService.get as any)('oauth.mailru.redirectUri') as string | undefined;
 
         if (!clientID || !clientSecret || !callbackURL) {
             throw new Error(

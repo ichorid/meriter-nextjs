@@ -6,7 +6,7 @@
     admin localhost:20190
 }
 
-:80 {
+:8080 {
     # Enable access logs
     log {
         output stdout
@@ -41,9 +41,9 @@
         -Server
     }
 
-    # Next.js assets (dev/prod) - proxy to web container
+    # Next.js assets (dev/prod) - proxy to web
     handle /_next* {
-        reverse_proxy web:8001 {
+        reverse_proxy localhost:8001 {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-Proto "http"
             header_up X-Forwarded-Host {host}
@@ -52,7 +52,7 @@
         encode gzip
     }
 
-    # API requests - proxy to backend API
+    # API requests - proxy to backend API (running on host in dev mode)
     handle /api* {
         # Rate limiting configuration (requires caddy-ratelimit plugin)
         # Uncomment and configure when plugin is installed:
@@ -70,7 +70,7 @@
             X-RateLimit-Window "60"
         }
         
-        reverse_proxy api:8002 {
+        reverse_proxy localhost:8002 {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-Proto "http"
             header_up X-Forwarded-Host {host}
@@ -79,9 +79,9 @@
         encode gzip
     }
 
-    # tRPC requests - proxy to backend API
+    # tRPC requests - proxy to backend API (running on host in dev mode)
     handle /trpc* {
-        reverse_proxy api:8002 {
+        reverse_proxy localhost:8002 {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-Proto "http"
             header_up X-Forwarded-Host {host}
@@ -92,7 +92,7 @@
 
     # Web app
     handle {
-        reverse_proxy web:8001 {
+        reverse_proxy localhost:8001 {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-Proto "http"
             header_up X-Forwarded-Host {host}

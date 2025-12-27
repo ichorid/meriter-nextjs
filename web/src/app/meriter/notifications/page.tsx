@@ -179,6 +179,8 @@ export default function NotificationsPage() {
         return '📊';
       case 'system':
         return '🔔';
+      case 'forward_proposal':
+        return '➡️';
       default:
         return '🔔';
     }
@@ -210,6 +212,7 @@ export default function NotificationsPage() {
     { value: 'reply', label: t('filters.reply') },
     { value: 'vote', label: t('filters.vote') },
     { value: 'invite', label: t('filters.invite') },
+    { value: 'forward_proposal', label: t('filters.forward_proposal') },
   ], [t]);
 
   return (
@@ -379,6 +382,7 @@ function NotificationPreferencesPanel() {
     publications: true,
     polls: true,
     system: true,
+    forward_proposal: true,
   });
 
   React.useEffect(() => {

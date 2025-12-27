@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { VoteService } from '../src/domain/services/vote.service';
@@ -52,10 +51,11 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
   beforeAll(async () => {
     testDb = new TestDatabaseHelper();
     const uri = await testDb.start();
+    process.env.MONGO_URL = uri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-voting-tests';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MongooseModule.forRoot(uri), MeriterModule],
+      imports: [MeriterModule],
     })
       .compile();
 

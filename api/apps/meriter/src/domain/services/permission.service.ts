@@ -382,4 +382,64 @@ export class PermissionService {
     const requesterRole = await this.getUserRoleInCommunity(requesterId, communityId);
     return requesterRole === COMMUNITY_ROLE_LEAD || requesterRole === COMMUNITY_ROLE_PARTICIPANT;
   }
+
+  /**
+   * Check if user can forward a publication
+   * Returns true if:
+   * - Publication is in a team group
+   * - User is a member of the source community (lead, participant, or viewer)
+   * - Post type is 'basic' or 'project' (not 'poll')
+   */
+  async canForwardPublication(
+    userId: string,
+    publicationId: string,
+    communityId: string,
+  ): Promise<boolean> {
+    // Check if publication exists
+    const publication = await this.publicationService.getPublication(publicationId);
+    if (!publication) {
+      return false;
+    }
+
+    // Check if community is a team group
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community || community.typeTag !== 'team') {
+      return false;
+    }
+
+    // Check if post type is forwardable (basic or project, not poll)
+    const postType = (publication as any).postType || 'basic';
+    if (postType === 'poll') {
+      return false;
+    }
+
+    // Check if user is a member of the community (any role is fine)
+    const userRole = await this.getUserRoleInCommunity(userId, communityId);
+    return userRole !== null;
+  }
+
+  /**
+   * Check if target community supports creating the given post type
+   * Returns true if the target community's postingRules allow creating the post type
+   */
+  async targetCommunitySupportsPostType(
+    targetCommunityId: string,
+    postType: 'basic' | 'project',
+    userId: string,
+  ): Promise<boolean> {
+    const targetCommunity = await this.communityService.getCommunity(targetCommunityId);
+    if (!targetCommunity) {
+      return false;
+    }
+
+    // Get user's role in target community
+    const userRole = await this.getUserRoleInCommunity(userId, targetCommunityId);
+    if (!userRole) {
+      return false;
+    }
+
+    // Check if user can create publications in target community
+    // This uses the permission rule engine which checks postingRules
+    return this.canCreatePublication(userId, targetCommunityId);
+  }
 }

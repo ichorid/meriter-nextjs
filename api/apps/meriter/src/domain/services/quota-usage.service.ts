@@ -7,7 +7,7 @@ import { QuotaUsageSchemaClass, QuotaUsageDocument } from '../models/quota-usage
 import type { QuotaUsage } from '../models/quota-usage/quota-usage.schema';
 import { uid } from 'uid';
 
-export type QuotaUsageType = 'vote' | 'poll_cast' | 'publication_creation' | 'poll_creation';
+export type QuotaUsageType = 'vote' | 'poll_cast' | 'publication_creation' | 'poll_creation' | 'forward' | 'forward_proposal';
 
 @Injectable()
 export class QuotaUsageService {

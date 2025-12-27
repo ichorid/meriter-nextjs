@@ -82,6 +82,7 @@ export const CommunitySettingsSchema = z.object({
   language: z.enum(["en", "ru"]).default("en"),
   postCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a post (0 = free)
   pollCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a poll (0 = free)
+  forwardCost: z.number().int().min(0).default(1), // Cost in quota/merits to forward a post (0 = free)
   editWindowDays: z.number().int().min(0).default(7), // Number of days after creation that regular users can edit their posts/comments (0 = no time limit)
 });
 
@@ -245,6 +246,11 @@ export const PublicationSchema = IdentifiableSchema.merge(
   methods: z.array(z.enum([...METHODS] as [string, ...string[]])).max(3).default([]),
   stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
   helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).max(3).default([]),
+  // Forward fields
+  forwardStatus: z.enum(["pending", "forwarded"]).nullable().optional(),
+  forwardTargetCommunityId: z.string().optional(),
+  forwardProposedBy: z.string().optional(),
+  forwardProposedAt: z.date().optional(),
 });
 
 export const CommentAuthorMetaSchema = z.object({

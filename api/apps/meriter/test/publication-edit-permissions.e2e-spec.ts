@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
 import { MeriterModule } from '../src/meriter.module';
 import { TestDatabaseHelper } from './test-db.helper';
 import { createTestPublication, createTestComment } from './helpers/fixtures';
@@ -46,7 +45,7 @@ describe('Publication and Comment Edit Permissions', () => {
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-publication-edit-permissions';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MongooseModule.forRoot(mongoUri), MeriterModule],
+      imports: [MeriterModule],
     })
       .compile();
 

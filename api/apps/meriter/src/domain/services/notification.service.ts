@@ -143,7 +143,8 @@ export class NotificationService {
     switch (type) {
       case 'vote':
       case 'beneficiary':
-      case 'publication': {
+      case 'publication':
+      case 'forward_proposal': {
         const { communityId, publicationId, targetId, targetType } = metadata;
         if (!communityId || !publicationId) {
           return undefined;

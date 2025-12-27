@@ -316,6 +316,47 @@ export const useUpdatePublication = () => {
     });
 };
 
+export const useProposeForward = () => {
+    const queryClient = useQueryClient();
+    const { user } = useAuth();
+
+    return trpc.publications.proposeForward.useMutation({
+        onSuccess: () => {
+            // Invalidate publications queries to refresh the UI
+            queryClient.invalidateQueries({ queryKey: [queryKeys.PUBLICATIONS] });
+            if (user?.id) {
+                queryClient.invalidateQueries({ queryKey: [queryKeys.USER_QUOTA, user.id] });
+            }
+        },
+    });
+};
+
+export const useForward = () => {
+    const queryClient = useQueryClient();
+    const { user } = useAuth();
+
+    return trpc.publications.forward.useMutation({
+        onSuccess: () => {
+            // Invalidate publications queries to refresh the UI
+            queryClient.invalidateQueries({ queryKey: [queryKeys.PUBLICATIONS] });
+            if (user?.id) {
+                queryClient.invalidateQueries({ queryKey: [queryKeys.USER_QUOTA, user.id] });
+            }
+        },
+    });
+};
+
+export const useRejectForward = () => {
+    const queryClient = useQueryClient();
+
+    return trpc.publications.rejectForward.useMutation({
+        onSuccess: () => {
+            // Invalidate publications queries to refresh the UI
+            queryClient.invalidateQueries({ queryKey: [queryKeys.PUBLICATIONS] });
+        },
+    });
+};
+
 export const useDeletePublication = () => {
     const utils = trpc.useUtils();
     const queryClient = useQueryClient();

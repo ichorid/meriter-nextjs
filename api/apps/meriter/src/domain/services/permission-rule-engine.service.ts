@@ -195,10 +195,11 @@ export class PermissionRuleEngine {
 
     // STEP 7.6: Check if participant is trying to vote for lead from same team
     // This restriction applies to all communities when participants and leads share a team
-    if (action === ActionType.VOTE && userRole === 'participant' && 
-        context?.authorRole === 'lead' && 
-        context?.sharedTeamCommunities && 
-        context.sharedTeamCommunities.length > 0) {
+    if (action === ActionType.VOTE && 
+      userRole === 'participant' && 
+      context?.authorRole === 'lead' && 
+      context?.sharedTeamCommunities && 
+      context.sharedTeamCommunities.length > 0) {
       // Exception: future-vision allows this
       if (community.typeTag === 'future-vision') {
         this.logger.debug(
@@ -222,15 +223,26 @@ export class PermissionRuleEngine {
     }
 
     // STEP 8: Check author requirement for edit/delete actions (participants can only edit/delete their own resources)
+    // Exception: In team groups, participants can edit each other's posts
     if ((action === ActionType.EDIT_PUBLICATION || action === ActionType.DELETE_PUBLICATION ||
          action === ActionType.EDIT_POLL || action === ActionType.DELETE_POLL ||
          action === ActionType.EDIT_COMMENT || action === ActionType.DELETE_COMMENT) &&
         userRole === 'participant') {
       if (!context?.isAuthor) {
-        this.logger.debug(
-          `[canPerformAction] DENIED: Participant can only ${action} their own resources`,
-        );
-        return false;
+        // Allow editing publications in team groups even if not the author
+        if (action === ActionType.EDIT_PUBLICATION && 
+            community.typeTag === 'team' && 
+            context?.isTeamMember) {
+          this.logger.debug(
+            `[canPerformAction] ALLOWED: Participant can edit other team member's post in team group`,
+          );
+          // Continue to condition evaluation (e.g., canEditWithVotes)
+        } else {
+          this.logger.debug(
+            `[canPerformAction] DENIED: Participant can only ${action} their own resources`,
+          );
+          return false;
+        }
       }
     }
 
@@ -388,9 +400,20 @@ export class PermissionRuleEngine {
     }
 
     // Check canEditWithVotes
+    // Exception: In team groups, participants can edit each other's posts even with votes
     if (conditions.canEditWithVotes !== undefined) {
       if (context?.hasVotes && !conditions.canEditWithVotes) {
-        return false;
+        // Allow editing in team groups even if post has votes
+        if (action === ActionType.EDIT_PUBLICATION &&
+            community.typeTag === 'team' &&
+            context?.isTeamMember) {
+          this.logger.debug(
+            `[evaluateConditions] ALLOWED: Team group participant can edit post with votes`,
+          );
+          // Continue to other condition checks
+        } else {
+          return false;
+        }
       }
     }
 

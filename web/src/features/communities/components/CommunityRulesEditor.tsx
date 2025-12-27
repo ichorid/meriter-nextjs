@@ -30,6 +30,7 @@ interface CommunityRulesEditorProps {
       dailyEmission?: number;
       postCost?: number;
       pollCost?: number;
+      forwardCost?: number;
     };
     votingSettings?: {
       votingRestriction?: 'any' | 'not-own' | 'not-same-group';
@@ -85,6 +86,9 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   );
   const [pollCost, setPollCost] = useState<string>(
     String(community.settings?.pollCost ?? 1)
+  );
+  const [forwardCost, setForwardCost] = useState<string>(
+    String(community.settings?.forwardCost ?? 1)
   );
   const [votingRestriction, setVotingRestriction] = useState<'any' | 'not-own' | 'not-same-group'>(
     (community.votingSettings?.votingRestriction as 'any' | 'not-own' | 'not-same-group') || 'not-own'
@@ -259,6 +263,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           dailyEmission: parseInt(dailyEmission, 10),
           postCost: parseInt(postCost, 10),
           pollCost: parseInt(pollCost, 10),
+          forwardCost: parseInt(forwardCost, 10),
         },
         votingSettings: {
           votingRestriction,
@@ -712,6 +717,19 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
                 min="0"
                 value={pollCost}
                 onChange={(e) => setPollCost(e.target.value)}
+                className="h-11 rounded-xl w-full"
+              />
+            </BrandFormControl>
+
+            <BrandFormControl
+              label={tSettings('forwardCost')}
+              helperText={tSettings('forwardCostHelp')}
+            >
+              <Input
+                type="number"
+                min="0"
+                value={forwardCost}
+                onChange={(e) => setForwardCost(e.target.value)}
                 className="h-11 rounded-xl w-full"
               />
             </BrandFormControl>

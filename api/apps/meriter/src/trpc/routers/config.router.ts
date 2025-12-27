@@ -13,33 +13,33 @@ export const configRouter = router({
     const configService = ctx.configService;
     
     // Get BOT_USERNAME from environment (optional)
-    const botUsername = configService.get('bot.username')?.trim() || null;
+    const botUsername = ((configService.get as any)('bot.username') as string | undefined)?.trim() || null;
 
     // OAuth provider flags - read from typed ConfigService
     const oauth = {
-      google: configService.get('oauth.google.enabled', false),
-      yandex: configService.get('oauth.yandex.enabled', false),
-      vk: configService.get('oauth.vk.enabled', false),
-      telegram: configService.get('oauth.telegram.enabled', false),
-      apple: configService.get('oauth.apple.enabled', false),
-      twitter: configService.get('oauth.twitter.enabled', false),
-      instagram: configService.get('oauth.instagram.enabled', false),
-      sber: configService.get('oauth.sber.enabled', false),
-      mailru: configService.get('oauth.mailru.enabled', false),
+      google: ((configService.get as any)('oauth.google.enabled') ?? false) as boolean,
+      yandex: ((configService.get as any)('oauth.yandex.enabled') ?? false) as boolean,
+      vk: ((configService.get as any)('oauth.vk.enabled') ?? false) as boolean,
+      telegram: ((configService.get as any)('oauth.telegram.enabled') ?? false) as boolean,
+      apple: ((configService.get as any)('oauth.apple.enabled') ?? false) as boolean,
+      twitter: ((configService.get as any)('oauth.twitter.enabled') ?? false) as boolean,
+      instagram: ((configService.get as any)('oauth.instagram.enabled') ?? false) as boolean,
+      sber: ((configService.get as any)('oauth.sber.enabled') ?? false) as boolean,
+      mailru: ((configService.get as any)('oauth.mailru.enabled') ?? false) as boolean,
     };
 
     // AUTHN (WebAuthn/Passkey) flag
     const authn = {
-      enabled: configService.get('authn.enabled', false),
+      enabled: ((configService.get as any)('authn.enabled') ?? false) as boolean,
     };
 
     // Feature flags - use typed ConfigService
     const features = {
-      analytics: configService.get('features.analytics', false),
-      debug: configService.get('features.debug', false),
-      commentVoting: configService.get('features.commentVoting', false),
-      commentImageUploads: configService.get('features.commentImageUploadsEnabled', false),
-      loginInviteForm: configService.get('features.loginInviteForm', false),
+      analytics: ((configService.get as any)('features.analytics') ?? false) as boolean,
+      debug: ((configService.get as any)('features.debug') ?? false) as boolean,
+      commentVoting: ((configService.get as any)('features.commentVoting') ?? false) as boolean,
+      commentImageUploads: ((configService.get as any)('features.commentImageUploadsEnabled') ?? false) as boolean,
+      loginInviteForm: ((configService.get as any)('features.loginInviteForm') ?? false) as boolean,
     };
 
     return {

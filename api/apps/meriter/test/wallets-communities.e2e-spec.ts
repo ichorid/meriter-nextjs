@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
-import { MongooseModule, getModelToken } from '@nestjs/mongoose';
+import { getModelToken } from '@nestjs/mongoose';
 import { MeriterModule } from '../src/meriter.module';
 import { TestDatabaseHelper } from './test-db.helper';
 import { trpcQuery } from './helpers/trpc-test-helper';
@@ -26,9 +26,10 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
     testDb = new TestDatabaseHelper();
     const uri = await testDb.start();
     await testDb.connect(uri);
+    process.env.MONGO_URL = uri;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MongooseModule.forRoot(uri), MeriterModule],
+      imports: [MeriterModule],
     })
       .overrideGuard((MeriterModule as any).prototype?.UserGuard || ({} as any))
       .useClass(AllowAllGuard as any)

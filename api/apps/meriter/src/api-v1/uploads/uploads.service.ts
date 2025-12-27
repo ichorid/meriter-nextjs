@@ -72,17 +72,17 @@ export class UploadsService {
   private readonly s3Endpoint?: string;
 
   constructor(private configService: ConfigService<AppConfig>) {
-    const s3Endpoint = this.configService.get('storage.s3.endpoint');
-    const bucketName = this.configService.get('storage.s3.bucketName');
-    const s3AccessKeyId = this.configService.get('storage.s3.accessKeyId');
-    const s3SecretAccessKey = this.configService.get('storage.s3.secretAccessKey');
+    const s3Endpoint = (this.configService.get as any)('storage.s3.endpoint') as string | undefined;
+    const bucketName = (this.configService.get as any)('storage.s3.bucketName') as string | undefined;
+    const s3AccessKeyId = (this.configService.get as any)('storage.s3.accessKeyId') as string | undefined;
+    const s3SecretAccessKey = (this.configService.get as any)('storage.s3.secretAccessKey') as string | undefined;
 
     const isS3Configured = !!(s3Endpoint && bucketName && s3AccessKeyId && s3SecretAccessKey);
 
     if (isS3Configured) {
       this.logger.log('✅ S3 storage is configured for uploads');
       this.s3Client = new S3Client({
-        region: this.configService.get('storage.s3.region', 'us-east-1'),
+        region: ((this.configService.get as any)('storage.s3.region') ?? 'us-east-1') as string,
         endpoint: s3Endpoint,
         credentials: {
           accessKeyId: s3AccessKeyId,

@@ -58,6 +58,9 @@ export class TransactionSchemaClass implements Transaction {
 export const TransactionSchema = SchemaFactory.createForClass(TransactionSchemaClass);
 export type TransactionDocument = TransactionSchemaClass & Document;
 
+// Backwards-compatible runtime alias (some tests use `Transaction.name`)
+export const Transaction = TransactionSchemaClass;
+
 // Add indexes for common queries
 TransactionSchema.index({ walletId: 1 });
 TransactionSchema.index({ type: 1 });

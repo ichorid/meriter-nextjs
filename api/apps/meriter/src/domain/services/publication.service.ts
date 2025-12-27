@@ -428,4 +428,76 @@ export class PublicationService {
     await this.publicationModel.deleteOne({ id: publicationId });
     return true;
   }
+
+  /**
+   * Update forward proposal fields on a publication
+   */
+  async updateForwardProposal(
+    publicationId: string,
+    targetCommunityId: string,
+    proposedBy: string,
+  ): Promise<void> {
+    await this.publicationModel.updateOne(
+      { id: publicationId },
+      {
+        $set: {
+          forwardStatus: 'pending',
+          forwardTargetCommunityId: targetCommunityId,
+          forwardProposedBy: proposedBy,
+          forwardProposedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      },
+    );
+  }
+
+  /**
+   * Mark publication as forwarded
+   */
+  async markAsForwarded(
+    publicationId: string,
+    targetCommunityId: string,
+  ): Promise<void> {
+    await this.publicationModel.updateOne(
+      { id: publicationId },
+      {
+        $set: {
+          forwardStatus: 'forwarded',
+          forwardTargetCommunityId: targetCommunityId,
+          updatedAt: new Date(),
+        },
+        $unset: {
+          forwardProposedBy: '',
+          forwardProposedAt: '',
+        },
+      },
+    );
+  }
+
+  /**
+   * Clear forward proposal fields
+   */
+  async clearForwardProposal(publicationId: string): Promise<void> {
+    await this.publicationModel.updateOne(
+      { id: publicationId },
+      {
+        $set: {
+          forwardStatus: null,
+          updatedAt: new Date(),
+        },
+        $unset: {
+          forwardTargetCommunityId: '',
+          forwardProposedBy: '',
+          forwardProposedAt: '',
+        },
+      },
+    );
+  }
+
+  /**
+   * Get publication document (for accessing raw fields)
+   */
+  async getPublicationDocument(publicationId: string): Promise<any> {
+    return await this.publicationModel.findOne({ id: publicationId }).lean();
+  }
 }

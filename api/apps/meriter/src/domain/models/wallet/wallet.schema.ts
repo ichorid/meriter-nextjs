@@ -59,6 +59,9 @@ export class WalletSchemaClass implements Wallet {
 export const WalletSchema = SchemaFactory.createForClass(WalletSchemaClass);
 export type WalletDocument = WalletSchemaClass & Document;
 
+// Backwards-compatible runtime alias (many tests use `Wallet.name`)
+export const Wallet = WalletSchemaClass;
+
 // Add indexes for common queries
 WalletSchema.index({ userId: 1, communityId: 1 }, { unique: true });
 WalletSchema.index({ userId: 1 });

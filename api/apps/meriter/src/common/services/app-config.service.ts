@@ -29,7 +29,7 @@ export class AppConfigService {
    * @returns Application URL (e.g., 'http://localhost' or 'https://meriter.pro')
    */
   getAppUrl(): string {
-    return this.configService.getOrThrow('app.url');
+    return (this.configService.getOrThrow as any)('app.url') as string;
   }
 
   /**
@@ -37,7 +37,7 @@ export class AppConfigService {
    * @returns Server port number (default: 8002)
    */
   getAppPort(): number {
-    return this.configService.get('app.port', 8002);
+    return ((this.configService.get as any)('app.port') ?? 8002) as number;
   }
 
   /**
@@ -45,7 +45,7 @@ export class AppConfigService {
    * @returns Node environment ('development' | 'production' | 'test')
    */
   getNodeEnv(): 'development' | 'production' | 'test' {
-    return this.configService.get('app.env', 'development');
+    return ((this.configService.get as any)('app.env') ?? 'development') as 'development' | 'production' | 'test';
   }
 
   /**
@@ -74,7 +74,7 @@ export class AppConfigService {
    * @throws Error if JWT_SECRET is not configured
    */
   getJwtSecret(): string {
-    return this.configService.getOrThrow('jwt.secret');
+    return (this.configService.getOrThrow as any)('jwt.secret') as string;
   }
 
   // ============================================================================
@@ -86,7 +86,7 @@ export class AppConfigService {
    * @returns Bot username (default: 'meriterbot')
    */
   getBotUsername(): string {
-    return this.configService.get('bot.username', 'meriterbot');
+    return ((this.configService.get as any)('bot.username') ?? 'meriterbot') as string;
   }
 
   /**
@@ -94,7 +94,7 @@ export class AppConfigService {
    * @returns Bot token (optional)
    */
   getBotToken(): string {
-    return this.configService.get('bot.token', '');
+    return ((this.configService.get as any)('bot.token') ?? '') as string;
   }
 
   // ============================================================================
@@ -106,7 +106,7 @@ export class AppConfigService {
    * @returns MongoDB connection string
    */
   getMongoUrl(): string {
-    return this.configService.getOrThrow('database.mongoUrl');
+    return (this.configService.getOrThrow as any)('database.mongoUrl') as string;
   }
 
   /**
@@ -114,7 +114,7 @@ export class AppConfigService {
    * @returns Secondary MongoDB connection string
    */
   getMongoUrlSecondary(): string {
-    return this.configService.getOrThrow('database.mongoUrlSecondary');
+    return (this.configService.getOrThrow as any)('database.mongoUrlSecondary') as string;
   }
 
   // ============================================================================
@@ -126,7 +126,7 @@ export class AppConfigService {
    * @returns true if OAUTH_GOOGLE_ENABLED is 'true'
    */
   isGoogleOAuthEnabled(): boolean {
-    return this.configService.get('oauth.google.enabled', false);
+    return ((this.configService.get as any)('oauth.google.enabled') ?? false) as boolean;
   }
 
   /**
@@ -143,11 +143,11 @@ export class AppConfigService {
       throw new Error('Google OAuth is not enabled');
     }
 
-    const clientId = this.configService.get('oauth.google.clientId');
-    const clientSecret = this.configService.get('oauth.google.clientSecret');
+    const clientId = (this.configService.get as any)('oauth.google.clientId') as string | undefined;
+    const clientSecret = (this.configService.get as any)('oauth.google.clientSecret') as string | undefined;
     const redirectUri = 
-      this.configService.get('oauth.google.redirectUri') ||
-      this.configService.get('GOOGLE_REDIRECT_URI');
+      ((this.configService.get as any)('oauth.google.redirectUri') as string | undefined) ||
+      (this.configService.get('GOOGLE_REDIRECT_URI') as string | undefined);
 
     if (!clientId || !clientSecret || !redirectUri) {
       throw new Error('Google OAuth credentials not configured. Set OAUTH_GOOGLE_CLIENT_ID, OAUTH_GOOGLE_CLIENT_SECRET, and OAUTH_GOOGLE_REDIRECT_URI');
@@ -161,7 +161,7 @@ export class AppConfigService {
    * @returns true if OAUTH_YANDEX_ENABLED is 'true'
    */
   isYandexOAuthEnabled(): boolean {
-    return this.configService.get('oauth.yandex.enabled', false);
+    return ((this.configService.get as any)('oauth.yandex.enabled') ?? false) as boolean;
   }
 
   /**
@@ -178,9 +178,9 @@ export class AppConfigService {
       throw new Error('Yandex OAuth is not enabled');
     }
 
-    const clientId = this.configService.get('oauth.yandex.clientId');
-    const clientSecret = this.configService.get('oauth.yandex.clientSecret');
-    const redirectUri = this.configService.get('oauth.yandex.redirectUri');
+    const clientId = (this.configService.get as any)('oauth.yandex.clientId') as string | undefined;
+    const clientSecret = (this.configService.get as any)('oauth.yandex.clientSecret') as string | undefined;
+    const redirectUri = (this.configService.get as any)('oauth.yandex.redirectUri') as string | undefined;
 
     if (!clientId || !clientSecret || !redirectUri) {
       throw new Error('Yandex OAuth credentials not configured. Set OAUTH_YANDEX_CLIENT_ID, OAUTH_YANDEX_CLIENT_SECRET, and OAUTH_YANDEX_REDIRECT_URI');
@@ -197,13 +197,13 @@ export class AppConfigService {
     return (
       this.isGoogleOAuthEnabled() ||
       this.isYandexOAuthEnabled() ||
-      this.configService.get('oauth.vk.enabled', false) ||
-      this.configService.get('oauth.telegram.enabled', false) ||
-      this.configService.get('oauth.apple.enabled', false) ||
-      this.configService.get('oauth.twitter.enabled', false) ||
-      this.configService.get('oauth.instagram.enabled', false) ||
-      this.configService.get('oauth.sber.enabled', false) ||
-      this.configService.get('oauth.mailru.enabled', false)
+      ((this.configService.get as any)('oauth.vk.enabled') ?? false) ||
+      ((this.configService.get as any)('oauth.telegram.enabled') ?? false) ||
+      ((this.configService.get as any)('oauth.apple.enabled') ?? false) ||
+      ((this.configService.get as any)('oauth.twitter.enabled') ?? false) ||
+      ((this.configService.get as any)('oauth.instagram.enabled') ?? false) ||
+      ((this.configService.get as any)('oauth.sber.enabled') ?? false) ||
+      ((this.configService.get as any)('oauth.mailru.enabled') ?? false)
     );
   }
 
@@ -216,7 +216,7 @@ export class AppConfigService {
    * @returns true if AUTHN_ENABLED is 'true'
    */
   isAuthnEnabled(): boolean {
-    return this.configService.get('authn.enabled', false);
+    return ((this.configService.get as any)('authn.enabled') ?? false) as boolean;
   }
 
   /**
@@ -228,12 +228,12 @@ export class AppConfigService {
     rpOrigin: string;
     rpName: string;
   } {
-    const rpId = this.configService.get('authn.rpId', 'localhost');
+    const rpId = ((this.configService.get as any)('authn.rpId') ?? 'localhost') as string;
     const rpOrigin = 
-      this.configService.get('authn.rpOrigin') ||
-      this.configService.get('APP_URL') ||
+      ((this.configService.get as any)('authn.rpOrigin') as string | undefined) ||
+      (this.configService.get('APP_URL') as string | undefined) ||
       'http://localhost:3000';
-    const rpName = this.configService.get('authn.rpName', 'Meriter');
+    const rpName = ((this.configService.get as any)('authn.rpName') ?? 'Meriter') as string;
 
     return { rpId, rpOrigin, rpName };
   }
@@ -247,10 +247,10 @@ export class AppConfigService {
    * @returns true if all S3 credentials are present
    */
   isS3Configured(): boolean {
-    const endpoint = this.configService.get('storage.s3.endpoint');
-    const bucketName = this.configService.get('storage.s3.bucketName');
-    const accessKeyId = this.configService.get('storage.s3.accessKeyId');
-    const secretAccessKey = this.configService.get('storage.s3.secretAccessKey');
+    const endpoint = (this.configService.get as any)('storage.s3.endpoint') as string | undefined;
+    const bucketName = (this.configService.get as any)('storage.s3.bucketName') as string | undefined;
+    const accessKeyId = (this.configService.get as any)('storage.s3.accessKeyId') as string | undefined;
+    const secretAccessKey = (this.configService.get as any)('storage.s3.secretAccessKey') as string | undefined;
     return !!(endpoint && bucketName && accessKeyId && secretAccessKey);
   }
 
@@ -271,11 +271,11 @@ export class AppConfigService {
     }
 
     return {
-      endpoint: this.configService.getOrThrow('storage.s3.endpoint'),
-      bucketName: this.configService.getOrThrow('storage.s3.bucketName'),
-      accessKeyId: this.configService.getOrThrow('storage.s3.accessKeyId'),
-      secretAccessKey: this.configService.getOrThrow('storage.s3.secretAccessKey'),
-      region: this.configService.get('storage.s3.region', 'us-east-1'),
+      endpoint: (this.configService.getOrThrow as any)('storage.s3.endpoint') as string,
+      bucketName: (this.configService.getOrThrow as any)('storage.s3.bucketName') as string,
+      accessKeyId: (this.configService.getOrThrow as any)('storage.s3.accessKeyId') as string,
+      secretAccessKey: (this.configService.getOrThrow as any)('storage.s3.secretAccessKey') as string,
+      region: ((this.configService.get as any)('storage.s3.region') ?? 'us-east-1') as string,
     };
   }
 
@@ -288,7 +288,7 @@ export class AppConfigService {
    * @returns Telegram API URL (default: 'https://api.telegram.org')
    */
   getTelegramApiUrl(): string {
-    return this.configService.get('telegram.apiUrl', 'https://api.telegram.org');
+    return ((this.configService.get as any)('telegram.apiUrl') ?? 'https://api.telegram.org') as string;
   }
 
   /**
@@ -296,10 +296,7 @@ export class AppConfigService {
    * @returns Avatar base URL (default: 'https://telegram.hb.bizmrg.com/telegram_small_avatars')
    */
   getTelegramAvatarBaseUrl(): string {
-    return this.configService.get(
-      'telegram.avatarBaseUrl',
-      'https://telegram.hb.bizmrg.com/telegram_small_avatars'
-    );
+    return ((this.configService.get as any)('telegram.avatarBaseUrl') ?? 'https://telegram.hb.bizmrg.com/telegram_small_avatars') as string;
   }
 
   /**
@@ -307,10 +304,7 @@ export class AppConfigService {
    * @returns Dicebear API URL (default: 'https://avatars.dicebear.com/api/jdenticon')
    */
   getDicebearApiUrl(): string {
-    return this.configService.get(
-      'telegram.dicebearApiUrl',
-      'https://avatars.dicebear.com/api/jdenticon'
-    );
+    return ((this.configService.get as any)('telegram.dicebearApiUrl') ?? 'https://avatars.dicebear.com/api/jdenticon') as string;
   }
 
   // ============================================================================
@@ -323,7 +317,7 @@ export class AppConfigService {
    * @returns true if feature is enabled
    */
   isFeatureEnabled(feature: keyof AppConfig['features']): boolean {
-    return this.configService.get(`features.${feature}`, false);
+    return ((this.configService.get as any)(`features.${feature}`) ?? false) as boolean;
   }
 
   /**
@@ -331,7 +325,7 @@ export class AppConfigService {
    * @returns true if ENABLE_COMMENT_IMAGE_UPLOADS or NEXT_PUBLIC_ENABLE_COMMENT_IMAGE_UPLOADS is 'true'
    */
   isCommentImageUploadsEnabled(): boolean {
-    return this.configService.get('features.commentImageUploadsEnabled', false);
+    return ((this.configService.get as any)('features.commentImageUploadsEnabled') ?? false) as boolean;
   }
 
   // ============================================================================
@@ -343,7 +337,7 @@ export class AppConfigService {
    * @returns true if FAKE_DATA_MODE is 'true'
    */
   isFakeDataMode(): boolean {
-    return this.configService.get('dev.fakeDataMode', false);
+    return ((this.configService.get as any)('dev.fakeDataMode') ?? false) as boolean;
   }
 }
 
