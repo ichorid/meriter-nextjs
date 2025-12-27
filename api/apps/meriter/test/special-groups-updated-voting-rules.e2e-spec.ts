@@ -1,28 +1,27 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
 import { VoteService } from '../src/domain/services/vote.service';
 import { PublicationService } from '../src/domain/services/publication.service';
-import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
 import { WalletService } from '../src/domain/services/wallet.service';
-import { Model } from 'mongoose';
+import { Connection, Model } from 'mongoose';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { Vote, VoteDocument } from '../src/domain/models/vote/vote.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
-import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
-import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { VoteSchemaClass, VoteDocument } from '../src/domain/models/vote/vote.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
+import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
+import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Special Groups Updated Voting Rules (e2e)', () => {
   jest.setTimeout(60000);
   
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
+  let testDb: any;
+  let _connection: Connection;
+  let originalEnableCommentVoting: string | undefined;
   
   let voteService: VoteService;
   let _publicationService: PublicationService;
@@ -44,33 +43,28 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
   let visionPubId: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const uri = await testDb.start();
-    process.env.MONGO_URL = uri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-updated-voting-rules';
+    originalEnableCommentVoting = process.env.ENABLE_COMMENT_VOTING;
+    process.env.ENABLE_COMMENT_VOTING = 'true';
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MeriterModule],
-    })
-      .compile();
+    const context = await TestSetupHelper.createTestApp();
+    app = context.app;
+    testDb = context.testDb;
+    _connection = app.get(getConnectionToken());
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
-    const _communityService = app.get<CommunityService>(CommunityService);
     voteService = app.get<VoteService>(VoteService);
     _publicationService = app.get<PublicationService>(PublicationService);
     _userService = app.get<UserService>(UserService);
     _walletService = app.get<WalletService>(WalletService);
-    
-    const _connection = app.get(getConnectionToken());
-    
-    communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
-    userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
-    publicationModel = app.get<Model<PublicationDocument>>(getModelToken(Publication.name));
-    voteModel = app.get<Model<VoteDocument>>(getModelToken(Vote.name));
-    walletModel = app.get<Model<WalletDocument>>(getModelToken(Wallet.name));
-    userCommunityRoleModel = app.get<Model<UserCommunityRoleDocument>>(getModelToken(UserCommunityRole.name));
+
+    communityModel = app.get<Model<CommunityDocument>>(getModelToken(CommunitySchemaClass.name));
+    userModel = app.get<Model<UserDocument>>(getModelToken(UserSchemaClass.name));
+    publicationModel = app.get<Model<PublicationDocument>>(getModelToken(PublicationSchemaClass.name));
+    voteModel = app.get<Model<VoteDocument>>(getModelToken(VoteSchemaClass.name));
+    walletModel = app.get<Model<WalletDocument>>(getModelToken(WalletSchemaClass.name));
+    userCommunityRoleModel = app.get<Model<UserCommunityRoleDocument>>(
+      getModelToken(UserCommunityRoleSchemaClass.name),
+    );
 
     testUserId = uid();
     testUserId2 = uid();
@@ -288,12 +282,8 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
   });
 
   afterAll(async () => {
-    if (app) {
-      await app.close();
-    }
-    if (testDb) {
-      await testDb.stop();
-    }
+    process.env.ENABLE_COMMENT_VOTING = originalEnableCommentVoting;
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
   describe('Marathon of Good - Quota Only Voting', () => {
@@ -708,7 +698,8 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
 
       // Verify publication metrics were updated correctly (upvote increases score)
       const publication = await publicationModel.findOne({ id: pubId }).lean();
-      expect(publication.metrics.upvotes).toBe(1);
+      // Publication metrics store total vote amounts (not "count of votes")
+      expect(publication.metrics.upvotes).toBe(10);
       expect(publication.metrics.downvotes).toBe(0);
       expect(publication.metrics.score).toBe(10); // Score should increase, not decrease
     });
@@ -749,13 +740,20 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       const voteId = voteResponse.id;
       expect(voteResponse.direction).toBe('up');
 
-      // Fetch the comment and verify metrics
-      const comment = await trpcQuery(app, 'comments.getDetails', { id: voteId });
-      // Metrics should show this as an upvote, not downvote
-      expect(comment.metrics.upvotes).toBeGreaterThanOrEqual(0);
-      expect(comment.metrics.downvotes).toBe(0);
-      // The vote should be counted as positive in the sum
-      expect(comment.sum).toBeGreaterThanOrEqual(0);
+      // Vote on the vote/comment with wallet-only (should default to an upvote, not downvote)
+      (global as any).testUserId = testUserId2;
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'vote',
+        targetId: voteId,
+        quotaAmount: 0,
+        walletAmount: 5,
+        comment: 'Wallet-only vote on comment',
+      });
+
+      // Fetch the comment details and verify metrics of votes-on-vote are positive
+      const details = await trpcQuery(app, 'comments.getDetails', { id: voteId });
+      expect(details.metrics.downvotes).toBe(0);
+      expect(details.metrics.score).toBeGreaterThan(0);
     });
 
     it('should allow actual downvotes in Future Vision (wallet-only with negative amount)', async () => {
@@ -798,7 +796,8 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       // Verify publication metrics were updated correctly (downvote decreases score)
       const publication = await publicationModel.findOne({ id: pubId }).lean();
       expect(publication.metrics.upvotes).toBe(0);
-      expect(publication.metrics.downvotes).toBe(1);
+      // Publication metrics store total vote amounts (not "count of votes")
+      expect(publication.metrics.downvotes).toBe(5);
       expect(publication.metrics.score).toBe(-5); // Score should decrease
     });
   });

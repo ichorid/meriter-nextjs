@@ -1,393 +1,259 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
-import { CommunityService } from '../src/domain/services/community.service';
-import { VoteService } from '../src/domain/services/vote.service';
-import { PublicationService } from '../src/domain/services/publication.service';
-import { CommentService } from '../src/domain/services/comment.service';
-import { UserService } from '../src/domain/services/user.service';
-import { Model, Connection } from 'mongoose';
-import { getConnectionToken } from '@nestjs/mongoose';
-import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { VoteSchemaClass, VoteDocument } from '../src/domain/models/vote/vote.schema';
-import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
-import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
-import { CommentSchemaClass, CommentDocument } from '../src/domain/models/comment/comment.schema';
-import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
+import { getModelToken } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { uid } from 'uid';
+import { TestSetupHelper } from './helpers/test-setup.helper';
+import { trpcMutation, trpcQuery } from './helpers/trpc-test-helper';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 
-describe('Comments and Votes Integration Tests', () => {
+describe('Comments and Votes Integration (e2e)', () => {
+  jest.setTimeout(60000);
+
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
-  let connection: Connection;
-
-  let _communityService: CommunityService;
-  let voteService: VoteService;
-  let _publicationService: PublicationService;
-  let commentService: CommentService;
-  let _userService: UserService;
+  let testDb: any;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let publicationModel: Model<PublicationDocument>;
   let walletModel: Model<WalletDocument>;
-
-  let testUserId: string;
-  let testUserId2: string;
-  let testCommunityId: string;
-  let testPublicationId: string;
+  let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   beforeAll(async () => {
-    jest.setTimeout(30000);
+    const context = await TestSetupHelper.createTestApp();
+    app = context.app;
+    testDb = context.testDb;
 
-    testDb = new TestDatabaseHelper();
-    const mongoUri = await testDb.start();
-    process.env.MONGO_URL = mongoUri;
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MeriterModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
-    // Get services
-    _communityService = app.get<CommunityService>(CommunityService);
-    voteService = app.get<VoteService>(VoteService);
-    _publicationService = app.get<PublicationService>(PublicationService);
-    commentService = app.get<CommentService>(CommentService);
-    _userService = app.get<UserService>(UserService);
-
-    connection = app.get(getConnectionToken());
-
-    communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
-    userModel = connection.model<UserDocument>(UserSchemaClass.name);
-    publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
-    const _commentModel = connection.model<CommentDocument>(CommentSchemaClass.name);
-    const _voteModel = connection.model<VoteDocument>(VoteSchemaClass.name);
-    walletModel = connection.model<WalletDocument>(WalletSchemaClass.name);
+    communityModel = app.get(getModelToken(CommunitySchemaClass.name));
+    userModel = app.get(getModelToken(UserSchemaClass.name));
+    walletModel = app.get(getModelToken(WalletSchemaClass.name));
+    userCommunityRoleModel = app.get(getModelToken(UserCommunityRoleSchemaClass.name));
   });
 
-  beforeEach(async () => {
-    // Create test users
-    testUserId = uid();
-    testUserId2 = uid();
-    testCommunityId = uid();
+  afterAll(async () => {
+    await TestSetupHelper.cleanup({ app, testDb });
+  });
+
+  async function seed(): Promise<{
+    communityId: string;
+    authorId: string;
+    voterId: string;
+    publicationId: string;
+  }> {
+    const now = new Date();
+    const communityId = uid();
+    const authorId = uid();
+    const voterId = uid();
 
     await userModel.create([
       {
-        id: testUserId,
-        telegramId: `user1_${testUserId}`,
-        displayName: 'Test User 1',
-        username: 'testuser1',
-        firstName: 'Test',
+        id: authorId,
+        telegramId: `author_${authorId}`,
+        authProvider: 'telegram',
+        authId: `author_${authorId}`,
+        displayName: 'Author',
+        username: `author_${authorId}`,
+        firstName: 'Author',
         lastName: 'User',
-        avatarUrl: 'https://example.com/avatar1.jpg',
+        avatarUrl: 'https://example.com/a.jpg',
         communityMemberships: [],
         communityTags: [],
         profile: {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
       },
       {
-        id: testUserId2,
-        telegramId: `user2_${testUserId2}`,
-        displayName: 'Test User 2',
-        username: 'testuser2',
-        firstName: 'Test2',
-        lastName: 'User2',
-        avatarUrl: 'https://example.com/avatar2.jpg',
+        id: voterId,
+        telegramId: `voter_${voterId}`,
+        authProvider: 'telegram',
+        authId: `voter_${voterId}`,
+        displayName: 'Voter',
+        username: `voter_${voterId}`,
+        firstName: 'Voter',
+        lastName: 'User',
+        avatarUrl: 'https://example.com/v.jpg',
         communityMemberships: [],
         communityTags: [],
         profile: {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
       },
     ]);
 
-    // Create test community
     await communityModel.create({
-      id: testCommunityId,
-      name: 'Test Community',
-      members: [testUserId, testUserId2],
+      id: communityId,
+      name: 'Comments/Votes Community',
+      members: [authorId, voterId],
       settings: {
-        iconUrl: 'https://example.com/icon.png',
-        currencyNames: {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
+        currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         dailyEmission: 10,
+        postCost: 1,
+      },
+      votingRules: {
+        allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
+        canVoteForOwnPosts: false,
+        participantsCannotVoteForLead: false,
+        spendsMerits: true,
+        awardsMerits: true,
       },
       hashtags: ['test'],
       hashtagDescriptions: {},
       isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
     });
 
-    // Create test wallets
-    await walletModel.create([
-      {
-        id: uid(),
-        userId: testUserId,
-        communityId: testCommunityId,
-        balance: 100,
-        currency: {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        lastUpdated: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: uid(),
-        userId: testUserId2,
-        communityId: testCommunityId,
-        balance: 50,
-        currency: {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        lastUpdated: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
+    await userCommunityRoleModel.create([
+      { id: uid(), userId: authorId, communityId, role: 'participant', createdAt: now, updatedAt: now },
+      { id: uid(), userId: voterId, communityId, role: 'participant', createdAt: now, updatedAt: now },
     ]);
 
-    // Create test publication
-    testPublicationId = uid();
-    await publicationModel.create({
-      id: testPublicationId,
-      communityId: testCommunityId,
-      authorId: testUserId,
-      content: 'Test publication for voting with comment',
+    await walletModel.create({
+      id: uid(),
+      userId: voterId,
+      communityId,
+      balance: 100,
+      currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+      lastUpdated: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    (global as any).testUserId = authorId;
+    const publication = await trpcMutation(app, 'publications.create', {
+      communityId,
+      content: 'Publication for comment list',
       type: 'text',
       hashtags: ['test'],
-      metrics: {
-        upvotes: 0,
-        downvotes: 0,
-        score: 0,
-        commentCount: 0,
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      postType: 'basic',
+      isProject: false,
     });
+
+    return { communityId, authorId, voterId, publicationId: publication.id };
+  }
+
+  beforeEach(async () => {
+    await communityModel.deleteMany({});
+    await userModel.deleteMany({});
+    await walletModel.deleteMany({});
+    await userCommunityRoleModel.deleteMany({});
   });
 
-  afterEach(async () => {
-    const collections = connection.collections;
-    for (const key in collections) {
-      const collection = collections[key];
-      try {
-        await collection.dropIndex('token_1').catch(() => { });
-      } catch (_err) {
-        // Index doesn't exist, ignore
-      }
-      await collection.deleteMany({});
-    }
+  it('returns vote-comments with vote transaction fields when listing comments by publication', async () => {
+    const { voterId, publicationId } = await seed();
+
+    (global as any).testUserId = voterId;
+    const vote = await trpcMutation(app, 'votes.createWithComment', {
+      targetType: 'publication',
+      targetId: publicationId,
+      quotaAmount: 0,
+      walletAmount: 5,
+      comment: 'Nice post',
+    });
+
+    const commentsPage = await trpcQuery(app, 'comments.getByPublicationId', {
+      publicationId,
+      page: 1,
+      pageSize: 20,
+    });
+
+    const found = commentsPage.data.find((c: any) => c.id === vote.id);
+    expect(found).toBeTruthy();
+    expect(found.content).toBe('Nice post');
+    expect(found.amountTotal).toBe(5);
+    expect(found.plus).toBe(5);
+    expect(found.minus).toBe(0);
+    expect(found.sum).toBe(5);
   });
 
-  afterAll(async () => {
-    await app.close();
-    await testDb.stop();
+  it('handles downvotes with comment correctly in the comment list', async () => {
+    const { voterId, publicationId } = await seed();
+
+    (global as any).testUserId = voterId;
+    const vote = await trpcMutation(app, 'votes.createWithComment', {
+      targetType: 'publication',
+      targetId: publicationId,
+      quotaAmount: 0,
+      walletAmount: 3,
+      direction: 'down',
+      comment: 'Not good',
+    });
+
+    const commentsPage = await trpcQuery(app, 'comments.getByPublicationId', {
+      publicationId,
+      page: 1,
+      pageSize: 20,
+    });
+
+    const found = commentsPage.data.find((c: any) => c.id === vote.id);
+    expect(found).toBeTruthy();
+    expect(found.content).toBe('Not good');
+    expect(found.amountTotal).toBe(3);
+    expect(found.plus).toBe(0);
+    expect(found.minus).toBe(3);
+    expect(found.sum).toBe(-3);
   });
 
-  describe('Voting on Publication with Comment', () => {
-    it('should create a vote with attachedCommentId and return correct vote data when fetching comments', async () => {
-      // Step 1: Create a comment on the publication
-      const comment = await commentService.createComment(testUserId2, {
-        targetType: 'publication',
-        targetId: testPublicationId,
-        content: 'This is a comment with an upvote',
-      });
+  it('returns multiple vote-comments with their own vote transaction fields', async () => {
+    const { voterId, publicationId } = await seed();
 
-      const commentId = comment.getId;
-
-      // Step 2: Create a vote on the publication with attachedCommentId
-      const voteAmount = 10;
-      const vote = await voteService.createVote(
-        testUserId2,
-        'publication',
-        testPublicationId,
-        voteAmount,
-        'quota',
-        testCommunityId,
-        commentId // attachedCommentId
-      );
-
-      // Verify vote was created with attachedCommentId
-      expect(vote.attachedCommentId).toBe(commentId);
-      expect(vote.amount).toBe(voteAmount);
-      expect(vote.targetType).toBe('publication');
-      expect(vote.targetId).toBe(testPublicationId);
-      expect(vote.userId).toBe(testUserId2);
-
-      // Step 3: Simulate what getPublicationComments does - fetch comments and associated votes
-      const comments = await commentService.getCommentsByTarget(
-        'publication',
-        testPublicationId,
-        50,
-        0
-      );
-
-      expect(comments.length).toBe(1);
-      const fetchedComment = comments[0];
-      expect(fetchedComment.getId).toBe(commentId);
-
-      // Step 4: Fetch votes associated with the comment (as CommentsController does)
-      const votesForComment = await voteService.getVotesByAttachedComment(commentId);
-      expect(votesForComment.length).toBe(1);
-
-      const associatedVote = votesForComment[0];
-      expect(associatedVote.id).toBe(vote.id);
-      expect(associatedVote.amount).toBe(voteAmount);
-      expect(associatedVote.attachedCommentId).toBe(commentId);
-
-      // Step 5: Verify the vote data can be used to enrich comment response
-      // (This is what CommentsController.getPublicationComments does)
-      const voteAmountAbs = Math.abs(associatedVote.amount);
-      const isUpvote = associatedVote.amount > 0;
-      const isDownvote = associatedVote.amount < 0;
-
-      expect(voteAmountAbs).toBe(10);
-      expect(isUpvote).toBe(true);
-      expect(isDownvote).toBe(false);
-
-      // These fields would be added to the comment response:
-      // amountTotal: 10, plus: 10, minus: 0, directionPlus: true, sum: 10
-      expect(voteAmountAbs).toBe(10);
-      if (isUpvote) {
-        expect(voteAmountAbs).toBe(10);
-      } else {
-        expect(0).toBe(10); // Should not happen for this test
-      }
+    (global as any).testUserId = voterId;
+    const v1 = await trpcMutation(app, 'votes.createWithComment', {
+      targetType: 'publication',
+      targetId: publicationId,
+      quotaAmount: 0,
+      walletAmount: 2,
+      comment: 'One',
+    });
+    const v2 = await trpcMutation(app, 'votes.createWithComment', {
+      targetType: 'publication',
+      targetId: publicationId,
+      quotaAmount: 0,
+      walletAmount: 4,
+      comment: 'Two',
     });
 
-    it('should handle downvote with attached comment correctly', async () => {
-      // Step 1: Create a comment
-      const comment = await commentService.createComment(testUserId2, {
-        targetType: 'publication',
-        targetId: testPublicationId,
-        content: 'This is a comment with a downvote',
-      });
-
-      const commentId = comment.getId;
-
-      // Step 2: Create a downvote with attachedCommentId
-      const voteAmount = -5;
-      const vote = await voteService.createVote(
-        testUserId2,
-        'publication',
-        testPublicationId,
-        voteAmount,
-        'quota',
-        testCommunityId,
-        commentId
-      );
-
-      // Verify vote was created correctly
-      expect(vote.attachedCommentId).toBe(commentId);
-      expect(vote.amount).toBe(-5);
-      expect(vote.targetType).toBe('publication');
-      expect(vote.targetId).toBe(testPublicationId);
-
-      // Step 3: Fetch votes associated with the comment
-      const votesForComment = await voteService.getVotesByAttachedComment(commentId);
-      expect(votesForComment.length).toBe(1);
-
-      const associatedVote = votesForComment[0];
-      expect(associatedVote.amount).toBe(-5);
-
-      // Step 4: Verify vote data for downvote
-      const voteAmountAbs = Math.abs(associatedVote.amount);
-      const isUpvote = associatedVote.amount > 0;
-      const isDownvote = associatedVote.amount < 0;
-
-      expect(voteAmountAbs).toBe(5);
-      expect(isUpvote).toBe(false);
-      expect(isDownvote).toBe(true);
-
-      // These fields would be added to the comment response:
-      // amountTotal: 5, plus: 0, minus: 5, directionPlus: false, sum: -5
+    const commentsPage = await trpcQuery(app, 'comments.getByPublicationId', {
+      publicationId,
+      page: 1,
+      pageSize: 20,
     });
 
-    it('should return multiple comments with their associated votes', async () => {
-      // Create two comments
-      const comment1 = await commentService.createComment(testUserId2, {
-        targetType: 'publication',
-        targetId: testPublicationId,
-        content: 'First comment',
-      });
+    const ids = commentsPage.data.map((c: any) => c.id);
+    expect(ids).toEqual(expect.arrayContaining([v1.id, v2.id]));
+  });
 
-      const comment2 = await commentService.createComment(testUserId, {
-        targetType: 'publication',
-        targetId: testPublicationId,
-        content: 'Second comment',
-      });
+  it('does not include legacy comments in comments.getByPublicationId (it lists vote-comments only)', async () => {
+    const { authorId, voterId, publicationId } = await seed();
 
-      // Create votes for both comments
-      await voteService.createVote(
-        testUserId2,
-        'publication',
-        testPublicationId,
-        10,
-        'quota',
-        testCommunityId,
-        comment1.getId
-      );
-
-      await voteService.createVote(
-        testUserId,
-        'publication',
-        testPublicationId,
-        -3,
-        'quota',
-        testCommunityId,
-        comment2.getId
-      );
-
-      // Fetch all votes by attached comments (batch query as CommentsController does)
-      const commentIds = [comment1.getId, comment2.getId];
-      const votesMap = await voteService.getVotesByAttachedComments(commentIds);
-
-      expect(votesMap.size).toBe(2);
-      expect(votesMap.get(comment1.getId)?.length).toBe(1);
-      expect(votesMap.get(comment2.getId)?.length).toBe(1);
-
-      const vote1 = votesMap.get(comment1.getId)?.[0];
-      const vote2 = votesMap.get(comment2.getId)?.[0];
-
-      expect(vote1?.amount).toBe(10);
-      expect(vote2?.amount).toBe(-3);
+    (global as any).testUserId = voterId;
+    const vote = await trpcMutation(app, 'votes.createWithComment', {
+      targetType: 'publication',
+      targetId: publicationId,
+      quotaAmount: 0,
+      walletAmount: 1,
+      comment: 'Vote comment',
     });
 
-    it('should not include vote data for comments without attached votes', async () => {
-      // Create a comment without a vote
-      const comment = await commentService.createComment(testUserId2, {
-        targetType: 'publication',
-        targetId: testPublicationId,
-        content: 'Comment without vote',
-      });
-
-      // Fetch votes for this comment - should be empty
-      const votesForComment = await voteService.getVotesByAttachedComment(comment.getId);
-      expect(votesForComment.length).toBe(0);
-
-      // The comment should still be returned, but without vote transaction fields
-      const comments = await commentService.getCommentsByTarget(
-        'publication',
-        testPublicationId,
-        50,
-        0
-      );
-
-      expect(comments.length).toBe(1);
-      expect(comments[0].getId).toBe(comment.getId);
+    // Create a legacy comment document too
+    (global as any).testUserId = authorId;
+    const legacy = await trpcMutation(app, 'comments.create', {
+      targetType: 'publication',
+      targetId: publicationId,
+      content: 'Legacy comment',
     });
+
+    const commentsPage = await trpcQuery(app, 'comments.getByPublicationId', {
+      publicationId,
+      page: 1,
+      pageSize: 50,
+    });
+
+    const ids = commentsPage.data.map((c: any) => c.id);
+    expect(ids).toContain(vote.id);
+    expect(ids).not.toContain(legacy.id);
   });
 });
+
+

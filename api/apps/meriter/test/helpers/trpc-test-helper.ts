@@ -98,8 +98,7 @@ export async function trpcQueryWithError(
   
   const response = await request(app.getHttpServer())
     .get(`/trpc/${path}${queryString}`)
-    .set('Cookie', cookieHeader)
-    .expect(200);
+    .set('Cookie', cookieHeader);
   
   // tRPC returns { result: { data: ... } } or { result: { error: ... } }
   if (response.body.result?.error) {
@@ -109,6 +108,29 @@ export async function trpcQueryWithError(
         code: error.data?.code || error.code || 'UNKNOWN',
         message: error.message || 'Unknown error',
         httpStatus: mapTrpcErrorCodeToHttpStatus(error.data?.code || error.code),
+      },
+    };
+  }
+
+  // Some adapters / error cases return errors under response.body.error.*
+  if (response.body?.error?.json?.data?.code) {
+    const error = response.body.error.json;
+    const errorCode = error.data.code || 'UNKNOWN';
+    return {
+      error: {
+        code: errorCode,
+        message: error.message || 'Unknown error',
+        httpStatus: response.status !== 200 ? response.status : mapTrpcErrorCodeToHttpStatus(errorCode),
+      },
+    };
+  }
+
+  if (response.status !== 200) {
+    return {
+      error: {
+        code: 'UNKNOWN',
+        message: 'Unknown error',
+        httpStatus: response.status,
       },
     };
   }

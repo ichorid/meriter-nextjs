@@ -172,7 +172,10 @@ export class VoteService {
     communityId: string,
     images?: string[]
   ): Promise<Vote> {
-    this.logger.log(`Creating vote: user=${userId}, target=${targetType}:${targetId}, amountQuota=${amountQuota}, amountWallet=${amountWallet}, direction=${direction}, communityId=${communityId}, comment=${comment.substring(0, 50)}...`);
+    const commentPreview = (comment ?? '').substring(0, 50);
+    this.logger.log(
+      `Creating vote: user=${userId}, target=${targetType}:${targetId}, amountQuota=${amountQuota}, amountWallet=${amountWallet}, direction=${direction}, communityId=${communityId}, comment=${commentPreview}...`,
+    );
 
     // Check feature flag - comment voting is disabled by default
     const enableCommentVoting = process.env.ENABLE_COMMENT_VOTING === 'true';

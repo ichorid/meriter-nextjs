@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
+import { COMMUNITY_ROLE_VIEWER } from '../../domain/common/constants/roles.constants';
 import { CreateVoteDtoSchema, VoteWithCommentDtoSchema, WithdrawAmountDtoSchema, IdInputSchema } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
@@ -258,7 +259,50 @@ async function createVoteLogic(
   }
 
   // Determine direction
-  const direction: 'up' | 'down' = input.direction || (quotaAmount > 0 ? 'up' : 'down');
+  // Default to "up" when not specified. Downvotes must be explicit.
+  const direction: 'up' | 'down' = input.direction ?? 'up';
+
+  // Role-specific and community-specific voting rules should be enforced BEFORE balance/quota checks
+  // so we don't mask the real reason with "Insufficient quota/balance" errors.
+  const userRole = await ctx.permissionService.getUserRoleInCommunity(
+    ctx.user.id,
+    communityId,
+  );
+
+  // Viewers can only vote with quota (no wallet voting) in all communities.
+  if (userRole === COMMUNITY_ROLE_VIEWER && walletAmount > 0) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Viewers can only vote using daily quota, not wallet merits.',
+    });
+  }
+
+  // Special case: Marathon of Good blocks wallet voting (quota only) for posts/comments.
+  if (
+    (input.targetType === 'publication' || input.targetType === 'vote') &&
+    community?.typeTag === 'marathon-of-good' &&
+    walletAmount > 0 &&
+    userRole !== COMMUNITY_ROLE_VIEWER
+  ) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message:
+        'Marathon of Good only allows quota voting on posts and comments. Please use daily quota to vote.',
+    });
+  }
+
+  // Special case: Future Vision blocks quota voting (wallet only) for posts/comments.
+  if (
+    (input.targetType === 'publication' || input.targetType === 'vote') &&
+    community?.typeTag === 'future-vision' &&
+    quotaAmount > 0
+  ) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message:
+        'Future Vision only allows wallet voting on posts and comments. Please use wallet merits to vote.',
+    });
+  }
 
   // Validate quota cannot be used for downvotes
   if (direction === 'down' && quotaAmount > 0) {
