@@ -51,14 +51,23 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
     
     // Use community-specific invites if communityId is provided, otherwise use all invites
     // Only fetch community invites if user has permission (admin/lead of THAT community)
-    const { data: allInvites = [], isLoading: allInvitesLoading } = useInvites();
+    const { data: allInvitesResponse, isLoading: allInvitesLoading } = useInvites();
     const { data: communityInvitesData, isLoading: communityInvitesLoading } = useCommunityInvites(
         communityId || '',
         { enabled: canViewCurrentCommunityInvites }
     );
     
+    // Extract array from paginated response or use array directly
+    // getAll returns { data: T[], total, skip, limit }, getByCommunity returns T[] directly
+    const allInvites = Array.isArray(allInvitesResponse) 
+        ? allInvitesResponse 
+        : (allInvitesResponse?.data ?? []);
+    const communityInvites = Array.isArray(communityInvitesData) 
+        ? communityInvitesData 
+        : [];
+    
     // If communityId is provided and valid, use community-specific invites, otherwise use all invites
-    const invites = (communityId && communityInvitesData) ? communityInvitesData : allInvites;
+    const invites = (communityId && communityInvitesData) ? communityInvites : allInvites;
     const invitesLoading = (communityId && communityInvitesData !== undefined) ? communityInvitesLoading : allInvitesLoading;
     
     const createInvite = useCreateInvite();
@@ -167,10 +176,12 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
 
     // Filter invites by community if communityId is provided
     const filteredInvites = useMemo(() => {
+        // Ensure invites is always an array
+        const invitesArray = Array.isArray(invites) ? invites : [];
         if (communityId) {
-            return invites.filter((invite: Invite) => invite.communityId === communityId);
+            return invitesArray.filter((invite: Invite) => invite.communityId === communityId);
         }
-        return invites;
+        return invitesArray;
     }, [invites, communityId]);
     
     // Don't render the sheet if not open or no permission
