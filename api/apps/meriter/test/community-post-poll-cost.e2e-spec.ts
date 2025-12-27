@@ -160,7 +160,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   describe('Community Settings - Post/Poll Cost', () => {
     it('should allow lead to update postCost and pollCost', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = undefined;
 
       const updated = await trpcMutation(app, 'communities.update', {
         id: testCommunityId,
@@ -183,7 +183,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should allow superadmin to update postCost and pollCost', async () => {
       (global as any).testUserId = testUserId;
-      (global as any).testUserRole = 'superadmin';
+      (global as any).testUserGlobalRole = 'superadmin';
 
       const updated = await trpcMutation(app, 'communities.update', {
         id: testCommunityId,
@@ -201,7 +201,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should reject non-admin users from updating costs', async () => {
       (global as any).testUserId = testUserId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       const result = await trpcMutationWithError(app, 'communities.update', {
         id: testCommunityId,
@@ -218,7 +218,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should allow setting cost to 0 (free posts/polls)', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       const updated = await trpcMutation(app, 'communities.update', {
         id: testCommunityId,
@@ -238,7 +238,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   describe('Post Creation with Configurable Cost', () => {
     it('should charge configured postCost when creating a post', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set postCost to 3
       await trpcMutation(app, 'communities.update', {
@@ -295,7 +295,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should allow free posts when postCost is 0', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set postCost to 0
       await trpcMutation(app, 'communities.update', {
@@ -350,7 +350,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should reject post creation when quota is insufficient for configured cost', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set postCost to 15 (more than daily quota of 10)
       await trpcMutation(app, 'communities.update', {
@@ -380,7 +380,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   describe('Poll Creation with Configurable Cost', () => {
     it('should charge configured pollCost when creating a poll', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set pollCost to 4
       await trpcMutation(app, 'communities.update', {
@@ -442,7 +442,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should allow free polls when pollCost is 0', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set pollCost to 0
       await trpcMutation(app, 'communities.update', {
@@ -502,7 +502,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should reject poll creation when quota is insufficient for configured cost', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set pollCost to 15 (more than daily quota of 10)
       await trpcMutation(app, 'communities.update', {
@@ -537,7 +537,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   describe('Payment with Wallet when Cost > 0', () => {
     it('should charge configured postCost from wallet when quota is insufficient', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set postCost to 2
       await trpcMutation(app, 'communities.update', {

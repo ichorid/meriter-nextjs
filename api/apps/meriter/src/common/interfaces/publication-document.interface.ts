@@ -27,6 +27,8 @@ export interface PublicationDocument {
   methods?: string[];
   stage?: string;
   helpNeeded?: string[];
+  deleted?: boolean;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -61,6 +61,8 @@ export class Publication implements EditableEntity {
     private readonly methods: string[],
     private readonly stage: string | null,
     private readonly helpNeeded: string[],
+    private readonly deleted: boolean,
+    private readonly deletedAt: Date | null,
     private readonly createdAt: Date,
     private updatedAt: Date,
   ) { }
@@ -112,6 +114,8 @@ export class Publication implements EditableEntity {
       options.methods || [],
       options.stage || null,
       options.helpNeeded || [],
+      false, // deleted
+      null, // deletedAt
       new Date(),
       new Date(),
     );
@@ -142,6 +146,8 @@ export class Publication implements EditableEntity {
       snapshot.methods || [],
       snapshot.stage || null,
       snapshot.helpNeeded || [],
+      snapshot.deleted || false,
+      snapshot.deletedAt ? (snapshot.deletedAt instanceof Date ? snapshot.deletedAt : new Date(snapshot.deletedAt)) : null,
       snapshot.createdAt instanceof Date ? snapshot.createdAt : new Date(snapshot.createdAt),
       snapshot.updatedAt instanceof Date ? snapshot.updatedAt : new Date(snapshot.updatedAt),
     );
@@ -296,6 +302,8 @@ export class Publication implements EditableEntity {
       methods: this.methods.length > 0 ? [...this.methods] : undefined,
       stage: this.stage || undefined,
       helpNeeded: this.helpNeeded.length > 0 ? [...this.helpNeeded] : undefined,
+      deleted: this.deleted || undefined,
+      deletedAt: this.deletedAt || undefined,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
