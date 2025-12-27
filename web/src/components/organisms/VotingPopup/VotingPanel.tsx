@@ -1,16 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
-import {
-    Slider,
-    SliderTrack,
-    SliderFilledTrack,
-    SliderThumb,
-} from "@/components/ui/slider";
+import React, { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { classList } from "@/shared/lib/classList";
 import { ImageGallery } from "@/components/ui/ImageGallery";
 import { useFeaturesConfig } from "@/hooks/useConfig";
+import { Icon } from "@/components/atoms/Icon/Icon";
+import type { Community } from "@meriter/shared-types";
 
 interface VotingPanelProps {
     onClose: () => void;
@@ -24,6 +20,8 @@ interface VotingPanelProps {
     quotaRemaining: number;
     dailyQuota: number;
     usedToday: number;
+    walletBalance?: number;
+    community?: Community | null;
     error?: string;
     isViewer?: boolean;
     inline?: boolean;
@@ -50,6 +48,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     quotaRemaining,
     dailyQuota,
     usedToday,
+    walletBalance = 0,
+    community,
     error,
     isViewer = false,
     inline = false,
@@ -66,60 +66,51 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     const tShared = useTranslations("shared");
     const features = useFeaturesConfig();
     const enableCommentImageUploads = features.commentImageUploads;
-    // In withdraw mode, force positive direction
-    const [voteDirection, setVoteDirection] = useState<"positive" | "negative">(
-        hideDirectionToggle ? "positive" : "positive"
-    );
-    const prevDirectionRef = React.useRef<"positive" | "negative">("positive");
 
-    // Check if downvote is available (disabled in withdraw mode)
-    const canDownvote = !hideDirectionToggle && maxMinus > 0 && !isViewer;
-
-    // Calculate slider range - now only goes from 0 to max (right only)
-    const max = voteDirection === "positive" ? maxPlus : maxMinus;
-    const min = 0;
-
-    // Get absolute slider value (0 to max)
-    const sliderValue = Math.abs(amount);
-
-    const handleSliderChange = useCallback(
-        (value: number) => {
-            // Convert to signed value based on direction
-            const signedValue = voteDirection === "positive" ? value : -value;
-            setAmount(signedValue);
-        },
-        [voteDirection, setAmount]
-    );
-
-    // When direction changes, always reset slider to zero
-    useEffect(() => {
-        if (prevDirectionRef.current !== voteDirection) {
-            setAmount(0);
-            prevDirectionRef.current = voteDirection;
-        }
-    }, [voteDirection, setAmount]);
-
-    // If downvote becomes unavailable and user is on negative, switch to positive
-    useEffect(() => {
-        if (!canDownvote && voteDirection === "negative") {
-            setVoteDirection("positive");
-            setAmount(0);
-        }
-    }, [canDownvote, voteDirection, setAmount]);
-
-    // Force positive direction in withdraw mode
-    useEffect(() => {
-        if (hideDirectionToggle && voteDirection === "negative") {
-            setVoteDirection("positive");
-            setAmount(Math.abs(amount));
-        }
-    }, [hideDirectionToggle, voteDirection, amount, setAmount]);
-
-    const isPositive = voteDirection === "positive";
+    // Direction is determined by the sign of amount
+    const isPositive = amount >= 0;
     const absAmount = Math.abs(amount);
-    
+
+    // Check if wallet can be used for voting
+    const canUseWallet = useMemo(() => {
+        if (!walletBalance || walletBalance <= 0) return false;
+        if (community?.votingSettings?.spendsMerits === false) return false;
+        return true;
+    }, [walletBalance, community]);
+
+    // Calculate vote breakdown: quota vs wallet
+    const voteBreakdown = useMemo(() => {
+        const voteAmount = absAmount;
+        if (!isPositive) {
+            // Downvotes use wallet only
+            return {
+                quotaAmount: 0,
+                walletAmount: voteAmount,
+            };
+        }
+
+        // Upvotes: use quota first, then wallet
+        const quotaAmount = Math.min(voteAmount, quotaRemaining);
+        const walletAmount = Math.max(0, voteAmount - quotaRemaining);
+        return {
+            quotaAmount,
+            walletAmount,
+        };
+    }, [absAmount, isPositive, quotaRemaining]);
+
+    // Button handlers
+    const handleDecrease = () => {
+        const newAmount = amount - 1;
+        const maxNegative = maxMinus > 0 ? -maxMinus : 0;
+        setAmount(Math.max(maxNegative, newAmount));
+    };
+
+    const handleIncrease = () => {
+        const newAmount = amount + 1;
+        setAmount(Math.min(maxPlus, newAmount));
+    };
+
     // Calculate if button should be disabled
-    // In withdraw mode (hideComment), don't require comment
     const isButtonDisabled = absAmount === 0 || (!hideComment && isPositive && !comment.trim());
     
     // Calculate which error message to show
@@ -131,6 +122,28 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     };
     
     const buttonError = getButtonError();
+
+    // Calculate bar sizes using sqrt-based proportional sizing
+    const barSizing = useMemo(() => {
+        const quotaBarWidth = Math.sqrt(Math.max(0, dailyQuota));
+        const walletBarWidth = canUseWallet ? Math.sqrt(Math.max(0, walletBalance)) : 0;
+        const totalWidth = quotaBarWidth + walletBarWidth;
+        
+        // Available width: 304px minus gap (11px) if wallet bar exists
+        const availableWidth = 304 - (walletBarWidth > 0 ? 11 : 0);
+        
+        const quotaBarProportional = totalWidth > 0 
+            ? (quotaBarWidth / totalWidth) * availableWidth 
+            : (canUseWallet ? 0 : availableWidth);
+        const walletBarProportional = totalWidth > 0 
+            ? (walletBarWidth / totalWidth) * availableWidth 
+            : 0;
+
+        return {
+            quotaBarWidth: quotaBarProportional,
+            walletBarWidth: walletBarProportional,
+        };
+    }, [dailyQuota, walletBalance, canUseWallet]);
 
     return (
         <div
@@ -172,282 +185,256 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 </p>
             )}
 
-            {/* Vote Direction Toggle */}
-            {canDownvote && !hideDirectionToggle && (
+            {/* Voting Section */}
+            {!hideQuota && (
                 <div
-                    className="flex items-center justify-center gap-3"
-                    style={{ width: "304px" }}
+                    className="flex flex-col gap-5"
+                    style={{ width: "304px", height: "167px" }}
                 >
-                    {/* Vote Up Label */}
-                    <span
-                        className={classList(
-                            "font-medium",
-                            voteDirection === "positive"
-                                ? "text-success font-bold"
-                                : "text-base-content opacity-60"
-                        )}
-                        style={{
-                            fontSize: "15px",
-                            fontFamily: "Roboto, sans-serif",
-                        }}
+                    {/* Limit Group - Dual Progress Bars */}
+                    <div
+                        className="flex flex-row items-center gap-[11px]"
+                        style={{ width: "304px", height: "59px" }}
                     >
-                        {t("voteUp")} 👍
-                    </span>
-
-                    {/* Toggle Switch */}
-                    <label
-                        className="flex items-center cursor-pointer"
-                        onClick={() => {
-                            setVoteDirection(
-                                voteDirection === "positive"
-                                    ? "negative"
-                                    : "positive"
-                            );
-                        }}
-                    >
+                        {/* Quota Bar */}
                         <div
-                            className={classList(
-                                "relative inline-flex items-center rounded-full transition-colors duration-200",
-                                voteDirection === "positive"
-                                    ? "bg-success"
-                                    : "bg-error"
-                            )}
-                            style={{
-                                width: "56px",
-                                height: "32px",
+                            className="flex flex-col gap-[5px] isolation-isolate"
+                            style={{ 
+                                width: `${barSizing.quotaBarWidth}px`, 
+                                height: "59px",
+                                flexShrink: 0,
                             }}
                         >
                             <div
-                                className={classList(
-                                    "bg-white rounded-full shadow-md transform transition-transform duration-200",
-                                    voteDirection === "negative"
-                                        ? "translate-x-6"
-                                        : "translate-x-1"
-                                )}
+                                className="text-base-content opacity-60"
                                 style={{
-                                    width: "24px",
-                                    height: "24px",
-                                }}
-                            />
-                        </div>
-                    </label>
-
-                    {/* Vote Down Label */}
-                    <span
-                        className={classList(
-                            "font-medium",
-                            voteDirection === "negative"
-                                ? "text-error font-bold"
-                                : "text-base-content opacity-60"
-                        )}
-                        style={{
-                            fontSize: "15px",
-                            fontFamily: "Roboto, sans-serif",
-                        }}
-                    >
-                        {t("voteDown")} 👎
-                    </span>
-                </div>
-            )}
-
-            {/* Vote Amount Display - Fixed Position */}
-            <div
-                className={classList(
-                    "flex items-center justify-center font-bold",
-                    isPositive ? "text-success" : "text-error"
-                )}
-                style={{
-                    width: "304px",
-                    fontSize: "24px",
-                    fontFamily: "Roboto, sans-serif",
-                    fontWeight: 700,
-                    lineHeight: "120%",
-                }}
-            >
-                {hideDirectionToggle ? (
-                    <>
-                        {absAmount > 0 ? `+${absAmount}` : absAmount}
-                    </>
-                ) : isPositive ? (
-                    <>
-                        👍 {t("voteUp")}: +{absAmount}
-                    </>
-                ) : (
-                    <>
-                        👎 {t("voteDown")}: -{absAmount}
-                    </>
-                )}
-            </div>
-
-            {/* Limit / Quota Indicator */}
-            {!hideQuota && (
-            <div
-                className="flex flex-col gap-[5px]"
-                style={{ width: "304px", height: "40px" }}
-            >
-                <div
-                    className="text-base-content opacity-60"
-                    style={{
-                        fontSize: "12px",
-                        fontFamily: "Roboto, sans-serif",
-                        fontWeight: 400,
-                        lineHeight: "120%",
-                        letterSpacing: "0.374px",
-                    }}
-                >
-                    {t("dailyLimit")}
-                </div>
-                <div
-                    className="relative flex items-center justify-center overflow-hidden bg-base-200"
-                    style={{
-                        width: "304px",
-                        height: "40px",
-                    }}
-                >
-                    {/* Calculate percentages */}
-                    {(() => {
-                        const totalQuota =
-                            dailyQuota || quotaRemaining + usedToday;
-                        if (totalQuota <= 0) return null;
-
-                        const usedPercent = (usedToday / totalQuota) * 100;
-                        // For upvotes, vote amount is part of quota; for downvotes, show it visually but it doesn't use quota
-                        const votePercent =
-                            absAmount > 0 ? (absAmount / totalQuota) * 100 : 0;
-                        const usedWidth = Math.min(100, usedPercent);
-                        // For upvotes, vote width is limited by remaining quota; for downvotes, show it after used quota
-                        const maxVoteWidth = isPositive
-                            ? Math.min(
-                                  100 - usedWidth,
-                                  (quotaRemaining / totalQuota) * 100
-                              )
-                            : Math.min(100 - usedWidth, votePercent);
-                        const voteWidth =
-                            absAmount > 0
-                                ? Math.min(maxVoteWidth, votePercent)
-                                : 0;
-
-                        return (
-                            <>
-                                {/* Already used quota - striped pattern */}
-                                {usedToday > 0 && (
-                                    <div
-                                        className="absolute left-0 top-0 bottom-0 opacity-40"
-                                        style={{
-                                            width: `${usedWidth}%`,
-                                            backgroundImage:
-                                                "repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,0.1) 4px, rgba(0,0,0,0.1) 8px)",
-                                            backgroundColor:
-                                                "var(--base-content)",
-                                            zIndex: 1,
-                                        }}
-                                    />
-                                )}
-
-                                {/* Current vote amount - colored by direction */}
-                                {absAmount > 0 && isPositive && (
-                                    <div
-                                        className="absolute top-0 bottom-0 bg-success"
-                                        style={{
-                                            left: `${usedWidth}%`,
-                                            width: `${voteWidth}%`,
-                                            zIndex: 2,
-                                        }}
-                                    />
-                                )}
-                                {absAmount > 0 && !isPositive && (
-                                    <div
-                                        className="absolute top-0 bottom-0 bg-error"
-                                        style={{
-                                            left: `${usedWidth}%`,
-                                            width: `${voteWidth}%`,
-                                            zIndex: 2,
-                                        }}
-                                    />
-                                )}
-                            </>
-                        );
-                    })()}
-
-                    <span
-                        className="relative z-10 text-base-content"
-                        style={{
-                            fontSize: "12px",
-                            fontFamily: "Roboto, sans-serif",
-                            fontWeight: 400,
-                            lineHeight: "120%",
-                            letterSpacing: "0.374px",
-                        }}
-                    >
-                        {t("available")} {quotaRemaining}
-                    </span>
-                </div>
-            </div>
-            )}
-
-            {/* Slider Container */}
-            {max > 0 ? (
-                <div
-                    className="flex flex-col gap-1"
-                    style={{ width: "304px", margin: "0 auto" }}
-                >
-                    <div
-                        className="relative flex items-center px-2"
-                        style={{ width: "100%", height: "40px" }}
-                    >
-                        <Slider
-                            value={sliderValue}
-                            minValue={min}
-                            maxValue={max}
-                            onChange={handleSliderChange}
-                            style={{ width: "100%" }}
-                        >
-                            <SliderTrack
-                                style={{
-                                    height: 8,
-                                    borderRadius: 8,
-                                    backgroundColor: "var(--base-200)",
+                                    width: "100%",
+                                    height: "14px",
+                                    fontSize: "12px",
+                                    fontFamily: "Roboto, sans-serif",
+                                    fontWeight: 400,
+                                    lineHeight: "120%",
+                                    letterSpacing: "0.374px",
                                 }}
                             >
-                                <SliderFilledTrack
-                                    style={{
-                                        height: 8,
-                                        borderRadius: 8,
-                                        backgroundColor: isPositive
-                                            ? "var(--fallback-su,oklch(var(--su)/1))"
-                                            : "var(--fallback-er,oklch(var(--er)/1))",
-                                    }}
-                                />
-                            </SliderTrack>
-                            <SliderThumb
+                                {t("dailyLimit")}
+                            </div>
+                            <div
+                                className="relative flex items-center justify-center overflow-hidden bg-base-200"
                                 style={{
-                                    width: 24,
-                                    height: 24,
-                                    borderRadius: 12,
-                                    backgroundColor: "var(--base-content)",
-                                    borderWidth: 3,
-                                    borderColor: "var(--base-100)",
-                                    boxShadow:
-                                        "0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 3px var(--fallback-bc,oklch(var(--bc)/0.15))",
+                                    width: "100%",
+                                    height: "40px",
                                 }}
-                            />
-                        </Slider>
+                            >
+                                {(() => {
+                                    const totalQuota = dailyQuota || quotaRemaining + usedToday;
+                                    if (totalQuota <= 0) return null;
+
+                                    const usedPercent = (usedToday / totalQuota) * 100;
+                                    const voteQuotaPercent = voteBreakdown.quotaAmount > 0 
+                                        ? (voteBreakdown.quotaAmount / totalQuota) * 100 
+                                        : 0;
+                                    const usedWidth = Math.min(100, usedPercent);
+                                    const maxVoteWidth = isPositive
+                                        ? Math.min(100 - usedWidth, (quotaRemaining / totalQuota) * 100)
+                                        : Math.min(100 - usedWidth, voteQuotaPercent);
+                                    const voteWidth = voteBreakdown.quotaAmount > 0
+                                        ? Math.min(maxVoteWidth, voteQuotaPercent)
+                                        : 0;
+
+                                    return (
+                                        <>
+                                            {/* Already used quota - striped pattern */}
+                                            {usedToday > 0 && (
+                                                <div
+                                                    className="absolute left-0 top-0 bottom-0 opacity-40"
+                                                    style={{
+                                                        width: `${usedWidth}%`,
+                                                        backgroundImage:
+                                                            "repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,0.1) 4px, rgba(0,0,0,0.1) 8px)",
+                                                        backgroundColor: "var(--base-content)",
+                                                        zIndex: 1,
+                                                    }}
+                                                />
+                                            )}
+
+                                            {/* Current vote amount - colored by direction */}
+                                            {voteBreakdown.quotaAmount > 0 && (
+                                                <div
+                                                    className={classList(
+                                                        "absolute top-0 bottom-0",
+                                                        isPositive ? "bg-success" : "bg-error"
+                                                    )}
+                                                    style={{
+                                                        left: `${usedWidth}%`,
+                                                        width: `${voteWidth}%`,
+                                                        zIndex: 2,
+                                                    }}
+                                                />
+                                            )}
+                                        </>
+                                    );
+                                })()}
+
+                                <span
+                                    className="relative z-10 text-base-content"
+                                    style={{
+                                        fontSize: "12px",
+                                        fontFamily: "Roboto, sans-serif",
+                                        fontWeight: 400,
+                                        lineHeight: "120%",
+                                        letterSpacing: "0.374px",
+                                    }}
+                                >
+                                    {t("available")} {quotaRemaining}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Wallet Bar - Only show if can use wallet */}
+                        {canUseWallet && (
+                            <div
+                                className="flex flex-col gap-[5px] isolation-isolate flex-grow"
+                                style={{ 
+                                    width: `${barSizing.walletBarWidth}px`, 
+                                    height: "59px",
+                                    flexShrink: 0,
+                                }}
+                            >
+                                <div
+                                    className="text-base-content opacity-60"
+                                    style={{
+                                        width: "100%",
+                                        height: "14px",
+                                        fontSize: "12px",
+                                        fontFamily: "Roboto, sans-serif",
+                                        fontWeight: 400,
+                                        lineHeight: "120%",
+                                        letterSpacing: "0.374px",
+                                    }}
+                                >
+                                    Основной счет
+                                </div>
+                                <div
+                                    className="relative flex items-center justify-center overflow-hidden bg-base-200"
+                                    style={{
+                                        width: "100%",
+                                        height: "40px",
+                                    }}
+                                >
+                                    {(() => {
+                                        // Wallet bar only activates when quota is fully used
+                                        const quotaFullyUsed = quotaRemaining === 0 || voteBreakdown.quotaAmount >= quotaRemaining;
+                                        const walletPercent = quotaFullyUsed && voteBreakdown.walletAmount > 0
+                                            ? (voteBreakdown.walletAmount / walletBalance) * 100
+                                            : 0;
+
+                                        return (
+                                            <>
+                                                {/* Current vote overflow - colored by direction */}
+                                                {quotaFullyUsed && voteBreakdown.walletAmount > 0 && (
+                                                    <div
+                                                        className={classList(
+                                                            "absolute left-0 top-0 bottom-0",
+                                                            isPositive ? "bg-success" : "bg-error"
+                                                        )}
+                                                        style={{
+                                                            width: `${Math.min(100, walletPercent)}%`,
+                                                            zIndex: 2,
+                                                        }}
+                                                    />
+                                                )}
+                                            </>
+                                        );
+                                    })()}
+
+                                    <span
+                                        className="relative z-10 text-base-content"
+                                        style={{
+                                            fontSize: "12px",
+                                            fontFamily: "Roboto, sans-serif",
+                                            fontWeight: 400,
+                                            lineHeight: "120%",
+                                            letterSpacing: "0.374px",
+                                        }}
+                                    >
+                                        {t("available")} {walletBalance}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    {/* Max value indicator */}
+
+                    {/* +/- Buttons Group */}
                     <div
-                        className="text-base-content opacity-60 text-right"
-                        style={{
-                            fontSize: "12px",
-                            fontFamily: "Roboto, sans-serif",
-                            fontWeight: 400,
-                            lineHeight: "120%",
-                            letterSpacing: "0.374px",
+                        className="flex flex-row justify-between items-center"
+                        style={{ 
+                            width: "304px", 
+                            height: "88px",
+                            padding: "24px 0px",
                         }}
                     >
-                        {t("maxVoteAmount", { max })}
+                        {/* Decrease Button */}
+                        <button
+                            onClick={handleDecrease}
+                            disabled={amount <= (maxMinus > 0 ? -maxMinus : 0)}
+                            className={classList(
+                                "box-border flex flex-row justify-center items-center border rounded-[8px]",
+                                "bg-base-100 border-base-content",
+                                "disabled:opacity-50 disabled:cursor-not-allowed"
+                            )}
+                            style={{
+                                width: "70px",
+                                height: "40px",
+                                padding: "11px 15px",
+                                gap: "10px",
+                            }}
+                        >
+                            <Icon name="remove" size={24} />
+                        </button>
+
+                        {/* Vote Amount Display */}
+                        <div
+                            className={classList(
+                                "flex items-center justify-center font-medium",
+                                isPositive ? "text-success" : "text-error"
+                            )}
+                            style={{
+                                width: "48px",
+                                height: "34px",
+                                fontSize: "28px",
+                                fontFamily: "Roboto, sans-serif",
+                                fontWeight: 500,
+                                lineHeight: "120%",
+                            }}
+                        >
+                            {amount > 0 ? `+${amount}` : amount}
+                        </div>
+
+                        {/* Increase Button */}
+                        <button
+                            onClick={handleIncrease}
+                            disabled={amount >= maxPlus}
+                            className={classList(
+                                "box-border flex flex-row justify-center items-center border rounded-[8px]",
+                                "bg-base-100 border-base-content",
+                                "disabled:opacity-50 disabled:cursor-not-allowed"
+                            )}
+                            style={{
+                                width: "70px",
+                                height: "40px",
+                                padding: "11px 15px",
+                                gap: "10px",
+                            }}
+                        >
+                            <Icon name="add" size={24} />
+                        </button>
                     </div>
                 </div>
-            ) : (
+            )}
+
+            {/* Notice when no quota and no wallet */}
+            {!hideQuota && quotaRemaining === 0 && !canUseWallet && (
                 <div
                     className="text-center text-base-content/60 py-4"
                     style={{ width: "304px", margin: "0 auto" }}
@@ -456,9 +443,74 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 </div>
             )}
 
+            {/* +/- Buttons for withdraw mode (when hideQuota is true) */}
+            {hideQuota && (
+                <div
+                    className="flex flex-row justify-between items-center"
+                    style={{ 
+                        width: "304px", 
+                        height: "88px",
+                        padding: "24px 0px",
+                    }}
+                >
+                    {/* Decrease Button */}
+                    <button
+                        onClick={handleDecrease}
+                        disabled={amount <= 0}
+                        className={classList(
+                            "box-border flex flex-row justify-center items-center border rounded-[8px]",
+                            "bg-base-100 border-base-content",
+                            "disabled:opacity-50 disabled:cursor-not-allowed"
+                        )}
+                        style={{
+                            width: "70px",
+                            height: "40px",
+                            padding: "11px 15px",
+                            gap: "10px",
+                        }}
+                    >
+                        <Icon name="remove" size={24} />
+                    </button>
+
+                    {/* Vote Amount Display */}
+                    <div
+                        className="flex items-center justify-center font-medium text-base-content"
+                        style={{
+                            width: "48px",
+                            height: "34px",
+                            fontSize: "28px",
+                            fontFamily: "Roboto, sans-serif",
+                            fontWeight: 500,
+                            lineHeight: "120%",
+                        }}
+                    >
+                        {amount > 0 ? `+${amount}` : amount}
+                    </div>
+
+                    {/* Increase Button */}
+                    <button
+                        onClick={handleIncrease}
+                        disabled={amount >= maxPlus}
+                        className={classList(
+                            "box-border flex flex-row justify-center items-center border rounded-[8px]",
+                            "bg-base-100 border-base-content",
+                            "disabled:opacity-50 disabled:cursor-not-allowed"
+                        )}
+                        style={{
+                            width: "70px",
+                            height: "40px",
+                            padding: "11px 15px",
+                            gap: "10px",
+                        }}
+                    >
+                        <Icon name="add" size={24} />
+                    </button>
+                </div>
+            )}
+
             {/* Comment Input */}
             {!hideComment && (
-            <div className="flex flex-col gap-1" style={{ width: "304px" }}>
+            <div className="flex flex-col" style={{ width: "304px", height: "98px", gap: "4px" }}>
                 <label
                     className="text-base-content opacity-60"
                     style={{

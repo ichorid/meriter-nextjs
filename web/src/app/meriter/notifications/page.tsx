@@ -311,16 +311,25 @@ export default function NotificationsPage() {
                         </Avatar>
                       )}
                       {!notification.read && (
-                        <button
+                        <div
                           onClick={(e) => {
                             e.stopPropagation();
                             markAsRead.mutate({ id: notification.id });
                           }}
-                          className="p-1 hover:bg-base-200 rounded-full transition-colors"
+                          className="p-1 hover:bg-base-200 rounded-full transition-colors cursor-pointer"
+                          role="button"
+                          tabIndex={0}
                           aria-label={t('ariaLabels.markAsRead')}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              markAsRead.mutate({ id: notification.id });
+                            }
+                          }}
                         >
                           <Check size={16} className="text-base-content/60" />
-                        </button>
+                        </div>
                       )}
                     </div>
                   }
