@@ -198,11 +198,32 @@ function getRequiredResourceId(
 
 /**
  * Get user-friendly error message for permission denial
+ * Matches REST API PermissionGuard messages for consistency
  */
 function getErrorMessage(action: PermissionAction, resource: PermissionResource): string {
-  const resourceName = resource === 'publication' ? 'post' : resource;
-  const actionName = action === 'create' ? 'create' : action === 'edit' ? 'edit' : action === 'delete' ? 'delete' : action === 'vote' ? 'vote on' : 'comment on';
-  return `You do not have permission to ${actionName} this ${resourceName}`;
+  const messages: Record<string, string> = {
+    'create:publication':
+      'You do not have permission to create publications in this community',
+    'create:poll':
+      'You do not have permission to create polls in this community',
+    'vote:publication':
+      'You do not have permission to vote on this publication',
+    'comment:publication':
+      'You do not have permission to comment on this publication',
+    'edit:publication':
+      'You do not have permission to edit this publication',
+    'delete:publication':
+      'You do not have permission to delete this publication',
+    'edit:comment': 'You do not have permission to edit this comment',
+    'delete:comment': 'You do not have permission to delete this comment',
+    'edit:poll': 'You do not have permission to edit this poll',
+    'delete:poll': 'You do not have permission to delete this poll',
+  };
+
+  return (
+    messages[`${action}:${resource}`] ||
+    `You do not have permission to ${action} this ${resource}`
+  );
 }
 
 /**
