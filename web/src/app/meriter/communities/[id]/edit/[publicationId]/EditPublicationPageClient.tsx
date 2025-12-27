@@ -103,7 +103,7 @@ export function EditPublicationPageClient({ communityId, publicationId: routePub
           initialData={publication}
           onSuccess={(pub) => {
             const postIdentifier = pub.slug || pub.id;
-            router.push(`/meriter/communities/${communityId}?post=${postIdentifier}`);
+            router.push(`/meriter/communities/${communityId}?highlight=${postIdentifier}`);
           }}
           onCancel={() => {
             router.push(`/meriter/communities/${communityId}`);

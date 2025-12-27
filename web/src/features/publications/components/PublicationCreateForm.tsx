@@ -409,10 +409,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       if (onSuccess) {
         onSuccess({ id: publication.id, slug: publication.slug });
       } else {
-        // Redirect to post detail page
+        // Redirect to community list with highlight to show the post in the list
         // Use slug if available, otherwise fall back to id
         const postIdentifier = publication.slug || publication.id;
-        router.push(`/meriter/communities/${communityId}/posts/${postIdentifier}`);
+        router.push(`/meriter/communities/${communityId}?highlight=${postIdentifier}`);
       }
       
       // Don't reset state here - navigation will unmount component
