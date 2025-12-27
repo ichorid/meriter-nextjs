@@ -10,6 +10,7 @@ import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
 import { ProfileStats } from '@/components/organisms/Profile/ProfileStats';
 import { UseInvite } from '@/components/organisms/Profile/UseInvite';
 import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
+import { FoldableInviteInput } from '@/components/organisms/Profile/FoldableInviteInput';
 import { useProfileData } from '@/hooks/useProfileData';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
@@ -128,6 +129,9 @@ function ProfilePageComponent() {
           stats={contentCardsStats}
           isLoading={contentCardsLoading}
         />
+
+        {/* Foldable Invite Input Section */}
+        <FoldableInviteInput />
 
         {/* Use Invite Section (for viewers) */}
         <UseInvite />
