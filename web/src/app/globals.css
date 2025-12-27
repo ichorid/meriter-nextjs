@@ -720,23 +720,6 @@
     min-width: 0; /* Allow shrinking below content size if needed */
   }
 
-  /* FAB: anchor to the content column, not viewport */
-  .fabSlot {
-    position: sticky;
-    bottom: 24px;
-    display: flex;
-    justify-content: flex-end;
-    pointer-events: none; /* so only the button gets clicks */
-    margin-top: 24px;
-  }
-
-  .fab {
-    pointer-events: auto;
-    width: 48px;
-    height: 48px;
-    border-radius: 999px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
 
   /* Overlay inspector (default behavior) */
   .inspectorOverlay {

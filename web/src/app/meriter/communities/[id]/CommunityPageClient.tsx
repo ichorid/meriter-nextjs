@@ -5,8 +5,6 @@ import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { CommunityTopBar } from '@/components/organisms/ContextTopBar';
 import { useRouter, useSearchParams } from "next/navigation";
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
-import { FabMenu } from "@/components/molecules/FabMenu/FabMenu";
-import { CommunityMembersFab } from "@/components/molecules/FabMenu/CommunityMembersFab";
 import { MembersTab } from "@/components/organisms/Community/MembersTab";
 import { Tabs } from "@/components/ui/Tabs";
 import { useTranslations } from 'next-intl';
@@ -431,7 +429,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             activeCommentHook={[activeCommentHook, setActiveCommentHook]}
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
-            stickyHeader={<CommunityTopBar communityId={chatId} asStickyHeader={true} />}
+            stickyHeader={<CommunityTopBar communityId={chatId} asStickyHeader={true} activeTab={activeTab} futureVisionCommunityId={futureVisionCommunityId} />}
         >
             {/* Community Hero Card - Twitter-style with cover */}
             {comms && (
@@ -671,10 +669,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 <MembersTab communityId={chatId} />
             )}
 
-            {/* Conditional FABs */}
-            {activeTab === 'publications' && <FabMenu communityId={chatId} />}
-            {activeTab === 'vision' && futureVisionCommunityId && <FabMenu communityId={futureVisionCommunityId} />}
-            {activeTab === 'members' && <CommunityMembersFab communityId={chatId} />}
         </AdaptiveLayout>
     );
 }
