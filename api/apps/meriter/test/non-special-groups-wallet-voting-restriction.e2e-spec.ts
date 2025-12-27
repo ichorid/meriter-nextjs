@@ -25,6 +25,8 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
   let _connection: Connection;
+
+  let originalEnableCommentVoting: string | undefined;
   
   let _communityService: CommunityService;
   let voteService: VoteService;
@@ -53,6 +55,8 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
     const uri = await testDb.start();
     process.env.MONGO_URL = uri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-voting-tests';
+    originalEnableCommentVoting = process.env.ENABLE_COMMENT_VOTING;
+    process.env.ENABLE_COMMENT_VOTING = 'true';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MeriterModule],
@@ -385,6 +389,7 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
     if (testDb) {
       await testDb.stop();
     }
+    process.env.ENABLE_COMMENT_VOTING = originalEnableCommentVoting;
   });
 
   describe('Non-Special Groups - Wallet Voting Restriction', () => {
@@ -530,6 +535,7 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
           regularPubId,
           0, // quotaAmount
           10, // walletAmount
+          'up',
           'Test comment',
           regularCommunityId
         )
@@ -544,6 +550,7 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
           marathonPubId,
           0, // quotaAmount
           10, // walletAmount
+          'up',
           'Test comment',
           marathonCommunityId
         )
@@ -557,6 +564,7 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
         visionPubId,
         0, // quotaAmount
         10, // walletAmount
+        'up',
         'Test comment',
         visionCommunityId
       );
@@ -573,6 +581,7 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
         regularPubId,
         5, // quotaAmount
         0, // walletAmount
+        'up',
         'Test comment',
         regularCommunityId
       );

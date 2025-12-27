@@ -56,6 +56,12 @@ export class PollService {
     return doc ? Poll.fromSnapshot(doc as any) : null;
   }
 
+  async deletePoll(id: string): Promise<void> {
+    // Remove poll casts first to avoid orphan records
+    await this.pollCastRepository.deleteByPoll(id);
+    await this.pollModel.deleteOne({ id }).exec();
+  }
+
   async getPollsByCommunity(
     communityId: string, 
     limit: number = 20, 

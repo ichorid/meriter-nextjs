@@ -57,4 +57,8 @@ export class PollCastRepository {
       { $sort: { optionId: 1 } }
     ]).exec();
   }
+
+  async deleteByPoll(pollId: string): Promise<void> {
+    await this.model.deleteMany({ pollId }).exec();
+  }
 }

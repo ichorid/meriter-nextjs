@@ -45,6 +45,8 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
   let testUserId2: string;
   let testCommunityId: string;
   let testPublicationId: string;
+  let futureVisionCommunityId: string;
+  let futureVisionPublicationId: string;
 
   beforeAll(async () => {
     testDb = new TestDatabaseHelper();
@@ -88,6 +90,8 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
     testUserId2 = uid();
     testCommunityId = uid();
     testPublicationId = uid();
+    futureVisionCommunityId = uid();
+    futureVisionPublicationId = uid();
   });
 
   beforeEach(async () => {
@@ -131,6 +135,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
     await communityModel.create({
       id: testCommunityId,
       name: 'Test Community',
+      typeTag: 'custom',
       members: [testUserId, testUserId2],
       settings: {
         iconUrl: 'https://example.com/icon.png',
@@ -142,6 +147,28 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
         dailyEmission: 10, // 10 quota per day
       },
       hashtags: ['test'],
+      hashtagDescriptions: {},
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Seed Future Vision community for wallet-only voting validation
+    await communityModel.create({
+      id: futureVisionCommunityId,
+      name: 'Future Vision',
+      typeTag: 'future-vision',
+      members: [testUserId, testUserId2],
+      settings: {
+        iconUrl: 'https://example.com/icon.png',
+        currencyNames: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        dailyEmission: 10,
+      },
+      hashtags: ['vision'],
       hashtagDescriptions: {},
       isActive: true,
       createdAt: new Date(),
@@ -166,9 +193,25 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
+      {
+        id: uid(),
+        userId: testUserId,
+        communityId: futureVisionCommunityId,
+        role: 'participant',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: uid(),
+        userId: testUserId2,
+        communityId: futureVisionCommunityId,
+        role: 'participant',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
     ]);
 
-    // Seed wallets
+    // Seed wallets (both communities for convenience)
     await walletModel.create([
       {
         id: uid(),
@@ -198,6 +241,34 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
+      {
+        id: uid(),
+        userId: testUserId,
+        communityId: futureVisionCommunityId,
+        balance: 100,
+        currency: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        lastUpdated: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: uid(),
+        userId: testUserId2,
+        communityId: futureVisionCommunityId,
+        balance: 100,
+        currency: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        lastUpdated: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
     ]);
 
     // Seed publication (authored by user2; user1 can vote)
@@ -208,6 +279,23 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       content: 'Test publication for voting validation',
       type: 'text',
       hashtags: ['test'],
+      metrics: {
+        upvotes: 0,
+        downvotes: 0,
+        score: 0,
+        commentCount: 0,
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await publicationModel.create({
+      id: futureVisionPublicationId,
+      communityId: futureVisionCommunityId,
+      authorId: testUserId2,
+      content: 'Future Vision publication for wallet-only voting validation',
+      type: 'text',
+      hashtags: ['vision'],
       metrics: {
         upvotes: 0,
         downvotes: 0,
@@ -272,7 +360,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       // User has 100 wallet balance, try to use 150 wallet
       const result = await trpcMutationWithError(app, 'votes.create', {
         targetType: 'publication',
-        targetId: testPublicationId,
+        targetId: futureVisionPublicationId,
         quotaAmount: 0,
         walletAmount: 150,
       });
@@ -281,20 +369,20 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       expect(result.error?.message).toContain('Insufficient wallet balance');
     });
 
-    it('should reject votes exceeding quota + wallet combined', async () => {
+    it('should reject wallet voting in non-special communities (wallet is special-group-only)', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      // User has 10 quota + 100 wallet = 110 total, try to use 120
+      // Wallet voting is not allowed in normal communities
       const result = await trpcMutationWithError(app, 'votes.create', {
         targetType: 'publication',
         targetId: testPublicationId,
-        quotaAmount: 10,
-        walletAmount: 110, // Total would be 120, exceeding 110
+        quotaAmount: 0,
+        walletAmount: 1,
       });
 
       expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Insufficient wallet balance');
+      expect(result.error?.message).toContain('Voting with permanent wallet merits is only allowed in special groups');
     });
 
     it('should reject quota for downvotes (negative votes)', async () => {
@@ -337,7 +425,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       
       const vote = await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
-        targetId: testPublicationId,
+        targetId: futureVisionPublicationId,
         quotaAmount: 0,
         walletAmount: 20,
       });
@@ -347,84 +435,37 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       expect(vote.amountQuota).toBe(0);
     });
 
-    it('should accept valid combined quota + wallet vote', async () => {
+    it('should reject combined quota + wallet vote in Future Vision (wallet-only)', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      // Use 7 quota + 3 wallet = 10 total
-      const vote = await trpcMutation(app, 'votes.create', {
+      const result = await trpcMutationWithError(app, 'votes.create', {
         targetType: 'publication',
-        targetId: testPublicationId,
-        quotaAmount: 7,
-        walletAmount: 3,
+        targetId: futureVisionPublicationId,
+        quotaAmount: 1,
+        walletAmount: 1,
       });
-
-      expect(vote).toBeDefined();
-      // Should create a single vote with both quota and wallet amounts
-      expect(vote.amountQuota).toBe(7);
-      expect(vote.amountWallet).toBe(3);
-      
-      // Verify the vote was created with both amounts
-      const votes = await voteModel.find({ 
-        userId: testUserId, 
-        targetId: testPublicationId 
-      }).lean();
-      expect(votes.length).toBe(1);
-      expect(votes[0].amountQuota).toBe(7);
-      expect(votes[0].amountWallet).toBe(3);
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Future Vision only allows wallet voting');
     });
 
-    it('should properly deduct quota and wallet when both provided', async () => {
+    it('should deduct wallet balance for wallet-only votes in Future Vision', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const initialQuota = await connection.db.collection('votes').aggregate([
-        {
-          $match: {
-            userId: testUserId,
-            communityId: testCommunityId,
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$amountQuota' },
-          }
-        }
-      ]).toArray();
-      const usedQuotaBefore = initialQuota.length > 0 ? initialQuota[0].total : 0;
-
-      const walletBefore = await walletService.getWallet(testUserId, testCommunityId);
+      const walletBefore = await walletService.getWallet(testUserId, futureVisionCommunityId);
       const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
 
-      // Vote with 3 quota + 5 wallet
+      // Vote with 5 wallet
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
-        targetId: testPublicationId,
-        quotaAmount: 3,
+        targetId: futureVisionPublicationId,
+        quotaAmount: 0,
         walletAmount: 5,
       });
 
-      // Verify quota was deducted
-      const finalQuota = await connection.db.collection('votes').aggregate([
-        {
-          $match: {
-            userId: testUserId,
-            communityId: testCommunityId,
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$amountQuota' },
-          }
-        }
-      ]).toArray();
-      const usedQuotaAfter = finalQuota.length > 0 ? finalQuota[0].total : 0;
-      expect(usedQuotaAfter).toBe(usedQuotaBefore + 3);
-
       // Verify wallet was deducted
-      const walletAfter = await walletService.getWallet(testUserId, testCommunityId);
+      const walletAfter = await walletService.getWallet(testUserId, futureVisionCommunityId);
       const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
       expect(balanceAfter).toBe(balanceBefore - 5);
     });
@@ -467,25 +508,19 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be non-zero');
     });
 
-    it('should accept valid combined quota + wallet vote on comment', async () => {
+    it('should reject combined quota + wallet vote on comment in non-special communities (wallet is special-group-only)', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const vote = await trpcMutation(app, 'votes.create', {
+      const result = await trpcMutationWithError(app, 'votes.create', {
         targetType: 'vote',
         targetId: targetVoteId,
         quotaAmount: 3,
         walletAmount: 2,
       });
 
-      expect(vote).toBeDefined();
-      
-      // Verify vote was created
-      const votes = await voteModel.find({ 
-        userId: testUserId, 
-        targetId: targetVoteId 
-      }).lean();
-      expect(votes.length).toBeGreaterThanOrEqual(1);
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Voting with permanent wallet merits is only allowed in special groups');
     });
   });
 
@@ -506,11 +541,11 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be non-zero');
     });
 
-    it('should accept valid combined quota + wallet vote with comment', async () => {
+    it('should reject combined quota + wallet vote with comment in non-special communities (wallet is special-group-only)', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const vote = await trpcMutation(app, 'votes.createWithComment', {
+      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: testPublicationId,
         quotaAmount: 4,
@@ -518,16 +553,8 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
         comment: 'Test comment with vote',
       });
 
-      expect(vote).toBeDefined();
-      
-      // Verify vote was created with comment
-      const votes = await voteModel.find({ 
-        userId: testUserId, 
-        targetId: testPublicationId 
-      }).lean();
-      expect(votes.length).toBeGreaterThanOrEqual(1);
-      const voteWithComment = votes.find(v => v.comment && v.comment.includes('Test comment with vote'));
-      expect(voteWithComment).toBeDefined();
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Voting with permanent wallet merits is only allowed in special groups');
     });
   });
 });

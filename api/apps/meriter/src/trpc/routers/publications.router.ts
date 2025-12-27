@@ -201,6 +201,29 @@ export const publicationsRouter = router({
       const beneficiaryId = publication.getBeneficiaryId?.getValue();
       const communityId = publication.getCommunityId.getValue();
 
+      // Hide deleted publications from non-leads (and unauthenticated users).
+      // Leads and superadmins can still access deleted items for moderation.
+      const snapshot = publication.toSnapshot();
+      if (snapshot.deleted) {
+        if (!ctx.user) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Publication not found',
+          });
+        }
+
+        const userRole = await ctx.permissionService.getUserRoleInCommunity(
+          ctx.user.id,
+          communityId,
+        );
+        if (userRole !== 'lead' && ctx.user.globalRole !== 'superadmin') {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Publication not found',
+          });
+        }
+      }
+
       // Batch fetch users and communities
       const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : [])];
       const [usersMap, communitiesMap, permissions] = await Promise.all([

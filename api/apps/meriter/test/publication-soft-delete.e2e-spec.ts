@@ -210,24 +210,32 @@ describe('Publication Soft Delete E2E', () => {
         userId: authorId,
         communityId,
         role: 'participant',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         id: uid(),
         userId: leadId,
         communityId,
         role: 'lead',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         id: uid(),
         userId: participantId,
         communityId,
         role: 'participant',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         id: uid(),
         userId: otherLeadId,
         communityId: otherCommunityId,
         role: 'lead',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       },
     ]);
   });
@@ -266,7 +274,8 @@ describe('Publication Soft Delete E2E', () => {
       const beforeDelete = await trpcQuery(app, 'publications.getById', { id: publicationId });
 
       // Delete publication
-      (global as any).testUserId = authorId;
+      // Must be deleted by lead/superadmin when votes/comments exist
+      (global as any).testUserId = leadId;
       await trpcMutation(app, 'publications.delete', { id: publicationId });
 
       // Verify publication still exists in database with deleted flag
@@ -439,7 +448,7 @@ describe('Publication Soft Delete E2E', () => {
       const beforeDelete = await trpcQuery(app, 'publications.getById', { id: created.id });
 
       // Delete publication
-      (global as any).testUserId = authorId;
+      (global as any).testUserId = leadId;
       await trpcMutation(app, 'publications.delete', { id: created.id });
 
       // Query deleted publications
@@ -479,6 +488,7 @@ describe('Publication Soft Delete E2E', () => {
       const created = await trpcMutation(app, 'publications.create', createTestPublication(communityId, authorId));
 
       // Delete publication (this would happen during forward)
+      (global as any).testUserId = leadId;
       await trpcMutation(app, 'publications.delete', { id: created.id });
 
       // Lead should still see it in deleted tab

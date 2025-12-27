@@ -89,6 +89,8 @@ export class EntityMappers {
           origin: this.formatCommunityForApi(community),
         }),
       },
+      deleted: snapshot.deleted ?? false,
+      deletedAt: snapshot.deletedAt ? snapshot.deletedAt.toISOString() : undefined,
       createdAt: snapshot.createdAt.toISOString(),
       updatedAt: snapshot.updatedAt.toISOString(),
     };

@@ -140,9 +140,18 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
     await userCommunityRoleService.setRole(testUserId, testCommunityId, 'participant');
     await userCommunityRoleService.setRole(testLeadId, testCommunityId, 'lead');
 
-    // Create wallet for test user
+    // Create wallets for both users (lead wallet is needed for wallet-payment tests)
     await walletService.createOrGetWallet(
       testUserId,
+      testCommunityId,
+      {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      },
+    );
+    await walletService.createOrGetWallet(
+      testLeadId,
       testCommunityId,
       {
         singular: 'merit',
@@ -570,24 +579,21 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
       expect(quotaCheck.remaining).toBeLessThanOrEqual(0);
 
       // Add wallet balance
-      const wallet = await walletService.getWallet(testLeadId, testCommunityId);
-      if (wallet) {
-        await walletService.addTransaction(
-          testLeadId,
-          testCommunityId,
-          'credit',
-          5,
-          'personal',
-          'test',
-          'test',
-          {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          },
-          'Test credit',
-        );
-      }
+      await walletService.addTransaction(
+        testLeadId,
+        testCommunityId,
+        'credit',
+        5,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
 
       // Get wallet balance before
       const walletBefore = await walletService.getWallet(testLeadId, testCommunityId);

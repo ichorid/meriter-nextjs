@@ -84,6 +84,7 @@ describe('Comments and Votes Integration (e2e)', () => {
     await communityModel.create({
       id: communityId,
       name: 'Comments/Votes Community',
+      typeTag: 'future-vision',
       members: [authorId, voterId],
       settings: {
         currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },

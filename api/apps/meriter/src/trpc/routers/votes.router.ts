@@ -304,6 +304,21 @@ async function createVoteLogic(
     });
   }
 
+  // General rule: wallet voting is only allowed in special groups.
+  // Currently, Future Vision is the only group that allows wallet voting on posts/comments.
+  // This must run BEFORE wallet-balance checks so we don't mask the real reason.
+  if (
+    (input.targetType === 'publication' || input.targetType === 'vote') &&
+    walletAmount > 0 &&
+    community?.typeTag !== 'future-vision'
+  ) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message:
+        'Voting with permanent wallet merits is only allowed in special groups',
+    });
+  }
+
   // Validate quota cannot be used for downvotes
   if (direction === 'down' && quotaAmount > 0) {
     throw new TRPCError({

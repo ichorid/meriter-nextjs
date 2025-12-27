@@ -79,6 +79,7 @@ describe('Wallets/Votes E2E (credit and vote)', () => {
     await communityModel.create({
       id: communityId,
       name: 'Wallet Voting Community',
+      typeTag: 'future-vision',
       members: [authorId, voterId],
       settings: {
         currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },

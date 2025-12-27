@@ -165,10 +165,10 @@ describe('Favorites flow E2E (favorites + notifications dedup)', () => {
     setTestUserId(favoriteUserId);
     await trpcMutation(app, 'favorites.add', { targetType: 'publication', targetId: publicationId });
 
-    // Spam votes (wallet-only) -> should still create single favorite_update notification
-    await voteService.createVote(actorId, 'publication', publicationId, 0, 1, 'up', 'vote1', communityId);
-    await voteService.createVote(actorId, 'publication', publicationId, 0, 1, 'up', 'vote2', communityId);
-    await voteService.createVote(actorId, 'publication', publicationId, 0, 1, 'up', 'vote3', communityId);
+    // Spam votes (quota-only) -> should still create single favorite_update notification
+    await voteService.createVote(actorId, 'publication', publicationId, 1, 0, 'up', 'vote1', communityId);
+    await voteService.createVote(actorId, 'publication', publicationId, 1, 0, 'up', 'vote2', communityId);
+    await voteService.createVote(actorId, 'publication', publicationId, 1, 0, 'up', 'vote3', communityId);
 
     setTestUserId(favoriteUserId);
     const afterVotes = (await trpcQuery(app, 'notifications.getAll', { unreadOnly: true, pageSize: 50 })) as {

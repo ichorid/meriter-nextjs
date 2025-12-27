@@ -165,8 +165,11 @@ describe('Poll Edit and Lead Permissions E2E', () => {
     const now = new Date();
     await userCommunityRoleModel.create([
       { id: uid(), userId: authorId, communityId: communityId, role: 'participant', createdAt: now, updatedAt: now },
+      // Author/participant must exist in other community for cross-community permission tests
+      { id: uid(), userId: authorId, communityId: otherCommunityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: leadId, communityId: communityId, role: 'lead', createdAt: now, updatedAt: now },
       { id: uid(), userId: participantId, communityId: communityId, role: 'participant', createdAt: now, updatedAt: now },
+      { id: uid(), userId: participantId, communityId: otherCommunityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: otherLeadId, communityId: otherCommunityId, role: 'lead', createdAt: now, updatedAt: now },
     ]);
   });
@@ -214,8 +217,8 @@ describe('Poll Edit and Lead Permissions E2E', () => {
         pollId,
         data: {
           optionId,
-          walletAmount: 1,
-          quotaAmount: 0,
+          quotaAmount: 1,
+          walletAmount: 0,
         },
       });
 
@@ -270,10 +273,12 @@ describe('Poll Edit and Lead Permissions E2E', () => {
       (global as any).testUserId = leadId;
       await trpcMutation(app, 'publications.delete', { id: publicationId });
 
-      // Verify post was deleted
-      const result = await trpcQueryWithError(app, 'publications.getById', { id: publicationId });
-
-      expect(result.error?.code).toBe('NOT_FOUND');
+      // Verify post was soft-deleted (it should appear in the deleted list for leads)
+      const deleted = await trpcQuery(app, 'publications.getDeleted', {
+        communityId,
+        pageSize: 50,
+      });
+      expect(deleted.data.some((p: any) => p.id === publicationId)).toBe(true);
     });
 
     it('should NOT allow lead to edit post in different community', async () => {
@@ -326,14 +331,14 @@ describe('Poll Edit and Lead Permissions E2E', () => {
 
       const pollId = created.id;
 
-      // Lead should be able to delete (though delete functionality not implemented)
+      // Lead should be able to delete
       (global as any).testUserId = leadId;
-      // Note: Delete throws "not implemented" error, but permission check should pass
-      const result = await trpcMutationWithError(app, 'polls.delete', { id: pollId });
+      const result = await trpcMutation(app, 'polls.delete', { id: pollId });
+      expect(result.success).toBe(true);
 
-      // Verify the error message indicates it's not a permission issue
-      // (The actual implementation throws "not implemented" which is NOT_IMPLEMENTED)
-      expect(result.error?.code).toBe('NOT_IMPLEMENTED');
+      // Verify poll was deleted
+      const pollResult = await trpcQueryWithError(app, 'polls.getById', { id: pollId });
+      expect(pollResult.error?.code).toBe('NOT_FOUND');
     });
 
     it('should NOT allow lead to edit poll in different community', async () => {

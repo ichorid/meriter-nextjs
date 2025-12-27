@@ -200,6 +200,8 @@ describe('Publication and Comment Edit Permissions', () => {
     const now = new Date();
     await userCommunityRoleModel.create([
       { id: uid(), userId: authorId, communityId: communityId, role: 'participant', createdAt: now, updatedAt: now },
+      // Author must also exist in other community for cross-community edit tests
+      { id: uid(), userId: authorId, communityId: otherCommunityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: leadId, communityId: communityId, role: 'lead', createdAt: now, updatedAt: now },
       { id: uid(), userId: participantId, communityId: communityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: otherLeadId, communityId: otherCommunityId, role: 'lead', createdAt: now, updatedAt: now },
@@ -240,8 +242,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Author should NOT be able to edit
@@ -288,8 +289,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Add a comment
@@ -316,9 +316,10 @@ describe('Publication and Comment Edit Permissions', () => {
       // Update createdAt to 8 days ago (outside 7-day window)
       const eightDaysAgo = new Date();
       eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
-      await publicationModel.updateOne(
+      // Mongoose timestamps often mark createdAt as immutable; update using the raw collection.
+      await connection.db.collection('publications').updateOne(
         { id: publicationId },
-        { $set: { createdAt: eightDaysAgo } }
+        { $set: { createdAt: eightDaysAgo } },
       );
 
       // Author should NOT be able to edit
@@ -344,8 +345,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Lead should be able to edit even with votes
@@ -414,8 +414,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Superadmin should be able to edit even with votes
@@ -477,8 +476,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Author should NOT be able to delete
@@ -519,8 +517,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Add a comment
@@ -548,8 +545,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Lead should be able to delete even with votes
@@ -592,8 +588,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Superadmin should be able to delete even with votes

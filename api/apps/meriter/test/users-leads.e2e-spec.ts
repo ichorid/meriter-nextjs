@@ -96,6 +96,10 @@ describe('Users - Get All Leads', () => {
     await userModel.deleteMany({});
     await userCommunityRoleModel.deleteMany({});
     await communityModel.deleteMany({});
+
+    // Authenticate tRPC calls in tests (protectedProcedure requires an authenticated user)
+    (global as any).testUserId = viewerId;
+    (global as any).testUserGlobalRole = undefined;
   });
 
   describe('GET /api/v1/users/leads', () => {

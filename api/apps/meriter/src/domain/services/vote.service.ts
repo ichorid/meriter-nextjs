@@ -222,7 +222,7 @@ export class VoteService {
       );
     }
 
-    // Wallet voting is allowed by default for all groups
+    // Wallet voting is NOT allowed by default.
     // Special case restrictions:
     // - Marathon of Good: Block wallet voting on publications/comments (quota only)
     // - Future Vision: Block quota voting on publications/comments (wallet only)
@@ -242,7 +242,13 @@ export class VoteService {
           'Future Vision only allows wallet voting on posts and comments. Please use wallet merits to vote.',
         );
       }
-      // All other groups allow wallet voting by default (no restriction needed)
+      // General rule: wallet voting is only allowed in special groups.
+      // Currently, Future Vision is the only group that allows wallet voting on posts/comments.
+      if (!isFutureVision && amountWallet > 0) {
+        throw new BadRequestException(
+          'Voting with permanent wallet merits is only allowed in special groups',
+        );
+      }
     }
 
     // Enforce voting rules based on target type

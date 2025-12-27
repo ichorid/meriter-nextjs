@@ -384,6 +384,19 @@ export const pollsRouter = router({
     }),
 
   /**
+   * Delete poll
+   */
+  delete: protectedProcedure
+    .input(IdInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'delete', 'poll', input);
+
+      await ctx.pollService.deletePoll(input.id);
+      return { success: true };
+    }),
+
+  /**
    * Get poll results
    */
   getResults: publicProcedure
