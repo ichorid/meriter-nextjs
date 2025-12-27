@@ -21,6 +21,12 @@ export interface PublicationDocument {
   isProject?: boolean;
   title?: string;
   description?: string;
+  // Taxonomy fields for project categorization
+  impactArea?: string;
+  beneficiaries?: string[];
+  methods?: string[];
+  stage?: string;
+  helpNeeded?: string[];
   createdAt: Date;
   updatedAt: Date;
 }

@@ -15,7 +15,31 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
-import { Loader2, FileText, Users, Eye } from 'lucide-react';
+import { Loader2, FileText, Users, Eye, Filter, X, ChevronDown } from 'lucide-react';
+import {
+  IMPACT_AREAS,
+  BENEFICIARIES,
+  METHODS,
+  STAGES,
+  HELP_NEEDED,
+  type ImpactArea,
+  type Beneficiary,
+  type Method,
+  type Stage,
+  type HelpNeeded,
+} from '@/lib/constants/taxonomy';
+import { Checklist, CollapsibleSection } from '@/components/ui/taxonomy';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Separator } from '@/components/ui/shadcn/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/shadcn/select';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
@@ -47,6 +71,18 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     const [paginationEnd, setPaginationEnd] = useState(false);
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
+    const [activeCommentHook, setActiveCommentHook] = useState<string | null>(null);
+    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
+    // Taxonomy filter state
+    const [fImpactArea, setFImpactArea] = useState<ImpactArea | 'any'>('any');
+    const [fStage, setFStage] = useState<Stage | 'any'>('any');
+    const [fBeneficiaries, setFBeneficiaries] = useState<Beneficiary[]>([]);
+    const [fMethods, setFMethods] = useState<Method[]>([]);
+    const [fHelpNeeded, setFHelpNeeded] = useState<HelpNeeded[]>([]);
+    const [bOpenFilters, setBOpenFilters] = useState(false);
+    const [bOpenBeneficiaries, setBOpenBeneficiaries] = useState(false);
+    const [bOpenMethods, setBOpenMethods] = useState(false);
+    const [bOpenHelp, setBOpenHelp] = useState(false);
 
     // Handle tab change
     const handleTabChange = (tabId: string) => {
@@ -322,10 +358,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     // Use community data for chat info (same as comms)
     const _chatUrl = comms?.description;
 
-    // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
-    // Declare all state hooks unconditionally at the top level
-    const [activeCommentHook, setActiveCommentHook] = useState<string | null>(null);
-    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
+    // Helper function to toggle items in array
+    const toggleInArray = <T,>(arr: T[], value: T): T[] => {
+      return arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
+    };
 
     // Filter publications by tag and search query
     // This useMemo MUST be called before any conditional returns
@@ -369,8 +405,40 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             });
         }
 
+        // Filter by taxonomy fields (AND semantics)
+        filtered = filtered.filter((p: FeedItem) => {
+            if (p.type !== 'publication') return true; // Only filter publications
+            
+            const pub = p as PublicationFeedItem & { impactArea?: string; stage?: string; beneficiaries?: string[]; methods?: string[]; helpNeeded?: string[] };
+            
+            if (fImpactArea !== 'any' && pub.impactArea !== fImpactArea) return false;
+            if (fStage !== 'any' && pub.stage !== fStage) return false;
+            
+            // Strict AND semantics across selected facets
+            if (fBeneficiaries.length > 0) {
+                const pubBeneficiaries = pub.beneficiaries || [];
+                for (const b of fBeneficiaries) {
+                    if (!pubBeneficiaries.includes(b)) return false;
+                }
+            }
+            if (fMethods.length > 0) {
+                const pubMethods = pub.methods || [];
+                for (const m of fMethods) {
+                    if (!pubMethods.includes(m)) return false;
+                }
+            }
+            if (fHelpNeeded.length > 0) {
+                const pubHelpNeeded = pub.helpNeeded || [];
+                for (const h of fHelpNeeded) {
+                    if (!pubHelpNeeded.includes(h)) return false;
+                }
+            }
+            
+            return true;
+        });
+
         return filtered;
-    }, [publications, selectedTag, searchQuery]);
+    }, [publications, selectedTag, searchQuery, fImpactArea, fStage, fBeneficiaries, fMethods, fHelpNeeded]);
 
     // Filter vision publications by tag and search query
     const filteredVisionPublications = useMemo(() => {
@@ -538,6 +606,192 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             {/* Tab Content */}
             {activeTab === 'publications' ? (
                 <div className="space-y-4">
+                    {/* Taxonomy Filters */}
+                    <div className="rounded-2xl border bg-base-100 p-4 space-y-4">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <Filter className="h-4 w-4" />
+                                <span className="text-sm font-medium">Filters</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {(fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            setFImpactArea('any');
+                                            setFStage('any');
+                                            setFBeneficiaries([]);
+                                            setFMethods([]);
+                                            setFHelpNeeded([]);
+                                            setBOpenFilters(false);
+                                            setBOpenBeneficiaries(false);
+                                            setBOpenMethods(false);
+                                            setBOpenHelp(false);
+                                        }}
+                                        className="gap-2"
+                                    >
+                                        <X className="h-4 w-4" /> Reset
+                                    </Button>
+                                )}
+                                <Button
+                                    variant={bOpenFilters ? 'secondary' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setBOpenFilters((s) => !s)}
+                                >
+                                    {bOpenFilters ? 'Hide' : 'Show'}
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Compact active filters summary when collapsed */}
+                        {!bOpenFilters && (fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
+                            <div className="flex flex-wrap gap-2 pt-1">
+                                {fImpactArea !== 'any' && <Badge variant="secondary">{fImpactArea}</Badge>}
+                                {fStage !== 'any' && <Badge variant="secondary">{fStage}</Badge>}
+                                {fBeneficiaries.slice(0, 2).map((x) => (
+                                    <Badge key={x} variant="secondary">{x}</Badge>
+                                ))}
+                                {fMethods.slice(0, 2).map((x) => (
+                                    <Badge key={x} variant="secondary">{x}</Badge>
+                                ))}
+                                {fHelpNeeded.slice(0, 2).map((x) => (
+                                    <Badge key={x} variant="secondary">{x}</Badge>
+                                ))}
+                                {(fBeneficiaries.length > 2 || fMethods.length > 2 || fHelpNeeded.length > 2) && (
+                                    <Badge variant="outline" className="font-normal">+more</Badge>
+                                )}
+                            </div>
+                        )}
+
+                        {bOpenFilters && (
+                            <>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label>Impact Area</Label>
+                                        <Select
+                                            value={fImpactArea}
+                                            onValueChange={(v) => setFImpactArea(v as ImpactArea | 'any')}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="any">Any</SelectItem>
+                                                {IMPACT_AREAS.map((x) => (
+                                                    <SelectItem key={x} value={x}>{x}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Stage</Label>
+                                        <Select
+                                            value={fStage}
+                                            onValueChange={(v) => setFStage(v as Stage | 'any')}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="any">Any</SelectItem>
+                                                {STAGES.map((x) => (
+                                                    <SelectItem key={x} value={x}>{x}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                <CollapsibleSection
+                                    title={`Beneficiaries (${fBeneficiaries.length})`}
+                                    open={bOpenBeneficiaries}
+                                    setOpen={setBOpenBeneficiaries}
+                                    summary={fBeneficiaries.length ? fBeneficiaries.join(', ') : 'Who benefits?'}
+                                    right={
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setFBeneficiaries([]);
+                                            }}
+                                            disabled={!fBeneficiaries.length}
+                                        >
+                                            Clear
+                                        </Button>
+                                    }
+                                >
+                                    <div className="pt-1">
+                                        <Checklist
+                                            options={BENEFICIARIES}
+                                            selected={fBeneficiaries}
+                                            onToggle={(v) => setFBeneficiaries((s) => toggleInArray(s, v))}
+                                        />
+                                    </div>
+                                </CollapsibleSection>
+
+                                <CollapsibleSection
+                                    title={`Methods (${fMethods.length})`}
+                                    open={bOpenMethods}
+                                    setOpen={setBOpenMethods}
+                                    summary={fMethods.length ? fMethods.join(', ') : 'How do they act?'}
+                                    right={
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setFMethods([]);
+                                            }}
+                                            disabled={!fMethods.length}
+                                        >
+                                            Clear
+                                        </Button>
+                                    }
+                                >
+                                    <div className="pt-1">
+                                        <Checklist
+                                            options={METHODS}
+                                            selected={fMethods}
+                                            onToggle={(v) => setFMethods((s) => toggleInArray(s, v))}
+                                        />
+                                    </div>
+                                </CollapsibleSection>
+
+                                <CollapsibleSection
+                                    title={`Help needed (${fHelpNeeded.length})`}
+                                    open={bOpenHelp}
+                                    setOpen={setBOpenHelp}
+                                    summary={fHelpNeeded.length ? fHelpNeeded.join(', ') : 'What do they need?'}
+                                    right={
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setFHelpNeeded([]);
+                                            }}
+                                            disabled={!fHelpNeeded.length}
+                                        >
+                                            Clear
+                                        </Button>
+                                    }
+                                >
+                                    <div className="pt-1">
+                                        <Checklist
+                                            options={HELP_NEEDED}
+                                            selected={fHelpNeeded}
+                                            onToggle={(v) => setFHelpNeeded((s) => toggleInArray(s, v))}
+                                        />
+                                    </div>
+                                </CollapsibleSection>
+                            </>
+                        )}
+                    </div>
+
                     {isAuthenticated &&
                         filteredPublications
                             .filter((p: FeedItem) => {

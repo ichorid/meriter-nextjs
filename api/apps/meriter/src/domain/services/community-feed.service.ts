@@ -18,6 +18,11 @@ export interface FeedOptions {
   limit?: number;
   sort?: 'recent' | 'score';
   tag?: string;
+  impactArea?: string;
+  stage?: string;
+  beneficiaries?: string[];
+  methods?: string[];
+  helpNeeded?: string[];
 }
 
 @Injectable()
@@ -50,6 +55,11 @@ export class CommunityFeedService {
       limit: providedLimit,
       sort = 'score',
       tag,
+      impactArea,
+      stage,
+      beneficiaries,
+      methods,
+      helpNeeded,
     } = options;
 
     // Use skip/limit if provided, otherwise calculate from page/pageSize
@@ -72,6 +82,13 @@ export class CommunityFeedService {
         skip,
         sortBy,
         tag,
+        {
+          impactArea,
+          stage,
+          beneficiaries,
+          methods,
+          helpNeeded,
+        },
       ),
       // Don't fetch polls for future-vision communities
       isFutureVision

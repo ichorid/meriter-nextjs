@@ -6,6 +6,13 @@ import {
   PolymorphicReferenceSchema,
   CurrencySchema,
 } from "./base-schemas";
+import {
+  IMPACT_AREAS,
+  BENEFICIARIES,
+  METHODS,
+  STAGES,
+  HELP_NEEDED,
+} from "./taxonomy";
 
 // Metrics schemas extending base VotableMetricsSchema
 export const PublicationMetricsSchema = VotableMetricsSchema.extend({
@@ -232,6 +239,12 @@ export const PublicationSchema = IdentifiableSchema.merge(
   videoUrl: z.string().url().optional(),
   // НОВОЕ: Автор поста (отображаемое имя, может отличаться от authorId)
   authorDisplay: z.string().optional(),
+  // Taxonomy fields for project categorization
+  impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
+  beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).max(2).default([]),
+  methods: z.array(z.enum([...METHODS] as [string, ...string[]])).max(3).default([]),
+  stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
+  helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).max(3).default([]),
 });
 
 export const CommentAuthorMetaSchema = z.object({
@@ -339,21 +352,53 @@ export const CreatePublicationDtoSchema = z.object({
   beneficiaryId: z.string().optional(),
   hashtags: z.array(z.string()).optional(),
   imageUrl: z.string().url().optional(),
+  images: z.array(z.string().url()).optional(),
   videoUrl: z.string().url().optional(),
   authorDisplay: z.string().optional(),
   quotaAmount: z.number().int().min(0).optional(),
   walletAmount: z.number().int().min(0).optional(),
-}).refine(
-  (data) => {
-    const quota = data.quotaAmount ?? 0;
-    const wallet = data.walletAmount ?? 0;
-    // At least one must be >= 1, or both can be 0 for future-vision communities
-    return quota >= 1 || wallet >= 1 || (quota === 0 && wallet === 0);
-  },
-  {
-    message: "At least one of quotaAmount or walletAmount must be at least 1 to create a post",
-  }
-);
+  // Taxonomy fields
+  impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
+  beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).max(2).optional(),
+  methods: z.array(z.enum([...METHODS] as [string, ...string[]])).max(3).optional(),
+  stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
+  helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).max(3).optional(),
+})
+  .refine(
+    (data) => {
+      const quota = data.quotaAmount ?? 0;
+      const wallet = data.walletAmount ?? 0;
+      // At least one must be >= 1, or both can be 0 for future-vision communities
+      return quota >= 1 || wallet >= 1 || (quota === 0 && wallet === 0);
+    },
+    {
+      message: "At least one of quotaAmount or walletAmount must be at least 1 to create a post",
+    }
+  )
+  .refine(
+    (data) => {
+      // Require impactArea and stage when postType is 'project'
+      if (data.postType === 'project') {
+        return !!data.impactArea && !!data.stage;
+      }
+      return true;
+    },
+    {
+      message: "impactArea and stage are required when postType is 'project'",
+    }
+  )
+  .refine(
+    (data) => {
+      // Validate array lengths
+      if (data.beneficiaries && data.beneficiaries.length > 2) return false;
+      if (data.methods && data.methods.length > 3) return false;
+      if (data.helpNeeded && data.helpNeeded.length > 3) return false;
+      return true;
+    },
+    {
+      message: "beneficiaries max 2, methods max 3, helpNeeded max 3",
+    }
+  );
 
 export const CreateCommentDtoSchema = z.object({
   targetType: z.enum(["publication", "comment"]),
@@ -470,6 +515,12 @@ export const UpdatePublicationDtoSchema = z.object({
   title: z.string().min(1).max(500).optional(),
   description: z.string().min(1).max(5000).optional(),
   imageUrl: z.string().url().optional().nullable(),
+  // Taxonomy fields (can be updated)
+  impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
+  beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).max(2).optional(),
+  methods: z.array(z.enum([...METHODS] as [string, ...string[]])).max(3).optional(),
+  stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
+  helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).max(3).optional(),
 }).strict(); // Strict mode prevents postType and isProject from being included
 
 export const CreateCommunityDtoSchema = z

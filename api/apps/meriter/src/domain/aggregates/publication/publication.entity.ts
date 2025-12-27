@@ -56,6 +56,11 @@ export class Publication implements EditableEntity {
     private readonly isProject: boolean,
     private readonly title: string | null,
     private readonly description: string | null,
+    private readonly impactArea: string | null,
+    private readonly beneficiaries: string[],
+    private readonly methods: string[],
+    private readonly stage: string | null,
+    private readonly helpNeeded: string[],
     private readonly createdAt: Date,
     private updatedAt: Date,
   ) { }
@@ -75,6 +80,11 @@ export class Publication implements EditableEntity {
       isProject?: boolean;
       title?: string;
       description?: string;
+      impactArea?: string;
+      beneficiaries?: string[];
+      methods?: string[];
+      stage?: string;
+      helpNeeded?: string[];
     } = {},
   ): Publication {
     const publicationContent = PublicationContent.create(content);
@@ -97,6 +107,11 @@ export class Publication implements EditableEntity {
       options.isProject || false,
       options.title || null,
       options.description || null,
+      options.impactArea || null,
+      options.beneficiaries || [],
+      options.methods || [],
+      options.stage || null,
+      options.helpNeeded || [],
       new Date(),
       new Date(),
     );
@@ -122,6 +137,11 @@ export class Publication implements EditableEntity {
       snapshot.isProject || false,
       snapshot.title || null,
       snapshot.description || null,
+      snapshot.impactArea || null,
+      snapshot.beneficiaries || [],
+      snapshot.methods || [],
+      snapshot.stage || null,
+      snapshot.helpNeeded || [],
       snapshot.createdAt instanceof Date ? snapshot.createdAt : new Date(snapshot.createdAt),
       snapshot.updatedAt instanceof Date ? snapshot.updatedAt : new Date(snapshot.updatedAt),
     );
@@ -233,6 +253,26 @@ export class Publication implements EditableEntity {
     return this.images;
   }
 
+  get getImpactArea(): string | null {
+    return this.impactArea;
+  }
+
+  get getBeneficiaries(): readonly string[] {
+    return this.beneficiaries;
+  }
+
+  get getMethods(): readonly string[] {
+    return this.methods;
+  }
+
+  get getStage(): string | null {
+    return this.stage;
+  }
+
+  get getHelpNeeded(): readonly string[] {
+    return this.helpNeeded;
+  }
+
   // Serialization
   toSnapshot(): PublicationSnapshot {
     return {
@@ -251,6 +291,11 @@ export class Publication implements EditableEntity {
       isProject: this.isProject,
       title: this.title || undefined,
       description: this.description || undefined,
+      impactArea: this.impactArea || undefined,
+      beneficiaries: this.beneficiaries.length > 0 ? [...this.beneficiaries] : undefined,
+      methods: this.methods.length > 0 ? [...this.methods] : undefined,
+      stage: this.stage || undefined,
+      helpNeeded: this.helpNeeded.length > 0 ? [...this.helpNeeded] : undefined,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

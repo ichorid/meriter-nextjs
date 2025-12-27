@@ -726,7 +726,24 @@
                 "descriptionRequired": "Description is required",
                 "descriptionTooLong": "Description must be no more than {max} characters",
                 "invalidUrl": "Invalid URL",
-                "submitFailed": "Failed to create publication"
+                "submitFailed": "Failed to create publication",
+                "impactAreaRequired": "Impact area is required for project posts",
+                "stageRequired": "Stage is required for project posts"
+            },
+            "taxonomy": {
+                "requiredForProjects": "Required fields for project posts",
+                "optionalFacets": "Optional facets (folded by default). Add them only if they help discovery.",
+                "impactArea": "Impact Area",
+                "selectImpactArea": "Choose one",
+                "stage": "Stage",
+                "selectStage": "Choose one",
+                "beneficiaries": "Beneficiaries",
+                "beneficiariesHint": "Who benefits directly?",
+                "methods": "What you do",
+                "methodsHint": "How does the project create impact?",
+                "helpNeeded": "Help needed",
+                "helpNeededHint": "What are you collecting right now?",
+                "clear": "Clear"
             },
             "cancel": "Cancel",
             "creating": "Creating...",

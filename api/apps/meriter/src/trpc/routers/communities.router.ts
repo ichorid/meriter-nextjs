@@ -291,6 +291,12 @@ export const communitiesRouter = router({
         pageSize: z.number().int().min(1).max(100).optional().default(5),
         sort: z.enum(['recent', 'score']).optional().default('score'),
         tag: z.string().optional(),
+        // Taxonomy filters
+        impactArea: z.string().optional(),
+        stage: z.string().optional(),
+        beneficiaries: z.array(z.string()).optional(),
+        methods: z.array(z.string()).optional(),
+        helpNeeded: z.array(z.string()).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -308,6 +314,11 @@ export const communitiesRouter = router({
           pageSize: pagination.limit,
           sort: input.sort,
           tag: input.tag,
+          impactArea: input.impactArea,
+          stage: input.stage,
+          beneficiaries: input.beneficiaries,
+          methods: input.methods,
+          helpNeeded: input.helpNeeded,
         },
       );
 

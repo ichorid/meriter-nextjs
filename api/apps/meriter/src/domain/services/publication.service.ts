@@ -32,6 +32,11 @@ export interface CreatePublicationDto {
   isProject?: boolean;
   title?: string;
   description?: string;
+  impactArea?: string;
+  beneficiaries?: string[];
+  methods?: string[];
+  stage?: string;
+  helpNeeded?: string[];
 }
 
 @Injectable()
@@ -57,6 +62,17 @@ export class PublicationService {
     const authorId = UserId.fromString(userId);
     const communityId = CommunityId.fromString(dto.communityId);
 
+    // Validate array lengths
+    if (dto.beneficiaries && dto.beneficiaries.length > 2) {
+      throw new BadRequestException('beneficiaries array cannot exceed 2 items');
+    }
+    if (dto.methods && dto.methods.length > 3) {
+      throw new BadRequestException('methods array cannot exceed 3 items');
+    }
+    if (dto.helpNeeded && dto.helpNeeded.length > 3) {
+      throw new BadRequestException('helpNeeded array cannot exceed 3 items');
+    }
+
     // Create publication aggregate
     const publication = Publication.create(
       authorId,
@@ -70,6 +86,11 @@ export class PublicationService {
         hashtags: dto.hashtags,
         imageUrl: dto.imageUrl,
         videoUrl: dto.videoUrl,
+        impactArea: dto.impactArea,
+        beneficiaries: dto.beneficiaries,
+        methods: dto.methods,
+        stage: dto.stage,
+        helpNeeded: dto.helpNeeded,
       },
     );
 
@@ -111,6 +132,13 @@ export class PublicationService {
     skip: number = 0,
     sortBy?: 'createdAt' | 'score',
     hashtag?: string,
+    filters?: {
+      impactArea?: string;
+      stage?: string;
+      beneficiaries?: string[];
+      methods?: string[];
+      helpNeeded?: string[];
+    },
   ): Promise<Publication[]> {
     // Build query
     const query: any = { communityId };
@@ -118,6 +146,26 @@ export class PublicationService {
     // Apply hashtag filter if provided
     if (hashtag) {
       query.hashtags = hashtag;
+    }
+
+    // Apply taxonomy filters with AND semantics
+    if (filters) {
+      if (filters.impactArea) {
+        query.impactArea = filters.impactArea;
+      }
+      if (filters.stage) {
+        query.stage = filters.stage;
+      }
+      // Array fields: all selected items must be present (AND)
+      if (filters.beneficiaries && filters.beneficiaries.length > 0) {
+        query.beneficiaries = { $all: filters.beneficiaries };
+      }
+      if (filters.methods && filters.methods.length > 0) {
+        query.methods = { $all: filters.methods };
+      }
+      if (filters.helpNeeded && filters.helpNeeded.length > 0) {
+        query.helpNeeded = { $all: filters.helpNeeded };
+      }
     }
 
     // Build sort object
@@ -289,6 +337,17 @@ export class PublicationService {
       throw new BadRequestException('Cannot change project status when editing a publication');
     }
 
+    // Validate array lengths
+    if (updateData.beneficiaries && updateData.beneficiaries.length > 2) {
+      throw new BadRequestException('beneficiaries array cannot exceed 2 items');
+    }
+    if (updateData.methods && updateData.methods.length > 3) {
+      throw new BadRequestException('methods array cannot exceed 3 items');
+    }
+    if (updateData.helpNeeded && updateData.helpNeeded.length > 3) {
+      throw new BadRequestException('helpNeeded array cannot exceed 3 items');
+    }
+
     const doc = await this.publicationModel
       .findOne({ id: publicationId })
       .lean();
@@ -326,6 +385,22 @@ export class PublicationService {
     if (updateData.imageUrl !== undefined) {
       updatePayload.imageUrl = updateData.imageUrl || null;
     }
+    // Taxonomy fields
+    if (updateData.impactArea !== undefined) {
+      updatePayload.impactArea = updateData.impactArea || null;
+    }
+    if (updateData.beneficiaries !== undefined) {
+      updatePayload.beneficiaries = updateData.beneficiaries || [];
+    }
+    if (updateData.methods !== undefined) {
+      updatePayload.methods = updateData.methods || [];
+    }
+    if (updateData.stage !== undefined) {
+      updatePayload.stage = updateData.stage || null;
+    }
+    if (updateData.helpNeeded !== undefined) {
+      updatePayload.helpNeeded = updateData.helpNeeded || [];
+    }
 
     // Single atomic update with all changes
     await this.publicationModel.updateOne(
@@ -333,7 +408,9 @@ export class PublicationService {
       { $set: updatePayload },
     );
 
-    return publication;
+    // Reload to return updated publication
+    const updatedDoc = await this.publicationModel.findOne({ id: publicationId }).lean();
+    return updatedDoc ? Publication.fromSnapshot(updatedDoc as IPublicationDocument) : publication;
   }
 
   async deletePublication(

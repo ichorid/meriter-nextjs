@@ -37,6 +37,12 @@ export interface Publication {
   imageUrl?: string; // Legacy single image support
   images?: string[]; // Array of image URLs for multi-image support
   videoUrl?: string;
+  // Taxonomy fields for project categorization
+  impactArea?: string;
+  beneficiaries?: string[];
+  methods?: string[];
+  stage?: string;
+  helpNeeded?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -108,6 +114,22 @@ export class PublicationSchemaClass implements Publication {
 
   @Prop()
   videoUrl?: string;
+
+  // Taxonomy fields for project categorization
+  @Prop()
+  impactArea?: string;
+
+  @Prop({ type: [String], default: [] })
+  beneficiaries?: string[];
+
+  @Prop({ type: [String], default: [] })
+  methods?: string[];
+
+  @Prop()
+  stage?: string;
+
+  @Prop({ type: [String], default: [] })
+  helpNeeded?: string[];
 
   @Prop({ required: true })
   createdAt!: Date;
