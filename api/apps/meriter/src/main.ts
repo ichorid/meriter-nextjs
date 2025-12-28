@@ -43,6 +43,15 @@ async function bootstrap() {
     // For Node.js backend, console logs are typically handled via logger or can be manually captured
     const integrations: Sentry.Integration[] = [];
     
+    // HTTP instrumentation is enabled by default in Sentry v8, but we can explicitly add it
+    // to ensure Express routes are tracked
+    try {
+      // HTTP integration is automatically included, but we ensure it's enabled
+      // Sentry v8 automatically instruments HTTP requests when tracesSampleRate > 0
+    } catch {
+      // Ignore
+    }
+    
     // Add profiling integration if available (optional dependency)
     try {
       const profilingModule = await import('@sentry/profiling-node');

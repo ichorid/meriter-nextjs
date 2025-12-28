@@ -12,8 +12,8 @@ import { Request } from 'express';
 /**
  * Sentry Performance Monitoring Interceptor
  * 
- * Tracks performance of HTTP requests and tRPC calls.
- * Creates Sentry transactions for each request to monitor response times.
+ * Sets tags and context for HTTP requests to enhance Sentry tracking.
+ * Sentry's automatic HTTP instrumentation handles performance monitoring.
  */
 @Injectable()
 export class SentryInterceptor implements NestInterceptor {
@@ -26,40 +26,22 @@ export class SentryInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest<Request>();
     const { method, url } = request;
     
-    // Create transaction name from method and path
-    const transactionName = `${method} ${url}`;
-    
-    // Start Sentry transaction
-    const transaction = Sentry.startTransaction({
-      name: transactionName,
-      op: 'http.server',
-      data: {
-        method,
-        url,
-      },
+    // Set tags on the current scope for this request
+    Sentry.getCurrentScope().setTag('platform', 'backend');
+    Sentry.getCurrentScope().setTag('http.method', method);
+    Sentry.getCurrentScope().setContext('http', {
+      method,
+      url,
     });
 
-    // Set platform tag on transaction
-    transaction.setTag('platform', 'backend');
-
-    // Set transaction on scope
-    Sentry.getCurrentScope().setSpan(transaction);
-
+    // Execute the handler - Sentry's automatic instrumentation will track performance
     return next.handle().pipe(
       tap({
         next: () => {
           // Request completed successfully
-          transaction.setStatus('ok');
-          transaction.finish();
         },
         error: (error) => {
-          // Request failed
-          transaction.setStatus('internal_error');
-          transaction.setData('error', {
-            message: error?.message,
-            name: error?.name,
-          });
-          transaction.finish();
+          // Error will be captured by ApiExceptionFilter
         },
       }),
     );
