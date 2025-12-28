@@ -30,7 +30,7 @@ export class JwtVerificationService {
   constructor(
     private userService: UserService,
     private configService: ConfigService<AppConfig>,
-  ) {}
+  ) { }
 
   /**
    * Authenticate user from request
@@ -109,7 +109,7 @@ export class JwtVerificationService {
       );
 
       const data: any = verify(jwt, jwtSecret);
-      
+
       this.logger.debug(
         `[AUTH-DEBUG] JWT verification SUCCESS: uid=${data.uid}, authProvider=${data.authProvider}, authId=${data.authId}, iat=${data.iat}, exp=${data.exp}`
       );
@@ -160,7 +160,7 @@ export class JwtVerificationService {
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      
+
       this.logger.error(
         `[AUTH-DEBUG] JWT verification FAILED: ${errorMessage}`
       );

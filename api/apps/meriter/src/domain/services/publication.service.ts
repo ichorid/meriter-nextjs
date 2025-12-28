@@ -78,7 +78,7 @@ export class PublicationService {
 
     // Create publication aggregate
     const publication = Publication.create(
-      UserId.fromString(dto.communityId), // Will be fixed by proper author ID
+      UserId.fromString(String(authorId)),
       CommunityId.fromString(dto.communityId),
       dto.content,
       dto.type,
