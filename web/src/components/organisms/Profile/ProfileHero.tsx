@@ -1,21 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
-import { User as UserIcon, Edit, Pencil, Settings } from 'lucide-react';
+import { User as UserIcon, Edit, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/atoms/Badge/Badge';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/shadcn/dialog';
-import { AvatarUploader } from '@/components/ui/AvatarUploader';
-import { useUpdateUser } from '@/hooks/api/useProfile';
-import { useToastStore } from '@/shared/stores/toast.store';
 
 import type { User } from '@/types/api-v1';
 
@@ -24,18 +15,14 @@ interface ProfileHeroProps {
   stats?: {
     merits: number;
   };
-  onEdit?: () => void;
   showEdit?: boolean;
   userRoles?: Array<{ role: string }>;
 }
 
-function ProfileHeroComponent({ user, stats: _stats, onEdit, showEdit = false, userRoles = [] }: ProfileHeroProps) {
+function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles = [] }: ProfileHeroProps) {
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const router = useRouter();
-  const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
-  const { mutateAsync: updateUser } = useUpdateUser();
-  const addToast = useToastStore((state) => state.addToast);
   
   // Determine role type for display (same logic as VerticalSidebar)
   const userRoleDisplay = React.useMemo(() => {
@@ -81,30 +68,17 @@ function ProfileHeroComponent({ user, stats: _stats, onEdit, showEdit = false, u
   const showContacts = user.globalRole === 'superadmin' || 
     userRoles.some(r => r.role === 'lead');
 
-  const handleAvatarUpload = async (url: string) => {
-    try {
-      await updateUser({
-        avatarUrl: url,
-      });
-      addToast(t('saved') || 'Avatar updated', 'success');
-      setIsAvatarDialogOpen(false);
-    } catch (error) {
-      console.error('Failed to update avatar:', error);
-      addToast(t('error') || 'Failed to update avatar', 'error');
-    }
-  };
-
   return (
     <div className="relative bg-base-100 rounded-2xl overflow-hidden border border-base-content/5">
       {/* Cover Section */}
       <div className="relative h-24 bg-gradient-to-br from-base-content/5 via-base-content/3 to-transparent">
         {/* Edit and Settings buttons */}
-        {(showEdit && onEdit) && (
+        {showEdit && (
           <div className="absolute top-3 right-3 flex items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
-              onClick={onEdit}
+              onClick={() => router.push('/meriter/profile/edit')}
               className="rounded-xl active:scale-[0.98] bg-base-100/80 backdrop-blur-sm hover:bg-base-100 text-base-content/70 h-8 px-3"
             >
               <Edit size={14} className="mr-1.5" />
@@ -136,17 +110,6 @@ function ProfileHeroComponent({ user, stats: _stats, onEdit, showEdit = false, u
                 {displayName ? displayName.slice(0, 2).toUpperCase() : <UserIcon size={32} />}
               </AvatarFallback>
             </Avatar>
-            {/* Edit icon overlay */}
-            {showEdit && (
-              <button
-                type="button"
-                onClick={() => setIsAvatarDialogOpen(true)}
-                className="absolute top-0 right-0 p-1.5 rounded-full bg-primary text-primary-content shadow-lg hover:bg-primary/90 transition-colors z-10"
-                title={t('changeAvatar') || 'Change avatar'}
-              >
-                <Pencil size={14} />
-              </button>
-            )}
             {/* Online indicator */}
             <div className="absolute bottom-1 right-1 w-4 h-4 bg-success border-2 border-base-100 rounded-full" />
           </div>
@@ -254,28 +217,6 @@ function ProfileHeroComponent({ user, stats: _stats, onEdit, showEdit = false, u
           </div>
         )}
       </div>
-
-      {/* Avatar Edit Dialog */}
-      <Dialog open={isAvatarDialogOpen} onOpenChange={setIsAvatarDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('changeAvatar') || 'Change avatar'}</DialogTitle>
-          </DialogHeader>
-          <div className="flex justify-center py-4">
-            <AvatarUploader
-              value={avatarUrl}
-              onUpload={handleAvatarUpload}
-              size={120}
-              labels={{
-                upload: t('changeAvatar') || 'Change avatar',
-                cropTitle: t('cropAvatar') || 'Crop avatar',
-                cancel: tCommon('cancel') || 'Cancel',
-                save: t('save') || 'Save',
-              }}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

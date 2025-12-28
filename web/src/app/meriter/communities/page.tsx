@@ -9,14 +9,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
-import { InviteInput } from '@/components/molecules/InviteInput/InviteInput';
+import { JoinTeam } from '@/components/organisms/Profile/JoinTeam';
 import { useAllLeads } from '@/hooks/api/useUsers';
 import { SearchInput } from '@/components/molecules/SearchInput';
 import { LeadCard } from '@/components/molecules/LeadCard/LeadCard';
 import { routes } from '@/lib/constants/routes';
 import type { EnrichedLead } from '@/types/lead';
 import { useTranslations } from 'next-intl';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 export default function CommunitiesPage() {
     const pathname = usePathname();
@@ -25,11 +24,9 @@ export default function CommunitiesPage() {
     const t = useTranslations('common');
     const tSearch = useTranslations('search');
     const tAbout = useTranslations('about');
-    const tCommunities = useTranslations('communities');
     
     const [leadsExpanded, setLeadsExpanded] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [joinTeamExpanded, setJoinTeamExpanded] = useLocalStorage<boolean>('communities.joinTeamExpanded', true);
 
     // Get user's communities with wallets and quotas (handles both regular users and superadmin)
     const { communities: allCommunities, walletsMap, quotasMap, isLoading: communitiesLoading } = useUserCommunities();
@@ -118,58 +115,9 @@ export default function CommunitiesPage() {
 
                 {/* Viewer Notification: Show when user has no non-special communities */}
                 {userCommunities.length === 0 && (
-                    <section className="bg-base-200/50 border border-base-content/5 rounded-2xl p-6 mb-10">
-                        <button
-                            onClick={() => setJoinTeamExpanded(!joinTeamExpanded)}
-                            className="flex items-center justify-between w-full mb-4 hover:opacity-80 transition-opacity"
-                        >
-                            <h3 className="text-lg font-semibold text-base-content">
-                                Join a Team
-                            </h3>
-                            {joinTeamExpanded ? (
-                                <ChevronUp className="w-5 h-5 text-base-content/60" />
-                            ) : (
-                                <ChevronDown className="w-5 h-5 text-base-content/60" />
-                            )}
-                        </button>
-                        {joinTeamExpanded && (
-                            <div className="flex flex-col gap-4">
-                                <p className="text-sm text-base-content/60">
-                                    To join a team, contact one of the leads below for an invite.
-                                </p>
-                                <InviteInput />
-                                
-                                {/* Local Groups Notification */}
-                                <div className="pt-6 border-t border-base-300 mt-2">
-                                    <div className="flex flex-col items-start gap-1">
-                                        {/* Title */}
-                                        <div className="flex flex-row items-center pb-1.5 pr-5 gap-2.5">
-                                            <h2 className="text-[15px] leading-[120%] tracking-[0.374px] text-base-content/60">
-                                                {tCommunities('localGroups.title')}
-                                            </h2>
-                                        </div>
-
-                                        {/* Content */}
-                                        <div className="flex flex-col items-center w-full py-5 gap-3">
-                                            {/* Note 1: Viewer role notification */}
-                                            <div className="flex flex-row justify-center items-center w-full">
-                                                <p className="text-[15px] leading-[130%] text-center tracking-[0.374px] text-base-content/60">
-                                                    {tCommunities('localGroups.viewerNote')}
-                                                </p>
-                                            </div>
-
-                                            {/* Note 2: Contact note */}
-                                            <div className="flex flex-row justify-center items-center w-full">
-                                                <p className="text-[15px] leading-[130%] text-center tracking-[0.374px] text-base-content/60">
-                                                    {tCommunities('localGroups.contactNote')}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </section>
+                    <div className="mb-10">
+                        <JoinTeam showLocalGroupsNote={true} />
+                    </div>
                 )}
 
                 {/* Section 2: User's Communities */}
