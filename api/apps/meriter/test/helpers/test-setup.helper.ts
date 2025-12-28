@@ -5,6 +5,8 @@ import { TestDatabaseHelper } from '../test-db.helper';
 import { TrpcService } from '../../src/trpc/trpc.service';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import * as cookieParser from 'cookie-parser';
+import { getConnectionToken } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 
 export interface TestAppContext {
   app: INestApplication;
@@ -51,6 +53,34 @@ export class TestSetupHelper {
     app.use('/trpc', trpcMiddleware);
     
     await app.init();
+
+    // Wait for the database connection to be ready
+    // This ensures the connection is established before tests run
+    const connection = app.get<Connection>(getConnectionToken());
+    if (connection.readyState !== 1) {
+      // Connection is not ready (1 = connected), wait for it
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Database connection timed out after 10 seconds'));
+        }, 10000);
+
+        if (connection.readyState === 1) {
+          clearTimeout(timeout);
+          resolve();
+          return;
+        }
+
+        connection.once('connected', () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+
+        connection.once('error', (error) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+      });
+    }
 
     return { app, testDb };
   }

@@ -12,10 +12,27 @@ export class TestDatabaseHelper {
 
   /**
    * Start the in-memory MongoDB instance
+   * Wraps MongoMemoryServer.create() with a timeout to prevent hanging in CI/CD
    */
   async start(): Promise<string> {
     if (!process.env.MONGO_URL) {
-      this.mongod = await MongoMemoryServer.create();
+      // Wrap MongoMemoryServer.create() with a timeout to fail fast
+      const createPromise = MongoMemoryServer.create({
+        binary: {
+          downloadDir: process.env.MONGOMS_DOWNLOAD_DIR,
+        },
+        instance: {
+          dbName: 'test',
+        },
+      });
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('MongoMemoryServer.create() timed out after 60 seconds. This may indicate network issues or insufficient resources in CI/CD.'));
+        }, 60000); // 60 second timeout
+      });
+
+      this.mongod = await Promise.race([createPromise, timeoutPromise]);
       const uri = this.mongod.getUri();
       return uri;
     }
@@ -27,7 +44,12 @@ export class TestDatabaseHelper {
    */
   async connect(uri?: string): Promise<Connection> {
     const mongoUri = uri || (await this.start());
-    this.connection = (await connect(mongoUri)).connection;
+    // Add connection timeout options to prevent hanging
+    this.connection = (await connect(mongoUri, {
+      serverSelectionTimeoutMS: 5000, // 5 seconds
+      connectTimeoutMS: 5000, // 5 seconds
+      socketTimeoutMS: 5000, // 5 seconds
+    })).connection;
     return this.connection;
   }
 
