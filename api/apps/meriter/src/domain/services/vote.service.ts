@@ -24,7 +24,7 @@ export class VoteService {
     @Inject(forwardRef(() => PermissionService)) private permissionService: PermissionService,
     private userService: UserService,
     private eventBus: EventBus,
-  ) {}
+  ) { }
 
   /**
    * Get the effective beneficiary for a target (publication or vote)
@@ -76,10 +76,10 @@ export class VoteService {
       const community = await this.communityService.getCommunity(communityId);
       if (community?.votingSettings?.votingRestriction) {
         const restriction = community.votingSettings.votingRestriction;
-        
+
         // Check if this is self-voting
         const isSelfVoting = effectiveBeneficiary === userId;
-        
+
         // Check restriction: "not-own" - cannot vote for own posts
         if (restriction === 'not-own' && isSelfVoting) {
           // Exception: future-vision allows self-voting
@@ -92,19 +92,19 @@ export class VoteService {
           this.logger.log(`[canUserVote] DENIED: Cannot vote for own post (not-own restriction)`);
           return false;
         }
-        
+
         // Check restriction: "not-same-group" - cannot vote if users share communities
         if (restriction === 'not-same-group' && !isSelfVoting) {
           const authorId = effectiveBeneficiary;
           const voterCommunities = await this.userService.getUserCommunities(userId);
           const authorCommunities = await this.userService.getUserCommunities(authorId);
-          
+
           // Find shared communities (excluding special groups: future-vision, marathon-of-good, support)
           const specialTypeTags = ['future-vision', 'marathon-of-good', 'support'];
-          const sharedCommunities = voterCommunities.filter(vcId => 
+          const sharedCommunities = voterCommunities.filter(vcId =>
             authorCommunities.includes(vcId)
           );
-          
+
           // Check if any shared community is NOT a special group
           for (const sharedCommId of sharedCommunities) {
             const sharedComm = await this.communityService.getCommunity(sharedCommId);
@@ -114,7 +114,7 @@ export class VoteService {
             }
           }
         }
-        
+
         // Restriction "any" allows all votes (no additional checks needed)
         // If not self-voting and restriction is not "not-same-group", allow it
         if (!isSelfVoting && restriction !== 'not-same-group') {
@@ -158,6 +158,7 @@ export class VoteService {
     if (!effectiveBeneficiary) {
       return false;
     }
+    // Compare the string value of UserId with userId
     return effectiveBeneficiary === userId;
   }
 
@@ -214,7 +215,7 @@ export class VoteService {
 
     // Check user role to enforce viewer restrictions (check BEFORE community-specific rules)
     const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
-    
+
     // Viewers can only vote with quota (no wallet voting) - check this first for clearer error messages
     if (userRole === COMMUNITY_ROLE_VIEWER && amountWallet > 0) {
       throw new BadRequestException(

@@ -124,7 +124,7 @@ export class Publication implements EditableEntity {
   static fromSnapshot(snapshot: PublicationSnapshot): Publication {
     // Support both legacy imageUrl and new images array
     const images = snapshot.images || (snapshot.imageUrl ? [snapshot.imageUrl] : []);
-    
+
     return new Publication(
       PublicationId.fromString(snapshot.id),
       CommunityId.fromString(snapshot.communityId),
@@ -195,7 +195,7 @@ export class Publication implements EditableEntity {
    * Get the effective beneficiary: beneficiaryId if set, otherwise authorId
    */
   getEffectiveBeneficiary(): UserId {
-    return this.beneficiaryId || this.authorId;
+    return this.beneficiaryId ?? this.authorId;
   }
 
   // Getters
