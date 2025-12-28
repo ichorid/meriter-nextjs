@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
+import * as Sentry from '@sentry/node';
 import type { Context } from './context';
 
 const t = initTRPC.context<Context>().create({
@@ -115,6 +116,17 @@ function getHTTPStatusCodeFromError(error: TRPCError): number {
 export const router = t.router;
 
 /**
+ * Sentry tRPC middleware for procedure-level profiling and error tracking
+ * Creates spans for each tRPC procedure with procedure names and performance metrics
+ */
+const attachRpcInput = process.env.SENTRY_TRPC_ATTACH_INPUT === 'true';
+const sentryMiddleware = t.middleware(
+  Sentry.trpcMiddleware({
+    attachRpcInput,
+  }),
+);
+
+/**
  * Converts NestJS HttpExceptions thrown by domain/services into well-typed TRPCError codes.
  * Without this, a thrown BadRequestException becomes `INTERNAL_SERVER_ERROR` at the tRPC layer.
  */
@@ -156,12 +168,15 @@ const httpExceptionToTrpcMiddleware = t.middleware(async ({ next }) => {
   }
 });
 
-export const publicProcedure = t.procedure.use(httpExceptionToTrpcMiddleware);
+export const publicProcedure = t.procedure
+  .use(sentryMiddleware)
+  .use(httpExceptionToTrpcMiddleware);
 
 /**
  * Protected procedure that requires authentication
  */
 export const protectedProcedure = t.procedure
+  .use(sentryMiddleware)
   .use(httpExceptionToTrpcMiddleware)
   .use(({ ctx, next }) => {
   if (!ctx.user) {
