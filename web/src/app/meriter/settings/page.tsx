@@ -14,8 +14,6 @@ import { trpc } from '@/lib/trpc/client';
 
 import { Button } from '@/components/ui/shadcn/button';
 import { Loader2 } from 'lucide-react';
-import { SuperadminManagement } from '@/components/settings/SuperadminManagement';
-import { InviteInput } from '@/components/molecules/InviteInput';
 
 const SettingsPage = () => {
     const router = useRouter();
@@ -113,14 +111,6 @@ const SettingsPage = () => {
                     <ThemeSelector />
                 </div>
 
-                {/* Invite Section */}
-                <div className="space-y-3">
-                    <h2 className="text-base font-semibold text-brand-text-primary dark:text-base-content">
-                        {t('inviteSection')}
-                    </h2>
-                    <InviteInput />
-                </div>
-
                 {/* Development Section (Fake Data Mode) */}
                 {fakeDataMode && (
                     <div className="space-y-3">
@@ -160,11 +150,6 @@ const SettingsPage = () => {
                             )}
                         </div>
                     </div>
-                )}
-
-                {/* Superadmin Section */}
-                {user.globalRole === 'superadmin' && (
-                    <SuperadminManagement />
                 )}
 
                 {/* Account Section - now shared component */}
