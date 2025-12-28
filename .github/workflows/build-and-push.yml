@@ -13,20 +13,6 @@ on:
     branches:
       - dev
       - main
-  workflow_dispatch:
-    inputs:
-      e2e_stress:
-        description: 'Run E2E stress (parallel + repeated) to detect interference'
-        type: boolean
-        default: false
-      e2e_runs:
-        description: 'Number of E2E stress repetitions (only if e2e_stress=true)'
-        type: string
-        default: '3'
-      e2e_workers:
-        description: 'Jest max workers for E2E stress (only if e2e_stress=true)'
-        type: string
-        default: '2'
 
 env:
   REGISTRY: ghcr.io
@@ -34,8 +20,8 @@ env:
   IMAGE_NAME_API: ${{ github.repository }}-api
 
 jobs:
-  test:
-    name: Run tests
+  test-unit:
+    name: Unit tests
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -58,15 +44,31 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Run unit tests
         run: pnpm test:ci
+
+  test-e2e:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.24.0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
       - name: Run E2E tests
         run: pnpm --filter @meriter/api test:e2e
-      - name: Run E2E stress (parallel + repeated; manual only)
-        if: github.event_name == 'workflow_dispatch' && inputs.e2e_stress == true
-        env:
-          E2E_RUNS: ${{ inputs.e2e_runs }}
-          E2E_MAX_WORKERS: ${{ inputs.e2e_workers }}
-          E2E_RANDOMIZE: "false"
-        run: pnpm --filter @meriter/api test:e2e:stress
 
   determine-target:
     name: Select deployment target
@@ -245,7 +247,8 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - determine-target
-      - test
+      - test-unit
+      - test-e2e
       - build-images
     if: needs.determine-target.outputs.run_dev_deploy == 'true'
     environment:
@@ -268,7 +271,8 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - determine-target
-      - test
+      - test-unit
+      - test-e2e
       - build-images
     if: needs.determine-target.outputs.run_stage_deploy == 'true'
     environment:
@@ -288,7 +292,8 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - determine-target
-      - test
+      - test-unit
+      - test-e2e
       - build-images
       - deploy-stage
     if: needs.determine-target.outputs.run_prod_deploy == 'true'

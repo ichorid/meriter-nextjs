@@ -1,6 +1,6 @@
 {
   "name": "meriter-nextjs",
-  "version": "0.39.3",
+  "version": "0.39.4",
   "private": true,
   "packageManager": "pnpm@10.26.2+sha512.0e308ff2005fc7410366f154f625f6631ab2b16b1d2e70238444dd6ae9d630a8482d92a451144debc492416896ed16f7b114a86ec68b8404b2443869e68ffda6",
   "scripts": {
@@ -13,7 +13,6 @@
     "test:web": "pnpm --filter @meriter/web test",
     "test:api:ci": "pnpm --filter @meriter/api test:ci",
     "test:web:ci": "pnpm --filter @meriter/web test:ci",
-    "test:e2e:stress": "pnpm --filter @meriter/api test:e2e:stress",
     "test": "pnpm test:api && pnpm test:web",
     "test:ci": "pnpm test:api:ci && pnpm test:web:ci",
     "lint": "pnpm --filter @meriter/api lint && pnpm --filter @meriter/web lint",
