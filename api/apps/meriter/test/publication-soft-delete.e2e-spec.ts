@@ -7,6 +7,7 @@ import { Community, CommunityDocument } from '../src/domain/models/community/com
 import { User, UserDocument } from '../src/domain/models/user/user.schema';
 import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { WalletService } from '../src/domain/services/wallet.service';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
@@ -22,6 +23,7 @@ describe('Publication Soft Delete E2E', () => {
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
+  let walletService: WalletService;
 
   // Test user IDs
   let authorId: string;
@@ -47,6 +49,7 @@ describe('Publication Soft Delete E2E', () => {
     userModel = app.get(getModelToken(User.name));
     publicationModel = app.get(getModelToken(Publication.name));
     userCommunityRoleModel = app.get(getModelToken(UserCommunityRole.name));
+    walletService = app.get(WalletService);
 
     // Initialize test IDs
     authorId = uid();
@@ -268,6 +271,199 @@ describe('Publication Soft Delete E2E', () => {
       expect(dbPublication?.metrics).toBeDefined();
     });
 
+    it('should auto-withdraw positive vote balance to effective beneficiary wallet before deletion', async () => {
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const created = await trpcMutation(app, 'publications.create', createTestPublication(communityId, authorId));
+
+      // Add a vote to create a positive score
+      (global as any).testUserId = participantId;
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: created.id,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Test vote',
+      });
+
+      // Delete publication (lead)
+      (global as any).testUserId = leadId;
+      await trpcMutation(app, 'publications.delete', { id: created.id });
+
+      // Wallet should be credited to author (effective beneficiary when no explicit beneficiary is set)
+      const wallet = await walletService.getWallet(authorId, communityId);
+      expect(wallet).toBeTruthy();
+      expect(wallet?.getBalance()).toBe(5);
+
+      // Withdrawal total should match the original positive balance
+      const totalWithdrawn = await walletService.getTotalWithdrawnByReference(
+        'publication_withdrawal',
+        created.id,
+      );
+      expect(totalWithdrawn).toBe(5);
+
+      // Publication should now have zero score after withdrawal (still deleted)
+      const dbPublication = await publicationModel.findOne({ id: created.id }).lean();
+      expect(dbPublication?.deleted).toBe(true);
+      expect(dbPublication?.metrics?.score).toBe(0);
+    });
+
+    it('should auto-withdraw to beneficiary wallet (not author) when beneficiaryId is set', async () => {
+      // Create publication with beneficiary
+      (global as any).testUserId = authorId;
+      const created = await trpcMutation(
+        app,
+        'publications.create',
+        createTestPublication(communityId, authorId, { beneficiaryId: participantId }),
+      );
+
+      // Vote by a different user (lead) to avoid self-vote edge cases
+      (global as any).testUserId = leadId;
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: created.id,
+        quotaAmount: 7,
+        walletAmount: 0,
+        comment: 'Test vote',
+      });
+
+      // Delete publication (superadmin)
+      (global as any).testUserId = superadminId;
+      await trpcMutation(app, 'publications.delete', { id: created.id });
+
+      const beneficiaryWallet = await walletService.getWallet(participantId, communityId);
+      expect(beneficiaryWallet).toBeTruthy();
+      expect(beneficiaryWallet?.getBalance()).toBe(7);
+
+      const authorWallet = await walletService.getWallet(authorId, communityId);
+      expect(authorWallet?.getBalance() || 0).toBe(0);
+    });
+
+    it('should only auto-withdraw remaining balance when some amount was withdrawn manually before deletion', async () => {
+      // Create publication
+      (global as any).testUserId = authorId;
+      const created = await trpcMutation(app, 'publications.create', createTestPublication(communityId, authorId));
+
+      // Create score 10
+      (global as any).testUserId = participantId;
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: created.id,
+        quotaAmount: 10,
+        walletAmount: 0,
+        comment: 'Test vote',
+      });
+
+      // Manual withdraw 3 as author
+      (global as any).testUserId = authorId;
+      await trpcMutation(app, 'publications.withdraw', { publicationId: created.id, amount: 3 });
+
+      // Delete publication (lead) should auto-withdraw remaining 7
+      (global as any).testUserId = leadId;
+      await trpcMutation(app, 'publications.delete', { id: created.id });
+
+      const wallet = await walletService.getWallet(authorId, communityId);
+      expect(wallet).toBeTruthy();
+      expect(wallet?.getBalance()).toBe(10);
+
+      const totalWithdrawn = await walletService.getTotalWithdrawnByReference(
+        'publication_withdrawal',
+        created.id,
+      );
+      expect(totalWithdrawn).toBe(10);
+    });
+
+    it('should not withdraw when publication has zero score', async () => {
+      // Create publication without votes (score = 0)
+      (global as any).testUserId = authorId;
+      const created = await trpcMutation(app, 'publications.create', createTestPublication(communityId, authorId));
+
+      // Delete publication
+      (global as any).testUserId = leadId;
+      await trpcMutation(app, 'publications.delete', { id: created.id });
+
+      const totalWithdrawn = await walletService.getTotalWithdrawnByReference(
+        'publication_withdrawal',
+        created.id,
+      );
+      expect(totalWithdrawn).toBe(0);
+
+      const wallet = await walletService.getWallet(authorId, communityId);
+      expect(wallet).toBeNull();
+    });
+
+    it('should auto-withdraw marathon-of-good publication to Future Vision wallet', async () => {
+      const marathonCommunityId = uid();
+      const futureVisionCommunityId = uid();
+
+      // Create special communities
+      await communityModel.create([
+        {
+          id: marathonCommunityId,
+          name: 'Marathon of Good',
+          description: 'Test marathon community',
+          typeTag: 'marathon-of-good',
+          isActive: true,
+          settings: {
+            iconUrl: 'https://example.com/icon-marathon.jpg',
+            currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+            dailyEmission: 10,
+          },
+          meritSettings: { dailyQuota: 10, quotaRecipients: ['lead', 'participant'], canEarn: true },
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: futureVisionCommunityId,
+          name: 'Future Vision',
+          description: 'Test future vision community',
+          typeTag: 'future-vision',
+          isActive: true,
+          settings: {
+            iconUrl: 'https://example.com/icon-fv.jpg',
+            currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+            dailyEmission: 0,
+          },
+          meritSettings: { dailyQuota: 0, quotaRecipients: ['lead', 'participant'], canEarn: false },
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+
+      // Roles in marathon community
+      await userCommunityRoleModel.create([
+        { id: uid(), userId: authorId, communityId: marathonCommunityId, role: 'participant', createdAt: new Date(), updatedAt: new Date() },
+        { id: uid(), userId: leadId, communityId: marathonCommunityId, role: 'lead', createdAt: new Date(), updatedAt: new Date() },
+        { id: uid(), userId: participantId, communityId: marathonCommunityId, role: 'participant', createdAt: new Date(), updatedAt: new Date() },
+      ]);
+
+      // Create publication in marathon community
+      (global as any).testUserId = authorId;
+      const created = await trpcMutation(app, 'publications.create', createTestPublication(marathonCommunityId, authorId));
+
+      // Vote to create score
+      (global as any).testUserId = participantId;
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: created.id,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Test vote',
+      });
+
+      // Delete (lead)
+      (global as any).testUserId = leadId;
+      await trpcMutation(app, 'publications.delete', { id: created.id });
+
+      // Should credit Future Vision wallet, not marathon wallet
+      const fvWallet = await walletService.getWallet(authorId, futureVisionCommunityId);
+      expect(fvWallet).toBeTruthy();
+      expect(fvWallet?.getBalance()).toBe(5);
+
+      const marathonWallet = await walletService.getWallet(authorId, marathonCommunityId);
+      expect(marathonWallet).toBeNull();
+    });
+
     it('should exclude deleted publications from getAll query', async () => {
       // Create two publications
       (global as any).testUserId = authorId;
@@ -444,7 +640,8 @@ describe('Publication Soft Delete E2E', () => {
       // Metrics should be preserved
       const deleted = result.data.find((p: any) => p.id === created.id);
       expect(deleted).toBeDefined();
-      expect(deleted.metrics.score).toBeGreaterThanOrEqual(beforeDelete.metrics.score);
+      // Score should be withdrawn to 0, but commentCount should remain
+      expect(deleted.metrics.score).toBe(0);
       expect(deleted.metrics.commentCount).toBe(beforeDelete.metrics.commentCount);
     });
 

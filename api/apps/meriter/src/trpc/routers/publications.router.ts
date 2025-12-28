@@ -82,6 +82,75 @@ async function processWithdrawal(
   };
 }
 
+type CurrencyNames = { singular: string; plural: string; genitive: string };
+
+type PublicationForAutoWithdraw = {
+  getMetrics: { score: number };
+  getCommunityId: { getValue(): string };
+  getEffectiveBeneficiary(): { getValue(): string };
+};
+
+type AutoWithdrawContext = {
+  communityService: {
+    getCommunity(communityId: string): Promise<{ id: string; typeTag?: string; settings?: { currencyNames?: CurrencyNames } } | null>;
+    getCommunityByTypeTag(typeTag: string): Promise<{ id: string; settings?: { currencyNames?: CurrencyNames } } | null>;
+  };
+  walletService: {
+    getTotalWithdrawnByReference(referenceType: string, referenceId: string): Promise<number>;
+    addTransaction(
+      userId: string,
+      communityId: string,
+      type: 'credit' | 'debit',
+      amount: number,
+      sourceType: 'personal' | 'quota',
+      referenceType: string,
+      referenceId: string,
+      currency: CurrencyNames,
+      description?: string,
+    ): Promise<unknown>;
+  };
+  publicationService: {
+    reduceScore(publicationId: string, amount: number): Promise<unknown>;
+  };
+};
+
+/**
+ * Auto-withdraw all available positive balance from a publication into the effective beneficiary's wallet.
+ * This mirrors the manual `publications.withdraw` logic, but is used during moderation deletion.
+ *
+ * Returns the amount that was withdrawn (0 if nothing was available).
+ */
+export async function autoWithdrawPublicationBalanceBeforeDelete(
+  publicationId: string,
+  publication: PublicationForAutoWithdraw,
+  ctx: AutoWithdrawContext,
+): Promise<number> {
+  const currentScore = publication.getMetrics.score;
+  if (currentScore <= 0) return 0;
+
+  const totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
+    'publication_withdrawal',
+    publicationId,
+  );
+  const availableAmount = Math.max(0, currentScore - totalWithdrawn);
+  if (availableAmount <= 0) return 0;
+
+  const beneficiaryId = publication.getEffectiveBeneficiary().getValue();
+  const communityId = publication.getCommunityId.getValue();
+
+  await processWithdrawal(
+    beneficiaryId,
+    communityId,
+    publicationId,
+    availableAmount,
+    'publication_withdrawal',
+    ctx,
+  );
+
+  await ctx.publicationService.reduceScore(publicationId, availableAmount);
+  return availableAmount;
+}
+
 /**
  * Helper to calculate remaining quota for a user in a community
  */
@@ -587,6 +656,14 @@ export const publicationsRouter = router({
     .mutation(async ({ ctx, input }) => {
       // Check permissions
       await checkPermissionInHandler(ctx, 'delete', 'publication', input);
+
+      // If the publication has a positive balance, auto-withdraw it to the effective beneficiary
+      // exactly as if they withdrew everything just before deletion.
+      const publication = await ctx.publicationService.getPublication(input.id);
+      if (!publication) {
+        throw new NotFoundError('Publication', input.id);
+      }
+      await autoWithdrawPublicationBalanceBeforeDelete(input.id, publication, ctx);
 
       await ctx.publicationService.deletePublication(input.id, ctx.user.id);
       return { success: true };
