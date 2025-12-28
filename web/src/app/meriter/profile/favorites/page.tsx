@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { useInfiniteFavorites } from '@/hooks/api/useFavorites';
@@ -12,10 +12,18 @@ import { useWallets } from '@/hooks/api';
 import type { Wallet } from '@/types/api-v1';
 
 export default function ProfileFavoritesPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: userLoading, isAuthenticated } = useAuth();
 
-  const pageHeader = <ProfileTopBar asStickyHeader={true} />;
+  const pageHeader = (
+    <SimpleStickyHeader
+      title="Favorites"
+      showBack={true}
+      onBack={() => router.push('/meriter/profile')}
+      asStickyHeader={true}
+    />
+  );
 
   const { data: walletsRaw = [] } = useWallets();
   const wallets = walletsRaw as Wallet[];

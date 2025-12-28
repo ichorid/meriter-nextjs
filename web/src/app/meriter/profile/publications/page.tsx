@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useProfileData } from '@/hooks/useProfileData';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import { ProfilePublicationsTab } from '@/components/organisms/Profile/ProfilePublicationsTab';
@@ -14,7 +14,7 @@ import { Loader2 } from 'lucide-react';
 export default function ProfilePublicationsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const t = useTranslations('profile');
+  const t = useTranslations('home');
   const { user, isLoading: userLoading, isAuthenticated } = useAuth();
   const { sortByTab, setSortByTab } = useProfileTabState();
   const {
@@ -41,7 +41,12 @@ export default function ProfilePublicationsPage() {
   }, [searchParams, setSortByTab]);
 
   const pageHeader = (
-    <ProfileTopBar asStickyHeader={true} />
+    <SimpleStickyHeader
+      title={t('hero.stats.publications')}
+      showBack={true}
+      onBack={() => router.push('/meriter/profile')}
+      asStickyHeader={true}
+    />
   );
 
   if (userLoading || !isAuthenticated) {
