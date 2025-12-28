@@ -394,8 +394,11 @@ export class CommunityService {
       if (dto.settings.forwardCost !== undefined) {
         settingsUpdate['settings.forwardCost'] = dto.settings.forwardCost;
       }
-      if (dto.settings.editWindowDays !== undefined) {
-        settingsUpdate['settings.editWindowDays'] = dto.settings.editWindowDays;
+      if (dto.settings.editWindowMinutes !== undefined) {
+        settingsUpdate['settings.editWindowMinutes'] = dto.settings.editWindowMinutes;
+      }
+      if (dto.settings.allowEditByOthers !== undefined) {
+        settingsUpdate['settings.allowEditByOthers'] = dto.settings.allowEditByOthers;
       }
       if (dto.settings.language !== undefined) {
         settingsUpdate['settings.language'] = dto.settings.language;

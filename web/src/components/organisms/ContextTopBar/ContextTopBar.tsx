@@ -87,6 +87,7 @@ export const SimpleStickyHeader: React.FC<{
   title: React.ReactNode;
   onBack?: () => void;
   showBack?: boolean;
+  leftAction?: React.ReactNode;
   rightAction?: React.ReactNode;
   className?: string;
   asStickyHeader?: boolean;
@@ -94,6 +95,7 @@ export const SimpleStickyHeader: React.FC<{
   title,
   onBack,
   showBack = true,
+  leftAction,
   rightAction,
   className = '',
   asStickyHeader = false
@@ -113,6 +115,13 @@ export const SimpleStickyHeader: React.FC<{
       <div className={`${asStickyHeader ? "bg-base-100/95 backdrop-blur-md border-b border-base-content/10" : "sticky top-0 z-30 bg-base-100/95 backdrop-blur-md border-b border-base-content/10 w-full"} ${className}`}>
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center flex-1 min-w-0">
+            {/* Left Actions */}
+            {leftAction && (
+              <div className="flex items-center flex-shrink-0 mr-2">
+                {leftAction}
+              </div>
+            )}
+
             {/* Back Button */}
             {showBack && (
               <Button

@@ -28,7 +28,15 @@ export interface CommunitySettings {
   postCost?: number;
   pollCost?: number;
   forwardCost?: number;
-  editWindowDays?: number;
+  /**
+   * How long (in minutes) a publication can be edited after creation by participants.
+   * 0 means no time limit.
+   */
+  editWindowMinutes?: number;
+  /**
+   * Whether participants (non-authors) may edit publications created by others in the same community.
+   */
+  allowEditByOthers?: boolean;
 }
 
 export interface CommunityMeritConversion {
@@ -67,9 +75,15 @@ export interface PermissionRule {
     onlyTeamLead?: boolean;
     canVoteForOwnPosts?: boolean;
     participantsCannotVoteForLead?: boolean;
+    // Deprecated/ignored for publication editing (editing is not based on votes/comments anymore)
     canEditWithVotes?: boolean;
+    // Deprecated/ignored for publication editing (editing is not based on votes/comments anymore)
     canEditWithComments?: boolean;
-    canEditAfterDays?: number; // 0 means no time limit
+    /**
+     * Publication edit window override for this specific rule, in minutes.
+     * 0 means no time limit.
+     */
+    canEditAfterMinutes?: number;
     canDeleteWithVotes?: boolean;
     canDeleteWithComments?: boolean;
     teamOnly?: boolean;
@@ -94,7 +108,10 @@ export interface PermissionContext {
   sharedTeamCommunities?: string[]; // team communities shared between voter and author
   hasVotes?: boolean;
   hasComments?: boolean;
-  daysSinceCreation?: number;
+  /**
+   * Minutes since resource creation. Used for publication edit window enforcement.
+   */
+  minutesSinceCreation?: number;
 }
 
 export interface Community {
@@ -172,7 +189,7 @@ export class CommunitySchemaClass implements Community {
         participantsCannotVoteForLead: Boolean,
         canEditWithVotes: Boolean,
         canEditWithComments: Boolean,
-        canEditAfterDays: Number,
+        canEditAfterMinutes: Number,
         canDeleteWithVotes: Boolean,
         canDeleteWithComments: Boolean,
         teamOnly: Boolean,
@@ -234,7 +251,8 @@ export class CommunitySchemaClass implements Community {
       postCost: { type: Number, default: 1 },
       pollCost: { type: Number, default: 1 },
       forwardCost: { type: Number, default: 1 },
-      editWindowDays: { type: Number, default: 7 },
+      editWindowMinutes: { type: Number, default: 30 },
+      allowEditByOthers: { type: Boolean, default: false },
     },
     default: {},
   })

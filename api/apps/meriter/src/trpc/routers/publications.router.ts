@@ -128,12 +128,10 @@ export async function autoWithdrawPublicationBalanceBeforeDelete(
   const currentScore = publication.getMetrics.score;
   if (currentScore <= 0) return 0;
 
-  const totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
-    'publication_withdrawal',
-    publicationId,
-  );
-  const availableAmount = Math.max(0, currentScore - totalWithdrawn);
-  if (availableAmount <= 0) return 0;
+  // IMPORTANT:
+  // Manual publication withdrawals already reduce the publication score via `publicationService.reduceScore()`.
+  // Therefore the current score represents the *remaining* withdrawable amount.
+  const availableAmount = currentScore;
 
   const beneficiaryId = publication.getEffectiveBeneficiary().getValue();
   const communityId = publication.getCommunityId.getValue();

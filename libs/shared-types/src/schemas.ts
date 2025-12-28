@@ -83,7 +83,8 @@ export const CommunitySettingsSchema = z.object({
   postCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a post (0 = free)
   pollCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a poll (0 = free)
   forwardCost: z.number().int().min(0).default(1), // Cost in quota/merits to forward a post (0 = free)
-  editWindowDays: z.number().int().min(0).default(7), // Number of days after creation that regular users can edit their posts/comments (0 = no time limit)
+  editWindowMinutes: z.number().int().min(0).default(30), // Number of minutes after creation that participants can edit publications (0 = no time limit)
+  allowEditByOthers: z.boolean().default(false), // Allow participants to edit publications created by others in the same community
 });
 
 export const CommunityMeritConversionSchema = z.object({
@@ -106,7 +107,7 @@ export const PermissionRuleConditionsSchema = z.object({
   participantsCannotVoteForLead: z.boolean().optional(),
   canEditWithVotes: z.boolean().optional(),
   canEditWithComments: z.boolean().optional(),
-  canEditAfterDays: z.number().int().min(0).optional(),
+  canEditAfterMinutes: z.number().int().min(0).optional(),
   canDeleteWithVotes: z.boolean().optional(),
   canDeleteWithComments: z.boolean().optional(),
   teamOnly: z.boolean().optional(),

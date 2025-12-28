@@ -37,7 +37,8 @@ export const communitiesRouter = router({
           language: community.settings?.language ?? 'en',
           postCost: community.settings?.postCost ?? 1,
           pollCost: community.settings?.pollCost ?? 1,
-          editWindowDays: community.settings?.editWindowDays ?? 7,
+          editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
+          allowEditByOthers: community.settings?.allowEditByOthers ?? false,
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)
@@ -198,14 +199,15 @@ export const communitiesRouter = router({
         permissionRules: ctx.communityService.getEffectivePermissionRules(community),
         meritSettings: ctx.communityService.getEffectiveMeritSettings(community),
         votingSettings: ctx.communityService.getEffectiveVotingSettings(community),
-        settings: {
+          settings: {
           currencyNames: community.settings?.currencyNames,
           dailyEmission: community.settings?.dailyEmission as number,
           iconUrl: community.settings?.iconUrl,
           language: community.settings?.language ?? 'en',
           postCost: community.settings?.postCost ?? 1,
           pollCost: community.settings?.pollCost ?? 1,
-          editWindowDays: community.settings?.editWindowDays ?? 7,
+            editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
+            allowEditByOthers: community.settings?.allowEditByOthers ?? false,
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)
@@ -259,14 +261,15 @@ export const communitiesRouter = router({
         permissionRules: ctx.communityService.getEffectivePermissionRules(community),
         meritSettings: ctx.communityService.getEffectiveMeritSettings(community),
         votingSettings: ctx.communityService.getEffectiveVotingSettings(community),
-        settings: {
+          settings: {
           currencyNames: community.settings?.currencyNames,
           dailyEmission: community.settings?.dailyEmission as number,
           iconUrl: community.settings?.iconUrl,
           language: community.settings?.language ?? 'en',
           postCost: community.settings?.postCost ?? 1,
           pollCost: community.settings?.pollCost ?? 1,
-          editWindowDays: community.settings?.editWindowDays ?? 7,
+            editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
+            allowEditByOthers: community.settings?.allowEditByOthers ?? false,
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)

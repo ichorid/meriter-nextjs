@@ -104,7 +104,6 @@ export class CommunityDefaultsService {
         conditions: {
           canEditWithVotes: false,
           canEditWithComments: false,
-          canEditAfterDays: 7, // Default 7 days
         },
       },
       {
@@ -131,7 +130,6 @@ export class CommunityDefaultsService {
         allowed: true,
         conditions: {
           canEditWithVotes: false,
-          canEditAfterDays: 7,
         },
       },
       { role: 'participant', action: ActionType.EDIT_POLL, allowed: true },

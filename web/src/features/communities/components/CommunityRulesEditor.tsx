@@ -90,6 +90,12 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   const [forwardCost, setForwardCost] = useState<string>(
     String(community.settings?.forwardCost ?? 1)
   );
+  const [editWindowMinutes, setEditWindowMinutes] = useState<string>(
+    String(community.settings?.editWindowMinutes ?? 30)
+  );
+  const [allowEditByOthers, setAllowEditByOthers] = useState<boolean>(
+    community.settings?.allowEditByOthers ?? false
+  );
   const [votingRestriction, setVotingRestriction] = useState<'any' | 'not-own' | 'not-same-group'>(
     (community.votingSettings?.votingRestriction as 'any' | 'not-own' | 'not-same-group') || 'not-own'
   );
@@ -253,6 +259,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
     setIsSaving(true);
     try {
+      const editWindowMinutesValue = Number.parseInt(editWindowMinutes, 10);
       await onSave({
         postingRules,
         votingRules,
@@ -264,6 +271,8 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           postCost: parseInt(postCost, 10),
           pollCost: parseInt(pollCost, 10),
           forwardCost: parseInt(forwardCost, 10),
+          editWindowMinutes: Number.isFinite(editWindowMinutesValue) ? editWindowMinutesValue : 30,
+          allowEditByOthers,
         },
         votingSettings: {
           votingRestriction,
@@ -695,6 +704,30 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
         {(isSuperadmin || isUserLead) && (
           <>
+            <BrandFormControl
+              label={t('editWindowMinutes')}
+              helperText={t('editWindowMinutesHelp')}
+            >
+              <Input
+                type="number"
+                min="0"
+                value={editWindowMinutes}
+                onChange={(e) => setEditWindowMinutes(e.target.value)}
+                className="h-11 rounded-xl w-full"
+              />
+            </BrandFormControl>
+
+            <div className="flex items-center gap-2.5">
+              <Checkbox
+                id="allowEditByOthers"
+                checked={allowEditByOthers}
+                onCheckedChange={(checked) => setAllowEditByOthers(checked as boolean)}
+              />
+              <Label htmlFor="allowEditByOthers" className="text-sm cursor-pointer">
+                {t('allowEditByOthers')}
+              </Label>
+            </div>
+
             <BrandFormControl
               label={tSettings('postCost')}
               helperText={tSettings('postCostHelp')}

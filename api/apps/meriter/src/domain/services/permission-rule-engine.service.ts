@@ -222,21 +222,30 @@ export class PermissionRuleEngine {
       return false;
     }
 
-    // STEP 8: Check author requirement for edit/delete actions (participants can only edit/delete their own resources)
-    // Exception: In team groups, participants can edit each other's posts
-    if ((action === ActionType.EDIT_PUBLICATION || action === ActionType.DELETE_PUBLICATION ||
-         action === ActionType.EDIT_POLL || action === ActionType.DELETE_POLL ||
-         action === ActionType.EDIT_COMMENT || action === ActionType.DELETE_COMMENT) &&
-        userRole === 'participant') {
-      if (!context?.isAuthor) {
-        // Allow editing publications in team groups even if not the author
-        if (action === ActionType.EDIT_PUBLICATION && 
-            community.typeTag === 'team' && 
-            context?.isTeamMember) {
-          this.logger.debug(
-            `[canPerformAction] ALLOWED: Participant can edit other team member's post in team group`,
-          );
-          // Continue to condition evaluation (e.g., canEditWithVotes)
+    // STEP 8: Author requirement for edit/delete actions for participants
+    if (userRole === 'participant') {
+      const isEditOrDelete =
+        action === ActionType.EDIT_PUBLICATION ||
+        action === ActionType.DELETE_PUBLICATION ||
+        action === ActionType.EDIT_POLL ||
+        action === ActionType.DELETE_POLL ||
+        action === ActionType.EDIT_COMMENT ||
+        action === ActionType.DELETE_COMMENT;
+
+      if (isEditOrDelete && !context?.isAuthor) {
+        // Special case: allow participant to edit publications created by others only if explicitly enabled in community settings.
+        if (action === ActionType.EDIT_PUBLICATION) {
+          const allowEditByOthers = community.settings?.allowEditByOthers ?? false;
+          if (allowEditByOthers) {
+            this.logger.debug(
+              `[canPerformAction] ALLOWED: Participant can edit other user's publication because allowEditByOthers=true`,
+            );
+          } else {
+            this.logger.debug(
+              `[canPerformAction] DENIED: Participant cannot edit other user's publication (allowEditByOthers=false)`,
+            );
+            return false;
+          }
         } else {
           this.logger.debug(
             `[canPerformAction] DENIED: Participant can only ${action} their own resources`,
@@ -399,50 +408,30 @@ export class PermissionRuleEngine {
       }
     }
 
-    // Check canEditWithVotes
-    // Exception: In team groups, participants can edit each other's posts even with votes
-    if (conditions.canEditWithVotes !== undefined) {
-      if (context?.hasVotes && !conditions.canEditWithVotes) {
-        // Allow editing in team groups even if post has votes
-        if (action === ActionType.EDIT_PUBLICATION &&
-            community.typeTag === 'team' &&
-            context?.isTeamMember) {
-          this.logger.debug(
-            `[evaluateConditions] ALLOWED: Team group participant can edit post with votes`,
-          );
-          // Continue to other condition checks
-        } else {
+    // Publication editing is NOT based on votes/comments anymore. Ignore canEditWithVotes/canEditWithComments.
+
+    // Check canEditAfterMinutes (publications only)
+    // If canEditAfterMinutes is set in conditions, use it; otherwise check community settings
+    if (action === ActionType.EDIT_PUBLICATION && context?.minutesSinceCreation !== undefined) {
+      // Only enforce time window for participants. Leads/superadmins can still edit if allowed by rule.
+      const editorRole = await this.permissionService.getUserRoleInCommunity(
+        userId,
+        community.id,
+      );
+      if (editorRole === 'participant') {
+        const editWindowMinutes =
+          conditions.canEditAfterMinutes !== undefined
+            ? conditions.canEditAfterMinutes
+            : (community.settings?.editWindowMinutes ?? 30);
+
+        if (editWindowMinutes === 0) {
+          // 0 means no time limit
+          return true;
+        }
+
+        if (context.minutesSinceCreation >= editWindowMinutes) {
           return false;
         }
-      }
-    }
-
-    // Check canEditWithComments
-    if (conditions.canEditWithComments !== undefined) {
-      if (context?.hasComments && !conditions.canEditWithComments) {
-        return false;
-      }
-    }
-
-    // Check canEditAfterDays
-    // If canEditAfterDays is set in conditions, use it; otherwise check community settings
-    if (context?.daysSinceCreation !== undefined) {
-      let editWindowDays: number;
-      if (conditions.canEditAfterDays !== undefined) {
-        editWindowDays = conditions.canEditAfterDays;
-      } else {
-        // Get from community settings (default is 7)
-        editWindowDays = community.settings?.editWindowDays ?? 7;
-      }
-
-      if (editWindowDays === 0) {
-        // 0 means no time limit
-        return true;
-      }
-      // Use < to match original logic: can edit for editWindowDays days (days 0 to editWindowDays-1)
-      // If daysSinceCreation is 8 and editWindowDays is 7, should return false
-      if (context.daysSinceCreation >= editWindowDays) {
-        return false;
       }
     }
 
