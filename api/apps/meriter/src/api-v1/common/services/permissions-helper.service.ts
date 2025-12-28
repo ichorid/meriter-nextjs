@@ -431,10 +431,16 @@ export class PermissionsHelperService {
    * Get the reason why editing is disabled
    */
   private getEditDisabledReason(
-    _publication: any,
+    publication: any,
     _userId: string,
     _authorId: string,
   ): string | undefined {
+    // Check if publication is deleted - deleted posts cannot be edited
+    const snapshot = publication.toSnapshot();
+    if (snapshot.deleted) {
+      return 'editDisabled.deleted';
+    }
+    
     return 'editDisabled.timeWindowExpired';
   }
 

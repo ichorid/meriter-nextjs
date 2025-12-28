@@ -450,3 +450,32 @@ export const useRestorePublication = () => {
         },
     });
 };
+
+export const usePermanentDeletePublication = () => {
+    const utils = trpc.useUtils();
+    const queryClient = useQueryClient();
+    
+    return trpc.publications.permanentDelete.useMutation({
+        onSuccess: async (_result, variables) => {
+            // Invalidate and refetch publications lists
+            await utils.publications.getAll.invalidate();
+            await utils.publications.getAll.refetch();
+            
+            // Invalidate deleted publications query (so permanently deleted publication disappears from deleted list)
+            await utils.publications.getDeleted.invalidate();
+            
+            // Remove the permanently deleted publication from cache completely
+            utils.publications.getById.setData({ id: variables.id }, undefined);
+            
+            // Invalidate infinite queries (publication should disappear from all feeds)
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.publications.all,
+                exact: false,
+            });
+            queryClient.refetchQueries({
+                queryKey: queryKeys.publications.all,
+                exact: false,
+            });
+        },
+    });
+};

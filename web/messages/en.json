@@ -232,7 +232,8 @@
         "editDisabled": {
             "hasVotes": "Cannot edit: post has votes",
             "hasComments": "Cannot edit: post has comments",
-            "timeWindowExpired": "Cannot edit: time window expired or insufficient permissions"
+            "timeWindowExpired": "Cannot edit: time window expired or insufficient permissions",
+            "deleted": "Cannot edit: this post has been deleted"
         },
         "deleteDisabled": {
             "hasVotes": "Cannot delete: post has votes",

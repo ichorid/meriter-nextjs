@@ -569,4 +569,71 @@ export class PublicationService {
   async getPublicationDocument(publicationId: string): Promise<any> {
     return await this.publicationModel.findOne({ id: publicationId }).lean();
   }
+
+  /**
+   * Permanently delete a publication (hard delete)
+   * This removes the publication, all its votes, and all its comments from the database
+   * Only leads and superadmins can permanently delete publications
+   * 
+   * NOTE: This method does NOT handle auto-withdrawal of balances.
+   * The caller should handle that before calling this method if needed.
+   * 
+   * WARNING: This is a destructive operation that cannot be undone.
+   */
+  async permanentDeletePublication(
+    publicationId: string,
+    _userId: string,
+  ): Promise<boolean> {
+    const publication = await this.getPublication(publicationId);
+    if (!publication) {
+      throw new NotFoundException('Publication not found');
+    }
+
+    // Authorization is handled by PermissionGuard via PermissionService.canDeletePublication()
+    // No need for redundant check here
+
+    // Use a helper function to recursively delete all comments on this publication
+    // and their replies
+    const deleteCommentsRecursively = async (targetId: string, targetType: 'publication' | 'comment') => {
+      if (!this.mongoose.db) {
+        throw new Error('Database connection not available');
+      }
+
+      // Find all comments on this publication or comment
+      const comments = await this.mongoose.db
+        .collection('comments')
+        .find({ targetType, targetId })
+        .toArray();
+
+      // Recursively delete replies first
+      for (const comment of comments) {
+        await deleteCommentsRecursively(comment.id, 'comment');
+      }
+
+      // Delete all comments found
+      if (comments.length > 0) {
+        const commentIds = comments.map(c => c.id);
+        await this.mongoose.db
+          .collection('comments')
+          .deleteMany({ id: { $in: commentIds } });
+      }
+    };
+
+    // Delete all votes on this publication
+    // (Votes on comments will be deleted when comments are deleted)
+    if (this.mongoose.db) {
+      await this.mongoose.db
+        .collection('votes')
+        .deleteMany({ targetType: 'publication', targetId: publicationId });
+    }
+
+    // Delete all comments on this publication (and their replies recursively)
+    await deleteCommentsRecursively(publicationId, 'publication');
+
+    // Finally, delete the publication itself
+    await this.publicationModel.deleteOne({ id: publicationId });
+
+    this.logger.log(`Permanently deleted publication: ${publicationId}`);
+    return true;
+  }
 }

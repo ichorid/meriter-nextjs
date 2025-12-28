@@ -268,28 +268,9 @@ export const publicationsRouter = router({
       const beneficiaryId = publication.getBeneficiaryId?.getValue();
       const communityId = publication.getCommunityId.getValue();
 
-      // Hide deleted publications from non-leads (and unauthenticated users).
-      // Leads and superadmins can still access deleted items for moderation.
-      const snapshot = publication.toSnapshot();
-      if (snapshot.deleted) {
-        if (!ctx.user) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Publication not found',
-          });
-        }
-
-        const userRole = await ctx.permissionService.getUserRoleInCommunity(
-          ctx.user.id,
-          communityId,
-        );
-        if (userRole !== 'lead' && ctx.user.globalRole !== 'superadmin') {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Publication not found',
-          });
-        }
-      }
+      // Allow deleted publications to be accessed by all users (including unauthenticated).
+      // They will be marked as deleted in the response, but still accessible.
+      // This allows users to see their favorited posts even after deletion, and access posts by direct URL.
 
       // Batch fetch users and communities
       const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : [])];
@@ -678,6 +659,31 @@ export const publicationsRouter = router({
       await checkPermissionInHandler(ctx, 'delete', 'publication', input);
 
       await ctx.publicationService.restorePublication(input.id, ctx.user.id);
+      return { success: true };
+    }),
+
+  /**
+   * Permanently delete a publication (hard delete)
+   * This removes the publication, all its votes, and all its comments from the database
+   * Only leads and superadmins can permanently delete publications
+   * 
+   * WARNING: This is a destructive operation that cannot be undone.
+   */
+  permanentDelete: protectedProcedure
+    .input(IdInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Check permissions - permanent delete uses the same permissions as delete
+      await checkPermissionInHandler(ctx, 'delete', 'publication', input);
+
+      // If the publication has a positive balance, auto-withdraw it to the effective beneficiary
+      // exactly as if they withdrew everything just before deletion.
+      const publication = await ctx.publicationService.getPublication(input.id);
+      if (!publication) {
+        throw new NotFoundError('Publication', input.id);
+      }
+      await autoWithdrawPublicationBalanceBeforeDelete(input.id, publication, ctx);
+
+      await ctx.publicationService.permanentDeletePublication(input.id, ctx.user.id);
       return { success: true };
     }),
 

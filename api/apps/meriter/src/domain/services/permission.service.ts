@@ -193,6 +193,12 @@ export class PermissionService {
       return false;
     }
 
+    // Deleted publications cannot be edited by anyone
+    const snapshot = publication.toSnapshot();
+    if (snapshot.deleted) {
+      return false;
+    }
+
     const communityId = publication.getCommunityId.getValue();
     
     // Build context for editing
