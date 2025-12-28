@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/shadcn/dialog';
 import { cn } from '@/lib/utils';
-import { useUploadAvatar } from '@/hooks/api/useUploads';
+import { useUploadAvatar, useUploadCommunityAvatar } from '@/hooks/api/useUploads';
 import { fileToBase64 } from '@/lib/utils/file-utils';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -67,6 +67,8 @@ export interface AvatarUploaderProps {
   uploadEndpoint?: string;
   /** Custom labels */
   labels?: AvatarUploaderLabels;
+  /** Community ID - if provided, uses community avatar upload instead of user avatar */
+  communityId?: string;
 }
 
 export function AvatarUploader({
@@ -77,9 +79,12 @@ export function AvatarUploader({
   className = '',
   uploadEndpoint, // Deprecated - kept for backward compatibility but not used
   labels: customLabels,
+  communityId,
 }: AvatarUploaderProps) {
   const labels = { ...DEFAULT_LABELS, ...customLabels };
-  const uploadMutation = useUploadAvatar();
+  const userAvatarMutation = useUploadAvatar();
+  const communityAvatarMutation = useUploadCommunityAvatar();
+  const uploadMutation = communityId ? communityAvatarMutation : userAvatarMutation;
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -167,12 +172,20 @@ export function AvatarUploader({
 
       const base64 = await fileToBase64(selectedFile);
       
-      const result = await uploadMutation.mutateAsync({
-        fileData: base64,
-        fileName: selectedFile.name,
-        mimeType: selectedFile.type,
-        crop,
-      });
+      const result = communityId
+        ? await uploadMutation.mutateAsync({
+            communityId,
+            fileData: base64,
+            fileName: selectedFile.name,
+            mimeType: selectedFile.type,
+            crop,
+          })
+        : await uploadMutation.mutateAsync({
+            fileData: base64,
+            fileName: selectedFile.name,
+            mimeType: selectedFile.type,
+            crop,
+          });
       
       onUpload(result.url);
       handleClose();

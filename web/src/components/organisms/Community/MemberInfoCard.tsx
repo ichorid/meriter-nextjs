@@ -39,14 +39,6 @@ export function MemberInfoCard({
     // Build footer content if user can view merits and data exists
     const footer = canViewMerits && (walletBalance !== undefined || (quota && quota.dailyQuota > 0)) ? (
         <div className="flex items-center gap-3 pt-2 border-t border-brand-secondary/10">
-            {walletBalance !== undefined && (
-                <div className="text-xs text-brand-text-secondary">
-                    <span>{tCommon('permanentMerits')}: </span>
-                    <span className="font-semibold text-brand-text-primary">
-                        {walletBalance.toLocaleString()}
-                    </span>
-                </div>
-            )}
             {quota && quota.dailyQuota > 0 && (
                 <div className="flex items-center gap-1">
                     <DailyQuotaRing
@@ -58,6 +50,14 @@ export function MemberInfoCard({
                     <span className="text-xs text-brand-text-secondary">
                         {quota.remainingToday}/{quota.dailyQuota}
                     </span>
+                </div>
+            )}
+            {walletBalance !== undefined && (
+                <div className="flex items-center gap-1 text-xs text-brand-text-secondary">
+                    <span className="font-semibold text-brand-text-primary">
+                        {walletBalance.toLocaleString()}
+                    </span>
+                    <span>permanent</span>
                 </div>
             )}
         </div>

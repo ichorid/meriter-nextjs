@@ -19,6 +19,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { SortToggle } from '@/components/ui/SortToggle';
 import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 import { InviteMenu } from '@/components/molecules/FabMenu/InviteMenu';
+import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
 
 export interface ContextTopBarProps {
   className?: string;
@@ -153,7 +154,29 @@ export const SimpleStickyHeader: React.FC<{
   };
 
 // Community Top Bar
-export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: boolean; activeTab?: string; futureVisionCommunityId?: string | null }> = ({ communityId, asStickyHeader = false, activeTab = 'publications', futureVisionCommunityId = null }) => {
+export const CommunityTopBar: React.FC<{ 
+  communityId: string; 
+  asStickyHeader?: boolean; 
+  activeTab?: string; 
+  futureVisionCommunityId?: string | null;
+  showQuotaInHeader?: boolean;
+  quotaData?: {
+    balance?: number;
+    quotaRemaining?: number;
+    quotaMax?: number;
+    currencyIconUrl?: string;
+    isMarathonOfGood?: boolean;
+    showPermanent?: boolean;
+    showDaily?: boolean;
+  };
+}> = ({ 
+  communityId, 
+  asStickyHeader = false, 
+  activeTab = 'publications', 
+  futureVisionCommunityId = null,
+  showQuotaInHeader = false,
+  quotaData,
+}) => {
   const { data: community, isLoading: communityLoading } = useCommunity(communityId);
   const { user } = useAuth();
   const router = useRouter();
@@ -358,6 +381,20 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
       asStickyHeader={asStickyHeader}
       rightAction={
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Quota Display in Header */}
+          {showQuotaInHeader && quotaData && (
+            <QuotaDisplay
+              balance={quotaData.balance}
+              quotaRemaining={quotaData.quotaRemaining}
+              quotaMax={quotaData.quotaMax}
+              currencyIconUrl={quotaData.currencyIconUrl}
+              isMarathonOfGood={quotaData.isMarathonOfGood}
+              showPermanent={quotaData.showPermanent}
+              showDaily={quotaData.showDaily}
+              compact={true}
+              className="mr-2"
+            />
+          )}
           {/* Fake Data Buttons - dev only - LEFT SIDE */}
           {fakeDataMode && (
             <>

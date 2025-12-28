@@ -44,6 +44,7 @@ import { Label } from '@/components/ui/shadcn/label';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
+import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations as useCommonTranslations } from 'next-intl';
@@ -94,6 +95,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const [bOpenBeneficiaries, setBOpenBeneficiaries] = useState(false);
     const [bOpenMethods, setBOpenMethods] = useState(false);
     const [bOpenHelp, setBOpenHelp] = useState(false);
+    const [showQuotaInHeader, setShowQuotaInHeader] = useState(false);
+    const quotaIndicatorRef = useRef<HTMLDivElement>(null);
 
     // Handle tab change
     const handleTabChange = (tabId: string) => {
@@ -349,6 +352,34 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const quotaMax = quotaData?.dailyQuota ?? 0;
     const currencyIconUrl = comms?.settings?.iconUrl;
 
+    // Intersection observer to detect when quota indicator scrolls out of view
+    useEffect(() => {
+        if (!quotaIndicatorRef.current || (!canEarnPermanentMerits && !hasQuota)) {
+            setShowQuotaInHeader(false);
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const entry = entries[0];
+                if (entry) {
+                    // Show in header when quota indicator is not visible (scrolled past)
+                    setShowQuotaInHeader(!entry.isIntersecting);
+                }
+            },
+            {
+                threshold: 0,
+                rootMargin: '-60px 0px 0px 0px', // Account for header height
+            }
+        );
+
+        observer.observe(quotaIndicatorRef.current);
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [canEarnPermanentMerits, hasQuota]);
+
     // Get user's team community (community with typeTag: 'team' where user has a role)
     const _userTeamCommunityId = null;
 
@@ -553,7 +584,24 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             activeCommentHook={[activeCommentHook, setActiveCommentHook]}
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
-            stickyHeader={<CommunityTopBar communityId={chatId} asStickyHeader={true} activeTab={activeTab} futureVisionCommunityId={futureVisionCommunityId} />}
+            stickyHeader={
+                <CommunityTopBar 
+                    communityId={chatId} 
+                    asStickyHeader={true} 
+                    activeTab={activeTab} 
+                    futureVisionCommunityId={futureVisionCommunityId}
+                    showQuotaInHeader={showQuotaInHeader}
+                    quotaData={showQuotaInHeader ? {
+                        balance: canEarnPermanentMerits ? balance : undefined,
+                        quotaRemaining: hasQuota ? quotaRemaining : undefined,
+                        quotaMax: hasQuota ? quotaMax : undefined,
+                        currencyIconUrl,
+                        isMarathonOfGood,
+                        showPermanent: canEarnPermanentMerits,
+                        showDaily: hasQuota,
+                    } : undefined}
+                />
+            }
         >
             {/* Community Hero Card - Twitter-style with cover */}
             {comms && (
@@ -566,32 +614,20 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     />
                     {/* Quota and Permanent Merits Indicators */}
                     {(canEarnPermanentMerits || hasQuota) && (
-                        <div className="flex items-center gap-4 mt-3 px-4 py-2 bg-base-200/50 rounded-lg">
-                            {canEarnPermanentMerits && (
-                                <div className="flex items-center gap-1.5 text-sm">
-                                    {currencyIconUrl && (
-                                        <img
-                                            src={currencyIconUrl}
-                                            alt={tCommunities('currency')}
-                                            className="w-4 h-4 flex-shrink-0"
-                                        />
-                                    )}
-                                    <span className="text-base-content/60">{tCommon('permanentMerits')}:</span>
-                                    <span className="font-semibold text-base-content">{balance}</span>
-                                </div>
-                            )}
-                            {hasQuota && quotaMax > 0 && (
-                                <div className="flex items-center gap-1.5 text-sm">
-                                    <span className="text-base-content/60">{tCommon('dailyMerits')}:</span>
-                                    <DailyQuotaRing
-                                        remaining={quotaRemaining}
-                                        max={quotaMax}
-                                        className="w-6 h-6 flex-shrink-0"
-                                        asDiv={true}
-                                        variant={isMarathonOfGood ? 'golden' : 'default'}
-                                    />
-                                </div>
-                            )}
+                        <div 
+                            ref={quotaIndicatorRef}
+                            id="quota-indicator"
+                            className="flex items-center gap-4 mt-3 px-4 py-2 bg-base-200/50 rounded-lg"
+                        >
+                            <QuotaDisplay
+                                balance={canEarnPermanentMerits ? balance : undefined}
+                                quotaRemaining={hasQuota ? quotaRemaining : undefined}
+                                quotaMax={hasQuota ? quotaMax : undefined}
+                                currencyIconUrl={currencyIconUrl}
+                                isMarathonOfGood={isMarathonOfGood}
+                                showPermanent={canEarnPermanentMerits}
+                                showDaily={hasQuota}
+                            />
                         </div>
                     )}
                 </div>
