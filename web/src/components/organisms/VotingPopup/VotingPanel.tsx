@@ -116,7 +116,12 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     // Calculate which error message to show
     const getButtonError = (): string | null => {
         if (!isButtonDisabled) return null;
-        if (absAmount === 0) return hideComment ? (tShared("pleaseAdjustSlider") || t("requiresVoteAmount")) : t("requiresVoteAmount");
+        if (absAmount === 0) {
+            if (hideQuota) {
+                return tShared("pleaseChooseWithdrawAmount");
+            }
+            return hideComment ? (tShared("pleaseAdjustSlider") || t("requiresVoteAmount")) : t("requiresVoteAmount");
+        }
         if (!hideComment && isPositive && !comment.trim()) return t("requiresComment");
         return null;
     };
@@ -454,68 +459,125 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 </div>
             )}
 
-            {/* +/- Buttons for withdraw mode (when hideQuota is true) */}
+            {/* Withdraw Progress Bar (when hideQuota is true) */}
             {hideQuota && (
                 <div
-                    className="flex flex-row justify-between items-center"
-                    style={{ 
-                        width: "304px", 
-                        height: "88px",
-                        padding: "24px 0px",
-                    }}
+                    className="flex flex-col gap-5"
+                    style={{ width: "304px" }}
                 >
-                    {/* Decrease Button */}
-                    <button
-                        onClick={handleDecrease}
-                        disabled={amount <= 0}
-                        className={classList(
-                            "box-border flex flex-row justify-center items-center border rounded-[8px]",
-                            "bg-base-100 border-base-content",
-                            "disabled:opacity-50 disabled:cursor-not-allowed"
-                        )}
-                        style={{
-                            width: "70px",
-                            height: "40px",
-                            padding: "11px 15px",
-                            gap: "10px",
-                        }}
-                    >
-                        <Icon name="remove" size={24} />
-                    </button>
-
-                    {/* Vote Amount Display */}
+                    {/* Progress Bar Section */}
                     <div
-                        className="flex items-center justify-center font-medium text-base-content"
-                        style={{
-                            width: "48px",
-                            height: "34px",
-                            fontSize: "28px",
-                            fontFamily: "Roboto, sans-serif",
-                            fontWeight: 500,
-                            lineHeight: "120%",
+                        className="flex flex-col gap-[5px]"
+                        style={{ 
+                            width: "304px", 
+                            height: "59px",
                         }}
                     >
-                        {amount > 0 ? `+${amount}` : amount}
+                        <div
+                            className="relative flex items-center justify-center overflow-hidden bg-base-200 rounded-[8px]"
+                            style={{
+                                width: "100%",
+                                height: "40px",
+                            }}
+                        >
+                            {(() => {
+                                const availableAmount = maxPlus;
+                                const withdrawAmount = Math.max(0, Math.min(amount, availableAmount));
+                                const percent = availableAmount > 0 ? (withdrawAmount / availableAmount) * 100 : 0;
+
+                                return (
+                                    <>
+                                        {/* Filled portion - amount to withdraw */}
+                                        {withdrawAmount > 0 && (
+                                            <div
+                                                className="absolute left-0 top-0 bottom-0 bg-primary"
+                                                style={{
+                                                    width: `${percent}%`,
+                                                    zIndex: 2,
+                                                }}
+                                            />
+                                        )}
+                                        {/* Numeric indicator */}
+                                        <span
+                                            className="relative z-10 text-base-content"
+                                            style={{
+                                                fontSize: "12px",
+                                                fontFamily: "Roboto, sans-serif",
+                                                fontWeight: 400,
+                                                lineHeight: "120%",
+                                                letterSpacing: "0.374px",
+                                            }}
+                                        >
+                                            {withdrawAmount} / {availableAmount}
+                                        </span>
+                                    </>
+                                );
+                            })()}
+                        </div>
                     </div>
 
-                    {/* Increase Button */}
-                    <button
-                        onClick={handleIncrease}
-                        disabled={amount >= maxPlus}
-                        className={classList(
-                            "box-border flex flex-row justify-center items-center border rounded-[8px]",
-                            "bg-base-100 border-base-content",
-                            "disabled:opacity-50 disabled:cursor-not-allowed"
-                        )}
-                        style={{
-                            width: "70px",
-                            height: "40px",
-                            padding: "11px 15px",
-                            gap: "10px",
+                    {/* +/- Buttons */}
+                    <div
+                        className="flex flex-row justify-between items-center"
+                        style={{ 
+                            width: "304px", 
+                            height: "88px",
+                            padding: "24px 0px",
                         }}
                     >
-                        <Icon name="add" size={24} />
-                    </button>
+                        {/* Decrease Button */}
+                        <button
+                            onClick={handleDecrease}
+                            disabled={amount <= 0}
+                            className={classList(
+                                "box-border flex flex-row justify-center items-center border rounded-[8px]",
+                                "bg-base-100 border-base-content",
+                                "disabled:opacity-50 disabled:cursor-not-allowed"
+                            )}
+                            style={{
+                                width: "70px",
+                                height: "40px",
+                                padding: "11px 15px",
+                                gap: "10px",
+                            }}
+                        >
+                            <Icon name="remove" size={24} />
+                        </button>
+
+                        {/* Vote Amount Display */}
+                        <div
+                            className="flex items-center justify-center font-medium text-base-content"
+                            style={{
+                                width: "48px",
+                                height: "34px",
+                                fontSize: "28px",
+                                fontFamily: "Roboto, sans-serif",
+                                fontWeight: 500,
+                                lineHeight: "120%",
+                            }}
+                        >
+                            {amount > 0 ? `+${amount}` : amount}
+                        </div>
+
+                        {/* Increase Button */}
+                        <button
+                            onClick={handleIncrease}
+                            disabled={amount >= maxPlus}
+                            className={classList(
+                                "box-border flex flex-row justify-center items-center border rounded-[8px]",
+                                "bg-base-100 border-base-content",
+                                "disabled:opacity-50 disabled:cursor-not-allowed"
+                            )}
+                            style={{
+                                width: "70px",
+                                height: "40px",
+                                padding: "11px 15px",
+                                gap: "10px",
+                            }}
+                        >
+                            <Icon name="add" size={24} />
+                        </button>
+                    </div>
                 </div>
             )}
 

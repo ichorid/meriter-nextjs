@@ -262,6 +262,8 @@
         "addCommentOptional": "Добавить комментарий (необязательно)",
         "submitting": "Отправка...",
         "pleaseAdjustSlider": "Пожалуйста, настройте слайдер",
+        "pleaseChooseWithdrawAmount": "Пожалуйста, выберите сумму для вывода",
+        "withdrewMerits": "Выведено {amount} заслуг",
         "errorSubmitting": "Ошибка при отправке",
         "timeAgo": {
             "seconds": "{count} сек назад",

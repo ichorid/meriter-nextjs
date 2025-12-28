@@ -261,6 +261,8 @@
         "addCommentOptional": "Add a comment (optional)",
         "submitting": "Submitting...",
         "pleaseAdjustSlider": "Please adjust the slider",
+        "pleaseChooseWithdrawAmount": "Please choose an amount to withdraw",
+        "withdrewMerits": "Withdrew {amount} merits",
         "errorSubmitting": "Failed to submit",
         "timeAgo": {
             "seconds": "{count}s ago",
