@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ErrorPage } from '@/components/ErrorPage';
-import { useDidMount } from '@/hooks/useDidMount';
 import { ThemeProvider } from '@/shared/lib/theme-provider';
 import { setGlobalToastHandler } from '@/providers/QueryProvider';
 import { useToastStore } from '@/shared/stores/toast.store';
@@ -46,7 +45,11 @@ function RootInner({ children }: PropsWithChildren) {
 }
 
 export function Root(props: PropsWithChildren) {
-  const didMount = useDidMount();
+  const [didMount, setDidMount] = useState(false);
+
+  useEffect(() => {
+    setDidMount(true);
+  }, []);
 
   return didMount ? (
     <ErrorBoundary>

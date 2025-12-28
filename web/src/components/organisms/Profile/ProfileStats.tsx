@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo } from 'react';
+import React from 'react';
 import { Award } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -82,6 +82,5 @@ function ProfileStatsComponent({ meritStats, isLoading }: ProfileStatsProps) {
   );
 }
 
-// Memoize ProfileStats to prevent unnecessary re-renders
-export const ProfileStats = memo(ProfileStatsComponent);
+export const ProfileStats = ProfileStatsComponent;
 

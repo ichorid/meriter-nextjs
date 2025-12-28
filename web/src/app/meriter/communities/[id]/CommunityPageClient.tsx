@@ -106,6 +106,15 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         router.push(`?${params.toString()}`);
     };
 
+    const { user, isLoading: userLoading, isAuthenticated } = useAuth();
+    const { data: userRoles = [] } = useUserRoles(user?.id || '');
+
+    // Only leads/superadmins can view deleted publications.
+    // Gate the query so non-leads don't spam 403s + console errors.
+    const canViewDeletedPublications =
+        user?.globalRole === 'superadmin' ||
+        !!userRoles.find((r) => r.communityId === chatId && r.role === 'lead');
+
     // Use v1 API hook
     const { data: comms, error: communityError, isLoading: communityLoading, isFetched: communityFetched } = useCommunity(chatId);
 
@@ -119,13 +128,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     // Find the future-vision community ID when on marathon-of-good
     // This must be calculated before useCommunityFeed that uses it
-    const futureVisionCommunityId = useMemo(() => {
-        if (!isMarathonOfGood || !communitiesData?.data) return null;
-        const futureVisionCommunity = communitiesData.data.find(
-            (c: any) => c.typeTag === 'future-vision'
-        );
-        return futureVisionCommunity?.id || null;
-    }, [isMarathonOfGood, communitiesData?.data]);
+    const futureVisionCommunityId =
+        isMarathonOfGood && communitiesData?.data
+            ? (communitiesData.data.find((c: any) => c.typeTag === 'future-vision')?.id ?? null)
+            : null;
 
     const {
         data,
@@ -161,7 +167,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         hasNextPage: hasNextDeletedPage,
         isFetchingNextPage: isFetchingNextDeletedPage,
         error: _deletedErr
-    } = useInfiniteDeletedPublications(chatId, 20);
+    } = useInfiniteDeletedPublications(chatId, 20, {
+        enabled: activeTab === 'deleted' && canViewDeletedPublications,
+    });
 
     // Derive paginationEnd from hasNextPage instead of setting it in getNextPageParam
     useEffect(() => {
@@ -305,7 +313,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 ? false
                 : undefined;
 
-    const { user, isLoading: userLoading, isAuthenticated } = useAuth();
     const { data: wallets = [], isLoading: _walletsLoading } = useWallets();
 
     // Get wallet balance using standardized hook
@@ -315,45 +322,35 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const { data: quotaData } = useUserQuota(chatId);
 
     // Get user roles and check if can create posts
-    const { data: userRoles = [] } = useUserRoles(user?.id || '');
     const canCreatePost = useCanCreatePost(chatId);
 
     const tCommon = useCommonTranslations('common');
 
     // Get user's role in current community
-    const userRoleInCommunity = useMemo(() => {
-        if (user?.globalRole === 'superadmin') return 'superadmin';
-        const role = userRoles.find(r => r.communityId === chatId);
-        return role?.role || null;
-    }, [user?.globalRole, userRoles, chatId]);
+    const userRoleInCommunity =
+        user?.globalRole === 'superadmin'
+            ? 'superadmin'
+            : (userRoles.find((r) => r.communityId === chatId)?.role ?? null);
 
     // Check if user is a lead (for deleted tab visibility)
     const isLead = userRoleInCommunity === 'lead' || user?.globalRole === 'superadmin';
 
     // Determine eligibility for permanent merits and quota
-    const canEarnPermanentMerits = useMemo(() => {
-        if (!comms?.meritSettings) return false;
-        return comms.meritSettings.canEarn === true && balance !== undefined;
-    }, [comms?.meritSettings, balance]);
+    const canEarnPermanentMerits =
+        comms?.meritSettings?.canEarn === true && balance !== undefined;
 
-    const hasQuota = useMemo(() => {
-        if (!comms?.meritSettings || !userRoleInCommunity) return false;
-        const { dailyQuota, quotaRecipients } = comms.meritSettings;
-        return dailyQuota > 0 && quotaRecipients.includes(userRoleInCommunity);
-    }, [comms?.meritSettings, userRoleInCommunity]);
+    const hasQuota =
+        !!comms?.meritSettings &&
+        !!userRoleInCommunity &&
+        comms.meritSettings.dailyQuota > 0 &&
+        comms.meritSettings.quotaRecipients.includes(userRoleInCommunity);
 
     const quotaRemaining = quotaData?.remainingToday ?? 0;
     const quotaMax = quotaData?.dailyQuota ?? 0;
     const currencyIconUrl = comms?.settings?.iconUrl;
 
     // Get user's team community (community with typeTag: 'team' where user has a role)
-    const _userTeamCommunityId = useMemo(() => {
-        if (!userRoles || userRoles.length === 0) return null;
-        // Find a role in a team-type community
-        // Note: We'd need to fetch communities to check typeTag, but for now we'll use a simpler approach
-        // The teamChatUrl will be set if user has a role in a team community
-        return null; // Simplified - team community lookup would require additional API calls
-    }, [userRoles]);
+    const _userTeamCommunityId = null;
 
     // For now, teamChatUrl is not available without additional API calls
     // This functionality can be restored if needed by fetching user's communities and filtering for typeTag: 'team'

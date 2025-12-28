@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useMemo, memo, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoginForm } from "@/components/LoginForm";
@@ -31,188 +31,7 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
     const router = useRouter();
     const pathname = usePathname();
     const { user, isLoading, isAuthenticated } = useAuth();
-    const renderCount = useRef(0);
-    const lastLoggedPathname = useRef<string | null>(null);
     const redirectAttemptedRef = useRef<{ pathname: string; isAuthenticated: boolean } | null>(null);
-    const [renderLoopDetected, setRenderLoopDetected] = useState(false);
-    const lastDebugLogTime = useRef<number>(0);
-    const renderTimestamps = useRef<number[]>([]);
-    const lastStableStateRef = useRef<{
-        pathname: string | null;
-        isLoading: boolean;
-        isAuthenticated: boolean;
-        userId: string | undefined;
-    } | null>(null);
-    
-    // Stabilize user object reference using useMemo to avoid expensive operations on every render
-    const prevUserRef = useRef<{ user: typeof user; serialized: string } | null>(null);
-    
-    // Memoize user serialization to avoid running on every render
-    // Match the serialization fields with AuthContext to ensure consistency
-    const stableUser = useMemo(() => {
-        if (!user) {
-            prevUserRef.current = null;
-            return null;
-        }
-        
-        // Serialize key fields to detect actual changes
-        // Match fields with AuthContext.tsx to ensure consistency
-        const currentSerialized = JSON.stringify({ 
-            id: user.id, 
-            globalRole: user.globalRole, 
-            inviteCode: user.inviteCode,
-            username: user.username,
-        });
-        
-        // Return previous reference if values haven't changed
-        if (prevUserRef.current && prevUserRef.current.serialized === currentSerialized) {
-            return prevUserRef.current.user;
-        }
-        
-        // Values changed, update ref and return new user
-        prevUserRef.current = { user, serialized: currentSerialized };
-        return user;
-    }, [user]);
-
-    // Extract primitive values directly - these are stable even if user object reference changes
-    const userId = stableUser?.id;
-    const userGlobalRole = stableUser?.globalRole;
-    const userInviteCode = stableUser?.inviteCode;
-    const userMembershipsCount = stableUser?.communityMemberships?.length ?? 0;
-
-    // Render loop detection - moved to useEffect to avoid side effects during render
-    useEffect(() => {
-        // Track render loop using current state values
-        const currentState = {
-            pathname: pathname ?? null,
-            isLoading: isLoading ?? false,
-            isAuthenticated: isAuthenticated ?? false,
-            userId: userId ?? undefined,
-        };
-
-        // Check if state actually changed (legitimate render)
-        const stateChanged = !lastStableStateRef.current || 
-            lastStableStateRef.current.pathname !== currentState.pathname ||
-            lastStableStateRef.current.isLoading !== currentState.isLoading ||
-            lastStableStateRef.current.isAuthenticated !== currentState.isAuthenticated ||
-            lastStableStateRef.current.userId !== currentState.userId;
-
-        // If state changed, reset render tracking (legitimate render)
-        if (stateChanged) {
-            renderCount.current = 0;
-            renderTimestamps.current = [];
-            lastStableStateRef.current = currentState;
-            // Reset loop detection when state legitimately changes
-            if (renderLoopDetected) {
-                setRenderLoopDetected(false);
-            }
-            return;
-        }
-
-        // If loop already detected, don't do any more checks
-        if (renderLoopDetected) {
-            return;
-        }
-
-        // State didn't change - this might be a loop
-        renderCount.current += 1;
-        const now = Date.now();
-        renderTimestamps.current.push(now);
-        
-        // Keep only timestamps from last 1 second
-        renderTimestamps.current = renderTimestamps.current.filter(ts => now - ts < 1000);
-        
-        // Detect loop: more than 5 renders in 1 second with same state
-        if (renderTimestamps.current.length > 5) {
-            if (DEBUG_MODE) {
-                const debugValues = {
-                    pathname: String(currentState.pathname),
-                    isLoading: Boolean(currentState.isLoading),
-                    isAuthenticated: Boolean(currentState.isAuthenticated),
-                    userId: currentState.userId ? String(currentState.userId) : 'undefined',
-                    renderCount: Number(renderCount.current),
-                    rendersInLastSecond: Number(renderTimestamps.current.length),
-                    lastStableState: lastStableStateRef.current ? {
-                        pathname: String(lastStableStateRef.current.pathname),
-                        isLoading: Boolean(lastStableStateRef.current.isLoading),
-                        isAuthenticated: Boolean(lastStableStateRef.current.isAuthenticated),
-                        userId: lastStableStateRef.current.userId ? String(lastStableStateRef.current.userId) : 'undefined',
-                    } : null,
-                };
-                console.error("[AuthWrapper] CRITICAL: Render loop detected! Component will return loading state to prevent crash.");
-                console.error("[AuthWrapper] Current values:", debugValues);
-                console.error("[AuthWrapper] Stack trace:", new Error().stack);
-            }
-            // Set state to trigger re-render with loading state
-            // This will cause one more render, then we'll stay in loading state
-            setRenderLoopDetected(true);
-        }
-    }, [
-        pathname,
-        isLoading,
-        isAuthenticated,
-        userId,
-        renderLoopDetected,
-    ]);
-
-    // Debug logging with throttling to avoid performance impact
-    useEffect(() => {
-        if (!DEBUG_MODE) return;
-
-        // Throttle debug logs to once per 500ms to avoid performance impact
-        const now = Date.now();
-        const timeSinceLastLog = now - lastDebugLogTime.current;
-        const shouldLog = 
-            pathname !== lastLoggedPathname.current ||
-            renderCount.current === 1 ||
-            timeSinceLastLog > 500;
-
-        if (shouldLog) {
-            const debugInfo = {
-                renderCount: renderCount.current,
-                pathname,
-                isLoading,
-                isAuthenticated,
-                hasUser: !!userId,
-                userId,
-                userInviteCode,
-                userMemberships: userMembershipsCount,
-                userGlobalRole,
-                timestamp: new Date().toISOString(),
-            };
-
-            console.log("[AuthWrapper] Render:", debugInfo);
-            lastLoggedPathname.current = pathname;
-            lastDebugLogTime.current = now;
-
-            // Check for potential infinite loop - lowered threshold
-            if (renderCount.current > 15) {
-                console.error(
-                    "[AuthWrapper] WARNING: Excessive renders detected!",
-                    {
-                        ...debugInfo,
-                        allDeps: {
-                            pathname,
-                            isLoading,
-                            isAuthenticated,
-                            userId,
-                            userGlobalRole,
-                            userInviteCode,
-                            userMembershipsCount,
-                        },
-                    }
-                );
-            }
-        }
-    }, [
-        pathname,
-        isLoading,
-        isAuthenticated,
-        userId,
-        userGlobalRole,
-        userInviteCode,
-        userMembershipsCount,
-    ]);
 
     // If authenticated and on login page, redirect to home
     // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
@@ -251,12 +70,6 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
     }, [isAuthenticated, pathname]); // Removed router from deps - Next.js 13+ router is stable
 
     // NOW ALL HOOKS ARE CALLED - safe to do conditional logic and early returns
-    
-    // If render loop detected, return early with loading state
-    // This check happens after hooks but before expensive operations
-    if (renderLoopDetected) {
-        return <LoadingState fullScreen />;
-    }
 
     // If disabled, just render children
     // This conditional return is AFTER all hooks have been called
@@ -285,19 +98,4 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
     return <>{children}</>;
 }
 
-// Memoize AuthWrapper with custom comparison to prevent re-renders when props haven't changed
-// Note: We don't compare children as it's often a new reference, but we do compare the actual config props
-// Context changes will still cause re-renders, but this prevents unnecessary re-renders from prop changes
-const AuthWrapperMemoized = memo(AuthWrapperComponent, (prevProps, nextProps) => {
-    // Compare arrays by serialization since array references might differ
-    const prevProvidersStr = JSON.stringify(prevProps.enabledProviders?.sort() || []);
-    const nextProvidersStr = JSON.stringify(nextProps.enabledProviders?.sort() || []);
-    
-    // Only re-render if actual config props change (not children, which is often a new reference)
-    return (
-        prevProvidersStr === nextProvidersStr &&
-        prevProps.authnEnabled === nextProps.authnEnabled
-    );
-});
-
-export const AuthWrapper = AuthWrapperMemoized;
+export const AuthWrapper = AuthWrapperComponent;

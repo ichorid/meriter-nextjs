@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, memo } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles, useLeadCommunities } from '@/hooks/api/useProfile';
@@ -48,6 +48,5 @@ function UseInviteComponent() {
   );
 }
 
-// Memoize UseInvite to prevent unnecessary re-renders
-export const UseInvite = memo(UseInviteComponent);
+export const UseInvite = UseInviteComponent;
 

@@ -127,7 +127,10 @@ export function useInfinitePublicationsByCommunity(
 
 export function useInfiniteDeletedPublications(
     communityId: string,
-    pageSize: number = 20
+    pageSize: number = 20,
+    options?: {
+        enabled?: boolean;
+    }
 ) {
     return trpc.publications.getDeleted.useInfiniteQuery(
         {
@@ -149,7 +152,7 @@ export function useInfiniteDeletedPublications(
                 return undefined;
             },
             initialPageParam: 1,
-            enabled: !!communityId, // Ensure query only runs when communityId is available
+            enabled: !!communityId && (options?.enabled ?? true),
             staleTime: STALE_TIME.VERY_SHORT, // Always refetch when invalidated
         },
     );

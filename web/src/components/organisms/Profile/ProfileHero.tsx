@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, memo } from 'react';
+import React, { useState } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { User as UserIcon, Edit, Pencil, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
@@ -280,6 +280,5 @@ function ProfileHeroComponent({ user, stats: _stats, onEdit, showEdit = false, u
   );
 }
 
-// Memoize ProfileHero to prevent unnecessary re-renders
-export const ProfileHero = memo(ProfileHeroComponent);
+export const ProfileHero = ProfileHeroComponent;
 

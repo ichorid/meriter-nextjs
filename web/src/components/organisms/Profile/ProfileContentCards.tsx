@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, memo } from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { FileText, MessageSquare, BarChart3, Star } from 'lucide-react';
@@ -114,6 +114,5 @@ function ProfileContentCardsComponent({
   );
 }
 
-// Memoize ProfileContentCards to prevent unnecessary re-renders
-export const ProfileContentCards = memo(ProfileContentCardsComponent);
+export const ProfileContentCards = ProfileContentCardsComponent;
 
