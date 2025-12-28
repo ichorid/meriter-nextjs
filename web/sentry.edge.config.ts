@@ -20,11 +20,28 @@ if (SENTRY_DSN) {
     environment: SENTRY_ENVIRONMENT,
     release: `@meriter/web@${packageJson.version}`,
     
+    // Enable logging
+    enableLogs: true,
+    
     // Performance monitoring
     tracesSampleRate: TRACES_SAMPLE_RATE,
     
     // Capture unhandled promise rejections
     captureUnhandledRejections: true,
+    
+    // Integrations
+    integrations: [
+      // Send console.log, console.warn, and console.error calls as logs to Sentry
+      Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
+    ],
+    
+    // Set platform tag to distinguish frontend from backend
+    initialScope: {
+      tags: {
+        platform: 'frontend',
+        runtime: 'edge',
+      },
+    },
   });
 }
 

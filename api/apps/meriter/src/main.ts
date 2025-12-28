@@ -26,20 +26,36 @@ async function bootstrap() {
       environment: sentryEnvironment,
       ...(sentryRelease ? { release: sentryRelease } : {}),
       tracesSampleRate,
+      // Enable logging
+      enableLogs: true,
       // Capture unhandled promise rejections
       captureUnhandledRejections: true,
+      // Set platform tag to distinguish backend from frontend
+      initialScope: {
+        tags: {
+          platform: 'backend',
+        },
+      },
     };
+    
+    // Build integrations array
+    const integrations: Sentry.Integration[] = [
+      // Send console.log, console.warn, and console.error calls as logs to Sentry
+      Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
+    ];
     
     // Add profiling integration if available (optional dependency)
     try {
       const profilingModule = await import('@sentry/profiling-node');
       const profilingIntegration = profilingModule.nodeProfilingIntegration;
       sentryConfig.profilesSampleRate = profilesSampleRate;
-      sentryConfig.integrations = [profilingIntegration()];
+      integrations.push(profilingIntegration());
     } catch {
       // Profiling package not installed, skip it
       logger.debug('Sentry profiling not available (optional)');
     }
+    
+    sentryConfig.integrations = integrations;
     
     Sentry.init(sentryConfig);
     logger.log(`✅ Sentry initialized for environment: ${sentryEnvironment}`);

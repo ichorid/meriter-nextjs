@@ -104,6 +104,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
         }
 
         // Set tags
+        scope.setTag('platform', 'backend');
         scope.setTag('http.status_code', status.toString());
         scope.setTag('http.method', request.method);
         scope.setTag('error.code', errorResponse.error.code);

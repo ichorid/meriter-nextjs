@@ -93,6 +93,7 @@ export class ErrorBoundary extends Component<Props, State> {
         });
 
         // Set tags
+        scope.setTag('platform', 'frontend');
         scope.setTag('error.boundary', 'true');
         if (isInfiniteRenderError) {
           scope.setTag('error.type', 'infinite_render');

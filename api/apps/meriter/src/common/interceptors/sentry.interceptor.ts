@@ -39,6 +39,9 @@ export class SentryInterceptor implements NestInterceptor {
       },
     });
 
+    // Set platform tag on transaction
+    transaction.setTag('platform', 'backend');
+
     // Set transaction on scope
     Sentry.getCurrentScope().setSpan(transaction);
 

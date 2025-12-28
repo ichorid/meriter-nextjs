@@ -16,53 +16,66 @@ const TRACES_SAMPLE_RATE = parseFloat(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMP
 // Only initialize Sentry if DSN is provided
 if (SENTRY_DSN) {
   Sentry.init({
-  dsn: SENTRY_DSN,
-  environment: SENTRY_ENVIRONMENT,
-  release: `@meriter/web@${packageJson.version}`,
-  
-  // Performance monitoring
-  tracesSampleRate: TRACES_SAMPLE_RATE,
-  
-  // Capture unhandled promise rejections
-  captureUnhandledRejections: true,
-  
-  // Replay can be enabled later if needed
-  // integrations: [
-  //   Sentry.replayIntegration({
-  //     maskAllText: true,
-  //     blockAllMedia: true,
-  //   }),
-  // ],
-  
-  // Filter out common errors that aren't actionable
-  ignoreErrors: [
-    // Browser extensions
-    'top.GLOBALS',
-    'originalCreateNotification',
-    'canvas.contentDocument',
-    'MyApp_RemoveAllHighlights',
-    'atomicFindClose',
-    'fb_xd_fragment',
-    'bmi_SafeAddOnload',
-    'EBCallBackMessageReceived',
-    'conduitPage',
-    // Network errors that are often not actionable
-    'NetworkError',
-    'Network request failed',
-    'Failed to fetch',
-    // Chunk load errors (handled by ErrorBoundary)
-    'ChunkLoadError',
-    'Loading chunk',
-    'Failed to load chunk',
-  ],
-  
-  // Filter out URLs that shouldn't be tracked
-  denyUrls: [
-    // Browser extensions
-    /extensions\//i,
-    /^chrome:\/\//i,
-    /^chrome-extension:\/\//i,
-  ],
+    dsn: SENTRY_DSN,
+    environment: SENTRY_ENVIRONMENT,
+    release: `@meriter/web@${packageJson.version}`,
+    
+    // Enable logging
+    enableLogs: true,
+    
+    // Performance monitoring
+    tracesSampleRate: TRACES_SAMPLE_RATE,
+    
+    // Capture unhandled promise rejections
+    captureUnhandledRejections: true,
+    
+    // Integrations
+    integrations: [
+      // Send console.log, console.warn, and console.error calls as logs to Sentry
+      Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
+      // Replay can be enabled later if needed
+      // Sentry.replayIntegration({
+      //   maskAllText: true,
+      //   blockAllMedia: true,
+      // }),
+    ],
+    
+    // Set platform tag to distinguish frontend from backend
+    initialScope: {
+      tags: {
+        platform: 'frontend',
+      },
+    },
+    
+    // Filter out common errors that aren't actionable
+    ignoreErrors: [
+      // Browser extensions
+      'top.GLOBALS',
+      'originalCreateNotification',
+      'canvas.contentDocument',
+      'MyApp_RemoveAllHighlights',
+      'atomicFindClose',
+      'fb_xd_fragment',
+      'bmi_SafeAddOnload',
+      'EBCallBackMessageReceived',
+      'conduitPage',
+      // Network errors that are often not actionable
+      'NetworkError',
+      'Network request failed',
+      'Failed to fetch',
+      // Chunk load errors (handled by ErrorBoundary)
+      'ChunkLoadError',
+      'Loading chunk',
+      'Failed to load chunk',
+    ],
+    
+    // Filter out URLs that shouldn't be tracked
+    denyUrls: [
+      // Browser extensions
+      /extensions\//i,
+      /^chrome:\/\//i,
+      /^chrome-extension:\/\//i,
+    ],
   });
 }
 
