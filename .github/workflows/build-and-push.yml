@@ -89,7 +89,7 @@ jobs:
     env:
       CI: "true"
       MONGOMS_VERSION: "7.0.24"
-      MONGOMS_DOWNLOAD_DIR: ${{ runner.temp }}/mongodb-binaries
+      MONGOMS_DOWNLOAD_DIR: ${{ format('{0}/mongodb-binaries', runner.temp) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -126,7 +126,7 @@ jobs:
     env:
       CI: "true"
       MONGOMS_VERSION: "7.0.24"
-      MONGOMS_DOWNLOAD_DIR: ${{ runner.temp }}/mongodb-binaries
+      MONGOMS_DOWNLOAD_DIR: ${{ format('{0}/mongodb-binaries', runner.temp) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
