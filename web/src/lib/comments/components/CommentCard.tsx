@@ -444,7 +444,7 @@ export function CommentCard({
                 // The backend will handle creating the proper hierarchy
                 const commentIdToVoteOn = node.id; // Use the node ID directly (includes vote_ prefix if applicable)
                 // Set voting mode based on community type
-                let mode: 'standard' | 'wallet-only' | 'quota-only' = 'quota-only';
+                let mode: 'standard' | 'wallet-only' | 'quota-only' = 'standard';
                 if (communityInfo?.typeTag === 'future-vision') {
                   // Future Vision: wallet-only (M), no quota (Q)
                   mode = 'wallet-only';
@@ -455,8 +455,8 @@ export function CommentCard({
                   // Team groups: quota-only (Q), no wallet (M)
                   mode = 'quota-only';
                 } else {
-                  // Non-special groups: quota-only
-                  mode = 'quota-only';
+                  // Regular communities: allow spending daily quota first, then overflow into wallet merits
+                  mode = 'standard';
                 }
                 useUIStore.getState().openVotingPopup(commentIdToVoteOn, 'comment', mode);
               }}

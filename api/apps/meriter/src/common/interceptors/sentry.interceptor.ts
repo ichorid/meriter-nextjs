@@ -40,7 +40,7 @@ export class SentryInterceptor implements NestInterceptor {
         next: () => {
           // Request completed successfully
         },
-        error: (error) => {
+        error: (_error) => {
           // Error will be captured by ApiExceptionFilter
         },
       }),

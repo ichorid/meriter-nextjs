@@ -301,7 +301,7 @@ export const Comment: React.FC<CommentProps> = ({
                             score={commentScore}
                             onVoteClick={() => {
                                 // Set voting mode based on community type
-                                let mode: 'standard' | 'wallet-only' | 'quota-only' = 'quota-only';
+                                let mode: 'standard' | 'wallet-only' | 'quota-only' = 'standard';
                                 if (communityInfo?.typeTag === 'future-vision') {
                                     // Future Vision: wallet-only (M), no quota (Q)
                                     mode = 'wallet-only';
@@ -312,8 +312,8 @@ export const Comment: React.FC<CommentProps> = ({
                                     // Team groups: quota-only (Q), no wallet (M)
                                     mode = 'quota-only';
                                 } else {
-                                    // Non-special groups: quota-only
-                                    mode = 'quota-only';
+                                    // Regular communities: allow spending daily quota first, then overflow into wallet merits
+                                    mode = 'standard';
                                 }
                                 useUIStore.getState().openVotingPopup(_id, 'comment', mode);
                             }}

@@ -182,8 +182,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
       // Team groups: quota-only (Q), no wallet (M)
       mode = 'quota-only';
     } else {
-      // Non-special groups can only vote with quota on regular posts
-      mode = 'quota-only';
+      // Regular communities: allow spending daily quota first, then overflow into wallet merits
+      mode = 'standard';
     }
     useUIStore.getState().openVotingPopup(publicationId, 'publication', mode);
   };
