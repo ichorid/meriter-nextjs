@@ -1,6 +1,6 @@
 {
   "name": "@meriter/api",
-  "version": "0.39.4",
+  "version": "0.39.5",
   "description": "",
   "author": "",
   "private": true,
@@ -20,6 +20,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./apps/meriter/test/jest-e2e.json --bail --maxWorkers=50%"
+    ,
+    "test:e2e:ci": "jest --config ./apps/meriter/test/jest-e2e.json --bail --maxWorkers=100%"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.940.0",
