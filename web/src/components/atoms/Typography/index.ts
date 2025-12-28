@@ -1,10 +1,2 @@
 export { Heading, Paragraph, Label, Small } from './Typography';
 export type { HeadingProps, ParagraphProps, LabelProps, SmallProps, HeadingLevel } from './Typography';
-export { Title } from './Title';
-export type { TitleProps } from './Title';
-export { Subtitle } from './Subtitle';
-export type { SubtitleProps } from './Subtitle';
-export { ErrorText } from './ErrorText';
-export type { ErrorTextProps } from './ErrorText';
-export { HelperText } from './HelperText';
-export type { HelperTextProps } from './HelperText';

@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { Edit, Trash2, ArrowRight, Eye } from 'lucide-react';
 import { Badge, FavoriteStar } from '@/components/atoms';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
-import { Badge as BrandBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/shadcn/button';
 import { dateVerbose } from '@shared/lib/date';
 import { useAuth } from '@/contexts/AuthContext';
@@ -295,19 +294,19 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
           </Button>
         )}
         {(publication as any).postType === 'project' || (publication as any).isProject ? (
-          <BrandBadge variant="warning" size="sm">
+          <Badge variant="warning" size="sm">
             PROJECT
-          </BrandBadge>
+          </Badge>
         ) : null}
         {(publication as any).forwardStatus === 'pending' && (
-          <BrandBadge variant="info" size="sm">
+          <Badge variant="info" size="sm">
             PENDING FORWARD
-          </BrandBadge>
+          </Badge>
         )}
         {(publication as any).forwardStatus === 'forwarded' && (publication as any).forwardTargetCommunityId && (
-          <BrandBadge variant="success" size="sm">
+          <Badge variant="success" size="sm">
             FORWARDED
-          </BrandBadge>
+          </Badge>
         )}
         {publication.meta?.hashtagName && (
           <Badge variant="primary" size="sm">

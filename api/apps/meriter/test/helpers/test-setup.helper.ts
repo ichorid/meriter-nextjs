@@ -27,7 +27,7 @@ export class TestSetupHelper {
     
     // Delete MONGO_URL if it exists (from global setup) to ensure each test gets its own instance
     // This prevents conflicts where tests try to use the global MongoDB instance
-    const originalMongoUrl = process.env.MONGO_URL;
+    const _originalMongoUrl = process.env.MONGO_URL;
     delete process.env.MONGO_URL;
     
     const uri = await testDb.start();
