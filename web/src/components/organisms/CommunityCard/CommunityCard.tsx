@@ -51,15 +51,10 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
   // Determine user's role per community for badge display
   const userRoleBadge = React.useMemo(() => {
-    // Check global superadmin role first
-    if (user?.globalRole === 'superadmin') {
-      return { role: 'superadmin', label: t('superadmin'), variant: 'error' as const };
-    }
-
     // Find role in userRoles array matching the communityId
     const role = userRoles.find(r => r.communityId === communityId);
 
-    // Only show badge for lead, participant, and superadmin (not viewer)
+    // Only show badge for lead and participant (not viewer, not superadmin)
     if (role?.role === 'lead') {
       return { role: 'lead', label: t('lead'), variant: 'accent' as const };
     }
@@ -68,7 +63,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     }
 
     return null;
-  }, [user?.globalRole, user?.id, userRoles, communityId, t]);
+  }, [user?.id, userRoles, communityId, t]);
 
   // Get user's role for this community to check merit rules
   const userRole = React.useMemo(() => {
