@@ -1,9 +1,11 @@
 # syntax=docker/dockerfile:1.7
 # --- build ---
-FROM node:22.11-alpine AS builder
+ARG BASE_IMAGE=node:22.11-alpine
+FROM ${BASE_IMAGE} AS builder
 WORKDIR /repo
 # Install pnpm directly via npm to avoid corepack signature verification issues
-RUN npm install -g pnpm@10.24.0
+# If CI provides a base image with pnpm already installed, this is a fast no-op.
+RUN command -v pnpm >/dev/null 2>&1 || npm install -g pnpm@10.24.0
 RUN pnpm config set store-dir /pnpm/store
 
 # Workspace manifest + only what this package needs to resolve deps
