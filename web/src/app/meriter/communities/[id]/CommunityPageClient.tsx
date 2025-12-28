@@ -14,6 +14,7 @@ import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/share
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
 import { Loader2, Filter, X, ArrowUp, Coins, Search } from 'lucide-react';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   IMPACT_AREAS,
   BENEFICIARIES,
@@ -81,6 +82,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const searchQuery = searchParams?.get('q') || '';
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
     const [showSearchModal, setShowSearchModal] = useState(false);
+    const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
     // Handle search query change
     const handleSearchChange = (value: string) => {
@@ -244,6 +246,12 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         pageSize: 5,
         sort: sortBy === 'recent' ? 'recent' : 'score',
         tag: selectedTag || undefined,
+        search: debouncedSearchQuery.trim() || undefined,
+        impactArea: fImpactArea !== 'any' ? fImpactArea : undefined,
+        stage: fStage !== 'any' ? fStage : undefined,
+        beneficiaries: fBeneficiaries.length > 0 ? fBeneficiaries : undefined,
+        methods: fMethods.length > 0 ? fMethods : undefined,
+        helpNeeded: fHelpNeeded.length > 0 ? fHelpNeeded : undefined,
     });
 
 
@@ -258,6 +266,12 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         pageSize: 5,
         sort: sortBy === 'recent' ? 'recent' : 'score',
         tag: selectedTag || undefined,
+        search: debouncedSearchQuery.trim() || undefined,
+        impactArea: fImpactArea !== 'any' ? fImpactArea : undefined,
+        stage: fStage !== 'any' ? fStage : undefined,
+        beneficiaries: fBeneficiaries.length > 0 ? fBeneficiaries : undefined,
+        methods: fMethods.length > 0 ? fMethods : undefined,
+        helpNeeded: fHelpNeeded.length > 0 ? fHelpNeeded : undefined,
     });
 
     // Derive paginationEnd from hasNextPage instead of setting it in getNextPageParam
@@ -500,123 +514,17 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
       return arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
     };
 
-    // Filter publications by tag and search query
-    // This useMemo MUST be called before any conditional returns
+    // Publications are already filtered server-side (tag, search, taxonomy filters)
+    // This useMemo is kept for consistency but just returns the server-filtered data
     const filteredPublications = useMemo(() => {
-        let filtered = publications;
+        return publications;
+    }, [publications]);
 
-        // Filter by tag
-        if (selectedTag) {
-            filtered = filtered.filter((p: FeedItem) => {
-                if (p.type === 'publication') {
-                    const tags = p.hashtags as string[] | undefined;
-                    return tags && Array.isArray(tags) && tags.includes(selectedTag);
-                } else {
-                    // Polls don't have hashtags in the schema, skip filtering
-                    return true;
-                }
-            });
-        }
-
-        // Filter by search query
-        if (searchQuery.trim()) {
-            const query = searchQuery.toLowerCase().trim();
-            filtered = filtered.filter((p: FeedItem) => {
-                if (p.type === 'publication') {
-                    const pub = p as PublicationFeedItem;
-                    const content = (pub.content || '').toLowerCase();
-                    const authorName = (pub.meta?.author?.name || '').toLowerCase();
-                    const hashtags = (pub.hashtags || []).join(' ').toLowerCase();
-
-                    return content.includes(query) ||
-                        authorName.includes(query) ||
-                        hashtags.includes(query);
-                } else if (p.type === 'poll') {
-                    const poll = p as PollFeedItem;
-                    const question = (poll.question || '').toLowerCase();
-                    const authorName = (poll.meta?.author?.name || '').toLowerCase();
-
-                    return question.includes(query) || authorName.includes(query);
-                }
-                return false;
-            });
-        }
-
-        // Filter by taxonomy fields (OR semantics for array fields)
-        filtered = filtered.filter((p: FeedItem) => {
-            if (p.type !== 'publication') return true; // Only filter publications
-            
-            const pub = p as PublicationFeedItem & { impactArea?: string; stage?: string; beneficiaries?: string[]; methods?: string[]; helpNeeded?: string[] };
-            
-            if (fImpactArea !== 'any' && pub.impactArea !== fImpactArea) return false;
-            if (fStage !== 'any' && pub.stage !== fStage) return false;
-            
-            // OR semantics across selected facets - item matches if it has ANY of the selected tags
-            if (fBeneficiaries.length > 0) {
-                const pubBeneficiaries = pub.beneficiaries || [];
-                const hasAnyBeneficiary = fBeneficiaries.some(b => pubBeneficiaries.includes(b));
-                if (!hasAnyBeneficiary) return false;
-            }
-            if (fMethods.length > 0) {
-                const pubMethods = pub.methods || [];
-                const hasAnyMethod = fMethods.some(m => pubMethods.includes(m));
-                if (!hasAnyMethod) return false;
-            }
-            if (fHelpNeeded.length > 0) {
-                const pubHelpNeeded = pub.helpNeeded || [];
-                const hasAnyHelpNeeded = fHelpNeeded.some(h => pubHelpNeeded.includes(h));
-                if (!hasAnyHelpNeeded) return false;
-            }
-            
-            return true;
-        });
-
-        return filtered;
-    }, [publications, selectedTag, searchQuery, fImpactArea, fStage, fBeneficiaries, fMethods, fHelpNeeded]);
-
-    // Filter vision publications by tag and search query
+    // Vision publications are already filtered server-side (tag, search, taxonomy filters)
+    // This useMemo is kept for consistency but just returns the server-filtered data
     const filteredVisionPublications = useMemo(() => {
-        let filtered = visionPublications;
-
-        // Filter by tag
-        if (selectedTag) {
-            filtered = filtered.filter((p: FeedItem) => {
-                if (p.type === 'publication') {
-                    const tags = p.hashtags as string[] | undefined;
-                    return tags && Array.isArray(tags) && tags.includes(selectedTag);
-                } else {
-                    // Polls don't have hashtags in the schema, skip filtering
-                    return true;
-                }
-            });
-        }
-
-        // Filter by search query
-        if (searchQuery.trim()) {
-            const query = searchQuery.toLowerCase().trim();
-            filtered = filtered.filter((p: FeedItem) => {
-                if (p.type === 'publication') {
-                    const pub = p as PublicationFeedItem;
-                    const content = (pub.content || '').toLowerCase();
-                    const authorName = (pub.meta?.author?.name || '').toLowerCase();
-                    const hashtags = (pub.hashtags || []).join(' ').toLowerCase();
-
-                    return content.includes(query) ||
-                        authorName.includes(query) ||
-                        hashtags.includes(query);
-                } else if (p.type === 'poll') {
-                    const poll = p as PollFeedItem;
-                    const question = (poll.question || '').toLowerCase();
-                    const authorName = (poll.meta?.author?.name || '').toLowerCase();
-
-                    return question.includes(query) || authorName.includes(query);
-                }
-                return false;
-            });
-        }
-
-        return filtered;
-    }, [visionPublications, selectedTag, searchQuery]);
+        return visionPublications;
+    }, [visionPublications]);
 
     // Early return AFTER all hooks have been called
     if (!isAuthenticated) return null;

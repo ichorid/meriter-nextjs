@@ -294,6 +294,7 @@ export const communitiesRouter = router({
         pageSize: z.number().int().min(1).max(100).optional().default(5),
         sort: z.enum(['recent', 'score']).optional().default('score'),
         tag: z.string().optional(),
+        search: z.string().optional(),
         // Taxonomy filters
         impactArea: z.string().optional(),
         stage: z.string().optional(),
@@ -317,6 +318,7 @@ export const communitiesRouter = router({
           pageSize: pagination.limit,
           sort: input.sort,
           tag: input.tag,
+          search: input.search,
           impactArea: input.impactArea,
           stage: input.stage,
           beneficiaries: input.beneficiaries,

@@ -18,6 +18,7 @@ export interface FeedOptions {
   limit?: number;
   sort?: 'recent' | 'score';
   tag?: string;
+  search?: string;
   impactArea?: string;
   stage?: string;
   beneficiaries?: string[];
@@ -55,6 +56,7 @@ export class CommunityFeedService {
       limit: providedLimit,
       sort = 'score',
       tag,
+      search,
       impactArea,
       stage,
       beneficiaries,
@@ -89,6 +91,7 @@ export class CommunityFeedService {
           methods,
           helpNeeded,
         },
+        search,
       ),
       // Don't fetch polls for future-vision communities
       isFutureVision
@@ -98,6 +101,7 @@ export class CommunityFeedService {
             fetchLimit,
             skip,
             sortBy,
+            search,
           ),
     ]);
 

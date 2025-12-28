@@ -139,9 +139,23 @@ export class PublicationService {
       methods?: string[];
       helpNeeded?: string[];
     },
+    search?: string,
   ): Promise<Publication[]> {
     // Build query - exclude deleted items
     const query: any = { communityId, deleted: { $ne: true } };
+
+    // Apply search filter if provided
+    if (search && search.trim()) {
+      // Escape special regex characters for security
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+      query.$or = [
+        { content: searchRegex },
+        { title: searchRegex },
+        { description: searchRegex },
+        { hashtags: searchRegex },
+      ];
+    }
 
     // Apply hashtag filter if provided
     if (hashtag) {
