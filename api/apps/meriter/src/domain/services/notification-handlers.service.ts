@@ -4,6 +4,7 @@ import { Connection } from 'mongoose';
 import { EventBus } from '../events/event-bus';
 import {
   PublicationCreatedEvent,
+  PublicationUpdatedEvent,
   PublicationVotedEvent,
   CommentAddedEvent,
   CommentVotedEvent,
@@ -39,6 +40,9 @@ export class NotificationHandlersService implements OnModuleInit {
     // Subscribe to domain events
     this.eventBus.subscribe('PublicationCreated', (event) =>
       this.handlePublicationCreated(event as PublicationCreatedEvent),
+    );
+    this.eventBus.subscribe('PublicationUpdated', (event) =>
+      this.handlePublicationUpdated(event as PublicationUpdatedEvent),
     );
     this.eventBus.subscribe('PublicationVoted', (event) =>
       this.handlePublicationVoted(event as PublicationVotedEvent),
@@ -142,6 +146,59 @@ export class NotificationHandlersService implements OnModuleInit {
       );
     } catch (error) {
       this.logger.error(`Error handling PublicationCreated event:`, error);
+    }
+  }
+
+  async handlePublicationUpdated(event: PublicationUpdatedEvent): Promise<void> {
+    try {
+      const publicationId = event.getAggregateId();
+      const editorId = event.getEditorId();
+      const authorId = event.getAuthorId();
+      const communityId = event.getCommunityId();
+
+      // Get publication to get title for notification message
+      const publication = await this.publicationService.getPublication(publicationId);
+      if (!publication) {
+        this.logger.warn(`Publication ${publicationId} not found for notification`);
+        return;
+      }
+
+      // Get editor info for notification message
+      const editor = await this.userService.getUser(editorId);
+      const editorName = editor?.displayName || 'Someone';
+
+      // Get publication title for message
+      const publicationSnapshot = publication.toSnapshot();
+      const postTitle = publicationSnapshot.title || 'your post';
+
+      // Create notification with deduplication
+      const notificationDto: CreateNotificationDto = {
+        userId: authorId,
+        type: 'publication',
+        source: 'user',
+        sourceId: editorId,
+        metadata: {
+          publicationId,
+          communityId,
+          editorId,
+          authorId,
+          targetType: 'publication_edit',
+          targetId: publicationId,
+        },
+        title: 'Post edited',
+        message: `${editorName} edited ${postTitle}`,
+      };
+
+      await this.notificationService.createOrReplaceByEditorAndPost(notificationDto, {
+        publicationId,
+        editorId,
+      });
+
+      this.logger.log(
+        `Created publication edit notification for user ${authorId} from editor ${editorId} on publication ${publicationId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Error handling PublicationUpdated event:`, error);
     }
   }
 

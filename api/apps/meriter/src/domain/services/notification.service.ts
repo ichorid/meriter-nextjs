@@ -29,6 +29,11 @@ export interface NotificationDeduplicationKey {
   targetId: string;
 }
 
+export interface EditorPostDeduplicationKey {
+  publicationId: string;
+  editorId: string;
+}
+
 export interface GetNotificationsOptions {
   page?: number;
   pageSize?: number;
@@ -99,6 +104,48 @@ export class NotificationService {
       const saved = await existing.save();
       this.logger.log(
         `Notification replaced (dedup): ${saved.id} for user ${dto.userId}`,
+      );
+      return saved.toObject();
+    }
+
+    return this.createNotification(dto);
+  }
+
+  /**
+   * Create a notification for publication edits, but deduplicate by replacing the *oldest unread* notification
+   * from the same editor on the same post.
+   *
+   * This ensures that if user B edits user A's post multiple times, only the latest notification is shown.
+   */
+  async createOrReplaceByEditorAndPost(
+    dto: CreateNotificationDto,
+    key: EditorPostDeduplicationKey,
+  ): Promise<Notification> {
+    const existing = await this.notificationModel
+      .findOne({
+        userId: dto.userId,
+        type: dto.type,
+        read: false,
+        'metadata.publicationId': key.publicationId,
+        'metadata.editorId': key.editorId,
+      })
+      .sort({ createdAt: 1 })
+      .exec();
+
+    if (existing) {
+      existing.source = dto.source;
+      existing.sourceId = dto.sourceId;
+      existing.metadata = dto.metadata;
+      existing.title = dto.title;
+      existing.message = dto.message;
+      existing.read = false;
+      existing.readAt = undefined;
+      existing.createdAt = new Date();
+      existing.updatedAt = new Date();
+
+      const saved = await existing.save();
+      this.logger.log(
+        `Notification replaced (dedup by editor/post): ${saved.id} for user ${dto.userId}`,
       );
       return saved.toObject();
     }

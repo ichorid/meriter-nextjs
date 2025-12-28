@@ -16,7 +16,7 @@ import {
   UserId,
   CommunityId,
 } from '../value-objects';
-import { PublicationCreatedEvent } from '../events';
+import { PublicationCreatedEvent, PublicationUpdatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { PublicationDocument as IPublicationDocument } from '../../common/interfaces/publication-document.interface';
 
@@ -381,6 +381,10 @@ export class PublicationService {
 
     const publication = Publication.fromSnapshot(doc as IPublicationDocument);
 
+    // Get author ID before update for event publishing
+    const authorId = publication.getAuthorId.getValue();
+    const communityId = publication.getCommunityId.getValue();
+
     // Authorization is handled by PermissionGuard via PermissionService.canEditPublication()
     // PermissionService already checks vote count and time window for authors
     // Leads and superadmins can edit regardless of votes/time, so no additional check needed here
@@ -434,7 +438,24 @@ export class PublicationService {
 
     // Reload to return updated publication
     const updatedDoc = await this.publicationModel.findOne({ id: publicationId }).lean();
-    return updatedDoc ? Publication.fromSnapshot(updatedDoc as IPublicationDocument) : publication;
+    const updatedPublication = updatedDoc ? Publication.fromSnapshot(updatedDoc as IPublicationDocument) : publication;
+
+    // Publish domain event if editor is not the author
+    if (userId !== authorId) {
+      await this.eventBus.publish(
+        new PublicationUpdatedEvent(
+          publicationId,
+          userId,
+          authorId,
+          communityId,
+        ),
+      );
+      this.logger.log(
+        `Publication updated event published: ${publicationId} by editor ${userId} (author: ${authorId})`,
+      );
+    }
+
+    return updatedPublication;
   }
 
   async deletePublication(
