@@ -936,8 +936,8 @@
     "registration": {
         "title": "Registration",
         "authTitle": "Authentication",
-        "inviteDescription": "Enter your invite code to begin registration (optional)",
-        "inviteCodeLabel": "Invite Code (optional)",
+        "inviteDescription": "Enter your invite code to begin registration",
+        "inviteCodeLabel": "Invite Code",
         "inviteCodePlaceholder": "Enter invite code",
         "continue": "Continue",
         "checkingInvite": "Checking invite...",

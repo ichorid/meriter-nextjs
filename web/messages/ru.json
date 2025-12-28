@@ -939,8 +939,8 @@
     "registration": {
         "title": "Регистрация",
         "authTitle": "Авторизация",
-        "inviteDescription": "Введите код приглашения для начала регистрации (необязательно)",
-        "inviteCodeLabel": "Код приглашения (необязательно)",
+        "inviteDescription": "Введите код приглашения для начала регистрации",
+        "inviteCodeLabel": "Код приглашения",
         "inviteCodePlaceholder": "Введите код приглашения",
         "continue": "Продолжить",
         "checkingInvite": "Проверка приглашения...",
