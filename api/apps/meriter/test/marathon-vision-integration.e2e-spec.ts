@@ -201,7 +201,7 @@ describe('Marathon/Future Vision integration (e2e)', () => {
         comment: 'Wallet vote attempt',
       });
       expect(walletVoteInMarathon.error?.code).toBe('BAD_REQUEST');
-      expect(walletVoteInMarathon.error?.message).toContain('Viewers can only vote using daily quota');
+      expect(walletVoteInMarathon.error?.message).toContain('Marathon of Good only allows quota voting');
     });
 
     // Create a publication in future-vision by author
@@ -248,6 +248,17 @@ describe('Marathon/Future Vision integration (e2e)', () => {
     });
     expect(walletVoteInVision.amountWallet).toBe(5);
     expect(walletVoteInVision.direction).toBe('up');
+
+    // author: withdrawals are forbidden in future-vision (output group)
+    (global as any).testUserId = authorId;
+    await withSuppressedErrors(['FORBIDDEN'], async () => {
+      const withdraw = await trpcMutationWithError(app, 'publications.withdraw', {
+        publicationId: visionPub.id,
+        amount: 1,
+      });
+      expect(withdraw.error?.code).toBe('FORBIDDEN');
+      expect(withdraw.error?.message).toContain('Withdrawals are not allowed in Future Vision');
+    });
   });
 });
 

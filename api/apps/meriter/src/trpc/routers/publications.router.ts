@@ -131,6 +131,12 @@ export async function autoWithdrawPublicationBalanceBeforeDelete(
   const beneficiaryId = publication.getEffectiveBeneficiary().getValue();
   const communityId = publication.getCommunityId.getValue();
 
+  // Future Vision: withdrawals from posts are not allowed; skip auto-withdraw during deletion.
+  const community = await ctx.communityService.getCommunity(communityId);
+  if (community?.typeTag === 'future-vision') {
+    return 0;
+  }
+
   await processWithdrawal(
     beneficiaryId,
     communityId,
@@ -904,6 +910,18 @@ export const publicationsRouter = router({
       const publication = await ctx.publicationService.getPublication(input.publicationId);
       if (!publication) {
         throw new NotFoundError('Publication', input.publicationId);
+      }
+
+      // Future Vision: users can't withdraw merits from their posts.
+      {
+        const communityId = publication.getCommunityId.getValue();
+        const community = await ctx.communityService.getCommunity(communityId);
+        if (community?.typeTag === 'future-vision') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Withdrawals are not allowed in Future Vision',
+          });
+        }
       }
 
       // Validate user can withdraw

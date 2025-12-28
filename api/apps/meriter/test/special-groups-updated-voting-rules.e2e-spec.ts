@@ -40,8 +40,10 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
   let testUserId2: string;
   let marathonCommunityId: string;
   let visionCommunityId: string;
+  let teamCommunityId: string;
   let marathonPubId: string;
   let visionPubId: string;
+  let teamPubId: string;
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-updated-voting-rules';
@@ -165,6 +167,36 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       updatedAt: new Date(),
     });
 
+    // Create Team community
+    teamCommunityId = uid();
+    await communityModel.create({
+      id: teamCommunityId,
+      name: 'Team Community',
+      typeTag: 'team',
+      members: [testUserId, testUserId2],
+      settings: {
+        iconUrl: 'https://example.com/icon.png',
+        currencyNames: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        dailyEmission: 10,
+      },
+      votingRules: {
+        allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
+        canVoteForOwnPosts: false,
+        participantsCannotVoteForLead: false,
+        spendsMerits: true,
+        awardsMerits: true,
+      },
+      hashtags: ['team'],
+      hashtagDescriptions: {},
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
     // Create wallets with balance
     await walletModel.create([
       {
@@ -185,6 +217,20 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         id: uid(),
         userId: testUserId,
         communityId: visionCommunityId,
+        balance: 100,
+        currency: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        lastUpdated: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: uid(),
+        userId: testUserId,
+        communityId: teamCommunityId,
         balance: 100,
         currency: {
           singular: 'merit',
@@ -238,6 +284,26 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       updatedAt: new Date(),
     });
 
+    teamPubId = uid();
+    await publicationModel.create({
+      id: teamPubId,
+      communityId: teamCommunityId,
+      authorId: testUserId2,
+      content: 'Team publication',
+      type: 'text',
+      hashtags: ['team'],
+      postType: 'basic',
+      isProject: false,
+      metrics: {
+        upvotes: 0,
+        downvotes: 0,
+        score: 0,
+        commentCount: 0,
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
     // Create user community roles
     const now = new Date();
     await userCommunityRoleModel.create([
@@ -270,6 +336,22 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         userId: testUserId2,
         communityId: visionCommunityId,
         role: 'lead', // Need lead role to vote on comments
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: uid(),
+        userId: testUserId,
+        communityId: teamCommunityId,
+        role: 'participant',
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: uid(),
+        userId: testUserId2,
+        communityId: teamCommunityId,
+        role: 'participant', // Author can be participant
         createdAt: now,
         updatedAt: now,
       },
@@ -502,6 +584,23 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       });
 
       expect(vote.amountWallet).toBe(3);
+      expect(vote.amountQuota).toBe(0);
+    });
+  });
+
+  describe('Team Groups - Wallet Voting Allowed', () => {
+    it('should allow wallet voting on publications in team communities', async () => {
+      (global as any).testUserId = testUserId;
+
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: teamPubId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Wallet vote in team',
+      });
+
+      expect(vote.amountWallet).toBe(10);
       expect(vote.amountQuota).toBe(0);
     });
   });

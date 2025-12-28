@@ -215,38 +215,33 @@ export class VoteService {
     // Check user role to enforce viewer restrictions (check BEFORE community-specific rules)
     const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
     
-    // Viewers can only vote with quota (no wallet voting) - check this first for clearer error messages
-    if (userRole === COMMUNITY_ROLE_VIEWER && amountWallet > 0) {
-      throw new BadRequestException(
-        'Viewers can only vote using daily quota, not wallet merits.',
-      );
-    }
-
-    // Wallet voting is NOT allowed by default.
+    // Voting defaults:
+    // - In most communities: both quota and wallet voting are allowed.
     // Special case restrictions:
-    // - Marathon of Good: Block wallet voting on publications/comments (quota only)
-    // - Future Vision: Block quota voting on publications/comments (wallet only)
-    // - Viewers: Block wallet voting (quota only) - already checked above
+    // - Marathon of Good: quota-only for publications/comments (for everyone, including viewers)
+    // - Future Vision: wallet-only for publications/comments (no quota)
+    // - Viewers: quota-only in all communities (no wallet)
     // Polls are handled separately and always use wallet
     // This check comes BEFORE postType validation to ensure it applies
     if (targetType === 'publication' || targetType === 'vote') {
-      // Special case: Marathon of Good blocks wallet voting (quota only)
-      if (isMarathonOfGood && amountWallet > 0 && userRole !== COMMUNITY_ROLE_VIEWER) {
+      // Special case: Marathon of Good blocks wallet voting (quota only) for everyone
+      if (isMarathonOfGood && amountWallet > 0) {
         throw new BadRequestException(
           'Marathon of Good only allows quota voting on posts and comments. Please use daily quota to vote.',
         );
       }
+
+      // Viewers can only vote with quota (no wallet voting)
+      if (userRole === COMMUNITY_ROLE_VIEWER && amountWallet > 0) {
+        throw new BadRequestException(
+          'Viewers can only vote using daily quota, not wallet merits.',
+        );
+      }
+
       // Special case: Future Vision blocks quota voting (wallet only)
       if (isFutureVision && amountQuota > 0) {
         throw new BadRequestException(
           'Future Vision only allows wallet voting on posts and comments. Please use wallet merits to vote.',
-        );
-      }
-      // General rule: wallet voting is only allowed in special groups.
-      // Currently, Future Vision is the only group that allows wallet voting on posts/comments.
-      if (!isFutureVision && amountWallet > 0) {
-        throw new BadRequestException(
-          'Voting with permanent wallet merits is only allowed in special groups',
         );
       }
     }

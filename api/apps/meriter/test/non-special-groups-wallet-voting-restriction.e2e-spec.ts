@@ -17,7 +17,7 @@ import { trpcMutation, trpcMutationWithError } from './helpers/trpc-test-helper'
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
-describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
+describe('Default Voting Rules (e2e)', () => {
   jest.setTimeout(60000);
   
   let app: INestApplication;
@@ -244,6 +244,20 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
+      {
+        id: uid(),
+        userId: testUserId2,
+        communityId: regularCommunityId,
+        balance: 100,
+        currency: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        lastUpdated: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
     ]);
 
     // Create publications
@@ -373,25 +387,23 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
     process.env.ENABLE_COMMENT_VOTING = originalEnableCommentVoting;
   });
 
-  describe('Non-Special Groups - Wallet Voting Restriction', () => {
-    it('should reject wallet voting on publications in non-special groups', async () => {
+  describe('Default Groups - Wallet Voting Enabled', () => {
+    it('should allow wallet voting on publications in regular (non-special) groups', async () => {
       (global as any).testUserId = testUserId;
       
-      await withSuppressedErrors(['BAD_REQUEST'], async () => {
-        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-          targetType: 'publication',
-          targetId: regularPubId,
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Test comment',
-        });
-
-        expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Voting with permanent wallet merits is only allowed in special groups');
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: regularPubId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Wallet vote in regular group',
       });
+
+      expect(vote.amountWallet).toBe(10);
+      expect(vote.amountQuota).toBe(0);
     });
 
-    it('should reject wallet voting on comments (votes) in non-special groups', async () => {
+    it('should allow wallet voting on comments (votes) in regular (non-special) groups', async () => {
       // Create initial vote with testUserId (voter, not author)
       (global as any).testUserId = testUserId;
       
@@ -405,20 +417,18 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
 
       const voteId = voteResponse.id;
 
-      // Now try to vote on the vote (comment) with wallet as testUserId2
+      // Now vote on the vote (comment) with wallet as testUserId2 (different user; has wallet)
       (global as any).testUserId = testUserId2;
-      await withSuppressedErrors(['BAD_REQUEST'], async () => {
-        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-          targetType: 'vote',
-          targetId: voteId,
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Reply vote',
-        });
-
-        expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Voting with permanent wallet merits is only allowed in special groups');
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'vote',
+        targetId: voteId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Reply wallet vote',
       });
+
+      expect(vote.amountWallet).toBe(10);
+      expect(vote.amountQuota).toBe(0);
     });
 
     it('should allow quota-only voting on publications in non-special groups', async () => {
@@ -516,19 +526,21 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
   });
 
   describe('VoteService Direct Tests', () => {
-    it('should reject wallet voting via VoteService.createVote for non-special groups', async () => {
-      await expect(
-        voteService.createVote(
-          testUserId,
-          'publication',
-          regularPubId,
-          0, // quotaAmount
-          10, // walletAmount
-          'up',
-          'Test comment',
-          regularCommunityId
-        )
-      ).rejects.toThrow('Voting with permanent wallet merits is only allowed in special groups');
+    it('should allow wallet voting via VoteService.createVote for non-special groups', async () => {
+      const vote = await voteService.createVote(
+        testUserId,
+        'publication',
+        regularPubId,
+        0, // quotaAmount
+        10, // walletAmount
+        'up',
+        'Test comment',
+        regularCommunityId
+      );
+
+      expect(vote).toBeDefined();
+      expect(vote.amountWallet).toBe(10);
+      expect(vote.amountQuota).toBe(0);
     });
 
     it('should reject wallet voting via VoteService.createVote for Marathon of Good', async () => {
