@@ -24,11 +24,19 @@ export class TestSetupHelper {
    */
   static async createTestApp(): Promise<TestAppContext> {
     const testDb = new TestDatabaseHelper();
+    
+    // Delete MONGO_URL if it exists (from global setup) to ensure each test gets its own instance
+    // This prevents conflicts where tests try to use the global MongoDB instance
+    const originalMongoUrl = process.env.MONGO_URL;
+    delete process.env.MONGO_URL;
+    
     const uri = await testDb.start();
 
     // Ensure DatabaseModule (inside MeriterModule) uses the same in-memory DB
     // (otherwise Nest can end up with multiple mongoose connections and missing models).
+    // Also set MONGO_URL_SECONDARY since validation schema requires it
     process.env.MONGO_URL = uri;
+    process.env.MONGO_URL_SECONDARY = uri; // Use same URI for secondary in tests
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-key';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({

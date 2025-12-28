@@ -13,30 +13,30 @@ export class TestDatabaseHelper {
   /**
    * Start the in-memory MongoDB instance
    * Wraps MongoMemoryServer.create() with a timeout to prevent hanging in CI/CD
+   * Always creates a new instance to avoid conflicts with global setup
    */
   async start(): Promise<string> {
-    if (!process.env.MONGO_URL) {
-      // Wrap MongoMemoryServer.create() with a timeout to fail fast
-      const createPromise = MongoMemoryServer.create({
-        binary: {
-          downloadDir: process.env.MONGOMS_DOWNLOAD_DIR,
-        },
-        instance: {
-          dbName: 'test',
-        },
-      });
+    // Always create a new instance, even if MONGO_URL is set (from global setup)
+    // This ensures each test gets its own isolated MongoDB instance
+    // Wrap MongoMemoryServer.create() with a timeout to fail fast
+    const createPromise = MongoMemoryServer.create({
+      binary: {
+        downloadDir: process.env.MONGOMS_DOWNLOAD_DIR,
+      },
+      instance: {
+        dbName: 'test',
+      },
+    });
 
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('MongoMemoryServer.create() timed out after 60 seconds. This may indicate network issues or insufficient resources in CI/CD.'));
-        }, 60000); // 60 second timeout
-      });
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('MongoMemoryServer.create() timed out after 60 seconds. This may indicate network issues or insufficient resources in CI/CD.'));
+      }, 60000); // 60 second timeout
+    });
 
-      this.mongod = await Promise.race([createPromise, timeoutPromise]);
-      const uri = this.mongod.getUri();
-      return uri;
-    }
-    return process.env.MONGO_URL;
+    this.mongod = await Promise.race([createPromise, timeoutPromise]);
+    const uri = this.mongod.getUri();
+    return uri;
   }
 
   /**
