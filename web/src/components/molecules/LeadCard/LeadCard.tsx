@@ -153,7 +153,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
                         {permanentMerits !== undefined && (
                             <div className="flex items-center gap-1 text-xs leading-[120%] text-base-content/60">
                                 <span className="font-semibold text-base-content">{permanentMerits.toLocaleString()}</span>
-                                <span className="text-base-content/60">permanent</span>
+                                <span className="text-base-content/60">{t('permanentMerits')}</span>
                             </div>
                         )}
                     </div>

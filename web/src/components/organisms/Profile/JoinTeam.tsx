@@ -20,7 +20,7 @@ export function JoinTeam({
   const tCommunities = useTranslations('communities');
   const [joinTeamExpanded, setJoinTeamExpanded] = useLocalStorage<boolean>('communities.joinTeamExpanded', true);
 
-  const defaultDescription = 'To join a team, contact one of the leads below for an invite.';
+  const defaultDescription = tCommunities('joinTeamDescription');
 
   return (
     <div className={`bg-base-200/50 border border-base-content/5 rounded-2xl p-6 ${className}`}>
@@ -29,7 +29,7 @@ export function JoinTeam({
         className="flex items-center justify-between w-full mb-4 hover:opacity-80 transition-opacity"
       >
         <h3 className="text-lg font-semibold text-base-content">
-          Join a Team
+          {tCommunities('joinTeam')}
         </h3>
         {joinTeamExpanded ? (
           <ChevronUp className="w-5 h-5 text-base-content/60" />

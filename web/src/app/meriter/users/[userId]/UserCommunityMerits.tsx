@@ -53,7 +53,7 @@ export function UserCommunityMerits({ userId, communityId, communityName, canVie
                         <span className="font-semibold text-brand-text-primary">
                             {wallet.balance.toLocaleString()}
                         </span>
-                        <span className="text-brand-text-secondary">permanent</span>
+                        <span className="text-brand-text-secondary">{tCommon('permanentMerits')}</span>
                     </div>
                 )}
             </div>

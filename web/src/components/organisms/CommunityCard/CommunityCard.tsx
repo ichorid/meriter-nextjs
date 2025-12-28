@@ -210,7 +210,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                         )}
                         <span className={`text-xs leading-[14px] tracking-[0.374px] min-w-0 ${hasCover && !isActive ? 'text-white/70' : 'text-base-content/60'
                           }`}>
-                          <span className="truncate">permanent</span>
+                          <span className="truncate">{t('permanentMerits')}</span>
                         </span>
                       </div>
                     )}

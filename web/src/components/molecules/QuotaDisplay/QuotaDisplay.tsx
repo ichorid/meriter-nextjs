@@ -61,7 +61,7 @@ export function QuotaDisplay({
                 className="w-3 h-3 flex-shrink-0"
               />
             )}
-            <span className="text-base-content/60">permanent</span>
+            <span className="text-base-content/60">{tCommon('permanentMerits')}</span>
           </div>
         )}
       </div>
@@ -91,7 +91,7 @@ export function QuotaDisplay({
               className="w-4 h-4 flex-shrink-0"
             />
           )}
-          <span className="text-base-content/60">permanent</span>
+          <span className="text-base-content/60">{tCommon('permanentMerits')}</span>
         </div>
       )}
     </div>

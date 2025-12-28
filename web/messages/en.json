@@ -27,6 +27,7 @@
         "createCommunity": "Create Community",
         "about": "About",
         "favorites": "Favorites",
+        "communities": "Communities",
         "allCommunities": "All Communities",
         "copy": "Copy",
         "copied": "Copied!",
@@ -847,6 +848,8 @@
             "viewerNote": "Your current role in the project is Viewer. Local groups are only available to Project Participants.",
             "contactNote": "If you want to become a Participant, contact one of the Leads."
         },
+        "joinTeam": "Join a Team",
+        "joinTeamDescription": "To join a team, contact one of the leads below for an invite.",
         "create": {
             "title": "Create Community",
             "creating": "Creating...",

@@ -57,7 +57,7 @@ export function MemberInfoCard({
                     <span className="font-semibold text-brand-text-primary">
                         {walletBalance.toLocaleString()}
                     </span>
-                    <span>permanent</span>
+                    <span>{tCommon('permanentMerits')}</span>
                 </div>
             )}
         </div>
