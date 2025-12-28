@@ -39,10 +39,9 @@ async function bootstrap() {
     };
     
     // Build integrations array
-    const integrations: Sentry.Integration[] = [
-      // Send console.log, console.warn, and console.error calls as logs to Sentry
-      Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
-    ];
+    // Note: consoleLoggingIntegration is only available in @sentry/nextjs, not @sentry/node
+    // For Node.js backend, console logs are typically handled via logger or can be manually captured
+    const integrations: Sentry.Integration[] = [];
     
     // Add profiling integration if available (optional dependency)
     try {
@@ -55,7 +54,10 @@ async function bootstrap() {
       logger.debug('Sentry profiling not available (optional)');
     }
     
-    sentryConfig.integrations = integrations;
+    // Only set integrations if we have any
+    if (integrations.length > 0) {
+      sentryConfig.integrations = integrations;
+    }
     
     Sentry.init(sentryConfig);
     logger.log(`✅ Sentry initialized for environment: ${sentryEnvironment}`);
