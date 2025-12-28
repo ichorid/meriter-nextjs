@@ -108,6 +108,7 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
         }
         className="border-b border-base-300"
         asStickyHeader={false}
+        showScrollToTop={true}
       />
 
       {/* Comments list with tree navigation */}

@@ -5,18 +5,14 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCommunity, useWallets } from '@/hooks/api';
 import { useUserQuota } from '@/hooks/api/useQuota';
+import { useUserRoles } from '@/hooks/api/useProfile';
+import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
-import { isFakeDataMode } from '@/config';
-import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/shadcn/button';
-import { Input } from '@/components/ui/shadcn/input';
-import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
-import { cn } from '@/lib/utils';
-import { Clock, TrendingUp, Loader2, Search, X, ArrowLeft, Coins } from 'lucide-react';
+import { Clock, TrendingUp, Loader2, ArrowLeft, ArrowUp, Users, Trash2 } from 'lucide-react';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import type { TabSortState } from '@/hooks/useProfileTabState';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { SortToggle } from '@/components/ui/SortToggle';
 import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 import { InviteMenu } from '@/components/molecules/FabMenu/InviteMenu';
 import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
@@ -88,20 +84,25 @@ export const SimpleStickyHeader: React.FC<{
   onBack?: () => void;
   showBack?: boolean;
   leftAction?: React.ReactNode;
+  centerAction?: React.ReactNode;
   rightAction?: React.ReactNode;
   className?: string;
   asStickyHeader?: boolean;
+  showScrollToTop?: boolean;
 }> = ({
   title,
   onBack,
   showBack = true,
   leftAction,
+  centerAction,
   rightAction,
   className = '',
-  asStickyHeader = false
+  asStickyHeader = false,
+  showScrollToTop = false
 }) => {
     const router = useRouter();
     const tCommon = useTranslations('common');
+    const [showScrollButton, setShowScrollButton] = React.useState(false);
 
     const handleBack = () => {
       if (onBack) {
@@ -111,9 +112,74 @@ export const SimpleStickyHeader: React.FC<{
       }
     };
 
+    // Handle scroll to top
+    const handleScrollToTop = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // The main scroll container is .mainWrap
+      const mainWrap = document.querySelector('.mainWrap') as HTMLElement;
+      if (mainWrap) {
+        mainWrap.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        // Fallback to window/document scroll
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+        document.body.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    // Scroll detection for scroll-to-top button
+    React.useEffect(() => {
+      if (!showScrollToTop) return;
+
+      const checkScroll = () => {
+        // The main scroll container is .mainWrap (has overflow: auto)
+        const mainWrap = document.querySelector('.mainWrap') as HTMLElement;
+        
+        let scrollTop = 0;
+        if (mainWrap) {
+          scrollTop = mainWrap.scrollTop;
+        } else {
+          // Fallback to window/document scroll if mainWrap not found
+          scrollTop = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+        }
+        
+        const windowHeight = window.innerHeight;
+        
+        // Show button if scrolled more than half a screen
+        setShowScrollButton(scrollTop > windowHeight / 2);
+      };
+
+      // Check on mount with a small delay to ensure DOM is ready
+      const timeoutId = setTimeout(checkScroll, 100);
+
+      // Listen to scroll events on the main scroll container
+      const mainWrap = document.querySelector('.mainWrap');
+      
+      if (mainWrap) {
+        mainWrap.addEventListener('scroll', checkScroll, { passive: true });
+      } else {
+        // Fallback to window scroll if mainWrap not found
+        window.addEventListener('scroll', checkScroll, { passive: true });
+      }
+      
+      // Also listen to resize in case window height changes
+      window.addEventListener('resize', checkScroll, { passive: true });
+
+      return () => {
+        clearTimeout(timeoutId);
+        if (mainWrap) {
+          mainWrap.removeEventListener('scroll', checkScroll);
+        } else {
+          window.removeEventListener('scroll', checkScroll);
+        }
+        window.removeEventListener('resize', checkScroll);
+      };
+    }, [showScrollToTop]);
+
     const headerContent = (
       <div className={`${asStickyHeader ? "bg-base-100/95 backdrop-blur-md border-b border-base-content/10" : "sticky top-0 z-30 bg-base-100/95 backdrop-blur-md border-b border-base-content/10 w-full"} ${className}`}>
-        <div className="flex items-center justify-between h-14">
+        <div className="flex items-center justify-between h-14 relative">
           <div className="flex items-center flex-1 min-w-0">
             {/* Left Actions */}
             {leftAction && (
@@ -141,6 +207,24 @@ export const SimpleStickyHeader: React.FC<{
             </h1>
           </div>
 
+          {/* Center Action */}
+          {(centerAction || (showScrollToTop && showScrollButton)) && (
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
+              {centerAction || (showScrollToTop && showScrollButton && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleScrollToTop}
+                  className="rounded-xl active:scale-[0.98] px-2"
+                  aria-label="Scroll to top"
+                  title="Scroll to top"
+                >
+                  <ArrowUp size={18} className="text-base-content/70" />
+                </Button>
+              ))}
+            </div>
+          )}
+
           {/* Right Actions */}
           {rightAction && (
             <div className="flex items-center flex-shrink-0">
@@ -166,7 +250,6 @@ export const SimpleStickyHeader: React.FC<{
 export const CommunityTopBar: React.FC<{ 
   communityId: string; 
   asStickyHeader?: boolean; 
-  activeTab?: string; 
   futureVisionCommunityId?: string | null;
   showQuotaInHeader?: boolean;
   quotaData?: {
@@ -181,7 +264,6 @@ export const CommunityTopBar: React.FC<{
 }> = ({ 
   communityId, 
   asStickyHeader = false, 
-  activeTab = 'publications', 
   futureVisionCommunityId = null,
   showQuotaInHeader = false,
   quotaData,
@@ -192,6 +274,11 @@ export const CommunityTopBar: React.FC<{
   const searchParams = useSearchParams();
   const t = useTranslations('pages.communities');
   const tCommon = useTranslations('common');
+  const { data: userRoles = [] } = useUserRoles(user?.id || '');
+  
+  // Check if user is a lead (for deleted button visibility)
+  const isLead = user?.globalRole === 'superadmin' || 
+    !!userRoles.find((r) => r.communityId === communityId && r.role === 'lead');
   
   // Safe translation helper to prevent MISSING_MESSAGE errors
   const safeTranslate = (key: string, fallback: string): string => {
@@ -203,27 +290,8 @@ export const CommunityTopBar: React.FC<{
   };
   const [showTagDropdown, setShowTagDropdown] = React.useState(false);
   const [showSnack, setShowSnack] = React.useState(false);
-  const [showSearchModal, setShowSearchModal] = React.useState(false);
 
-  // Fake data generation state
-  const fakeDataMode = isFakeDataMode();
-  const [generatingUserPosts, setGeneratingUserPosts] = React.useState(false);
-  const [generatingBeneficiaryPosts, setGeneratingBeneficiaryPosts] = React.useState(false);
-  const [addingMerits, setAddingMerits] = React.useState(false);
-  const [fakeDataMessage, setFakeDataMessage] = React.useState('');
-
-  // Get sortBy from URL params
-  const sortBy = searchParams?.get('sort') === 'recent' ? 'recent' : 'voted';
   const selectedTag = searchParams?.get('tag');
-  const searchQuery = searchParams?.get('q') || '';
-  const [localSearchQuery, setLocalSearchQuery] = React.useState(searchQuery);
-
-  // Handle sort change
-  const handleSortChange = (sort: 'recent' | 'voted') => {
-    const params = new URLSearchParams(searchParams?.toString() ?? '');
-    params.set('sort', sort);
-    router.push(`?${params.toString()}`);
-  };
 
   // Handle tag filter
   const handleTagClick = (tag: string) => {
@@ -243,101 +311,6 @@ export const CommunityTopBar: React.FC<{
     params.delete('tag');
     router.push(`?${params.toString()}`);
     setShowTagDropdown(false);
-  };
-
-  // Handle search query change
-  const handleSearchChange = (value: string) => {
-    setLocalSearchQuery(value);
-    const params = new URLSearchParams(searchParams?.toString() ?? '');
-    if (value.trim()) {
-      params.set('q', value.trim());
-    } else {
-      params.delete('q');
-    }
-    router.push(`?${params.toString()}`);
-  };
-
-  // Handle search clear
-  const handleSearchClear = () => {
-    setLocalSearchQuery('');
-    const params = new URLSearchParams(searchParams?.toString() ?? '');
-    params.delete('q');
-    router.push(`?${params.toString()}`);
-  };
-
-  // Sync local search query with URL params
-  React.useEffect(() => {
-    setLocalSearchQuery(searchQuery);
-  }, [searchQuery]);
-
-  // Handle fake data generation
-  const generateFakeDataMutation = trpc.publications.generateFakeData.useMutation();
-  const addMeritsMutation = trpc.wallets.addMerits.useMutation();
-  const utils = trpc.useUtils();
-
-  const handleGenerateUserPosts = async () => {
-    setGeneratingUserPosts(true);
-    setFakeDataMessage('');
-
-    try {
-      const result = await generateFakeDataMutation.mutateAsync({
-        type: 'user',
-        communityId,
-      });
-      setFakeDataMessage(`Created ${result.count} user post(s)`);
-      setTimeout(() => setFakeDataMessage(''), 3000);
-      router.refresh();
-    } catch (error) {
-      console.error('Generate user posts error:', error);
-      setFakeDataMessage('Failed to generate user posts');
-      setTimeout(() => setFakeDataMessage(''), 3000);
-    } finally {
-      setGeneratingUserPosts(false);
-    }
-  };
-
-  const handleGenerateBeneficiaryPosts = async () => {
-    setGeneratingBeneficiaryPosts(true);
-    setFakeDataMessage('');
-
-    try {
-      const result = await generateFakeDataMutation.mutateAsync({
-        type: 'beneficiary',
-        communityId,
-      });
-      setFakeDataMessage(`Created ${result.count} post(s) with beneficiary`);
-      setTimeout(() => setFakeDataMessage(''), 3000);
-      router.refresh();
-    } catch (error) {
-      console.error('Generate beneficiary posts error:', error);
-      setFakeDataMessage('Failed to generate posts with beneficiary');
-      setTimeout(() => setFakeDataMessage(''), 3000);
-    } finally {
-      setGeneratingBeneficiaryPosts(false);
-    }
-  };
-
-  const handleAddMerits = async () => {
-    setAddingMerits(true);
-    setFakeDataMessage('');
-
-    try {
-      const result = await addMeritsMutation.mutateAsync({
-        communityId,
-        amount: 100,
-      });
-      setFakeDataMessage(result.message);
-      setTimeout(() => setFakeDataMessage(''), 3000);
-      // Invalidate wallets to refresh the balance
-      utils.wallets.getAll.invalidate();
-      utils.wallets.getBalance.invalidate({ communityId });
-    } catch (error) {
-      console.error('Add merits error:', error);
-      setFakeDataMessage('Failed to add merits');
-      setTimeout(() => setFakeDataMessage(''), 3000);
-    } finally {
-      setAddingMerits(false);
-    }
   };
 
 
@@ -388,6 +361,7 @@ export const CommunityTopBar: React.FC<{
       showBack={isLeftNavHidden}
       onBack={handleBack}
       asStickyHeader={asStickyHeader}
+      showScrollToTop={true}
       rightAction={
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* Quota Display in Header */}
@@ -404,82 +378,36 @@ export const CommunityTopBar: React.FC<{
               className="mr-2"
             />
           )}
-          {/* Fake Data Buttons - dev only - LEFT SIDE */}
-          {fakeDataMode && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleGenerateUserPosts}
-                disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
-                className="rounded-xl active:scale-[0.98] px-2"
-                title="Generate user post"
-              >
-                {generatingUserPosts ? <Loader2 className="animate-spin" size={16} /> : <span>+</span>}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleGenerateBeneficiaryPosts}
-                disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
-                className="rounded-xl active:scale-[0.98] px-2"
-                title="Generate post with beneficiary"
-              >
-                {generatingBeneficiaryPosts ? <Loader2 className="animate-spin" size={16} /> : <span>++</span>}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleAddMerits}
-                disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
-                className="rounded-xl active:scale-[0.98] px-2"
-                title="Add 100 wallet merits"
-              >
-                {addingMerits ? <Loader2 className="animate-spin" size={16} /> : <Coins size={16} className="text-base-content/70" />}
-              </Button>
-              {fakeDataMessage && (
-                <span className={`text-xs ${fakeDataMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>
-                  {fakeDataMessage}
-                </span>
-              )}
-            </>
-          )}
-
-          {/* Search Button - only show on publications tab */}
-          {activeTab === 'publications' && (
+          {/* Members Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push(routes.communityMembers(communityId))}
+            className="rounded-xl active:scale-[0.98] px-2"
+            aria-label={t('members.title') || 'Members'}
+            title={t('members.title') || 'Members'}
+          >
+            <Users size={18} className="text-base-content/70" />
+          </Button>
+          
+          {/* Deleted Button - only for leads/superadmins */}
+          {isLead && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowSearchModal(true)}
+              onClick={() => router.push(routes.communityDeleted(communityId))}
               className="rounded-xl active:scale-[0.98] px-2"
+              aria-label={t('deleted') || 'Deleted'}
+              title={t('deleted') || 'Deleted'}
             >
-              <Search size={18} className="text-base-content/70" />
+              <Trash2 size={18} className="text-base-content/70" />
             </Button>
           )}
 
-          {/* Sort Toggle - only show on publications tab */}
-          {activeTab === 'publications' && (
-            <div className="flex gap-0.5 bg-base-200/50 p-0.5 rounded-lg">
-              <SortToggle
-                value={sortBy}
-                onChange={handleSortChange}
-                compact={true}
-              />
-            </div>
-          )}
-
-          {/* Create Menu - for publications and vision tabs - RIGHTMOST */}
-          {activeTab === 'publications' && (
+          {/* Create Menu - RIGHTMOST */}
+          <div className="ml-2">
             <CreateMenu communityId={communityId} />
-          )}
-          {activeTab === 'vision' && futureVisionCommunityId && (
-            <CreateMenu communityId={futureVisionCommunityId} />
-          )}
-
-          {/* Invite Menu - for members tab - RIGHTMOST */}
-          {activeTab === 'members' && (
-            <InviteMenu communityId={communityId} />
-          )}
+          </div>
         </div>
       }
     />
@@ -491,36 +419,6 @@ export const CommunityTopBar: React.FC<{
         <div className="flex-shrink-0">
           {headerContent}
         </div>
-      )}
-
-      {/* Search Modal */}
-      {showSearchModal && (
-        <BottomActionSheet
-          isOpen={showSearchModal}
-          onClose={() => setShowSearchModal(false)}
-          title={t('searchPlaceholder')}
-        >
-          <div className="relative w-full">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
-            <Input
-              type="text"
-              placeholder={t('searchPlaceholder')}
-              value={localSearchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className={cn('h-11 rounded-xl pl-10', localSearchQuery && 'pr-10')}
-              autoFocus
-            />
-            {localSearchQuery && (
-              <button
-                type="button"
-                onClick={handleSearchClear}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
-              >
-                <X size={18} />
-              </button>
-            )}
-          </div>
-        </BottomActionSheet>
       )}
     </>
   );

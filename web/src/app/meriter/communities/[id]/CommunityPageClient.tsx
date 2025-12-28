@@ -5,8 +5,6 @@ import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { CommunityTopBar } from '@/components/organisms/ContextTopBar';
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
-import { MembersTab } from "@/components/organisms/Community/MembersTab";
-import { Tabs } from "@/components/ui/Tabs";
 import { useTranslations } from 'next-intl';
 import { useWallets, useCommunity, useCommunities } from '@/hooks/api';
 import { useCommunityFeed } from '@/hooks/api/useCommunityFeed';
@@ -15,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
-import { Loader2, FileText, Users, Eye, Filter, X, ChevronDown, Trash2 } from 'lucide-react';
+import { Loader2, Filter, X, ArrowUp, Coins, Search } from 'lucide-react';
 import {
   IMPACT_AREAS,
   BENEFICIARIES,
@@ -41,6 +39,7 @@ import {
 } from '@/components/ui/shadcn/select';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
+import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
@@ -48,7 +47,9 @@ import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations as useCommonTranslations } from 'next-intl';
-import { useInfiniteDeletedPublications } from '@/hooks/api/usePublications';
+import { SortToggle } from '@/components/ui/SortToggle';
+import { isFakeDataMode } from '@/config';
+import { trpc } from '@/lib/trpc/client';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -77,9 +78,122 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const sortBy = searchParams?.get('sort') || 'voted';
     const selectedTag = searchParams?.get('tag');
     const searchQuery = searchParams?.get('q') || '';
+    const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
+    const [showSearchModal, setShowSearchModal] = useState(false);
 
-    // Get active tab from URL params, default to 'publications'
-    const activeTab = searchParams?.get('tab') || 'publications';
+    // Handle search query change
+    const handleSearchChange = (value: string) => {
+        setLocalSearchQuery(value);
+        const params = new URLSearchParams(searchParams?.toString() ?? '');
+        if (value.trim()) {
+            params.set('q', value.trim());
+        } else {
+            params.delete('q');
+        }
+        router.push(`?${params.toString()}`);
+    };
+
+    // Handle search clear
+    const handleSearchClear = () => {
+        setLocalSearchQuery('');
+        const params = new URLSearchParams(searchParams?.toString() ?? '');
+        params.delete('q');
+        router.push(`?${params.toString()}`);
+    };
+
+    // Sync local search query with URL params
+    useEffect(() => {
+        setLocalSearchQuery(searchQuery);
+    }, [searchQuery]);
+
+    // Handle sort change
+    const handleSortChange = (sort: 'recent' | 'voted') => {
+        const params = new URLSearchParams(searchParams?.toString() ?? '');
+        params.set('sort', sort);
+        router.push(`?${params.toString()}`);
+    };
+
+    // Handle scroll to top
+    const handleScrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // Fake data generation state (dev mode only)
+    const fakeDataMode = isFakeDataMode();
+    const [generatingUserPosts, setGeneratingUserPosts] = useState(false);
+    const [generatingBeneficiaryPosts, setGeneratingBeneficiaryPosts] = useState(false);
+    const [addingMerits, setAddingMerits] = useState(false);
+    const [fakeDataMessage, setFakeDataMessage] = useState('');
+
+    // Handle fake data generation
+    const generateFakeDataMutation = trpc.publications.generateFakeData.useMutation();
+    const addMeritsMutation = trpc.wallets.addMerits.useMutation();
+    const utils = trpc.useUtils();
+
+    const handleGenerateUserPosts = async () => {
+        setGeneratingUserPosts(true);
+        setFakeDataMessage('');
+
+        try {
+            const result = await generateFakeDataMutation.mutateAsync({
+                type: 'user',
+                communityId: chatId,
+            });
+            setFakeDataMessage(`Created ${result.count} user post(s)`);
+            setTimeout(() => setFakeDataMessage(''), 3000);
+            router.refresh();
+        } catch (error) {
+            console.error('Generate user posts error:', error);
+            setFakeDataMessage('Failed to generate user posts');
+            setTimeout(() => setFakeDataMessage(''), 3000);
+        } finally {
+            setGeneratingUserPosts(false);
+        }
+    };
+
+    const handleGenerateBeneficiaryPosts = async () => {
+        setGeneratingBeneficiaryPosts(true);
+        setFakeDataMessage('');
+
+        try {
+            const result = await generateFakeDataMutation.mutateAsync({
+                type: 'beneficiary',
+                communityId: chatId,
+            });
+            setFakeDataMessage(`Created ${result.count} post(s) with beneficiary`);
+            setTimeout(() => setFakeDataMessage(''), 3000);
+            router.refresh();
+        } catch (error) {
+            console.error('Generate beneficiary posts error:', error);
+            setFakeDataMessage('Failed to generate posts with beneficiary');
+            setTimeout(() => setFakeDataMessage(''), 3000);
+        } finally {
+            setGeneratingBeneficiaryPosts(false);
+        }
+    };
+
+    const handleAddMerits = async () => {
+        setAddingMerits(true);
+        setFakeDataMessage('');
+
+        try {
+            const result = await addMeritsMutation.mutateAsync({
+                communityId: chatId,
+                amount: 100,
+            });
+            setFakeDataMessage(result.message);
+            setTimeout(() => setFakeDataMessage(''), 3000);
+            // Invalidate wallets to refresh the balance
+            utils.wallets.getAll.invalidate();
+            utils.wallets.getBalance.invalidate({ communityId: chatId });
+        } catch (error) {
+            console.error('Add merits error:', error);
+            setFakeDataMessage('Failed to add merits');
+            setTimeout(() => setFakeDataMessage(''), 3000);
+        } finally {
+            setAddingMerits(false);
+        }
+    };
 
     const [paginationEnd, setPaginationEnd] = useState(false);
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
@@ -98,25 +212,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const [showQuotaInHeader, setShowQuotaInHeader] = useState(false);
     const quotaIndicatorRef = useRef<HTMLDivElement>(null);
 
-    // Handle tab change
-    const handleTabChange = (tabId: string) => {
-        const params = new URLSearchParams(searchParams?.toString() ?? '');
-        if (tabId === 'publications') {
-            params.delete('tab');
-        } else {
-            params.set('tab', tabId);
-        }
-        router.push(`?${params.toString()}`);
-    };
-
     const { user, isLoading: userLoading, isAuthenticated } = useAuth();
     const { data: userRoles = [] } = useUserRoles(user?.id || '');
-
-    // Only leads/superadmins can view deleted publications.
-    // Gate the query so non-leads don't spam 403s + console errors.
-    const canViewDeletedPublications =
-        user?.globalRole === 'superadmin' ||
-        !!userRoles.find((r) => r.communityId === chatId && r.role === 'lead');
 
     // Use v1 API hook
     const { data: comms, error: communityError, isLoading: communityLoading, isFetched: communityFetched } = useCommunity(chatId);
@@ -162,40 +259,14 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         tag: selectedTag || undefined,
     });
 
-    // Fetch deleted publications (will only return data if user is lead)
-    // Hook is called here so it's available for useEffect/useMemo below
-    const {
-        data: deletedData,
-        fetchNextPage: fetchNextDeletedPage,
-        hasNextPage: hasNextDeletedPage,
-        isFetchingNextPage: isFetchingNextDeletedPage,
-        error: _deletedErr
-    } = useInfiniteDeletedPublications(chatId, 20, {
-        enabled: activeTab === 'deleted' && canViewDeletedPublications,
-    });
-
     // Derive paginationEnd from hasNextPage instead of setting it in getNextPageParam
     useEffect(() => {
-        if (activeTab === 'vision') {
-            if (!hasNextVisionPage) {
-                setPaginationEnd(true);
-            } else {
-                setPaginationEnd(false);
-            }
-        } else if (activeTab === 'deleted') {
-            if (!hasNextDeletedPage) {
-                setPaginationEnd(true);
-            } else {
-                setPaginationEnd(false);
-            }
+        if (!hasNextPage) {
+            setPaginationEnd(true);
         } else {
-            if (!hasNextPage) {
-                setPaginationEnd(true);
-            } else {
-                setPaginationEnd(false);
-            }
+            setPaginationEnd(false);
         }
-    }, [hasNextPage, hasNextVisionPage, hasNextDeletedPage, activeTab]);
+    }, [hasNextPage]);
 
     // Memoize feed items array (can contain both publications and polls)
     const publications = useMemo(() => {
@@ -249,41 +320,18 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             );
     }, [visionData?.pages]); // Only recalculate when visionData.pages changes
 
-    // Memoize deleted publications array
-    const deletedPublications = useMemo(() => {
-        return (deletedData?.pages ?? [])
-            .flatMap((page: any) => {
-                if (page?.data && Array.isArray(page.data)) {
-                    return page.data;
-                }
-                return [];
-            })
-            .map((p: any) => ({
-                ...p,
-                slug: p.slug || p.id,
-                beneficiaryId: p.beneficiaryId || p.meta?.beneficiary?.username,
-                beneficiaryName: p.meta?.beneficiary?.name,
-                beneficiaryPhotoUrl: p.meta?.beneficiary?.photoUrl,
-                beneficiaryUsername: p.meta?.beneficiary?.username,
-                type: p.type || (p.content ? 'publication' : 'poll'),
-            }))
-            .filter((p: FeedItem, index: number, self: FeedItem[]) =>
-                index === self.findIndex((t: FeedItem) => t?.id === p?.id)
-            );
-    }, [deletedData?.pages]);
 
     // Handle deep linking to specific post or poll
     useEffect(() => {
-        const postsToSearch = activeTab === 'vision' ? visionPublications : publications;
-        if ((targetPostSlug || targetPollId || highlightPostSlug) && postsToSearch.length > 0) {
+        if ((targetPostSlug || targetPollId || highlightPostSlug) && publications.length > 0) {
             let targetPost: FeedItem | undefined;
 
             if (targetPollId) {
-                targetPost = postsToSearch.find((p: FeedItem) => p.id === targetPollId && p.type === 'poll');
+                targetPost = publications.find((p: FeedItem) => p.id === targetPollId && p.type === 'poll');
             } else if (targetPostSlug) {
-                targetPost = postsToSearch.find((p: FeedItem) => p.slug === targetPostSlug);
+                targetPost = publications.find((p: FeedItem) => p.slug === targetPostSlug);
             } else if (highlightPostSlug) {
-                targetPost = postsToSearch.find((p: FeedItem) => p.slug === highlightPostSlug);
+                targetPost = publications.find((p: FeedItem) => p.slug === highlightPostSlug);
             }
 
             if (targetPost) {
@@ -307,7 +355,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 }, 500);
             }
         }
-    }, [targetPostSlug, targetPollId, highlightPostSlug, publications, visionPublications, activeTab, searchParams, pathname, router]);
+    }, [targetPostSlug, targetPollId, highlightPostSlug, publications, searchParams, pathname, router]);
 
     const error =
         (publications ?? [])?.[0]?.error || err
@@ -335,9 +383,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             ? 'superadmin'
             : (userRoles.find((r) => r.communityId === chatId)?.role ?? null);
 
-    // Check if user is a lead (for deleted tab visibility)
-    const isLead = userRoleInCommunity === 'lead' || user?.globalRole === 'superadmin';
-
     // Determine eligibility for permanent merits and quota
     const canEarnPermanentMerits =
         comms?.meritSettings?.canEarn === true && balance !== undefined;
@@ -352,12 +397,20 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const quotaMax = quotaData?.dailyQuota ?? 0;
     const currencyIconUrl = comms?.settings?.iconUrl;
 
+    // Reset quota header state when pathname changes (e.g., navigating back)
+    useEffect(() => {
+        setShowQuotaInHeader(false);
+    }, [pathname]);
+
     // Intersection observer to detect when quota indicator scrolls out of view
     useEffect(() => {
         if (!quotaIndicatorRef.current || (!canEarnPermanentMerits && !hasQuota)) {
             setShowQuotaInHeader(false);
             return;
         }
+
+        // Reset state initially
+        setShowQuotaInHeader(false);
 
         const observer = new IntersectionObserver(
             (entries) => {
@@ -378,7 +431,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         return () => {
             observer.disconnect();
         };
-    }, [canEarnPermanentMerits, hasQuota]);
+    }, [canEarnPermanentMerits, hasQuota, pathname]);
 
     // Get user's team community (community with typeTag: 'team' where user has a role)
     const _userTeamCommunityId = null;
@@ -410,16 +463,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         }
     }, [communityFetched, communityLoading, communityError, isAuthenticated, router]);
 
-    // Redirect away from vision tab if it's active (tab is now hidden)
-    useEffect(() => {
-        if (activeTab === 'vision') {
-            const params = new URLSearchParams(searchParams?.toString() ?? '');
-            params.delete('tab');
-            router.push(`?${params.toString()}`);
-        }
-    }, [activeTab, searchParams, router]);
-
-
     const cooldown = useRef(false);
     useEffect(() => {
         const fn = () => {
@@ -428,12 +471,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 document.body.offsetHeight
             ) {
                 if (!paginationEnd && !cooldown.current) {
-                    if (activeTab === 'vision' && futureVisionCommunityId) {
-                        fetchNextVisionPage();
-                    } else if (activeTab === 'publications') {
-                        fetchNextPage();
-                    }
-
+                    fetchNextPage();
                     cooldown.current = true;
                     setTimeout(() => {
                         cooldown.current = false;
@@ -443,7 +481,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         };
         window.addEventListener("scroll", fn);
         return () => window.removeEventListener("scroll", fn);
-    }, [paginationEnd, activeTab, futureVisionCommunityId, fetchNextPage, fetchNextVisionPage]);
+    }, [paginationEnd, fetchNextPage]);
 
     // Use community data for chat info (same as comms)
     const _chatUrl = comms?.description;
@@ -588,7 +626,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 <CommunityTopBar 
                     communityId={chatId} 
                     asStickyHeader={true} 
-                    activeTab={activeTab} 
                     futureVisionCommunityId={futureVisionCommunityId}
                     showQuotaInHeader={showQuotaInHeader}
                     quotaData={showQuotaInHeader ? {
@@ -633,29 +670,49 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 </div>
             )}
 
-            {/* Tab Selector */}
-            <Tabs
-                tabs={[
-                    {
-                        id: 'publications',
-                        label: tCommunities('publications') || 'Publications',
-                        icon: <FileText size={16} />,
-                    },
-                    {
-                        id: 'members',
-                        label: tCommunities('members.title') || 'Members',
-                        icon: <Users size={16} />,
-                    },
-                    ...(isLead ? [{
-                        id: 'deleted',
-                        label: tCommunities('deleted') || 'Deleted',
-                        icon: <Trash2 size={16} />,
-                    }] : []),
-                ]}
-                activeTab={activeTab}
-                onChange={handleTabChange}
-                className="mb-6"
-            />
+            {/* Dev Tools Bar - only visible in fake data mode */}
+            {fakeDataMode && (
+                <div className="mb-4 p-3 bg-base-200/50 rounded-xl border border-base-300">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-semibold text-base-content/70 mr-2">Dev Tools:</span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleGenerateUserPosts}
+                            disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
+                            className="rounded-xl active:scale-[0.98] px-2"
+                            title="Generate user post"
+                        >
+                            {generatingUserPosts ? <Loader2 className="animate-spin" size={16} /> : <span>+</span>}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleGenerateBeneficiaryPosts}
+                            disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
+                            className="rounded-xl active:scale-[0.98] px-2"
+                            title="Generate post with beneficiary"
+                        >
+                            {generatingBeneficiaryPosts ? <Loader2 className="animate-spin" size={16} /> : <span>++</span>}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleAddMerits}
+                            disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
+                            className="rounded-xl active:scale-[0.98] px-2"
+                            title="Add 100 wallet merits"
+                        >
+                            {addingMerits ? <Loader2 className="animate-spin" size={16} /> : <Coins size={16} className="text-base-content/70" />}
+                        </Button>
+                        {fakeDataMessage && (
+                            <span className={`text-xs ${fakeDataMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>
+                                {fakeDataMessage}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Banners */}
             {error === false &&
@@ -700,13 +757,33 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 </div>
             )}
 
-            {/* Tab Content */}
-            {activeTab === 'publications' ? (
-                <div className="space-y-4">
+            {/* Publications Content */}
+            <div className="space-y-4">
                     {/* Taxonomy Filters */}
                     <div className="rounded-2xl border bg-base-100 p-4 space-y-4">
                         <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
+                                {/* Search Button */}
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setShowSearchModal(true)}
+                                    className="rounded-xl active:scale-[0.98] px-2"
+                                    aria-label="Search"
+                                    title="Search"
+                                >
+                                    <Search size={18} className="text-base-content/70" />
+                                </Button>
+                                
+                                {/* Sort Toggle */}
+                                <div className="flex gap-0.5 bg-base-200/50 p-0.5 rounded-lg">
+                                    <SortToggle
+                                        value={sortBy as 'recent' | 'voted'}
+                                        onChange={handleSortChange}
+                                        compact={true}
+                                    />
+                                </div>
+
                                 <Filter className="h-4 w-4" />
                                 <span className="text-sm font-medium">Filters</span>
                             </div>
@@ -946,145 +1023,35 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         </Button>
                     )}
                 </div>
-            ) : activeTab === 'vision' ? (
-                <div className="space-y-4">
-                    {futureVisionCommunityId ? (
-                        <>
-                            {isAuthenticated &&
-                                filteredVisionPublications
-                                    .filter((p: FeedItem) => {
-                                        if (p.type === 'publication') {
-                                            return !!p.content;
-                                        }
-                                        return false;
-                                    })
-                                    .map((p) => {
-                                        // Check if this post is selected (for comments or polls)
-                                        const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug))
-                                            || !!(targetPollId && p.id === targetPollId);
 
-                                        return (
-                                            <div
-                                                key={p.id}
-                                                id={`post-${p.id}`}
-                                                className={
-                                                    highlightedPostId === p.id
-                                                        ? 'rounded-lg scale-[1.02] bg-brand-primary/10 shadow-lg transition-all duration-300 p-2'
-                                                        : isSelected
-                                                            ? 'rounded-lg scale-[1.02] bg-brand-secondary/10 shadow-lg transition-all duration-300 p-2'
-                                                            : 'hover:shadow-md transition-all duration-200 rounded-lg'
-                                                }
-                                            >
-                                                <div className="relative">
-                                                    {/* Future indicator icon */}
-                                                    <div className="absolute -top-2 -right-2 z-10 bg-primary text-primary-content rounded-full p-1.5 shadow-lg">
-                                                        <Eye size={16} />
-                                                    </div>
-                                                    <PublicationCard
-                                                        publication={p}
-                                                        wallets={Array.isArray(wallets) ? wallets : []}
-                                                        showCommunityAvatar={false}
-                                                        isSelected={isSelected}
-                                                    />
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-
-                            {isFetchingNextVisionPage && (
-                                <div className="flex justify-center py-4">
-                                    <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
-                                </div>
-                            )}
-
-                            {!paginationEnd && filteredVisionPublications.length > 1 && !isFetchingNextVisionPage && (
-                                <Button
-                                    variant="default"
-                                    onClick={() => fetchNextVisionPage()}
-                                    className="rounded-xl active:scale-[0.98] w-full sm:w-auto mx-auto block"
-                                >
-                                    {t('communities.loadMore')}
-                                </Button>
-                            )}
-
-                            {filteredVisionPublications.length === 0 && !isFetchingNextVisionPage && (
-                                <div className="text-center py-8 text-base-content/60">
-                                    <p>{tCommunities('noVisionPosts')}</p>
-                                </div>
-                            )}
-                        </>
-                    ) : (
-                        <div className="text-center py-8 text-base-content/60">
-                            <p>{tCommunities('visionCommunityNotFound')}</p>
-                        </div>
-                    )}
-                </div>
-            ) : activeTab === 'deleted' ? (
-                <div className="space-y-4">
-                    {isLead ? (
-                        <>
-                            {deletedPublications.map((p) => {
-                                const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug))
-                                    || !!(targetPollId && p.id === targetPollId);
-
-                                return (
-                                    <div
-                                        key={p.id}
-                                        id={`post-${p.id}`}
-                                        className={
-                                            highlightedPostId === p.id
-                                                ? 'rounded-lg scale-[1.02] bg-brand-primary/10 shadow-lg transition-all duration-300 p-2'
-                                                : isSelected
-                                                    ? 'rounded-lg scale-[1.02] bg-brand-secondary/10 shadow-lg transition-all duration-300 p-2'
-                                                    : 'hover:shadow-md transition-all duration-200 rounded-lg opacity-75'
-                                        }
-                                    >
-                                        <div className="relative">
-                                            {/* Deleted indicator badge */}
-                                            <div className="absolute -top-2 -right-2 z-10 bg-error text-error-content rounded-full px-2 py-1 text-xs font-semibold shadow-lg">
-                                                Deleted
-                                            </div>
-                                            <PublicationCard
-                                                publication={p}
-                                                wallets={Array.isArray(wallets) ? wallets : []}
-                                                showCommunityAvatar={false}
-                                                isSelected={isSelected}
-                                            />
-                                        </div>
-                                    </div>
-                                );
-                            })}
-
-                            {isFetchingNextDeletedPage && (
-                                <div className="flex justify-center py-4">
-                                    <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
-                                </div>
-                            )}
-
-                            {!paginationEnd && deletedPublications.length > 0 && !isFetchingNextDeletedPage && (
-                                <Button
-                                    variant="default"
-                                    onClick={() => fetchNextDeletedPage()}
-                                    className="rounded-xl active:scale-[0.98] w-full sm:w-auto mx-auto block"
-                                >
-                                    {t('communities.loadMore')}
-                                </Button>
-                            )}
-
-                            {deletedPublications.length === 0 && !isFetchingNextDeletedPage && (
-                                <div className="text-center py-8 text-base-content/60">
-                                    <p>{tCommunities('noDeletedPublications') || 'No deleted publications'}</p>
-                                </div>
-                            )}
-                        </>
-                    ) : (
-                        <div className="text-center py-8 text-base-content/60">
-                            <p>{tCommunities('accessDenied') || 'Access denied'}</p>
-                        </div>
-                    )}
-                </div>
-            ) : (
-                <MembersTab communityId={chatId} />
+            {/* Search Modal */}
+            {showSearchModal && (
+                <BottomActionSheet
+                    isOpen={showSearchModal}
+                    onClose={() => setShowSearchModal(false)}
+                    title={tCommunities('searchPlaceholder') || 'Search'}
+                >
+                    <div className="relative w-full">
+                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                        <Input
+                            type="text"
+                            placeholder={tCommunities('searchPlaceholder') || 'Search'}
+                            value={localSearchQuery}
+                            onChange={(e) => handleSearchChange(e.target.value)}
+                            className="h-11 rounded-xl pl-10 pr-10"
+                            autoFocus
+                        />
+                        {localSearchQuery && (
+                            <button
+                                type="button"
+                                onClick={handleSearchClear}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
+                            >
+                                <X size={18} />
+                            </button>
+                        )}
+                    </div>
+                </BottomActionSheet>
             )}
 
         </AdaptiveLayout>

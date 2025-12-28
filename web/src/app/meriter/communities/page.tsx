@@ -81,7 +81,7 @@ export default function CommunitiesPage() {
 
     return (
         <AdaptiveLayout
-            stickyHeader={<SimpleStickyHeader title="Communities" showBack={false} asStickyHeader={true} />}
+            stickyHeader={<SimpleStickyHeader title="Communities" showBack={false} asStickyHeader={true} showScrollToTop={true} />}
         >
             {/* Content */}
             <div>

@@ -50,6 +50,7 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
             showBack={true}
             onBack={() => router.push(routes.community(communityId))}
             asStickyHeader={true}
+            showScrollToTop={true}
         />
     );
 

@@ -48,7 +48,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
   if (isLoading) {
     return (
       <AdaptiveLayout
-        stickyHeader={<SimpleStickyHeader title={tCommon('userProfile')} showBack={true} asStickyHeader={true} />}
+        stickyHeader={<SimpleStickyHeader title={tCommon('userProfile')} showBack={true} asStickyHeader={true} showScrollToTop={true} />}
       >
         <div className="space-y-4">
           <CardSkeleton />
@@ -61,7 +61,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
   if (error || !user) {
     return (
       <AdaptiveLayout
-        stickyHeader={<SimpleStickyHeader title={tCommon('userProfile')} showBack={true} asStickyHeader={true} />}
+        stickyHeader={<SimpleStickyHeader title={tCommon('userProfile')} showBack={true} asStickyHeader={true} showScrollToTop={true} />}
       >
         <div className="text-center py-12 text-base-content/60">
           <UserIcon className="w-12 h-12 mx-auto mb-3 text-base-content/40" />

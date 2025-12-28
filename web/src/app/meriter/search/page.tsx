@@ -101,7 +101,7 @@ export default function SearchResultsPage() {
 
   return (
     <AdaptiveLayout
-      stickyHeader={<SimpleStickyHeader title={t('results.title')} showBack={true} asStickyHeader={true} />}
+      stickyHeader={<SimpleStickyHeader title={t('results.title')} showBack={true} asStickyHeader={true} showScrollToTop={true} />}
     >
       <div className="space-y-6">
         {/* Search Input */}

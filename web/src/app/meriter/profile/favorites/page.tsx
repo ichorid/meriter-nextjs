@@ -22,6 +22,7 @@ export default function ProfileFavoritesPage() {
       showBack={true}
       onBack={() => router.push('/meriter/profile')}
       asStickyHeader={true}
+      showScrollToTop={true}
     />
   );
 
