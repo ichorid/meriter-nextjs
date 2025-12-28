@@ -173,15 +173,27 @@ jobs:
           images: ${{ steps.tags.outputs.image_name }}
           tags: ${{ steps.tags.outputs.tags }}
       - name: Build Docker image
+        if: ${{ !(github.event_name == 'push' && needs.determine-target.outputs.build_type != '') }}
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./${{ matrix.component }}/Dockerfile
-          push: ${{ github.event_name == 'push' && needs.determine-target.outputs.build_type != '' }}
-          tags: ${{ github.event_name == 'push' && needs.determine-target.outputs.build_type != '' && steps.meta.outputs.tags || '' }}
-          labels: ${{ github.event_name == 'push' && needs.determine-target.outputs.build_type != '' && steps.meta.outputs.labels || '' }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          push: false
+          # Keep cache reads, but don't export cache for non-deployment runs (saves significant time).
+          cache-from: type=gha,scope=${{ matrix.component }}
+
+      - name: Build Docker image (export cache)
+        if: ${{ github.event_name == 'push' && needs.determine-target.outputs.build_type != '' }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./${{ matrix.component }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          # "mode=min" reduces export time/size; scoping prevents web/api cache churn.
+          cache-to: type=gha,mode=min,scope=${{ matrix.component }}
       - name: Image summary
         if: github.event_name == 'push' && needs.determine-target.outputs.build_type != ''
         run: |

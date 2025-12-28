@@ -1,8 +1,10 @@
+# syntax=docker/dockerfile:1.7
 # --- build ---
 FROM node:22.11-alpine AS builder
 WORKDIR /repo
 # Install pnpm directly via npm to avoid corepack signature verification issues
 RUN npm install -g pnpm@10.24.0
+RUN pnpm config set store-dir /pnpm/store
 
 # Workspace manifest + only what this package needs to resolve deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
@@ -12,7 +14,8 @@ COPY api/package.json ./api/
 COPY web/patches ./web/patches/
 
 # Install all dependencies first
-RUN pnpm --filter @meriter/shared-types... install --frozen-lockfile && \
+RUN --mount=type=cache,target=/pnpm/store \
+    pnpm --filter @meriter/shared-types... install --frozen-lockfile && \
     pnpm --filter @meriter/api... install --frozen-lockfile
 
 # Build shared-types first
@@ -25,7 +28,8 @@ RUN pnpm --filter @meriter/api exec nest build
 # Prepare production output
 ENV CI=true
 # Reinstall with --shamefully-hoist to create traditional node_modules structure
-RUN pnpm --filter @meriter/api... install --prod --frozen-lockfile --ignore-scripts --shamefully-hoist
+RUN --mount=type=cache,target=/pnpm/store \
+    pnpm --filter @meriter/api... install --prod --frozen-lockfile --ignore-scripts --shamefully-hoist
 # Copy built artifacts and production node_modules
 RUN mkdir -p /out && \
     cp -R api/dist /out/dist && \
