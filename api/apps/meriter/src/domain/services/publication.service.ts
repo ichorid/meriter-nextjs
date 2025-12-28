@@ -464,6 +464,41 @@ export class PublicationService {
   }
 
   /**
+   * Restore a deleted publication
+   * Only leads and superadmins can restore publications
+   */
+  async restorePublication(
+    publicationId: string,
+    _userId: string,
+  ): Promise<boolean> {
+    const publication = await this.getPublication(publicationId);
+    if (!publication) {
+      throw new NotFoundException('Publication not found');
+    }
+
+    // Check if publication is actually deleted
+    const snapshot = publication.toSnapshot();
+    if (!snapshot.deleted) {
+      throw new BadRequestException('Publication is not deleted');
+    }
+
+    // Authorization is handled by PermissionGuard via PermissionService.canDeletePublication()
+    // Restore uses the same permissions as delete (leads/superadmins only)
+
+    // Restore: unmark as deleted
+    await this.publicationModel.updateOne(
+      { id: publicationId },
+      {
+        $unset: {
+          deleted: '',
+          deletedAt: '',
+        },
+      },
+    );
+    return true;
+  }
+
+  /**
    * Update forward proposal fields on a publication
    */
   async updateForwardProposal(

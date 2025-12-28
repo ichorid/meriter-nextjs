@@ -420,3 +420,33 @@ export const useDeletePublication = () => {
         },
     });
 };
+
+export const useRestorePublication = () => {
+    const utils = trpc.useUtils();
+    const queryClient = useQueryClient();
+    
+    return trpc.publications.restore.useMutation({
+        onSuccess: async (_result, variables) => {
+            // Invalidate and refetch publications lists
+            await utils.publications.getAll.invalidate();
+            await utils.publications.getAll.refetch();
+            
+            // Invalidate deleted publications query (so restored publication disappears from deleted list)
+            await utils.publications.getDeleted.invalidate();
+            
+            // Invalidate the specific publication to refetch it (now it should be visible)
+            await utils.publications.getById.invalidate({ id: variables.id });
+            await utils.publications.getById.refetch({ id: variables.id });
+            
+            // Invalidate infinite queries (publication should appear in community feed)
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.publications.all,
+                exact: false,
+            });
+            queryClient.refetchQueries({
+                queryKey: queryKeys.publications.all,
+                exact: false,
+            });
+        },
+    });
+};

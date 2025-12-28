@@ -668,6 +668,20 @@ export const publicationsRouter = router({
     }),
 
   /**
+   * Restore a deleted publication
+   * Only leads and superadmins can restore publications
+   */
+  restore: protectedProcedure
+    .input(IdInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Check permissions - restore uses the same permissions as delete
+      await checkPermissionInHandler(ctx, 'delete', 'publication', input);
+
+      await ctx.publicationService.restorePublication(input.id, ctx.user.id);
+      return { success: true };
+    }),
+
+  /**
    * Get deleted publications (leads only)
    */
   getDeleted: protectedProcedure
