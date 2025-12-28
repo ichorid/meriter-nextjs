@@ -7,7 +7,6 @@ import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import * as cookieParser from 'cookie-parser';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
-import { shouldSuppressError } from './error-suppression.helper';
 
 export interface TestAppContext {
   app: INestApplication;
@@ -56,11 +55,6 @@ export class TestSetupHelper {
       router: trpcService.getRouter(),
       createContext: ({ req, res }) => trpcService.createContext(req, res),
       onError({ error, path }) {
-        const isTestEnv = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined;
-        const errorCode = (error as { code?: unknown }).code;
-        if (isTestEnv && shouldSuppressError(errorCode)) {
-          return;
-        }
         console.error(`tRPC error on '${path}':`, error);
       },
     });
@@ -114,11 +108,6 @@ export class TestSetupHelper {
       router: trpcService.getRouter(),
       createContext: ({ req, res }) => trpcService.createContext(req, res),
       onError({ error, path }) {
-        const isTestEnv = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined;
-        const errorCode = (error as { code?: unknown }).code;
-        if (isTestEnv && shouldSuppressError(errorCode)) {
-          return;
-        }
         console.error(`tRPC error on '${path}':`, error);
       },
     });

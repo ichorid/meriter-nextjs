@@ -10,7 +10,6 @@ import { CommentSchemaClass, CommentDocument } from '../src/domain/models/commen
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
-import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Publication and Comment Edit Permissions', () => {
   jest.setTimeout(60000);
@@ -219,14 +218,12 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      await withSuppressedErrors(['FORBIDDEN'], async () => {
-        const result = await trpcMutationWithError(app, 'publications.update', {
-          id: publicationId,
-          data: { content: 'Updated content' },
-        });
-
-        expect(result.error?.code).toBe('FORBIDDEN');
+      const result = await trpcMutationWithError(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
       });
+
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
 
     it('should NOT allow author to edit own publication with comments', async () => {
@@ -243,14 +240,12 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      await withSuppressedErrors(['FORBIDDEN'], async () => {
-        const result = await trpcMutationWithError(app, 'publications.update', {
-          id: publicationId,
-          data: { content: 'Updated content' },
-        });
-
-        expect(result.error?.code).toBe('FORBIDDEN');
+      const result = await trpcMutationWithError(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
       });
+
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
 
     it('should NOT allow author to edit own publication with both votes and comments', async () => {
@@ -274,14 +269,12 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      await withSuppressedErrors(['FORBIDDEN'], async () => {
-        const result = await trpcMutationWithError(app, 'publications.update', {
-          id: publicationId,
-          data: { content: 'Updated content' },
-        });
-
-        expect(result.error?.code).toBe('FORBIDDEN');
+      const result = await trpcMutationWithError(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
       });
+
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
 
     it('should NOT allow author to edit own publication after edit window expires', async () => {
@@ -301,14 +294,12 @@ describe('Publication and Comment Edit Permissions', () => {
       );
 
       // Author should NOT be able to edit
-      await withSuppressedErrors(['FORBIDDEN'], async () => {
-        const result = await trpcMutationWithError(app, 'publications.update', {
-          id: publicationId,
-          data: { content: 'Updated content' },
-        });
-
-        expect(result.error?.code).toBe('FORBIDDEN');
+      const result = await trpcMutationWithError(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
       });
+
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
   });
 
@@ -372,14 +363,12 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Lead from different community should NOT be able to edit
       (global as any).testUserId = leadId;
-      await withSuppressedErrors(['FORBIDDEN'], async () => {
-        const result = await trpcMutationWithError(app, 'publications.update', {
-          id: publicationId,
-          data: { content: 'Updated content' },
-        });
-
-        expect(result.error?.code).toBe('FORBIDDEN');
+      const result = await trpcMutationWithError(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
       });
+
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
   });
 
@@ -463,11 +452,9 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Author should NOT be able to delete
       (global as any).testUserId = authorId;
-      await withSuppressedErrors(['FORBIDDEN'], async () => {
-        const result = await trpcMutationWithError(app, 'publications.delete', { id: publicationId });
+      const result = await trpcMutationWithError(app, 'publications.delete', { id: publicationId });
 
-        expect(result.error?.code).toBe('FORBIDDEN');
-      });
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
 
     it('should NOT allow author to delete own publication with comments', async () => {
@@ -484,11 +471,9 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Author should NOT be able to delete
       (global as any).testUserId = authorId;
-      await withSuppressedErrors(['FORBIDDEN'], async () => {
-        const result = await trpcMutationWithError(app, 'publications.delete', { id: publicationId });
+      const result = await trpcMutationWithError(app, 'publications.delete', { id: publicationId });
 
-        expect(result.error?.code).toBe('FORBIDDEN');
-      });
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
 
     it('should NOT allow author to delete own publication with both votes and comments', async () => {
@@ -512,11 +497,9 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Author should NOT be able to delete
       (global as any).testUserId = authorId;
-      await withSuppressedErrors(['FORBIDDEN'], async () => {
-        const result = await trpcMutationWithError(app, 'publications.delete', { id: publicationId });
+      const result = await trpcMutationWithError(app, 'publications.delete', { id: publicationId });
 
-        expect(result.error?.code).toBe('FORBIDDEN');
-      });
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
   });
 
@@ -653,14 +636,12 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      await withSuppressedErrors(['FORBIDDEN'], async () => {
-        const result = await trpcMutationWithError(app, 'comments.update', {
-          id: commentId,
-          data: { content: 'Updated comment' },
-        });
-
-        expect(result.error?.code).toBe('FORBIDDEN');
+      const result = await trpcMutationWithError(app, 'comments.update', {
+        id: commentId,
+        data: { content: 'Updated comment' },
       });
+
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
   });
 
@@ -709,14 +690,12 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Participant should NOT be able to edit
       (global as any).testUserId = participantId;
-      await withSuppressedErrors(['FORBIDDEN'], async () => {
-        const result = await trpcMutationWithError(app, 'publications.update', {
-          id: publicationId,
-          data: { content: 'Updated content' },
-        });
-
-        expect(result.error?.code).toBe('FORBIDDEN');
+      const result = await trpcMutationWithError(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
       });
+
+      expect(result.error?.code).toBe('FORBIDDEN');
     });
   });
 });
