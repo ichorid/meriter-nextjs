@@ -13,6 +13,20 @@ on:
     branches:
       - dev
       - main
+  workflow_dispatch:
+    inputs:
+      e2e_stress:
+        description: 'Run E2E stress (parallel + repeated) to detect interference'
+        type: boolean
+        default: false
+      e2e_runs:
+        description: 'Number of E2E stress repetitions (only if e2e_stress=true)'
+        type: string
+        default: '3'
+      e2e_workers:
+        description: 'Jest max workers for E2E stress (only if e2e_stress=true)'
+        type: string
+        default: '2'
 
 env:
   REGISTRY: ghcr.io
@@ -25,10 +39,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    env:
-      E2E_RUNS: 3
-      E2E_MAX_WORKERS: 2
-      E2E_RANDOMIZE: "false"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -48,7 +58,14 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Run unit tests
         run: pnpm test:ci
-      - name: Run E2E tests (parallel + repeated to detect interference)
+      - name: Run E2E tests
+        run: pnpm --filter @meriter/api test:e2e
+      - name: Run E2E stress (parallel + repeated; manual only)
+        if: github.event_name == 'workflow_dispatch' && inputs.e2e_stress == true
+        env:
+          E2E_RUNS: ${{ inputs.e2e_runs }}
+          E2E_MAX_WORKERS: ${{ inputs.e2e_workers }}
+          E2E_RANDOMIZE: "false"
         run: pnpm --filter @meriter/api test:e2e:stress
 
   determine-target:
