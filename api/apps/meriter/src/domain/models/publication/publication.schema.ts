@@ -50,6 +50,11 @@ export interface Publication {
   forwardProposedAt?: Date;
   deleted?: boolean;
   deletedAt?: Date;
+  // Edit history
+  editHistory?: Array<{
+    editedBy: string;
+    editedAt: Date;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -156,6 +161,18 @@ export class PublicationSchemaClass implements Publication {
 
   @Prop()
   deletedAt?: Date;
+
+  @Prop({
+    type: [{
+      editedBy: { type: String, required: true },
+      editedAt: { type: Date, required: true },
+    }],
+    default: [],
+  })
+  editHistory?: Array<{
+    editedBy: string;
+    editedAt: Date;
+  }>;
 
   @Prop({ required: true })
   createdAt!: Date;

@@ -29,6 +29,10 @@ export interface PublicationDocument {
   helpNeeded?: string[];
   deleted?: boolean;
   deletedAt?: Date;
+  editHistory?: Array<{
+    editedBy: string;
+    editedAt: Date;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }

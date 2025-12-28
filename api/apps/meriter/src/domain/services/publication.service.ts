@@ -431,9 +431,18 @@ export class PublicationService {
     }
 
     // Single atomic update with all changes
+    // Record edit history entry
+    const editHistoryEntry = {
+      editedBy: userId,
+      editedAt: new Date(),
+    };
+
     await this.publicationModel.updateOne(
       { id: publication.getId.getValue() },
-      { $set: updatePayload },
+      {
+        $set: updatePayload,
+        $push: { editHistory: editHistoryEntry },
+      },
     );
 
     // Reload to return updated publication

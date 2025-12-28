@@ -20,6 +20,7 @@ import { useCommunity } from '@/hooks/api';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { ForwardPopup } from './ForwardPopup';
 import { ReviewForwardPopup } from './ReviewForwardPopup';
+import { PublicationDetailsPopup } from '@/shared/components/publication-details-popup';
 
 // Local Publication type definition
 interface Publication {
@@ -52,6 +53,15 @@ interface Publication {
   permissions?: ResourcePermissions;
   deleted?: boolean;
   deletedAt?: string;
+  editHistory?: Array<{
+    editedBy: string;
+    editedAt: string;
+    editor?: {
+      id: string;
+      name?: string;
+      photoUrl?: string;
+    };
+  }>;
   [key: string]: unknown;
 }
 
@@ -87,6 +97,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showForwardPopup, setShowForwardPopup] = useState(false);
   const [showReviewPopup, setShowReviewPopup] = useState(false);
+  const [showDetailsPopup, setShowDetailsPopup] = useState(false);
   const t = useTranslations('shared');
   
   const deletePublication = useDeletePublication();
@@ -309,6 +320,20 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             {isLead && isPendingForward ? <Eye size={16} /> : <ArrowRight size={16} />}
           </Button>
         )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            setShowDetailsPopup(true);
+          }}
+          className="rounded-xl active:scale-[0.98] p-1.5 h-auto min-h-0 opacity-60 hover:opacity-100"
+          title="View details"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </Button>
         {(publication as any).postType === 'project' || (publication as any).isProject ? (
           <Badge variant="warning" size="sm">
             PROJECT
@@ -365,6 +390,23 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
         isLoading={isPoll ? deletePoll.isPending : (isAlreadyDeleted ? permanentDeletePublication.isPending : deletePublication.isPending)}
         title={isAlreadyDeleted ? 'Permanently Delete Post' : undefined}
         message={isAlreadyDeleted ? 'This will permanently delete this post and cannot be undone. Are you sure?' : undefined}
+      />
+
+      {/* Publication Details Popup */}
+      <PublicationDetailsPopup
+        isOpen={showDetailsPopup}
+        onClose={() => setShowDetailsPopup(false)}
+        authorName={author.name}
+        authorId={author.id}
+        authorAvatar={author.photoUrl}
+        communityName={community?.name}
+        communityId={communityId}
+        communityAvatar={community?.avatarUrl}
+        beneficiaryName={beneficiary?.name}
+        beneficiaryId={beneficiary ? (publication.meta?.beneficiary as any)?.id : undefined}
+        beneficiaryAvatar={beneficiary?.photoUrl}
+        createdAt={publication.createdAt}
+        editHistory={(publication as any).editHistory}
       />
     </div>
   );

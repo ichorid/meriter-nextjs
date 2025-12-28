@@ -254,6 +254,11 @@ export const PublicationSchema = IdentifiableSchema.merge(
   forwardProposedAt: z.date().optional(),
   deleted: z.boolean().optional().default(false),
   deletedAt: z.date().optional(),
+  // Edit history
+  editHistory: z.array(z.object({
+    editedBy: z.string(),
+    editedAt: z.date(),
+  })).optional().default([]),
 });
 
 export const CommentAuthorMetaSchema = z.object({

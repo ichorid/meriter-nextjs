@@ -273,12 +273,21 @@ export const publicationsRouter = router({
       const beneficiaryId = publication.getBeneficiaryId?.getValue();
       const communityId = publication.getCommunityId.getValue();
 
+      // Fetch document to get editHistory
+      const doc = await ctx.connection.db!
+        .collection('publications')
+        .findOne({ id: input.id });
+      
+      const editHistory = (doc as any)?.editHistory || [];
+      const editorIds = editHistory.map((entry: any) => entry.editedBy);
+      const uniqueEditorIds = [...new Set(editorIds)];
+
       // Allow deleted publications to be accessed by all users (including unauthenticated).
       // They will be marked as deleted in the response, but still accessible.
       // This allows users to see their favorited posts even after deletion, and access posts by direct URL.
 
       // Batch fetch users and communities
-      const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : [])];
+      const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : []), ...uniqueEditorIds];
       const [usersMap, communitiesMap, permissions] = await Promise.all([
         ctx.userEnrichmentService.batchFetchUsers(userIds),
         ctx.communityEnrichmentService.batchFetchCommunities([communityId]),
@@ -290,6 +299,42 @@ export const publicationsRouter = router({
         usersMap,
         communitiesMap,
       );
+
+      // Forward fields currently live on the persisted document; enrich response from Mongo doc
+      // (the domain aggregate snapshot may not include these).
+      mappedPublication.forwardStatus = (doc as any)?.forwardStatus ?? null;
+      mappedPublication.forwardTargetCommunityId = (doc as any)?.forwardTargetCommunityId || undefined;
+      mappedPublication.forwardProposedBy = (doc as any)?.forwardProposedBy || undefined;
+      mappedPublication.forwardProposedAt = (doc as any)?.forwardProposedAt || undefined;
+      
+      // Enrich edit history with user data
+      if (editHistory && editHistory.length > 0) {
+        mappedPublication.editHistory = editHistory.map((entry: any) => {
+          const editor = usersMap.get(entry.editedBy);
+          // Handle date conversion - MongoDB may return Date objects or ISO strings
+          let editedAtString: string;
+          if (entry.editedAt instanceof Date) {
+            editedAtString = entry.editedAt.toISOString();
+          } else if (typeof entry.editedAt === 'string') {
+            editedAtString = entry.editedAt;
+          } else {
+            // Fallback: try to parse as date
+            editedAtString = new Date(entry.editedAt).toISOString();
+          }
+          
+          return {
+            editedBy: entry.editedBy,
+            editedAt: editedAtString,
+            editor: editor ? {
+              id: entry.editedBy,
+              name: editor.name || editor.displayName || 'Unknown',
+              photoUrl: editor.photoUrl || editor.avatarUrl,
+            } : undefined,
+          };
+        }).reverse(); // Reverse to show newest first
+      } else {
+        mappedPublication.editHistory = [];
+      }
       
       // Add permissions to response
       mappedPublication.permissions = permissions;
@@ -397,6 +442,26 @@ export const publicationsRouter = router({
           communitiesMap,
         ),
       );
+
+      // Enrich forward fields from Mongo documents (needed for pending/forwarded badges in UI).
+      if (ctx.connection?.db && mappedPublications.length > 0) {
+        const ids = mappedPublications.map((p) => p.id);
+        const docs = await ctx.connection.db
+          .collection('publications')
+          .find(
+            { id: { $in: ids } },
+            { projection: { id: 1, forwardStatus: 1, forwardTargetCommunityId: 1, forwardProposedBy: 1, forwardProposedAt: 1 } },
+          )
+          .toArray();
+        const forwardMap = new Map<string, any>(docs.map((d: any) => [d.id, d]));
+        mappedPublications.forEach((pub) => {
+          const d = forwardMap.get(pub.id);
+          pub.forwardStatus = d?.forwardStatus ?? null;
+          pub.forwardTargetCommunityId = d?.forwardTargetCommunityId || undefined;
+          pub.forwardProposedBy = d?.forwardProposedBy || undefined;
+          pub.forwardProposedAt = d?.forwardProposedAt || undefined;
+        });
+      }
 
       // Batch calculate permissions for all publications
       const publicationIds = mappedPublications.map((pub) => pub.id);
