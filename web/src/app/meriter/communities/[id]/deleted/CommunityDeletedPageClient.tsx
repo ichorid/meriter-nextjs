@@ -9,11 +9,12 @@ import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useCommunity, useWallets } from '@/hooks/api';
 import { useUserRoles } from '@/hooks/api/useProfile';
-import { useInfiniteDeletedPublications } from '@/hooks/api/usePublications';
+import { useInfiniteDeletedPublications, useRestorePublication } from '@/hooks/api/usePublications';
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
-import { Loader2 } from 'lucide-react';
+import { Loader2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import type { FeedItem } from '@meriter/shared-types';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 interface CommunityDeletedPageClientProps {
   communityId: string;
@@ -51,6 +52,9 @@ export function CommunityDeletedPageClient({ communityId }: CommunityDeletedPage
 
     const [paginationEnd, setPaginationEnd] = useState(false);
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
+    const [restoringIds, setRestoringIds] = useState<Set<string>>(new Set());
+
+    const restorePublication = useRestorePublication();
 
     // Derive paginationEnd from hasNextPage
     useEffect(() => {
@@ -60,6 +64,14 @@ export function CommunityDeletedPageClient({ communityId }: CommunityDeletedPage
             setPaginationEnd(false);
         }
     }, [hasNextDeletedPage]);
+
+    // Infinite scroll trigger
+    const observerTarget = useInfiniteScroll({
+        hasNextPage: hasNextDeletedPage,
+        fetchNextPage: fetchNextDeletedPage,
+        isFetchingNextPage: isFetchingNextDeletedPage,
+        threshold: 200,
+    });
 
     // Memoize deleted publications array
     const deletedPublications = useMemo(() => {
@@ -110,6 +122,28 @@ export function CommunityDeletedPageClient({ communityId }: CommunityDeletedPage
             }
         }
     }, [targetPostSlug, targetPollId, deletedPublications]);
+
+    const handleRestore = async (publicationId: string) => {
+        setRestoringIds((prev) => new Set(prev).add(publicationId));
+        try {
+            await restorePublication.mutateAsync({ id: publicationId });
+            // Remove from restoring set after a short delay to allow UI update
+            setTimeout(() => {
+                setRestoringIds((prev) => {
+                    const next = new Set(prev);
+                    next.delete(publicationId);
+                    return next;
+                });
+            }, 500);
+        } catch (error) {
+            console.error('Failed to restore publication:', error);
+            setRestoringIds((prev) => {
+                const next = new Set(prev);
+                next.delete(publicationId);
+                return next;
+            });
+        }
+    };
 
     const pageHeader = (
         <SimpleStickyHeader
@@ -188,6 +222,26 @@ export function CommunityDeletedPageClient({ communityId }: CommunityDeletedPage
                                         <div className="absolute -top-2 -right-2 z-10 bg-error text-error-content rounded-full px-2 py-1 text-xs font-semibold shadow-lg">
                                             Deleted
                                         </div>
+                                        {/* Restore button */}
+                                        <div className="absolute -top-2 left-2 z-10">
+                                            <Button
+                                                variant="default"
+                                                size="sm"
+                                                onClick={() => handleRestore(p.id)}
+                                                disabled={restoringIds.has(p.id) || restorePublication.isPending}
+                                                className="rounded-xl active:scale-[0.98] text-xs"
+                                                title="Restore publication"
+                                            >
+                                                {restoringIds.has(p.id) || restorePublication.isPending ? (
+                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <RotateCcw className="w-3 h-3 mr-1" />
+                                                        Restore
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
                                         <PublicationCard
                                             publication={p}
                                             wallets={Array.isArray(wallets) ? wallets : []}
@@ -199,20 +253,13 @@ export function CommunityDeletedPageClient({ communityId }: CommunityDeletedPage
                             );
                         })}
 
+                        {/* Infinite scroll trigger */}
+                        <div ref={observerTarget} className="h-4" />
+
                         {isFetchingNextDeletedPage && (
                             <div className="flex justify-center py-4">
                                 <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
                             </div>
-                        )}
-
-                        {!paginationEnd && deletedPublications.length > 0 && !isFetchingNextDeletedPage && (
-                            <Button
-                                variant="default"
-                                onClick={() => fetchNextDeletedPage()}
-                                className="rounded-xl active:scale-[0.98] w-full sm:w-auto mx-auto block"
-                            >
-                                {t('communities.loadMore')}
-                            </Button>
                         )}
                     </>
                 ) : (

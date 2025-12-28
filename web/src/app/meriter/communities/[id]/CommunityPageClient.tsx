@@ -50,6 +50,7 @@ import { useTranslations as useCommonTranslations } from 'next-intl';
 import { SortToggle } from '@/components/ui/SortToggle';
 import { isFakeDataMode } from '@/config';
 import { trpc } from '@/lib/trpc/client';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -267,6 +268,14 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             setPaginationEnd(false);
         }
     }, [hasNextPage]);
+
+    // Infinite scroll trigger
+    const observerTarget = useInfiniteScroll({
+        hasNextPage,
+        fetchNextPage,
+        isFetchingNextPage,
+        threshold: 200,
+    });
 
     // Memoize feed items array (can contain both publications and polls)
     const publications = useMemo(() => {
@@ -1007,20 +1016,13 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 );
                             })}
 
+                    {/* Infinite scroll trigger */}
+                    <div ref={observerTarget} className="h-4" />
+
                     {isFetchingNextPage && (
                         <div className="flex justify-center py-4">
                             <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
                         </div>
-                    )}
-
-                    {!paginationEnd && filteredPublications.length > 1 && !isFetchingNextPage && (
-                        <Button
-                            variant="default"
-                            onClick={() => fetchNextPage()}
-                            className="rounded-xl active:scale-[0.98] w-full sm:w-auto mx-auto block"
-                        >
-                            {t('communities.loadMore')}
-                        </Button>
                     )}
                 </div>
 
