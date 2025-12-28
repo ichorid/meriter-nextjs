@@ -51,6 +51,7 @@ WORKDIR /app
 RUN addgroup -S nodejs && adduser -S -G nodejs nestjs && \
     npm install -g pnpm@10.24.0
 ENV NODE_ENV=production
+ENV CI=true
 # Copy built artifacts and production node_modules (from pnpm deploy)
 COPY --from=builder --chown=nestjs:nodejs /out ./
 
