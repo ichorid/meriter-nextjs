@@ -646,7 +646,6 @@
             "hashtagDescription": "Any message with this hashtag in the community chat will automatically appear on the site",
             "delete": "Delete",
             "addValue": "+ Add Value",
-            "cancel": "Cancel",
             "saveSettings": "Save Settings",
             "settingsSaved": "Settings saved successfully!",
             "error": "Error",
@@ -878,6 +877,9 @@
             "quotaRecipients": "Quota Recipients",
             "canEarn": "Can Earn",
             "canSpend": "Can Spend",
+            "editWindowMinutes": "Post editing window (minutes)",
+            "editWindowMinutesHelp": "How many minutes after publishing participants can edit a post (0 = no limit).",
+            "allowEditByOthers": "Allow participants to edit other people's posts",
             "linkedCurrencies": "Linked Currencies",
             "enterCurrencyId": "Enter currency ID",
             "add": "Add",
@@ -972,7 +974,7 @@
         "newUserDescription": "Please complete your profile to continue.",
         "generalInformation": "General",
         "generalInformationSubtitle": "Please fill in the following information to complete your profile.",
-        "aboutInformation": "About project",
+        "aboutInformation": "About",
         "avatarUrl": "Avatar URL",
         "avatarUrlPlaceholder": "https://example.com/avatar.png",
         "avatarUrlHelper": "Add an avatar URL to your profile",
@@ -1056,9 +1058,9 @@
             "superadmin": "Superadmin"
         },
         "contactInformattion": "Contacts",
-        "aboutInformattion": "About project",
+        "aboutInformattion": "About",
         "hint": {
-            "about": "Here you can tell a little bit about the project and what is important to you."
+            "about": "Tell us a little bit about yourself and what is important to you."
         },
         "useInvite": {
             "title": "Join community by invite"

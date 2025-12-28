@@ -880,6 +880,9 @@
             "quotaRecipients": "Получатели квоты",
             "canEarn": "Может зарабатывать",
             "canSpend": "Может тратить",
+            "editWindowMinutes": "Окно редактирования поста (минуты)",
+            "editWindowMinutesHelp": "Сколько минут после публикации участники могут редактировать пост (0 = без ограничений).",
+            "allowEditByOthers": "Разрешить участникам редактировать чужие посты",
             "linkedCurrencies": "Связанные валюты",
             "enterCurrencyId": "Введите ID валюты",
             "add": "Добавить",
@@ -974,7 +977,7 @@
         "newUserDescription": "Пожалуйста, заполните свой профиль для продолжения.",
         "generalInformation": "Основная информация",
         "generalInformationSubtitle": "Пожалуйста, заполните следующую информацию для завершения вашего профиля.",
-        "aboutInformation": "О проекте",
+        "aboutInformation": "О себе",
         "avatarUrl": "URL аватара",
         "avatarUrlPlaceholder": "https://example.com/avatar.png",
         "avatarUrlHelper": "Добавьте URL аватара в ваш профиль",
@@ -1058,9 +1061,9 @@
             "superadmin": "Суперадмин"
         },
         "contactInformattion": "Контакты",
-        "aboutInformattion": "О проекте",
+        "aboutInformattion": "О себе",
         "hint": {
-            "about": "Здесь вы можете рассказать немного о проекте и о том, что важно для вас."
+            "about": "Расскажите немного о себе и о том, что важно для вас."
         },
         "useInvite": {
             "title": "Присоединиться к сообществу по приглашению"

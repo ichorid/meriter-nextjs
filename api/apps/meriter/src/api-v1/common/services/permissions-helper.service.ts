@@ -431,24 +431,10 @@ export class PermissionsHelperService {
    * Get the reason why editing is disabled
    */
   private getEditDisabledReason(
-    publication: any,
+    _publication: any,
     _userId: string,
     _authorId: string,
   ): string | undefined {
-    const metrics = publication.getMetrics;
-    const metricsSnapshot = metrics.toSnapshot();
-    const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
-    const commentCount = metricsSnapshot.commentCount || 0;
-
-    if (totalVotes > 0) {
-      return 'editDisabled.hasVotes';
-    }
-
-    if (commentCount > 0) {
-      return 'editDisabled.hasComments';
-    }
-
-    // Check time window would be done by PermissionService
     return 'editDisabled.timeWindowExpired';
   }
 
