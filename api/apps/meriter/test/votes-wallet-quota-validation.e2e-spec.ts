@@ -16,6 +16,7 @@ import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schem
 import { uid } from 'uid';
 import { trpcMutation, trpcMutationWithError } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Votes Wallet and Quota Validation (e2e)', () => {
   jest.setTimeout(60000); // Set timeout for all tests in this suite
@@ -306,15 +307,17 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       (global as any).testUserId = testUserId;
       
       // Try to vote with both amounts zero
-      const result = await trpcMutationWithError(app, 'votes.create', {
-        targetType: 'publication',
-        targetId: testPublicationId,
-        quotaAmount: 0,
-        walletAmount: 0,
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.create', {
+          targetType: 'publication',
+          targetId: testPublicationId,
+          quotaAmount: 0,
+          walletAmount: 0,
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be non-zero');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be non-zero');
+      });
     });
 
     it('should reject votes exceeding available quota', async () => {
@@ -322,15 +325,17 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       (global as any).testUserId = testUserId;
       
       // User has 10 quota, try to use 15 quota
-      const result = await trpcMutationWithError(app, 'votes.create', {
-        targetType: 'publication',
-        targetId: testPublicationId,
-        quotaAmount: 15,
-        walletAmount: 0,
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.create', {
+          targetType: 'publication',
+          targetId: testPublicationId,
+          quotaAmount: 15,
+          walletAmount: 0,
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Insufficient quota');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Insufficient quota');
+      });
     });
 
     it('should reject votes exceeding available wallet balance', async () => {
@@ -338,15 +343,17 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       (global as any).testUserId = testUserId;
       
       // User has 100 wallet balance, try to use 150 wallet
-      const result = await trpcMutationWithError(app, 'votes.create', {
-        targetType: 'publication',
-        targetId: futureVisionPublicationId,
-        quotaAmount: 0,
-        walletAmount: 150,
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.create', {
+          targetType: 'publication',
+          targetId: futureVisionPublicationId,
+          quotaAmount: 0,
+          walletAmount: 150,
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Insufficient wallet balance');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Insufficient wallet balance');
+      });
     });
 
     it('should reject wallet voting in non-special communities (wallet is special-group-only)', async () => {
@@ -354,15 +361,17 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       (global as any).testUserId = testUserId;
       
       // Wallet voting is not allowed in normal communities
-      const result = await trpcMutationWithError(app, 'votes.create', {
-        targetType: 'publication',
-        targetId: testPublicationId,
-        quotaAmount: 0,
-        walletAmount: 1,
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.create', {
+          targetType: 'publication',
+          targetId: testPublicationId,
+          quotaAmount: 0,
+          walletAmount: 1,
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Voting with permanent wallet merits is only allowed in special groups');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Voting with permanent wallet merits is only allowed in special groups');
+      });
     });
 
     it('should reject quota for downvotes (negative votes)', async () => {
@@ -370,17 +379,19 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       (global as any).testUserId = testUserId;
       
       // Downvotes should only use wallet, not quota
-      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-        targetType: 'publication',
-        targetId: testPublicationId,
-        quotaAmount: 5,
-        walletAmount: 0,
-        direction: 'down',
-        comment: 'downvote',
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'publication',
+          targetId: testPublicationId,
+          quotaAmount: 5,
+          walletAmount: 0,
+          direction: 'down',
+          comment: 'downvote',
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Quota cannot be used for downvotes');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Quota cannot be used for downvotes');
+      });
     });
 
     it('should accept valid quota-only vote', async () => {
@@ -419,14 +430,16 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const result = await trpcMutationWithError(app, 'votes.create', {
-        targetType: 'publication',
-        targetId: futureVisionPublicationId,
-        quotaAmount: 1,
-        walletAmount: 1,
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.create', {
+          targetType: 'publication',
+          targetId: futureVisionPublicationId,
+          quotaAmount: 1,
+          walletAmount: 1,
+        });
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Future Vision only allows wallet voting');
       });
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Future Vision only allows wallet voting');
     });
 
     it('should deduct wallet balance for wallet-only votes in Future Vision', async () => {
@@ -477,30 +490,34 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const result = await trpcMutationWithError(app, 'votes.create', {
-        targetType: 'vote',
-        targetId: targetVoteId,
-        quotaAmount: 0,
-        walletAmount: 0,
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.create', {
+          targetType: 'vote',
+          targetId: targetVoteId,
+          quotaAmount: 0,
+          walletAmount: 0,
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be non-zero');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be non-zero');
+      });
     });
 
     it('should reject combined quota + wallet vote on comment in non-special communities (wallet is special-group-only)', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const result = await trpcMutationWithError(app, 'votes.create', {
-        targetType: 'vote',
-        targetId: targetVoteId,
-        quotaAmount: 3,
-        walletAmount: 2,
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.create', {
+          targetType: 'vote',
+          targetId: targetVoteId,
+          quotaAmount: 3,
+          walletAmount: 2,
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Voting with permanent wallet merits is only allowed in special groups');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Voting with permanent wallet merits is only allowed in special groups');
+      });
     });
   });
 
@@ -509,32 +526,36 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-        targetType: 'publication',
-        targetId: testPublicationId,
-        quotaAmount: 0,
-        walletAmount: 0,
-        comment: 'Test comment',
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'publication',
+          targetId: testPublicationId,
+          quotaAmount: 0,
+          walletAmount: 0,
+          comment: 'Test comment',
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be non-zero');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be non-zero');
+      });
     });
 
     it('should reject combined quota + wallet vote with comment in non-special communities (wallet is special-group-only)', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-        targetType: 'publication',
-        targetId: testPublicationId,
-        quotaAmount: 4,
-        walletAmount: 2,
-        comment: 'Test comment with vote',
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'publication',
+          targetId: testPublicationId,
+          quotaAmount: 4,
+          walletAmount: 2,
+          comment: 'Test comment with vote',
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Voting with permanent wallet merits is only allowed in special groups');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Voting with permanent wallet merits is only allowed in special groups');
+      });
     });
   });
 });

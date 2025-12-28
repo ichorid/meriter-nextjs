@@ -4,6 +4,7 @@ import { Connection, Model } from 'mongoose';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { trpcMutation, trpcQuery, trpcQueryWithError } from './helpers/trpc-test-helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
@@ -317,8 +318,10 @@ describe('comments.getDetails (e2e)', () => {
 
   it('returns NOT_FOUND for an unknown id', async () => {
     const missingId = uid();
-    const result = await trpcQueryWithError(app, 'comments.getDetails', { id: missingId });
-    expect(result.error?.code).toBe('NOT_FOUND');
+    await withSuppressedErrors(['NOT_FOUND'], async () => {
+      const result = await trpcQueryWithError(app, 'comments.getDetails', { id: missingId });
+      expect(result.error?.code).toBe('NOT_FOUND');
+    });
   });
 });
 

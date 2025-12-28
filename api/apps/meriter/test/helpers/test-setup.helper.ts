@@ -7,6 +7,76 @@ import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import * as cookieParser from 'cookie-parser';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
+import { shouldSuppressError } from './error-suppression.helper';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object';
+}
+
+function mapHttpStatusToSuppressableCode(
+  status: number,
+): 'BAD_REQUEST' | 'UNAUTHORIZED' | 'FORBIDDEN' | 'NOT_FOUND' | undefined {
+  switch (status) {
+    case 400:
+      return 'BAD_REQUEST';
+    case 401:
+      return 'UNAUTHORIZED';
+    case 403:
+      return 'FORBIDDEN';
+    case 404:
+      return 'NOT_FOUND';
+    default:
+      return undefined;
+  }
+}
+
+function getSuppressableCodeFromTrpcError(error: unknown): string | undefined {
+  if (!isRecord(error)) {
+    return undefined;
+  }
+
+  // 1) Prefer the tRPC code if it already matches suppressable codes.
+  const directCode = error['code'];
+  if (typeof directCode === 'string' && shouldSuppressError(directCode)) {
+    return directCode;
+  }
+
+  // 2) Fall back to the underlying cause's HTTP-ish status where available.
+  const cause = error['cause'];
+  if (!isRecord(cause)) {
+    return undefined;
+  }
+
+  // Nest HttpException instances expose getStatus().
+  const getStatus = cause['getStatus'];
+  if (typeof getStatus === 'function') {
+    const status = (getStatus as (this: unknown) => unknown).call(cause);
+    if (typeof status === 'number') {
+      return mapHttpStatusToSuppressableCode(status);
+    }
+  }
+
+  // Some errors expose numeric status/statusCode.
+  const status = cause['status'];
+  if (typeof status === 'number') {
+    return mapHttpStatusToSuppressableCode(status);
+  }
+  const statusCode = cause['statusCode'];
+  if (typeof statusCode === 'number') {
+    return mapHttpStatusToSuppressableCode(statusCode);
+  }
+
+  // Or nested response.statusCode.
+  const response = cause['response'];
+  if (isRecord(response)) {
+    const responseStatusCode = response['statusCode'];
+    if (typeof responseStatusCode === 'number') {
+      return mapHttpStatusToSuppressableCode(responseStatusCode);
+    }
+  }
+
+  return undefined;
+}
 
 export interface TestAppContext {
   app: INestApplication;
@@ -27,7 +97,7 @@ export class TestSetupHelper {
     
     // Delete MONGO_URL if it exists (from global setup) to ensure each test gets its own instance
     // This prevents conflicts where tests try to use the global MongoDB instance
-    const originalMongoUrl = process.env.MONGO_URL;
+    const _originalMongoUrl = process.env.MONGO_URL;
     delete process.env.MONGO_URL;
     
     const uri = await testDb.start();
@@ -55,6 +125,11 @@ export class TestSetupHelper {
       router: trpcService.getRouter(),
       createContext: ({ req, res }) => trpcService.createContext(req, res),
       onError({ error, path }) {
+        const isTestEnv = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined;
+        const suppressableCode = getSuppressableCodeFromTrpcError(error);
+        if (isTestEnv && shouldSuppressError(suppressableCode)) {
+          return;
+        }
         console.error(`tRPC error on '${path}':`, error);
       },
     });
@@ -108,6 +183,11 @@ export class TestSetupHelper {
       router: trpcService.getRouter(),
       createContext: ({ req, res }) => trpcService.createContext(req, res),
       onError({ error, path }) {
+        const isTestEnv = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined;
+        const suppressableCode = getSuppressableCodeFromTrpcError(error);
+        if (isTestEnv && shouldSuppressError(suppressableCode)) {
+          return;
+        }
         console.error(`tRPC error on '${path}':`, error);
       },
     });

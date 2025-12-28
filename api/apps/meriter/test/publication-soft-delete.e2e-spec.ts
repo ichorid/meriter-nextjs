@@ -9,6 +9,7 @@ import { Publication, PublicationDocument } from '../src/domain/models/publicati
 import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Publication Soft Delete E2E', () => {
   jest.setTimeout(60000);
@@ -296,10 +297,12 @@ describe('Publication Soft Delete E2E', () => {
 
       // Regular user should not see deleted publication
       (global as any).testUserId = participantId;
-      const result = await trpcQueryWithError(app, 'publications.getById', { id: created.id });
+      await withSuppressedErrors(['NOT_FOUND'], async () => {
+        const result = await trpcQueryWithError(app, 'publications.getById', { id: created.id });
 
-      // Should return NOT_FOUND (filtered out)
-      expect(result.error?.code).toBe('NOT_FOUND');
+        // Should return NOT_FOUND (filtered out)
+        expect(result.error?.code).toBe('NOT_FOUND');
+      });
     });
   });
 
@@ -347,12 +350,14 @@ describe('Publication Soft Delete E2E', () => {
 
       // Participant should NOT be able to view deleted publications
       (global as any).testUserId = participantId;
-      const result = await trpcQueryWithError(app, 'publications.getDeleted', {
-        communityId,
-        pageSize: 10,
-      });
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcQueryWithError(app, 'publications.getDeleted', {
+          communityId,
+          pageSize: 10,
+        });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
 
     it('should NOT allow lead from different community to view deleted publications', async () => {
@@ -363,12 +368,14 @@ describe('Publication Soft Delete E2E', () => {
 
       // Lead from different community should NOT be able to view
       (global as any).testUserId = otherLeadId;
-      const result = await trpcQueryWithError(app, 'publications.getDeleted', {
-        communityId, // Different community
-        pageSize: 10,
-      });
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcQueryWithError(app, 'publications.getDeleted', {
+          communityId, // Different community
+          pageSize: 10,
+        });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
   });
 

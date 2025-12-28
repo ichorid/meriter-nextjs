@@ -1,5 +1,6 @@
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { trpcQuery } from './helpers/trpc-test-helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 import * as request from 'supertest';
 import { uid } from 'uid';
 
@@ -48,16 +49,18 @@ describe('tRPC Connectivity & Auth Flow E2E', () => {
 
     describe('Protected Endpoints & Auth Flow', () => {
         it('should fail accessing protected endpoint without authentication', async () => {
-            const response = await request(app.getHttpServer())
-                .get('/trpc/users.getMe')
-                .expect(401);
+            await withSuppressedErrors(['UNAUTHORIZED'], async () => {
+                const response = await request(app.getHttpServer())
+                    .get('/trpc/users.getMe')
+                    .expect(401);
 
-            const body = response.body;
-            const error = body.error || body.result?.error;
-            expect(error).toBeDefined();
+                const body = response.body;
+                const error = body.error || body.result?.error;
+                expect(error).toBeDefined();
 
-            const code = error.data?.code || error.code || (error.json?.data?.code);
-            expect(code).toMatch(/UNAUTHORIZED/);
+                const code = error.data?.code || error.code || (error.json?.data?.code);
+                expect(code).toMatch(/UNAUTHORIZED/);
+            });
         });
 
         it('should access protected endpoint with test authentication', async () => {

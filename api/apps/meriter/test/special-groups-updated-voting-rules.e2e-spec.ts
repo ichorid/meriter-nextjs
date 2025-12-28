@@ -14,6 +14,7 @@ import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/
 import { uid } from 'uid';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Special Groups Updated Voting Rules (e2e)', () => {
   jest.setTimeout(60000);
@@ -334,16 +335,18 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
     it('should reject wallet voting on publications', async () => {
       (global as any).testUserId = testUserId;
       
-      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-        targetType: 'publication',
-        targetId: marathonPubId,
-        quotaAmount: 0,
-        walletAmount: 10,
-        comment: 'Wallet vote attempt',
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'publication',
+          targetId: marathonPubId,
+          quotaAmount: 0,
+          walletAmount: 10,
+          comment: 'Wallet vote attempt',
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Marathon of Good only allows quota voting');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Marathon of Good only allows quota voting');
+      });
     });
 
     it('should reject wallet voting on comments (votes)', async () => {
@@ -361,16 +364,18 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       const voteId = voteResponse.id;
 
       // Try to vote on the vote (comment) with wallet
-      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-        targetType: 'vote',
-        targetId: voteId,
-        quotaAmount: 0,
-        walletAmount: 10,
-        comment: 'Wallet vote attempt',
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'vote',
+          targetId: voteId,
+          quotaAmount: 0,
+          walletAmount: 10,
+          comment: 'Wallet vote attempt',
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Marathon of Good only allows quota voting');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Marathon of Good only allows quota voting');
+      });
     });
   });
 
@@ -391,16 +396,18 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
     it('should reject quota voting on publications', async () => {
       (global as any).testUserId = testUserId;
       
-      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-        targetType: 'publication',
-        targetId: visionPubId,
-        quotaAmount: 5,
-        walletAmount: 0,
-        comment: 'Quota vote attempt',
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'publication',
+          targetId: visionPubId,
+          quotaAmount: 5,
+          walletAmount: 0,
+          comment: 'Quota vote attempt',
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Future Vision only allows wallet voting');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Future Vision only allows wallet voting');
+      });
     });
 
     it('should reject quota voting on comments (votes)', async () => {
@@ -419,16 +426,18 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       const _visionVoteId = voteId;
 
       // Try to vote on the vote (comment) with quota
-      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-        targetType: 'vote',
-        targetId: voteId,
-        quotaAmount: 3,
-        walletAmount: 0,
-        comment: 'Quota vote attempt',
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'vote',
+          targetId: voteId,
+          quotaAmount: 3,
+          walletAmount: 0,
+          comment: 'Quota vote attempt',
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Future Vision only allows wallet voting');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Future Vision only allows wallet voting');
+      });
     });
 
     it('should allow wallet voting on publications', async () => {
@@ -639,21 +648,23 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
     it('should reject viewer wallet voting in marathon-of-good', async () => {
       (global as any).testUserId = viewerUserId;
       
-      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-        targetType: 'publication',
-        targetId: viewerPubId,
-        quotaAmount: 0,
-        walletAmount: 10,
-        comment: 'Viewer wallet vote attempt',
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'publication',
+          targetId: viewerPubId,
+          quotaAmount: 0,
+          walletAmount: 10,
+          comment: 'Viewer wallet vote attempt',
+        });
 
-      // Viewer check should happen first, but marathon-of-good check also applies
-      // Accept either error message as both indicate wallet voting is not allowed
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(
-        result.error?.message.includes('Viewers can only vote using daily quota') ||
-        result.error?.message.includes('Marathon of Good only allows quota voting')
-      ).toBe(true);
+        // Viewer check should happen first, but marathon-of-good check also applies
+        // Accept either error message as both indicate wallet voting is not allowed
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(
+          result.error?.message.includes('Viewers can only vote using daily quota') ||
+            result.error?.message.includes('Marathon of Good only allows quota voting'),
+        ).toBe(true);
+      });
     });
   });
 

@@ -11,6 +11,7 @@ import { CommentSchemaClass, CommentDocument } from '../src/domain/models/commen
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Poll Edit and Lead Permissions E2E', () => {
   jest.setTimeout(60000);
@@ -208,16 +209,18 @@ describe('Poll Edit and Lead Permissions E2E', () => {
 
       // Try to edit the poll - should fail
       (global as any).testUserId = authorId;
-      const result = await trpcMutationWithError(app, 'polls.update', {
-        id: pollId,
-        data: {
-          question: 'Updated question',
-          options: pollDto.options,
-          expiresAt: pollDto.expiresAt,
-        },
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'polls.update', {
+          id: pollId,
+          data: {
+            question: 'Updated question',
+            options: pollDto.options,
+            expiresAt: pollDto.expiresAt,
+          },
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+      });
 
       // Verify poll was not updated
       const poll = await trpcQuery(app, 'polls.getById', { id: pollId });
@@ -275,12 +278,14 @@ describe('Poll Edit and Lead Permissions E2E', () => {
 
       // Lead from different community should NOT be able to edit
       (global as any).testUserId = leadId;
-      const result = await trpcMutationWithError(app, 'publications.update', {
-        id: publicationId,
-        data: { content: 'Updated content by lead' },
-      });
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.update', {
+          id: publicationId,
+          data: { content: 'Updated content by lead' },
+        });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
   });
 
@@ -321,8 +326,10 @@ describe('Poll Edit and Lead Permissions E2E', () => {
       expect(result.success).toBe(true);
 
       // Verify poll was deleted
-      const pollResult = await trpcQueryWithError(app, 'polls.getById', { id: pollId });
-      expect(pollResult.error?.code).toBe('NOT_FOUND');
+      await withSuppressedErrors(['NOT_FOUND'], async () => {
+        const pollResult = await trpcQueryWithError(app, 'polls.getById', { id: pollId });
+        expect(pollResult.error?.code).toBe('NOT_FOUND');
+      });
     });
 
     it('should NOT allow lead to edit poll in different community', async () => {
@@ -335,16 +342,18 @@ describe('Poll Edit and Lead Permissions E2E', () => {
 
       // Lead from different community should NOT be able to edit
       (global as any).testUserId = leadId;
-      const result = await trpcMutationWithError(app, 'polls.update', {
-        id: pollId,
-        data: {
-          question: 'Updated question by lead',
-          options: pollDto.options,
-          expiresAt: pollDto.expiresAt,
-        },
-      });
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'polls.update', {
+          id: pollId,
+          data: {
+            question: 'Updated question by lead',
+            options: pollDto.options,
+            expiresAt: pollDto.expiresAt,
+          },
+        });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
   });
 
@@ -394,9 +403,11 @@ describe('Poll Edit and Lead Permissions E2E', () => {
       await trpcMutation(app, 'comments.delete', { id: commentId });
 
       // Verify comment was deleted
-      const result = await trpcQueryWithError(app, 'comments.getById', { id: commentId });
+      await withSuppressedErrors(['NOT_FOUND'], async () => {
+        const result = await trpcQueryWithError(app, 'comments.getById', { id: commentId });
 
-      expect(result.error?.code).toBe('NOT_FOUND');
+        expect(result.error?.code).toBe('NOT_FOUND');
+      });
     });
 
     it('should NOT allow lead to edit comment in different community', async () => {
@@ -416,12 +427,14 @@ describe('Poll Edit and Lead Permissions E2E', () => {
 
       // Lead from different community should NOT be able to edit
       (global as any).testUserId = leadId;
-      const result = await trpcMutationWithError(app, 'comments.update', {
-        id: commentId,
-        data: { content: 'Updated comment by lead' },
-      });
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'comments.update', {
+          id: commentId,
+          data: { content: 'Updated comment by lead' },
+        });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
   });
 
@@ -436,12 +449,14 @@ describe('Poll Edit and Lead Permissions E2E', () => {
 
       // Participant should NOT be able to edit
       (global as any).testUserId = participantId;
-      const result = await trpcMutationWithError(app, 'publications.update', {
-        id: publicationId,
-        data: { content: 'Updated content by participant' },
-      });
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.update', {
+          id: publicationId,
+          data: { content: 'Updated content by participant' },
+        });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
 
     it('should NOT allow participant to delete poll they did not create', async () => {
@@ -454,11 +469,13 @@ describe('Poll Edit and Lead Permissions E2E', () => {
 
       // Participant should NOT be able to delete
       (global as any).testUserId = participantId;
-      const result = await trpcMutationWithError(app, 'polls.delete', { id: pollId });
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'polls.delete', { id: pollId });
 
-      // Note: Delete may throw NOT_IMPLEMENTED or FORBIDDEN depending on implementation
-      expect(result.error).toBeDefined();
-      expect(['NOT_IMPLEMENTED', 'FORBIDDEN']).toContain(result.error?.code);
+        // Note: Delete may throw NOT_IMPLEMENTED or FORBIDDEN depending on implementation
+        expect(result.error).toBeDefined();
+        expect(['NOT_IMPLEMENTED', 'FORBIDDEN']).toContain(result.error?.code);
+      });
     });
 
     it('should NOT allow participant to delete comment they did not create', async () => {
@@ -478,9 +495,11 @@ describe('Poll Edit and Lead Permissions E2E', () => {
 
       // Participant should NOT be able to delete
       (global as any).testUserId = participantId;
-      const result = await trpcMutationWithError(app, 'comments.delete', { id: commentId });
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'comments.delete', { id: commentId });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
   });
 });

@@ -8,6 +8,7 @@ import { uid } from 'uid';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Publication and Poll Quota Consumption (e2e)', () => {
   jest.setTimeout(60000);
@@ -216,17 +217,19 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
       expect(quota.remaining).toBe(0);
 
       // Try to create another publication - should fail
-      const result = await trpcMutationWithError(app, 'publications.create', {
-        communityId: testCommunityId,
-        title: 'Should Fail',
-        description: 'Test content',
-        content: 'Test content',
-        type: 'text',
-        postType: 'basic',
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.create', {
+          communityId: testCommunityId,
+          title: 'Should Fail',
+          description: 'Test content',
+          content: 'Test content',
+          type: 'text',
+          postType: 'basic',
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Insufficient quota');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Insufficient quota');
+      });
     });
 
     it('should not consume quota for future-vision communities', async () => {
@@ -387,19 +390,21 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
       expect(quota.remaining).toBe(0);
 
       // Try to create another poll - should fail
-      const result = await trpcMutationWithError(app, 'polls.create', {
-        communityId: testCommunityId,
-        question: 'Should Fail',
-        description: 'Test description',
-        options: [
-          { id: '1', text: 'Option 1' },
-          { id: '2', text: 'Option 2' },
-        ],
-        expiresAt: expiresAt.toISOString(),
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'polls.create', {
+          communityId: testCommunityId,
+          question: 'Should Fail',
+          description: 'Test description',
+          options: [
+            { id: '1', text: 'Option 1' },
+            { id: '2', text: 'Option 2' },
+          ],
+          expiresAt: expiresAt.toISOString(),
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Insufficient quota');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Insufficient quota');
+      });
     });
 
     it('should not allow poll creation in future-vision communities', async () => {
@@ -409,19 +414,21 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
       expiresAt.setDate(expiresAt.getDate() + 1);
 
       // Try to create poll in future-vision community - should fail
-      const result = await trpcMutationWithError(app, 'polls.create', {
-        communityId: futureVisionCommunityId,
-        question: 'Test Poll',
-        description: 'Test description',
-        options: [
-          { id: '1', text: 'Option 1' },
-          { id: '2', text: 'Option 2' },
-        ],
-        expiresAt: expiresAt.toISOString(),
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'polls.create', {
+          communityId: futureVisionCommunityId,
+          question: 'Test Poll',
+          description: 'Test description',
+          options: [
+            { id: '1', text: 'Option 1' },
+            { id: '2', text: 'Option 2' },
+          ],
+          expiresAt: expiresAt.toISOString(),
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('disabled in future-vision');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('disabled in future-vision');
+      });
     });
 
     it('should track quota consumption correctly with poll casts', async () => {

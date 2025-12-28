@@ -1,5 +1,6 @@
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { trpcMutation, trpcMutationWithError } from './helpers/trpc-test-helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 import { uid } from 'uid';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunityService } from '../src/domain/services/community.service';
@@ -435,14 +436,16 @@ describe('Publication Forward E2E', () => {
 
       // Try to propose forward (should fail)
       (global as any).testUserId = participantId;
-      const result = await trpcMutationWithError(app, 'publications.proposeForward', {
-        publicationId,
-        targetCommunityId: marathonCommunityId,
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.proposeForward', {
+          publicationId,
+          targetCommunityId: marathonCommunityId,
+        });
 
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('team groups');
+        expect(result.error).toBeDefined();
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('team groups');
+      });
     });
 
     it('should reject forward proposal for poll posts', async () => {
@@ -458,14 +461,16 @@ describe('Publication Forward E2E', () => {
 
       // Try to propose forward (should fail)
       (global as any).testUserId = participantId;
-      const result = await trpcMutationWithError(app, 'publications.proposeForward', {
-        publicationId,
-        targetCommunityId: marathonCommunityId,
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.proposeForward', {
+          publicationId,
+          targetCommunityId: marathonCommunityId,
+        });
 
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('polls');
+        expect(result.error).toBeDefined();
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('polls');
+      });
     });
 
     it('should reject forward proposal when lead tries to use proposeForward', async () => {
@@ -481,14 +486,16 @@ describe('Publication Forward E2E', () => {
 
       // Lead tries to propose (should fail - should use forward directly)
       (global as any).testUserId = leadId;
-      const result = await trpcMutationWithError(app, 'publications.proposeForward', {
-        publicationId,
-        targetCommunityId: marathonCommunityId,
-      });
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.proposeForward', {
+          publicationId,
+          targetCommunityId: marathonCommunityId,
+        });
 
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('FORBIDDEN');
-      expect(result.error?.message).toContain('Leads should use the forward endpoint');
+        expect(result.error).toBeDefined();
+        expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.message).toContain('Leads should use the forward endpoint');
+      });
     });
 
     it('should reject forward when insufficient quota', async () => {
@@ -515,14 +522,16 @@ describe('Publication Forward E2E', () => {
 
       // Try to propose forward (should fail)
       (global as any).testUserId = participantId;
-      const result = await trpcMutationWithError(app, 'publications.proposeForward', {
-        publicationId,
-        targetCommunityId: marathonCommunityId,
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.proposeForward', {
+          publicationId,
+          targetCommunityId: marathonCommunityId,
+        });
 
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Insufficient quota');
+        expect(result.error).toBeDefined();
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Insufficient quota');
+      });
     });
 
     it('should reject forward when target community does not support post type', async () => {
@@ -553,14 +562,16 @@ describe('Publication Forward E2E', () => {
 
       // Try to forward to restricted community (should fail)
       (global as any).testUserId = participantId;
-      const result = await trpcMutationWithError(app, 'publications.proposeForward', {
-        publicationId,
-        targetCommunityId: restrictedCommunityId,
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.proposeForward', {
+          publicationId,
+          targetCommunityId: restrictedCommunityId,
+        });
 
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('does not support');
+        expect(result.error).toBeDefined();
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('does not support');
+      });
     });
   });
 });
