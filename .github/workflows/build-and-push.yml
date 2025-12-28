@@ -114,7 +114,7 @@ jobs:
           key: mongoms-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
       - name: Pre-download MongoDB binary (mongodb-memory-server)
         run: |
-          node -e "const { MongoMemoryServer } = require('mongodb-memory-server'); MongoMemoryServer.create({ binary: { downloadDir: process.env.MONGOMS_DOWNLOAD_DIR }, instance: { dbName: 'preload' } }).then(m => m.stop()).catch(e => { console.error(e); process.exit(1); });"
+          pnpm --filter @meriter/api exec node -e "const { MongoMemoryServer } = require('mongodb-memory-server'); MongoMemoryServer.create({ binary: { downloadDir: process.env.MONGOMS_DOWNLOAD_DIR }, instance: { dbName: 'preload' } }).then(m => m.stop()).catch(e => { console.error(e); process.exit(1); });"
       - name: Run unit tests
         run: pnpm test:ci
 
@@ -151,7 +151,7 @@ jobs:
           key: mongoms-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
       - name: Pre-download MongoDB binary (mongodb-memory-server)
         run: |
-          node -e "const { MongoMemoryServer } = require('mongodb-memory-server'); MongoMemoryServer.create({ binary: { downloadDir: process.env.MONGOMS_DOWNLOAD_DIR }, instance: { dbName: 'preload' } }).then(m => m.stop()).catch(e => { console.error(e); process.exit(1); });"
+          pnpm --filter @meriter/api exec node -e "const { MongoMemoryServer } = require('mongodb-memory-server'); MongoMemoryServer.create({ binary: { downloadDir: process.env.MONGOMS_DOWNLOAD_DIR }, instance: { dbName: 'preload' } }).then(m => m.stop()).catch(e => { console.error(e); process.exit(1); });"
       - name: Run E2E tests
         run: pnpm --filter @meriter/api test:e2e:ci
 
