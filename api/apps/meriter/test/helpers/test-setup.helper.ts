@@ -64,13 +64,14 @@ export class TestSetupHelper {
 
     // Wait for the database connection to be ready
     // This ensures the connection is established before tests run
+    // Fail fast if connection doesn't establish quickly
     const connection = app.get<Connection>(getConnectionToken());
     if (connection.readyState !== 1) {
-      // Connection is not ready (1 = connected), wait for it
+      // Connection is not ready (1 = connected), wait for it with short timeout
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
-          reject(new Error('Database connection timed out after 10 seconds'));
-        }, 10000);
+          reject(new Error(`Database connection timed out after 5 seconds. Connection state: ${connection.readyState} (0=disconnected, 1=connected, 2=connecting, 3=disconnecting)`));
+        }, 5000); // 5 seconds - fail fast
 
         if (connection.readyState === 1) {
           clearTimeout(timeout);
@@ -85,7 +86,7 @@ export class TestSetupHelper {
 
         connection.once('error', (error) => {
           clearTimeout(timeout);
-          reject(error);
+          reject(new Error(`Database connection failed: ${error.message}`));
         });
       });
     }

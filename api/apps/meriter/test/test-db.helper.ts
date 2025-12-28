@@ -30,8 +30,8 @@ export class TestDatabaseHelper {
 
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
-        reject(new Error('MongoMemoryServer.create() timed out after 60 seconds. This may indicate network issues or insufficient resources in CI/CD.'));
-      }, 60000); // 60 second timeout
+        reject(new Error('MongoMemoryServer.create() timed out after 30 seconds. This may indicate network issues or insufficient resources in CI/CD.'));
+      }, 30000); // 30 second timeout - fail fast
     });
 
     this.mongod = await Promise.race([createPromise, timeoutPromise]);
@@ -44,11 +44,14 @@ export class TestDatabaseHelper {
    */
   async connect(uri?: string): Promise<Connection> {
     const mongoUri = uri || (await this.start());
-    // Add connection timeout options to prevent hanging
+    // Add connection timeout options to fail fast
     this.connection = (await connect(mongoUri, {
-      serverSelectionTimeoutMS: 5000, // 5 seconds
-      connectTimeoutMS: 5000, // 5 seconds
-      socketTimeoutMS: 5000, // 5 seconds
+      serverSelectionTimeoutMS: 3000, // 3 seconds - fail fast
+      connectTimeoutMS: 3000, // 3 seconds - fail fast
+      socketTimeoutMS: 3000, // 3 seconds - fail fast
+      maxPoolSize: 1, // Single connection for tests
+      retryWrites: false, // Disable retries
+      retryReads: false, // Disable retries
     })).connection;
     return this.connection;
   }

@@ -13,8 +13,8 @@ module.exports = async () => {
 
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => {
-      reject(new Error('MongoMemoryServer.create() timed out after 60 seconds in global setup. This may indicate network issues or insufficient resources in CI/CD.'));
-    }, 60000); // 60 second timeout
+      reject(new Error('MongoMemoryServer.create() timed out after 30 seconds in global setup. This may indicate network issues or insufficient resources in CI/CD.'));
+    }, 30000); // 30 second timeout - fail fast
   });
 
   const mongod = await Promise.race([createPromise, timeoutPromise]);
