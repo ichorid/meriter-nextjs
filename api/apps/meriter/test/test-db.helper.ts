@@ -29,14 +29,15 @@ export class TestDatabaseHelper {
     });
 
     let timeoutId: NodeJS.Timeout | undefined;
+    const timeoutMs = process.env.CI ? 120_000 : 30_000;
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(() => {
         reject(
           new Error(
-            'MongoMemoryServer.create() timed out after 30 seconds. This may indicate network issues or insufficient resources in CI/CD.',
+            `MongoMemoryServer.create() timed out after ${Math.round(timeoutMs / 1000)} seconds. This may indicate network issues or insufficient resources in CI/CD.`,
           ),
         );
-      }, 30000); // 30 second timeout - fail fast
+      }, timeoutMs);
     });
 
     try {

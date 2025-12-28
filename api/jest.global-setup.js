@@ -12,14 +12,15 @@ module.exports = async () => {
   });
 
   let timeoutId;
+  const timeoutMs = process.env.CI ? 120000 : 30000;
   const timeoutPromise = new Promise((_, reject) => {
     timeoutId = setTimeout(() => {
       reject(
         new Error(
-          'MongoMemoryServer.create() timed out after 30 seconds in global setup. This may indicate network issues or insufficient resources in CI/CD.',
+          `MongoMemoryServer.create() timed out after ${Math.round(timeoutMs / 1000)} seconds in global setup. This may indicate network issues or insufficient resources in CI/CD.`,
         ),
       );
-    }, 30000); // 30 second timeout - fail fast
+    }, timeoutMs);
   });
 
   let mongod;

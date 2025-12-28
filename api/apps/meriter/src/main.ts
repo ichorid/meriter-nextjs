@@ -8,8 +8,6 @@ import { ApiResponseInterceptor } from './common/interceptors/api-response.inter
 import { TrpcService } from './trpc/trpc.service';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import * as Sentry from '@sentry/node';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const packageJson = require('../../package.json');
 declare const module: any;
 
 async function bootstrap() {
@@ -18,6 +16,7 @@ async function bootstrap() {
   // Initialize Sentry before creating NestJS app
   const sentryDsn = process.env.SENTRY_DSN;
   const sentryEnvironment = process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development';
+  const sentryRelease = process.env.SENTRY_RELEASE;
   const tracesSampleRate = parseFloat(process.env.SENTRY_TRACES_SAMPLE_RATE || '1.0');
   const profilesSampleRate = parseFloat(process.env.SENTRY_PROFILES_SAMPLE_RATE || '1.0');
   
@@ -25,7 +24,7 @@ async function bootstrap() {
     const sentryConfig: Sentry.NodeOptions = {
       dsn: sentryDsn,
       environment: sentryEnvironment,
-      release: `@meriter/api@${packageJson.version}`,
+      ...(sentryRelease ? { release: sentryRelease } : {}),
       tracesSampleRate,
       // Capture unhandled promise rejections
       captureUnhandledRejections: true,
@@ -33,8 +32,8 @@ async function bootstrap() {
     
     // Add profiling integration if available (optional dependency)
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const profilingIntegration = require('@sentry/profiling-node').nodeProfilingIntegration;
+      const profilingModule = await import('@sentry/profiling-node');
+      const profilingIntegration = profilingModule.nodeProfilingIntegration;
       sentryConfig.profilesSampleRate = profilesSampleRate;
       sentryConfig.integrations = [profilingIntegration()];
     } catch {

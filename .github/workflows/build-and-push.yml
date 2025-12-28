@@ -86,6 +86,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      CI: "true"
+      MONGOMS_VERSION: "7.0.24"
+      MONGOMS_DOWNLOAD_DIR: ${{ runner.temp }}/mongodb-binaries
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -94,7 +98,7 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 10.24.0
+          version: 10.26.2
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -103,6 +107,14 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Cache mongodb-memory-server binaries
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.MONGOMS_DOWNLOAD_DIR }}
+          key: mongoms-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
+      - name: Pre-download MongoDB binary (mongodb-memory-server)
+        run: |
+          node -e "const { MongoMemoryServer } = require('mongodb-memory-server'); MongoMemoryServer.create({ binary: { downloadDir: process.env.MONGOMS_DOWNLOAD_DIR }, instance: { dbName: 'preload' } }).then(m => m.stop()).catch(e => { console.error(e); process.exit(1); });"
       - name: Run unit tests
         run: pnpm test:ci
 
@@ -111,6 +123,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      CI: "true"
+      MONGOMS_VERSION: "7.0.24"
+      MONGOMS_DOWNLOAD_DIR: ${{ runner.temp }}/mongodb-binaries
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -119,7 +135,7 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 10.24.0
+          version: 10.26.2
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -128,6 +144,14 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Cache mongodb-memory-server binaries
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.MONGOMS_DOWNLOAD_DIR }}
+          key: mongoms-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
+      - name: Pre-download MongoDB binary (mongodb-memory-server)
+        run: |
+          node -e "const { MongoMemoryServer } = require('mongodb-memory-server'); MongoMemoryServer.create({ binary: { downloadDir: process.env.MONGOMS_DOWNLOAD_DIR }, instance: { dbName: 'preload' } }).then(m => m.stop()).catch(e => { console.error(e); process.exit(1); });"
       - name: Run E2E tests
         run: pnpm --filter @meriter/api test:e2e:ci
 

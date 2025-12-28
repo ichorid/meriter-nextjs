@@ -5,7 +5,7 @@ FROM ${BASE_IMAGE} AS builder
 WORKDIR /repo
 # Install pnpm directly via npm to avoid corepack signature verification issues
 # If CI provides a base image with pnpm already installed, this is a fast no-op.
-RUN command -v pnpm >/dev/null 2>&1 || npm install -g pnpm@10.24.0
+RUN command -v pnpm >/dev/null 2>&1 || npm install -g pnpm@10.26.2
 RUN pnpm config set store-dir /pnpm/store
 ENV NEXT_TELEMETRY_DISABLED=1
 

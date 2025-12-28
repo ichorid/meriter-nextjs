@@ -8,7 +8,7 @@
 FROM node:22.11-alpine AS base
 
 # Install pnpm directly via npm to avoid corepack signature verification issues
-RUN npm install -g pnpm@10.24.0
+RUN npm install -g pnpm@10.26.2
 
 # Configure pnpm store location (matches component Dockerfiles)
 RUN pnpm config set store-dir /pnpm/store
