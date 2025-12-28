@@ -21,10 +21,11 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@nestjs/core",
+      "@sentry/cli",
+      "@sentry/profiling-node",
       "bcrypt",
       "es5-ext",
       "mongodb-memory-server",
-      "postinstall-postinstall",
       "sharp"
     ],
     "overrides": {

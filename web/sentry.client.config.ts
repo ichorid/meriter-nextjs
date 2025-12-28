@@ -12,6 +12,7 @@ const packageJson = require('../package.json');
 const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN;
 const SENTRY_ENVIRONMENT = process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development';
 const TRACES_SAMPLE_RATE = parseFloat(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE || '1.0');
+const PROFILE_SESSION_SAMPLE_RATE = parseFloat(process.env.NEXT_PUBLIC_SENTRY_PROFILE_SESSION_SAMPLE_RATE || '1.0');
 
 // Only initialize Sentry if DSN is provided
 if (SENTRY_DSN) {
@@ -23,14 +24,34 @@ if (SENTRY_DSN) {
     // Enable logging
     enableLogs: true,
     
-    // Performance monitoring
+    // Performance monitoring - tracing must be enabled for profiling to work
     tracesSampleRate: TRACES_SAMPLE_RATE,
+    
+    // Set 'tracePropagationTargets' to control for which URLs distributed tracing should be enabled
+    // This enables trace headers for API requests to facilitate distributed tracing
+    tracePropagationTargets: [
+      'localhost',
+      /^https?:\/\/localhost/,
+      /^https?:\/\/127\.0\.0\.1/,
+      // Same-origin requests (API routes and tRPC)
+      /^\/api\//,
+      /^\/trpc/,
+    ],
+    
+    // Profiling configuration
+    // Set profileSessionSampleRate to 1.0 to profile during every session.
+    // The decision, whether to profile or not, is made once per session (when the SDK is initialized).
+    profileSessionSampleRate: PROFILE_SESSION_SAMPLE_RATE,
     
     // Capture unhandled promise rejections
     captureUnhandledRejections: true,
     
     // Integrations
     integrations: [
+      // Browser tracing integration for distributed tracing
+      Sentry.browserTracingIntegration(),
+      // Browser profiling integration
+      Sentry.browserProfilingIntegration(),
       // Send console.log, console.warn, and console.error calls as logs to Sentry
       Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
       // Replay can be enabled later if needed
