@@ -55,6 +55,11 @@ export class EntityMappers {
       description: publication.getDescription || undefined,
       postType: snapshot.postType || 'basic',
       isProject: snapshot.isProject || false,
+      // Forwarding / review flow
+      forwardStatus: snapshot.forwardStatus ?? null,
+      forwardTargetCommunityId: snapshot.forwardTargetCommunityId || undefined,
+      forwardProposedBy: snapshot.forwardProposedBy || undefined,
+      forwardProposedAt: snapshot.forwardProposedAt || undefined,
       // Project taxonomy (needed for edit prefill + cards outside community feed)
       impactArea: snapshot.impactArea || undefined,
       stage: snapshot.stage || undefined,
